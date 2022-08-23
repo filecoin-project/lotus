@@ -159,6 +159,7 @@
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
+  * [StateActorManifestCID](#StateActorManifestCID)
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateCall](#StateCall)
   * [StateChangedActors](#StateChangedActors)
@@ -4657,6 +4658,26 @@ Inputs:
 ```
 
 Response: `{}`
+
+### StateActorManifestCID
+StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### StateAllMinerFaults
 StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
