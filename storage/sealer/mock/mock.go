@@ -439,6 +439,9 @@ func (mgr *SectorMgr) GenerateWindowPoStWithVanilla(ctx context.Context, proofTy
 func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
 	off := storiface.UnpaddedByteIndex(0)
 	var piece cid.Cid
+
+	mgr.lk.Lock()
+
 	for _, c := range mgr.sectors[sector.ID].pieces {
 		piece = c
 		if off >= offset {
@@ -450,6 +453,8 @@ func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storiface.SectorRef,
 		panic("non-aligned offset todo")
 	}
 	br := bytes.NewReader(mgr.pieces[piece][:size])
+
+	mgr.lk.Unlock()
 
 	return struct {
 		io.ReadCloser
