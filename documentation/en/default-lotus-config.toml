@@ -201,7 +201,7 @@
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREFULLGCFREQUENCY
     #HotStoreFullGCFrequency = 20
 
-    # EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
+    # EnableColdStoreAutoPrune turns on compaction of the coldstore i.e. pruning
     # where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
     # Default is false
     #
