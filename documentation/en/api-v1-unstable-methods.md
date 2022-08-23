@@ -65,6 +65,8 @@
   * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
+* [Eth](#Eth)
+  * [EthBlockNumber](#EthBlockNumber)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2112,6 +2114,19 @@ Inputs:
 ```
 
 Response: `{}`
+
+## Eth
+These methods are used for Ethereum-compatible JSON-RPC calls
+
+
+### EthBlockNumber
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"string value"`
 
 ## Gas
 

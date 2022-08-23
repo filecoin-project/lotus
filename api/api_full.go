@@ -742,6 +742,10 @@ type FullNode interface {
 
 	NodeStatus(ctx context.Context, inclChainStatus bool) (NodeStatus, error) //perm:read
 
+	// MethodGroup: Eth
+	// These methods are used for Ethereum-compatible JSON-RPC calls
+	EthBlockNumber(ctx context.Context) (string, error) //perm:read
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that

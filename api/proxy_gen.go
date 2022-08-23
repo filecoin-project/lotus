@@ -215,6 +215,8 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
+		EthBlockNumber func(p0 context.Context) (string, error) `perm:"read"`
+
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) `perm:"read"`
@@ -1741,6 +1743,17 @@ func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
 
 func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (string, error) {
+	if s.Internal.EthBlockNumber == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.EthBlockNumber(p0)
+}
+
+func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (string, error) {
+	return "", ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
