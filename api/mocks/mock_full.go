@@ -906,6 +906,21 @@ func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockFullNode)(nil).Discover), arg0)
 }
 
+// EthAccounts mocks base method.
+func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthAccounts", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthAccounts indicates an expected call of EthAccounts.
+func (mr *MockFullNodeMockRecorder) EthAccounts(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAccounts", reflect.TypeOf((*MockFullNode)(nil).EthAccounts), arg0)
+}
+
 // EthBlockNumber mocks base method.
 func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (string, error) {
 	m.ctrl.T.Helper()
@@ -919,6 +934,21 @@ func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (string, error) {
 func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthBlockNumber", reflect.TypeOf((*MockFullNode)(nil).EthBlockNumber), arg0)
+}
+
+// EthGetBlockTransactionCountByNumber mocks base method.
+func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByNumber", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetBlockTransactionCountByNumber indicates an expected call of EthGetBlockTransactionCountByNumber.
+func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByNumber(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockTransactionCountByNumber", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockTransactionCountByNumber), arg0, arg1)
 }
 
 // GasEstimateFeeCap mocks base method.

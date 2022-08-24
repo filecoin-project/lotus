@@ -213,7 +213,11 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
+		EthAccounts func(p0 context.Context) ([]string, error) `perm:"read"`
+
 		EthBlockNumber func(p0 context.Context) (string, error) `perm:"read"`
+
+		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (string, error) `perm:"read"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -1716,6 +1720,17 @@ func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]string, error) {
+	if s.Internal.EthAccounts == nil {
+		return *new([]string), ErrNotSupported
+	}
+	return s.Internal.EthAccounts(p0)
+}
+
+func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]string, error) {
+	return *new([]string), ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (string, error) {
 	if s.Internal.EthBlockNumber == nil {
 		return "", ErrNotSupported
@@ -1724,6 +1739,17 @@ func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (string, error) {
 }
 
 func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (string, error) {
+	return "", ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (string, error) {
+	if s.Internal.EthGetBlockTransactionCountByNumber == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (string, error) {
 	return "", ErrNotSupported
 }
 

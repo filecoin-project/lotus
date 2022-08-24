@@ -65,7 +65,9 @@
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Eth](#Eth)
+  * [EthAccounts](#EthAccounts)
   * [EthBlockNumber](#EthBlockNumber)
+  * [EthGetBlockTransactionCountByNumber](#EthGetBlockTransactionCountByNumber)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -1902,7 +1904,7 @@ Response:
     "SeqNo": 42
   },
   "DealProtocols": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ]
 }
 ```
@@ -2098,15 +2100,44 @@ Response: `{}`
 ## Eth
 These methods are used for Ethereum-compatible JSON-RPC calls
 
-
-### EthBlockNumber
 Under the Eth method group, TipSets are treated as blocks, so this method returns
 the height of the latest (heaviest) TipSet
+
+
+### EthAccounts
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "0x11892b7542a74824D089f7b20e36688bc5501697"
+]
+```
+
+### EthBlockNumber
 
 
 Perms: read
 
 Inputs: `null`
+
+Response: `"string value"`
+
+### EthGetBlockTransactionCountByNumber
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
 
 Response: `"string value"`
 
@@ -2327,7 +2358,7 @@ Inputs: `null`
 Response:
 ```json
 [
-  "string value"
+  "0x11892b7542a74824D089f7b20e36688bc5501697"
 ]
 ```
 
@@ -4078,10 +4109,10 @@ Inputs:
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
     "IPAddrs": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ],
     "IPSubnets": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ]
   }
 ]
@@ -4103,10 +4134,10 @@ Response:
     "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
   ],
   "IPAddrs": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ],
   "IPSubnets": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ]
 }
 ```
@@ -4124,10 +4155,10 @@ Inputs:
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
     "IPAddrs": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ],
     "IPSubnets": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ]
   }
 ]
@@ -4248,10 +4279,10 @@ Response:
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Agent": "string value",
   "Addrs": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ],
   "Protocols": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ],
   "ConnMgrMeta": {
     "FirstSeen": "0001-01-01T00:00:00Z",

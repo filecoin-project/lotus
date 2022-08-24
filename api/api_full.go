@@ -740,10 +740,13 @@ type FullNode interface {
 
 	// MethodGroup: Eth
 	// These methods are used for Ethereum-compatible JSON-RPC calls
-
-	// Under the Eth method group, TipSets are treated as blocks, so this method returns
-	// the height of the latest (heaviest) TipSet
-	EthBlockNumber(ctx context.Context) (string, error) //perm:read
+	//
+	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
+	EthAccounts(context.Context) ([]string, error)                               //perm:read
+	// EthBlockNumber returns the height of the latest (heaviest) TipSet
+	EthBlockNumber(ctx context.Context) (string, error)                          //perm:read
+	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
+	EthGetBlockTransactionCountByNumber(context.Context, string) (string, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the

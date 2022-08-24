@@ -2318,7 +2318,7 @@ Inputs: `null`
 Response:
 ```json
 [
-  "string value"
+  "0x11892b7542a74824D089f7b20e36688bc5501697"
 ]
 ```
 
@@ -3720,10 +3720,10 @@ Inputs:
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
     "IPAddrs": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ],
     "IPSubnets": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ]
   }
 ]
@@ -3745,10 +3745,10 @@ Response:
     "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
   ],
   "IPAddrs": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ],
   "IPSubnets": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ]
 }
 ```
@@ -3766,10 +3766,10 @@ Inputs:
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
     "IPAddrs": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ],
     "IPSubnets": [
-      "string value"
+      "0x11892b7542a74824D089f7b20e36688bc5501697"
     ]
   }
 ]
@@ -3890,10 +3890,10 @@ Response:
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Agent": "string value",
   "Addrs": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ],
   "Protocols": [
-    "string value"
+    "0x11892b7542a74824D089f7b20e36688bc5501697"
   ],
   "ConnMgrMeta": {
     "FirstSeen": "0001-01-01T00:00:00Z",
