@@ -323,6 +323,9 @@ func (m *Sealing) NumReserveCount(ctx context.Context, name string, count uint64
 			Len: count + usedCount,
 		},
 	}})
+	if err != nil {
+		return bitfield.BitField{}, err
+	}
 
 	free, err := bitfield.SubtractBitField(mask, nm.InUse)
 	if err != nil {
