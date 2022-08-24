@@ -18,7 +18,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-bitfield"
-	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -33,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/strle"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
@@ -2231,12 +2231,12 @@ var sectorsNumbersInfoCmd = &cli.Command{
 			return err
 		}
 
-		alloc, err := bitfieldToHumanRanges(am.Allocated)
+		alloc, err := strle.BitfieldToHumanRanges(am.Allocated)
 		if err != nil {
 			return err
 		}
 
-		reserved, err := bitfieldToHumanRanges(am.Reserved)
+		reserved, err := strle.BitfieldToHumanRanges(am.Reserved)
 		if err != nil {
 			return err
 		}
@@ -2268,7 +2268,7 @@ var sectorsNumbersReservationsCmd = &cli.Command{
 		var out []string
 
 		for name, field := range rs {
-			hr, err := bitfieldToHumanRanges(field)
+			hr, err := strle.BitfieldToHumanRanges(field)
 			if err != nil {
 				return err
 			}
@@ -2314,7 +2314,7 @@ var sectorsNumbersReserveCmd = &cli.Command{
 			return xerrors.Errorf("expected 2 arguments: [reservation name] [reserved ranges]")
 		}
 
-		bf, err := humanRangesToBitField(cctx.Args().Get(1))
+		bf, err := strle.HumanRangesToBitField(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("parsing ranges: %w", err)
 		}
@@ -2341,91 +2341,4 @@ var sectorsNumbersFreeCmd = &cli.Command{
 
 		return api.SectorNumFree(ctx, cctx.Args().First())
 	},
-}
-
-func humanRangesToBitField(h string) (bitfield.BitField, error) {
-	var runs []rlepluslazy.Run
-	var last uint64
-
-	strRanges := strings.Split(h, ",")
-	for i, strRange := range strRanges {
-		lr := strings.Split(strRange, "-")
-
-		var start, end uint64
-		var err error
-
-		switch len(lr) {
-		case 1: // one number
-			start, err = strconv.ParseUint(lr[0], 10, 64)
-			if err != nil {
-				return bitfield.BitField{}, xerrors.Errorf("parsing left side of run %d: %w", i, err)
-			}
-
-			end = start
-		case 2: // x-y
-			start, err = strconv.ParseUint(lr[0], 10, 64)
-			if err != nil {
-				return bitfield.BitField{}, xerrors.Errorf("parsing left side of run %d: %w", i, err)
-			}
-			end, err = strconv.ParseUint(lr[1], 10, 64)
-			if err != nil {
-				return bitfield.BitField{}, xerrors.Errorf("parsing right side of run %d: %w", i, err)
-			}
-		}
-
-		if start < last {
-			return bitfield.BitField{}, xerrors.Errorf("run %d start(%d) was less than last run end(%d)", i, start, last)
-		}
-
-		if start == last && last > 0 {
-			return bitfield.BitField{}, xerrors.Errorf("run %d start(%d) was equal to last run end(%d)", i, start, last)
-		}
-
-		if start > end {
-			return bitfield.BitField{}, xerrors.Errorf("run start(%d) can't be greater than run end(%d) (run %d)", start, end, i)
-		}
-
-		if start > last {
-			runs = append(runs, rlepluslazy.Run{Val: false, Len: start - last})
-		}
-
-		runs = append(runs, rlepluslazy.Run{Val: true, Len: end - start + 1})
-		last = end + 1
-	}
-
-	return bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{Runs: runs})
-}
-
-func bitfieldToHumanRanges(bf bitfield.BitField) (string, error) {
-	bj, err := bf.MarshalJSON()
-	if err != nil {
-		return "", err
-	}
-
-	var bints []int64
-	if err := json.Unmarshal(bj, &bints); err != nil {
-		return "", err
-	}
-
-	var at int64
-	var out string
-
-	for i, bi := range bints {
-		at += bi
-
-		if i%2 == 0 {
-			if i > 0 {
-				out += ","
-			}
-			out += fmt.Sprint(at)
-			continue
-		}
-
-		if bi > 1 {
-			out += "-"
-			out += fmt.Sprint(at - 1)
-		}
-	}
-
-	return out, err
 }

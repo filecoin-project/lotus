@@ -125,10 +125,19 @@ type StorageMiner interface {
 	SectorAbortUpgrade(context.Context, abi.SectorNumber) error //perm:admin
 
 	// SectorNumAssignerMeta returns sector number assigner metadata - reserved/allocated
-	SectorNumAssignerMeta(ctx context.Context) (NumAssignerMeta, error)                           //perm:read
-	SectorNumReservations(ctx context.Context) (map[string]bitfield.BitField, error)              //perm:read
-	SectorNumReserve(ctx context.Context, name string, field bitfield.BitField, force bool) error //perm:admin
-	SectorNumFree(ctx context.Context, name string) error                                         //perm:admin
+	SectorNumAssignerMeta(ctx context.Context) (NumAssignerMeta, error) //perm:read
+	// SectorNumReservations returns a list of sector number reservations
+	SectorNumReservations(ctx context.Context) (map[string]bitfield.BitField, error) //perm:read
+	// SectorNumReserve creates a new sector number reservation. Will fail if any other reservation has colliding
+	// numbers or name. Set force to true to override safety checks.
+	// Valid characters for name: a-z, A-Z, 0-9, _, -
+	SectorNumReserve(ctx context.Context, name string, sectors bitfield.BitField, force bool) error //perm:admin
+	// SectorNumReserveCount creates a new sector number reservation for `count` sector numbers.
+	// by default lotus will allocate lowest-available sector numbers to the reservation.
+	// For restrictions on `name` see SectorNumReserve
+	SectorNumReserveCount(ctx context.Context, name string, count uint64) (bitfield.BitField, error) //perm:admin
+	// SectorNumFree drops a sector reservation
+	SectorNumFree(ctx context.Context, name string) error //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
@@ -479,6 +488,9 @@ type DagstoreInitializeAllEvent struct {
 type NumAssignerMeta struct {
 	Reserved  bitfield.BitField
 	Allocated bitfield.BitField
+
+	// ChainAllocated+Reserved+Allocated
+	InUse bitfield.BitField
 
 	Next abi.SectorNumber
 }

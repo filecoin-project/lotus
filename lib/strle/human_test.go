@@ -1,4 +1,4 @@
-package main
+package strle
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 func TestHumanBitfield(t *testing.T) {
 	check := func(ints []uint64, out string) {
 		bf := bitfield.NewFromSet(ints)
-		h, err := bitfieldToHumanRanges(bf)
+		h, err := BitfieldToHumanRanges(bf)
 		require.NoError(t, err)
 		require.Equal(t, out, h)
 	}
@@ -26,10 +26,10 @@ func TestHumanBitfield(t *testing.T) {
 
 func TestHumanBitfieldRoundtrip(t *testing.T) {
 	check := func(ints []uint64, out string) {
-		parsed, err := humanRangesToBitField(out)
+		parsed, err := HumanRangesToBitField(out)
 		require.NoError(t, err)
 
-		h, err := bitfieldToHumanRanges(parsed)
+		h, err := BitfieldToHumanRanges(parsed)
 		require.NoError(t, err)
 		require.Equal(t, out, h)
 

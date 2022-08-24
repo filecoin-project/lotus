@@ -143,6 +143,7 @@
   * [SectorNumFree](#SectorNumFree)
   * [SectorNumReservations](#SectorNumReservations)
   * [SectorNumReserve](#SectorNumReserve)
+  * [SectorNumReserveCount](#SectorNumReserveCount)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
@@ -2961,11 +2962,16 @@ Response:
     5,
     1
   ],
+  "InUse": [
+    5,
+    1
+  ],
   "Next": 9
 }
 ```
 
 ### SectorNumFree
+SectorNumFree drops a sector reservation
 
 
 Perms: admin
@@ -2980,6 +2986,7 @@ Inputs:
 Response: `{}`
 
 ### SectorNumReservations
+SectorNumReservations returns a list of sector number reservations
 
 
 Perms: read
@@ -2999,6 +3006,9 @@ Response:
 ```
 
 ### SectorNumReserve
+SectorNumReserve creates a new sector number reservation. Will fail if any other reservation has colliding
+numbers or name. Set force to true to override safety checks.
+Valid characters for name: a-z, A-Z, 0-9, _, -
 
 
 Perms: admin
@@ -3016,6 +3026,30 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SectorNumReserveCount
+SectorNumReserveCount creates a new sector number reservation for `count` sector numbers.
+by default lotus will allocate lowest-available sector numbers to the reservation.
+For restrictions on `name` see SectorNumReserve
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  42
+]
+```
+
+Response:
+```json
+[
+  5,
+  1
+]
+```
 
 ### SectorPreCommitFlush
 SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.

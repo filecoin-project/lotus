@@ -440,6 +440,10 @@ func (sm *StorageMinerAPI) SectorNumReserve(ctx context.Context, name string, fi
 	return sm.Miner.NumReserve(ctx, name, field, force)
 }
 
+func (sm *StorageMinerAPI) SectorNumReserveCount(ctx context.Context, name string, count uint64) (bitfield.BitField, error) {
+	return sm.Miner.NumReserveCount(ctx, name, count)
+}
+
 func (sm *StorageMinerAPI) SectorNumFree(ctx context.Context, name string) error {
 	return sm.Miner.NumFree(ctx, name)
 }

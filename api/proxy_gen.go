@@ -836,6 +836,8 @@ type StorageMinerStruct struct {
 
 		SectorNumReserve func(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error `perm:"admin"`
 
+		SectorNumReserveCount func(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) `perm:"admin"`
+
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
@@ -4976,6 +4978,17 @@ func (s *StorageMinerStruct) SectorNumReserve(p0 context.Context, p1 string, p2 
 
 func (s *StorageMinerStub) SectorNumReserve(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReserveCount(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) {
+	if s.Internal.SectorNumReserveCount == nil {
+		return *new(bitfield.BitField), ErrNotSupported
+	}
+	return s.Internal.SectorNumReserveCount(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) SectorNumReserveCount(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) {
+	return *new(bitfield.BitField), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {

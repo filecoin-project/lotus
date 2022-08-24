@@ -168,6 +168,7 @@ func (m *Sealing) numAssignerMetaLocked(ctx context.Context) (api.NumAssignerMet
 	return api.NumAssignerMeta{
 		Reserved:  *reserved,
 		Allocated: *allocated,
+		InUse:     inuse,
 		Next:      firstFree,
 	}, nil
 }
@@ -208,6 +209,11 @@ func (m *Sealing) NumReserve(ctx context.Context, name string, reserving bitfiel
 	m.sclk.Lock()
 	defer m.sclk.Unlock()
 
+	return m.numReserveLocked(ctx, name, reserving, force)
+}
+
+// NumReserve creates a new sector reservation
+func (m *Sealing) numReserveLocked(ctx context.Context, name string, reserving bitfield.BitField, force bool) error {
 	rk, err := reservationKey(name)
 	if err != nil {
 		return err
@@ -292,6 +298,49 @@ func (m *Sealing) NumReserve(ctx context.Context, name string, reserving bitfiel
 	}
 
 	return nil
+}
+
+func (m *Sealing) NumReserveCount(ctx context.Context, name string, count uint64) (bitfield.BitField, error) {
+	m.sclk.Lock()
+	defer m.sclk.Unlock()
+
+	nm, err := m.numAssignerMetaLocked(ctx)
+	if err != nil {
+		return bitfield.BitField{}, err
+	}
+
+	// figure out `count` unused sectors at lowest possible numbers
+
+	usedCount, err := nm.InUse.Count()
+	if err != nil {
+		return bitfield.BitField{}, err
+	}
+
+	// get a bitfield mask which has at least `count` bits more set than the nm.InUse field
+	mask, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{Runs: []rlepluslazy.Run{
+		{
+			Val: true,
+			Len: count + usedCount,
+		},
+	}})
+
+	free, err := bitfield.SubtractBitField(mask, nm.InUse)
+	if err != nil {
+		return bitfield.BitField{}, err
+	}
+
+	// free now has at least 'count' bits set - it's possible that InUse had some bits set outside the count+usedCount range
+
+	free, err = free.Slice(0, count)
+	if err != nil {
+		return bitfield.BitField{}, err
+	}
+
+	if err := m.numReserveLocked(ctx, name, free, false); err != nil {
+		return bitfield.BitField{}, err
+	}
+
+	return free, nil
 }
 
 // NumFree removes a named sector reservation

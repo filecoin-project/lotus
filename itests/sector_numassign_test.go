@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/lib/strle"
 )
 
 func TestAssignBasic(t *testing.T) {
@@ -127,4 +128,50 @@ func TestAssignReservation(t *testing.T) {
 	require.Equal(t, abi.SectorNumber(3), sl[0])
 	require.Equal(t, abi.SectorNumber(11), sl[1])
 	require.Equal(t, abi.SectorNumber(12), sl[2])
+}
+
+func TestReserveCount(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx := context.Background()
+
+	_, miner, _ := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MockProofs())
+
+	// with no reservations higher
+	r1, err := miner.SectorNumReserveCount(ctx, "r1", 2)
+	require.NoError(t, err)
+	requireBitField(t, "3-4", r1)
+
+	// reserve some higher numbers
+	err = miner.SectorNumReserve(ctx, "test-reservation", rangeBitField(10, 15), false)
+	require.NoError(t, err)
+
+	// reserve a few below an existing reservation
+	r2, err := miner.SectorNumReserveCount(ctx, "r2", 2)
+	require.NoError(t, err)
+	requireBitField(t, "5-6", r2)
+
+	// reserve a few through an existing reservation
+	r3, err := miner.SectorNumReserveCount(ctx, "r3", 6)
+	require.NoError(t, err)
+	requireBitField(t, "7-9,16-18", r3)
+
+	// do one more
+	r4, err := miner.SectorNumReserveCount(ctx, "r4", 4)
+	require.NoError(t, err)
+	requireBitField(t, "19-22", r4)
+
+	resvs, err := miner.SectorNumReservations(ctx)
+	require.NoError(t, err)
+
+	requireBitField(t, "3-4", resvs["r1"])
+	requireBitField(t, "5-6", resvs["r2"])
+	requireBitField(t, "7-9,16-18", resvs["r3"])
+	requireBitField(t, "19-22", resvs["r4"])
+}
+
+func requireBitField(t *testing.T, expect string, bf bitfield.BitField) {
+	s, err := strle.BitfieldToHumanRanges(bf)
+	require.NoError(t, err)
+	require.Equal(t, expect, s)
 }
