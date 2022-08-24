@@ -448,6 +448,10 @@ func (sm *StorageMinerAPI) SectorNumFree(ctx context.Context, name string) error
 	return sm.Miner.NumFree(ctx, name)
 }
 
+func (sm *StorageMinerAPI) SectorReceive(ctx context.Context, meta api.RemoteSectorMeta) error {
+	return sm.Miner.Receive(ctx, meta)
+}
+
 func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]minertypes.SubmitWindowedPoStParams, error) {
 	var ts *types.TipSet
 	var err error

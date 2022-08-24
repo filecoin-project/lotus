@@ -150,6 +150,7 @@
   * [SectorNumReserveCount](#SectorNumReserveCount)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
+  * [SectorReceive](#SectorReceive)
   * [SectorRemove](#SectorRemove)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
@@ -3150,6 +3151,131 @@ Response:
   }
 ]
 ```
+
+### SectorReceive
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  {
+    "State": "Proving",
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "Type": 8,
+    "Pieces": [
+      {
+        "Piece": {
+          "Size": 1032,
+          "PieceCID": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
+        },
+        "DealInfo": {
+          "PublishCid": null,
+          "DealID": 5432,
+          "DealProposal": {
+            "PieceCID": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "PieceSize": 1032,
+            "VerifiedDeal": true,
+            "Client": "f01234",
+            "Provider": "f01234",
+            "Label": "",
+            "StartEpoch": 10101,
+            "EndEpoch": 10101,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "DealSchedule": {
+            "StartEpoch": 10101,
+            "EndEpoch": 10101
+          },
+          "KeepUnsealed": true
+        }
+      }
+    ],
+    "TicketValue": "Bw==",
+    "TicketEpoch": 10101,
+    "PreCommit1Out": "Bw==",
+    "CommD": null,
+    "CommR": null,
+    "PreCommitInfo": {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "SealRandEpoch": 10101,
+      "DealIDs": [
+        5432
+      ],
+      "Expiration": 10101,
+      "ReplaceCapacity": true,
+      "ReplaceSectorDeadline": 42,
+      "ReplaceSectorPartition": 42,
+      "ReplaceSectorNumber": 9
+    },
+    "PreCommitDeposit": "0",
+    "PreCommitMessage": null,
+    "PreCommitTipSet": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      {
+        "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+      }
+    ],
+    "SeedValue": "Bw==",
+    "SeedEpoch": 10101,
+    "CommitProof": "Ynl0ZSBhcnJheQ==",
+    "CommitMessage": null,
+    "Log": [
+      {
+        "Kind": "string value",
+        "Timestamp": 42,
+        "Trace": "string value",
+        "Message": "string value"
+      }
+    ],
+    "DataUnsealed": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": {
+        "Authorization": [
+          "Bearer ey.."
+        ]
+      }
+    },
+    "DataSealed": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": {
+        "Authorization": [
+          "Bearer ey.."
+        ]
+      }
+    },
+    "DataCache": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": {
+        "Authorization": [
+          "Bearer ey.."
+        ]
+      }
+    }
+  }
+]
+```
+
+Response: `{}`
 
 ### SectorRemove
 SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
