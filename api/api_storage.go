@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
@@ -138,6 +140,8 @@ type StorageMiner interface {
 	SectorNumReserveCount(ctx context.Context, name string, count uint64) (bitfield.BitField, error) //perm:admin
 	// SectorNumFree drops a sector reservation
 	SectorNumFree(ctx context.Context, name string) error //perm:admin
+
+	SectorReceive(ctx context.Context, meta RemoteSectorMeta) error
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
@@ -498,4 +502,88 @@ type NumAssignerMeta struct {
 	InUse bitfield.BitField
 
 	Next abi.SectorNumber
+}
+
+type RemoteSectorMeta struct {
+	////////
+	// BASIC SECTOR INFORMATION
+
+	// State specifies the first state the sector will enter after being imported
+	// Must be one of the following states:
+	// * Packing
+	// * GetTicket
+	// * PreCommitting
+	// * SubmitCommit
+	// * Proving/Available
+	State SectorState
+
+	Sector abi.SectorID
+	Type   abi.RegisteredSealProof
+
+	////////
+	// SEALING METADATA
+	// (allows lotus to continue the sealing process)
+
+	// Required in Packing and later
+	Pieces []SectorPiece // todo better type?
+
+	// Required in PreCommitting and later
+	TicketValue   abi.SealRandomness
+	TicketEpoch   abi.ChainEpoch
+	PreCommit1Out storiface.PreCommit1Out // todo specify better
+
+	CommD *cid.Cid
+	CommR *cid.Cid // SectorKey
+
+	// Required in SubmitCommit and later
+	PreCommitInfo    *miner.SectorPreCommitInfo
+	PreCommitDeposit big.Int
+	PreCommitMessage *cid.Cid
+	PreCommitTipSet  types.TipSetKey
+
+	SeedValue abi.InteractiveSealRandomness
+	SeedEpoch abi.ChainEpoch
+
+	CommitProof []byte
+
+	// Required in Proving/Available
+	CommitMessage *cid.Cid
+
+	// Optional sector metadata to import
+	Log []SectorLog
+
+	////////
+	// SECTOR DATA SOURCE
+
+	// Sector urls - lotus will use those for fetching files into local storage
+
+	// Required in all states
+	DataUnsealed *SectorData
+
+	// Required in PreCommitting and later
+	DataSealed *SectorData
+	DataCache  *SectorData
+
+	////////
+	// SEALING SERVICE HOOKS
+
+	// todo Commit1Provider
+	// todo OnDone / OnStateChange
+}
+
+type SectorData struct {
+	// Local when set to true indicates to lotus that sector data is already
+	// available locally; When set lotus will skip fetching sector data, and
+	// only check that sector data exists in sector storage
+	Local bool
+
+	// URL to the sector data
+	// For sealed/unsealed sector, lotus expects octet-stream
+	// For cache, lotus expects a tar archive with cache files (todo maybe use not-tar; specify what files with what paths must be present)
+	// Valid schemas:
+	// - http:// / https://
+	URL string
+
+	// optional http headers to use when requesting sector data
+	Headers http.Header
 }

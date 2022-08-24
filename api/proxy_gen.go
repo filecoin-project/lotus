@@ -844,6 +844,8 @@ type StorageMinerStruct struct {
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
+		SectorReceive func(p0 context.Context, p1 RemoteSectorMeta) error ``
+
 		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
 		SectorSetExpectedSealDuration func(p0 context.Context, p1 time.Duration) error `perm:"write"`
@@ -5024,6 +5026,17 @@ func (s *StorageMinerStruct) SectorPreCommitPending(p0 context.Context) ([]abi.S
 
 func (s *StorageMinerStub) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
 	return *new([]abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorReceive(p0 context.Context, p1 RemoteSectorMeta) error {
+	if s.Internal.SectorReceive == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorReceive(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorReceive(p0 context.Context, p1 RemoteSectorMeta) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
