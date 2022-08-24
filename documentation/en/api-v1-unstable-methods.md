@@ -2100,7 +2100,9 @@ These methods are used for Ethereum-compatible JSON-RPC calls
 
 
 ### EthBlockNumber
-There are not yet any comments for this method.
+Under the Eth method group, TipSets are treated as blocks, so this method returns
+the height of the latest (heaviest) TipSet
+
 
 Perms: read
 
