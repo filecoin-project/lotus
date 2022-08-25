@@ -15,8 +15,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-datastore"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/testground/sdk-go/sync"
 
 	"github.com/filecoin-project/go-address"

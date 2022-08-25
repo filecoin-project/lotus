@@ -16,8 +16,8 @@ import (
 	"github.com/ipfs/go-graphsync"
 	gsimpl "github.com/ipfs/go-graphsync/impl"
 	"github.com/ipfs/go-graphsync/peerstate"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 

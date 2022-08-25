@@ -8,7 +8,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"

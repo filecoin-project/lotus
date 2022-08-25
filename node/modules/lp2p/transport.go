@@ -2,7 +2,7 @@ package lp2p
 
 import (
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p/core/metrics"
 	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	tls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	libp2pquic "github.com/libp2p/go-libp2p/p2p/transport/quic"

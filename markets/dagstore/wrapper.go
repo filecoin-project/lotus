@@ -16,7 +16,7 @@ import (
 	measure "github.com/ipfs/go-ds-measure"
 	logging "github.com/ipfs/go-log/v2"
 	carindex "github.com/ipld/go-car/v2/index"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 

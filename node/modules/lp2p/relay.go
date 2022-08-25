@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/libp2p/go-libp2p"
-	coredisc "github.com/libp2p/go-libp2p-core/discovery"
-	"github.com/libp2p/go-libp2p-core/routing"
+	coredisc "github.com/libp2p/go-libp2p/core/discovery"
+	"github.com/libp2p/go-libp2p/core/routing"
 	routingdisc "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
