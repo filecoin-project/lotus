@@ -1,11 +1,14 @@
 package account
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -37,4 +40,21 @@ func (s *state0) PubkeyAddress() (address.Address, error) {
 
 func (s *state0) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state0) ActorKey() string {
+	return actors.AccountKey
+}
+
+func (s *state0) ActorVersion() actors.Version {
+	return actors.Version0
+}
+
+func (s *state0) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }
