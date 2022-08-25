@@ -227,6 +227,10 @@ func (ts *TipSet) ParentWeight() BigInt {
 	return ts.blks[0].ParentWeight
 }
 
+func (ts *TipSet) ParentMessageReceipts() cid.Cid {
+	return ts.blks[0].ParentMessageReceipts
+}
+
 func (ts *TipSet) Contains(oc cid.Cid) bool {
 	for _, c := range ts.cids {
 		if c == oc {

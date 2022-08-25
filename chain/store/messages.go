@@ -302,8 +302,19 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(ctx context.Context, cids []cid
 	return msgs, nil
 }
 
-// TipSetBlockMessagesReceipts returns the blocks and messages in `ts` and their corresponding receipts from `pts` matching block order in tipset (`ts`).
+// TipSetBlockMessagesReceipts returns the blocks and messages in `pts` and their corresponding receipts from `ts` matching block order in tipset (`pts`).
 func (cs *ChainStore) TipSetBlockMessagesReceipts(ctx context.Context, ts, pts *types.TipSet) ([]*BlockMessageReceipts, error) {
+	// sanity check args
+	if ts.Key().IsEmpty() {
+		return nil, fmt.Errorf("tipset cannot be empty")
+	}
+	if pts.Key().IsEmpty() {
+		return nil, fmt.Errorf("parent tipset cannot be empty")
+	}
+	if !types.CidArrsEqual(ts.Parents().Cids(), pts.Cids()) {
+		return nil, fmt.Errorf("mismatching tipset (%s) and parent tipset (%s)", ts.Key().String(), pts.Key().String())
+	}
+
 	// returned BlockMessages match block order in tipset
 	blkMsgs, err := cs.BlockMsgsForTipset(ctx, pts)
 	if err != nil {
@@ -317,11 +328,11 @@ func (cs *ChainStore) TipSetBlockMessagesReceipts(ctx context.Context, ts, pts *
 	// retrieve receipts using a block from the child (ts) tipset
 	// TODO this operation can fail when the node is imported from a snapshot that does not contain receipts (most don't)
 	// the solution is to compute the tipset state which will create the receipts we load here
-	rs, err := blockadt.AsArray(cs.ActorStore(ctx), ts.Blocks()[0].ParentMessageReceipts)
+	rs, err := blockadt.AsArray(cs.ActorStore(ctx), ts.ParentMessageReceipts())
 	if err != nil {
 		return nil, fmt.Errorf("loading message receipts %w", err)
 	}
-	// so we only load the receipt array one
+	// so we only load the receipt array once
 	getReceipt := func(idx int) (*types.MessageReceipt, error) {
 		var r types.MessageReceipt
 		if found, err := rs.Get(uint64(idx), &r); err != nil {
@@ -426,7 +437,7 @@ func (mri *MessageReceiptIterator) HasNext() bool {
 	return false
 }
 
-// Next returns the next message, execution index, and receipt in the MessageReceiptIterator.
+// Next returns the next message, its execution index, and receipt in the MessageReceiptIterator.
 func (mri *MessageReceiptIterator) Next() (types.ChainMsg, int, *types.MessageReceipt) {
 	if mri.HasNext() {
 		msg := mri.msgs[mri.idx]
