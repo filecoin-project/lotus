@@ -34,13 +34,17 @@ var datastoreVlog2CarCmd = &cli.Command{
 			Usage: "datastore prefix",
 			Value: "/blocks/",
 		},
-		&cli.Uint64Flag{Name: "max-size", Value: 32000},
+		&cli.Uint64Flag{
+			Name:  "max-size",
+			Value: 32000,
+			Usage: "max single car size in MiB",
+		},
 	},
 	ArgsUsage: "[vlog...]",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		maxSz := uint64(cctx.Uint64("max-size") << 20)
+		maxSz := cctx.Uint64("max-size") << 20
 
 		carb := &rawCarb{
 			max:    maxSz,
