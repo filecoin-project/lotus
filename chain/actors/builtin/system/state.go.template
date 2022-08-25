@@ -1,9 +1,11 @@
 package system
 
 import (
+    "fmt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
 
 {{if (le .v 7)}}
 	system{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/system"
@@ -46,4 +48,21 @@ func (s *state{{.v}}) GetBuiltinActors() cid.Cid {
 {{else}}
 	return s.State.BuiltinActors
 {{end}}
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.SystemKey
+}
+
+func (s *state{{.v}}) ActorVersion() actors.Version {
+    return actors.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

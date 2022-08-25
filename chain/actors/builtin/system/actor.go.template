@@ -62,4 +62,23 @@ func MakeState(store adt.Store, av actors.Version, builtinActors cid.Cid) (State
 type State interface {
 	GetState() interface{}
 	GetBuiltinActors() cid.Cid
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+        {{- range .versions}}
+            actors.Version{{.}}: (&state{{.}}{}).Code(),
+        {{- end}}
+	}
 }
