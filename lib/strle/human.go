@@ -42,11 +42,7 @@ func HumanRangesToBitField(h string) (bitfield.BitField, error) {
 			}
 		}
 
-		if start < last {
-			return bitfield.BitField{}, xerrors.Errorf("run %d start(%d) was less than last run end(%d)", i, start, last)
-		}
-
-		if start == last && last > 0 {
+		if start <= last && last > 0 {
 			return bitfield.BitField{}, xerrors.Errorf("run %d start(%d) was equal to last run end(%d)", i, start, last)
 		}
 

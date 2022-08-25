@@ -98,7 +98,7 @@ func (m *Sealing) numAssignerMetaLocked(ctx context.Context) (api.NumAssignerMet
 		return api.NumAssignerMeta{}, xerrors.Errorf("loading allocated sectors bitfield: %w", err)
 	}
 
-	// if the allocated bitfield doesn't exist, crate it from the legacy sector counter
+	// if the allocated bitfield doesn't exist, create it from the legacy sector counter
 	if allocated == nil {
 		var i uint64
 		{
@@ -250,12 +250,12 @@ func (m *Sealing) numReserveLocked(ctx context.Context, name string, reserving b
 	}
 
 	// check if the reservation is colliding with any other reservation
-	coliding, err := bitfield.IntersectBitField(allReserved, reserving)
+	colliding, err := bitfield.IntersectBitField(allReserved, reserving)
 	if err != nil {
 		return xerrors.Errorf("intersect all / reserving: %w", err)
 	}
 
-	empty, err := coliding.IsEmpty()
+	empty, err := colliding.IsEmpty()
 	if err != nil {
 		return xerrors.Errorf("colliding.empty: %w", err)
 	}
@@ -267,12 +267,12 @@ func (m *Sealing) numReserveLocked(ctx context.Context, name string, reserving b
 	}
 
 	// check if the reservation is colliding with allocated sectors
-	coliding, err = bitfield.IntersectBitField(nm.Allocated, reserving)
+	colliding, err = bitfield.IntersectBitField(nm.Allocated, reserving)
 	if err != nil {
 		return xerrors.Errorf("intersect all / reserving: %w", err)
 	}
 
-	empty, err = coliding.IsEmpty()
+	empty, err = colliding.IsEmpty()
 	if err != nil {
 		return xerrors.Errorf("colliding.empty: %w", err)
 	}
