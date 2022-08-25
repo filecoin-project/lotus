@@ -1,6 +1,7 @@
 package paych
 
 import (
+    "fmt"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -8,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
 
 {{if (le .v 7)}}
 	paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
@@ -104,6 +106,23 @@ func (s *state{{.v}}) ForEachLaneState(cb func(idx uint64, dl LaneState) error) 
 	return lsamt.ForEach(&ls, func(i int64) error {
 		return cb(uint64(i), &laneState{{.v}}{ls})
 	})
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.AccountKey
+}
+
+func (s *state{{.v}}) ActorVersion() actors.Version {
+    return actors.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }
 
 type laneState{{.v}} struct {

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
@@ -91,6 +92,10 @@ type State interface {
 	ForEachLaneState(cb func(idx uint64, dl LaneState) error) error
 
 	GetState() interface{}
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
 }
 
 // LaneState is an abstract copy of the state of a single lane
@@ -166,5 +171,31 @@ func toV0SignedVoucher(sv paychtypes.SignedVoucher) paych0.SignedVoucher {
 		MinSettleHeight: sv.MinSettleHeight,
 		Merges:          nil,
 		Signature:       sv.Signature,
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+	}
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+		actors.Version0: (&state0{}).Code(),
+		actors.Version2: (&state2{}).Code(),
+		actors.Version3: (&state3{}).Code(),
+		actors.Version4: (&state4{}).Code(),
+		actors.Version5: (&state5{}).Code(),
+		actors.Version6: (&state6{}).Code(),
+		actors.Version7: (&state7{}).Code(),
+		actors.Version8: (&state8{}).Code(),
 	}
 }
