@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"github.com/ipfs/go-cid"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"golang.org/x/xerrors"
@@ -61,4 +62,23 @@ var (
 
 type State interface {
 	GetState() interface{}
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+        {{- range .versions}}
+            actors.Version{{.}}: (&state{{.}}{}).Code(),
+        {{- end}}
+	}
 }

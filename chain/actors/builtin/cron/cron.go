@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	builtin8 "github.com/filecoin-project/go-state-types/builtin"
@@ -97,4 +98,34 @@ var (
 
 type State interface {
 	GetState() interface{}
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+	}
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+		actors.Version0: (&state0{}).Code(),
+		actors.Version2: (&state2{}).Code(),
+		actors.Version3: (&state3{}).Code(),
+		actors.Version4: (&state4{}).Code(),
+		actors.Version5: (&state5{}).Code(),
+		actors.Version6: (&state6{}).Code(),
+		actors.Version7: (&state7{}).Code(),
+		actors.Version8: (&state8{}).Code(),
+	}
 }

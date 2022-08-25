@@ -1,10 +1,13 @@
 package cron
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 
 	cron4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/cron"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -32,4 +35,21 @@ type state4 struct {
 
 func (s *state4) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state4) ActorKey() string {
+	return actors.CronKey
+}
+
+func (s *state4) ActorVersion() actors.Version {
+	return actors.Version4
+}
+
+func (s *state4) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }
