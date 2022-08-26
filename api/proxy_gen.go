@@ -846,7 +846,7 @@ type StorageMinerStruct struct {
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
-		SectorReceive func(p0 context.Context, p1 RemoteSectorMeta) error ``
+		SectorReceive func(p0 context.Context, p1 RemoteSectorMeta) error `perm:"admin"`
 
 		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
