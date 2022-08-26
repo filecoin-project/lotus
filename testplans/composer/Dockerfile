@@ -1,4 +1,4 @@
-FROM golang:1.17.9-buster as tg-build
+FROM golang:1.18.1-buster as tg-build
 
 ARG TESTGROUND_REF="oni"
 WORKDIR /usr/src
