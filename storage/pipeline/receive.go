@@ -56,7 +56,9 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 
 	switch SectorState(meta.State) {
 	case Packing:
-		//checkPieces(ctx, m.maddr, meta.Sector.Number, meta.Pieces, m.Api, false)
+		if err := checkPieces(ctx, m.maddr, meta.Sector.Number, meta.Pieces, m.Api, false); err != nil {
+			return xerrors.Errorf("checking pieces: %w", err)
+		}
 
 		fallthrough
 	case GetTicket:
