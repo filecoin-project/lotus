@@ -65,6 +65,7 @@ func main() {
 		api.SealTicket{},
 		api.SealSeed{},
 		api.PieceDealInfo{},
+		api.SectorPiece{},
 		api.DealSchedule{},
 	)
 	if err != nil {
