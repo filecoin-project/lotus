@@ -173,7 +173,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 			if rt.NetworkVersion() <= network.Version3 {
 				aerr = aerrors.Newf(1, "spec actors failure: %s", r)
 			} else {
-				aerr = aerrors.Newf(exitcode.SysErrReserved1, "spec actors failure: %s", r)
+				aerr = aerrors.Newf(exitcode.SysErrIllegalInstruction, "spec actors failure: %s", r)
 			}
 		}
 	}()
