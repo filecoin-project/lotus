@@ -141,7 +141,7 @@ type StorageMiner interface {
 	// SectorNumFree drops a sector reservation
 	SectorNumFree(ctx context.Context, name string) error //perm:admin
 
-	SectorReceive(ctx context.Context, meta RemoteSectorMeta) error
+	SectorReceive(ctx context.Context, meta RemoteSectorMeta) error //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
