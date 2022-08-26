@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

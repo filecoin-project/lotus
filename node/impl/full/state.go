@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -880,6 +880,18 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	return api.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
+func (a *StateAPI) StateMinerAllocated(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*bitfield.BitField, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
+	if err != nil {
+		return nil, err
+	}
+	mas, err := miner.Load(a.Chain.ActorStore(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return mas.GetAllocatedSectors()
+}
+
 func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1535,6 +1547,20 @@ func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (
 	}
 
 	return cids, nil
+}
+
+func (a *StateAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
+	actorVersion, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("invalid network version")
+	}
+
+	c, ok := actors.GetManifest(actorVersion)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("could not find manifest cid for network version %d, actors version %d", nv, actorVersion)
+	}
+
+	return c, nil
 }
 
 func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {

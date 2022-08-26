@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/go-storedcounter"
 
 	"github.com/filecoin-project/lotus/api"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -66,6 +68,7 @@ type SealingAPI interface {
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	StateMinerAllocated(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)
 
 	// Address selector
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -87,6 +90,8 @@ type Sealing struct {
 	Api      SealingAPI
 	DealInfo *CurrentDealInfoManager
 
+	ds datastore.Batching
+
 	feeCfg config.MinerFeeConfig
 	events Events
 
@@ -96,7 +101,6 @@ type Sealing struct {
 
 	sealer  sealer.SectorManager
 	sectors *statemachine.StateGroup
-	sc      SectorIDCounter
 	verif   storiface.Verifier
 	pcp     PreCommitPolicy
 
@@ -119,6 +123,9 @@ type Sealing struct {
 	terminator  *TerminateBatcher
 	precommiter *PreCommitBatcher
 	commiter    *CommitBatcher
+
+	sclk     sync.Mutex
+	legacySc *storedcounter.StoredCounter
 
 	getConfig dtypes.GetSealingConfigFunc
 }
@@ -161,17 +168,18 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
+func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
 	s := &Sealing{
 		Api:      api,
 		DealInfo: &CurrentDealInfoManager{api},
+
+		ds: ds,
 
 		feeCfg: fc,
 		events: events,
 
 		maddr:  maddr,
 		sealer: sealer,
-		sc:     sc,
 		verif:  verif,
 		pcp:    pcp,
 
@@ -192,6 +200,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		commiter:    NewCommitBatcher(mctx, maddr, api, addrSel, fc, gc, prov),
 
 		getConfig: gc,
+
+		legacySc: storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix)),
 
 		stats: SectorStats{
 			bySector: map[abi.SectorID]SectorState{},

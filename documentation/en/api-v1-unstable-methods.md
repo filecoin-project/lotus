@@ -167,6 +167,7 @@
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
+  * [StateActorManifestCID](#StateActorManifestCID)
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateCall](#StateCall)
   * [StateChangedActors](#StateChangedActors)
@@ -191,6 +192,7 @@
   * [StateMarketParticipants](#StateMarketParticipants)
   * [StateMarketStorageDeal](#StateMarketStorageDeal)
   * [StateMinerActiveSectors](#StateMinerActiveSectors)
+  * [StateMinerAllocated](#StateMinerAllocated)
   * [StateMinerAvailableBalance](#StateMinerAvailableBalance)
   * [StateMinerDeadlines](#StateMinerDeadlines)
   * [StateMinerFaults](#StateMinerFaults)
@@ -5089,6 +5091,26 @@ Inputs:
 
 Response: `{}`
 
+### StateActorManifestCID
+StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### StateAllMinerFaults
 StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
 
@@ -6151,6 +6173,34 @@ Response:
     "ReplacedDayReward": "0",
     "SectorKeyCID": null
   }
+]
+```
+
+### StateMinerAllocated
+StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  0
 ]
 ```
 

@@ -17,11 +17,11 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
@@ -335,6 +335,9 @@ func init() {
 		ConnsOutbound:   4,
 		Conns:           4,
 		FD:              5,
+	})
+	addExample(map[string]bitfield.BitField{
+		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
 
 }

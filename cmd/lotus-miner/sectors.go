@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/strle"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
@@ -45,6 +46,7 @@ var sectorsCmd = &cli.Command{
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
+		sectorsNumbersCmd,
 		sectorPreCommitsCmd,
 		sectorsCheckExpireCmd,
 		sectorsExpiredCmd,
@@ -2199,5 +2201,144 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var sectorsNumbersCmd = &cli.Command{
+	Name:  "numbers",
+	Usage: "manage sector number assignments",
+	Subcommands: []*cli.Command{
+		sectorsNumbersInfoCmd,
+		sectorsNumbersReservationsCmd,
+		sectorsNumbersReserveCmd,
+		sectorsNumbersFreeCmd,
+	},
+}
+
+var sectorsNumbersInfoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "view sector assigner state",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		am, err := api.SectorNumAssignerMeta(ctx)
+		if err != nil {
+			return err
+		}
+
+		alloc, err := strle.BitfieldToHumanRanges(am.Allocated)
+		if err != nil {
+			return err
+		}
+
+		reserved, err := strle.BitfieldToHumanRanges(am.Reserved)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Next free: %s\n", am.Next)
+		fmt.Printf("Allocated: %s\n", alloc)
+		fmt.Printf("Reserved: %s\n", reserved)
+
+		return nil
+	},
+}
+
+var sectorsNumbersReservationsCmd = &cli.Command{
+	Name:  "reservations",
+	Usage: "list sector number reservations",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		rs, err := api.SectorNumReservations(ctx)
+		if err != nil {
+			return err
+		}
+
+		var out []string
+
+		for name, field := range rs {
+			hr, err := strle.BitfieldToHumanRanges(field)
+			if err != nil {
+				return err
+			}
+			count, err := field.Count()
+			if err != nil {
+				return err
+			}
+
+			out = append(out, fmt.Sprintf("%s: count=%d %s", name, count, hr))
+		}
+
+		fmt.Printf("reservations: %d\n", len(out))
+
+		sort.Strings(out)
+
+		for _, s := range out {
+			fmt.Println(s)
+		}
+
+		return nil
+	},
+}
+
+var sectorsNumbersReserveCmd = &cli.Command{
+	Name:  "reserve",
+	Usage: "create sector number reservations",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "force",
+			Usage: "skip duplicate reservation checks (note: can lead to damaging other reservations on free)",
+		},
+	},
+	ArgsUsage: "[reservation name] [reserved ranges]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Args().Len() != 2 {
+			return xerrors.Errorf("expected 2 arguments: [reservation name] [reserved ranges]")
+		}
+
+		bf, err := strle.HumanRangesToBitField(cctx.Args().Get(1))
+		if err != nil {
+			return xerrors.Errorf("parsing ranges: %w", err)
+		}
+
+		return api.SectorNumReserve(ctx, cctx.Args().First(), bf, cctx.Bool("force"))
+	},
+}
+
+var sectorsNumbersFreeCmd = &cli.Command{
+	Name:      "free",
+	Usage:     "remove sector number reservations",
+	ArgsUsage: "[reservation name]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("expected 1 argument: [reservation name]")
+		}
+
+		return api.SectorNumFree(ctx, cctx.Args().First())
 	},
 }

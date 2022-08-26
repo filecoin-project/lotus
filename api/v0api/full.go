@@ -6,7 +6,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -607,6 +607,8 @@ type FullNode interface {
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
 	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 	StateActorCodeCIDs(context.Context, abinetwork.Version) (map[string]cid.Cid, error) //perm:read
+	// StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+	StateActorManifestCID(context.Context, abinetwork.Version) (cid.Cid, error) //perm:read
 
 	// StateGetRandomnessFromTickets is used to sample the chain for randomness.
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read

@@ -190,10 +190,6 @@ func (t *SectorInfo) keepUnsealedRanges(pieces []Piece, invert, alwaysKeep bool)
 	return out
 }
 
-type SectorIDCounter interface {
-	Next() (abi.SectorNumber, error)
-}
-
 // SealingStateEvt is a journal event that records a sector state transition.
 type SealingStateEvt struct {
 	SectorNumber abi.SectorNumber

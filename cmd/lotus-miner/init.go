@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -387,7 +387,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
-	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
+	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
 }
 
 func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market8.DealProposal) (abi.DealID, error) {

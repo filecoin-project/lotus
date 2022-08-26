@@ -25,7 +25,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -228,6 +228,7 @@ var clientCommPCmd = &cli.Command{
 
 		fmt.Println("CID: ", encoder.Encode(ret.Root))
 		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(uint64(ret.Size))))
+		fmt.Println("Piece size in bytes: ", types.NewInt(uint64(ret.Size)))
 		return nil
 	},
 }

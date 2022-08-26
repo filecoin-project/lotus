@@ -13,8 +13,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-base32"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"

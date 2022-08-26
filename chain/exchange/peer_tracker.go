@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/build"
