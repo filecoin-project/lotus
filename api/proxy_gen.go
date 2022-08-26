@@ -393,6 +393,8 @@ type FullNodeStruct struct {
 
 		StateMinerActiveSectors func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
 
+		StateMinerAllocated func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) `perm:"read"`
+
 		StateMinerAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		StateMinerDeadlines func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) `perm:"read"`
@@ -825,6 +827,16 @@ type StorageMinerStruct struct {
 		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber, p2 bool) error `perm:"admin"`
 
 		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
+
+		SectorNumAssignerMeta func(p0 context.Context) (NumAssignerMeta, error) `perm:"read"`
+
+		SectorNumFree func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		SectorNumReservations func(p0 context.Context) (map[string]bitfield.BitField, error) `perm:"read"`
+
+		SectorNumReserve func(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error `perm:"admin"`
+
+		SectorNumReserveCount func(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) `perm:"admin"`
 
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
@@ -2722,6 +2734,17 @@ func (s *FullNodeStruct) StateMinerActiveSectors(p0 context.Context, p1 address.
 
 func (s *FullNodeStub) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	return *new([]*miner.SectorOnChainInfo), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateMinerAllocated(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) {
+	if s.Internal.StateMinerAllocated == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateMinerAllocated(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateMinerAllocated(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
@@ -4911,6 +4934,61 @@ func (s *StorageMinerStruct) SectorMatchPendingPiecesToOpenSectors(p0 context.Co
 
 func (s *StorageMinerStub) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumAssignerMeta(p0 context.Context) (NumAssignerMeta, error) {
+	if s.Internal.SectorNumAssignerMeta == nil {
+		return *new(NumAssignerMeta), ErrNotSupported
+	}
+	return s.Internal.SectorNumAssignerMeta(p0)
+}
+
+func (s *StorageMinerStub) SectorNumAssignerMeta(p0 context.Context) (NumAssignerMeta, error) {
+	return *new(NumAssignerMeta), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumFree(p0 context.Context, p1 string) error {
+	if s.Internal.SectorNumFree == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorNumFree(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorNumFree(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReservations(p0 context.Context) (map[string]bitfield.BitField, error) {
+	if s.Internal.SectorNumReservations == nil {
+		return *new(map[string]bitfield.BitField), ErrNotSupported
+	}
+	return s.Internal.SectorNumReservations(p0)
+}
+
+func (s *StorageMinerStub) SectorNumReservations(p0 context.Context) (map[string]bitfield.BitField, error) {
+	return *new(map[string]bitfield.BitField), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReserve(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error {
+	if s.Internal.SectorNumReserve == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorNumReserve(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SectorNumReserve(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReserveCount(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) {
+	if s.Internal.SectorNumReserveCount == nil {
+		return *new(bitfield.BitField), ErrNotSupported
+	}
+	return s.Internal.SectorNumReserveCount(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) SectorNumReserveCount(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) {
+	return *new(bitfield.BitField), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {

@@ -1637,6 +1637,7 @@ COMMANDS:
    refs                  List References to sectors
    update-state          ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge                store random data in a sector
+   numbers               manage sector number assignments
    precommits            Print on-chain precommit info
    check-expire          Inspect expiring sectors
    expired               Get or cleanup expired sectors
@@ -1728,6 +1729,78 @@ NAME:
 
 USAGE:
    lotus-miner sectors pledge [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sectors numbers
+```
+NAME:
+   lotus-miner sectors numbers - manage sector number assignments
+
+USAGE:
+   lotus-miner sectors numbers command [command options] [arguments...]
+
+COMMANDS:
+   info          view sector assigner state
+   reservations  list sector number reservations
+   reserve       create sector number reservations
+   free          remove sector number reservations
+   help, h       Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus-miner sectors numbers info
+```
+NAME:
+   lotus-miner sectors numbers info - view sector assigner state
+
+USAGE:
+   lotus-miner sectors numbers info [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus-miner sectors numbers reservations
+```
+NAME:
+   lotus-miner sectors numbers reservations - list sector number reservations
+
+USAGE:
+   lotus-miner sectors numbers reservations [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus-miner sectors numbers reserve
+```
+NAME:
+   lotus-miner sectors numbers reserve - create sector number reservations
+
+USAGE:
+   lotus-miner sectors numbers reserve [command options] [reservation name] [reserved ranges]
+
+OPTIONS:
+   --force  skip duplicate reservation checks (note: can lead to damaging other reservations on free) (default: false)
+   
+```
+
+#### lotus-miner sectors numbers free
+```
+NAME:
+   lotus-miner sectors numbers free - remove sector number reservations
+
+USAGE:
+   lotus-miner sectors numbers free [command options] [reservation name]
 
 OPTIONS:
    --help, -h  show help (default: false)

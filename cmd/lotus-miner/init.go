@@ -387,7 +387,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
-	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
+	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
 }
 
 func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market8.DealProposal) (abi.DealID, error) {

@@ -336,6 +336,9 @@ func init() {
 		Conns:           4,
 		FD:              5,
 	})
+	addExample(map[string]bitfield.BitField{
+		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
+	})
 
 }
 

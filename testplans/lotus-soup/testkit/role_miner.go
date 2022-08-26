@@ -39,9 +39,9 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
-	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -190,7 +190,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			return nil, err
 		}
 
-		nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
+		nic := storedcounter.New(ds, datastore.NewKey(sealing.StorageCounterDSPrefix))
 		for i := 0; i < (sectors + 1); i++ {
 			_, err = nic.Next()
 			if err != nil {

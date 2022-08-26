@@ -626,7 +626,7 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 
 // call with m.inputLk
 func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi.RegisteredSealProof) (abi.SectorNumber, error) {
-	sid, err := m.sc.Next()
+	sid, err := m.NextSectorNumber(ctx)
 	if err != nil {
 		return 0, xerrors.Errorf("getting sector number: %w", err)
 	}
