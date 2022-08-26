@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -87,7 +88,7 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 }
 
 type SectorPieceAdded struct {
-	NewPieces []Piece
+	NewPieces []api.SectorPiece
 }
 
 func (evt SectorPieceAdded) apply(state *SectorInfo) {
@@ -113,7 +114,7 @@ type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
 func (evt SectorPacked) apply(state *SectorInfo) {
 	for idx := range evt.FillerPieces {
-		state.Pieces = append(state.Pieces, Piece{
+		state.Pieces = append(state.Pieces, api.SectorPiece{
 			Piece:    evt.FillerPieces[idx],
 			DealInfo: nil, // filler pieces don't have deals associated with them
 		})

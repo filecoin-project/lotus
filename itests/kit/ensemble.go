@@ -962,7 +962,7 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []pipeline.Piece{
+			Pieces: []api.SectorPiece{
 				{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),

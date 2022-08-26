@@ -234,7 +234,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			}
 
 			pieceSizes = append(pieceSizes, p.Unpadded())
-			res.NewPieces = append(res.NewPieces, Piece{
+			res.NewPieces = append(res.NewPieces, api.SectorPiece{
 				Piece: ppi,
 			})
 		}
@@ -262,7 +262,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		offset += deal.size
 		pieceSizes = append(pieceSizes, deal.size)
 
-		res.NewPieces = append(res.NewPieces, Piece{
+		res.NewPieces = append(res.NewPieces, api.SectorPiece{
 			Piece:    ppi,
 			DealInfo: &deal.deal,
 		})

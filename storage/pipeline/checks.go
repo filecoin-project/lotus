@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -41,7 +42,7 @@ type ErrCommitWaitFailed struct{ error }
 type ErrBadRU struct{ error }
 type ErrBadPR struct{ error }
 
-func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber, pieces []Piece, api SealingAPI, mustHaveDeals bool) error {
+func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber, pieces []api.SectorPiece, api SealingAPI, mustHaveDeals bool) error {
 	ts, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}

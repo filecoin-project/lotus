@@ -315,7 +315,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []pipeline.Piece{
+			Pieces: []lapi.SectorPiece{
 				{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
