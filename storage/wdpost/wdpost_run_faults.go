@@ -401,7 +401,6 @@ func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr
 	// Batch if maxPartitionsPerRecoveryMessage is set
 	if s.maxPartitionsPerRecoveryMessage > 0 {
 		tmpRecoveryDecls := RecoveryDecls
-		var msgs []*types.SignedMessage
 		var RecoveryBatches [][]miner.RecoveryDeclaration
 		I := 0
 
@@ -417,54 +416,35 @@ func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr
 		RecoveryBatches = append(RecoveryBatches, tmpRecoveryDecls)
 
 		for _, Batch := range RecoveryBatches {
-			params := &miner.DeclareFaultsRecoveredParams{
-				Recoveries: Batch,
-			}
-
-			enc, aerr := actors.SerializeParams(params)
-
-			if aerr != nil {
-				return nil, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
-			}
-
-			msg := &types.Message{
-				To:     s.actor,
-				Method: builtin.MethodsMiner.DeclareFaultsRecovered,
-				Params: enc,
-				Value:  types.NewInt(0),
-			}
-
-			spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
-
-			if err := s.prepareMessage(ctx, msg, spec); err != nil {
+			msg, err := s.manualRecoveryMsg(ctx, Batch)
+			if err != nil {
 				return nil, err
 			}
 
-			sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
-
-			if err != nil {
-				return nil, xerrors.Errorf("pushing message to mpool: %w", err)
-			}
-
-			msgs = append(msgs, sm)
-		}
-
-		for _, v := range msgs {
-			mcid := v.Cid()
-			mcids = append(mcids, mcid)
+			mcids = append(mcids, msg)
 		}
 
 		return mcids, nil
 
 	}
 
+	msg, err := s.manualRecoveryMsg(ctx, RecoveryDecls)
+	if err != nil {
+		return nil, err
+	}
+
+	mcids = append(mcids, msg)
+	return mcids, nil
+}
+
+func (s *WindowPoStScheduler) manualRecoveryMsg(ctx context.Context, Recovery []miner.RecoveryDeclaration) (cid.Cid, error) {
 	params := &miner.DeclareFaultsRecoveredParams{
-		Recoveries: RecoveryDecls,
+		Recoveries: Recovery,
 	}
 
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return nil, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+		return cid.Undef, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
 	}
 
 	msg := &types.Message{
@@ -475,13 +455,12 @@ func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr
 	}
 	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
 	if err := s.prepareMessage(ctx, msg, spec); err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 	sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
 	if err != nil {
-		return nil, xerrors.Errorf("pushing message to mpool: %w", err)
+		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
 
-	mcids = append(mcids, sm.Cid())
-	return mcids, nil
+	return sm.Cid(), nil
 }

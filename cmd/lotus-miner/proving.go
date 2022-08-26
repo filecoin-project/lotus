@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"text/tabwriter"
 	"time"
 
@@ -684,18 +685,20 @@ var provingRecoverFaultsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer acloser()
 
 		ctx := lcli.ReqContext(cctx)
 
 		msgs, err := nodeApi.RecoverFault(ctx, sectors)
+		defer acloser()
 		if err != nil {
 			return err
 		}
 
 		// wait for msgs to get mined into a block
+		var wg sync.WaitGroup
 		results := make(chan error, len(msgs))
 		for _, msg := range msgs {
+			wg.Add(1)
 			go func(m cid.Cid) {
 				wait, err := api.StateWaitMsg(ctx, m, uint64(cctx.Int("confidence")))
 				if err != nil {
@@ -709,7 +712,8 @@ var provingRecoverFaultsCmd = &cli.Command{
 			}(msg)
 		}
 
-		time.Sleep(time.Duration((cctx.Int("confidence")*30)+30) * time.Second)
+		wg.Wait()
+
 		for v := range results {
 			if v != nil {
 				fmt.Println("Failed to execute the message %w", v)

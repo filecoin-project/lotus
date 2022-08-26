@@ -1333,6 +1333,7 @@ func (sm *StorageMinerAPI) RecoverFault(ctx context.Context, sectors []abi.Secto
 		for _, s := range allsectors {
 			if v == s.SectorNumber {
 				found = true
+				break
 			}
 		}
 		if !found {
