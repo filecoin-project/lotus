@@ -696,10 +696,11 @@ var provingRecoverFaultsCmd = &cli.Command{
 
 		// wait for msgs to get mined into a block
 		var wg sync.WaitGroup
+		wg.Add(len(msgs))
 		results := make(chan error, len(msgs))
 		for _, msg := range msgs {
-			wg.Add(1)
 			go func(m cid.Cid) {
+				defer wg.Done()
 				wait, err := api.StateWaitMsg(ctx, m, uint64(cctx.Int("confidence")))
 				if err != nil {
 					results <- xerrors.Errorf("Timeout waiting for message to land on chain %s", wait.Message)
