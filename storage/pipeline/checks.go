@@ -49,8 +49,15 @@ func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber
 	}
 
 	dealCount := 0
+	var offset abi.PaddedPieceSize
 
 	for i, p := range pieces {
+		// check that the piece is correctly aligned
+		if offset%p.Piece.Size != 0 {
+			return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d is not aligned: size=%xh offset=%xh off-by=%xh", sn, i, p.Piece.Size, offset, offset%p.Piece.Size)}
+		}
+		offset += p.Piece.Size
+
 		// if no deal is associated with the piece, ensure that we added it as
 		// filler (i.e. ensure that it has a zero PieceCID)
 		if p.DealInfo == nil {
