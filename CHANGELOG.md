@@ -368,7 +368,7 @@ This is an optional release of lotus that include new APIs, some improvements an
 
 This is a highly recommended feature lotus release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on.
 
-Note: You need to be using go v1.17.9&up from this release onwards.
+Note: You need to be using go v1.18.1&up from this release onwards.
 
 ## Highlights
 ### ❣️❣️❣️ PoSt Workers ❣️❣️❣️
