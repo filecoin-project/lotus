@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: cimg/go:1.17.9
+      - image: cimg/go:1.18.1
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -52,7 +52,7 @@ commands:
             - run:
                 name: Install Go
                 command: |
-                  curl https://dl.google.com/go/go1.17.9.darwin-amd64.pkg -o /tmp/go.pkg && \
+                  curl https://dl.google.com/go/go1.18.1.darwin-amd64.pkg -o /tmp/go.pkg && \
                   sudo installer -pkg /tmp/go.pkg -target /
             - run:
                 name: Export Go

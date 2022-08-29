@@ -1,4 +1,4 @@
-FROM golang:1.17.9-buster AS builder-deps
+FROM golang:1.18.1-buster AS builder-deps
 MAINTAINER Lotus Development Team
 
 RUN apt-get update && apt-get install -y ca-certificates build-essential clang ocl-icd-opencl-dev ocl-icd-libopencl1 jq libhwloc-dev

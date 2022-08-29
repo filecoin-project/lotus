@@ -71,10 +71,10 @@ For other distributions you can find the required dependencies [here.](https://d
 
 #### Go
 
-To build Lotus, you need a working installation of [Go 1.17.9 or higher](https://golang.org/dl/):
+To build Lotus, you need a working installation of [Go 1.18.1 or higher](https://golang.org/dl/):
 
 ```bash
-wget -c https://golang.org/dl/go1.17.9.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+wget -c https://golang.org/dl/go1.18.1.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
 ```
 
 **TIP:**
