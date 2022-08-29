@@ -53,6 +53,16 @@ func (sb *Sealer) NewSector(ctx context.Context, sector storiface.SectorRef) err
 }
 
 func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
+	origPieceData := pieceData
+	defer func() {
+		closer, ok := origPieceData.(io.Closer)
+		if !ok {
+			log.Warnf("DataCid: cannot close pieceData reader %T because it is not an io.Closer", origPieceData)
+			return
+		}
+		closer.Close() //nolint:errcheck
+	}()
+
 	pieceData = io.LimitReader(io.MultiReader(
 		pieceData,
 		nullreader.Reader{},
