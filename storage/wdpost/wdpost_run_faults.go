@@ -401,20 +401,19 @@ func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr
 
 	// Batch if maxPartitionsPerRecoveryMessage is set
 	if s.maxPartitionsPerRecoveryMessage > 0 {
-		tmpRecoveryDecls := RecoveryDecls
 
 		// Create batched
-		for len(tmpRecoveryDecls) > s.maxPartitionsPerPostMessage {
-			Batch := tmpRecoveryDecls[len(tmpRecoveryDecls)-s.maxPartitionsPerRecoveryMessage:]
-			tmpRecoveryDecls = tmpRecoveryDecls[:len(tmpRecoveryDecls)-s.maxPartitionsPerPostMessage]
+		for len(RecoveryDecls) > s.maxPartitionsPerPostMessage {
+			Batch := RecoveryDecls[len(RecoveryDecls)-s.maxPartitionsPerRecoveryMessage:]
+			RecoveryDecls = RecoveryDecls[:len(RecoveryDecls)-s.maxPartitionsPerPostMessage]
 			RecoveryBatches = append(RecoveryBatches, Batch)
 		}
 
 		// Add remaining as new batch
-		RecoveryBatches = append(RecoveryBatches, tmpRecoveryDecls)
+		RecoveryBatches = append(RecoveryBatches, RecoveryDecls)
+	} else {
+		RecoveryBatches = append(RecoveryBatches, RecoveryDecls)
 	}
-
-	RecoveryBatches = append(RecoveryBatches, RecoveryDecls)
 
 	for _, Batch := range RecoveryBatches {
 		msg, err := s.manualRecoveryMsg(ctx, Batch)
