@@ -96,6 +96,11 @@ func (a TaskType) WorkerType() string {
 	}
 }
 
+// SectorSized returns true if the task operates on a specific sector size
+func (a TaskType) SectorSized() bool {
+	return a != TTDataCid
+}
+
 func (a TaskType) MuchLess(b TaskType) (bool, bool) {
 	oa, ob := order[a], order[b]
 	oneNegative := oa^ob < 0
