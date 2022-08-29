@@ -261,7 +261,6 @@ func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
 // those parameters and keys. To do this, run the following command:
 //
 // go test -run=^TestDownloadParams
-//
 func TestDownloadParams(t *testing.T) {
 	// defer requireFDsClosed(t, openFDs(t)) flaky likely cause of how go-embed works with param files
 

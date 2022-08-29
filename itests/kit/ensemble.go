@@ -74,14 +74,14 @@ func init() {
 //
 // Create a new ensemble with:
 //
-//   ens := kit.NewEnsemble()
+//	ens := kit.NewEnsemble()
 //
 // Create full nodes and miners:
 //
-//   var full TestFullNode
-//   var miner TestMiner
-//   ens.FullNode(&full, opts...)       // populates a full node
-//   ens.Miner(&miner, &full, opts...)  // populates a miner, using the full node as its chain daemon
+//	var full TestFullNode
+//	var miner TestMiner
+//	ens.FullNode(&full, opts...)       // populates a full node
+//	ens.Miner(&miner, &full, opts...)  // populates a miner, using the full node as its chain daemon
 //
 // It is possible to pass functional options to set initial balances,
 // presealed sectors, owner keys, etc.
@@ -93,22 +93,21 @@ func init() {
 // Nodes also need to be connected with one another, either via `ens.Connect()`
 // or `ens.InterconnectAll()`. A common inchantation for simple tests is to do:
 //
-//   ens.InterconnectAll().BeginMining(blocktime)
+//	ens.InterconnectAll().BeginMining(blocktime)
 //
 // You can continue to add more nodes, but you must always follow with
 // `ens.Start()` to activate the new nodes.
 //
 // The API is chainable, so it's possible to do a lot in a very succinct way:
 //
-//   kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
+//	kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
 //
 // You can also find convenient fullnode:miner presets, such as 1:1, 1:2,
 // and 2:1, e.g.:
 //
-//   kit.EnsembleMinimal()
-//   kit.EnsembleOneTwo()
-//   kit.EnsembleTwoOne()
-//
+//	kit.EnsembleMinimal()
+//	kit.EnsembleOneTwo()
+//	kit.EnsembleTwoOne()
 type Ensemble struct {
 	t            *testing.T
 	bootstrapped bool

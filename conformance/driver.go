@@ -276,7 +276,8 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 // messages that originate from secp256k senders, leaving all
 // others untouched.
 // TODO: generate a signature in the DSL so that it's encoded in
-//  the test vector.
+//
+//	the test vector.
 func toChainMsg(msg *types.Message) (ret types.ChainMsg) {
 	ret = msg
 	if msg.From.Protocol() == address.SECP256K1 {

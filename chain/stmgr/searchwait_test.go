@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package stmgr_test
 
 import (

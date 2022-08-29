@@ -21,11 +21,12 @@ const (
 )
 
 // FIXME: Bumped from original 800 to this to accommodate `syncFork()`
-//  use of `GetBlocks()`. It seems the expectation of that API is to
-//  fetch any amount of blocks leaving it to the internal logic here
-//  to partition and reassemble the requests if they go above the maximum.
-//  (Also as a consequence of this temporarily removing the `const`
-//   qualifier to avoid "const initializer [...] is not a constant" error.)
+//
+//	use of `GetBlocks()`. It seems the expectation of that API is to
+//	fetch any amount of blocks leaving it to the internal logic here
+//	to partition and reassemble the requests if they go above the maximum.
+//	(Also as a consequence of this temporarily removing the `const`
+//	 qualifier to avoid "const initializer [...] is not a constant" error.)
 var MaxRequestLength = uint64(build.ForkLengthThreshold)
 
 const (
@@ -147,11 +148,12 @@ type BSTipSet struct {
 // `BlsIncludes`/`SecpkIncludes` matches `Bls`/`Secpk` messages
 // to blocks in the tipsets with the format:
 // `BlsIncludes[BI][MI]`
-//  * BI: block index in the tipset.
-//  * MI: message index in `Bls` list
+//   - BI: block index in the tipset.
+//   - MI: message index in `Bls` list
 //
 // FIXME: The logic to decompress this structure should belong
-//  to itself, not to the consumer.
+//
+//	to itself, not to the consumer.
 type CompactedMessages struct {
 	Bls         []*types.Message
 	BlsIncludes [][]uint64

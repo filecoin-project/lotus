@@ -1,5 +1,5 @@
-//stm: ignore
-//stm: #unit
+// stm: ignore
+// stm: #unit
 package cli
 
 import (

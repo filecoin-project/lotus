@@ -575,6 +575,7 @@ func init() {
 	ResourceTable[sealtasks.TTRegenSectorKey] = ResourceTable[sealtasks.TTReplicaUpdate]
 
 	// DataCid doesn't care about sector proof type; Use 32G AddPiece resource definition
+	ResourceTable[sealtasks.TTDataCid] = map[abi.RegisteredSealProof]Resources{}
 	for proof := range ResourceTable[sealtasks.TTAddPiece] {
 		ResourceTable[sealtasks.TTDataCid][proof] = ResourceTable[sealtasks.TTAddPiece][abi.RegisteredSealProof_StackedDrg32GiBV1]
 	}
