@@ -685,11 +685,11 @@ var provingRecoverFaultsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer acloser()
 
 		ctx := lcli.ReqContext(cctx)
 
 		msgs, err := nodeApi.RecoverFault(ctx, sectors)
-		defer acloser()
 		if err != nil {
 			return err
 		}
@@ -719,7 +719,6 @@ var provingRecoverFaultsCmd = &cli.Command{
 			if v != nil {
 				fmt.Println("Failed to execute the message %w", v)
 			}
-			time.Sleep(1 * time.Second)
 		}
 		return nil
 	},

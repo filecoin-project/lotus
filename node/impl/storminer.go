@@ -1328,8 +1328,9 @@ func (sm *StorageMinerAPI) RecoverFault(ctx context.Context, sectors []abi.Secto
 	if err != nil {
 		return nil, xerrors.Errorf("could not get a list of all sectors from the miner: %w", err)
 	}
-	found := false
+	var found bool
 	for _, v := range sectors {
+		found = false
 		for _, s := range allsectors {
 			if v == s.SectorNumber {
 				found = true

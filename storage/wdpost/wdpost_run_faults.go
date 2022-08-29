@@ -363,6 +363,7 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber, tsk types.TipSetKey) ([]cid.Cid, error) {
 
 	var RecoveryDecls []miner.RecoveryDeclaration
+	var RecoveryBatches [][]miner.RecoveryDeclaration
 
 	type ptx struct {
 		deadline  uint64
@@ -401,39 +402,29 @@ func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr
 	// Batch if maxPartitionsPerRecoveryMessage is set
 	if s.maxPartitionsPerRecoveryMessage > 0 {
 		tmpRecoveryDecls := RecoveryDecls
-		var RecoveryBatches [][]miner.RecoveryDeclaration
-		I := 0
 
 		// Create batched
 		for len(tmpRecoveryDecls) > s.maxPartitionsPerPostMessage {
 			Batch := tmpRecoveryDecls[len(tmpRecoveryDecls)-s.maxPartitionsPerRecoveryMessage:]
 			tmpRecoveryDecls = tmpRecoveryDecls[:len(tmpRecoveryDecls)-s.maxPartitionsPerPostMessage]
 			RecoveryBatches = append(RecoveryBatches, Batch)
-			I++
 		}
 
 		// Add remaining as new batch
 		RecoveryBatches = append(RecoveryBatches, tmpRecoveryDecls)
+	}
 
-		for _, Batch := range RecoveryBatches {
-			msg, err := s.manualRecoveryMsg(ctx, Batch)
-			if err != nil {
-				return nil, err
-			}
+	RecoveryBatches = append(RecoveryBatches, RecoveryDecls)
 
-			mcids = append(mcids, msg)
+	for _, Batch := range RecoveryBatches {
+		msg, err := s.manualRecoveryMsg(ctx, Batch)
+		if err != nil {
+			return nil, err
 		}
 
-		return mcids, nil
-
+		mcids = append(mcids, msg)
 	}
 
-	msg, err := s.manualRecoveryMsg(ctx, RecoveryDecls)
-	if err != nil {
-		return nil, err
-	}
-
-	mcids = append(mcids, msg)
 	return mcids, nil
 }
 
