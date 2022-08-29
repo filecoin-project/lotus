@@ -573,7 +573,11 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 func init() {
 	ResourceTable[sealtasks.TTUnseal] = ResourceTable[sealtasks.TTPreCommit1] // TODO: measure accurately
 	ResourceTable[sealtasks.TTRegenSectorKey] = ResourceTable[sealtasks.TTReplicaUpdate]
-	ResourceTable[sealtasks.TTDataCid] = ResourceTable[sealtasks.TTAddPiece]
+
+	// DataCid doesn't care about sector proof type; Use 32G AddPiece resource definition
+	for proof := range ResourceTable[sealtasks.TTAddPiece] {
+		ResourceTable[sealtasks.TTDataCid][proof] = ResourceTable[sealtasks.TTAddPiece][abi.RegisteredSealProof_StackedDrg32GiBV1]
+	}
 
 	// V1_1 is the same as V1
 	for _, m := range ResourceTable {
