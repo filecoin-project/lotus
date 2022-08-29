@@ -315,6 +315,9 @@ Examples:
 		if err != nil {
 			return err
 		}
+		if eref == nil {
+			return xerrors.Errorf("failed to find providers")
+		}
 
 		if s != nil {
 			eref.DAGs = append(eref.DAGs, lapi.DagSpec{DataSelector: s, ExportMerkleProof: cctx.Bool("car-export-merkle-proof")})
