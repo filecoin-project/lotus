@@ -2,6 +2,8 @@ package sealing
 
 import (
 	"context"
+	"errors"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
@@ -15,6 +17,15 @@ import (
 func (m *Sealing) Receive(ctx context.Context, meta api.RemoteSectorMeta) error {
 	if err := m.checkSectorMeta(ctx, meta); err != nil {
 		return err
+	}
+
+	err := m.sectors.Get(uint64(meta.Sector.Number)).Get(&cbg.Deferred{})
+	if errors.Is(err, datastore.ErrNotFound) {
+
+	} else if err != nil {
+		return xerrors.Errorf("checking if sector exists: %w", err)
+	} else if err == nil {
+		return xerrors.Errorf("sector %d state already exists", meta.Sector.Number)
 	}
 
 	panic("impl me")
@@ -54,27 +65,53 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		}
 	}
 
+	var info SectorInfo
+
 	switch SectorState(meta.State) {
-	case Packing:
-		if err := checkPieces(ctx, m.maddr, meta.Sector.Number, meta.Pieces, m.Api, false); err != nil {
-			return xerrors.Errorf("checking pieces: %w", err)
-		}
-
-		fallthrough
-	case GetTicket:
-
-		fallthrough
-	case PreCommitting:
+	case Proving, Available:
+		// todo possibly check
+		info.CommitMessage = meta.CommitMessage
 
 		fallthrough
 	case SubmitCommit:
+		info.PreCommitInfo = meta.PreCommitInfo
+		info.PreCommitDeposit = meta.PreCommitDeposit
+		info.PreCommitMessage = meta.PreCommitMessage
+		info.PreCommitTipSet = meta.PreCommitTipSet
+
+		// todo check
+		info.SeedValue = meta.SeedValue
+		info.SeedEpoch = meta.SeedEpoch
+
+		// todo validate
+		info.Proof = meta.CommitProof
 
 		fallthrough
-	case Proving, Available:
+	case PreCommitting:
+		info.TicketValue = meta.TicketValue
+		info.TicketEpoch = meta.TicketEpoch
+
+		info.PreCommit1Out = meta.PreCommit1Out
+
+		info.CommD = meta.CommD // todo check cid prefixes
+		info.CommR = meta.CommR
+
+		fallthrough
+	case GetTicket:
+		fallthrough
+	case Packing:
+		// todo check num free
+		info.State = SectorState(meta.State) // todo dedupe states
+		info.SectorNumber = meta.Sector.Number
+		info.Pieces = meta.Pieces
+		info.SectorType = meta.Type
+
+		if err := checkPieces(ctx, m.maddr, meta.Sector.Number, meta.Pieces, m.Api, false); err != nil {
+			return xerrors.Errorf("checking pieces: %w", err)
+		}
 
 		return nil
 	default:
 		return xerrors.Errorf("imported sector State in not supported")
 	}
-
 }
