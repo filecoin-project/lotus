@@ -30,9 +30,9 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
 //
-// - If no tipset is specified, the first tipset without an expensive migration is used.
-// - If executing a message at a given tipset would trigger an expensive migration, the call will
-//   fail with ErrExpensiveFork.
+//   - If no tipset is specified, the first tipset without an expensive migration is used.
+//   - If executing a message at a given tipset would trigger an expensive migration, the call will
+//     fail with ErrExpensiveFork.
 func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()

@@ -49,8 +49,9 @@ func init() {
 // on chain before returning.
 //
 // TODO: the waiting should happen in the background. Right now this
-//  is blocking/delaying the actual generation and submission of WindowPoSts in
-//  this deadline!
+//
+//	is blocking/delaying the actual generation and submission of WindowPoSts in
+//	this deadline!
 func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([][]miner.RecoveryDeclaration, []*types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.declareRecoveries")
 	defer span.End()
@@ -205,8 +206,9 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 // on chain before returning.
 //
 // TODO: the waiting should happen in the background. Right now this
-//  is blocking/delaying the actual generation and submission of WindowPoSts in
-//  this deadline!
+//
+//	is blocking/delaying the actual generation and submission of WindowPoSts in
+//	this deadline!
 func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([]miner.FaultDeclaration, *types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.declareFaults")
 	defer span.End()

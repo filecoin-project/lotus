@@ -44,7 +44,8 @@ func getClientMode(groupSeq int64) ClientMode {
 }
 
 // TODO Stress is currently WIP. We found blockers in Lotus that prevent us from
-//  making progress. See https://github.com/filecoin-project/lotus/issues/2297.
+//
+//	making progress. See https://github.com/filecoin-project/lotus/issues/2297.
 func Stress(t *testkit.TestEnvironment) error {
 	// Dispatch/forward non-client roles to defaults.
 	if t.Role != "client" {

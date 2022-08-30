@@ -5,7 +5,6 @@
 //
 // Its purpose is to unlock various degrees of flexibility and parametrization
 // when writing Testground plans for Lotus.
-//
 package build
 
 import (

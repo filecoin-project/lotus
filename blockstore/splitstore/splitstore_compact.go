@@ -519,6 +519,7 @@ func (s *SplitStore) applyProtectors() error {
 // - At this point we are ready to begin purging:
 //   - We sort cold objects heaviest first, so as to never delete the consituents of a DAG before the DAG itself (which would leave dangling references)
 //   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
+//
 // - We then end the transaction and compact/gc the hotstore.
 func (s *SplitStore) compact(curTs *types.TipSet) {
 	log.Info("waiting for active views to complete")

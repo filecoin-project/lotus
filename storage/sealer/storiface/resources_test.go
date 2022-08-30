@@ -12,9 +12,12 @@ import (
 )
 
 func TestListResourceVars(t *testing.T) {
+	seen := map[string]struct{}{}
 	_, err := ParseResourceEnv(func(key, def string) (string, bool) {
-		if def != "" {
+		_, s := seen[key]
+		if !s && def != "" {
 			fmt.Printf("%s=%s\n", key, def)
+			seen[key] = struct{}{}
 		}
 
 		return "", false
@@ -74,4 +77,45 @@ func TestListResourceSDRMulticoreOverride(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 9001, rt[sealtasks.TTPreCommit1][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
 	require.Equal(t, 9001, rt[sealtasks.TTUnseal][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
+}
+
+func TestUnsizedSetAll(t *testing.T) {
+	rt, err := ParseResourceEnv(func(key, def string) (string, bool) {
+		if key == "UNS_MAX_PARALLELISM" {
+			return "2", true
+		}
+
+		return "", false
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 2, rt[sealtasks.TTUnseal][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
+	require.Equal(t, 2, rt[sealtasks.TTUnseal][stabi.RegisteredSealProof_StackedDrg32GiBV1].MaxParallelism)
+	require.Equal(t, 2, rt[sealtasks.TTUnseal][stabi.RegisteredSealProof_StackedDrg8MiBV1].MaxParallelism)
+
+	// check that defaults don't get mutated
+	require.Equal(t, 1, ResourceTable[sealtasks.TTUnseal][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
+}
+
+func TestUnsizedNotPreferred(t *testing.T) {
+	rt, err := ParseResourceEnv(func(key, def string) (string, bool) {
+		if key == "DC_MAX_PARALLELISM" {
+			return "2", true
+		}
+
+		// test should also print a warning for DataCid as it's not sector-size dependent
+		if key == "DC_64G_MAX_PARALLELISM" {
+			return "1", true
+		}
+
+		return "", false
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 2, rt[sealtasks.TTDataCid][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
+	require.Equal(t, 2, rt[sealtasks.TTDataCid][stabi.RegisteredSealProof_StackedDrg32GiBV1].MaxParallelism)
+	require.Equal(t, 1, rt[sealtasks.TTDataCid][stabi.RegisteredSealProof_StackedDrg64GiBV1_1].MaxParallelism)
+
+	// check that defaults don't get mutated
+	require.Equal(t, 1, ResourceTable[sealtasks.TTUnseal][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
 }
