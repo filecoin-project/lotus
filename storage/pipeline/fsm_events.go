@@ -526,3 +526,15 @@ type SectorRemoveFailed struct{ error }
 
 func (evt SectorRemoveFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
 func (evt SectorRemoveFailed) apply(*SectorInfo)                        {}
+
+type SectorReceive struct {
+	State SectorInfo
+}
+
+func (evt SectorReceive) apply(state *SectorInfo) {
+	*state = evt.State
+}
+
+type SectorReceived struct{}
+
+func (evt SectorReceived) apply(state *SectorInfo) {}

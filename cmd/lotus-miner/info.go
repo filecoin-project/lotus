@@ -498,6 +498,8 @@ var stateList = []stateMeta{
 	{col: color.FgGreen, state: sealing.Available},
 	{col: color.FgGreen, state: sealing.UpdateActivating},
 
+	{col: color.FgMagenta, state: sealing.ReceiveSector},
+
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
 	{col: color.FgBlue, state: sealing.AddPiece},
