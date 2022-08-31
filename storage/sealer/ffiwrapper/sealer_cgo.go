@@ -1127,6 +1127,10 @@ func (sb *Sealer) Remove(ctx context.Context, sector storiface.SectorRef) error 
 	return xerrors.Errorf("not supported at this layer") // happens in localworker
 }
 
+func (sb *Sealer) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) error {
+	panic("todo")
+}
+
 func GetRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {
 
 	padPieces := make([]abi.PaddedPieceSize, 0)

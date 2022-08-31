@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -165,6 +164,7 @@ type StorageMiner interface {
 	ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                       //perm:admin retry:true
 	ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                       //perm:admin retry:true
 	ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error                                                //perm:admin retry:true
+	ReturnDownloadSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                    //perm:admin retry:true
 	ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                             //perm:admin retry:true
 
 	// SealingSchedDiag dumps internal sealing scheduler state
@@ -558,32 +558,15 @@ type RemoteSectorMeta struct {
 	// Sector urls - lotus will use those for fetching files into local storage
 
 	// Required in all states
-	DataUnsealed *SectorData
+	DataUnsealed *storiface.SectorData
 
 	// Required in PreCommitting and later
-	DataSealed *SectorData
-	DataCache  *SectorData
+	DataSealed *storiface.SectorData
+	DataCache  *storiface.SectorData
 
 	////////
 	// SEALING SERVICE HOOKS
 
 	// todo Commit1Provider
 	// todo OnDone / OnStateChange
-}
-
-type SectorData struct {
-	// Local when set to true indicates to lotus that sector data is already
-	// available locally; When set lotus will skip fetching sector data, and
-	// only check that sector data exists in sector storage
-	Local bool
-
-	// URL to the sector data
-	// For sealed/unsealed sector, lotus expects octet-stream
-	// For cache, lotus expects a tar archive with cache files (todo maybe use not-tar; specify what files with what paths must be present)
-	// Valid schemas:
-	// - http:// / https://
-	URL string
-
-	// optional http headers to use when requesting sector data
-	Headers http.Header
 }
