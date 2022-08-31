@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -40,32 +42,10 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Printf("Network: %s\n", network.NetworkName)
 	fmt.Print("Chain: ")
-	head, err := fullapi.ChainHead(ctx)
+	err = SyncBasefeeCheck(ctx, fullapi)
 	if err != nil {
 		return err
 	}
-
-	switch {
-	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*3/2): // within 1.5 epochs
-		fmt.Printf("[%s]", color.GreenString("sync ok"))
-	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*5): // within 5 epochs
-		fmt.Printf("[%s]", color.YellowString("sync slow (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
-	default:
-		fmt.Printf("[%s]", color.RedString("sync behind! (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
-	}
-	basefee := head.MinTicketBlock().ParentBaseFee
-	gasCol := []color.Attribute{color.FgBlue}
-	switch {
-	case basefee.GreaterThan(big.NewInt(7000_000_000)): // 7 nFIL
-		gasCol = []color.Attribute{color.BgRed, color.FgBlack}
-	case basefee.GreaterThan(big.NewInt(3000_000_000)): // 3 nFIL
-		gasCol = []color.Attribute{color.FgRed}
-	case basefee.GreaterThan(big.NewInt(750_000_000)): // 750 uFIL
-		gasCol = []color.Attribute{color.FgYellow}
-	case basefee.GreaterThan(big.NewInt(100_000_000)): // 100 uFIL
-		gasCol = []color.Attribute{color.FgGreen}
-	}
-	fmt.Printf(" [basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short()))
 
 	status, err := fullapi.NodeStatus(ctx, true)
 	if err != nil {
@@ -217,4 +197,34 @@ func infoCmdAct(cctx *cli.Context) error {
 	fmt.Fprintf(tw, "\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
 	return tw.Flush()
 
+}
+
+func SyncBasefeeCheck(ctx context.Context, fullapi v1api.FullNode) error {
+	head, err := fullapi.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*3/2): // within 1.5 epochs
+		fmt.Printf("[%s]", color.GreenString("sync ok"))
+	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*5): // within 5 epochs
+		fmt.Printf("[%s]", color.YellowString("sync slow (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
+	default:
+		fmt.Printf("[%s]", color.RedString("sync behind! (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
+	}
+	basefee := head.MinTicketBlock().ParentBaseFee
+	gasCol := []color.Attribute{color.FgBlue}
+	switch {
+	case basefee.GreaterThan(big.NewInt(7000_000_000)): // 7 nFIL
+		gasCol = []color.Attribute{color.BgRed, color.FgBlack}
+	case basefee.GreaterThan(big.NewInt(3000_000_000)): // 3 nFIL
+		gasCol = []color.Attribute{color.FgRed}
+	case basefee.GreaterThan(big.NewInt(750_000_000)): // 750 uFIL
+		gasCol = []color.Attribute{color.FgYellow}
+	case basefee.GreaterThan(big.NewInt(100_000_000)): // 100 uFIL
+		gasCol = []color.Attribute{color.FgGreen}
+	}
+	fmt.Printf(" [basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short()))
+	return nil
 }
