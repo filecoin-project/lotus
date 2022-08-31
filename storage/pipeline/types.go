@@ -88,7 +88,7 @@ type SectorInfo struct {
 	// Faults
 	FaultReportMsg *cid.Cid
 
-	// Recovery
+	// Recovery / Import
 	Return ReturnState
 
 	// Termination

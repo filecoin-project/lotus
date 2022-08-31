@@ -2,9 +2,7 @@ package sealing
 
 import (
 	"context"
-	"errors"
-	cbg "github.com/whyrusleeping/cbor-gen"
-
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
 
@@ -15,23 +13,30 @@ import (
 )
 
 func (m *Sealing) Receive(ctx context.Context, meta api.RemoteSectorMeta) error {
-	if err := m.checkSectorMeta(ctx, meta); err != nil {
+	si, err := m.checkSectorMeta(ctx, meta)
+	if err != nil {
 		return err
 	}
 
-	err := m.sectors.Get(uint64(meta.Sector.Number)).Get(&cbg.Deferred{})
-	if errors.Is(err, datastore.ErrNotFound) {
-
-	} else if err != nil {
+	exists, err := m.sectors.Has(uint64(meta.Sector.Number))
+	if err != nil {
 		return xerrors.Errorf("checking if sector exists: %w", err)
-	} else if err == nil {
+	}
+	if exists {
 		return xerrors.Errorf("sector %d state already exists", meta.Sector.Number)
 	}
 
-	panic("impl me")
+	err = m.sectors.Send(uint64(meta.Sector.Number), SectorReceive{
+		State: si,
+	})
+	if err != nil {
+		return xerrors.Errorf("receiving sector: %w", err)
+	}
+
+	return nil
 }
 
-func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta) error {
+func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta) (SectorInfo, error) {
 	{
 		mid, err := address.IDFromAddress(m.maddr)
 		if err != nil {
@@ -39,7 +44,7 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		}
 
 		if meta.Sector.Miner != abi.ActorID(mid) {
-			return xerrors.Errorf("sector for wrong actor - expected actor id %d, sector was for actor %d", mid, meta.Sector.Miner)
+			return SectorInfo{}, xerrors.Errorf("sector for wrong actor - expected actor id %d, sector was for actor %d", mid, meta.Sector.Miner)
 		}
 	}
 
@@ -47,21 +52,21 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		// initial sanity check, doesn't prevent races
 		_, err := m.GetSectorInfo(meta.Sector.Number)
 		if err != nil && !xerrors.Is(err, datastore.ErrNotFound) {
-			return err
+			return SectorInfo{}, err
 		}
 		if err == nil {
-			return xerrors.Errorf("sector with ID %d already exists in the sealing pipeline", meta.Sector.Number)
+			return SectorInfo{}, xerrors.Errorf("sector with ID %d already exists in the sealing pipeline", meta.Sector.Number)
 		}
 	}
 
 	{
 		spt, err := m.currentSealProof(ctx)
 		if err != nil {
-			return err
+			return SectorInfo{}, err
 		}
 
 		if meta.Type != spt {
-			return xerrors.Errorf("sector seal proof type doesn't match current seal proof type (%d!=%d)", meta.Type, spt)
+			return SectorInfo{}, xerrors.Errorf("sector seal proof type doesn't match current seal proof type (%d!=%d)", meta.Type, spt)
 		}
 	}
 
@@ -101,17 +106,25 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		fallthrough
 	case Packing:
 		// todo check num free
-		info.State = SectorState(meta.State) // todo dedupe states
+		info.Return = ReturnState(meta.State) // todo dedupe states
+		info.State = ReceiveSector
+
 		info.SectorNumber = meta.Sector.Number
 		info.Pieces = meta.Pieces
 		info.SectorType = meta.Type
 
 		if err := checkPieces(ctx, m.maddr, meta.Sector.Number, meta.Pieces, m.Api, false); err != nil {
-			return xerrors.Errorf("checking pieces: %w", err)
+			return SectorInfo{}, xerrors.Errorf("checking pieces: %w", err)
 		}
 
-		return nil
+		return info, nil
 	default:
-		return xerrors.Errorf("imported sector State in not supported")
+		return SectorInfo{}, xerrors.Errorf("imported sector State in not supported")
 	}
+}
+
+func (m *Sealing) handleReceiveSector(ctx statemachine.Context, sector SectorInfo) error {
+	// todo fetch stuff
+
+	return ctx.Send(SectorReceived{})
 }

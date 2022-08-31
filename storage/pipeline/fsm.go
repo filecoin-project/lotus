@@ -40,6 +40,11 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 }
 
 var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) (uint64, error){
+	// external import
+	ReceiveSector: planOne(
+		onReturning(SectorReceived{}),
+	),
+
 	// Sealing
 
 	UndefinedSectorState: planOne(
@@ -457,6 +462,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	}
 
 	switch state.State {
+	case ReceiveSector:
+		return m.handleReceiveSector, processed, nil
+
 	// Happy path
 	case Empty:
 		fallthrough
