@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/lib/nullreader"
+	spaths "github.com/filecoin-project/lotus/storage/paths"
 	nr "github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
@@ -1128,7 +1129,36 @@ func (sb *Sealer) Remove(ctx context.Context, sector storiface.SectorRef) error 
 }
 
 func (sb *Sealer) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) error {
-	panic("todo")
+	var todo storiface.SectorFileType
+	for fileType := range src {
+		todo |= fileType
+	}
+
+	ptype := storiface.PathSealing
+	if finalized {
+		ptype = storiface.PathStorage
+	}
+
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, todo, ptype)
+	if err != nil {
+		return xerrors.Errorf("failed to acquire sector paths: %w", err)
+	}
+	defer done()
+
+	for fileType, data := range src {
+		out := storiface.PathByType(paths, fileType)
+
+		if data.Local {
+			return xerrors.Errorf("sector(%v) with local data (%#v) requested in DownloadSectorData", sector, data)
+		}
+
+		_, err := spaths.FetchWithTemp(ctx, []string{data.URL}, out, data.Headers)
+		if err != nil {
+			return xerrors.Errorf("downloading sector data: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func GetRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {

@@ -12,19 +12,20 @@ import (
 
 var log = logging.Logger("tarutil") // nolint
 
-func ExtractTar(body io.Reader, dir string, buf []byte) error {
+func ExtractTar(body io.Reader, dir string, buf []byte) (int64, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil { // nolint
-		return xerrors.Errorf("mkdir: %w", err)
+		return 0, xerrors.Errorf("mkdir: %w", err)
 	}
 
 	tr := tar.NewReader(body)
+	var read int64
 	for {
 		header, err := tr.Next()
 		switch err {
 		default:
-			return err
+			return read, err
 		case io.EOF:
-			return nil
+			return read, nil
 
 		case nil:
 		}
@@ -33,17 +34,20 @@ func ExtractTar(body io.Reader, dir string, buf []byte) error {
 		f, err := os.Create(filepath.Join(dir, header.Name))
 		if err != nil {
 			//nolint:gosec
-			return xerrors.Errorf("creating file %s: %w", filepath.Join(dir, header.Name), err)
+			return read, xerrors.Errorf("creating file %s: %w", filepath.Join(dir, header.Name), err)
 		}
 
 		// This data is coming from a trusted source, no need to check the size.
+		// TODO: now it's actually not coming from a trusted source, check size / paths
 		//nolint:gosec
-		if _, err := io.CopyBuffer(f, tr, buf); err != nil {
-			return err
+		r, err := io.CopyBuffer(f, tr, buf)
+		read += r
+		if err != nil {
+			return read, err
 		}
 
 		if err := f.Close(); err != nil {
-			return err
+			return read, err
 		}
 	}
 }
