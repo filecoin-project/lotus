@@ -2,12 +2,13 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/go-statemachine"
+
 	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
 )
@@ -125,6 +126,7 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 
 func (m *Sealing) handleReceiveSector(ctx statemachine.Context, sector SectorInfo) error {
 	// todo fetch stuff
-
+	// m.sealer.DownloadSectorData(ctx, m.minerSector(sector.SectorType, sector.SectorNumber), )
+	panic("todo")
 	return ctx.Send(SectorReceived{})
 }

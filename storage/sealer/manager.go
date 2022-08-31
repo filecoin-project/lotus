@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -1084,6 +1085,78 @@ func (m *Manager) ProveReplicaUpdate2(ctx context.Context, sector storiface.Sect
 	return out, waitErr
 }
 
+func (m *Manager) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var toFetch storiface.SectorFileType
+
+	// get a sorted list of sectors files to make a consistent work key from
+	ents := make([]struct {
+		T storiface.SectorFileType
+		S storiface.SectorData
+	}, 0, len(src))
+	for fileType, data := range src {
+		if len(fileType.AllSet()) != 1 {
+			return xerrors.Errorf("sector data entry must be for a single file type")
+		}
+
+		toFetch |= fileType
+
+		ents = append(ents, struct {
+			T storiface.SectorFileType
+			S storiface.SectorData
+		}{T: fileType, S: data})
+	}
+	sort.Slice(ents, func(i, j int) bool {
+		return ents[i].T < ents[j].T
+	})
+
+	// get a work key
+	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTDownloadSector, sector, ents)
+	if err != nil {
+		return xerrors.Errorf("getWork: %w", err)
+	}
+	defer cancel()
+
+	var waitErr error
+	waitRes := func() {
+		_, werr := m.waitWork(ctx, wk)
+		if werr != nil {
+			waitErr = werr
+			return
+		}
+	}
+
+	if wait { // already in progress
+		waitRes()
+		return waitErr
+	}
+
+	ptype := storiface.PathSealing
+	if finalized {
+		ptype = storiface.PathStorage
+	}
+
+	selector := newAllocSelector(m.index, toFetch, ptype)
+
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTDownloadSector, selector, schedNop, func(ctx context.Context, w Worker) error {
+		err := m.startWork(ctx, w, wk)(w.DownloadSectorData(ctx, sector, finalized, src))
+		if err != nil {
+			return err
+		}
+
+		waitRes()
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return waitErr
+}
+
 func (m *Manager) ReturnDataCid(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, pi, err)
 }
@@ -1146,6 +1219,10 @@ func (m *Manager) ReturnUnsealPiece(ctx context.Context, callID storiface.CallID
 
 func (m *Manager) ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, ok, err)
+}
+
+func (m *Manager) ReturnDownloadSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
+	return m.returnResult(ctx, callID, nil, err)
 }
 
 func (m *Manager) ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {

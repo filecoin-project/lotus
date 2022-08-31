@@ -113,6 +113,7 @@
 * [Return](#Return)
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnDataCid](#ReturnDataCid)
+  * [ReturnDownloadSector](#ReturnDownloadSector)
   * [ReturnFetch](#ReturnFetch)
   * [ReturnFinalizeReplicaUpdate](#ReturnFinalizeReplicaUpdate)
   * [ReturnFinalizeSector](#ReturnFinalizeSector)
@@ -2379,6 +2380,30 @@ Inputs:
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnDownloadSector
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
   },
   {
     "Code": 0,
