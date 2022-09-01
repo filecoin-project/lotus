@@ -652,7 +652,7 @@ It will not send any messages to the chain.`,
 var provingRecoverFaultsCmd = &cli.Command{
 	Name:      "recover-faults",
 	Usage:     "Manually recovers faulty sectors on chain",
-	ArgsUsage: "<list of sectors>",
+	ArgsUsage: "<faulty sectors>",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "confidence",
@@ -661,7 +661,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.Args().Len() < 1 {
 			return xerrors.Errorf("must pass at least 1 sector number")
 		}
 
@@ -704,12 +704,15 @@ var provingRecoverFaultsCmd = &cli.Command{
 				wait, err := api.StateWaitMsg(ctx, m, uint64(cctx.Int("confidence")))
 				if err != nil {
 					results <- xerrors.Errorf("Timeout waiting for message to land on chain %s", wait.Message)
+					return
 				}
 
 				if wait.Receipt.ExitCode != 0 {
 					results <- xerrors.Errorf("Failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+					return
 				}
 				results <- nil
+				return
 			}(msg)
 		}
 

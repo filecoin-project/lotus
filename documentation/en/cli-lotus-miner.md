@@ -2217,7 +2217,7 @@ NAME:
    lotus-miner proving recover-faults - Manually recovers faulty sectors on chain
 
 USAGE:
-   lotus-miner proving recover-faults [command options] <list of sectors>
+   lotus-miner proving recover-faults [command options] <faulty sectors>
 
 OPTIONS:
    --confidence value  number of block confirmations to wait for (default: 5)
