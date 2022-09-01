@@ -155,9 +155,8 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			if strings.Contains(err.Error(), "no current EF") {
 				return xerrors.Errorf("transaction rejected on ledger: %w", err)
-			} else {
-				return err
 			}
+			return err
 		}
 
 		fmt.Fprintf(cctx.App.Writer, "%s\n", sm.Cid())
