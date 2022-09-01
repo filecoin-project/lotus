@@ -55,6 +55,10 @@ var actorSetAddrsCmd = &cli.Command{
 	Aliases: []string{"set-addrs"},
 	Usage:   "set addresses that your miner can be publicly dialed on",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to send the message from",
+		},
 		&cli.Int64Flag{
 			Name:  "gas-limit",
 			Usage: "set gas limit",
@@ -117,6 +121,25 @@ var actorSetAddrsCmd = &cli.Command{
 			return err
 		}
 
+		fromAddr := minfo.Worker
+		if from := cctx.String("from"); from != "" {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		fromId, err := api.StateLookupID(ctx, fromAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if !isController(minfo, fromId) {
+			return xerrors.Errorf("sender isn't a controller of miner: %s", fromId)
+		}
+
 		params, err := actors.SerializeParams(&miner.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
@@ -126,7 +149,7 @@ var actorSetAddrsCmd = &cli.Command{
 
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			To:       maddr,
-			From:     minfo.Worker,
+			From:     fromId,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
 			Method:   builtin.MethodsMiner.ChangeMultiaddrs,
