@@ -67,6 +67,10 @@ type schedTestWorker struct {
 	ignoreResources bool
 }
 
+func (s *schedTestWorker) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) (storiface.CallID, error) {
+	panic("implement me")
+}
+
 func (s *schedTestWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (storiface.CallID, error) {
 	panic("implement me")
 }
