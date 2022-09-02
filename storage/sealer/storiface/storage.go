@@ -137,5 +137,19 @@ type SectorData struct {
 	URL string
 
 	// optional http headers to use when requesting sector data
-	Headers http.Header
+	Headers []SecDataHttpHeader
+}
+
+func (sd *SectorData) HttpHeaders() http.Header {
+	out := http.Header{}
+	for _, header := range sd.Headers {
+		out[header.Key] = append(out[header.Key], header.Value)
+	}
+	return out
+}
+
+// note: we can't use http.Header as that's backed by a go map, which is all kinds of messy
+type SecDataHttpHeader struct {
+	Key   string
+	Value string
 }

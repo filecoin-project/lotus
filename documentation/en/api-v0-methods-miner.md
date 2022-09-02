@@ -3245,29 +3245,32 @@ Inputs:
     "DataUnsealed": {
       "Local": true,
       "URL": "string value",
-      "Headers": {
-        "Authorization": [
-          "Bearer ey.."
-        ]
-      }
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
     },
     "DataSealed": {
       "Local": true,
       "URL": "string value",
-      "Headers": {
-        "Authorization": [
-          "Bearer ey.."
-        ]
-      }
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
     },
     "DataCache": {
       "Local": true,
       "URL": "string value",
-      "Headers": {
-        "Authorization": [
-          "Bearer ey.."
-        ]
-      }
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
     }
   }
 ]

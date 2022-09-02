@@ -16,6 +16,7 @@ import (
 	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 
 	api "github.com/filecoin-project/lotus/api"
+	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var _ = xerrors.Errorf
@@ -31,7 +32,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{184, 32}); err != nil {
+	if _, err := cw.Write([]byte{184, 36}); err != nil {
 		return err
 	}
 
@@ -669,6 +670,70 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.TerminatedAt-1)); err != nil {
 			return err
 		}
+	}
+
+	// t.RemoteDataUnsealed (storiface.SectorData) (struct)
+	if len("RemoteDataUnsealed") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RemoteDataUnsealed\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataUnsealed"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RemoteDataUnsealed")); err != nil {
+		return err
+	}
+
+	if err := t.RemoteDataUnsealed.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.RemoteDataSealed (storiface.SectorData) (struct)
+	if len("RemoteDataSealed") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RemoteDataSealed\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataSealed"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RemoteDataSealed")); err != nil {
+		return err
+	}
+
+	if err := t.RemoteDataSealed.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.RemoteDataCache (storiface.SectorData) (struct)
+	if len("RemoteDataCache") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RemoteDataCache\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataCache"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RemoteDataCache")); err != nil {
+		return err
+	}
+
+	if err := t.RemoteDataCache.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.RemoteDataFinalized (bool) (bool)
+	if len("RemoteDataFinalized") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RemoteDataFinalized\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteDataFinalized"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RemoteDataFinalized")); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteBool(w, t.RemoteDataFinalized); err != nil {
+		return err
 	}
 
 	// t.LastErr (string) (string)
@@ -1390,6 +1455,84 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 				t.TerminatedAt = abi.ChainEpoch(extraI)
+			}
+			// t.RemoteDataUnsealed (storiface.SectorData) (struct)
+		case "RemoteDataUnsealed":
+
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.RemoteDataUnsealed = new(storiface.SectorData)
+					if err := t.RemoteDataUnsealed.UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.RemoteDataUnsealed pointer: %w", err)
+					}
+				}
+
+			}
+			// t.RemoteDataSealed (storiface.SectorData) (struct)
+		case "RemoteDataSealed":
+
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.RemoteDataSealed = new(storiface.SectorData)
+					if err := t.RemoteDataSealed.UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.RemoteDataSealed pointer: %w", err)
+					}
+				}
+
+			}
+			// t.RemoteDataCache (storiface.SectorData) (struct)
+		case "RemoteDataCache":
+
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.RemoteDataCache = new(storiface.SectorData)
+					if err := t.RemoteDataCache.UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.RemoteDataCache pointer: %w", err)
+					}
+				}
+
+			}
+			// t.RemoteDataFinalized (bool) (bool)
+		case "RemoteDataFinalized":
+
+			maj, extra, err = cr.ReadHeader()
+			if err != nil {
+				return err
+			}
+			if maj != cbg.MajOther {
+				return fmt.Errorf("booleans must be major type 7")
+			}
+			switch extra {
+			case 20:
+				t.RemoteDataFinalized = false
+			case 21:
+				t.RemoteDataFinalized = true
+			default:
+				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 			}
 			// t.LastErr (string) (string)
 		case "LastErr":
