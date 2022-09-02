@@ -25,6 +25,9 @@ var NetworkBundle = "mainnet"
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
 var BundleOverrides map[actorstypes.Version]string
 
+// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
+const ActorDebugging = false
+
 const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "mainnet.pi"

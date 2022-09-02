@@ -23,6 +23,7 @@ const GenesisNetworkVersion = network.Version16
 
 var NetworkBundle = "butterflynet"
 var BundleOverrides map[actorstypes.Version]string
+var ActorDebugging = false
 
 const BootstrappersFile = "butterflynet.pi"
 const GenesisFile = "butterflynet.car"

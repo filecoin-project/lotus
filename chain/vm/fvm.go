@@ -303,6 +303,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.StateBase,
 		Tracing:        opts.Tracing || EnableDetailedTracing,
+		Debug:          build.ActorDebugging,
 	}, nil
 
 }

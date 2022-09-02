@@ -116,6 +116,7 @@ var (
 	GenesisNetworkVersion = network.Version0
 	NetworkBundle         = "devnet"
 	BundleOverrides       map[actorstypes.Version]string
+	ActorDebugging        = true
 
 	NewestNetworkVersion       = network.Version16
 	ActorUpgradeNetworkVersion = network.Version16

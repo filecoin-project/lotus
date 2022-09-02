@@ -20,6 +20,7 @@ import (
 
 var NetworkBundle = "caterpillarnet"
 var BundleOverrides map[actorstypes.Version]string
+var ActorDebugging = false
 
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"

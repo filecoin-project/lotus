@@ -26,6 +26,7 @@ const GenesisNetworkVersion = network.Version0
 
 var NetworkBundle = "calibrationnet"
 var BundleOverrides map[actorstypes.Version]string
+var ActorDebugging = false
 
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car"
