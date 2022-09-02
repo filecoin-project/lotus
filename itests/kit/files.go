@@ -23,9 +23,12 @@ import (
 	dssync "github.com/ipfs/go-datastore/sync"
 	ipldformat "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"github.com/minio/blake2b-simd"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 const unixfsChunkSize int64 = 1 << 10
@@ -68,7 +71,6 @@ func CreateRandomCARv1(t *testing.T, rseed, size int, opts ...GeneratedDAGOpts) 
 	require.NoError(t, err)
 	require.EqualValues(t, n, size)
 
-	//
 	_, err = file.Seek(0, io.SeekStart)
 	require.NoError(t, err)
 	bs := bstore.NewBlockstore(dssync.MutexWrap(ds.NewMapDatastore()))
@@ -76,10 +78,21 @@ func CreateRandomCARv1(t *testing.T, rseed, size int, opts ...GeneratedDAGOpts) 
 
 	root := writeUnixfsDAG(ctx, t, file, dagSvc, opts...)
 
+	if len(opts) > 0 && opts[0].ModifyDAG != nil {
+		root, err = opts[0].ModifyDAG(root, bs)
+		require.NoError(t, err)
+	}
+
 	// create a CARv1 file from the DAG
 	tmp, err := os.CreateTemp(t.TempDir(), "randcarv1")
 	require.NoError(t, err)
-	require.NoError(t, car.WriteCar(ctx, dagSvc, []cid.Cid{root}, tmp))
+	require.NoError(t, car.NewSelectiveCar(ctx, dagSvc.Blocks.Blockstore(),
+		[]car.Dag{{
+			Root:     root,
+			Selector: selectorparse.CommonSelector_ExploreAllRecursively,
+		}},
+		car.MaxTraversalLinks(config.MaxTraversalLinks),
+	).Write(tmp))
 	_, err = tmp.Seek(0, io.SeekStart)
 	require.NoError(t, err)
 	hd, err := car.ReadHeader(bufio.NewReader(tmp))
@@ -94,6 +107,7 @@ func CreateRandomCARv1(t *testing.T, rseed, size int, opts ...GeneratedDAGOpts) 
 type GeneratedDAGOpts struct {
 	ChunkSize int64
 	Maxlinks  int
+	ModifyDAG func(root cid.Cid, bs bstore.Blockstore) (newRoot cid.Cid, err error)
 }
 
 func writeUnixfsDAG(ctx context.Context, t *testing.T, rd io.Reader, dag ipldformat.DAGService, opts ...GeneratedDAGOpts) cid.Cid {
@@ -117,6 +131,7 @@ func writeUnixfsDAG(ctx context.Context, t *testing.T, rd io.Reader, dag ipldfor
 	params := ihelper.DagBuilderParams{
 		Maxlinks:  dagOpts.Maxlinks,
 		RawLeaves: true,
+		// NOTE: InlineBuilder not recommended, we are using this to test identity CIDs
 		CidBuilder: cidutil.InlineBuilder{
 			Builder: prefix,
 			Limit:   126,

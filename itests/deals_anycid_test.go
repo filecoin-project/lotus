@@ -7,12 +7,18 @@ import (
 	"testing"
 	"time"
 
-	dag "github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
-	ipldcbor "github.com/ipfs/go-ipld-cbor"
-	format "github.com/ipfs/go-ipld-format"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
+	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
+	"github.com/ipld/go-ipld-prime/datamodel"
+	"github.com/ipld/go-ipld-prime/fluent/qp"
+	"github.com/ipld/go-ipld-prime/linking"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/node/basicnode"
+	"github.com/ipld/go-ipld-prime/storage/bsadapter"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"github.com/stretchr/testify/require"
 
@@ -67,6 +73,39 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 		ChunkSize: 1024,
 		// Max links from a block to other blocks
 		Maxlinks: 10,
+		ModifyDAG: func(root cid.Cid, bs bstore.Blockstore) (newRoot cid.Cid, err error) {
+			lsys := cidlink.DefaultLinkSystem()
+			lsys.SetWriteStorage(&bsadapter.Adapter{Wrapped: bs})
+			lp := cidlink.LinkPrototype{Prefix: cid.Prefix{
+				Version: 1,
+				Codec:   0x71, // dag-cbor
+				MhType:  0x0,  // identity
+			}}
+			lc := linking.LinkContext{}
+			str := basicnode.NewString("inline string")
+			strLink, err := lsys.Store(lc, lp, str)
+			require.NoError(t, err)
+			blob := basicnode.NewBytes([]byte("inline byte blob"))
+			blobLink, err := lsys.Store(lc, lp, blob)
+			require.NoError(t, err)
+			mapNode, err := qp.BuildMap(basicnode.Prototype.Map, 3, func(la datamodel.MapAssembler) {
+				qp.MapEntry(la, "my string", qp.Link(strLink))
+				qp.MapEntry(la, "original root", qp.Link(cidlink.Link{Cid: root}))
+				qp.MapEntry(la, "my blob", qp.Link(blobLink))
+			})
+			require.NoError(t, err)
+			mapLink, err := lsys.Store(linking.LinkContext{}, lp, mapNode)
+			require.NoError(t, err)
+			list, err := qp.BuildList(basicnode.Prototype.List, 2, func(la datamodel.ListAssembler) {
+				qp.ListEntry(la, qp.Link(blobLink))
+				qp.ListEntry(la, qp.Link(mapLink))
+			})
+			require.NoError(t, err)
+			listLink, err := lsys.Store(linking.LinkContext{}, lp, list)
+			require.NoError(t, err)
+
+			return listLink.(cidlink.Link).Cid, nil
+		},
 	}
 	carv1FilePath, _ := kit.CreateRandomCARv1(t, 5, 100*1024, dagOpts)
 	res, err := client.ClientImport(ctx, api.FileRef{Path: carv1FilePath, IsCAR: true})
@@ -118,12 +157,13 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	info, err := client.ClientGetDealInfo(ctx, *dealCid)
 	require.NoError(t, err)
 
-	// Make retrievals against CIDs at different levels in the DAG
-	cidIndices := []int{1, 11, 27, 32, 47}
+	// Make retrievals against CIDs at different levels in the DAG, indices 0 and
+	// 1 are identity CIDs
+	cidIndices := []int{0, 1, 11, 27, 32, 47}
 	for _, val := range cidIndices {
-		t.Logf("performing retrieval for cid at index %d", val)
-
 		targetCid := cids[val]
+		t.Logf("performing retrieval for cid at index %d / cid %s", val, targetCid)
+
 		offer, err := client.ClientMinerQueryOffer(ctx, miner.ActorAddr, targetCid, &info.PieceCID)
 		require.NoError(t, err)
 		require.Empty(t, offer.Err)
@@ -142,7 +182,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 		// create CAR from original file starting at targetCid and ensure it matches the retrieved CAR file.
 		tmp, err := os.CreateTemp(t.TempDir(), "randcarv1")
 		require.NoError(t, err)
-		rd, err := blockstore.OpenReadOnly(carv1FilePath, blockstore.UseWholeCIDs(true))
+		rd, err := blockstore.OpenReadOnly(carv1FilePath, blockstore.UseWholeCIDs(true), carv2.StoreIdentityCIDs(true))
 		require.NoError(t, err)
 		err = car.NewSelectiveCar(
 			ctx,

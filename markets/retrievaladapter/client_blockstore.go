@@ -7,6 +7,7 @@ import (
 
 	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
+	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
 	"golang.org/x/xerrors"
 
@@ -140,7 +141,7 @@ func (c *CARBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCid retrie
 	}
 
 	path := c.PathFor(id)
-	bs, err := blockstore.OpenReadWrite(path, []cid.Cid{payloadCid}, blockstore.UseWholeCIDs(true))
+	bs, err := blockstore.OpenReadWrite(path, []cid.Cid{payloadCid}, blockstore.UseWholeCIDs(true), carv2.StoreIdentityCIDs(true))
 	if err != nil {
 		return nil, err
 	}

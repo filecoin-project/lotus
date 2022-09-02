@@ -336,6 +336,9 @@ func (dh *DealHarness) PerformRetrievalWithOrder(ctx context.Context, deal *cid.
 	}
 
 	carFile := dh.t.TempDir() + string(os.PathSeparator) + "ret-car-" + root.String()
+	if len(carFile) > 250 { // identity CIDs can be long, don't max out fs limits
+		carFile = carFile[0:250]
+	}
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
