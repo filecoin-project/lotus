@@ -103,6 +103,8 @@ func main() {
 
 	err = gen.WriteMapEncodersToFile("./storage/sealer/storiface/cbor_gen.go", "storiface",
 		storiface.CallID{},
+		storiface.SecDataHttpHeader{},
+		storiface.SectorData{},
 	)
 	if err != nil {
 		fmt.Println(err)

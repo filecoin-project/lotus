@@ -1152,7 +1152,7 @@ func (sb *Sealer) DownloadSectorData(ctx context.Context, sector storiface.Secto
 			return xerrors.Errorf("sector(%v) with local data (%#v) requested in DownloadSectorData", sector, data)
 		}
 
-		_, err := spaths.FetchWithTemp(ctx, []string{data.URL}, out, data.Headers)
+		_, err := spaths.FetchWithTemp(ctx, []string{data.URL}, out, data.HttpHeaders())
 		if err != nil {
 			return xerrors.Errorf("downloading sector data: %w", err)
 		}
