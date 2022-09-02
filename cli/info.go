@@ -74,11 +74,10 @@ func infoCmdAct(cctx *cli.Context) error {
 			return err
 		}
 		fmt.Printf("      %s [%s]\n", addr.String(), types.FIL(balance).Short())
-		fmt.Println()
 	} else {
 		fmt.Printf("Default address: address not set\n")
-		fmt.Println()
 	}
+	fmt.Println()
 
 	addrs, err := fullapi.WalletList(ctx)
 	if err != nil {
