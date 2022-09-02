@@ -93,6 +93,12 @@ type SectorInfo struct {
 	TerminateMessage *cid.Cid
 	TerminatedAt     abi.ChainEpoch
 
+	// Remote import
+	RemoteDataUnsealed  *storiface.SectorData
+	RemoteDataSealed    *storiface.SectorData
+	RemoteDataCache     *storiface.SectorData
+	RemoteDataFinalized bool
+
 	// Debug
 	LastErr string
 
