@@ -22,6 +22,7 @@ const GenesisFile = ""
 // VERY experimental! Should not be merged into master / any release branch yet!
 var NetworkBundle = "devnet-wasm"
 var BundleOverrides map[actors.Version]string
+var ActorDebugging = false
 
 const GenesisNetworkVersion = network.Version16
 

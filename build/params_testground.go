@@ -5,7 +5,6 @@
 //
 // Its purpose is to unlock various degrees of flexibility and parametrization
 // when writing Testground plans for Lotus.
-//
 package build
 
 import (
@@ -116,6 +115,7 @@ var (
 	GenesisNetworkVersion = network.Version0
 	NetworkBundle         = "devnet"
 	BundleOverrides       map[actors.Version]string
+	ActorDebugging        = true
 
 	NewestNetworkVersion       = network.Version15
 	ActorUpgradeNetworkVersion = network.Version15
