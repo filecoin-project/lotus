@@ -717,6 +717,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 		}
 
 		wg.Wait()
+		close(results)
 
 		for v := range results {
 			if v != nil {
