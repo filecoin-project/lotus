@@ -907,10 +907,10 @@ func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
 }
 
 // EthAccounts mocks base method.
-func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]string, error) {
+func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]types.EthAddress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthAccounts", arg0)
-	ret0, _ := ret[0].([]string)
+	ret0, _ := ret[0].([]types.EthAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -934,6 +934,21 @@ func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (string, error) {
 func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthBlockNumber", reflect.TypeOf((*MockFullNode)(nil).EthBlockNumber), arg0)
+}
+
+// EthGetBlockTransactionCountByHash mocks base method.
+func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByHash", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetBlockTransactionCountByHash indicates an expected call of EthGetBlockTransactionCountByHash.
+func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByHash(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockTransactionCountByHash", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockTransactionCountByHash), arg0, arg1)
 }
 
 // EthGetBlockTransactionCountByNumber mocks base method.

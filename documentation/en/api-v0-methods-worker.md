@@ -110,7 +110,7 @@ Response:
     "MemSwapUsed": 42,
     "CPUs": 42,
     "GPUs": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "Resources": {
       "post/v0/windowproof": {

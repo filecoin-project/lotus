@@ -73,9 +73,11 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
+		// TODO: use reflect to automatically register all the eth aliases
 		rpcServer.AliasMethod("eth_accounts", "Filecoin.EthAccounts")
 		rpcServer.AliasMethod("eth_blockNumber", "Filecoin.EthBlockNumber")
 		rpcServer.AliasMethod("eth_getBlockTransactionCountByNumber", "Filecoin.EthGetBlockTransactionCountByNumber")
+		rpcServer.AliasMethod("eth_getBlockTransactionCountByHash", "Filecoin.EthGetBlockTransactionCountByHash")
 
 		var handler http.Handler = rpcServer
 		if permissioned {

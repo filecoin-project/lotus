@@ -213,9 +213,11 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		EthAccounts func(p0 context.Context) ([]string, error) `perm:"read"`
+		EthAccounts func(p0 context.Context) ([]types.EthAddress, error) `perm:"read"`
 
 		EthBlockNumber func(p0 context.Context) (string, error) `perm:"read"`
+
+		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 string) (string, error) `perm:"read"`
 
 		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (string, error) `perm:"read"`
 
@@ -1720,15 +1722,15 @@ func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]string, error) {
+func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]types.EthAddress, error) {
 	if s.Internal.EthAccounts == nil {
-		return *new([]string), ErrNotSupported
+		return *new([]types.EthAddress), ErrNotSupported
 	}
 	return s.Internal.EthAccounts(p0)
 }
 
-func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]string, error) {
-	return *new([]string), ErrNotSupported
+func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]types.EthAddress, error) {
+	return *new([]types.EthAddress), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (string, error) {
@@ -1739,6 +1741,17 @@ func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (string, error) {
 }
 
 func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (string, error) {
+	return "", ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 string) (string, error) {
+	if s.Internal.EthGetBlockTransactionCountByHash == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 string) (string, error) {
 	return "", ErrNotSupported
 }
 

@@ -992,7 +992,7 @@ Inputs: `null`
 Response:
 ```json
 [
-  "0x11892b7542a74824D089f7b20e36688bc5501697"
+  "string value"
 ]
 ```
 
@@ -1087,7 +1087,7 @@ Response:
         }
       },
       "Diagnostics": [
-        "0x11892b7542a74824D089f7b20e36688bc5501697"
+        "string value"
       ]
     }
   ],
@@ -1131,7 +1131,7 @@ Response:
         }
       },
       "Diagnostics": [
-        "0x11892b7542a74824D089f7b20e36688bc5501697"
+        "string value"
       ]
     }
   ]
@@ -1754,10 +1754,10 @@ Inputs:
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
     "IPAddrs": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "IPSubnets": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ]
   }
 ]
@@ -1779,10 +1779,10 @@ Response:
     "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
   ],
   "IPAddrs": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ],
   "IPSubnets": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ]
 }
 ```
@@ -1800,10 +1800,10 @@ Inputs:
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
     "IPAddrs": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "IPSubnets": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ]
   }
 ]
@@ -1924,10 +1924,10 @@ Response:
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Agent": "string value",
   "Addrs": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ],
   "Protocols": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ],
   "ConnMgrMeta": {
     "FirstSeen": "0001-01-01T00:00:00Z",
@@ -3305,23 +3305,23 @@ Inputs:
   {
     "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
     "URLs": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "Weight": 42,
     "MaxStorage": 42,
     "CanSeal": true,
     "CanStore": true,
     "Groups": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "AllowTo": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "AllowTypes": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "DenyTypes": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ]
   },
   {
@@ -3379,23 +3379,23 @@ Response:
   {
     "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
     "URLs": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "Weight": 42,
     "MaxStorage": 42,
     "CanSeal": true,
     "CanStore": true,
     "Groups": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "AllowTo": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "AllowTypes": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "DenyTypes": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ]
   }
 ]
@@ -3472,20 +3472,20 @@ Response:
   {
     "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
     "URLs": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "BaseURLs": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "Weight": 42,
     "CanSeal": true,
     "CanStore": true,
     "Primary": true,
     "AllowTypes": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ],
     "DenyTypes": [
-      "0x11892b7542a74824D089f7b20e36688bc5501697"
+      "string value"
     ]
   }
 ]
@@ -3543,23 +3543,23 @@ Response:
 {
   "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
   "URLs": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ],
   "Weight": 42,
   "MaxStorage": 42,
   "CanSeal": true,
   "CanStore": true,
   "Groups": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ],
   "AllowTo": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ],
   "AllowTypes": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ],
   "DenyTypes": [
-    "0x11892b7542a74824D089f7b20e36688bc5501697"
+    "string value"
   ]
 }
 ```

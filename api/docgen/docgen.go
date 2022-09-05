@@ -53,8 +53,6 @@ var ExampleValues = map[reflect.Type]interface{}{
 	reflect.TypeOf(uint64(42)):            uint64(42),
 	reflect.TypeOf(byte(7)):               byte(7),
 	reflect.TypeOf([]byte{}):              []byte("byte array"),
-	// TODO: we'll want to use an Ethereum address type once we introduce it
-	reflect.TypeOf([]string{}):            []string{"0x11892b7542a74824D089f7b20e36688bc5501697"},
 }
 
 func addExample(v interface{}) {
@@ -336,7 +334,6 @@ func init() {
 		Conns:           4,
 		FD:              5,
 	})
-
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
