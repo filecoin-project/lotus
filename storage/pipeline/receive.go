@@ -81,8 +81,12 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 
 		fallthrough
 	case SubmitCommit:
+		if meta.PreCommitDeposit == nil {
+			return SectorInfo{}, xerrors.Errorf("sector PreCommitDeposit was null")
+		}
+
 		info.PreCommitInfo = meta.PreCommitInfo
-		info.PreCommitDeposit = meta.PreCommitDeposit
+		info.PreCommitDeposit = *meta.PreCommitDeposit
 		info.PreCommitMessage = meta.PreCommitMessage
 		info.PreCommitTipSet = meta.PreCommitTipSet
 

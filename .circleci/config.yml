@@ -975,6 +975,11 @@ workflows:
           target: "./itests/sector_finalize_early_test.go"
       
       - test:
+          name: test-itest-sector_import
+          suite: itest-sector_import
+          target: "./itests/sector_import_test.go"
+      
+      - test:
           name: test-itest-sector_make_cc_avail
           suite: itest-sector_make_cc_avail
           target: "./itests/sector_make_cc_avail_test.go"

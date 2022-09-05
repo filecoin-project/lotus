@@ -542,7 +542,7 @@ type RemoteSectorMeta struct {
 
 	// Required in SubmitCommit and later
 	PreCommitInfo    *miner.SectorPreCommitInfo
-	PreCommitDeposit big.Int
+	PreCommitDeposit *big.Int
 	PreCommitMessage *cid.Cid
 	PreCommitTipSet  types.TipSetKey
 
