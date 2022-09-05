@@ -215,11 +215,11 @@ type FullNodeStruct struct {
 
 		EthAccounts func(p0 context.Context) ([]types.EthAddress, error) `perm:"read"`
 
-		EthBlockNumber func(p0 context.Context) (string, error) `perm:"read"`
+		EthBlockNumber func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 string) (string, error) `perm:"read"`
+		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 string) (EthInt, error) `perm:"read"`
 
-		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (string, error) `perm:"read"`
+		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (EthInt, error) `perm:"read"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -1733,37 +1733,37 @@ func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]types.EthAddress, erro
 	return *new([]types.EthAddress), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (string, error) {
+func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (EthInt, error) {
 	if s.Internal.EthBlockNumber == nil {
-		return "", ErrNotSupported
+		return *new(EthInt), ErrNotSupported
 	}
 	return s.Internal.EthBlockNumber(p0)
 }
 
-func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (string, error) {
-	return "", ErrNotSupported
+func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 string) (string, error) {
+func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 string) (EthInt, error) {
 	if s.Internal.EthGetBlockTransactionCountByHash == nil {
-		return "", ErrNotSupported
+		return *new(EthInt), ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 string) (string, error) {
-	return "", ErrNotSupported
+func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 string) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (string, error) {
+func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (EthInt, error) {
 	if s.Internal.EthGetBlockTransactionCountByNumber == nil {
-		return "", ErrNotSupported
+		return *new(EthInt), ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (string, error) {
-	return "", ErrNotSupported
+func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {

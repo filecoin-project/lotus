@@ -2147,7 +2147,7 @@ Perms: read
 
 Inputs: `null`
 
-Response: `"string value"`
+Response: `"0x5"`
 
 ### EthGetBlockTransactionCountByHash
 EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
@@ -2162,7 +2162,7 @@ Inputs:
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x5"`
 
 ### EthGetBlockTransactionCountByNumber
 EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
@@ -2177,7 +2177,7 @@ Inputs:
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x5"`
 
 ## Gas
 

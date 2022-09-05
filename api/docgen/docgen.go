@@ -334,6 +334,7 @@ func init() {
 		Conns:           4,
 		FD:              5,
 	})
+	addExample(api.EthInt(5))
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
