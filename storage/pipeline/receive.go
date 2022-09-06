@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
+// todo m.inputLk?
 func (m *Sealing) Receive(ctx context.Context, meta api.RemoteSectorMeta) error {
 	si, err := m.checkSectorMeta(ctx, meta)
 	if err != nil {
