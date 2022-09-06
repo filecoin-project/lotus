@@ -161,8 +161,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	require.Len(t, ng, 1)
 	require.Equal(t, snum, ng[0])
 
-	// todo wait sealed
-
+	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{snum: {}})
 }
 
 func remoteGetSector(sectorRoot string) func(w http.ResponseWriter, r *http.Request) {

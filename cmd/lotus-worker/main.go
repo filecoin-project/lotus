@@ -225,6 +225,12 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_WORKER_REGEN_SECTOR_KEY"},
 		},
 		&cli.BoolFlag{
+			Name:    "sector-download",
+			Usage:   "enable external sector data download",
+			Value:   false,
+			EnvVars: []string{"LOTUS_WORKER_SECTOR_DOWNLOAD"},
+		},
+		&cli.BoolFlag{
 			Name:    "windowpost",
 			Usage:   "enable window post",
 			Value:   false,
@@ -372,6 +378,9 @@ var runCmd = &cli.Command{
 
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
 			taskTypes = append(taskTypes, sealtasks.TTAddPiece, sealtasks.TTDataCid)
+		}
+		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("sector-download")) && cctx.Bool("sector-download") {
+			taskTypes = append(taskTypes, sealtasks.TTDownloadSector)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("precommit1")) && cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
