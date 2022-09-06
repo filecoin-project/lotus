@@ -11,9 +11,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"math/bits"
 	"os"
+	"path/filepath"
 	"runtime"
+	"syscall"
 
 	"github.com/detailyang/go-fallocate"
 	"github.com/ipfs/go-cid"
@@ -1067,6 +1070,44 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	defer done()
 
 	return ffi.ClearCache(uint64(ssize), paths.Cache)
+}
+
+// FinalizeSectorInto is like FinalizeSector, but writes finalized sector cache into a new path
+func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.SectorRef, dest string) error {
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
+	if err != nil {
+		return xerrors.Errorf("acquiring sector cache path: %w", err)
+	}
+	defer done()
+
+	files, err := ioutil.ReadDir(paths.Cache)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if file.Name() != "t_aux" && file.Name() != "p_aux" {
+			// link all the non-aux files
+			if err := syscall.Link(filepath.Join(paths.Cache, file.Name()), filepath.Join(dest, file.Name())); err != nil {
+				return xerrors.Errorf("link %s: %w", file.Name(), err)
+			}
+			continue
+		}
+
+		d, err := os.ReadFile(filepath.Join(paths.Cache, file.Name()))
+		if err != nil {
+			return xerrors.Errorf("read %s: %w", file.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(dest, file.Name()), d, 0666); err != nil {
+			return xerrors.Errorf("write %s: %w", file.Name(), err)
+		}
+	}
+
+	return ffi.ClearCache(uint64(ssize), dest)
 }
 
 func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {

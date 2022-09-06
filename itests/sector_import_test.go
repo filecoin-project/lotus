@@ -108,7 +108,10 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	scids, err := sealer.SealPreCommit2(ctx, sref, pc1out)
 	require.NoError(t, err)
 
-	// todo split-finalize!
+	// make finalized cache, put it in [sectorDir]/fin-cache
+	finDst := filepath.Join(sectorDir, "fin-cache", fmt.Sprintf("s-t01000-%d", snum))
+	require.NoError(t, os.MkdirAll(finDst, 0777))
+	require.NoError(t, sealer.FinalizeSectorInto(ctx, sref, finDst))
 
 	////////
 	// start http server serving sector data
@@ -183,7 +186,13 @@ func remoteGetSector(sectorRoot string) func(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		path := filepath.Join(sectorRoot, vars["type"], vars["id"])
+		typ := vars["type"]
+		if typ == "cache" {
+			// if cache is requested, send the finalized cache we've created above
+			typ = "fin-cache"
+		}
+
+		path := filepath.Join(sectorRoot, typ, vars["id"])
 
 		stat, err := os.Stat(path)
 		if err != nil {
