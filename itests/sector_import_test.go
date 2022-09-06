@@ -73,7 +73,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 
 	sref := storiface.SectorRef{
 		ID:        sid,
-		ProofType: 0,
+		ProofType: spt,
 	}
 
 	sealer, err := ffiwrapper.New(&basicfs.Provider{
