@@ -182,16 +182,20 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) (abi.SectorID, erro
 		return abi.SectorID{}, err
 	}
 
+	return sm.waitSectorStarted(ctx, sr.ID)
+}
+
+func (sm *StorageMinerAPI) waitSectorStarted(ctx context.Context, si abi.SectorID) (abi.SectorID, error) {
 	// wait for the sector to enter the Packing state
 	// TODO: instead of polling implement some pubsub-type thing in storagefsm
 	for {
-		info, err := sm.Miner.SectorsStatus(ctx, sr.ID.Number, false)
+		info, err := sm.Miner.SectorsStatus(ctx, si.Number, false)
 		if err != nil {
 			return abi.SectorID{}, xerrors.Errorf("getting pledged sector info: %w", err)
 		}
 
 		if info.State != api.SectorState(sealing.UndefinedSectorState) {
-			return sr.ID, nil
+			return si, nil
 		}
 
 		select {
@@ -449,7 +453,12 @@ func (sm *StorageMinerAPI) SectorNumFree(ctx context.Context, name string) error
 }
 
 func (sm *StorageMinerAPI) SectorReceive(ctx context.Context, meta api.RemoteSectorMeta) error {
-	return sm.Miner.Receive(ctx, meta)
+	if err := sm.Miner.Receive(ctx, meta); err != nil {
+		return err
+	}
+
+	_, err := sm.waitSectorStarted(ctx, meta.Sector)
+	return err
 }
 
 func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]minertypes.SubmitWindowedPoStParams, error) {
