@@ -108,6 +108,7 @@ type Config struct {
 	ParallelFetchLimit int
 
 	// Local worker config
+	AllowSectorDownload      bool
 	AllowAddPiece            bool
 	AllowPreCommit1          bool
 	AllowPreCommit2          bool
@@ -181,6 +182,9 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTFinalizeReplicaUpdate,
+	}
+	if sc.AllowSectorDownload {
+		localTasks = append(localTasks, sealtasks.TTDownloadSector)
 	}
 	if sc.AllowAddPiece {
 		localTasks = append(localTasks, sealtasks.TTAddPiece, sealtasks.TTDataCid)

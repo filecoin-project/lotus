@@ -391,7 +391,7 @@ type SealingConfig struct {
 type SealerConfig struct {
 	ParallelFetchLimit int
 
-	// Local worker config
+	AllowSectorDownload      bool
 	AllowAddPiece            bool
 	AllowPreCommit1          bool
 	AllowPreCommit2          bool
