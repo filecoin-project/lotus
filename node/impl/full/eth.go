@@ -12,14 +12,30 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type EthModuleAPI interface {
 	EthBlockNumber(context.Context) (api.EthInt, error)
-	EthAccounts(context.Context) ([]types.EthAddress, error)
+	EthAccounts(context.Context) ([]api.EthAddress, error)
 	EthGetBlockTransactionCountByNumber(context.Context, string) (api.EthInt, error)
 	EthGetBlockTransactionCountByHash(context.Context, string) (api.EthInt, error)
+	EthGetBlockByHash(ctx context.Context, blkHash string) (api.EthBlock, error)
+	EthGetBlockByNumber(ctx context.Context, blkNumHex string) (api.EthBlock, error)
+	EthGetTransactionByHash(ctx context.Context, txHash string) (api.EthTx, error)
+	EthGetTransactionCount(ctx context.Context, sender string, blkOpt string) (api.EthInt, error)
+	EthGetTransactionReceipt(ctx context.Context, blkHash string) (api.EthTxReceipt, error)
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash string, txIndexHex string) (api.EthTx, error)
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (api.EthTx, error)
+	EthGetCode(ctx context.Context, address string) (string, error)
+	EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error)
+	EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthInt, error)
+	EthChainId(ctx context.Context) (api.EthInt, error)
+	NetVersion(ctx context.Context) (string, error)
+	NetListening(ctx context.Context) (bool, error)
+	EthProtocolVersion(ctx context.Context) (api.EthInt, error)
+	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error)
+	EthGasPrice(ctx context.Context) (api.EthInt, error)
+	EthSendRawTransaction(ctx context.Context) (api.EthHash, error)
 }
 
 var _ EthModuleAPI = *new(api.FullNode)
@@ -48,9 +64,9 @@ func (a *EthModule) EthBlockNumber(context.Context) (api.EthInt, error) {
 	return api.EthInt(height), nil
 }
 
-func (a *EthModule) EthAccounts(context.Context) ([]types.EthAddress, error) {
+func (a *EthModule) EthAccounts(context.Context) ([]api.EthAddress, error) {
 	// The lotus node is not expected to hold manage accounts, so we'll always return an empty array
-	return []types.EthAddress{}, nil
+	return []api.EthAddress{}, nil
 }
 
 func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNumHex string) (api.EthInt, error) {
@@ -77,7 +93,7 @@ func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blk
 }
 
 func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash string) (api.EthInt, error) {
-	hash, err := types.EthHashFromHex(blkHash)
+	hash, err := api.EthHashFromHex(blkHash)
 	if err != nil {
 		return api.EthInt(0), xerrors.Errorf("invalid hash %s: %w", blkHash, err)
 	}
@@ -98,3 +114,82 @@ func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHa
 	}
 	return api.EthInt(count), nil
 }
+
+func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash string) (api.EthBlock, error) {
+	return api.EthBlock{}, nil
+}
+
+func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNumHex string) (api.EthBlock, error) {
+	return api.EthBlock{}, nil
+}
+
+func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash string) (api.EthTx, error) {
+	return api.EthTx{}, nil
+}
+
+func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender string, blkParam string) (api.EthInt, error) {
+	return api.EthInt(0), nil
+}
+
+func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, blkHash string) (api.EthTxReceipt, error) {
+	return api.EthTxReceipt{}, nil
+}
+
+func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash string, txIndexHex string) (api.EthTx, error) {
+	return api.EthTx{}, nil
+}
+
+func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (api.EthTx, error) {
+	return api.EthTx{}, nil
+}
+
+// EthGetCode returns string value of the compiled bytecode
+func (a *EthModule) EthGetCode(ctx context.Context, address string) (string, error) {
+	return "", nil
+}
+
+func (a *EthModule) EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error) {
+	return "", nil
+}
+
+func (a *EthModule) EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthInt, error) {
+	return api.EthInt(0), nil
+}
+
+func (a *EthModule) EthChainId(ctx context.Context) (api.EthInt, error) {
+	return api.EthInt(0), nil
+}
+
+func (a *EthModule) NetVersion(ctx context.Context) (string, error) {
+	// Note that networkId is not encoded in hex
+	return "1", nil
+}
+
+func (a *EthModule) NetListening(ctx context.Context) (bool, error) {
+	return true, nil
+}
+
+func (a *EthModule) EthProtocolVersion(ctx context.Context) (api.EthInt, error) {
+	return api.EthInt(0), nil
+}
+
+func (a *EthModule) EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error) {
+	return api.EthInt(0), nil
+}
+
+func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {
+	return api.EthInt(0), nil
+}
+
+func (a *EthModule) EthSendRawTransaction(ctx context.Context) (api.EthHash, error) {
+	return api.EthHash{}, nil
+}
+
+// func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthTx, blkParam string) (api.EthInt, error) {
+// 	return api.EthInt(0), nil
+// }
+//
+// func (a *EthModule) EthCall(ctx context.Context, tx api.EthTx, blkParam string) (string, error) {
+// 	return "", nil
+// }
+//

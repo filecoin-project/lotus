@@ -332,9 +332,3 @@ type ForkUpgradeParams struct {
 	UpgradeChocolateHeight     abi.ChainEpoch
 	UpgradeOhSnapHeight        abi.ChainEpoch
 }
-
-type EthInt int64
-
-func (e EthInt) MarshalJSON() ([]byte, error) {
-	return json.Marshal(fmt.Sprintf("0x%x", e))
-}

@@ -213,13 +213,43 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		EthAccounts func(p0 context.Context) ([]types.EthAddress, error) `perm:"read"`
+		EthAccounts func(p0 context.Context) ([]EthAddress, error) `perm:"read"`
 
 		EthBlockNumber func(p0 context.Context) (EthInt, error) `perm:"read"`
+
+		EthChainId func(p0 context.Context) (EthInt, error) ``
+
+		EthGasPrice func(p0 context.Context) (EthInt, error) ``
+
+		EthGetBalance func(p0 context.Context, p1 string, p2 string) (EthInt, error) ``
+
+		EthGetBlockByHash func(p0 context.Context, p1 string) (EthBlock, error) ``
+
+		EthGetBlockByNumber func(p0 context.Context, p1 string) (EthBlock, error) ``
 
 		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 string) (EthInt, error) `perm:"read"`
 
 		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (EthInt, error) `perm:"read"`
+
+		EthGetCode func(p0 context.Context, p1 string) (string, error) ``
+
+		EthGetStorageAt func(p0 context.Context, p1 string, p2 string, p3 string) (string, error) ``
+
+		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 string, p2 string) (EthTx, error) ``
+
+		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 string, p2 string) (EthTx, error) ``
+
+		EthGetTransactionByHash func(p0 context.Context, p1 string) (EthTx, error) ``
+
+		EthGetTransactionCount func(p0 context.Context, p1 string, p2 string) (EthInt, error) ``
+
+		EthGetTransactionReceipt func(p0 context.Context, p1 string) (EthTxReceipt, error) ``
+
+		EthMaxPriorityFeePerGas func(p0 context.Context) (EthInt, error) ``
+
+		EthProtocolVersion func(p0 context.Context) (EthInt, error) ``
+
+		EthSendRawTransaction func(p0 context.Context) (EthHash, error) ``
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -308,6 +338,10 @@ type FullNodeStruct struct {
 		MsigSwapCancel func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*MessagePrototype, error) `perm:"sign"`
 
 		MsigSwapPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) `perm:"sign"`
+
+		NetListening func(p0 context.Context) (bool, error) ``
+
+		NetVersion func(p0 context.Context) (string, error) ``
 
 		NodeStatus func(p0 context.Context, p1 bool) (NodeStatus, error) `perm:"read"`
 
@@ -1722,15 +1756,15 @@ func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]types.EthAddress, error) {
+func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]EthAddress, error) {
 	if s.Internal.EthAccounts == nil {
-		return *new([]types.EthAddress), ErrNotSupported
+		return *new([]EthAddress), ErrNotSupported
 	}
 	return s.Internal.EthAccounts(p0)
 }
 
-func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]types.EthAddress, error) {
-	return *new([]types.EthAddress), ErrNotSupported
+func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]EthAddress, error) {
+	return *new([]EthAddress), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (EthInt, error) {
@@ -1742,6 +1776,61 @@ func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (EthInt, error) {
 
 func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthChainId(p0 context.Context) (EthInt, error) {
+	if s.Internal.EthChainId == nil {
+		return *new(EthInt), ErrNotSupported
+	}
+	return s.Internal.EthChainId(p0)
+}
+
+func (s *FullNodeStub) EthChainId(p0 context.Context) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthInt, error) {
+	if s.Internal.EthGasPrice == nil {
+		return *new(EthInt), ErrNotSupported
+	}
+	return s.Internal.EthGasPrice(p0)
+}
+
+func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 string, p2 string) (EthInt, error) {
+	if s.Internal.EthGetBalance == nil {
+		return *new(EthInt), ErrNotSupported
+	}
+	return s.Internal.EthGetBalance(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 string, p2 string) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 string) (EthBlock, error) {
+	if s.Internal.EthGetBlockByHash == nil {
+		return *new(EthBlock), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockByHash(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 string) (EthBlock, error) {
+	return *new(EthBlock), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string) (EthBlock, error) {
+	if s.Internal.EthGetBlockByNumber == nil {
+		return *new(EthBlock), ErrNotSupported
+	}
+	return s.Internal.EthGetBlockByNumber(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string) (EthBlock, error) {
+	return *new(EthBlock), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 string) (EthInt, error) {
@@ -1764,6 +1853,116 @@ func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context,
 
 func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 string) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 string) (string, error) {
+	if s.Internal.EthGetCode == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.EthGetCode(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 string) (string, error) {
+	return "", ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 string, p2 string, p3 string) (string, error) {
+	if s.Internal.EthGetStorageAt == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 string, p2 string, p3 string) (string, error) {
+	return "", ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 string, p2 string) (EthTx, error) {
+	if s.Internal.EthGetTransactionByBlockHashAndIndex == nil {
+		return *new(EthTx), ErrNotSupported
+	}
+	return s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 string, p2 string) (EthTx, error) {
+	return *new(EthTx), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 string) (EthTx, error) {
+	if s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {
+		return *new(EthTx), ErrNotSupported
+	}
+	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 string, p2 string) (EthTx, error) {
+	return *new(EthTx), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 string) (EthTx, error) {
+	if s.Internal.EthGetTransactionByHash == nil {
+		return *new(EthTx), ErrNotSupported
+	}
+	return s.Internal.EthGetTransactionByHash(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 string) (EthTx, error) {
+	return *new(EthTx), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 string, p2 string) (EthInt, error) {
+	if s.Internal.EthGetTransactionCount == nil {
+		return *new(EthInt), ErrNotSupported
+	}
+	return s.Internal.EthGetTransactionCount(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 string, p2 string) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 string) (EthTxReceipt, error) {
+	if s.Internal.EthGetTransactionReceipt == nil {
+		return *new(EthTxReceipt), ErrNotSupported
+	}
+	return s.Internal.EthGetTransactionReceipt(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 string) (EthTxReceipt, error) {
+	return *new(EthTxReceipt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthInt, error) {
+	if s.Internal.EthMaxPriorityFeePerGas == nil {
+		return *new(EthInt), ErrNotSupported
+	}
+	return s.Internal.EthMaxPriorityFeePerGas(p0)
+}
+
+func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthInt, error) {
+	if s.Internal.EthProtocolVersion == nil {
+		return *new(EthInt), ErrNotSupported
+	}
+	return s.Internal.EthProtocolVersion(p0)
+}
+
+func (s *FullNodeStub) EthProtocolVersion(p0 context.Context) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context) (EthHash, error) {
+	if s.Internal.EthSendRawTransaction == nil {
+		return *new(EthHash), ErrNotSupported
+	}
+	return s.Internal.EthSendRawTransaction(p0)
+}
+
+func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context) (EthHash, error) {
+	return *new(EthHash), ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
@@ -2248,6 +2447,28 @@ func (s *FullNodeStruct) MsigSwapPropose(p0 context.Context, p1 address.Address,
 
 func (s *FullNodeStub) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) NetListening(p0 context.Context) (bool, error) {
+	if s.Internal.NetListening == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.NetListening(p0)
+}
+
+func (s *FullNodeStub) NetListening(p0 context.Context) (bool, error) {
+	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) NetVersion(p0 context.Context) (string, error) {
+	if s.Internal.NetVersion == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.NetVersion(p0)
+}
+
+func (s *FullNodeStub) NetVersion(p0 context.Context) (string, error) {
+	return "", ErrNotSupported
 }
 
 func (s *FullNodeStruct) NodeStatus(p0 context.Context, p1 bool) (NodeStatus, error) {

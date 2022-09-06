@@ -742,13 +742,32 @@ type FullNode interface {
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//
 	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
-	EthAccounts(context.Context) ([]types.EthAddress, error) //perm:read
+	EthAccounts(context.Context) ([]EthAddress, error) //perm:read
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
 	EthBlockNumber(ctx context.Context) (EthInt, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
 	EthGetBlockTransactionCountByNumber(context.Context, string) (EthInt, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 	EthGetBlockTransactionCountByHash(context.Context, string) (EthInt, error) //perm:read
+
+	EthGetBlockByHash(ctx context.Context, blkHash string) (EthBlock, error)
+	EthGetBlockByNumber(ctx context.Context, blkNumHex string) (EthBlock, error)
+	EthGetTransactionByHash(ctx context.Context, txHash string) (EthTx, error)
+	EthGetTransactionCount(ctx context.Context, sender string, blkOpt string) (EthInt, error)
+	EthGetTransactionReceipt(ctx context.Context, blkHash string) (EthTxReceipt, error)
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash string, txIndexHex string) (EthTx, error)
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (EthTx, error)
+
+	EthGetCode(ctx context.Context, address string) (string, error)
+	EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error)
+	EthGetBalance(ctx context.Context, address string, blkParam string) (EthInt, error)
+	EthChainId(ctx context.Context) (EthInt, error)
+	NetVersion(ctx context.Context) (string, error)
+	NetListening(ctx context.Context) (bool, error)
+	EthProtocolVersion(ctx context.Context) (EthInt, error)
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)
+	EthGasPrice(ctx context.Context) (EthInt, error)
+	EthSendRawTransaction(ctx context.Context) (EthHash, error)
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the

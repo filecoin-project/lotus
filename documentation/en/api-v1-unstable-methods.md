@@ -67,8 +67,23 @@
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
   * [EthBlockNumber](#EthBlockNumber)
+  * [EthChainId](#EthChainId)
+  * [EthGasPrice](#EthGasPrice)
+  * [EthGetBalance](#EthGetBalance)
+  * [EthGetBlockByHash](#EthGetBlockByHash)
+  * [EthGetBlockByNumber](#EthGetBlockByNumber)
   * [EthGetBlockTransactionCountByHash](#EthGetBlockTransactionCountByHash)
   * [EthGetBlockTransactionCountByNumber](#EthGetBlockTransactionCountByNumber)
+  * [EthGetCode](#EthGetCode)
+  * [EthGetStorageAt](#EthGetStorageAt)
+  * [EthGetTransactionByBlockHashAndIndex](#EthGetTransactionByBlockHashAndIndex)
+  * [EthGetTransactionByBlockNumberAndIndex](#EthGetTransactionByBlockNumberAndIndex)
+  * [EthGetTransactionByHash](#EthGetTransactionByHash)
+  * [EthGetTransactionCount](#EthGetTransactionCount)
+  * [EthGetTransactionReceipt](#EthGetTransactionReceipt)
+  * [EthMaxPriorityFeePerGas](#EthMaxPriorityFeePerGas)
+  * [EthProtocolVersion](#EthProtocolVersion)
+  * [EthSendRawTransaction](#EthSendRawTransaction)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -139,6 +154,7 @@
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
   * [NetLimit](#NetLimit)
+  * [NetListening](#NetListening)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPing](#NetPing)
@@ -148,6 +164,7 @@
   * [NetPubsubScores](#NetPubsubScores)
   * [NetSetLimit](#NetSetLimit)
   * [NetStat](#NetStat)
+  * [NetVersion](#NetVersion)
 * [Node](#Node)
   * [NodeStatus](#NodeStatus)
 * [Paych](#Paych)
@@ -2149,6 +2166,67 @@ Inputs: `null`
 
 Response: `"0x5"`
 
+### EthChainId
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response: `"0x5"`
+
+### EthGasPrice
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response: `"0x5"`
+
+### EthGetBalance
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetBlockByHash
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### EthGetBlockByNumber
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
 ### EthGetBlockTransactionCountByHash
 EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 
@@ -2178,6 +2256,136 @@ Inputs:
 ```
 
 Response: `"0x5"`
+
+### EthGetCode
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `"string value"`
+
+### EthGetStorageAt
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value",
+  "string value",
+  "string value"
+]
+```
+
+Response: `"string value"`
+
+### EthGetTransactionByBlockHashAndIndex
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
+
+### EthGetTransactionByBlockNumberAndIndex
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `{}`
+
+### EthGetTransactionByHash
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### EthGetTransactionCount
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value",
+  "string value"
+]
+```
+
+Response: `"0x5"`
+
+### EthGetTransactionReceipt
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### EthMaxPriorityFeePerGas
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response: `"0x5"`
+
+### EthProtocolVersion
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response: `"0x5"`
+
+### EthSendRawTransaction
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
 
 ## Gas
 
@@ -4299,6 +4507,15 @@ Response:
 }
 ```
 
+### NetListening
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response: `true`
+
 ### NetPeerInfo
 
 
@@ -4531,6 +4748,15 @@ Response:
   }
 }
 ```
+
+### NetVersion
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response: `"string value"`
 
 ## Node
 These methods are general node management and status commands

@@ -1,17 +1,38 @@
-package types
+package api
 
 import (
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
-	"golang.org/x/xerrors"
+	xerrors "golang.org/x/xerrors"
 )
+
+type EthInt int64
+
+func (e EthInt) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fmt.Sprintf("0x%x", e))
+}
+
+type EthBlock struct {
+}
+
+type EthTx struct {
+}
+
+type EthTxReceipt struct {
+}
 
 type EthAddress [20]byte
 
 type EthHash [32]byte
+
+func (h EthHash) MarshalJSON() ([]byte, error) {
+	return json.Marshal(h.String())
+}
 
 func fromHexString(s string) (EthHash, error) {
 	b, err := hex.DecodeString(s)

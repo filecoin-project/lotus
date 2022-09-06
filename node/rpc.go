@@ -79,6 +79,27 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		rpcServer.AliasMethod("eth_getBlockTransactionCountByNumber", "Filecoin.EthGetBlockTransactionCountByNumber")
 		rpcServer.AliasMethod("eth_getBlockTransactionCountByHash", "Filecoin.EthGetBlockTransactionCountByHash")
 
+		rpcServer.AliasMethod("eth_getBlockByHash", "Filecoin.EthGetBlockByHash")
+		rpcServer.AliasMethod("eth_getBlockByNumber", "Filecoin.EthGetBlockByNumber")
+		rpcServer.AliasMethod("eth_getTransactionByHash", "Filecoin.EthGetTransactionByHash")
+		rpcServer.AliasMethod("eth_getTransactionCount", "Filecoin.EthGetTransactionCount")
+		rpcServer.AliasMethod("eth_getTransactionReceipt", "Filecoin.EthGetTransactionReceipt")
+		rpcServer.AliasMethod("eth_getTransactionByBlockHashAndIndex", "Filecoin.EthGetTransactionByBlockHashAndIndex")
+		rpcServer.AliasMethod("eth_getTransactionByBlockNumberAndIndex", "Filecoin.EthGetTransactionByBlockNumberAndIndex")
+
+		rpcServer.AliasMethod("eth_getCode", "Filecoin.EthGetCode")
+		rpcServer.AliasMethod("eth_ethGetStorageAt", "Filecoin.EthGetStorageAt")
+		rpcServer.AliasMethod("eth_ethGetBalance", "Filecoin.EthGetBalance")
+		rpcServer.AliasMethod("eth_ethChainId", "Filecoin.EthChainId")
+		rpcServer.AliasMethod("eth_netVersion", "Filecoin.NetVersion")
+		rpcServer.AliasMethod("eth_netListening", "Filecoin.NetListening")
+		rpcServer.AliasMethod("eth_ethProtocolVersion", "Filecoin.EthProtocolVersion")
+		rpcServer.AliasMethod("eth_ethMaxPriorityFeePerGas", "Filecoin.EthMaxPriorityFeePerGas")
+		rpcServer.AliasMethod("eth_ethGasPrice", "Filecoin.EthGasPrice")
+		rpcServer.AliasMethod("eth_sendRawTransaction", "Filecoin.EthSendRawTransaction")
+		// rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
+		// rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")
+
 		var handler http.Handler = rpcServer
 		if permissioned {
 			handler = &auth.Handler{Verify: a.AuthVerify, Next: rpcServer.ServeHTTP}
