@@ -106,6 +106,8 @@
   * [PiecesListPieces](#PiecesListPieces)
 * [Pledge](#Pledge)
   * [PledgeSector](#PledgeSector)
+* [Recover](#Recover)
+  * [RecoverFault](#RecoverFault)
 * [Return](#Return)
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnDataCid](#ReturnDataCid)
@@ -2263,6 +2265,36 @@ Response:
   "Miner": 1000,
   "Number": 9
 }
+```
+
+## Recover
+
+
+### RecoverFault
+RecoverFault can be used to declare recoveries manually. It sends messages
+to the miner actor with details of recovered sectors and returns the CID of messages. It honors the
+maxPartitionsPerRecoveryMessage from the config
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    123,
+    124
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
 ```
 
 ## Return

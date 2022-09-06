@@ -2093,14 +2093,15 @@ USAGE:
    lotus-miner proving command [command options] [arguments...]
 
 COMMANDS:
-   info       View current state information
-   deadlines  View the current proving period deadlines information
-   deadline   View the current proving period deadline information by its index
-   faults     View the currently known proving faulty sectors information
-   check      Check sectors provable
-   workers    list workers
-   compute    Compute simulated proving tasks
-   help, h    Shows a list of commands or help for one command
+   info            View current state information
+   deadlines       View the current proving period deadlines information
+   deadline        View the current proving period deadline information by its index
+   faults          View the currently known proving faulty sectors information
+   check           Check sectors provable
+   workers         list workers
+   compute         Compute simulated proving tasks
+   recover-faults  Manually recovers faulty sectors on chain
+   help, h         Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2208,6 +2209,19 @@ OPTIONS:
 
 ##### lotus-miner proving compute windowed-post, window-post
 ```
+```
+
+### lotus-miner proving recover-faults
+```
+NAME:
+   lotus-miner proving recover-faults - Manually recovers faulty sectors on chain
+
+USAGE:
+   lotus-miner proving recover-faults [command options] <faulty sectors>
+
+OPTIONS:
+   --confidence value  number of block confirmations to wait for (default: 5)
+   
 ```
 
 ## lotus-miner storage

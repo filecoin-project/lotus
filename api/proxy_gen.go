@@ -770,6 +770,8 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(p0 context.Context) (abi.SectorID, error) `perm:"write"`
 
+		RecoverFault func(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) `perm:"admin"`
+
 		ReturnAddPiece func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
 
 		ReturnDataCid func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
@@ -4615,6 +4617,17 @@ func (s *StorageMinerStruct) PledgeSector(p0 context.Context) (abi.SectorID, err
 
 func (s *StorageMinerStub) PledgeSector(p0 context.Context) (abi.SectorID, error) {
 	return *new(abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) RecoverFault(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) {
+	if s.Internal.RecoverFault == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
+	return s.Internal.RecoverFault(p0, p1)
+}
+
+func (s *StorageMinerStub) RecoverFault(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) {
+	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
