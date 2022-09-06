@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
@@ -29,7 +30,7 @@ func (a *MsigAPI) messageBuilder(ctx context.Context, from address.Address) (mul
 	if err != nil {
 		return nil, err
 	}
-	av, err := actors.VersionForNetwork(nver)
+	av, err := actorstypes.VersionForNetwork(nver)
 	if err != nil {
 		return nil, err
 	}

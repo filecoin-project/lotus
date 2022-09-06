@@ -9,9 +9,10 @@ import (
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
@@ -153,7 +153,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 			return nil, 0, allocated, xerrors.Errorf("getTicket: StateNetworkVersion: api error, not proceeding: %+v", err)
 		}
 
-		av, err := actors.VersionForNetwork(nv)
+		av, err := actorstypes.VersionForNetwork(nv)
 		if err != nil {
 			return nil, 0, allocated, xerrors.Errorf("getTicket: actor version for network error, not proceeding: %w", err)
 		}
@@ -240,7 +240,7 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 			return nil
 		}
 
-		av, err := actors.VersionForNetwork(nv)
+		av, err := actorstypes.VersionForNetwork(nv)
 		if err != nil {
 			log.Errorf("handlePreCommit1: VersionForNetwork error, not proceeding: %w", err)
 			return nil
@@ -327,7 +327,7 @@ func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (
 		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
 	}
 
-	av, err := actors.VersionForNetwork(nv)
+	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get actors version: %w", err)})
 	}

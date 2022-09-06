@@ -71,7 +71,7 @@ OPTIONS:
    --create-worker-key          create separate worker key (default: false)
    --worker value, -w value     worker key to use (overrides --create-worker-key)
    --owner value, -o value      owner key to use
-   --sector-size value          specify sector size to use (default: "32GiB")
+   --sector-size value          specify sector size to use (default: "2KiB")
    --pre-sealed-sectors value   specify set of presealed sectors for starting as a genesis miner  (accepts multiple inputs)
    --pre-sealed-metadata value  specify the metadata file for the presealed sectors
    --nosync                     don't check full-node sync status (default: false)

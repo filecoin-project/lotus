@@ -3,17 +3,17 @@ package market
 import (
 	"bytes"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
-	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
-
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
+	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
 )
 
 var _ State = (*state5)(nil)
@@ -236,6 +236,7 @@ func (s *dealProposals5) array() adt.Array {
 func fromV5DealProposal(v5 market5.DealProposal) (DealProposal, error) {
 
 	label, err := labelFromGoString(v5.Label)
+
 	if err != nil {
 		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
 	}

@@ -5,6 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
@@ -63,7 +65,7 @@ func (m message2) Create(
 	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
-		Method: builtin2.MethodsInit.Exec,
+		Method: builtin9.MethodsInit.Exec,
 		Params: enc,
 		Value:  initialAmount,
 	}, nil

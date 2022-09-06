@@ -6,6 +6,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -15,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
+func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
 	mst, err := market.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av)
 	if err != nil {

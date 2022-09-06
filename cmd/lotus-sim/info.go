@@ -66,7 +66,7 @@ func printInfo(ctx context.Context, sim *simulation.Simulation, out io.Writer) e
 	startTime := time.Unix(int64(start.MinTimestamp()), 0)
 	duration := headTime.Sub(startTime)
 
-	fmt.Fprintf(tw, "Name:\t%s\n", sim.Name())
+	fmt.Fprintf(tw, "Num:\t%s\n", sim.Name())
 	fmt.Fprintf(tw, "Head:\t%s\n", head)
 	fmt.Fprintf(tw, "Start Epoch:\t%d\n", firstEpoch)
 	fmt.Fprintf(tw, "End Epoch:\t%d\n", headEpoch)

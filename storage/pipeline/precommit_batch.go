@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -328,7 +328,14 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKe
 		}
 
 		res.Sectors = append(res.Sectors, p.pci.SectorNumber)
-		params.Sectors = append(params.Sectors, *p.pci)
+		params.Sectors = append(params.Sectors, miner.PreCommitSectorParams{
+			SealProof:     p.pci.SealProof,
+			SectorNumber:  p.pci.SectorNumber,
+			SealedCID:     p.pci.SealedCID,
+			SealRandEpoch: p.pci.SealRandEpoch,
+			DealIDs:       p.pci.DealIDs,
+			Expiration:    p.pci.Expiration,
+		})
 		deposit = big.Add(deposit, p.deposit)
 	}
 

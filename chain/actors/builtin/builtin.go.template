@@ -7,7 +7,9 @@ import (
 	"github.com/ipfs/go-cid"
 
 {{range .versions}}
+    {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+	{{end}}
 {{end}}
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -60,8 +62,10 @@ func ActorNameByCode(c cid.Cid) string {
 
 	switch {
 	    {{range .versions}}
+	        {{if (le . 7)}}
             case builtin{{.}}.IsBuiltinActor(c):
             return builtin{{.}}.ActorNameByCode(c)
+            {{end}}
         {{end}}
 	default:
 		return "<unknown>"

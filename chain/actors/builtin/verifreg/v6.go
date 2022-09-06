@@ -1,16 +1,17 @@
 package verifreg
 
 import (
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-	verifreg6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/verifreg"
-	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
+	verifreg6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/verifreg"
+	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
 )
 
 var _ State = (*state6)(nil)

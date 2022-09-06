@@ -21,6 +21,7 @@ import (
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -295,7 +296,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
-		av, err := actors.VersionForNetwork(opts.NetworkVersion)
+		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
 		if err != nil {
 			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
 		}
@@ -367,7 +368,7 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
 		for _, key := range actors.GetBuiltinActorsKeys() {
-			from, ok := actors.GetActorCodeID(actors.Version8, key)
+			from, ok := actors.GetActorCodeID(actorstypes.Version8, key)
 			if !ok {
 				log.Warnf("actor missing in the from manifest %s", key)
 				continue
@@ -393,13 +394,13 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil
 	}
 
-	av, err := actors.VersionForNetwork(opts.NetworkVersion)
+	av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
 	}
 
 	switch av {
-	case actors.Version8:
+	case actorstypes.Version8:
 		if debugBundleV8path != "" {
 			if err := createMapping(debugBundleV8path); err != nil {
 				log.Errorf("failed to create v8 debug mapping")

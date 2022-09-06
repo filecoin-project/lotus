@@ -2029,7 +2029,7 @@ USAGE:
    lotus state actor-cids [command options] [arguments...]
 
 OPTIONS:
-   --network-version value  specify network version (default: 16)
+   --network-version value  specify network version (default: 17)
    
 ```
 

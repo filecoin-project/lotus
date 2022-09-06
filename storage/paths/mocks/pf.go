@@ -8,12 +8,10 @@ import (
 	os "os"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	abi "github.com/filecoin-project/go-state-types/abi"
-
 	partialfile "github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockPartialFileHandler is a mock of PartialFileHandler interface.

@@ -7,6 +7,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -18,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
+func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 
 	cst := cbor.NewCborStore(bs)
 	// TODO pass in built-in actors cid for V8 and later
@@ -27,7 +28,7 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 		return nil, err
 	}
 
-	if av >= actors.Version8 {
+	if av >= actorstypes.Version8 {
 		mfCid, ok := actors.GetManifest(av)
 		if !ok {
 			return nil, xerrors.Errorf("missing manifest for actors version %d", av)

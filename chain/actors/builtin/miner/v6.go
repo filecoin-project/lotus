@@ -4,20 +4,21 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/filecoin-project/go-bitfield"
+	rle "github.com/filecoin-project/go-bitfield/rle"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-bitfield"
-	rle "github.com/filecoin-project/go-bitfield/rle"
-	"github.com/filecoin-project/go-state-types/abi"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	"github.com/filecoin-project/go-state-types/dline"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state6)(nil)
@@ -542,11 +543,17 @@ func fromV6SectorOnChainInfo(v6 miner6.SectorOnChainInfo) SectorOnChainInfo {
 
 func fromV6SectorPreCommitOnChainInfo(v6 miner6.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
 	return minertypes.SectorPreCommitOnChainInfo{
-		Info:               (minertypes.SectorPreCommitInfo)(v6.Info),
-		PreCommitDeposit:   v6.PreCommitDeposit,
-		PreCommitEpoch:     v6.PreCommitEpoch,
-		DealWeight:         v6.DealWeight,
-		VerifiedDealWeight: v6.VerifiedDealWeight,
+		Info: minertypes.SectorPreCommitInfo{
+			SealProof:     v6.Info.SealProof,
+			SectorNumber:  v6.Info.SectorNumber,
+			SealedCID:     v6.Info.SealedCID,
+			SealRandEpoch: v6.Info.SealRandEpoch,
+			DealIDs:       v6.Info.DealIDs,
+			Expiration:    v6.Info.Expiration,
+			UnsealedCid:   nil,
+		},
+		PreCommitDeposit: v6.PreCommitDeposit,
+		PreCommitEpoch:   v6.PreCommitEpoch,
 	}
 }
 

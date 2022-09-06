@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -373,7 +374,7 @@ func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 
 		// this really only for genesis in tests; nv16 will be running on FVM anyway.
 		if nv := rt.NetworkVersion(); nv >= network.Version16 {
-			av, err := actors.VersionForNetwork(nv)
+			av, err := actorstypes.VersionForNetwork(nv)
 			if err != nil {
 				panic(aerrors.Fatalf("failed to get actors version for network version %d", nv))
 			}

@@ -16,8 +16,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -1536,7 +1537,7 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 }
 
 func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
-	actorVersion, err := actors.VersionForNetwork(nv)
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return nil, xerrors.Errorf("invalid network version %d: %w", nv, err)
 	}
@@ -1550,7 +1551,7 @@ func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (
 }
 
 func (a *StateAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
-	actorVersion, err := actors.VersionForNetwork(nv)
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("invalid network version")
 	}

@@ -3,22 +3,31 @@ package paych
 import (
 	"encoding/base64"
 	"fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
-	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/cbor"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -35,8 +44,11 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
 
 		}
 	}
@@ -114,32 +126,35 @@ func DecodeSignedVoucher(s string) (*paychtypes.SignedVoucher, error) {
 	return &sv, nil
 }
 
-func Message(version actors.Version, from address.Address) MessageBuilder {
+func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 	switch version {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return message0{from}
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return message2{from}
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return message3{from}
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return message4{from}
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return message5{from}
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return message6{from}
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return message7{from}
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return message8{from}
+
+	case actorstypes.Version9:
+		return message9{from}
 
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))

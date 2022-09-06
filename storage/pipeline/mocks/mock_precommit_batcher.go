@@ -8,14 +8,12 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	address "github.com/filecoin-project/go-address"
 	big "github.com/filecoin-project/go-state-types/big"
 	network "github.com/filecoin-project/go-state-types/network"
-
 	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockPreCommitBatcherApi is a mock of PreCommitBatcherApi interface.
