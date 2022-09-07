@@ -13,7 +13,7 @@ import (
 	    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
     {{else}}
         actorstypes "github.com/filecoin-project/go-state-types/actors"
-        multisig{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
+        multisig{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}multisig"
         init{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/init"
         builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
     {{end}}

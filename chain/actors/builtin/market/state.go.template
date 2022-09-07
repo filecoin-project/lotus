@@ -23,7 +23,7 @@ import (
 {{else}}
 	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
 )
 

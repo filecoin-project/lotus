@@ -3,31 +3,23 @@ package builtin
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-
-	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
-
-	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-
-	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
+	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/proof"
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
-
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
 )
 
 var SystemActorAddr = builtin.SystemActorAddr
@@ -60,7 +52,7 @@ type PoStProof = proof.PoStProof
 type FilterEstimate = smoothingtypes.FilterEstimate
 
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return miner9.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
 
 func ActorNameByCode(c cid.Cid) string {

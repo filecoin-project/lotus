@@ -5,11 +5,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
-	multisig9 "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
 	init9 "github.com/filecoin-project/go-state-types/builtin/v9/init"
+	multisig9 "github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
