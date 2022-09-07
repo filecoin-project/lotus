@@ -750,24 +750,24 @@ type FullNode interface {
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
 	EthGetBlockTransactionCountByHash(context.Context, string) (EthInt, error) //perm:read
 
-	EthGetBlockByHash(ctx context.Context, blkHash string) (EthBlock, error)
-	EthGetBlockByNumber(ctx context.Context, blkNumHex string) (EthBlock, error)
-	EthGetTransactionByHash(ctx context.Context, txHash string) (EthTx, error)
-	EthGetTransactionCount(ctx context.Context, sender string, blkOpt string) (EthInt, error)
-	EthGetTransactionReceipt(ctx context.Context, blkHash string) (EthTxReceipt, error)
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash string, txIndexHex string) (EthTx, error)
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (EthTx, error)
+	EthGetBlockByHash(ctx context.Context, blkHash string, fullTxInfo bool) (EthBlock, error)                       //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNumHex string, fullTxInfo bool) (EthBlock, error)                   //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash string) (EthTx, error)                                      //perm:read
+	EthGetTransactionCount(ctx context.Context, sender string, blkOpt string) (EthInt, error)                       //perm:read
+	EthGetTransactionReceipt(ctx context.Context, blkHash string) (EthTxReceipt, error)                             //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash string, txIndexHex string) (EthTx, error)     //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (EthTx, error) //perm:read
 
-	EthGetCode(ctx context.Context, address string) (string, error)
-	EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error)
-	EthGetBalance(ctx context.Context, address string, blkParam string) (EthInt, error)
-	EthChainId(ctx context.Context) (EthInt, error)
-	NetVersion(ctx context.Context) (string, error)
-	NetListening(ctx context.Context) (bool, error)
-	EthProtocolVersion(ctx context.Context) (EthInt, error)
-	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)
-	EthGasPrice(ctx context.Context) (EthInt, error)
-	EthSendRawTransaction(ctx context.Context) (EthHash, error)
+	EthGetCode(ctx context.Context, address string) (string, error)                                           //perm:read
+	EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error) //perm:read
+	EthGetBalance(ctx context.Context, address string, blkParam string) (EthInt, error)                       //perm:read
+	EthChainId(ctx context.Context) (EthInt, error)                                                           //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                           //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                           //perm:read
+	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                   //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                                              //perm:read
+	EthGasPrice(ctx context.Context) (EthInt, error)                                                          //perm:read
+	EthSendRawTransaction(ctx context.Context) (EthHash, error)                                               //perm:write
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the

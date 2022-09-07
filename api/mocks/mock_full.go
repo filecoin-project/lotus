@@ -982,33 +982,33 @@ func (mr *MockFullNodeMockRecorder) EthGetBalance(arg0, arg1, arg2 interface{}) 
 }
 
 // EthGetBlockByHash mocks base method.
-func (m *MockFullNode) EthGetBlockByHash(arg0 context.Context, arg1 string) (api.EthBlock, error) {
+func (m *MockFullNode) EthGetBlockByHash(arg0 context.Context, arg1 string, arg2 bool) (api.EthBlock, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EthGetBlockByHash", arg0, arg1)
+	ret := m.ctrl.Call(m, "EthGetBlockByHash", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.EthBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EthGetBlockByHash indicates an expected call of EthGetBlockByHash.
-func (mr *MockFullNodeMockRecorder) EthGetBlockByHash(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) EthGetBlockByHash(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockByHash", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockByHash), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockByHash", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockByHash), arg0, arg1, arg2)
 }
 
 // EthGetBlockByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string) (api.EthBlock, error) {
+func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string, arg2 bool) (api.EthBlock, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EthGetBlockByNumber", arg0, arg1)
+	ret := m.ctrl.Call(m, "EthGetBlockByNumber", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.EthBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EthGetBlockByNumber indicates an expected call of EthGetBlockByNumber.
-func (mr *MockFullNodeMockRecorder) EthGetBlockByNumber(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) EthGetBlockByNumber(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockByNumber", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockByNumber), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetBlockByNumber", reflect.TypeOf((*MockFullNode)(nil).EthGetBlockByNumber), arg0, arg1, arg2)
 }
 
 // EthGetBlockTransactionCountByHash mocks base method.

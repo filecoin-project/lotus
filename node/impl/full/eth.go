@@ -19,8 +19,8 @@ type EthModuleAPI interface {
 	EthAccounts(context.Context) ([]api.EthAddress, error)
 	EthGetBlockTransactionCountByNumber(context.Context, string) (api.EthInt, error)
 	EthGetBlockTransactionCountByHash(context.Context, string) (api.EthInt, error)
-	EthGetBlockByHash(ctx context.Context, blkHash string) (api.EthBlock, error)
-	EthGetBlockByNumber(ctx context.Context, blkNumHex string) (api.EthBlock, error)
+	EthGetBlockByHash(ctx context.Context, blkHash string, fullTxInfo bool) (api.EthBlock, error)
+	EthGetBlockByNumber(ctx context.Context, blkNumHex string, fullTxInfo bool) (api.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash string) (api.EthTx, error)
 	EthGetTransactionCount(ctx context.Context, sender string, blkOpt string) (api.EthInt, error)
 	EthGetTransactionReceipt(ctx context.Context, blkHash string) (api.EthTxReceipt, error)
@@ -115,11 +115,11 @@ func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHa
 	return api.EthInt(count), nil
 }
 
-func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash string) (api.EthBlock, error) {
+func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash string, fullTxInfo bool) (api.EthBlock, error) {
 	return api.EthBlock{}, nil
 }
 
-func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNumHex string) (api.EthBlock, error) {
+func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNumHex string, fullTxInfo bool) (api.EthBlock, error) {
 	return api.EthBlock{}, nil
 }
 

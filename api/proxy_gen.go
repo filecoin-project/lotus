@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"golang.org/x/xerrors"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -217,39 +217,39 @@ type FullNodeStruct struct {
 
 		EthBlockNumber func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthChainId func(p0 context.Context) (EthInt, error) ``
+		EthChainId func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthGasPrice func(p0 context.Context) (EthInt, error) ``
+		EthGasPrice func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthGetBalance func(p0 context.Context, p1 string, p2 string) (EthInt, error) ``
+		EthGetBalance func(p0 context.Context, p1 string, p2 string) (EthInt, error) `perm:"read"`
 
-		EthGetBlockByHash func(p0 context.Context, p1 string) (EthBlock, error) ``
+		EthGetBlockByHash func(p0 context.Context, p1 string, p2 bool) (EthBlock, error) `perm:"read"`
 
-		EthGetBlockByNumber func(p0 context.Context, p1 string) (EthBlock, error) ``
+		EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (EthBlock, error) `perm:"read"`
 
 		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 string) (EthInt, error) `perm:"read"`
 
 		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 string) (EthInt, error) `perm:"read"`
 
-		EthGetCode func(p0 context.Context, p1 string) (string, error) ``
+		EthGetCode func(p0 context.Context, p1 string) (string, error) `perm:"read"`
 
-		EthGetStorageAt func(p0 context.Context, p1 string, p2 string, p3 string) (string, error) ``
+		EthGetStorageAt func(p0 context.Context, p1 string, p2 string, p3 string) (string, error) `perm:"read"`
 
-		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 string, p2 string) (EthTx, error) ``
+		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 string, p2 string) (EthTx, error) `perm:"read"`
 
-		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 string, p2 string) (EthTx, error) ``
+		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 string, p2 string) (EthTx, error) `perm:"read"`
 
-		EthGetTransactionByHash func(p0 context.Context, p1 string) (EthTx, error) ``
+		EthGetTransactionByHash func(p0 context.Context, p1 string) (EthTx, error) `perm:"read"`
 
-		EthGetTransactionCount func(p0 context.Context, p1 string, p2 string) (EthInt, error) ``
+		EthGetTransactionCount func(p0 context.Context, p1 string, p2 string) (EthInt, error) `perm:"read"`
 
-		EthGetTransactionReceipt func(p0 context.Context, p1 string) (EthTxReceipt, error) ``
+		EthGetTransactionReceipt func(p0 context.Context, p1 string) (EthTxReceipt, error) `perm:"read"`
 
-		EthMaxPriorityFeePerGas func(p0 context.Context) (EthInt, error) ``
+		EthMaxPriorityFeePerGas func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthProtocolVersion func(p0 context.Context) (EthInt, error) ``
+		EthProtocolVersion func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthSendRawTransaction func(p0 context.Context) (EthHash, error) ``
+		EthSendRawTransaction func(p0 context.Context) (EthHash, error) `perm:"write"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -339,9 +339,9 @@ type FullNodeStruct struct {
 
 		MsigSwapPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) `perm:"sign"`
 
-		NetListening func(p0 context.Context) (bool, error) ``
+		NetListening func(p0 context.Context) (bool, error) `perm:"read"`
 
-		NetVersion func(p0 context.Context) (string, error) ``
+		NetVersion func(p0 context.Context) (string, error) `perm:"read"`
 
 		NodeStatus func(p0 context.Context, p1 bool) (NodeStatus, error) `perm:"read"`
 
@@ -1811,25 +1811,25 @@ func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 string, p2 string) (
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 string) (EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
 	if s.Internal.EthGetBlockByHash == nil {
 		return *new(EthBlock), ErrNotSupported
 	}
-	return s.Internal.EthGetBlockByHash(p0, p1)
+	return s.Internal.EthGetBlockByHash(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 string) (EthBlock, error) {
+func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
 	return *new(EthBlock), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string) (EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
 	if s.Internal.EthGetBlockByNumber == nil {
 		return *new(EthBlock), ErrNotSupported
 	}
-	return s.Internal.EthGetBlockByNumber(p0, p1)
+	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string) (EthBlock, error) {
+func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
 	return *new(EthBlock), ErrNotSupported
 }
 

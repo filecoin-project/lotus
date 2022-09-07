@@ -18,6 +18,22 @@ func (e EthInt) MarshalJSON() ([]byte, error) {
 }
 
 type EthBlock struct {
+	ParentHash       EthHash    `json:"parentHash"`
+	Sha3Uncles       EthHash    `json:"sha3Uncles"`
+	Miner            EthAddress `json:"miner"`
+	StateRoot        EthHash    `json:"stateRoot"`
+	TransactionsRoot EthHash    `json:"transactionsRoot"`
+	ReceiptsRoot     EthHash    `json:"receiptsRoot"`
+	// TODO: include LogsBloom
+	Difficulty    EthInt   `json:"difficulty"`
+	Number        EthInt   `json:"number"`
+	GasLimit      EthInt   `json:"gasLimit"`
+	GasUsed       EthInt   `json:"gasUsed"`
+	Timestamp     EthInt   `json:"timestamp"`
+	Extradata     []byte   `json:"extraData"`
+	MixHash       EthHash  `json:"mixHash"`
+	Nonce         EthNonce `json:"nonce"`
+	BaseFeePerGas EthInt   `json:"baseFeePerGas"`
 }
 
 type EthTx struct {
@@ -28,10 +44,28 @@ type EthTxReceipt struct {
 
 type EthAddress [20]byte
 
+func (a EthAddress) String() string {
+	return "0x" + hex.EncodeToString(a[:])
+}
+
+func (a EthAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal((a.String()))
+}
+
 type EthHash [32]byte
 
 func (h EthHash) MarshalJSON() ([]byte, error) {
 	return json.Marshal(h.String())
+}
+
+type EthNonce [8]byte
+
+func (n EthNonce) String() string {
+	return "0x" + hex.EncodeToString(n[:])
+}
+
+func (n EthNonce) MarshalJSON() ([]byte, error) {
+	return json.Marshal((n.String()))
 }
 
 func fromHexString(s string) (EthHash, error) {

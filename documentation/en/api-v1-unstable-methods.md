@@ -2167,27 +2167,27 @@ Inputs: `null`
 Response: `"0x5"`
 
 ### EthChainId
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs: `null`
 
 Response: `"0x5"`
 
 ### EthGasPrice
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs: `null`
 
 Response: `"0x5"`
 
 ### EthGetBalance
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2200,32 +2200,132 @@ Inputs:
 Response: `"0x5"`
 
 ### EthGetBlockByHash
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
 [
-  "string value"
+  "string value",
+  true
 ]
 ```
 
-Response: `{}`
+Response:
+```json
+{
+  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "Sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "miner": [
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
+  ],
+  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "Difficulty": 0,
+  "number": 0,
+  "gasLimit": 42,
+  "gasUsed": 42,
+  "timestamp": 42,
+  "extraData": "Ynl0ZSBhcnJheQ==",
+  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "nonce": [
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
+  ],
+  "baseFeePerGas": 0
+}
+```
 
 ### EthGetBlockByNumber
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
 [
-  "string value"
+  "string value",
+  true
 ]
 ```
 
-Response: `{}`
+Response:
+```json
+{
+  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "Sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "miner": [
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
+  ],
+  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "Difficulty": 0,
+  "number": 0,
+  "gasLimit": 42,
+  "gasUsed": 42,
+  "timestamp": 42,
+  "extraData": "Ynl0ZSBhcnJheQ==",
+  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "nonce": [
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
+  ],
+  "baseFeePerGas": 0
+}
+```
 
 ### EthGetBlockTransactionCountByHash
 EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
@@ -2258,9 +2358,9 @@ Inputs:
 Response: `"0x5"`
 
 ### EthGetCode
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2272,9 +2372,9 @@ Inputs:
 Response: `"string value"`
 
 ### EthGetStorageAt
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2288,9 +2388,9 @@ Inputs:
 Response: `"string value"`
 
 ### EthGetTransactionByBlockHashAndIndex
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2303,9 +2403,9 @@ Inputs:
 Response: `{}`
 
 ### EthGetTransactionByBlockNumberAndIndex
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2318,9 +2418,9 @@ Inputs:
 Response: `{}`
 
 ### EthGetTransactionByHash
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2332,9 +2432,9 @@ Inputs:
 Response: `{}`
 
 ### EthGetTransactionCount
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2347,9 +2447,9 @@ Inputs:
 Response: `"0x5"`
 
 ### EthGetTransactionReceipt
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs:
 ```json
@@ -2361,27 +2461,27 @@ Inputs:
 Response: `{}`
 
 ### EthMaxPriorityFeePerGas
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs: `null`
 
 Response: `"0x5"`
 
 ### EthProtocolVersion
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs: `null`
 
 Response: `"0x5"`
 
 ### EthSendRawTransaction
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: write
 
 Inputs: `null`
 
@@ -4508,9 +4608,9 @@ Response:
 ```
 
 ### NetListening
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs: `null`
 
@@ -4750,9 +4850,9 @@ Response:
 ```
 
 ### NetVersion
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs: `null`
 
