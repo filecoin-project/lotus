@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	xerrors "golang.org/x/xerrors"
@@ -15,6 +16,15 @@ type EthInt int64
 
 func (e EthInt) MarshalJSON() ([]byte, error) {
 	return json.Marshal(fmt.Sprintf("0x%x", e))
+}
+
+type EthBigInt big.Int
+
+func (e EthBigInt) MarshalJSON() ([]byte, error) {
+	if e.Int == nil {
+		return json.Marshal("0x0")
+	}
+	return json.Marshal(fmt.Sprintf("0x%x", e.Int))
 }
 
 type EthBlock struct {
@@ -34,12 +44,44 @@ type EthBlock struct {
 	MixHash       EthHash  `json:"mixHash"`
 	Nonce         EthNonce `json:"nonce"`
 	BaseFeePerGas EthInt   `json:"baseFeePerGas"`
+	Transactions  EthTx    `json:"transactions"`
 }
 
 type EthTx struct {
+	ChainID              *EthInt    `json:"chainId"`
+	Nonce                uint64     `json:"nonce"`
+	Hash                 EthHash    `json:"hash"`
+	BlockHash            EthHash    `json:"blockHash"`
+	BlockNumber          EthHash    `json:"blockNumber"`
+	TransactionIndex     EthInt     `json:"transacionIndex"`
+	From                 EthAddress `json:"from"`
+	To                   EthAddress `json:"to"`
+	Value                EthBigInt  `json:"value"`
+	Type                 EthInt     `json:"type"`
+	Input                []byte     `json:"input"`
+	Gas                  EthInt     `json:"gas"`
+	MaxFeePerGas         EthBigInt  `json:"maxFeePerGas"`
+	MaxPriorityFeePerGas EthBigInt  `json:"maxPriorityFeePerGas"`
+	V                    EthBigInt  `json:"v"`
+	R                    EthBigInt  `json:"r"`
+	S                    EthBigInt  `json:"s"`
 }
 
 type EthTxReceipt struct {
+	TransactionHash  EthHash    `json:"transactionHash"`
+	TransactionIndex EthInt     `json:"transacionIndex"`
+	BlockHash        EthHash    `json:"blockHash"`
+	BlockNumber      EthHash    `json:"blockNumber"`
+	From             EthAddress `json:"from"`
+	To               EthAddress `json:"to"`
+	// Logs
+	// LogsBloom
+	StateRoot         EthHash     `json:"root"`
+	Status            EthInt      `json:"status"`
+	ContractAddress   *EthAddress `json:"contractAddress"`
+	CumulativeGasUsed EthBigInt   `json:"cumulativeGasUsed"`
+	GasUsed           EthBigInt   `json:"gasUsed"`
+	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 }
 
 type EthAddress [20]byte
@@ -52,12 +94,6 @@ func (a EthAddress) MarshalJSON() ([]byte, error) {
 	return json.Marshal((a.String()))
 }
 
-type EthHash [32]byte
-
-func (h EthHash) MarshalJSON() ([]byte, error) {
-	return json.Marshal(h.String())
-}
-
 type EthNonce [8]byte
 
 func (n EthNonce) String() string {
@@ -66,6 +102,12 @@ func (n EthNonce) String() string {
 
 func (n EthNonce) MarshalJSON() ([]byte, error) {
 	return json.Marshal((n.String()))
+}
+
+type EthHash [32]byte
+
+func (h EthHash) MarshalJSON() ([]byte, error) {
+	return json.Marshal(h.String())
 }
 
 func fromHexString(s string) (EthHash, error) {
