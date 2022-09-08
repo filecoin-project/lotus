@@ -760,7 +760,7 @@ type FullNode interface {
 
 	EthGetCode(ctx context.Context, address string) (string, error)                                           //perm:read
 	EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error) //perm:read
-	EthGetBalance(ctx context.Context, address string, blkParam string) (EthInt, error)                       //perm:read
+	EthGetBalance(ctx context.Context, address string, blkParam string) (EthBigInt, error)                    //perm:read
 	EthChainId(ctx context.Context) (EthInt, error)                                                           //perm:read
 	NetVersion(ctx context.Context) (string, error)                                                           //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                           //perm:read

@@ -967,10 +967,10 @@ func (mr *MockFullNodeMockRecorder) EthGasPrice(arg0 interface{}) *gomock.Call {
 }
 
 // EthGetBalance mocks base method.
-func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1, arg2 string) (api.EthInt, error) {
+func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1, arg2 string) (api.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBalance", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

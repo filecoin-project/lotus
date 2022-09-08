@@ -1,15 +1,18 @@
 package api
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	xerrors "golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 )
 
 type EthInt int64
@@ -84,15 +87,10 @@ type EthTxReceipt struct {
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 }
 
-type EthAddress [20]byte
-
-func (a EthAddress) String() string {
-	return "0x" + hex.EncodeToString(a[:])
-}
-
-func (a EthAddress) MarshalJSON() ([]byte, error) {
-	return json.Marshal((a.String()))
-}
+const (
+	ETH_ADDRESS_LENGTH = 20
+	ETH_HASH_LENGTH    = 32
+)
 
 type EthNonce [8]byte
 
@@ -104,40 +102,88 @@ func (n EthNonce) MarshalJSON() ([]byte, error) {
 	return json.Marshal((n.String()))
 }
 
-type EthHash [32]byte
+type EthAddress [ETH_ADDRESS_LENGTH]byte
+
+func (a EthAddress) String() string {
+	return "0x" + hex.EncodeToString(a[:])
+}
+
+func (a EthAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal((a.String()))
+}
+
+func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
+	id := binary.BigEndian.Uint64(a[12:])
+	return address.NewIDAddress(id)
+}
+
+func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
+	id, err := address.IDFromAddress(addr)
+	if err != nil {
+		return EthAddress{}, err
+	}
+	buf := make([]byte, ETH_ADDRESS_LENGTH)
+	buf[0] = 0xff
+	binary.BigEndian.PutUint64(buf[12:], id)
+
+	var ethaddr EthAddress
+	copy(ethaddr[:], buf)
+	return ethaddr, nil
+}
+
+func EthAddressFromHex(s string) (EthAddress, error) {
+	handlePrefix(&s)
+	b, err := decodeHexString(s, ETH_ADDRESS_LENGTH)
+	if err != nil {
+		return EthAddress{}, err
+	}
+	var h EthAddress
+	copy(h[ETH_ADDRESS_LENGTH-len(b):], b)
+	return h, nil
+}
+
+type EthHash [ETH_HASH_LENGTH]byte
 
 func (h EthHash) MarshalJSON() ([]byte, error) {
 	return json.Marshal(h.String())
 }
 
-func fromHexString(s string) (EthHash, error) {
+func handlePrefix(s *string) {
+	if strings.HasPrefix(*s, "0x") || strings.HasPrefix(*s, "0X") {
+		*s = (*s)[2:]
+	}
+	if len(*s)%2 == 1 {
+		*s = "0" + *s
+	}
+}
+
+func decodeHexString(s string, length int) ([]byte, error) {
 	b, err := hex.DecodeString(s)
+
 	if err != nil {
-		return EthHash{}, xerrors.Errorf("cannot parse cid hash: %w", err)
+		return []byte{}, xerrors.Errorf("cannot parse hash: %w", err)
 	}
 
-	if len(b) > 32 {
-		return EthHash{}, xerrors.Errorf("length of decoded bytes is longer than 32")
+	if len(b) > length {
+		return []byte{}, xerrors.Errorf("length of decoded bytes is longer than %d", length)
 	}
 
-	var h EthHash
-	copy(h[32-len(b):], b)
-
-	return h, nil
+	return b, nil
 }
 
 func EthHashFromCid(c cid.Cid) (EthHash, error) {
-	return fromHexString(c.Hash().HexString()[8:])
+	return EthHashFromHex(c.Hash().HexString()[8:])
 }
 
 func EthHashFromHex(s string) (EthHash, error) {
-	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
-		s = s[2:]
+	handlePrefix(&s)
+	b, err := decodeHexString(s, ETH_HASH_LENGTH)
+	if err != nil {
+		return EthHash{}, err
 	}
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
-	return fromHexString(s)
+	var h EthHash
+	copy(h[ETH_HASH_LENGTH-len(b):], b)
+	return h, nil
 }
 
 func (h EthHash) String() string {

@@ -28,7 +28,7 @@ type EthModuleAPI interface {
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (api.EthTx, error)
 	EthGetCode(ctx context.Context, address string) (string, error)
 	EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error)
-	EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthInt, error)
+	EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthBigInt, error)
 	EthChainId(ctx context.Context) (api.EthInt, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
@@ -47,6 +47,7 @@ type EthModule struct {
 	fx.In
 
 	Chain *store.ChainStore
+	WalletAPI
 }
 
 var _ EthModuleAPI = (*EthModule)(nil)
@@ -152,8 +153,18 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, address string, positio
 	return "", nil
 }
 
-func (a *EthModule) EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthInt, error) {
-	return api.EthInt(0), nil
+func (a *EthModule) EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthBigInt, error) {
+	addr, err := api.EthAddressFromHex(address)
+	if err != nil {
+		return api.EthBigInt{}, xerrors.Errorf("cannot parse address: %w", err)
+	}
+
+	filAddr, err := addr.ToFilecoinAddress()
+	if err != nil {
+		return api.EthBigInt{}, err
+	}
+	balance, err := a.WalletAPI.WalletBalance(ctx, filAddr)
+	return api.EthBigInt{balance.Int}, nil
 }
 
 func (a *EthModule) EthChainId(ctx context.Context) (api.EthInt, error) {

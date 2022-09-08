@@ -221,7 +221,7 @@ type FullNodeStruct struct {
 
 		EthGasPrice func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthGetBalance func(p0 context.Context, p1 string, p2 string) (EthInt, error) `perm:"read"`
+		EthGetBalance func(p0 context.Context, p1 string, p2 string) (EthBigInt, error) `perm:"read"`
 
 		EthGetBlockByHash func(p0 context.Context, p1 string, p2 bool) (EthBlock, error) `perm:"read"`
 
@@ -1800,15 +1800,15 @@ func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 string, p2 string) (EthInt, error) {
+func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 string, p2 string) (EthBigInt, error) {
 	if s.Internal.EthGetBalance == nil {
-		return *new(EthInt), ErrNotSupported
+		return *new(EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthGetBalance(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 string, p2 string) (EthInt, error) {
-	return *new(EthInt), ErrNotSupported
+func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 string, p2 string) (EthBigInt, error) {
+	return *new(EthBigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
