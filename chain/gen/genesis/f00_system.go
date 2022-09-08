@@ -9,7 +9,6 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -39,8 +38,9 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.
 			return nil, xerrors.Errorf("loading manifest for actors version %d: %w", av, err)
 		}
 
-		st8 := st.GetState().(*systemtypes.State)
-		st8.BuiltinActors = mf.Data
+		if err := st.SetBuiltinActors(mf.Data); err != nil {
+			return nil, xerrors.Errorf("failed to set manifest data: %w", err)
+		}
 	}
 
 	statecid, err := cst.Put(ctx, st.GetState())

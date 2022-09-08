@@ -312,7 +312,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	fvm, err := ffi.CreateFVM(fvmOpts)
 
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to create FVM: %w", err)
 	}
 
 	return &FVM{

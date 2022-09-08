@@ -7,6 +7,7 @@ import (
 
 {{if (le .v 7)}}
 	system{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/system"
+	"golang.org/x/xerrors"
 {{else}}
 	system{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}system"
 {{end}}
@@ -45,5 +46,14 @@ func (s *state{{.v}}) GetBuiltinActors() cid.Cid {
 	return cid.Undef
 {{else}}
 	return s.State.BuiltinActors
+{{end}}
+}
+
+func (s *state{{.v}}) SetBuiltinActors(c cid.Cid) error {
+{{if (le .v 7)}}
+	return xerrors.New("cannot set manifest cid before v8")
+{{else}}
+	s.State.BuiltinActors = c
+	return nil
 {{end}}
 }

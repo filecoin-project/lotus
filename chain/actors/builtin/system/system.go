@@ -105,4 +105,5 @@ func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (
 type State interface {
 	GetState() interface{}
 	GetBuiltinActors() cid.Cid
+	SetBuiltinActors(cid.Cid) error
 }

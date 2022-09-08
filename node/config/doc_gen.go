@@ -3,7 +3,7 @@
 package config
 
 type DocField struct {
-	Name    string
+	Num     string
 	Type    string
 	Comment string
 }
@@ -11,19 +11,19 @@ type DocField struct {
 var Doc = map[string][]DocField{
 	"API": []DocField{
 		{
-			Name: "ListenAddress",
+			Num:  "ListenAddress",
 			Type: "string",
 
 			Comment: `Binding address for the Lotus API`,
 		},
 		{
-			Name: "RemoteListenAddress",
+			Num:  "RemoteListenAddress",
 			Type: "string",
 
 			Comment: ``,
 		},
 		{
-			Name: "Timeout",
+			Num:  "Timeout",
 			Type: "Duration",
 
 			Comment: ``,
@@ -31,7 +31,7 @@ var Doc = map[string][]DocField{
 	},
 	"Backup": []DocField{
 		{
-			Name: "DisableMetadataLog",
+			Num:  "DisableMetadataLog",
 			Type: "bool",
 
 			Comment: `When set to true disables metadata log (.lotus/kvlog). This can save disk
@@ -43,13 +43,13 @@ your node if metadata log is disabled`,
 	},
 	"BatchFeeConfig": []DocField{
 		{
-			Name: "Base",
+			Num:  "Base",
 			Type: "types.FIL",
 
 			Comment: ``,
 		},
 		{
-			Name: "PerSector",
+			Num:  "PerSector",
 			Type: "types.FIL",
 
 			Comment: ``,
@@ -57,13 +57,13 @@ your node if metadata log is disabled`,
 	},
 	"Chainstore": []DocField{
 		{
-			Name: "EnableSplitstore",
+			Num:  "EnableSplitstore",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "Splitstore",
+			Num:  "Splitstore",
 			Type: "Splitstore",
 
 			Comment: ``,
@@ -71,45 +71,45 @@ your node if metadata log is disabled`,
 	},
 	"Client": []DocField{
 		{
-			Name: "UseIpfs",
+			Num:  "UseIpfs",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "IpfsOnlineMode",
+			Num:  "IpfsOnlineMode",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "IpfsMAddr",
+			Num:  "IpfsMAddr",
 			Type: "string",
 
 			Comment: ``,
 		},
 		{
-			Name: "IpfsUseForRetrieval",
+			Num:  "IpfsUseForRetrieval",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "SimultaneousTransfersForStorage",
+			Num:  "SimultaneousTransfersForStorage",
 			Type: "uint64",
 
 			Comment: `The maximum number of simultaneous data transfers between the client
 and storage providers for storage deals`,
 		},
 		{
-			Name: "SimultaneousTransfersForRetrieval",
+			Num:  "SimultaneousTransfersForRetrieval",
 			Type: "uint64",
 
 			Comment: `The maximum number of simultaneous data transfers between the client
 and storage providers for retrieval deals`,
 		},
 		{
-			Name: "OffChainRetrieval",
+			Num:  "OffChainRetrieval",
 			Type: "bool",
 
 			Comment: `Require that retrievals perform no on-chain operations. Paid retrievals
@@ -119,31 +119,31 @@ of automatically performing on-chain operations.`,
 	},
 	"Common": []DocField{
 		{
-			Name: "API",
+			Num:  "API",
 			Type: "API",
 
 			Comment: ``,
 		},
 		{
-			Name: "Backup",
+			Num:  "Backup",
 			Type: "Backup",
 
 			Comment: ``,
 		},
 		{
-			Name: "Logging",
+			Num:  "Logging",
 			Type: "Logging",
 
 			Comment: ``,
 		},
 		{
-			Name: "Libp2p",
+			Num:  "Libp2p",
 			Type: "Libp2p",
 
 			Comment: ``,
 		},
 		{
-			Name: "Pubsub",
+			Num:  "Pubsub",
 			Type: "Pubsub",
 
 			Comment: ``,
@@ -151,7 +151,7 @@ of automatically performing on-chain operations.`,
 	},
 	"DAGStoreConfig": []DocField{
 		{
-			Name: "RootDir",
+			Num:  "RootDir",
 			Type: "string",
 
 			Comment: `Path to the dagstore root directory. This directory contains three
@@ -166,7 +166,7 @@ Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
 <LOTUS_MINER_PATH>/dagstore (monolith deployment)`,
 		},
 		{
-			Name: "MaxConcurrentIndex",
+			Num:  "MaxConcurrentIndex",
 			Type: "int",
 
 			Comment: `The maximum amount of indexing jobs that can run simultaneously.
@@ -174,7 +174,7 @@ Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
 Default value: 5.`,
 		},
 		{
-			Name: "MaxConcurrentReadyFetches",
+			Num:  "MaxConcurrentReadyFetches",
 			Type: "int",
 
 			Comment: `The maximum amount of unsealed deals that can be fetched simultaneously
@@ -182,7 +182,7 @@ from the storage subsystem. 0 means unlimited.
 Default value: 0 (unlimited).`,
 		},
 		{
-			Name: "MaxConcurrentUnseals",
+			Num:  "MaxConcurrentUnseals",
 			Type: "int",
 
 			Comment: `The maximum amount of unseals that can be processed simultaneously
@@ -190,7 +190,7 @@ from the storage subsystem. 0 means unlimited.
 Default value: 0 (unlimited).`,
 		},
 		{
-			Name: "MaxConcurrencyStorageCalls",
+			Num:  "MaxConcurrencyStorageCalls",
 			Type: "int",
 
 			Comment: `The maximum number of simultaneous inflight API calls to the storage
@@ -198,7 +198,7 @@ subsystem.
 Default value: 100.`,
 		},
 		{
-			Name: "GCInterval",
+			Num:  "GCInterval",
 			Type: "Duration",
 
 			Comment: `The time between calls to periodic dagstore GC, in time.Duration string
@@ -208,49 +208,49 @@ Default value: 1 minute.`,
 	},
 	"DealmakingConfig": []DocField{
 		{
-			Name: "ConsiderOnlineStorageDeals",
+			Num:  "ConsiderOnlineStorageDeals",
 			Type: "bool",
 
 			Comment: `When enabled, the miner can accept online deals`,
 		},
 		{
-			Name: "ConsiderOfflineStorageDeals",
+			Num:  "ConsiderOfflineStorageDeals",
 			Type: "bool",
 
 			Comment: `When enabled, the miner can accept offline deals`,
 		},
 		{
-			Name: "ConsiderOnlineRetrievalDeals",
+			Num:  "ConsiderOnlineRetrievalDeals",
 			Type: "bool",
 
 			Comment: `When enabled, the miner can accept retrieval deals`,
 		},
 		{
-			Name: "ConsiderOfflineRetrievalDeals",
+			Num:  "ConsiderOfflineRetrievalDeals",
 			Type: "bool",
 
 			Comment: `When enabled, the miner can accept offline retrieval deals`,
 		},
 		{
-			Name: "ConsiderVerifiedStorageDeals",
+			Num:  "ConsiderVerifiedStorageDeals",
 			Type: "bool",
 
 			Comment: `When enabled, the miner can accept verified deals`,
 		},
 		{
-			Name: "ConsiderUnverifiedStorageDeals",
+			Num:  "ConsiderUnverifiedStorageDeals",
 			Type: "bool",
 
 			Comment: `When enabled, the miner can accept unverified deals`,
 		},
 		{
-			Name: "PieceCidBlocklist",
+			Num:  "PieceCidBlocklist",
 			Type: "[]cid.Cid",
 
 			Comment: `A list of Data CIDs to reject when making deals`,
 		},
 		{
-			Name: "ExpectedSealDuration",
+			Num:  "ExpectedSealDuration",
 			Type: "Duration",
 
 			Comment: `Maximum expected amount of time getting the deal into a sealed sector will take
@@ -258,47 +258,47 @@ This includes the time the deal will need to get transferred and published
 before being assigned to a sector`,
 		},
 		{
-			Name: "MaxDealStartDelay",
+			Num:  "MaxDealStartDelay",
 			Type: "Duration",
 
 			Comment: `Maximum amount of time proposed deal StartEpoch can be in future`,
 		},
 		{
-			Name: "PublishMsgPeriod",
+			Num:  "PublishMsgPeriod",
 			Type: "Duration",
 
 			Comment: `When a deal is ready to publish, the amount of time to wait for more
 deals to be ready to publish before publishing them all as a batch`,
 		},
 		{
-			Name: "MaxDealsPerPublishMsg",
+			Num:  "MaxDealsPerPublishMsg",
 			Type: "uint64",
 
 			Comment: `The maximum number of deals to include in a single PublishStorageDeals
 message`,
 		},
 		{
-			Name: "MaxProviderCollateralMultiplier",
+			Num:  "MaxProviderCollateralMultiplier",
 			Type: "uint64",
 
 			Comment: `The maximum collateral that the provider will put up against a deal,
 as a multiplier of the minimum collateral bound`,
 		},
 		{
-			Name: "MaxStagingDealsBytes",
+			Num:  "MaxStagingDealsBytes",
 			Type: "int64",
 
 			Comment: `The maximum allowed disk usage size in bytes of staging deals not yet
 passed to the sealing node by the markets service. 0 is unlimited.`,
 		},
 		{
-			Name: "SimultaneousTransfersForStorage",
+			Num:  "SimultaneousTransfersForStorage",
 			Type: "uint64",
 
 			Comment: `The maximum number of parallel online data transfers for storage deals`,
 		},
 		{
-			Name: "SimultaneousTransfersForStoragePerClient",
+			Num:  "SimultaneousTransfersForStoragePerClient",
 			Type: "uint64",
 
 			Comment: `The maximum number of simultaneous data transfers from any single client
@@ -309,33 +309,33 @@ across all storage clients is bound by SimultaneousTransfersForStorage
 regardless of this number.`,
 		},
 		{
-			Name: "SimultaneousTransfersForRetrieval",
+			Num:  "SimultaneousTransfersForRetrieval",
 			Type: "uint64",
 
 			Comment: `The maximum number of parallel online data transfers for retrieval deals`,
 		},
 		{
-			Name: "StartEpochSealingBuffer",
+			Num:  "StartEpochSealingBuffer",
 			Type: "uint64",
 
 			Comment: `Minimum start epoch buffer to give time for sealing of sector with deal.`,
 		},
 		{
-			Name: "Filter",
+			Num:  "Filter",
 			Type: "string",
 
 			Comment: `A command used for fine-grained evaluation of storage deals
 see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details`,
 		},
 		{
-			Name: "RetrievalFilter",
+			Num:  "RetrievalFilter",
 			Type: "string",
 
 			Comment: `A command used for fine-grained evaluation of retrieval deals
 see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details`,
 		},
 		{
-			Name: "RetrievalPricing",
+			Num:  "RetrievalPricing",
 			Type: "*RetrievalPricing",
 
 			Comment: ``,
@@ -343,7 +343,7 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 	},
 	"FeeConfig": []DocField{
 		{
-			Name: "DefaultMaxFee",
+			Num:  "DefaultMaxFee",
 			Type: "types.FIL",
 
 			Comment: ``,
@@ -351,25 +351,25 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 	},
 	"FullNode": []DocField{
 		{
-			Name: "Client",
+			Num:  "Client",
 			Type: "Client",
 
 			Comment: ``,
 		},
 		{
-			Name: "Wallet",
+			Num:  "Wallet",
 			Type: "Wallet",
 
 			Comment: ``,
 		},
 		{
-			Name: "Fees",
+			Num:  "Fees",
 			Type: "FeeConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Chainstore",
+			Num:  "Chainstore",
 			Type: "Chainstore",
 
 			Comment: ``,
@@ -377,14 +377,14 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 	},
 	"IndexProviderConfig": []DocField{
 		{
-			Name: "Enable",
+			Num:  "Enable",
 			Type: "bool",
 
 			Comment: `Enable set whether to enable indexing announcement to the network and expose endpoints that
 allow indexer nodes to process announcements. Enabled by default.`,
 		},
 		{
-			Name: "EntriesCacheCapacity",
+			Num:  "EntriesCacheCapacity",
 			Type: "int",
 
 			Comment: `EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
@@ -395,7 +395,7 @@ with the default EntriesCacheCapacity, and EntriesChunkSize means the cache size
 256MiB when full.`,
 		},
 		{
-			Name: "EntriesChunkSize",
+			Num:  "EntriesChunkSize",
 			Type: "int",
 
 			Comment: `EntriesChunkSize sets the maximum number of multihashes to include in a single entries chunk.
@@ -403,7 +403,7 @@ Defaults to 16384 if not specified. Note that chunks are chained together for in
 advertisements that include more multihashes than the configured EntriesChunkSize.`,
 		},
 		{
-			Name: "TopicName",
+			Num:  "TopicName",
 			Type: "string",
 
 			Comment: `TopicName sets the topic name on which the changes to the advertised content are announced.
@@ -412,7 +412,7 @@ in following format: '/indexer/ingest/<network-name>'
 Defaults to empty, which implies the topic name is inferred from network name.`,
 		},
 		{
-			Name: "PurgeCacheOnStart",
+			Num:  "PurgeCacheOnStart",
 			Type: "bool",
 
 			Comment: `PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
@@ -422,14 +422,14 @@ datastore if any is present.`,
 	},
 	"Libp2p": []DocField{
 		{
-			Name: "ListenAddresses",
+			Num:  "ListenAddresses",
 			Type: "[]string",
 
 			Comment: `Binding address for the libp2p host - 0 means random port.
 Format: multiaddress; see https://multiformats.io/multiaddr/`,
 		},
 		{
-			Name: "AnnounceAddresses",
+			Num:  "AnnounceAddresses",
 			Type: "[]string",
 
 			Comment: `Addresses to explicitally announce to other peers. If not specified,
@@ -437,26 +437,26 @@ all interface addresses are announced
 Format: multiaddress`,
 		},
 		{
-			Name: "NoAnnounceAddresses",
+			Num:  "NoAnnounceAddresses",
 			Type: "[]string",
 
 			Comment: `Addresses to not announce
 Format: multiaddress`,
 		},
 		{
-			Name: "BootstrapPeers",
+			Num:  "BootstrapPeers",
 			Type: "[]string",
 
 			Comment: ``,
 		},
 		{
-			Name: "ProtectedPeers",
+			Num:  "ProtectedPeers",
 			Type: "[]string",
 
 			Comment: ``,
 		},
 		{
-			Name: "DisableNatPortMap",
+			Num:  "DisableNatPortMap",
 			Type: "bool",
 
 			Comment: `When not disabled (default), lotus asks NAT devices (e.g., routers), to
@@ -465,14 +465,14 @@ When this works (i.e., when your router supports NAT port forwarding),
 it makes the local lotus node accessible from the public internet`,
 		},
 		{
-			Name: "ConnMgrLow",
+			Num:  "ConnMgrLow",
 			Type: "uint",
 
 			Comment: `ConnMgrLow is the number of connections that the basic connection manager
 will trim down to.`,
 		},
 		{
-			Name: "ConnMgrHigh",
+			Num:  "ConnMgrHigh",
 			Type: "uint",
 
 			Comment: `ConnMgrHigh is the number of connections that, when exceeded, will trigger
@@ -480,7 +480,7 @@ a connection GC operation. Note: protected/recently formed connections don't
 count towards this limit.`,
 		},
 		{
-			Name: "ConnMgrGrace",
+			Num:  "ConnMgrGrace",
 			Type: "Duration",
 
 			Comment: `ConnMgrGrace is a time duration that new connections are immune from being
@@ -489,7 +489,7 @@ closed by the connection manager.`,
 	},
 	"Logging": []DocField{
 		{
-			Name: "SubsystemLevels",
+			Num:  "SubsystemLevels",
 			Type: "map[string]string",
 
 			Comment: `SubsystemLevels specify per-subsystem log levels`,
@@ -497,38 +497,38 @@ closed by the connection manager.`,
 	},
 	"MinerAddressConfig": []DocField{
 		{
-			Name: "PreCommitControl",
+			Num:  "PreCommitControl",
 			Type: "[]string",
 
 			Comment: `Addresses to send PreCommit messages from`,
 		},
 		{
-			Name: "CommitControl",
+			Num:  "CommitControl",
 			Type: "[]string",
 
 			Comment: `Addresses to send Commit messages from`,
 		},
 		{
-			Name: "TerminateControl",
+			Num:  "TerminateControl",
 			Type: "[]string",
 
 			Comment: ``,
 		},
 		{
-			Name: "DealPublishControl",
+			Num:  "DealPublishControl",
 			Type: "[]string",
 
 			Comment: ``,
 		},
 		{
-			Name: "DisableOwnerFallback",
+			Num:  "DisableOwnerFallback",
 			Type: "bool",
 
 			Comment: `DisableOwnerFallback disables usage of the owner address for messages
 sent automatically`,
 		},
 		{
-			Name: "DisableWorkerFallback",
+			Num:  "DisableWorkerFallback",
 			Type: "bool",
 
 			Comment: `DisableWorkerFallback disables usage of the worker address for messages
@@ -539,49 +539,49 @@ over the worker address if this flag is set.`,
 	},
 	"MinerFeeConfig": []DocField{
 		{
-			Name: "MaxPreCommitGasFee",
+			Num:  "MaxPreCommitGasFee",
 			Type: "types.FIL",
 
 			Comment: ``,
 		},
 		{
-			Name: "MaxCommitGasFee",
+			Num:  "MaxCommitGasFee",
 			Type: "types.FIL",
 
 			Comment: ``,
 		},
 		{
-			Name: "MaxPreCommitBatchGasFee",
+			Num:  "MaxPreCommitBatchGasFee",
 			Type: "BatchFeeConfig",
 
 			Comment: `maxBatchFee = maxBase + maxPerSector * nSectors`,
 		},
 		{
-			Name: "MaxCommitBatchGasFee",
+			Num:  "MaxCommitBatchGasFee",
 			Type: "BatchFeeConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "MaxTerminateGasFee",
+			Num:  "MaxTerminateGasFee",
 			Type: "types.FIL",
 
 			Comment: ``,
 		},
 		{
-			Name: "MaxWindowPoStGasFee",
+			Num:  "MaxWindowPoStGasFee",
 			Type: "types.FIL",
 
 			Comment: `WindowPoSt is a high-value operation, so the default fee should be high.`,
 		},
 		{
-			Name: "MaxPublishDealsFee",
+			Num:  "MaxPublishDealsFee",
 			Type: "types.FIL",
 
 			Comment: ``,
 		},
 		{
-			Name: "MaxMarketBalanceAddFee",
+			Num:  "MaxMarketBalanceAddFee",
 			Type: "types.FIL",
 
 			Comment: ``,
@@ -589,37 +589,37 @@ over the worker address if this flag is set.`,
 	},
 	"MinerSubsystemConfig": []DocField{
 		{
-			Name: "EnableMining",
+			Num:  "EnableMining",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "EnableSealing",
+			Num:  "EnableSealing",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "EnableSectorStorage",
+			Num:  "EnableSectorStorage",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "EnableMarkets",
+			Num:  "EnableMarkets",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "SealerApiInfo",
+			Num:  "SealerApiInfo",
 			Type: "string",
 
 			Comment: ``,
 		},
 		{
-			Name: "SectorIndexApiInfo",
+			Num:  "SectorIndexApiInfo",
 			Type: "string",
 
 			Comment: ``,
@@ -627,7 +627,7 @@ over the worker address if this flag is set.`,
 	},
 	"ProvingConfig": []DocField{
 		{
-			Name: "ParallelCheckLimit",
+			Num:  "ParallelCheckLimit",
 			Type: "int",
 
 			Comment: `Maximum number of sector checks to run in parallel. (0 = unlimited)
@@ -640,7 +640,7 @@ After changing this option, confirm that the new value works in your setup by in
 'lotus-miner proving compute window-post 0'`,
 		},
 		{
-			Name: "DisableBuiltinWindowPoSt",
+			Num:  "DisableBuiltinWindowPoSt",
 			Type: "bool",
 
 			Comment: `Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
@@ -652,7 +652,7 @@ After changing this option, confirm that the new value works in your setup by in
 'lotus-miner proving compute window-post 0'`,
 		},
 		{
-			Name: "DisableBuiltinWinningPoSt",
+			Num:  "DisableBuiltinWinningPoSt",
 			Type: "bool",
 
 			Comment: `Disable Winning PoSt computation on the lotus-miner process even if no winning PoSt workers are present.
@@ -661,7 +661,7 @@ WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulti
 Before enabling this option, make sure your PoSt workers work correctly.`,
 		},
 		{
-			Name: "DisableWDPoStPreChecks",
+			Num:  "DisableWDPoStPreChecks",
 			Type: "bool",
 
 			Comment: `Disable WindowPoSt provable sector readability checks.
@@ -690,7 +690,7 @@ After changing this option, confirm that the new value works in your setup by in
 'lotus-miner proving compute window-post 0'`,
 		},
 		{
-			Name: "MaxPartitionsPerPoStMessage",
+			Num:  "MaxPartitionsPerPoStMessage",
 			Type: "int",
 
 			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
@@ -708,7 +708,7 @@ to prove each deadline, resulting in more total gas use (but each message will h
 Setting this value above the network limit has no effect`,
 		},
 		{
-			Name: "MaxPartitionsPerRecoveryMessage",
+			Num:  "MaxPartitionsPerRecoveryMessage",
 			Type: "int",
 
 			Comment: `In some cases when submitting DeclareFaultsRecovered messages,
@@ -720,13 +720,13 @@ resulting in more total gas use (but each message will have lower gas limit)`,
 	},
 	"Pubsub": []DocField{
 		{
-			Name: "Bootstrapper",
+			Num:  "Bootstrapper",
 			Type: "bool",
 
 			Comment: `Run the node in bootstrap-node mode`,
 		},
 		{
-			Name: "DirectPeers",
+			Num:  "DirectPeers",
 			Type: "[]string",
 
 			Comment: `DirectPeers specifies peers with direct peering agreements. These peers are
@@ -737,13 +737,13 @@ symmetrically configured at both ends.
 Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...`,
 		},
 		{
-			Name: "IPColocationWhitelist",
+			Num:  "IPColocationWhitelist",
 			Type: "[]string",
 
 			Comment: ``,
 		},
 		{
-			Name: "RemoteTracer",
+			Num:  "RemoteTracer",
 			Type: "string",
 
 			Comment: ``,
@@ -751,19 +751,19 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 	},
 	"RetrievalPricing": []DocField{
 		{
-			Name: "Strategy",
+			Num:  "Strategy",
 			Type: "string",
 
 			Comment: ``,
 		},
 		{
-			Name: "Default",
+			Num:  "Default",
 			Type: "*RetrievalPricingDefault",
 
 			Comment: ``,
 		},
 		{
-			Name: "External",
+			Num:  "External",
 			Type: "*RetrievalPricingExternal",
 
 			Comment: ``,
@@ -771,7 +771,7 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 	},
 	"RetrievalPricingDefault": []DocField{
 		{
-			Name: "VerifiedDealsFreeTransfer",
+			Num:  "VerifiedDealsFreeTransfer",
 			Type: "bool",
 
 			Comment: `VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
@@ -782,7 +782,7 @@ default value is true`,
 	},
 	"RetrievalPricingExternal": []DocField{
 		{
-			Name: "Path",
+			Num:  "Path",
 			Type: "string",
 
 			Comment: `Path of the external script that will be run to price a retrieval deal.
@@ -791,68 +791,68 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 	},
 	"SealerConfig": []DocField{
 		{
-			Name: "ParallelFetchLimit",
+			Num:  "ParallelFetchLimit",
 			Type: "int",
 
 			Comment: ``,
 		},
 		{
-			Name: "AllowAddPiece",
+			Num:  "AllowAddPiece",
 			Type: "bool",
 
 			Comment: `Local worker config`,
 		},
 		{
-			Name: "AllowPreCommit1",
+			Num:  "AllowPreCommit1",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "AllowPreCommit2",
+			Num:  "AllowPreCommit2",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "AllowCommit",
+			Num:  "AllowCommit",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "AllowUnseal",
+			Num:  "AllowUnseal",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "AllowReplicaUpdate",
+			Num:  "AllowReplicaUpdate",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "AllowProveReplicaUpdate2",
+			Num:  "AllowProveReplicaUpdate2",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "AllowRegenSectorKey",
+			Num:  "AllowRegenSectorKey",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "LocalWorkerName",
+			Num:  "LocalWorkerName",
 			Type: "string",
 
 			Comment: `LocalWorkerName specifies a custom name for the builtin worker.
 If set to an empty string (default) os hostname will be used`,
 		},
 		{
-			Name: "Assigner",
+			Num:  "Assigner",
 			Type: "string",
 
 			Comment: `Assigner specifies the worker assigner to use when scheduling tasks.
@@ -860,7 +860,7 @@ If set to an empty string (default) os hostname will be used`,
 "spread" - assign tasks to as many distinct workers as possible.`,
 		},
 		{
-			Name: "DisallowRemoteFinalize",
+			Num:  "DisallowRemoteFinalize",
 			Type: "bool",
 
 			Comment: `DisallowRemoteFinalize when set to true will force all Finalize tasks to
@@ -876,7 +876,7 @@ If you see stuck Finalize tasks after enabling this setting, check
 'lotus-miner sealing sched-diag' and 'lotus-miner storage find [sector num]'`,
 		},
 		{
-			Name: "ResourceFiltering",
+			Num:  "ResourceFiltering",
 			Type: "sealer.ResourceFilteringStrategy",
 
 			Comment: `ResourceFiltering instructs the system which resource filtering strategy
@@ -886,7 +886,7 @@ to "hardware".`,
 	},
 	"SealingConfig": []DocField{
 		{
-			Name: "MaxWaitDealsSectors",
+			Num:  "MaxWaitDealsSectors",
 			Type: "uint64",
 
 			Comment: `Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
@@ -896,19 +896,19 @@ Note that setting this number too high in relation to deal ingestion rate may re
 0 = no limit`,
 		},
 		{
-			Name: "MaxSealingSectors",
+			Num:  "MaxSealingSectors",
 			Type: "uint64",
 
 			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when creating new CC sectors (0 = unlimited)`,
 		},
 		{
-			Name: "MaxSealingSectorsForDeals",
+			Num:  "MaxSealingSectorsForDeals",
 			Type: "uint64",
 
 			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when creating new sectors with deals (0 = unlimited)`,
 		},
 		{
-			Name: "PreferNewSectorsForDeals",
+			Num:  "PreferNewSectorsForDeals",
 			Type: "bool",
 
 			Comment: `Prefer creating new sectors even if there are sectors Available for upgrading.
@@ -917,13 +917,13 @@ possible to use fast sector upgrades to handle high volumes of storage deals, wh
 flow when the volume of storage deals is lower.`,
 		},
 		{
-			Name: "MaxUpgradingSectors",
+			Num:  "MaxUpgradingSectors",
 			Type: "uint64",
 
 			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)`,
 		},
 		{
-			Name: "CommittedCapacitySectorLifetime",
+			Num:  "CommittedCapacitySectorLifetime",
 			Type: "Duration",
 
 			Comment: `CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
@@ -931,27 +931,27 @@ live before it must be extended or converted into sector containing deals before
 terminated. Value must be between 180-540 days inclusive`,
 		},
 		{
-			Name: "WaitDealsDelay",
+			Num:  "WaitDealsDelay",
 			Type: "Duration",
 
 			Comment: `Period of time that a newly created sector will wait for more deals to be packed in to before it starts to seal.
 Sectors which are fully filled will start sealing immediately`,
 		},
 		{
-			Name: "AlwaysKeepUnsealedCopy",
+			Num:  "AlwaysKeepUnsealedCopy",
 			Type: "bool",
 
 			Comment: `Whether to keep unsealed copies of deal data regardless of whether the client requested that. This lets the miner
 avoid the relatively high cost of unsealing the data later, at the cost of more storage space`,
 		},
 		{
-			Name: "FinalizeEarly",
+			Num:  "FinalizeEarly",
 			Type: "bool",
 
 			Comment: `Run sector finalization before submitting sector proof to the chain`,
 		},
 		{
-			Name: "MakeNewSectorForDeals",
+			Num:  "MakeNewSectorForDeals",
 			Type: "bool",
 
 			Comment: `Whether new sectors are created to pack incoming deals
@@ -959,111 +959,111 @@ When this is set to false no new sectors will be created for sealing incoming de
 This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade`,
 		},
 		{
-			Name: "MakeCCSectorsAvailable",
+			Num:  "MakeCCSectorsAvailable",
 			Type: "bool",
 
 			Comment: `After sealing CC sectors, make them available for upgrading with deals`,
 		},
 		{
-			Name: "CollateralFromMinerBalance",
+			Num:  "CollateralFromMinerBalance",
 			Type: "bool",
 
 			Comment: `Whether to use available miner balance for sector collateral instead of sending it with each message`,
 		},
 		{
-			Name: "AvailableBalanceBuffer",
+			Num:  "AvailableBalanceBuffer",
 			Type: "types.FIL",
 
 			Comment: `Minimum available balance to keep in the miner actor before sending it with messages`,
 		},
 		{
-			Name: "DisableCollateralFallback",
+			Num:  "DisableCollateralFallback",
 			Type: "bool",
 
 			Comment: `Don't send collateral with messages even if there is no available balance in the miner actor`,
 		},
 		{
-			Name: "BatchPreCommits",
+			Num:  "BatchPreCommits",
 			Type: "bool",
 
 			Comment: `enable / disable precommit batching (takes effect after nv13)`,
 		},
 		{
-			Name: "MaxPreCommitBatch",
+			Num:  "MaxPreCommitBatch",
 			Type: "int",
 
 			Comment: `maximum precommit batch size - batches will be sent immediately above this size`,
 		},
 		{
-			Name: "PreCommitBatchWait",
+			Num:  "PreCommitBatchWait",
 			Type: "Duration",
 
 			Comment: `how long to wait before submitting a batch after crossing the minimum batch size`,
 		},
 		{
-			Name: "PreCommitBatchSlack",
+			Num:  "PreCommitBatchSlack",
 			Type: "Duration",
 
 			Comment: `time buffer for forceful batch submission before sectors/deal in batch would start expiring`,
 		},
 		{
-			Name: "AggregateCommits",
+			Num:  "AggregateCommits",
 			Type: "bool",
 
 			Comment: `enable / disable commit aggregation (takes effect after nv13)`,
 		},
 		{
-			Name: "MinCommitBatch",
+			Num:  "MinCommitBatch",
 			Type: "int",
 
 			Comment: `minimum batched commit size - batches above this size will eventually be sent on a timeout`,
 		},
 		{
-			Name: "MaxCommitBatch",
+			Num:  "MaxCommitBatch",
 			Type: "int",
 
 			Comment: `maximum batched commit size - batches will be sent immediately above this size`,
 		},
 		{
-			Name: "CommitBatchWait",
+			Num:  "CommitBatchWait",
 			Type: "Duration",
 
 			Comment: `how long to wait before submitting a batch after crossing the minimum batch size`,
 		},
 		{
-			Name: "CommitBatchSlack",
+			Num:  "CommitBatchSlack",
 			Type: "Duration",
 
 			Comment: `time buffer for forceful batch submission before sectors/deals in batch would start expiring`,
 		},
 		{
-			Name: "BatchPreCommitAboveBaseFee",
+			Num:  "BatchPreCommitAboveBaseFee",
 			Type: "types.FIL",
 
 			Comment: `network BaseFee below which to stop doing precommit batching, instead
 sending precommit messages to the chain individually`,
 		},
 		{
-			Name: "AggregateAboveBaseFee",
+			Num:  "AggregateAboveBaseFee",
 			Type: "types.FIL",
 
 			Comment: `network BaseFee below which to stop doing commit aggregation, instead
 submitting proofs to the chain individually`,
 		},
 		{
-			Name: "TerminateBatchMax",
+			Num:  "TerminateBatchMax",
 			Type: "uint64",
 
 			Comment: ``,
 		},
 		{
-			Name: "TerminateBatchMin",
+			Num:  "TerminateBatchMin",
 			Type: "uint64",
 
 			Comment: ``,
 		},
 		{
-			Name: "TerminateBatchWait",
+			Num:  "TerminateBatchWait",
 			Type: "Duration",
 
 			Comment: ``,
@@ -1071,35 +1071,35 @@ submitting proofs to the chain individually`,
 	},
 	"Splitstore": []DocField{
 		{
-			Name: "ColdStoreType",
+			Num:  "ColdStoreType",
 			Type: "string",
 
 			Comment: `ColdStoreType specifies the type of the coldstore.
 It can be "universal" (default) or "discard" for discarding cold blocks.`,
 		},
 		{
-			Name: "HotStoreType",
+			Num:  "HotStoreType",
 			Type: "string",
 
 			Comment: `HotStoreType specifies the type of the hotstore.
 Only currently supported value is "badger".`,
 		},
 		{
-			Name: "MarkSetType",
+			Num:  "MarkSetType",
 			Type: "string",
 
 			Comment: `MarkSetType specifies the type of the markset.
 It can be "map" for in memory marking or "badger" (default) for on-disk marking.`,
 		},
 		{
-			Name: "HotStoreMessageRetention",
+			Num:  "HotStoreMessageRetention",
 			Type: "uint64",
 
 			Comment: `HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
 the compaction boundary; default is 0.`,
 		},
 		{
-			Name: "HotStoreFullGCFrequency",
+			Num:  "HotStoreFullGCFrequency",
 			Type: "uint64",
 
 			Comment: `HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
@@ -1107,7 +1107,7 @@ A value of 0 disables, while a value 1 will do full GC in every compaction.
 Default is 20 (about once a week).`,
 		},
 		{
-			Name: "EnableColdStoreAutoPrune",
+			Num:  "EnableColdStoreAutoPrune",
 			Type: "bool",
 
 			Comment: `EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
@@ -1115,7 +1115,7 @@ where hotstore compaction occurs every finality epochs pruning happens every 3 f
 Default is false`,
 		},
 		{
-			Name: "ColdStoreFullGCFrequency",
+			Num:  "ColdStoreFullGCFrequency",
 			Type: "uint64",
 
 			Comment: `ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
@@ -1124,7 +1124,7 @@ full GC in every prune.
 Default is 7 (about once every a week)`,
 		},
 		{
-			Name: "ColdStoreRetention",
+			Num:  "ColdStoreRetention",
 			Type: "int64",
 
 			Comment: `ColdStoreRetention specifies the retention policy for data reachable from the chain, in
@@ -1133,55 +1133,55 @@ finalities beyond the compaction boundary, default is 0, -1 retains everything`,
 	},
 	"StorageMiner": []DocField{
 		{
-			Name: "Subsystems",
+			Num:  "Subsystems",
 			Type: "MinerSubsystemConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Dealmaking",
+			Num:  "Dealmaking",
 			Type: "DealmakingConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "IndexProvider",
+			Num:  "IndexProvider",
 			Type: "IndexProviderConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Proving",
+			Num:  "Proving",
 			Type: "ProvingConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Sealing",
+			Num:  "Sealing",
 			Type: "SealingConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Storage",
+			Num:  "Storage",
 			Type: "SealerConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Fees",
+			Num:  "Fees",
 			Type: "MinerFeeConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "Addresses",
+			Num:  "Addresses",
 			Type: "MinerAddressConfig",
 
 			Comment: ``,
 		},
 		{
-			Name: "DAGStore",
+			Num:  "DAGStore",
 			Type: "DAGStoreConfig",
 
 			Comment: ``,
@@ -1189,19 +1189,19 @@ finalities beyond the compaction boundary, default is 0, -1 retains everything`,
 	},
 	"Wallet": []DocField{
 		{
-			Name: "RemoteBackend",
+			Num:  "RemoteBackend",
 			Type: "string",
 
 			Comment: ``,
 		},
 		{
-			Name: "EnableLedger",
+			Num:  "EnableLedger",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
-			Name: "DisableLocal",
+			Num:  "DisableLocal",
 			Type: "bool",
 
 			Comment: ``,
