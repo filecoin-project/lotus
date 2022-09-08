@@ -9,6 +9,8 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
+	consensus "github.com/libp2p/go-libp2p-consensus"
+	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -29,6 +31,19 @@ type MpoolNonceAPI interface {
 	GetActor(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
 }
 
+type MsgSigner interface {
+	SignMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, cb func(*types.SignedMessage) error) (*types.SignedMessage, error)
+	GetSignedMessage(ctx context.Context, uuid uuid.UUID) (*types.SignedMessage, error)
+	StoreSignedMessage(ctx context.Context, uuid uuid.UUID, message *types.SignedMessage) error
+	NextNonce(ctx context.Context, addr address.Address) (uint64, error)
+	SaveNonce(ctx context.Context, addr address.Address, nonce uint64) error
+	DstoreKey(addr address.Address) datastore.Key
+	IsLeader(ctx context.Context) bool
+	RaftLeader(ctx context.Context) (peer.ID, error)
+	RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error)
+	GetRaftState(ctx context.Context) (consensus.State, error)
+}
+
 // MessageSigner keeps track of nonces per address, and increments the nonce
 // when signing a message
 type MessageSigner struct {
@@ -37,6 +52,8 @@ type MessageSigner struct {
 	mpool  MpoolNonceAPI
 	ds     datastore.Batching
 }
+
+//var _ full.MsgSigner = &MessageSigner{}
 
 func NewMessageSigner(wallet api.Wallet, mpool MpoolNonceAPI, ds dtypes.MetadataDS) *MessageSigner {
 	ds = namespace.Wrap(ds, datastore.NewKey("/message-signer/"))
@@ -49,12 +66,12 @@ func NewMessageSigner(wallet api.Wallet, mpool MpoolNonceAPI, ds dtypes.Metadata
 
 // SignMessage increments the nonce for the message From address, and signs
 // the message
-func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb func(*types.SignedMessage) error) (*types.SignedMessage, error) {
+func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, cb func(*types.SignedMessage) error) (*types.SignedMessage, error) {
 	ms.lk.Lock()
 	defer ms.lk.Unlock()
 
 	// Get the next message nonce
-	nonce, err := ms.nextNonce(ctx, msg.From)
+	nonce, err := ms.NextNonce(ctx, msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create nonce: %w", err)
 	}
@@ -72,7 +89,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 		Extra: mb.RawData(),
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("failed to sign message: %w", err)
+		return nil, xerrors.Errorf("failed to sign message: %w, addr=%s", err, msg.From)
 	}
 
 	// Callback with the signed message
@@ -86,7 +103,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 	}
 
 	// If the callback executed successfully, write the nonce to the datastore
-	if err := ms.saveNonce(ctx, msg.From, nonce); err != nil {
+	if err := ms.SaveNonce(ctx, msg.From, nonce); err != nil {
 		return nil, xerrors.Errorf("failed to save nonce: %w", err)
 	}
 
@@ -113,9 +130,9 @@ func (ms *MessageSigner) StoreSignedMessage(ctx context.Context, uuid uuid.UUID,
 	return ms.ds.Put(ctx, key, serializedMsg)
 }
 
-// nextNonce gets the next nonce for the given address.
+// NextNonce gets the next nonce for the given address.
 // If there is no nonce in the datastore, gets the nonce from the message pool.
-func (ms *MessageSigner) nextNonce(ctx context.Context, addr address.Address) (uint64, error) {
+func (ms *MessageSigner) NextNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	// Nonces used to be created by the mempool and we need to support nodes
 	// that have mempool nonces, so first check the mempool for a nonce for
 	// this address. Note that the mempool returns the actor state's nonce
@@ -126,7 +143,7 @@ func (ms *MessageSigner) nextNonce(ctx context.Context, addr address.Address) (u
 	}
 
 	// Get the next nonce for this address from the datastore
-	addrNonceKey := ms.dstoreKey(addr)
+	addrNonceKey := ms.DstoreKey(addr)
 	dsNonceBytes, err := ms.ds.Get(ctx, addrNonceKey)
 
 	switch {
@@ -159,14 +176,14 @@ func (ms *MessageSigner) nextNonce(ctx context.Context, addr address.Address) (u
 	}
 }
 
-// saveNonce increments the nonce for this address and writes it to the
+// SaveNonce increments the nonce for this address and writes it to the
 // datastore
-func (ms *MessageSigner) saveNonce(ctx context.Context, addr address.Address, nonce uint64) error {
+func (ms *MessageSigner) SaveNonce(ctx context.Context, addr address.Address, nonce uint64) error {
 	// Increment the nonce
 	nonce++
 
 	// Write the nonce to the datastore
-	addrNonceKey := ms.dstoreKey(addr)
+	addrNonceKey := ms.DstoreKey(addr)
 	buf := bytes.Buffer{}
 	_, err := buf.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, nonce))
 	if err != nil {
@@ -179,6 +196,22 @@ func (ms *MessageSigner) saveNonce(ctx context.Context, addr address.Address, no
 	return nil
 }
 
-func (ms *MessageSigner) dstoreKey(addr address.Address) datastore.Key {
+func (ms *MessageSigner) DstoreKey(addr address.Address) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
+}
+
+func (ms *MessageSigner) IsLeader(ctx context.Context) bool {
+	return true
+}
+
+func (ms *MessageSigner) RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error) {
+	return false, xerrors.Errorf("Single node shouldn't have any redirects")
+}
+
+func (ms *MessageSigner) GetRaftState(ctx context.Context) (consensus.State, error) {
+	return nil, xerrors.Errorf("This is a non raft consensus message signer")
+}
+
+func (ms *MessageSigner) RaftLeader(ctx context.Context) (peer.ID, error) {
+	return "", xerrors.Errorf("No leaders in non raft message signer")
 }

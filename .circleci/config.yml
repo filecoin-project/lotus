@@ -960,6 +960,11 @@ workflows:
           target: "./itests/paych_cli_test.go"
       
       - test:
+          name: test-itest-raft_messagesigner
+          suite: itest-raft_messagesigner
+          target: "./itests/raft_messagesigner_test.go"
+      
+      - test:
           name: test-itest-sdr_upgrade
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"

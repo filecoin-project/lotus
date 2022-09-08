@@ -119,6 +119,7 @@ const (
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
 	SetupFallbackBlockstoresKey
+	RPCServer
 
 	SetApiEndpointKey
 

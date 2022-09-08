@@ -105,6 +105,7 @@ var ChainNode = Options(
 
 	// Service: Wallet
 	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
+	Override(new(messagesigner.MsgSigner), func(ms *messagesigner.MessageSigner) *messagesigner.MessageSigner { return ms }),
 	Override(new(*wallet.LocalWallet), wallet.NewWallet),
 	Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
 	Override(new(api.Wallet), From(new(wallet.MultiWallet))),

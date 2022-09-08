@@ -14,6 +14,7 @@ import (
 	uuid "github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
+	consensus "github.com/libp2p/go-libp2p-consensus"
 	metrics "github.com/libp2p/go-libp2p/core/metrics"
 	network0 "github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
@@ -2241,6 +2242,36 @@ func (m *MockFullNode) PaychVoucherSubmit(arg0 context.Context, arg1 address.Add
 func (mr *MockFullNodeMockRecorder) PaychVoucherSubmit(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PaychVoucherSubmit", reflect.TypeOf((*MockFullNode)(nil).PaychVoucherSubmit), arg0, arg1, arg2, arg3, arg4)
+}
+
+// RaftLeader mocks base method.
+func (m *MockFullNode) RaftLeader(arg0 context.Context) (peer.ID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RaftLeader", arg0)
+	ret0, _ := ret[0].(peer.ID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RaftLeader indicates an expected call of RaftLeader.
+func (mr *MockFullNodeMockRecorder) RaftLeader(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RaftLeader", reflect.TypeOf((*MockFullNode)(nil).RaftLeader), arg0)
+}
+
+// RaftState mocks base method.
+func (m *MockFullNode) RaftState(arg0 context.Context) (consensus.State, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RaftState", arg0)
+	ret0, _ := ret[0].(consensus.State)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RaftState indicates an expected call of RaftState.
+func (mr *MockFullNodeMockRecorder) RaftState(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RaftState", reflect.TypeOf((*MockFullNode)(nil).RaftState), arg0)
 }
 
 // Session mocks base method.

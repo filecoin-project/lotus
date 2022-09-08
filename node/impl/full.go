@@ -5,6 +5,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/lotus/api"
@@ -115,6 +116,10 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 	}
 
 	return status, nil
+}
+
+func (n *FullNodeAPI) RaftState(ctx context.Context) (consensus.State, error) {
+	return n.MpoolAPI.GetRaftState(ctx)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

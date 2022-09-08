@@ -58,6 +58,11 @@ type MessageSendSpec struct {
 	MsgUuid uuid.UUID
 }
 
+type MpoolMessageWhole struct {
+	Msg  *types.Message
+	Spec *MessageSendSpec
+}
+
 // GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
 type GraphSyncDataTransfer struct {
 	// GraphSync request id for this transfer

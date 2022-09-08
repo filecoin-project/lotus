@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +18,13 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/node"
 )
+
+type Libp2p struct {
+	PeerID  peer.ID
+	PrivKey libp2pcrypto.PrivKey
+}
 
 // TestFullNode represents a full node enrolled in an Ensemble.
 type TestFullNode struct {
@@ -29,7 +37,19 @@ type TestFullNode struct {
 	ListenAddr multiaddr.Multiaddr
 	DefaultKey *key.Key
 
+	//Libp2p struct {
+	//	PeerID  peer.ID
+	//	PrivKey libp2pcrypto.PrivKey
+	//}
+	Pkey *Libp2p
+
+	Stop node.StopFunc
+
 	options nodeOpts
+}
+
+func (f TestFullNode) Shutdown(ctx context.Context) error {
+	return f.Stop(ctx)
 }
 
 func (f *TestFullNode) ClientImportCARFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, carv1FilePath string, origFilePath string) {
@@ -84,6 +104,10 @@ func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn
 
 		time.Sleep(time.Second)
 	}
+}
+
+func (t *TestFullNode) AssignPrivKey(pkey *Libp2p) {
+	t.Pkey = pkey
 }
 
 // ChainPredicate encapsulates a chain condition.
