@@ -1172,7 +1172,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 }
 
 func (cs *ChainStore) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) {
-	blk, err := cs.chainLocalBlockstore.Get(ctx, c)
+	blk, err := cs.chainBlockstore.Get(ctx, c)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot find tipset with cid %s: %w", c, err)
 	}
