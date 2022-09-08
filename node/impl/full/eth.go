@@ -176,7 +176,11 @@ func (a *EthModule) EthChainId(ctx context.Context) (api.EthInt, error) {
 
 func (a *EthModule) NetVersion(ctx context.Context) (string, error) {
 	// Note that networkId is not encoded in hex
-	return "1", nil
+	nv, err := a.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return "", err
+	}
+	return strconv.FormatUint(uint64(nv), 10), nil
 }
 
 func (a *EthModule) NetListening(ctx context.Context) (bool, error) {
