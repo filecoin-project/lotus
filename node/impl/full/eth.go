@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type EthModuleAPI interface {
@@ -47,7 +48,7 @@ type EthModule struct {
 	fx.In
 
 	Chain *store.ChainStore
-	WalletAPI
+	StateAPI
 }
 
 var _ EthModuleAPI = (*EthModule)(nil)
@@ -70,6 +71,20 @@ func (a *EthModule) EthAccounts(context.Context) ([]api.EthAddress, error) {
 	return []api.EthAddress{}, nil
 }
 
+func (a *EthModule) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, error) {
+	blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
+	}
+
+	count := 0
+	for _, blkMsg := range blkMsgs {
+		// TODO: may need to run canonical ordering and deduplication here
+		count += len(blkMsg.BlsMessages) + len(blkMsg.SecpkMessages)
+	}
+	return count, nil
+}
+
 func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNumHex string) (api.EthInt, error) {
 	blkNum, err := strconv.ParseInt(strings.Replace(blkNumHex, "0x", "", -1), 16, 64)
 	if err != nil {
@@ -81,16 +96,8 @@ func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blk
 		return api.EthInt(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
 
-	blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
-	if err != nil {
-		return api.EthInt(0), xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
-	}
-
-	count := 0
-	for _, blkMsg := range blkMsgs {
-		count += len(blkMsg.BlsMessages) + len(blkMsg.SecpkMessages)
-	}
-	return api.EthInt(count), nil
+	count, err := a.countTipsetMsgs(ctx, ts)
+	return api.EthInt(count), err
 }
 
 func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash string) (api.EthInt, error) {
@@ -103,17 +110,8 @@ func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHa
 	if err != nil {
 		return api.EthInt(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
-
-	blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
-	if err != nil {
-		return api.EthInt(0), xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
-	}
-
-	count := 0
-	for _, blkMsg := range blkMsgs {
-		count += len(blkMsg.BlsMessages) + len(blkMsg.SecpkMessages)
-	}
-	return api.EthInt(count), nil
+	count, err := a.countTipsetMsgs(ctx, ts)
+	return api.EthInt(count), err
 }
 
 func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash string, fullTxInfo bool) (api.EthBlock, error) {
@@ -163,8 +161,13 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address string, blkParam 
 	if err != nil {
 		return api.EthBigInt{}, err
 	}
-	balance, err := a.WalletAPI.WalletBalance(ctx, filAddr)
-	return api.EthBigInt{balance.Int}, nil
+
+	actor, err := a.StateGetActor(ctx, filAddr, types.EmptyTSK)
+	if err != nil {
+		return api.EthBigInt{}, err
+	}
+
+	return api.EthBigInt{Int: actor.Balance.Int}, nil
 }
 
 func (a *EthModule) EthChainId(ctx context.Context) (api.EthInt, error) {
