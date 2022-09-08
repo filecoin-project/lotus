@@ -174,8 +174,8 @@ lotus-pond-app: lotus-pond-front lotus-pond
 
 lotus-fountain:
 	rm -f lotus-fountain
-	go build $(GOFLAGS) -o lotus-fountain ./cmd/lotus-fountain
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
+	$(GOCC) build $(GOFLAGS) -o lotus-fountain ./cmd/lotus-fountain
+	$(GOCC) run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
 .PHONY: lotus-fountain
 BINS+=lotus-fountain
 
@@ -302,10 +302,13 @@ type-gen: api-gen
 method-gen: api-gen
 	(cd ./lotuspond/front/src/chain && $(GOCC) run ./methodgen.go)
 
-actors-gen:
+actors-code-gen:
 	$(GOCC) run ./gen/inline-gen . gen/inlinegen-data.json
 	$(GOCC) run ./chain/actors/agen
 	$(GOCC) fmt ./...
+
+actors-gen: actors-code-gen fiximports
+.PHONY: actors-gen
 
 bundle-gen:
 	$(GOCC) run ./gen/bundle
@@ -364,7 +367,7 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 fiximports:
 	./scripts/fiximports
 
-gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
+gen: actors-code-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

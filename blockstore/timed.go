@@ -176,11 +176,12 @@ func (t *TimedCacheBlockstore) AllKeysChan(_ context.Context) (<-chan cid.Cid, e
 	defer t.mu.RUnlock()
 
 	ch := make(chan cid.Cid, len(t.active)+len(t.inactive))
-	for c := range t.active {
-		ch <- c
+	for _, b := range t.active {
+		ch <- b.Cid()
 	}
-	for c := range t.inactive {
-		if _, ok := t.active[c]; ok {
+	for _, b := range t.inactive {
+		c := b.Cid()
+		if _, ok := t.active[string(c.Hash())]; ok {
 			continue
 		}
 		ch <- c

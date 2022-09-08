@@ -169,6 +169,10 @@ type FullNode interface {
 	// If oldmsgskip is set, messages from before the requested roots are also not included.
 	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) //perm:read
 
+	// ChainPrune prunes the stored chain state and garbage collects; only supported if you
+	// are using the splitstore
+	ChainPrune(ctx context.Context, opts PruneOpts) error //perm:admin
+
 	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
 	// if supported by the underlying implementation.
 	ChainCheckBlockstore(context.Context) error //perm:admin
@@ -402,7 +406,7 @@ type FullNode interface {
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
-	// If a tipset key is provided, and a replacing message is found on chain,
+	// If a tipset key is provided, and a replacing message is not found on chain,
 	// the method will return an error saying that the message wasn't found
 	//
 	// If no tipset key is provided, the appropriate tipset is looked up, and if
@@ -1218,4 +1222,9 @@ type MsigTransaction struct {
 	Params []byte
 
 	Approved []address.Address
+}
+
+type PruneOpts struct {
+	MovingGC    bool
+	RetainState int64
 }

@@ -653,3 +653,14 @@ func (a *ChainAPI) ChainBlockstoreInfo(ctx context.Context) (map[string]interfac
 
 	return info.Info(), nil
 }
+
+func (a *ChainAPI) ChainPrune(ctx context.Context, opts api.PruneOpts) error {
+	pruner, ok := a.BaseBlockstore.(interface {
+		PruneChain(opts api.PruneOpts) error
+	})
+	if !ok {
+		return xerrors.Errorf("base blockstore does not support pruning (%T)", a.BaseBlockstore)
+	}
+
+	return pruner.PruneChain(opts)
+}

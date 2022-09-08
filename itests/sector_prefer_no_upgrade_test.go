@@ -34,12 +34,12 @@ func TestPreferNoUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
-	Sealed := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 2)
+	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner)
+	Sealed := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
 
 	{
 		miner.PledgeSectors(ctx, 1, 0, nil)
-		sl, err := miner.SectorsList(ctx)
+		sl, err := miner.SectorsListNonGenesis(ctx)
 		require.NoError(t, err)
 		require.Len(t, sl, 1, "expected 1 sector")
 		require.Equal(t, CCUpgrade, sl[0], "unexpected sector number")
@@ -53,7 +53,7 @@ func TestPreferNoUpgrade(t *testing.T) {
 		err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
 		require.NoError(t, err)
 
-		sl, err = miner.SectorsList(ctx)
+		sl, err = miner.SectorsListNonGenesis(ctx)
 		require.NoError(t, err)
 		require.Len(t, sl, 1, "expected 1 sector")
 	}
@@ -68,7 +68,7 @@ func TestPreferNoUpgrade(t *testing.T) {
 		kit.AssertFilesEqual(t, inPath, outPath)
 	}
 
-	sl, err := miner.SectorsList(ctx)
+	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 2, "expected 2 sectors")
 

@@ -102,6 +102,14 @@ func (b *idstore) Put(ctx context.Context, blk blocks.Block) error {
 	return b.bs.Put(ctx, blk)
 }
 
+func (b *idstore) ForEachKey(f func(cid.Cid) error) error {
+	iterBstore, ok := b.bs.(BlockstoreIterator)
+	if !ok {
+		return xerrors.Errorf("underlying blockstore (type %T) doesn't support fast iteration", b.bs)
+	}
+	return iterBstore.ForEachKey(f)
+}
+
 func (b *idstore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	toPut := make([]blocks.Block, 0, len(blks))
 	for _, blk := range blks {

@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lmultisig "github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/multisig"
 )
@@ -36,7 +35,6 @@ func TestMultisig(t *testing.T) {
 
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	kit.QuietMiningLogs()
-	vm.EnableDetailedTracing = true
 
 	blockTime := 5 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
@@ -47,8 +45,6 @@ func TestMultisig(t *testing.T) {
 
 // TestMultisigReentrant sends an infinitely recursive message to a multisig.
 func TestMultisigReentrant(t *testing.T) {
-	tracing := vm.EnableDetailedTracing
-	vm.EnableDetailedTracing = true
 	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
 	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
 	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
@@ -138,7 +134,6 @@ func TestMultisigReentrant(t *testing.T) {
 	require.NoError(t, err, "failed to replay reentrant propose message (StateWaitMsg)")
 
 	require.Equal(t, 1025, countDepth(sl.ExecutionTrace))
-	vm.EnableDetailedTracing = tracing
 }
 
 func countDepth(trace types.ExecutionTrace) int {

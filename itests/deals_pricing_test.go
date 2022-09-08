@@ -29,7 +29,7 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, miner, ens := kit.EnsembleMinimal(t)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	var (
 		ppb         = int64(1)
@@ -70,7 +70,7 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	//stm: @STORAGE_LIST_001, @MINER_SECTOR_LIST_001
 	ss, err := miner.StorageList(context.Background())
 	require.NoError(t, err)
-	_, err = miner.SectorsList(ctx)
+	_, err = miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 
 	//stm: @STORAGE_DROP_SECTOR_001, @STORAGE_LIST_001
@@ -95,7 +95,7 @@ iLoop:
 	// remove the other unsealed file as well
 	ss, err = miner.StorageList(context.Background())
 	require.NoError(t, err)
-	_, err = miner.SectorsList(ctx)
+	_, err = miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	for storeID, sd := range ss {
 		for _, sector := range sd {
@@ -131,7 +131,7 @@ func TestZeroPricePerByteRetrieval(t *testing.T) {
 	)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx := context.Background()
 

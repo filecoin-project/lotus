@@ -6,6 +6,7 @@
   * [Paths](#Paths)
   * [Remove](#Remove)
   * [Session](#Session)
+  * [Shutdown](#Shutdown)
   * [Version](#Version)
 * [Add](#Add)
   * [AddPiece](#AddPiece)
@@ -38,6 +39,10 @@
   * [SetEnabled](#SetEnabled)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
+  * [StorageDetachAll](#StorageDetachAll)
+  * [StorageDetachLocal](#StorageDetachLocal)
+  * [StorageLocal](#StorageLocal)
+  * [StorageRedeclareLocal](#StorageRedeclareLocal)
 * [Task](#Task)
   * [TaskDisable](#TaskDisable)
   * [TaskEnable](#TaskEnable)
@@ -1453,6 +1458,16 @@ Inputs: `null`
 
 Response: `"07070707-0707-0707-0707-070707070707"`
 
+### Shutdown
+Trigger shutdown
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
+
 ### Version
 
 
@@ -2102,6 +2117,58 @@ Inputs:
 ```json
 [
   "string value"
+]
+```
+
+Response: `{}`
+
+### StorageDetachAll
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
+
+### StorageDetachLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### StorageLocal
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path"
+}
+```
+
+### StorageRedeclareLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "1399aa04-2625-44b1-bad4-bd07b59b22c4",
+  true
 ]
 ```
 

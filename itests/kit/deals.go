@@ -292,7 +292,7 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 }
 
 func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
-	snums, err := dh.main.SectorsList(ctx)
+	snums, err := dh.main.SectorsListNonGenesis(ctx)
 	require.NoError(dh.t, err)
 	for _, snum := range snums {
 		si, err := dh.main.SectorsStatus(ctx, snum, false)

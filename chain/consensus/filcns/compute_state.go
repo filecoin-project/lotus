@@ -82,7 +82,17 @@ type FilecoinBlockMessages struct {
 	WinCount int64
 }
 
-func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []FilecoinBlockMessages, epoch abi.ChainEpoch, r vm.Rand, em stmgr.ExecMonitor, baseFee abi.TokenAmount, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
+	sm *stmgr.StateManager,
+	parentEpoch abi.ChainEpoch,
+	pstate cid.Cid,
+	bms []FilecoinBlockMessages,
+	epoch abi.ChainEpoch,
+	r vm.Rand,
+	em stmgr.ExecMonitor,
+	vmTracing bool,
+	baseFee abi.TokenAmount,
+	ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
 	defer done()
 
@@ -104,6 +114,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			NetworkVersion: sm.GetNetworkVersion(ctx, e),
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
+			Tracing:        vmTracing,
 		}
 
 		return sm.VMConstructor()(ctx, vmopt)
@@ -269,7 +280,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 	return st, rectroot, nil
 }
 
-func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManager, ts *types.TipSet, em stmgr.ExecMonitor) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
+func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
+	sm *stmgr.StateManager,
+	ts *types.TipSet,
+	em stmgr.ExecMonitor,
+	vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
@@ -309,7 +324,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 	}
 	baseFee := blks[0].ParentBaseFee
 
-	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, baseFee, ts)
+	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, vmTracing, baseFee, ts)
 }
 
 var _ stmgr.Executor = &TipSetExecutor{}

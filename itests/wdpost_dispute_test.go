@@ -94,7 +94,7 @@ func TestWindowPostDispute(t *testing.T) {
 	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)))
 
 	//stm: @MINER_SECTOR_LIST_001
-	evilSectors, err := evilMiner.SectorsList(ctx)
+	evilSectors, err := evilMiner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	evilSectorNo := evilSectors[0] // only one.
 	//stm: @CHAIN_STATE_SECTOR_PARTITION_001

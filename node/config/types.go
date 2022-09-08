@@ -401,6 +401,10 @@ type SealerConfig struct {
 	AllowProveReplicaUpdate2 bool
 	AllowRegenSectorKey      bool
 
+	// LocalWorkerName specifies a custom name for the builtin worker.
+	// If set to an empty string (default) os hostname will be used
+	LocalWorkerName string
+
 	// Assigner specifies the worker assigner to use when scheduling tasks.
 	// "utilization" (default) - assign tasks to workers with lowest utilization.
 	// "spread" - assign tasks to as many distinct workers as possible.
@@ -541,6 +545,21 @@ type Splitstore struct {
 	// A value of 0 disables, while a value 1 will do full GC in every compaction.
 	// Default is 20 (about once a week).
 	HotStoreFullGCFrequency uint64
+
+	// EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
+	// where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
+	// Default is false
+	EnableColdStoreAutoPrune bool
+
+	// ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
+	// Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
+	// full GC in every prune.
+	// Default is 7 (about once every a week)
+	ColdStoreFullGCFrequency uint64
+
+	// ColdStoreRetention specifies the retention policy for data reachable from the chain, in
+	// finalities beyond the compaction boundary, default is 0, -1 retains everything
+	ColdStoreRetention int64
 }
 
 // // Full Node

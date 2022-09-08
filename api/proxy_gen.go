@@ -145,6 +145,8 @@ type FullNodeStruct struct {
 
 		ChainNotify func(p0 context.Context) (<-chan []*HeadChange, error) `perm:"read"`
 
+		ChainPrune func(p0 context.Context, p1 PruneOpts) error `perm:"admin"`
+
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error `perm:"admin"`
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) `perm:"read"`
@@ -656,6 +658,8 @@ type StorageMinerStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
+		ActorWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
+
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
@@ -800,6 +804,8 @@ type StorageMinerStruct struct {
 
 		SealingAbort func(p0 context.Context, p1 storiface.CallID) error `perm:"admin"`
 
+		SealingRemoveRequest func(p0 context.Context, p1 uuid.UUID) error `perm:"admin"`
+
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
 		SectorAbortUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
@@ -860,6 +866,10 @@ type StorageMinerStruct struct {
 
 		StorageDeclareSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error `perm:"admin"`
 
+		StorageDetach func(p0 context.Context, p1 storiface.ID, p2 string) error `perm:"admin"`
+
+		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
 		StorageDropSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error `perm:"admin"`
 
 		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
@@ -873,6 +883,8 @@ type StorageMinerStruct struct {
 		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
 
 		StorageLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error `perm:"admin"`
+
+		StorageRedeclareLocal func(p0 context.Context, p1 *storiface.ID, p2 bool) error `perm:"admin"`
 
 		StorageReportHealth func(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error `perm:"admin"`
 
@@ -965,7 +977,17 @@ type WorkerStruct struct {
 
 		SetEnabled func(p0 context.Context, p1 bool) error `perm:"admin"`
 
+		Shutdown func(p0 context.Context) error `perm:"admin"`
+
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		StorageDetachAll func(p0 context.Context) error `perm:"admin"`
+
+		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
+
+		StorageRedeclareLocal func(p0 context.Context, p1 *storiface.ID, p2 bool) error `perm:"admin"`
 
 		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
 
@@ -1334,6 +1356,17 @@ func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, 
 
 func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainPrune(p0 context.Context, p1 PruneOpts) error {
+	if s.Internal.ChainPrune == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ChainPrune(p0, p1)
+}
+
+func (s *FullNodeStub) ChainPrune(p0 context.Context, p1 PruneOpts) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {
@@ -3954,6 +3987,17 @@ func (s *StorageMinerStub) ActorSectorSize(p0 context.Context, p1 address.Addres
 	return *new(abi.SectorSize), ErrNotSupported
 }
 
+func (s *StorageMinerStruct) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	if s.Internal.ActorWithdrawBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.ActorWithdrawBalance(p0, p1)
+}
+
+func (s *StorageMinerStub) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
@@ -4746,6 +4790,17 @@ func (s *StorageMinerStub) SealingAbort(p0 context.Context, p1 storiface.CallID)
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) SealingRemoveRequest(p0 context.Context, p1 uuid.UUID) error {
+	if s.Internal.SealingRemoveRequest == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SealingRemoveRequest(p0, p1)
+}
+
+func (s *StorageMinerStub) SealingRemoveRequest(p0 context.Context, p1 uuid.UUID) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (interface{}, error) {
 	if s.Internal.SealingSchedDiag == nil {
 		return nil, ErrNotSupported
@@ -5076,6 +5131,28 @@ func (s *StorageMinerStub) StorageDeclareSector(p0 context.Context, p1 storiface
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) StorageDetach(p0 context.Context, p1 storiface.ID, p2 string) error {
+	if s.Internal.StorageDetach == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetach(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) StorageDetach(p0 context.Context, p1 storiface.ID, p2 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageDetachLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachLocal(p0, p1)
+}
+
+func (s *StorageMinerStub) StorageDetachLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
 	if s.Internal.StorageDropSector == nil {
 		return ErrNotSupported
@@ -5150,6 +5227,17 @@ func (s *StorageMinerStruct) StorageLock(p0 context.Context, p1 abi.SectorID, p2
 }
 
 func (s *StorageMinerStub) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
+	if s.Internal.StorageRedeclareLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageRedeclareLocal(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
 	return ErrNotSupported
 }
 
@@ -5560,6 +5648,17 @@ func (s *WorkerStub) SetEnabled(p0 context.Context, p1 bool) error {
 	return ErrNotSupported
 }
 
+func (s *WorkerStruct) Shutdown(p0 context.Context) error {
+	if s.Internal.Shutdown == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.Shutdown(p0)
+}
+
+func (s *WorkerStub) Shutdown(p0 context.Context) error {
+	return ErrNotSupported
+}
+
 func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
 	if s.Internal.StorageAddLocal == nil {
 		return ErrNotSupported
@@ -5568,6 +5667,50 @@ func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
 }
 
 func (s *WorkerStub) StorageAddLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageDetachAll(p0 context.Context) error {
+	if s.Internal.StorageDetachAll == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachAll(p0)
+}
+
+func (s *WorkerStub) StorageDetachAll(p0 context.Context) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageDetachLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachLocal(p0, p1)
+}
+
+func (s *WorkerStub) StorageDetachLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	if s.Internal.StorageLocal == nil {
+		return *new(map[storiface.ID]string), ErrNotSupported
+	}
+	return s.Internal.StorageLocal(p0)
+}
+
+func (s *WorkerStub) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	return *new(map[storiface.ID]string), ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
+	if s.Internal.StorageRedeclareLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageRedeclareLocal(p0, p1, p2)
+}
+
+func (s *WorkerStub) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
 	return ErrNotSupported
 }
 
