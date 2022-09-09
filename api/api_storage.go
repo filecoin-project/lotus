@@ -573,12 +573,17 @@ type RemoteSectorMeta struct {
 	// SEALING SERVICE HOOKS
 
 	// URL
-	// todo better doc
+	// RemoteCommit1Endpoint is an URL of POST endpoint which lotus will call requesting Commit1 (seal_commit_phase1)
+	// request body will be json-serialized RemoteCommit1Params struct
 	RemoteCommit1Endpoint string
 
+	// RemoteCommit2Endpoint is an URL of POST endpoint which lotus will call requesting Commit2 (seal_commit_phase2)
+	// request body will be json-serialized RemoteCommit2Params struct
 	RemoteCommit2Endpoint string
 
-	// todo OnDone / OnStateChange
+	// RemoteSealingDoneEndpoint is called after the sector exists the sealing pipeline
+	// request body will be json-serialized RemoteSealingDoneParams struct
+	RemoteSealingDoneEndpoint string
 }
 
 type RemoteCommit1Params struct {
@@ -596,4 +601,16 @@ type RemoteCommit2Params struct {
 
 	// todo spec better
 	Commit1Out storiface.Commit1Out
+}
+
+type RemoteSealingDoneParams struct {
+	// Successful is true if the sector has entered state considered as "successfully sealed"
+	Successful bool
+
+	// State is the state the sector has entered
+	// For example "Proving" / "Removing"
+	State string
+
+	// Optional commit message CID
+	CommitMessage *cid.Cid
 }

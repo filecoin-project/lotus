@@ -109,7 +109,7 @@ func (tm *TestMiner) WaitSectorsProvingAllowFails(ctx context.Context, toCheck m
 			st, err := tm.StorageMiner.SectorsStatus(ctx, n, false)
 			require.NoError(tm.t, err)
 			states[st.State]++
-			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) {
+			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) || st.State == api.SectorState(sealing.Removed) {
 				delete(toCheck, n)
 			}
 			if strings.Contains(string(st.State), "Fail") {

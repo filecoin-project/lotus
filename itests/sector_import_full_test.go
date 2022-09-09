@@ -5,10 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/types"
-	spaths "github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/sealer/tarutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -24,27 +20,37 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	spaths "github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/tarutil"
 )
 
 func TestSectorImport(t *testing.T) {
 
 	type testCase struct {
-		c1handler func(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request)
+		c1handler func(s *ffiwrapper.Sealer, m *kit.TestMiner) func(w http.ResponseWriter, r *http.Request)
 
 		mutateRemoteMeta func(*api.RemoteSectorMeta)
 
 		expectImportErrContains string
+
+		expectDoneSuccess bool
+		expectDoneState   string
 	}
 
 	makeTest := func(mut func(*testCase)) *testCase {
 		tc := &testCase{
 			c1handler: testRemoteCommit1,
+
+			expectDoneSuccess: true,
+			expectDoneState:   "Proving",
 		}
 		mut(tc)
 		return tc
@@ -149,9 +155,12 @@ func TestSectorImport(t *testing.T) {
 			////////
 			// start http server serving sector data
 
+			doneResp := new(*api.RemoteSealingDoneParams)
+
 			m := mux.NewRouter()
 			m.HandleFunc("/sectors/{type}/{id}", testRemoteGetSector(sectorDir)).Methods("GET")
-			m.HandleFunc("/sectors/{id}/commit1", tc.c1handler(sealer)).Methods("POST")
+			m.HandleFunc("/sectors/{id}/commit1", tc.c1handler(sealer, miner)).Methods("POST")
+			m.HandleFunc("/sectors/{id}/sealed", testRemoteDone(doneResp)).Methods("POST")
 			m.HandleFunc("/commit2", testRemoteCommit2(sealer)).Methods("POST")
 			srv := httptest.NewServer(m)
 
@@ -159,6 +168,8 @@ func TestSectorImport(t *testing.T) {
 			sealedURL := fmt.Sprintf("%s/sectors/sealed/s-t0%d-%d", srv.URL, mid, snum)
 			cacheURL := fmt.Sprintf("%s/sectors/cache/s-t0%d-%d", srv.URL, mid, snum)
 			remoteC1URL := fmt.Sprintf("%s/sectors/s-t0%d-%d/commit1", srv.URL, mid, snum)
+			remoteC2URL := fmt.Sprintf("%s/commit2", srv.URL)
+			doneURL := fmt.Sprintf("%s/sectors/s-t0%d-%d/sealed", srv.URL, mid, snum)
 
 			////////
 			// import the sector and continue sealing
@@ -196,7 +207,9 @@ func TestSectorImport(t *testing.T) {
 					URL:   cacheURL,
 				},
 
-				RemoteCommit1Endpoint: remoteC1URL,
+				RemoteCommit1Endpoint:     remoteC1URL,
+				RemoteCommit2Endpoint:     remoteC2URL,
+				RemoteSealingDoneEndpoint: doneURL,
 			}
 
 			if tc.mutateRemoteMeta != nil {
@@ -218,6 +231,13 @@ func TestSectorImport(t *testing.T) {
 			require.Equal(t, snum, ng[0])
 
 			miner.WaitSectorsProvingAllowFails(ctx, map[abi.SectorNumber]struct{}{snum: {}}, map[api.SectorState]struct{}{api.SectorState(sealing.RemoteCommitFailed): {}})
+
+			require.NotNil(t, *doneResp)
+			require.Equal(t, tc.expectDoneSuccess, (*doneResp).Successful)
+			require.Equal(t, tc.expectDoneState, (*doneResp).State)
+			if tc.expectDoneSuccess {
+				require.NotNil(t, (*doneResp).CommitMessage)
+			}
 		}
 	}
 
@@ -229,7 +249,7 @@ func TestSectorImport(t *testing.T) {
 			sealing.MinRetryTime = prt
 		})
 
-		testCase.c1handler = func(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request) {
+		testCase.c1handler = func(s *ffiwrapper.Sealer, m *kit.TestMiner) func(w http.ResponseWriter, r *http.Request) {
 			var failedOnce bool
 
 			return func(w http.ResponseWriter, r *http.Request) {
@@ -242,6 +262,35 @@ func TestSectorImport(t *testing.T) {
 				remoteCommit1(s)(w, r)
 			}
 		}
+	})))
+
+	t.Run("c1-fail-remove", runTest(makeTest(func(testCase *testCase) {
+		prt := sealing.MinRetryTime
+		sealing.MinRetryTime = time.Second
+		t.Cleanup(func() {
+			sealing.MinRetryTime = prt
+		})
+
+		testCase.c1handler = func(s *ffiwrapper.Sealer, m *kit.TestMiner) func(w http.ResponseWriter, r *http.Request) {
+			return func(w http.ResponseWriter, r *http.Request) {
+				vars := mux.Vars(r)
+
+				id, err := storiface.ParseSectorID(vars["id"])
+				if err != nil {
+					panic(err)
+				}
+
+				err = m.SectorRemove(r.Context(), id.Number)
+				if err != nil {
+					panic(err)
+				}
+
+				w.WriteHeader(http.StatusBadGateway)
+			}
+		}
+
+		testCase.expectDoneSuccess = false
+		testCase.expectDoneState = "Removing"
 	})))
 
 	t.Run("nil-commd", runTest(makeTest(func(testCase *testCase) {
@@ -302,8 +351,19 @@ func TestSectorImport(t *testing.T) {
 // note: stuff below is almost the same as in _simple version of this file; We need
 // to copy it because on Circle we can't call those functions between test files,
 // and for the _simple test we want everything in one file to make it easy to follow
+func testRemoteDone(rs **api.RemoteSealingDoneParams) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		*rs = new(api.RemoteSealingDoneParams)
+		if err := json.NewDecoder(r.Body).Decode(*rs); err != nil {
+			w.WriteHeader(500)
+			return
+		}
 
-func testRemoteCommit1(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	}
+}
+
+func testRemoteCommit1(s *ffiwrapper.Sealer, m *kit.TestMiner) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 

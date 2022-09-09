@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
@@ -142,8 +145,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 
 	FinalizeSector: planOne(
-		on(SectorFinalized{}, Proving),
-		on(SectorFinalizedAvailable{}, Available),
+		onWithCB(SectorFinalized{}, Proving, maybeNotifyRemoteDone(true, "Proving")),
+		onWithCB(SectorFinalizedAvailable{}, Available, maybeNotifyRemoteDone(true, "Available")),
 		on(SectorFinalizeFailed{}, FinalizeFailed),
 	),
 
@@ -218,7 +221,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryWaitSeed{}, WaitSeed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorPreCommitLanded{}, WaitSeed),
-		on(SectorDealsExpired{}, DealsExpired),
+		onWithCB(SectorDealsExpired{}, DealsExpired, maybeNotifyRemoteDone(false, "DealsExpired")),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	ComputeProofFailed: planOne(
@@ -241,9 +244,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryPreCommit{}, PreCommitting),
 		on(SectorRetryCommitWait{}, CommitWait),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
-		on(SectorDealsExpired{}, DealsExpired),
+		onWithCB(SectorDealsExpired{}, DealsExpired, maybeNotifyRemoteDone(false, "DealsExpired")),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
-		on(SectorTicketExpired{}, Removing),
+		onWithCB(SectorTicketExpired{}, Removing, maybeNotifyRemoteDone(false, "Removing")),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
@@ -736,6 +739,16 @@ func on(mut mutator, next SectorState) func() (mutator, func(*SectorInfo) (bool,
 	}
 }
 
+func onWithCB(mut mutator, next SectorState, cb func(info *SectorInfo)) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
+			cb(state)
+			state.State = next
+			return false, nil
+		}
+	}
+}
+
 // like `on`, but doesn't change state
 func apply(mut mutator) func() (mutator, func(*SectorInfo) (bool, error)) {
 	return func() (mutator, func(*SectorInfo) (bool, error)) {
@@ -810,5 +823,43 @@ func planOneOrIgnore(ts ...func() (mut mutator, next func(*SectorInfo) (more boo
 			log.Warnf("planOneOrIgnore: ignoring error from planOne: %s", err)
 		}
 		return cnt, nil
+	}
+}
+
+func maybeNotifyRemoteDone(success bool, state string) func(*SectorInfo) {
+	return func(sector *SectorInfo) {
+		if sector.RemoteSealingDoneEndpoint == "" {
+			return
+		}
+
+		reqData := api.RemoteSealingDoneParams{
+			Successful:    success,
+			State:         state,
+			CommitMessage: sector.CommitMessage,
+		}
+		reqBody, err := json.Marshal(&reqData)
+		if err != nil {
+			log.Errorf("marshaling remote done notification request params: %s", err)
+			return
+		}
+
+		req, err := http.NewRequest("POST", sector.RemoteSealingDoneEndpoint, bytes.NewReader(reqBody))
+		if err != nil {
+			log.Errorf("creating new remote done notification request: %s", err)
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Errorf("sending remote done notification: %s", err)
+			return
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			log.Errorf("remote done notification received non-200 http response %s", resp.Status)
+			return
+		}
 	}
 }

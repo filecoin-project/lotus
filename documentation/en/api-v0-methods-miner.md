@@ -3300,7 +3300,8 @@ Inputs:
       ]
     },
     "RemoteCommit1Endpoint": "string value",
-    "RemoteCommit2Endpoint": "string value"
+    "RemoteCommit2Endpoint": "string value",
+    "RemoteSealingDoneEndpoint": "string value"
   }
 ]
 ```

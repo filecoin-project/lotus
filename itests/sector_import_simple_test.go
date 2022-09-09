@@ -129,10 +129,14 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	////////
 	// start http server serving sector data
 
+	doneResp := new(*api.RemoteSealingDoneParams)
+
 	m := mux.NewRouter()
 	m.HandleFunc("/sectors/{type}/{id}", remoteGetSector(sectorDir)).Methods("GET")
 	m.HandleFunc("/sectors/{id}/commit1", remoteCommit1(sealer)).Methods("POST")
+	m.HandleFunc("/sectors/{id}/sealed", remoteDone(doneResp)).Methods("POST")
 	m.HandleFunc("/commit2", remoteCommit2(sealer)).Methods("POST")
+
 	srv := httptest.NewServer(m)
 
 	unsealedURL := fmt.Sprintf("%s/sectors/unsealed/s-t0%d-%d", srv.URL, mid, snum)
@@ -140,6 +144,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	cacheURL := fmt.Sprintf("%s/sectors/cache/s-t0%d-%d", srv.URL, mid, snum)
 	remoteC1URL := fmt.Sprintf("%s/sectors/s-t0%d-%d/commit1", srv.URL, mid, snum)
 	remoteC2URL := fmt.Sprintf("%s/commit2", srv.URL)
+	doneURL := fmt.Sprintf("%s/sectors/s-t0%d-%d/sealed", srv.URL, mid, snum)
 
 	////////
 	// import the sector and continue sealing
@@ -177,8 +182,9 @@ func TestSectorImportAfterPC2(t *testing.T) {
 			URL:   cacheURL,
 		},
 
-		RemoteCommit1Endpoint: remoteC1URL,
-		RemoteCommit2Endpoint: remoteC2URL,
+		RemoteCommit1Endpoint:     remoteC1URL,
+		RemoteCommit2Endpoint:     remoteC2URL,
+		RemoteSealingDoneEndpoint: doneURL,
 	})
 	require.NoError(t, err)
 
@@ -189,6 +195,11 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	require.Equal(t, snum, ng[0])
 
 	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{snum: {}})
+
+	require.NotNil(t, *doneResp)
+	require.True(t, (*doneResp).Successful)
+	require.Equal(t, "Proving", (*doneResp).State)
+	require.NotNil(t, (*doneResp).CommitMessage)
 }
 
 func remoteCommit1(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request) {
@@ -236,6 +247,18 @@ func remoteCommit1(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Req
 		if _, err := w.Write(p); err != nil {
 			fmt.Println("c1 write error")
 		}
+	}
+}
+
+func remoteDone(rs **api.RemoteSealingDoneParams) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		*rs = new(api.RemoteSealingDoneParams)
+		if err := json.NewDecoder(r.Body).Decode(*rs); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		w.WriteHeader(200)
 	}
 }
 

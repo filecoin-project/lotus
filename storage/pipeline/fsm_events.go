@@ -524,6 +524,9 @@ func (evt SectorTerminateFailed) apply(*SectorInfo)                        {}
 type SectorRemove struct{}
 
 func (evt SectorRemove) applyGlobal(state *SectorInfo) bool {
+	// because this event is global we need to send the notification here instead through an fsm callback
+	maybeNotifyRemoteDone(false, "Removing")(state)
+
 	state.State = Removing
 	return true
 }
