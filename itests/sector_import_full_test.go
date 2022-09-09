@@ -3,7 +3,12 @@ package itests
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/types"
+	spaths "github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/tarutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -39,7 +44,7 @@ func TestSectorImport(t *testing.T) {
 
 	makeTest := func(mut func(*testCase)) *testCase {
 		tc := &testCase{
-			c1handler: remoteCommit1,
+			c1handler: testRemoteCommit1,
 		}
 		mut(tc)
 		return tc
@@ -72,7 +77,11 @@ func TestSectorImport(t *testing.T) {
 			mid, err := address.IDFromAddress(maddr)
 			require.NoError(t, err)
 
-			spt, err := currentSealProof(ctx, client, maddr)
+			mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+			require.NoError(t, err)
+			ver, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
+			require.NoError(t, err)
+			spt, err := lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
 			require.NoError(t, err)
 
 			ssize, err := spt.SectorSize()
@@ -141,8 +150,9 @@ func TestSectorImport(t *testing.T) {
 			// start http server serving sector data
 
 			m := mux.NewRouter()
-			m.HandleFunc("/sectors/{type}/{id}", remoteGetSector(sectorDir)).Methods("GET")
+			m.HandleFunc("/sectors/{type}/{id}", testRemoteGetSector(sectorDir)).Methods("GET")
 			m.HandleFunc("/sectors/{id}/commit1", tc.c1handler(sealer)).Methods("POST")
+			m.HandleFunc("/commit2", testRemoteCommit2(sealer)).Methods("POST")
 			srv := httptest.NewServer(m)
 
 			unsealedURL := fmt.Sprintf("%s/sectors/unsealed/s-t0%d-%d", srv.URL, mid, snum)
@@ -287,4 +297,138 @@ func TestSectorImport(t *testing.T) {
 		testCase.expectImportErrContains = "tickets differ"
 	})))
 
+}
+
+// note: stuff below is almost the same as in _simple version of this file; We need
+// to copy it because on Circle we can't call those functions between test files,
+// and for the _simple test we want everything in one file to make it easy to follow
+
+func testRemoteCommit1(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		// validate sector id
+		id, err := storiface.ParseSectorID(vars["id"])
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		var params api.RemoteCommit1Params
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		sref := storiface.SectorRef{
+			ID:        id,
+			ProofType: params.ProofType,
+		}
+
+		ssize, err := params.ProofType.SectorSize()
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		p, err := s.SealCommit1(r.Context(), sref, params.Ticket, params.Seed, []abi.PieceInfo{
+			{
+				Size:     abi.PaddedPieceSize(ssize),
+				PieceCID: params.Unsealed,
+			},
+		}, storiface.SectorCids{
+			Unsealed: params.Unsealed,
+			Sealed:   params.Sealed,
+		})
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		if _, err := w.Write(p); err != nil {
+			fmt.Println("c1 write error")
+		}
+	}
+}
+
+func testRemoteCommit2(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var params api.RemoteCommit2Params
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		sref := storiface.SectorRef{
+			ID:        params.Sector,
+			ProofType: params.ProofType,
+		}
+
+		p, err := s.SealCommit2(r.Context(), sref, params.Commit1Out)
+		if err != nil {
+			fmt.Println("c2 error: ", err)
+			w.WriteHeader(500)
+			return
+		}
+
+		if _, err := w.Write(p); err != nil {
+			fmt.Println("c2 write error")
+		}
+	}
+}
+
+func testRemoteGetSector(sectorRoot string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		vars := mux.Vars(r)
+
+		// validate sector id
+		id, err := storiface.ParseSectorID(vars["id"])
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		// validate type
+		_, err = spaths.FileTypeFromString(vars["type"])
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		typ := vars["type"]
+		if typ == "cache" {
+			// if cache is requested, send the finalized cache we've created above
+			typ = "fin-cache"
+		}
+
+		path := filepath.Join(sectorRoot, typ, vars["id"])
+
+		stat, err := os.Stat(path)
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		if stat.IsDir() {
+			if _, has := r.Header["Range"]; has {
+				w.WriteHeader(500)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/x-tar")
+			w.WriteHeader(200)
+
+			err := tarutil.TarDirectory(path, w, make([]byte, 1<<20))
+			if err != nil {
+				return
+			}
+		} else {
+			w.Header().Set("Content-Type", "application/octet-stream")
+			// will do a ranged read over the file at the given path if the caller has asked for a ranged read in the request headers.
+			http.ServeFile(w, r, path)
+		}
+
+		fmt.Printf("served sector file/dir, sectorID=%+v, fileType=%s, path=%s\n", id, vars["type"], path)
+	}
 }
