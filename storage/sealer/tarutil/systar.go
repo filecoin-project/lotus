@@ -103,7 +103,9 @@ func ExtractTar(body io.Reader, dir string, buf []byte) (int64, error) {
 			return read, xerrors.Errorf("tar file %#v is bigger than expected: %d > %d", header.Name, header.Size, sz)
 		}
 
-		r, err := io.CopyBuffer(f, tr, buf)
+		ltr := io.LimitReader(tr, header.Size)
+
+		r, err := io.CopyBuffer(f, ltr, buf)
 		read += r
 		if err != nil {
 			return read, err

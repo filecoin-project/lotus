@@ -259,7 +259,7 @@ func TestSectorImport(t *testing.T) {
 					return
 				}
 
-				remoteCommit1(s)(w, r)
+				testRemoteCommit1(s, m)(w, r)
 			}
 		}
 	})))
