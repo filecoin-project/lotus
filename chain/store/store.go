@@ -653,7 +653,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 	if err != nil {
 		log.Errorf("failed to create a block from tsk: %s", ts.Key())
 	}
-	cs.chainLocalBlockstore.Put(ctx, tskBlk)
+	_ = cs.chainLocalBlockstore.Put(ctx, tskBlk)
 
 	return nil
 }
