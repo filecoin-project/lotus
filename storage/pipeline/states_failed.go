@@ -184,13 +184,13 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 	return ctx.Send(SectorRetryComputeProof{})
 }
 
-func (m *Sealing) handleRemoteCommit1Failed(ctx statemachine.Context, sector SectorInfo) error {
+func (m *Sealing) handleRemoteCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
 	if err := failedCooldown(ctx, sector); err != nil {
 		return err
 	}
 
 	if sector.InvalidProofs > 1 {
-		log.Errorw("consecutive remote commit1 fails", "sector", sector.SectorNumber, "c1url", sector.RemoteCommit1Endpoint)
+		log.Errorw("consecutive remote commit fails", "sector", sector.SectorNumber, "c1url", sector.RemoteCommit1Endpoint, "c2url", sector.RemoteCommit2Endpoint)
 	}
 
 	return ctx.Send(SectorRetryComputeProof{})

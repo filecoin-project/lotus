@@ -3272,7 +3272,8 @@ Inputs:
         }
       ]
     },
-    "RemoteCommit1Endpoint": "string value"
+    "RemoteCommit1Endpoint": "string value",
+    "RemoteCommit2Endpoint": "string value"
   }
 ]
 ```

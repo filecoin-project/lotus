@@ -100,6 +100,7 @@ type SectorInfo struct {
 	RemoteDataSealed      *storiface.SectorData
 	RemoteDataCache       *storiface.SectorData
 	RemoteCommit1Endpoint string
+	RemoteCommit2Endpoint string
 	RemoteDataFinalized   bool
 
 	// Debug
