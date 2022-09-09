@@ -218,6 +218,11 @@ func (evt SectorSeedReady) apply(state *SectorInfo) {
 	state.SeedValue = evt.SeedValue
 }
 
+type SectorRemoteCommit1Failed struct{ error }
+
+func (evt SectorRemoteCommit1Failed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorRemoteCommit1Failed) apply(*SectorInfo)                        {}
+
 type SectorComputeProofFailed struct{ error }
 
 func (evt SectorComputeProofFailed) FormatError(xerrors.Printer) (next error) { return evt.error }

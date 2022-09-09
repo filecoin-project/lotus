@@ -3,6 +3,7 @@ package itests
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -118,6 +119,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 
 	m := mux.NewRouter()
 	m.HandleFunc("/sectors/{type}/{id}", remoteGetSector(sectorDir)).Methods("GET")
+	m.HandleFunc("/sectors/{id}/commit1", remoteCommit1(sealer)).Methods("POST")
 	srv := httptest.NewServer(m)
 
 	////////
@@ -155,6 +157,8 @@ func TestSectorImportAfterPC2(t *testing.T) {
 			Local: false,
 			URL:   fmt.Sprintf("%s/sectors/cache/s-t0%d-%d", srv.URL, mid, snum),
 		},
+
+		RemoteCommit1Endpoint: fmt.Sprintf("%s/sectors/s-t0%d-%d/commit1", srv.URL, mid, snum),
 	})
 	require.NoError(t, err)
 
@@ -165,6 +169,54 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	require.Equal(t, snum, ng[0])
 
 	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{snum: {}})
+}
+
+func remoteCommit1(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		// validate sector id
+		id, err := storiface.ParseSectorID(vars["id"])
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		var params api.RemoteCommit1Params
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		sref := storiface.SectorRef{
+			ID:        id,
+			ProofType: params.ProofType,
+		}
+
+		ssize, err := params.ProofType.SectorSize()
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		p, err := s.SealCommit1(r.Context(), sref, params.Ticket, params.Seed, []abi.PieceInfo{
+			{
+				Size:     abi.PaddedPieceSize(ssize),
+				PieceCID: params.Unsealed,
+			},
+		}, storiface.SectorCids{
+			Unsealed: params.Unsealed,
+			Sealed:   params.Sealed,
+		})
+		if err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		if _, err := w.Write(p); err != nil {
+			fmt.Println("c1 write error")
+		}
+	}
 }
 
 func remoteGetSector(sectorRoot string) func(w http.ResponseWriter, r *http.Request) {
