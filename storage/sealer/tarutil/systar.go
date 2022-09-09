@@ -3,7 +3,6 @@ package tarutil
 import (
 	"archive/tar"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -52,13 +51,18 @@ func ExtractTar(body io.Reader, dir string, buf []byte) error {
 func TarDirectory(dir string, w io.Writer, buf []byte) error {
 	tw := tar.NewWriter(w)
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
 
 	for _, file := range files {
-		h, err := tar.FileInfoHeader(file, "")
+		info, err := file.Info()
+		if err != nil {
+			return xerrors.Errorf("getting file info for file %s: %w", file.Name(), err)
+		}
+
+		h, err := tar.FileInfoHeader(info, "")
 		if err != nil {
 			return xerrors.Errorf("getting header for file %s: %w", file.Name(), err)
 		}

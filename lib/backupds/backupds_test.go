@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -72,7 +73,7 @@ func TestLogRestore(t *testing.T) {
 
 	require.NoError(t, bds.Close())
 
-	fls, err := ioutil.ReadDir(logdir)
+	fls, err := os.ReadDir(logdir)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(fls))
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 )
 
@@ -24,7 +23,7 @@ func sanityCheck() {
 		panic(enhanceMsg("/var/tmp/filecoin-proof-parameters is not a directory; aborting"))
 	}
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		panic(enhanceMsg("failed list directory /var/tmp/filecoin-proof-parameters: %s", err))
 	}
