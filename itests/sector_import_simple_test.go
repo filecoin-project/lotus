@@ -57,7 +57,11 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	mid, err := address.IDFromAddress(maddr)
 	require.NoError(t, err)
 
-	spt, err := currentSealProof(ctx, client, maddr)
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+	ver, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	spt, err := lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
 	require.NoError(t, err)
 
 	ssize, err := spt.SectorSize()
@@ -315,18 +319,4 @@ func remoteGetSector(sectorRoot string) func(w http.ResponseWriter, r *http.Requ
 
 		fmt.Printf("served sector file/dir, sectorID=%+v, fileType=%s, path=%s\n", id, vars["type"], path)
 	}
-}
-
-func currentSealProof(ctx context.Context, api api.FullNode, maddr address.Address) (abi.RegisteredSealProof, error) {
-	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return 0, err
-	}
-
-	ver, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
-	if err != nil {
-		return 0, err
-	}
-
-	return lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
 }
