@@ -41,6 +41,7 @@ func main() {
 
 	err = gen.WriteTupleEncodersToFile("./chain/vm/cbor_gen.go", "vm",
 		vm.FvmExecutionTrace{},
+		vm.FvmGasCharge{},
 	)
 	if err != nil {
 		fmt.Println(err)
