@@ -576,6 +576,8 @@ type RemoteSectorMeta struct {
 	// todo better doc
 	RemoteCommit1Endpoint string
 
+	RemoteCommit2Endpoint string
+
 	// todo OnDone / OnStateChange
 }
 
@@ -586,4 +588,12 @@ type RemoteCommit1Params struct {
 	Sealed   cid.Cid
 
 	ProofType abi.RegisteredSealProof
+}
+
+type RemoteCommit2Params struct {
+	Sector    abi.SectorID
+	ProofType abi.RegisteredSealProof
+
+	// todo spec better
+	Commit1Out storiface.Commit1Out
 }

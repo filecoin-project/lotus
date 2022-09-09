@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"net/url"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -177,7 +178,24 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		}
 		info.RemoteDataSealed = meta.DataSealed // todo make head requests to check?
 		info.RemoteDataCache = meta.DataCache
-		info.RemoteCommit1Endpoint = meta.RemoteCommit1Endpoint
+
+		if meta.RemoteCommit1Endpoint != "" {
+			// validate the url
+			if _, err := url.Parse(meta.RemoteCommit1Endpoint); err != nil {
+				return SectorInfo{}, xerrors.Errorf("parsing remote c1 endpoint url: %w", err)
+			}
+
+			info.RemoteCommit1Endpoint = meta.RemoteCommit1Endpoint
+		}
+
+		if meta.RemoteCommit2Endpoint != "" {
+			// validate the url
+			if _, err := url.Parse(meta.RemoteCommit2Endpoint); err != nil {
+				return SectorInfo{}, xerrors.Errorf("parsing remote c2 endpoint url: %w", err)
+			}
+
+			info.RemoteCommit2Endpoint = meta.RemoteCommit2Endpoint
+		}
 
 		// If we get a sector after PC2, and remote C1 endpoint is set, assume that we're getting finalized sector data
 		if info.RemoteCommit1Endpoint != "" {

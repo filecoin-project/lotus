@@ -128,12 +128,14 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	m := mux.NewRouter()
 	m.HandleFunc("/sectors/{type}/{id}", remoteGetSector(sectorDir)).Methods("GET")
 	m.HandleFunc("/sectors/{id}/commit1", remoteCommit1(sealer)).Methods("POST")
+	m.HandleFunc("/commit2", remoteCommit2(sealer)).Methods("POST")
 	srv := httptest.NewServer(m)
 
 	unsealedURL := fmt.Sprintf("%s/sectors/unsealed/s-t0%d-%d", srv.URL, mid, snum)
 	sealedURL := fmt.Sprintf("%s/sectors/sealed/s-t0%d-%d", srv.URL, mid, snum)
 	cacheURL := fmt.Sprintf("%s/sectors/cache/s-t0%d-%d", srv.URL, mid, snum)
 	remoteC1URL := fmt.Sprintf("%s/sectors/s-t0%d-%d/commit1", srv.URL, mid, snum)
+	remoteC2URL := fmt.Sprintf("%s/commit2", srv.URL)
 
 	////////
 	// import the sector and continue sealing
@@ -172,6 +174,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 		},
 
 		RemoteCommit1Endpoint: remoteC1URL,
+		RemoteCommit2Endpoint: remoteC2URL,
 	})
 	require.NoError(t, err)
 
@@ -228,6 +231,32 @@ func remoteCommit1(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Req
 
 		if _, err := w.Write(p); err != nil {
 			fmt.Println("c1 write error")
+		}
+	}
+}
+
+func remoteCommit2(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var params api.RemoteCommit2Params
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+
+		sref := storiface.SectorRef{
+			ID:        params.Sector,
+			ProofType: params.ProofType,
+		}
+
+		p, err := s.SealCommit2(r.Context(), sref, params.Commit1Out)
+		if err != nil {
+			fmt.Println("c2 error: ", err)
+			w.WriteHeader(500)
+			return
+		}
+
+		if _, err := w.Write(p); err != nil {
+			fmt.Println("c2 write error")
 		}
 	}
 }

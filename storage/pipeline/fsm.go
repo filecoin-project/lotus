@@ -225,7 +225,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryComputeProof{}, Committing),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 	),
-	RemoteCommit1Failed: planOne(
+	RemoteCommitFailed: planOne(
 		on(SectorRetryComputeProof{}, Committing),
 	),
 	CommitFinalizeFailed: planOne(
@@ -542,8 +542,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommitFailed, processed, nil
 	case ComputeProofFailed:
 		return m.handleComputeProofFailed, processed, nil
-	case RemoteCommit1Failed:
-		return m.handleRemoteCommit1Failed, processed, nil
+	case RemoteCommitFailed:
+		return m.handleRemoteCommitFailed, processed, nil
 	case CommitFailed:
 		return m.handleCommitFailed, processed, nil
 	case CommitFinalizeFailed:
@@ -671,8 +671,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			return uint64(i + 1), nil
 		case SectorComputeProofFailed:
 			state.State = ComputeProofFailed
-		case SectorRemoteCommit1Failed:
-			state.State = RemoteCommit1Failed
+		case SectorRemoteCommit1Failed, SectorRemoteCommit2Failed:
+			state.State = RemoteCommitFailed
 		case SectorSealPreCommit1Failed:
 			state.State = SealPreCommit1Failed
 		case SectorCommitFailed:

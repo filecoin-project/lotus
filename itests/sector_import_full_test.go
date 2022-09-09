@@ -207,7 +207,7 @@ func TestSectorImport(t *testing.T) {
 			require.Len(t, ng, 1)
 			require.Equal(t, snum, ng[0])
 
-			miner.WaitSectorsProvingAllowFails(ctx, map[abi.SectorNumber]struct{}{snum: {}}, map[api.SectorState]struct{}{api.SectorState(sealing.RemoteCommit1Failed): {}})
+			miner.WaitSectorsProvingAllowFails(ctx, map[abi.SectorNumber]struct{}{snum: {}}, map[api.SectorState]struct{}{api.SectorState(sealing.RemoteCommitFailed): {}})
 		}
 	}
 

@@ -31,7 +31,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{184, 37}); err != nil {
+	if _, err := cw.Write([]byte{184, 38}); err != nil {
 		return err
 	}
 
@@ -723,6 +723,29 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := io.WriteString(w, string(t.RemoteCommit1Endpoint)); err != nil {
+		return err
+	}
+
+	// t.RemoteCommit2Endpoint (string) (string)
+	if len("RemoteCommit2Endpoint") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RemoteCommit2Endpoint\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RemoteCommit2Endpoint"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RemoteCommit2Endpoint")); err != nil {
+		return err
+	}
+
+	if len(t.RemoteCommit2Endpoint) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.RemoteCommit2Endpoint was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.RemoteCommit2Endpoint))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.RemoteCommit2Endpoint)); err != nil {
 		return err
 	}
 
@@ -1512,6 +1535,17 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 				t.RemoteCommit1Endpoint = string(sval)
+			}
+			// t.RemoteCommit2Endpoint (string) (string)
+		case "RemoteCommit2Endpoint":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.RemoteCommit2Endpoint = string(sval)
 			}
 			// t.RemoteDataFinalized (bool) (bool)
 		case "RemoteDataFinalized":
