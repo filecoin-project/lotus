@@ -2045,6 +2045,8 @@ COMMANDS:
    install-actor                     Install a new actor and return the actor code CID
    create-actor                      Create an new actor via the init actor and return its address
    invoke                            Invoke a method in an actor
+   create-evm-actor                  Create an new EVM actor via the init actor and return its address
+   invoke-evm-actor                  Invoke a contract entry point in an EVM actor
    help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2400,6 +2402,32 @@ NAME:
 
 USAGE:
    lotus chain invoke [command options] address method [params]
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the exec message
+   
+```
+
+### lotus chain create-evm-actor
+```
+NAME:
+   lotus chain create-evm-actor - Create an new EVM actor via the init actor and return its address
+
+USAGE:
+   lotus chain create-evm-actor [command options] contract [params]
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the exec message
+   
+```
+
+### lotus chain invoke-evm-actor
+```
+NAME:
+   lotus chain invoke-evm-actor - Invoke a contract entry point in an EVM actor
+
+USAGE:
+   lotus chain invoke-evm-actor [command options] address contract-entry-point [input-data]
 
 OPTIONS:
    --from value  optionally specify the account to use for sending the exec message
