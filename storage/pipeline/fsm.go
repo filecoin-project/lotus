@@ -855,7 +855,7 @@ func maybeNotifyRemoteDone(success bool, state string) func(*SectorInfo) {
 			return
 		}
 
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 
 		if resp.StatusCode != http.StatusOK {
 			log.Errorf("remote done notification received non-200 http response %s", resp.Status)

@@ -3242,10 +3242,7 @@ Inputs:
         5432
       ],
       "Expiration": 10101,
-      "ReplaceCapacity": true,
-      "ReplaceSectorDeadline": 42,
-      "ReplaceSectorPartition": 42,
-      "ReplaceSectorNumber": 9
+      "UnsealedCid": null
     },
     "PreCommitDeposit": "0",
     "PreCommitMessage": null,

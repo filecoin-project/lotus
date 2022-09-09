@@ -797,7 +797,7 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 			Comment: ``,
 		},
 		{
-			Num: "AllowSectorDownload",
+			Num:  "AllowSectorDownload",
 			Type: "bool",
 
 			Comment: ``,
