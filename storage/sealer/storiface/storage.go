@@ -131,7 +131,7 @@ type SectorData struct {
 
 	// URL to the sector data
 	// For sealed/unsealed sector, lotus expects octet-stream
-	// For cache, lotus expects a tar archive with cache files (todo maybe use not-tar; specify what files with what paths must be present)
+	// For cache, lotus expects a tar archive with cache files
 	// Valid schemas:
 	// - http:// / https://
 	URL string
