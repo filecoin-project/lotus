@@ -211,6 +211,15 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		info.Pieces = meta.Pieces
 		info.SectorType = meta.Type
 
+		if meta.RemoteSealingDoneEndpoint != "" {
+			// validate the url
+			if _, err := url.Parse(meta.RemoteSealingDoneEndpoint); err != nil {
+				return SectorInfo{}, xerrors.Errorf("parsing remote sealing-done endpoint url: %w", err)
+			}
+
+			info.RemoteSealingDoneEndpoint = meta.RemoteSealingDoneEndpoint
+		}
+
 		if err := checkPieces(ctx, m.maddr, meta.Sector.Number, meta.Pieces, m.Api, false); err != nil {
 			return SectorInfo{}, xerrors.Errorf("checking pieces: %w", err)
 		}
