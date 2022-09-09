@@ -1,21 +1,28 @@
 package sealing
 
 import (
+	"bytes"
 	"context"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-// todo m.inputLk?
 func (m *Sealing) Receive(ctx context.Context, meta api.RemoteSectorMeta) error {
+	m.inputLk.Lock()
+	defer m.inputLk.Unlock()
+
 	si, err := m.checkSectorMeta(ctx, meta)
 	if err != nil {
 		return err
@@ -73,7 +80,13 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		}
 	}
 
+	ts, err := m.Api.ChainHead(ctx)
+	if err != nil {
+		return SectorInfo{}, xerrors.Errorf("getting chain head: %w", err)
+	}
+
 	var info SectorInfo
+	var validatePoRep bool
 
 	switch SectorState(meta.State) {
 	case Proving, Available:
@@ -91,21 +104,69 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		info.PreCommitMessage = meta.PreCommitMessage
 		info.PreCommitTipSet = meta.PreCommitTipSet
 
-		// todo check
+		// check provided seed
+		if len(meta.SeedValue) != abi.RandomnessLength {
+			return SectorInfo{}, xerrors.Errorf("seed randomness had wrong length %d", len(meta.SeedValue))
+		}
+
+		maddrBuf := new(bytes.Buffer)
+		if err := m.maddr.MarshalCBOR(maddrBuf); err != nil {
+			return SectorInfo{}, xerrors.Errorf("marshal miner address for seed check: %w", err)
+		}
+		rand, err := m.Api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, meta.SeedEpoch, maddrBuf.Bytes(), ts.Key())
+		if err != nil {
+			return SectorInfo{}, xerrors.Errorf("generating check seed: %w", err)
+		}
+		if !bytes.Equal(rand, meta.SeedValue) {
+			return SectorInfo{}, xerrors.Errorf("provided(%x) and generated(%x) seeds differ", meta.SeedValue, rand)
+		}
+
 		info.SeedValue = meta.SeedValue
 		info.SeedEpoch = meta.SeedEpoch
 
-		// todo validate
 		info.Proof = meta.CommitProof
+		validatePoRep = true
 
 		fallthrough
 	case PreCommitting:
+		// check provided ticket
+		if len(meta.TicketValue) != abi.RandomnessLength {
+			return SectorInfo{}, xerrors.Errorf("ticket randomness had wrong length %d", len(meta.TicketValue))
+		}
+
+		maddrBuf := new(bytes.Buffer)
+		if err := m.maddr.MarshalCBOR(maddrBuf); err != nil {
+			return SectorInfo{}, xerrors.Errorf("marshal miner address for ticket check: %w", err)
+		}
+		rand, err := m.Api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_SealRandomness, meta.TicketEpoch, maddrBuf.Bytes(), ts.Key())
+		if err != nil {
+			return SectorInfo{}, xerrors.Errorf("generating check ticket: %w", err)
+		}
+		if !bytes.Equal(rand, meta.TicketValue) {
+			return SectorInfo{}, xerrors.Errorf("provided(%x) and generated(%x) tickets differ", meta.TicketValue, rand)
+		}
+
 		info.TicketValue = meta.TicketValue
 		info.TicketEpoch = meta.TicketEpoch
 
 		info.PreCommit1Out = meta.PreCommit1Out
 
-		info.CommD = meta.CommD // todo check cid prefixes
+		// check CommD/R
+		if meta.CommD == nil || meta.CommR == nil {
+			return SectorInfo{}, xerrors.Errorf("both CommR/CommD cids need to be set for sectors in PreCommitting and later states")
+		}
+
+		dp := meta.CommD.Prefix()
+		if dp.Version != 1 || dp.Codec != cid.FilCommitmentUnsealed || dp.MhType != multihash.SHA2_256_TRUNC254_PADDED || dp.MhLength != 32 {
+			return SectorInfo{}, xerrors.Errorf("CommD cid has wrong prefix")
+		}
+
+		rp := meta.CommR.Prefix()
+		if rp.Version != 1 || rp.Codec != cid.FilCommitmentSealed || rp.MhType != multihash.POSEIDON_BLS12_381_A1_FC1 || rp.MhLength != 32 {
+			return SectorInfo{}, xerrors.Errorf("CommR cid has wrong prefix")
+		}
+
+		info.CommD = meta.CommD
 		info.CommR = meta.CommR
 
 		if meta.DataSealed == nil {
@@ -118,15 +179,14 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		info.RemoteDataCache = meta.DataCache
 		info.RemoteCommit1Endpoint = meta.RemoteCommit1Endpoint
 
-		// If we get a sector after PC2, assume that we're getting finalized sector data
-		// todo: maybe only set if C1 provider is set?
-		info.RemoteDataFinalized = true
+		// If we get a sector after PC2, and remote C1 endpoint is set, assume that we're getting finalized sector data
+		if info.RemoteCommit1Endpoint != "" {
+			info.RemoteDataFinalized = true
+		}
 
 		fallthrough
-	case GetTicket:
-		fallthrough
-	case Packing:
-		info.Return = ReturnState(meta.State) // todo dedupe states
+	case GetTicket, Packing:
+		info.Return = ReturnState(meta.State)
 		info.State = ReceiveSector
 
 		info.SectorNumber = meta.Sector.Number
@@ -141,6 +201,26 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 			return SectorInfo{}, xerrors.Errorf("expected DataUnsealed to be set")
 		}
 		info.RemoteDataUnsealed = meta.DataUnsealed
+
+		// some late checks which require previous checks
+		if validatePoRep {
+			ok, err := m.verif.VerifySeal(proof.SealVerifyInfo{
+				SealProof:             meta.Type,
+				SectorID:              meta.Sector,
+				DealIDs:               nil,
+				Randomness:            meta.TicketValue,
+				InteractiveRandomness: meta.SeedValue,
+				Proof:                 meta.CommitProof,
+				SealedCID:             *meta.CommR,
+				UnsealedCID:           *meta.CommD,
+			})
+			if err != nil {
+				return SectorInfo{}, xerrors.Errorf("validating seal proof: %w", err)
+			}
+			if !ok {
+				return SectorInfo{}, xerrors.Errorf("seal proof invalid")
+			}
+		}
 
 		return info, nil
 	default:
