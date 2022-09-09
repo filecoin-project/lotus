@@ -758,6 +758,37 @@ type FullNode interface {
 
 	NodeStatus(ctx context.Context, inclChainStatus bool) (NodeStatus, error) //perm:read
 
+	// MethodGroup: Eth
+	// These methods are used for Ethereum-compatible JSON-RPC calls
+	//
+	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
+	EthAccounts(ctx context.Context) ([]EthAddress, error) //perm:read
+	// EthBlockNumber returns the height of the latest (heaviest) TipSet
+	EthBlockNumber(ctx context.Context) (EthInt, error) //perm:read
+	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthInt) (EthInt, error) //perm:read
+	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthInt, error) //perm:read
+
+	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum EthInt, fullTxInfo bool) (EthBlock, error)                //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash EthHash) (EthTx, error)                               //perm:read
+	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthInt, error)             //perm:read
+	EthGetTransactionReceipt(ctx context.Context, blkHash EthHash) (EthTxReceipt, error)                      //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthInt) (EthTx, error) //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthInt, txIndex EthInt) (EthTx, error) //perm:read
+
+	EthGetCode(ctx context.Context, address EthAddress) (string, error)                                        //perm:read
+	EthGetStorageAt(ctx context.Context, address EthAddress, position EthInt, blkParam string) (string, error) //perm:read
+	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                 //perm:read
+	EthChainId(ctx context.Context) (EthInt, error)                                                            //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                            //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                            //perm:read
+	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                    //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                                               //perm:read
+	EthGasPrice(ctx context.Context) (EthInt, error)                                                           //perm:read
+	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (EthHash, error)                               //perm:write
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
