@@ -6,12 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 
-	smoothing9 "github.com/filecoin-project/go-state-types/builtin/v9/util/smoothing"
-
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-
-	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -25,16 +19,15 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	smoothing9 "github.com/filecoin-project/go-state-types/builtin/v9/util/smoothing"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	reward2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
-	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
@@ -280,6 +273,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		}
 	}
 
+	{
 		nh, err := genesisVm.Flush(ctx)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
@@ -604,93 +598,6 @@ func currentTotalPower(ctx context.Context, vm vm.Interface, maddr address.Addre
 	}
 
 	return &pwr, nil
-}
-
-func dealWeight(ctx context.Context, vm vm.Interface, maddr address.Address, spt abi.RegisteredSealProof, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av actorstypes.Version) (abi.DealWeight, abi.DealWeight, error) {
-	// TODO: This hack should move to market actor wrapper
-	if av <= actorstypes.Version2 {
-		params := &market0.VerifyDealsForActivationParams{
-			DealIDs:      dealIDs,
-			SectorStart:  sectorStart,
-			SectorExpiry: sectorExpiry,
-		}
-
-		ret, err := doExecValue(ctx, vm,
-			market.Address,
-			maddr,
-			abi.NewTokenAmount(0),
-			builtin0.MethodsMarket.VerifyDealsForActivation,
-			mustEnc(params),
-		)
-		if err != nil {
-			return big.Zero(), big.Zero(), err
-		}
-		var weight, verifiedWeight abi.DealWeight
-		if av < actorstypes.Version2 {
-			var dealWeights market0.VerifyDealsForActivationReturn
-			err = dealWeights.UnmarshalCBOR(bytes.NewReader(ret))
-			weight = dealWeights.DealWeight
-			verifiedWeight = dealWeights.VerifiedDealWeight
-		} else {
-			var dealWeights market2.VerifyDealsForActivationReturn
-			err = dealWeights.UnmarshalCBOR(bytes.NewReader(ret))
-			weight = dealWeights.DealWeight
-			verifiedWeight = dealWeights.VerifiedDealWeight
-		}
-		if err != nil {
-			return big.Zero(), big.Zero(), err
-		}
-
-		return weight, verifiedWeight, nil
-	}
-
-	if av < actorstypes.Version9 {
-		params := &market4.VerifyDealsForActivationParams{Sectors: []market4.SectorDeals{{
-			SectorExpiry: sectorExpiry,
-			DealIDs:      dealIDs,
-		}}}
-		paramEnc := mustEnc(params)
-
-		var dealWeights market4.VerifyDealsForActivationReturn
-		ret, err := doExecValue(ctx, vm,
-			market.Address,
-			maddr,
-			abi.NewTokenAmount(0),
-			market.Methods.VerifyDealsForActivation,
-			paramEnc,
-		)
-		if err != nil {
-			return big.Zero(), big.Zero(), err
-		}
-		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-			return big.Zero(), big.Zero(), err
-		}
-
-		return dealWeights.Sectors[0].DealWeight, dealWeights.Sectors[0].VerifiedDealWeight, nil
-
-	}
-
-	params := &market9.ActivateDealsParams{
-		DealIDs:      dealIDs,
-		SectorExpiry: sectorExpiry}
-	paramEnc := mustEnc(params)
-
-	var dealWeights market9.ActivateDealsResult
-	ret, err := doExecValue(ctx, vm,
-		market.Address,
-		maddr,
-		abi.NewTokenAmount(0),
-		market.Methods.ActivateDeals,
-		paramEnc,
-	)
-	if err != nil {
-		return big.Zero(), big.Zero(), xerrors.Errorf("failed to activate deals: %w", err)
-	}
-	if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret)); xerrors.Errorf("failed to unmarshal ret: %w", err) != nil {
-		return big.Zero(), big.Zero(), err
-	}
-
-	return dealWeights.Weights.DealWeight, dealWeights.Weights.VerifiedDealWeight, nil
 }
 
 func currentEpochBlockReward(ctx context.Context, vm vm.Interface, maddr address.Address, av actorstypes.Version) (abi.StoragePower, builtin.FilterEstimate, error) {

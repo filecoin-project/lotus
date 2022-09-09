@@ -8,10 +8,11 @@ import (
 	"math"
 	"sort"
 
-	types "github.com/filecoin-project/lotus/chain/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
+
+	types "github.com/filecoin-project/lotus/chain/types"
 )
 
 var _ = xerrors.Errorf

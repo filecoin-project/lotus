@@ -281,9 +281,17 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 }
 
 func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
+	msgParams := miner.PreCommitSectorParams{
+		SealProof:     params.pci.SealProof,
+		SectorNumber:  params.pci.SectorNumber,
+		SealedCID:     params.pci.SealedCID,
+		SealRandEpoch: params.pci.SealRandEpoch,
+		DealIDs:       params.pci.DealIDs,
+		Expiration:    params.pci.Expiration,
+	}
 	enc := new(bytes.Buffer)
 
-	if err := params.pci.MarshalCBOR(enc); err != nil {
+	if err := msgParams.MarshalCBOR(enc); err != nil {
 		return cid.Undef, xerrors.Errorf("marshaling precommit params: %w", err)
 	}
 

@@ -6,6 +6,16 @@ import (
 	{{range .versions}}
         {{if (ge . 8)}}
             account{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/account"
+            cron{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/cron"
+            _init{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/init"
+            multisig{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/multisig"
+            miner{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/miner"
+            market{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/market"
+            reward{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/reward"
+            paych{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/paych"
+            power{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/power"
+            system{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/system"
+            verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/verifreg"
         {{end}}
     {{end}}
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -55,6 +65,66 @@ func MakeRegistry(av actorstypes.Version) []rtt.VMActor {
                                 code: codeID,
                                 methods: account{{.}}.Methods,
                                 state:   new(account{{.}}.State),
+                            })
+                        case actors.CronKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: cron{{.}}.Methods,
+                                state:   new(cron{{.}}.State),
+                            })
+                        case actors.InitKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: _init{{.}}.Methods,
+                                state:   new(_init{{.}}.State),
+                            })
+                        case actors.MarketKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: market{{.}}.Methods,
+                                state:   new(market{{.}}.State),
+                            })
+                        case actors.MinerKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: miner{{.}}.Methods,
+                                state:   new(miner{{.}}.State),
+                            })
+                        case actors.MultisigKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: multisig{{.}}.Methods,
+                                state:   new(multisig{{.}}.State),
+                            })
+                        case actors.PaychKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: paych{{.}}.Methods,
+                                state:   new(paych{{.}}.State),
+                            })
+                        case actors.PowerKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: power{{.}}.Methods,
+                                state:   new(power{{.}}.State),
+                            })
+                        case actors.RewardKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: reward{{.}}.Methods,
+                                state:   new(reward{{.}}.State),
+                            })
+                        case actors.SystemKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: system{{.}}.Methods,
+                                state:   new(system{{.}}.State),
+                            })
+                        case actors.VerifregKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: verifreg{{.}}.Methods,
+                                state:   new(verifreg{{.}}.State),
                             })
                         }
                     }
