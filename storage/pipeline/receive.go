@@ -114,8 +114,9 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 		if meta.DataCache == nil {
 			return SectorInfo{}, xerrors.Errorf("expected DataCache to be set")
 		}
-		info.RemoteDataSealed = meta.DataSealed
+		info.RemoteDataSealed = meta.DataSealed // todo make head requests to check?
 		info.RemoteDataCache = meta.DataCache
+		info.RemoteCommit1Endpoint = meta.RemoteCommit1Endpoint
 
 		// If we get a sector after PC2, assume that we're getting finalized sector data
 		// todo: maybe only set if C1 provider is set?

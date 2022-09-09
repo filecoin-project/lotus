@@ -567,6 +567,18 @@ type RemoteSectorMeta struct {
 	////////
 	// SEALING SERVICE HOOKS
 
-	// todo Commit1Provider
+	// URL
+	// todo better doc
+	RemoteCommit1Endpoint string
+
 	// todo OnDone / OnStateChange
+}
+
+type RemoteCommit1Params struct {
+	Ticket, Seed []byte
+
+	Unsealed cid.Cid
+	Sealed   cid.Cid
+
+	ProofType abi.RegisteredSealProof
 }

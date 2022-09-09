@@ -96,10 +96,11 @@ type SectorInfo struct {
 	TerminatedAt     abi.ChainEpoch
 
 	// Remote import
-	RemoteDataUnsealed  *storiface.SectorData
-	RemoteDataSealed    *storiface.SectorData
-	RemoteDataCache     *storiface.SectorData
-	RemoteDataFinalized bool
+	RemoteDataUnsealed    *storiface.SectorData
+	RemoteDataSealed      *storiface.SectorData
+	RemoteDataCache       *storiface.SectorData
+	RemoteCommit1Endpoint string
+	RemoteDataFinalized   bool
 
 	// Debug
 	LastErr string

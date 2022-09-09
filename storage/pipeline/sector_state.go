@@ -31,6 +31,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	SealPreCommit2Failed:        {},
 	PreCommitFailed:             {},
 	ComputeProofFailed:          {},
+	RemoteCommit1Failed:         {},
 	CommitFailed:                {},
 	PackingFailed:               {},
 	FinalizeFailed:              {},
@@ -124,6 +125,7 @@ const (
 	SealPreCommit2Failed SectorState = "SealPreCommit2Failed"
 	PreCommitFailed      SectorState = "PreCommitFailed"
 	ComputeProofFailed   SectorState = "ComputeProofFailed"
+	RemoteCommit1Failed  SectorState = "RemoteCommit1Failed"
 	CommitFailed         SectorState = "CommitFailed"
 	PackingFailed        SectorState = "PackingFailed" // TODO: deprecated, remove
 	FinalizeFailed       SectorState = "FinalizeFailed"

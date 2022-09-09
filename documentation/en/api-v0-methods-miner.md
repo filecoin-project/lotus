@@ -3271,7 +3271,8 @@ Inputs:
           "Value": "string value"
         }
       ]
-    }
+    },
+    "RemoteCommit1Endpoint": "string value"
   }
 ]
 ```
