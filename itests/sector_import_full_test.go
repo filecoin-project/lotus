@@ -31,6 +31,10 @@ func TestSectorImport(t *testing.T) {
 
 	type testCase struct {
 		c1handler func(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Request)
+
+		mutateRemoteMeta func(*api.RemoteSectorMeta)
+
+		expectImportErrContains string
 	}
 
 	makeTest := func(mut func(*testCase)) *testCase {
@@ -149,7 +153,7 @@ func TestSectorImport(t *testing.T) {
 			////////
 			// import the sector and continue sealing
 
-			err = miner.SectorReceive(ctx, api.RemoteSectorMeta{
+			rmeta := api.RemoteSectorMeta{
 				State:  "PreCommitting",
 				Sector: sid,
 				Type:   spt,
@@ -183,7 +187,18 @@ func TestSectorImport(t *testing.T) {
 				},
 
 				RemoteCommit1Endpoint: remoteC1URL,
-			})
+			}
+
+			if tc.mutateRemoteMeta != nil {
+				tc.mutateRemoteMeta(&rmeta)
+			}
+
+			err = miner.SectorReceive(ctx, rmeta)
+			if tc.expectImportErrContains != "" {
+				require.ErrorContains(t, err, tc.expectImportErrContains)
+				return
+			}
+
 			require.NoError(t, err)
 
 			// check that we see the imported sector
@@ -218,4 +233,58 @@ func TestSectorImport(t *testing.T) {
 			}
 		}
 	})))
+
+	t.Run("nil-commd", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			meta.CommD = nil
+		}
+		testCase.expectImportErrContains = "both CommR/CommD cids need to be set for sectors in PreCommitting and later states"
+	})))
+	t.Run("nil-commr", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			meta.CommR = nil
+		}
+		testCase.expectImportErrContains = "both CommR/CommD cids need to be set for sectors in PreCommitting and later states"
+	})))
+
+	t.Run("nil-uns", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			meta.DataUnsealed = nil
+		}
+		testCase.expectImportErrContains = "expected DataUnsealed to be set"
+	})))
+	t.Run("nil-sealed", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			meta.DataSealed = nil
+		}
+		testCase.expectImportErrContains = "expected DataSealed to be set"
+	})))
+	t.Run("nil-cache", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			meta.DataCache = nil
+		}
+		testCase.expectImportErrContains = "expected DataCache to be set"
+	})))
+
+	t.Run("bad-commd", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			meta.CommD = meta.CommR
+		}
+		testCase.expectImportErrContains = "CommD cid has wrong prefix"
+	})))
+	t.Run("bad-commr", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			meta.CommR = meta.CommD
+		}
+		testCase.expectImportErrContains = "CommR cid has wrong prefix"
+	})))
+
+	t.Run("bad-ticket", runTest(makeTest(func(testCase *testCase) {
+		testCase.mutateRemoteMeta = func(meta *api.RemoteSectorMeta) {
+			// flip one bit
+			meta.TicketValue[23] ^= 4
+		}
+		testCase.expectImportErrContains = "tickets differ"
+	})))
+
 }
