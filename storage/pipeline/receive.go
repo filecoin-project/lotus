@@ -126,7 +126,6 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 	case GetTicket:
 		fallthrough
 	case Packing:
-		// todo check num free
 		info.Return = ReturnState(meta.State) // todo dedupe states
 		info.State = ReceiveSector
 

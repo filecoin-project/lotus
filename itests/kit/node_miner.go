@@ -97,6 +97,10 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 }
 
 func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.SectorNumber]struct{}) {
+	tm.WaitSectorsProvingAllowFails(ctx, toCheck, map[api.SectorState]struct{}{})
+}
+
+func (tm *TestMiner) WaitSectorsProvingAllowFails(ctx context.Context, toCheck map[abi.SectorNumber]struct{}, okFails map[api.SectorState]struct{}) {
 	for len(toCheck) > 0 {
 		tm.FlushSealingBatches(ctx)
 
@@ -109,7 +113,9 @@ func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.Sec
 				delete(toCheck, n)
 			}
 			if strings.Contains(string(st.State), "Fail") {
-				tm.t.Fatal("sector in a failed state", st.State)
+				if _, ok := okFails[st.State]; !ok {
+					tm.t.Fatal("sector in a failed state", st.State)
+				}
 			}
 		}
 

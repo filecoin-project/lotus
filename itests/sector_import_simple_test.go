@@ -36,12 +36,16 @@ func TestSectorImportAfterPC2(t *testing.T) {
 
 	var blockTime = 50 * time.Millisecond
 
+	////////
+	// Start a miner node
+
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx := context.Background()
 
-	// get some sector numbers
+	////////
+	// Reserve some sector numbers on the miner node; We'll use one of those when creating the sector "remotely"
 	snums, err := miner.SectorNumReserveCount(ctx, "test-reservation-0001", 16)
 	require.NoError(t, err)
 
@@ -62,31 +66,33 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	pieceSize := abi.PaddedPieceSize(ssize)
 
 	////////
-	// seal a sector up to pc2 outside of the pipeline
+	// Create/Seal a sector up to pc2 outside of the pipeline
 
+	// get one sector number from the reservation done on the miner above
 	sn, err := snums.First()
 	require.NoError(t, err)
+
+	// create all the sector identifiers
 	snum := abi.SectorNumber(sn)
-	sid := abi.SectorID{
-		Miner:  abi.ActorID(mid),
-		Number: snum,
-	}
+	sid := abi.SectorID{Miner: abi.ActorID(mid), Number: snum}
+	sref := storiface.SectorRef{ID: sid, ProofType: spt}
 
-	sref := storiface.SectorRef{
-		ID:        sid,
-		ProofType: spt,
-	}
-
+	// create a low-level sealer instance
 	sealer, err := ffiwrapper.New(&basicfs.Provider{
 		Root: sectorDir,
 	})
 	require.NoError(t, err)
 
+	// CRETE THE UNSEALED FILE
+
+	// create a reader for all-zero (CC) data
 	dataReader := bytes.NewReader(bytes.Repeat([]byte{0}, int(pieceSize.Unpadded())))
 
-	// create the unsealed sector file
+	// create the unsealed CC sector file
 	pieceInfo, err := sealer.AddPiece(ctx, sref, nil, pieceSize.Unpadded(), dataReader)
 	require.NoError(t, err)
+
+	// GENERATE THE TICKET
 
 	// get most recent valid ticket epoch
 	ts, err := client.ChainHead(ctx)
@@ -101,6 +107,8 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	rand, err := client.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes(), ts.Key())
 	require.NoError(t, err)
 
+	// EXECUTE PRECOMMIT 1 / 2
+
 	// run PC1
 	pc1out, err := sealer.SealPreCommit1(ctx, sref, abi.SealRandomness(rand), []abi.PieceInfo{pieceInfo})
 	require.NoError(t, err)
@@ -109,7 +117,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	scids, err := sealer.SealPreCommit2(ctx, sref, pc1out)
 	require.NoError(t, err)
 
-	// make finalized cache, put it in [sectorDir]/fin-cache
+	// make finalized cache, put it in [sectorDir]/fin-cache while keeping the large cache for remote C1
 	finDst := filepath.Join(sectorDir, "fin-cache", fmt.Sprintf("s-t01000-%d", snum))
 	require.NoError(t, os.MkdirAll(finDst, 0777))
 	require.NoError(t, sealer.FinalizeSectorInto(ctx, sref, finDst))
@@ -121,6 +129,11 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	m.HandleFunc("/sectors/{type}/{id}", remoteGetSector(sectorDir)).Methods("GET")
 	m.HandleFunc("/sectors/{id}/commit1", remoteCommit1(sealer)).Methods("POST")
 	srv := httptest.NewServer(m)
+
+	unsealedURL := fmt.Sprintf("%s/sectors/unsealed/s-t0%d-%d", srv.URL, mid, snum)
+	sealedURL := fmt.Sprintf("%s/sectors/sealed/s-t0%d-%d", srv.URL, mid, snum)
+	cacheURL := fmt.Sprintf("%s/sectors/cache/s-t0%d-%d", srv.URL, mid, snum)
+	remoteC1URL := fmt.Sprintf("%s/sectors/s-t0%d-%d/commit1", srv.URL, mid, snum)
 
 	////////
 	// import the sector and continue sealing
@@ -147,18 +160,18 @@ func TestSectorImportAfterPC2(t *testing.T) {
 
 		DataUnsealed: &storiface.SectorData{
 			Local: false,
-			URL:   fmt.Sprintf("%s/sectors/unsealed/s-t0%d-%d", srv.URL, mid, snum),
+			URL:   unsealedURL,
 		},
 		DataSealed: &storiface.SectorData{
 			Local: false,
-			URL:   fmt.Sprintf("%s/sectors/sealed/s-t0%d-%d", srv.URL, mid, snum),
+			URL:   sealedURL,
 		},
 		DataCache: &storiface.SectorData{
 			Local: false,
-			URL:   fmt.Sprintf("%s/sectors/cache/s-t0%d-%d", srv.URL, mid, snum),
+			URL:   cacheURL,
 		},
 
-		RemoteCommit1Endpoint: fmt.Sprintf("%s/sectors/s-t0%d-%d/commit1", srv.URL, mid, snum),
+		RemoteCommit1Endpoint: remoteC1URL,
 	})
 	require.NoError(t, err)
 
