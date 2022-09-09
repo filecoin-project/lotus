@@ -3,7 +3,6 @@ package full
 import (
 	"context"
 	"strconv"
-	"strings"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -16,27 +15,27 @@ import (
 )
 
 type EthModuleAPI interface {
-	EthBlockNumber(context.Context) (api.EthInt, error)
-	EthAccounts(context.Context) ([]api.EthAddress, error)
-	EthGetBlockTransactionCountByNumber(context.Context, string) (api.EthInt, error)
-	EthGetBlockTransactionCountByHash(context.Context, string) (api.EthInt, error)
-	EthGetBlockByHash(ctx context.Context, blkHash string, fullTxInfo bool) (api.EthBlock, error)
-	EthGetBlockByNumber(ctx context.Context, blkNumHex string, fullTxInfo bool) (api.EthBlock, error)
-	EthGetTransactionByHash(ctx context.Context, txHash string) (api.EthTx, error)
-	EthGetTransactionCount(ctx context.Context, sender string, blkOpt string) (api.EthInt, error)
-	EthGetTransactionReceipt(ctx context.Context, blkHash string) (api.EthTxReceipt, error)
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash string, txIndexHex string) (api.EthTx, error)
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (api.EthTx, error)
-	EthGetCode(ctx context.Context, address string) (string, error)
-	EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error)
-	EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthBigInt, error)
+	EthBlockNumber(ctx context.Context) (api.EthInt, error)
+	EthAccounts(ctx context.Context) ([]api.EthAddress, error)
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum api.EthInt) (api.EthInt, error)
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash api.EthHash) (api.EthInt, error)
+	EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, fullTxInfo bool) (api.EthBlock, error)
+	EthGetBlockByNumber(ctx context.Context, blkNum api.EthInt, fullTxInfo bool) (api.EthBlock, error)
+	EthGetTransactionByHash(ctx context.Context, txHash api.EthHash) (api.EthTx, error)
+	EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkOpt string) (api.EthInt, error)
+	EthGetTransactionReceipt(ctx context.Context, blkHash api.EthHash) (api.EthTxReceipt, error)
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthInt) (api.EthTx, error)
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthInt, txIndex api.EthInt) (api.EthTx, error)
+	EthGetCode(ctx context.Context, address api.EthAddress) (string, error)
+	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthInt, blkParam string) (string, error)
+	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
 	EthChainId(ctx context.Context) (api.EthInt, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (api.EthInt, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error)
 	EthGasPrice(ctx context.Context) (api.EthInt, error)
-	EthSendRawTransaction(ctx context.Context) (api.EthHash, error)
+	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (api.EthHash, error)
 }
 
 var _ EthModuleAPI = *new(api.FullNode)
@@ -85,12 +84,7 @@ func (a *EthModule) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int,
 	return count, nil
 }
 
-func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNumHex string) (api.EthInt, error) {
-	blkNum, err := strconv.ParseInt(strings.Replace(blkNumHex, "0x", "", -1), 16, 64)
-	if err != nil {
-		return api.EthInt(0), xerrors.Errorf("invalid block number %s: %w", blkNumHex, err)
-	}
-
+func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum api.EthInt) (api.EthInt, error) {
 	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(blkNum), nil, false)
 	if err != nil {
 		return api.EthInt(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
@@ -100,13 +94,8 @@ func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blk
 	return api.EthInt(count), err
 }
 
-func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash string) (api.EthInt, error) {
-	hash, err := api.EthHashFromHex(blkHash)
-	if err != nil {
-		return api.EthInt(0), xerrors.Errorf("invalid hash %s: %w", blkHash, err)
-	}
-
-	ts, err := a.Chain.GetTipSetByCid(ctx, hash.ToCid())
+func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash api.EthHash) (api.EthInt, error) {
+	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
 	if err != nil {
 		return api.EthInt(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
@@ -114,50 +103,45 @@ func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHa
 	return api.EthInt(count), err
 }
 
-func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash string, fullTxInfo bool) (api.EthBlock, error) {
+func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, fullTxInfo bool) (api.EthBlock, error) {
 	return api.EthBlock{}, nil
 }
 
-func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNumHex string, fullTxInfo bool) (api.EthBlock, error) {
+func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum api.EthInt, fullTxInfo bool) (api.EthBlock, error) {
 	return api.EthBlock{}, nil
 }
 
-func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash string) (api.EthTx, error) {
+func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash api.EthHash) (api.EthTx, error) {
 	return api.EthTx{}, nil
 }
 
-func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender string, blkParam string) (api.EthInt, error) {
+func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkParam string) (api.EthInt, error) {
 	return api.EthInt(0), nil
 }
 
-func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, blkHash string) (api.EthTxReceipt, error) {
+func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, blkHash api.EthHash) (api.EthTxReceipt, error) {
 	return api.EthTxReceipt{}, nil
 }
 
-func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash string, txIndexHex string) (api.EthTx, error) {
+func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthInt) (api.EthTx, error) {
 	return api.EthTx{}, nil
 }
 
-func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNumHex string, txIndexHex string) (api.EthTx, error) {
+func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthInt, txIndex api.EthInt) (api.EthTx, error) {
 	return api.EthTx{}, nil
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *EthModule) EthGetCode(ctx context.Context, address string) (string, error) {
+func (a *EthModule) EthGetCode(ctx context.Context, address api.EthAddress) (string, error) {
 	return "", nil
 }
 
-func (a *EthModule) EthGetStorageAt(ctx context.Context, address string, positionHex string, blkParam string) (string, error) {
+func (a *EthModule) EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthInt, blkParam string) (string, error) {
 	return "", nil
 }
 
-func (a *EthModule) EthGetBalance(ctx context.Context, address string, blkParam string) (api.EthBigInt, error) {
-	addr, err := api.EthAddressFromHex(address)
-	if err != nil {
-		return api.EthBigInt{}, xerrors.Errorf("cannot parse address: %w", err)
-	}
-
-	filAddr, err := addr.ToFilecoinAddress()
+func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error) {
+	filAddr, err := address.ToFilecoinAddress()
 	if err != nil {
 		return api.EthBigInt{}, err
 	}
@@ -199,9 +183,9 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {
 	return api.EthInt(0), nil
 }
 
-func (a *EthModule) EthSendRawTransaction(ctx context.Context) (api.EthHash, error) {
-	return api.EthHash{}, nil
-}
+// func (a *EthModule) EthSendRawTransaction(ctx context.Context tx api.EthTx) (api.EthHash, error) {
+// 	return api.EthHash{}, nil
+// }
 
 // func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthTx, blkParam string) (api.EthInt, error) {
 // 	return api.EthInt(0), nil

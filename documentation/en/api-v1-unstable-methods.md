@@ -83,7 +83,6 @@
   * [EthGetTransactionReceipt](#EthGetTransactionReceipt)
   * [EthMaxPriorityFeePerGas](#EthMaxPriorityFeePerGas)
   * [EthProtocolVersion](#EthProtocolVersion)
-  * [EthSendRawTransaction](#EthSendRawTransaction)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2157,7 +2156,7 @@ Response: `"0x5"`
 ### EthGasPrice
 
 
-Perms: read
+Perms: 
 
 Inputs: `null`
 
@@ -2171,7 +2170,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
+  "0x0707070707070707070707070707070707070707",
   "string value"
 ]
 ```
@@ -2186,7 +2185,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
+  "0x0707070707070707070707070707070707070707070707070707070707070707",
   true
 ]
 ```
@@ -2239,7 +2238,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
+  "0x5",
   true
 ]
 ```
@@ -2293,7 +2292,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value"
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
 ]
 ```
 
@@ -2308,7 +2307,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value"
+  "0x5"
 ]
 ```
 
@@ -2322,7 +2321,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value"
+  "0x0707070707070707070707070707070707070707"
 ]
 ```
 
@@ -2336,8 +2335,8 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
-  "string value",
+  "0x0707070707070707070707070707070707070707",
+  "0x5",
   "string value"
 ]
 ```
@@ -2352,8 +2351,8 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
-  "string value"
+  "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "0x5"
 ]
 ```
 
@@ -2388,8 +2387,8 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
-  "string value"
+  "0x5",
+  "0x5"
 ]
 ```
 
@@ -2424,7 +2423,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value"
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
 ]
 ```
 
@@ -2459,7 +2458,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value",
+  "0x0707070707070707070707070707070707070707",
   "string value"
 ]
 ```
@@ -2474,7 +2473,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "string value"
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
 ]
 ```
 
@@ -2513,15 +2512,6 @@ Perms: read
 Inputs: `null`
 
 Response: `"0x5"`
-
-### EthSendRawTransaction
-
-
-Perms: write
-
-Inputs: `null`
-
-Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
 
 ## Gas
 

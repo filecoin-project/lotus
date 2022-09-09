@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -19,6 +20,20 @@ type EthInt int64
 
 func (e EthInt) MarshalJSON() ([]byte, error) {
 	return json.Marshal(fmt.Sprintf("0x%x", e))
+}
+
+func (e *EthInt) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	parsedInt, err := strconv.ParseInt(strings.Replace(s, "0x", "", -1), 16, 64)
+	if err != nil {
+		return err
+	}
+	eint := EthInt(parsedInt)
+	e = &eint
+	return nil
 }
 
 type EthBigInt big.Int
@@ -112,6 +127,19 @@ func (a EthAddress) MarshalJSON() ([]byte, error) {
 	return json.Marshal((a.String()))
 }
 
+func (a *EthAddress) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	addr, err := EthAddressFromHex(s)
+	if err != nil {
+		return err
+	}
+	a = &addr
+	return nil
+}
+
 func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
 	id := binary.BigEndian.Uint64(a[12:])
 	return address.NewIDAddress(id)
@@ -146,6 +174,19 @@ type EthHash [ETH_HASH_LENGTH]byte
 
 func (h EthHash) MarshalJSON() ([]byte, error) {
 	return json.Marshal(h.String())
+}
+
+func (h *EthHash) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	hash, err := EthHashFromHex(s)
+	if err != nil {
+		return err
+	}
+	h = &hash
+	return nil
 }
 
 func handlePrefix(s *string) {
