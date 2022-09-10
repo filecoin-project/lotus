@@ -58,6 +58,10 @@ var terminateSectorCmd = &cli.Command{
 			Name:  "really-do-it",
 			Usage: "pass this flag if you know what you are doing",
 		},
+		&cli.BoolFlag{
+			Name:  "worker",
+			Usage: "pass this flag if you want to send the message from the miner's worker address",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 {
@@ -137,8 +141,15 @@ var terminateSectorCmd = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
+		var sender address.Address
+		if cctx.IsSet("worker") {
+			sender = mi.Worker
+		} else {
+			sender = mi.Owner
+		}
+
 		smsg, err := nodeApi.MpoolPushMessage(ctx, &types.Message{
-			From:   mi.Owner,
+			From:   sender,
 			To:     maddr,
 			Method: builtin.MethodsMiner.TerminateSectors,
 
