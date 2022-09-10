@@ -1186,16 +1186,20 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	store := a.Chain.ActorStore(ctx)
 
 	var sectorWeight abi.StoragePower
-	if act, err := state.GetActor(market.Address); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading market actor %s: %w", maddr, err)
-	} else if s, err := market.Load(store, act); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
-		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+	if a.StateManager.GetNetworkVersion(ctx, ts.Height()) <= network.Version16 {
+		if act, err := state.GetActor(market.Address); err != nil {
+			return types.EmptyInt, xerrors.Errorf("loading market actor %s: %w", maddr, err)
+		} else if s, err := market.Load(store, act); err != nil {
+			return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
+		} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
+			return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+		} else {
+			// NB: not exactly accurate, but should always lead us to *over* estimate, not under
+			duration := pci.Expiration - ts.Height()
+			sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		}
 	} else {
-		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.Height()
-		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = minertypes.QAPowerMax(ssize)
 	}
 
 	var powerSmoothed builtin.FilterEstimate
