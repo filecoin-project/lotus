@@ -96,7 +96,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.PreCommitSectorParams{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -114,7 +114,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.PreCommitSectorParams{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -172,7 +172,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			currentDealInfoErr2: errors.New("something went wrong"),
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.PreCommitSectorParams{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},

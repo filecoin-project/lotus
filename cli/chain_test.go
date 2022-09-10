@@ -327,7 +327,8 @@ func TestInspectUsage(t *testing.T) {
 		// check for gas by sender
 		assert.Contains(t, out, "By Sender")
 		// check for gas by method
-		assert.Contains(t, out, "By Method:\nSend")
+		methodStr := fmt.Sprintf("By Method:\n%d", builtin.MethodSend)
+		assert.Contains(t, out, methodStr)
 	})
 }
 

@@ -280,22 +280,15 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 	return res, nil
 }
 
-func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
-	msgParams := miner.PreCommitSectorParams{
-		SealProof:     params.pci.SealProof,
-		SectorNumber:  params.pci.SectorNumber,
-		SealedCID:     params.pci.SealedCID,
-		SealRandEpoch: params.pci.SealRandEpoch,
-		DealIDs:       params.pci.DealIDs,
-		Expiration:    params.pci.Expiration,
-	}
+func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, entry *preCommitEntry) (cid.Cid, error) {
+	msgParams := infoToPreCommitSectorParams(entry.pci)
 	enc := new(bytes.Buffer)
 
 	if err := msgParams.MarshalCBOR(enc); err != nil {
 		return cid.Undef, xerrors.Errorf("marshaling precommit params: %w", err)
 	}
 
-	deposit := params.deposit
+	deposit := entry.deposit
 	if cfg.CollateralFromMinerBalance {
 		c := big.Sub(deposit, *avail)
 		*avail = big.Sub(*avail, deposit)
@@ -336,14 +329,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKe
 		}
 
 		res.Sectors = append(res.Sectors, p.pci.SectorNumber)
-		params.Sectors = append(params.Sectors, miner.PreCommitSectorParams{
-			SealProof:     p.pci.SealProof,
-			SectorNumber:  p.pci.SectorNumber,
-			SealedCID:     p.pci.SealedCID,
-			SealRandEpoch: p.pci.SealRandEpoch,
-			DealIDs:       p.pci.DealIDs,
-			Expiration:    p.pci.Expiration,
-		})
+		params.Sectors = append(params.Sectors, *infoToPreCommitSectorParams(p.pci))
 		deposit = big.Add(deposit, p.deposit)
 	}
 

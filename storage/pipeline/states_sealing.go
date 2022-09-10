@@ -283,7 +283,7 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 	})
 }
 
-func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitInfo, big.Int, types.TipSetKey, error) {
+func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitInfo, big.Int, types.TipSetKey, error) {
 	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
@@ -381,13 +381,15 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
-	params, pcd, tsk, err := m.preCommitParams(ctx, sector)
+	info, pcd, tsk, err := m.preCommitInfo(ctx, sector)
 	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitInfo: %w", err)})
 	}
-	if params == nil {
-		return nil // event was sent in preCommitParams
+	if info == nil {
+		return nil // event was sent in preCommitInfo
 	}
+
+	params := infoToPreCommitSectorParams(info)
 
 	deposit, err := collateralSendAmount(ctx.Context(), m.Api, m.maddr, cfg, pcd)
 	if err != nil {
@@ -418,7 +420,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: pcd, PreCommitInfo: *params})
+	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: pcd, PreCommitInfo: *info})
 }
 
 func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector SectorInfo) error {
@@ -426,12 +428,12 @@ func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector Se
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	params, deposit, _, err := m.preCommitParams(ctx, sector)
+	params, deposit, _, err := m.preCommitInfo(ctx, sector)
 	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
+		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitInfo: %w", err)})
 	}
 	if params == nil {
-		return nil // event was sent in preCommitParams
+		return nil // event was sent in preCommitInfo
 	}
 
 	res, err := m.precommiter.AddPreCommit(ctx.Context(), sector, deposit, params)

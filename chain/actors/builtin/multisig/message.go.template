@@ -10,15 +10,13 @@ import (
 	    builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
 	    init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
 	    multisig{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/multisig"
-	    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
     {{else}}
         actorstypes "github.com/filecoin-project/go-state-types/actors"
         multisig{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}multisig"
         init{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/init"
-        builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
     {{end}}
 
-
+    builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -90,7 +88,7 @@ func (m message{{.v}}) Create(
 	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
-		Method: builtin{{.latestVersion}}.MethodsInit.Exec,
+		Method: builtintypes.MethodsInit.Exec,
 		Params: enc,
 		Value:  initialAmount,
 	}, nil

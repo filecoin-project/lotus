@@ -231,7 +231,7 @@ func generateRegistry(registryPath string) error {
 			return nil // skip
 		}
 
-		return xerrors.Errorf("loading builtin template file: %w", err)
+		return xerrors.Errorf("loading registry template file: %w", err)
 	}
 
 	tpl := template.Must(template.New("").Funcs(template.FuncMap{
