@@ -33,8 +33,8 @@ type EthModuleAPI interface {
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (api.EthInt, error)
-	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error)
 	EthGasPrice(ctx context.Context) (api.EthInt, error)
+	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error)
 	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (api.EthHash, error)
 }
 
@@ -47,6 +47,8 @@ type EthModule struct {
 	fx.In
 
 	Chain *store.ChainStore
+
+	ChainAPI
 	StateAPI
 }
 
@@ -104,15 +106,34 @@ func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHa
 }
 
 func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, fullTxInfo bool) (api.EthBlock, error) {
-	return api.EthBlock{}, nil
+	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
+	if err != nil {
+		return api.EthBlock{}, xerrors.Errorf("error loading tipset %s: %w", ts, err)
+	}
+	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum api.EthInt, fullTxInfo bool) (api.EthBlock, error) {
-	return api.EthBlock{}, nil
+	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(blkNum), nil, false)
+	if err != nil {
+		return api.EthBlock{}, xerrors.Errorf("error loading tipset %s: %w", ts, err)
+	}
+	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash api.EthHash) (api.EthTx, error) {
-	return api.EthTx{}, nil
+	cid := txHash.ToCid()
+
+	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
+	if err != nil {
+		return api.EthTx{}, nil
+	}
+
+	tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+	return tx, nil
 }
 
 func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkParam string) (api.EthInt, error) {
@@ -195,3 +216,120 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {
 // 	return "", nil
 // }
 //
+
+func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (api.EthBlock, error) {
+	parent, err := a.Chain.LoadTipSet(ctx, ts.Parents())
+	if err != nil {
+		return api.EthBlock{}, err
+	}
+	parentKeyCid, err := parent.Key().Cid()
+	if err != nil {
+		return api.EthBlock{}, err
+	}
+	parentBlkHash, err := api.EthHashFromCid(parentKeyCid)
+	if err != nil {
+		return api.EthBlock{}, err
+	}
+
+	blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
+	if err != nil {
+		return api.EthBlock{}, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
+	}
+
+	block := api.NewEthBlock()
+
+	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
+	gasUsed := int64(0)
+	for _, blkMsg := range blkMsgs {
+		for _, msg := range append(blkMsg.BlsMessages, blkMsg.SecpkMessages...) {
+			msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), api.LookbackNoLimit, true)
+			if err != nil {
+				return api.EthBlock{}, nil
+			}
+			gasUsed += msgLookup.Receipt.GasUsed
+
+			if fullTxInfo {
+				tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
+				if err != nil {
+					return api.EthBlock{}, nil
+				}
+				block.Transactions = append(block.Transactions, tx)
+			} else {
+				hash, err := api.EthHashFromCid(msg.Cid())
+				if err != nil {
+					return api.EthBlock{}, err
+				}
+				block.Transactions = append(block.Transactions, hash.String())
+			}
+		}
+	}
+
+	block.Number = api.EthInt(ts.Height())
+	block.ParentHash = parentBlkHash
+	block.Timestamp = api.EthInt(ts.Blocks()[0].Timestamp)
+	block.BaseFeePerGas = api.EthBigInt{Int: ts.Blocks()[0].ParentBaseFee.Int}
+	block.GasUsed = api.EthInt(gasUsed)
+	return block, nil
+}
+
+func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (api.EthTx, error) {
+	cid := msgLookup.Message
+	txHash, err := api.EthHashFromCid(cid)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	tsCid, err := msgLookup.TipSet.Cid()
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	blkHash, err := api.EthHashFromCid(tsCid)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	msg, err := a.ChainAPI.ChainGetMessage(ctx, msgLookup.Message)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	fromFilIdAddr, err := a.StateAPI.StateLookupID(ctx, msg.From, types.EmptyTSK)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	fromEthAddr, err := api.EthAddressFromFilecoinIDAddress(fromFilIdAddr)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	toFilAddr, err := a.StateAPI.StateLookupID(ctx, msg.From, types.EmptyTSK)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	toEthAddr, err := api.EthAddressFromFilecoinIDAddress(toFilAddr)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	tx := api.EthTx{
+		ChainID:              api.EthInt(api.CHAIN_ID_CURRENT),
+		Hash:                 txHash,
+		BlockHash:            blkHash,
+		BlockNumber:          api.EthInt(msgLookup.Height),
+		From:                 fromEthAddr,
+		To:                   toEthAddr,
+		Value:                api.EthBigInt(msg.Value),
+		Type:                 api.EthInt(2),
+		Gas:                  api.EthInt(msg.GasLimit),
+		MaxFeePerGas:         api.EthBigInt(msg.GasFeeCap),
+		MaxPriorityFeePerGas: api.EthBigInt(msg.GasPremium),
+		V:                    api.EthBigIntZero,
+		R:                    api.EthBigIntZero,
+		S:                    api.EthBigIntZero,
+		// TODO: Input:
+	}
+	return tx, nil
+}

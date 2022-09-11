@@ -99,6 +99,14 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (k TipSetKey) Cid() (cid.Cid, error) {
+	blk, err := k.ToStorageBlock()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return blk.Cid(), nil
+}
+
 func (k TipSetKey) ToStorageBlock() (block.Block, error) {
 	buf := new(bytes.Buffer)
 	if err := k.MarshalCBOR(buf); err != nil {
