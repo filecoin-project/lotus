@@ -39,7 +39,8 @@ func TestEthIntUnmarshalJSON(t *testing.T) {
 
 	for _, tc := range testcases {
 		var i EthInt
-		i.UnmarshalJSON(tc.Input.([]byte))
+		err := i.UnmarshalJSON(tc.Input.([]byte))
+		require.Nil(t, err)
 		require.Equal(t, i, tc.Output)
 	}
 }
@@ -68,7 +69,8 @@ func TestEthBigIntUnmarshalJSON(t *testing.T) {
 
 	for _, tc := range testcases {
 		var i EthBigInt
-		i.UnmarshalJSON(tc.Input.([]byte))
+		err := i.UnmarshalJSON(tc.Input.([]byte))
+		require.Nil(t, err)
 		require.Equal(t, i, tc.Output)
 	}
 }
