@@ -217,9 +217,13 @@ type FullNodeStruct struct {
 
 		EthBlockNumber func(p0 context.Context) (EthInt, error) `perm:"read"`
 
+		EthCall func(p0 context.Context, p1 EthCall, p2 string) (string, error) `perm:"read"`
+
 		EthChainId func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthGasPrice func(p0 context.Context) (EthInt, error) ``
+		EthEstimateGas func(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) `perm:"read"`
+
+		EthGasPrice func(p0 context.Context) (EthInt, error) `perm:"read"`
 
 		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
 
@@ -1776,6 +1780,17 @@ func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthCall(p0 context.Context, p1 EthCall, p2 string) (string, error) {
+	if s.Internal.EthCall == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.EthCall(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthCall(p0 context.Context, p1 EthCall, p2 string) (string, error) {
+	return "", ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthChainId(p0 context.Context) (EthInt, error) {
 	if s.Internal.EthChainId == nil {
 		return *new(EthInt), ErrNotSupported
@@ -1784,6 +1799,17 @@ func (s *FullNodeStruct) EthChainId(p0 context.Context) (EthInt, error) {
 }
 
 func (s *FullNodeStub) EthChainId(p0 context.Context) (EthInt, error) {
+	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) {
+	if s.Internal.EthEstimateGas == nil {
+		return *new(EthInt), ErrNotSupported
+	}
+	return s.Internal.EthEstimateGas(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
 }
 
