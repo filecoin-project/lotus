@@ -114,4 +114,8 @@ var PropagationDelaySecs = uint64(10)
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4
 
+// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
+// As per https://github.com/ethereum-lists/chains
+const Eip155ChainId = 314159
+
 var WhitelistedBlock = cid.Undef

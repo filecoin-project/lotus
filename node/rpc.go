@@ -95,8 +95,8 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		rpcServer.AliasMethod("eth_maxPriorityFeePerGas", "Filecoin.EthMaxPriorityFeePerGas")
 		rpcServer.AliasMethod("eth_gasPrice", "Filecoin.EthGasPrice")
 		rpcServer.AliasMethod("eth_sendRawTransaction", "Filecoin.EthSendRawTransaction")
-		// rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
-		// rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")
+		rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
+		rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")
 
 		rpcServer.AliasMethod("net_version", "Filecoin.NetVersion")
 		rpcServer.AliasMethod("net_listening", "Filecoin.NetListening")
