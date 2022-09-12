@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"go.uber.org/fx"
@@ -34,6 +35,8 @@ type EthModuleAPI interface {
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (api.EthInt, error)
 	EthGasPrice(ctx context.Context) (api.EthInt, error)
+	EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error)
+	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (string, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error)
 	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (api.EthHash, error)
 }
@@ -208,14 +211,14 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {
 // 	return api.EthHash{}, nil
 // }
 
-// func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthTx, blkParam string) (api.EthInt, error) {
-// 	return api.EthInt(0), nil
-// }
-//
-// func (a *EthModule) EthCall(ctx context.Context, tx api.EthTx, blkParam string) (string, error) {
-// 	return "", nil
-// }
-//
+func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error) {
+	return api.EthInt(0), nil
+}
+
+func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (string, error) {
+	fmt.Println("tx: ", tx)
+	return "", nil
+}
 
 func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (api.EthBlock, error) {
 	parent, err := a.Chain.LoadTipSet(ctx, ts.Parents())

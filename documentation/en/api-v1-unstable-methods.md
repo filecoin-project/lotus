@@ -67,7 +67,9 @@
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
   * [EthBlockNumber](#EthBlockNumber)
+  * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
+  * [EthEstimateGas](#EthEstimateGas)
   * [EthGasPrice](#EthGasPrice)
   * [EthGetBalance](#EthGetBalance)
   * [EthGetBlockByHash](#EthGetBlockByHash)
@@ -2144,12 +2146,56 @@ Inputs: `null`
 
 Response: `"0x5"`
 
+### EthCall
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "from": "0x0707070707070707070707070707070707070707",
+    "to": "0x0707070707070707070707070707070707070707",
+    "gas": "0x5",
+    "gasPrice": "0x0",
+    "value": "0x0",
+    "data": "Ynl0ZSBhcnJheQ=="
+  },
+  "string value"
+]
+```
+
+Response: `"string value"`
+
 ### EthChainId
 
 
 Perms: read
 
 Inputs: `null`
+
+Response: `"0x5"`
+
+### EthEstimateGas
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "from": "0x0707070707070707070707070707070707070707",
+    "to": "0x0707070707070707070707070707070707070707",
+    "gas": "0x5",
+    "gasPrice": "0x0",
+    "value": "0x0",
+    "data": "Ynl0ZSBhcnJheQ=="
+  },
+  "string value"
+]
+```
 
 Response: `"0x5"`
 

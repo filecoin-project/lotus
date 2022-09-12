@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	mathbig "math/big"
 	"strconv"
 	"strings"
 
@@ -63,6 +64,24 @@ func (e EthBigInt) MarshalJSON() ([]byte, error) {
 		return json.Marshal("0x0")
 	}
 	return json.Marshal(fmt.Sprintf("0x%x", e.Int))
+}
+
+func (e *EthBigInt) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	replaced := strings.Replace(s, "0x", "", -1)
+	if len(replaced)%2 == 1 {
+		replaced = "0" + replaced
+	}
+
+	i := new(mathbig.Int)
+	i.SetString(replaced, 16)
+
+	*e = EthBigInt(big.NewFromGo(i))
+	return nil
 }
 
 type EthBlock struct {
@@ -128,6 +147,26 @@ type EthTx struct {
 	V                    EthBigInt  `json:"v"`
 	R                    EthBigInt  `json:"r"`
 	S                    EthBigInt  `json:"s"`
+}
+
+type EthCall struct {
+	From     EthAddress `json:"from"`
+	To       EthAddress `json:"to"`
+	Gas      EthInt     `json:"gas"`
+	GasPrice EthBigInt  `json:"gasPrice"`
+	Value    EthBigInt  `json:"value"`
+	Data     []byte     `json:"data"`
+}
+
+func (c *EthCall) UnmarshalJSON(b []byte) error {
+	type TempEthCall EthCall
+	var params TempEthCall
+
+	if err := json.Unmarshal(b, &params); err != nil {
+		return err
+	}
+	*c = EthCall(params)
+	return nil
 }
 
 type EthTxReceipt struct {
