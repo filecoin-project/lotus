@@ -950,6 +950,21 @@ func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthBlockNumber", reflect.TypeOf((*MockFullNode)(nil).EthBlockNumber), arg0)
 }
 
+// EthCall mocks base method.
+func (m *MockFullNode) EthCall(arg0 context.Context, arg1 api.EthCall, arg2 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthCall", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthCall indicates an expected call of EthCall.
+func (mr *MockFullNodeMockRecorder) EthCall(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthCall", reflect.TypeOf((*MockFullNode)(nil).EthCall), arg0, arg1, arg2)
+}
+
 // EthChainId mocks base method.
 func (m *MockFullNode) EthChainId(arg0 context.Context) (api.EthInt, error) {
 	m.ctrl.T.Helper()
@@ -963,6 +978,21 @@ func (m *MockFullNode) EthChainId(arg0 context.Context) (api.EthInt, error) {
 func (mr *MockFullNodeMockRecorder) EthChainId(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthChainId", reflect.TypeOf((*MockFullNode)(nil).EthChainId), arg0)
+}
+
+// EthEstimateGas mocks base method.
+func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 api.EthCall, arg2 string) (api.EthInt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1, arg2)
+	ret0, _ := ret[0].(api.EthInt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthEstimateGas indicates an expected call of EthEstimateGas.
+func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthEstimateGas", reflect.TypeOf((*MockFullNode)(nil).EthEstimateGas), arg0, arg1, arg2)
 }
 
 // EthGasPrice mocks base method.

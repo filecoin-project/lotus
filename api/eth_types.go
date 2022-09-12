@@ -5,15 +5,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	mathbig "math/big"
 	"strconv"
 	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type EthInt int64
@@ -32,17 +35,39 @@ func (e *EthInt) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	eint := EthInt(parsedInt)
-	e = &eint
+	*e = eint
 	return nil
 }
 
 type EthBigInt big.Int
+
+var (
+	EthBigIntZero = EthBigInt{Int: big.Zero().Int}
+)
 
 func (e EthBigInt) MarshalJSON() ([]byte, error) {
 	if e.Int == nil {
 		return json.Marshal("0x0")
 	}
 	return json.Marshal(fmt.Sprintf("0x%x", e.Int))
+}
+
+func (e *EthBigInt) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	replaced := strings.Replace(s, "0x", "", -1)
+	if len(replaced)%2 == 1 {
+		replaced = "0" + replaced
+	}
+
+	i := new(mathbig.Int)
+	i.SetString(replaced, 16)
+
+	*e = EthBigInt(big.NewFromGo(i))
+	return nil
 }
 
 type EthBlock struct {
@@ -53,24 +78,49 @@ type EthBlock struct {
 	TransactionsRoot EthHash    `json:"transactionsRoot"`
 	ReceiptsRoot     EthHash    `json:"receiptsRoot"`
 	// TODO: include LogsBloom
-	Difficulty    EthInt   `json:"difficulty"`
-	Number        EthInt   `json:"number"`
-	GasLimit      EthInt   `json:"gasLimit"`
-	GasUsed       EthInt   `json:"gasUsed"`
-	Timestamp     EthInt   `json:"timestamp"`
-	Extradata     []byte   `json:"extraData"`
-	MixHash       EthHash  `json:"mixHash"`
-	Nonce         EthNonce `json:"nonce"`
-	BaseFeePerGas EthInt   `json:"baseFeePerGas"`
-	Transactions  EthTx    `json:"transactions"`
+	Difficulty    EthInt    `json:"difficulty"`
+	Number        EthInt    `json:"number"`
+	GasLimit      EthInt    `json:"gasLimit"`
+	GasUsed       EthInt    `json:"gasUsed"`
+	Timestamp     EthInt    `json:"timestamp"`
+	Extradata     []byte    `json:"extraData"`
+	MixHash       EthHash   `json:"mixHash"`
+	Nonce         EthNonce  `json:"nonce"`
+	BaseFeePerGas EthBigInt `json:"baseFeePerGas"`
+	Size          EthInt    `json:"size"`
+	// can be []EthTx or []string depending on query params
+	Transactions []interface{} `json:"transactions"`
+	Uncles       []EthHash     `json:"uncles"`
+}
+
+var (
+	EmptyEthHash  = EthHash{}
+	EmptyEthInt   = EthInt(0)
+	EmptyEthNonce = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
+)
+
+func NewEthBlock() EthBlock {
+	return EthBlock{
+		Sha3Uncles:       EmptyEthHash,
+		StateRoot:        EmptyEthHash,
+		TransactionsRoot: EmptyEthHash,
+		ReceiptsRoot:     EmptyEthHash,
+		Difficulty:       EmptyEthInt,
+		Extradata:        []byte{},
+		MixHash:          EmptyEthHash,
+		Nonce:            EmptyEthNonce,
+		GasLimit:         EthInt(build.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
+		Uncles:           []EthHash{},
+		Transactions:     []interface{}{},
+	}
 }
 
 type EthTx struct {
-	ChainID              *EthInt    `json:"chainId"`
+	ChainID              EthInt     `json:"chainId"`
 	Nonce                uint64     `json:"nonce"`
 	Hash                 EthHash    `json:"hash"`
 	BlockHash            EthHash    `json:"blockHash"`
-	BlockNumber          EthHash    `json:"blockNumber"`
+	BlockNumber          EthInt     `json:"blockNumber"`
 	TransactionIndex     EthInt     `json:"transacionIndex"`
 	From                 EthAddress `json:"from"`
 	To                   EthAddress `json:"to"`
@@ -83,6 +133,26 @@ type EthTx struct {
 	V                    EthBigInt  `json:"v"`
 	R                    EthBigInt  `json:"r"`
 	S                    EthBigInt  `json:"s"`
+}
+
+type EthCall struct {
+	From     EthAddress `json:"from"`
+	To       EthAddress `json:"to"`
+	Gas      EthInt     `json:"gas"`
+	GasPrice EthBigInt  `json:"gasPrice"`
+	Value    EthBigInt  `json:"value"`
+	Data     []byte     `json:"data"`
+}
+
+func (c *EthCall) UnmarshalJSON(b []byte) error {
+	type TempEthCall EthCall
+	var params TempEthCall
+
+	if err := json.Unmarshal(b, &params); err != nil {
+		return err
+	}
+	*c = EthCall(params)
+	return nil
 }
 
 type EthTxReceipt struct {
@@ -136,7 +206,7 @@ func (a *EthAddress) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	a = &addr
+	copy(a[:], addr[:])
 	return nil
 }
 
@@ -185,7 +255,7 @@ func (h *EthHash) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	h = &hash
+	copy(h[:], hash[:])
 	return nil
 }
 

@@ -773,9 +773,10 @@ type FullNode interface {
 	NetVersion(ctx context.Context) (string, error)                                                            //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                            //perm:read
 	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                    //perm:read
-	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                                               //perm:read
 	EthGasPrice(ctx context.Context) (EthInt, error)                                                           //perm:read
-	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (EthHash, error)                               //perm:write
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                                               //perm:read
+	EthEstimateGas(ctx context.Context, tx EthCall, blkParam string) (EthInt, error)                           //perm:read
+	EthCall(ctx context.Context, tx EthCall, blkParam string) (string, error)                                  //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
