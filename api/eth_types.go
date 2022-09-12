@@ -11,26 +11,12 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build"
-)
-
-const (
-	CHAIN_ID_MAINNET     = 314
-	CHAIN_ID_BUILDERNET  = 3141
-	CHAIN_ID_WALLABY     = 31415
-	CHAIN_ID_CALIBRATION = 314159
-	CHAIN_ID_BUTTERFLY   = 3141592
-	CHAIN_ID_LOCAL       = 31415926
-)
-
-var (
-	// TODO: need to determine based on build params
-	CHAIN_ID_CURRENT = CHAIN_ID_MAINNET
 )
 
 type EthInt int64
