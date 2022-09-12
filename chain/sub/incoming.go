@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/sub/bcast"
 	"github.com/filecoin-project/lotus/chain/sub/ratelimit"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -47,6 +48,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	// Timeout after (block time + propagation delay). This is useless at
 	// this point.
 	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+	cb := bcast.NewConsistentBCast(bcast.DELAY)
 
 	for {
 		msg, err := bsub.Next(ctx)
@@ -66,6 +68,9 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		}
 
 		src := msg.GetFrom()
+
+		// Notify consistent broadcast about a new block
+		cb.RcvBlock(ctx, blk)
 
 		go func() {
 			ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -101,6 +106,14 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				)
 				log.Warnw("received block with large delay from miner", "block", blk.Cid(), "delay", delay, "miner", blk.Header.Miner)
 			}
+
+			if err := cb.WaitForDelivery(blk.Header); err != nil {
+				log.Errorf("couldn't deliver block to syncer over pubsub: %s; source: %s", err, src)
+				return
+			}
+
+			// Garbage collect the broadcast state
+			cb.GarbageCollect(blk.Header.Height)
 
 			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
 				Header:        blk.Header,
