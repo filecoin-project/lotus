@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/filecoin-project/lotus/build"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -178,7 +179,7 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, b
 }
 
 func (a *EthModule) EthChainId(ctx context.Context) (api.EthInt, error) {
-	return api.EthInt(0), nil
+	return api.EthInt(build.Eip155ChainId), nil
 }
 
 func (a *EthModule) NetVersion(ctx context.Context) (string, error) {
@@ -316,7 +317,7 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 	}
 
 	tx := api.EthTx{
-		ChainID:              api.EthInt(api.CHAIN_ID_CURRENT),
+		ChainID:              api.EthInt(build.Eip155ChainId),
 		Hash:                 txHash,
 		BlockHash:            blkHash,
 		BlockNumber:          api.EthInt(msgLookup.Height),
