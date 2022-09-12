@@ -2,7 +2,6 @@ package full
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"go.uber.org/fx"
@@ -216,7 +215,6 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (string, error) {
-	fmt.Println("tx: ", tx)
 	return "", nil
 }
 
