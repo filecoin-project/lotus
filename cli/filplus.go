@@ -13,7 +13,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -94,7 +96,7 @@ var filplusVerifyClientCmd = &cli.Command{
 		}
 
 		// TODO: This should be abstracted over actor versions
-		params, err := actors.SerializeParams(&verifregtypes.AddVerifiedClientParams{Address: target, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifregtypes9.AddVerifiedClientParams{Address: target, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -359,15 +361,30 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			}
 		}
 
-		params := verifregtypes.RemoveDataCapProposal{
-			RemovalProposalID: id,
-			DataCapAmount:     allowanceToRemove,
-			VerifiedClient:    clientIdAddr,
+		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to get network version: %w", err)
 		}
 
 		paramBuf := new(bytes.Buffer)
-		paramBuf.WriteString(verifregtypes.SignatureDomainSeparation_RemoveDataCap)
-		err = params.MarshalCBOR(paramBuf)
+		paramBuf.WriteString(verifregtypes9.SignatureDomainSeparation_RemoveDataCap)
+		if nv <= network.Version16 {
+			params := verifregtypes8.RemoveDataCapProposal{
+				RemovalProposalID: id,
+				DataCapAmount:     allowanceToRemove,
+				VerifiedClient:    clientIdAddr,
+			}
+
+			err = params.MarshalCBOR(paramBuf)
+		} else {
+			params := verifregtypes9.RemoveDataCapProposal{
+				RemovalProposalID: verifregtypes9.RmDcProposalID{ProposalID: id},
+				DataCapAmount:     allowanceToRemove,
+				VerifiedClient:    clientIdAddr,
+			}
+
+			err = params.MarshalCBOR(paramBuf)
+		}
 		if err != nil {
 			return xerrors.Errorf("failed to marshall paramBuf: %w", err)
 		}

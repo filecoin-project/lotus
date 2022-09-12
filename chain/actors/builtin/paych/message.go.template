@@ -14,9 +14,10 @@ import (
 	    init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
 	    paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
     {{else}}
+    	actorstypes "github.com/filecoin-project/go-state-types/actors"
         builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
-        paych{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-        init{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/init"
+        paych{{.v}} "github.com/filecoin-project/go-state-types/builtin/v{{.v}}/paych"
+        init{{.v}} "github.com/filecoin-project/go-state-types/builtin/v{{.v}}/init"
     {{end}}
 
 
@@ -31,7 +32,7 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
     {{if (le .v 7)}}
     actorCodeID := builtin{{.v}}.PaymentChannelActorCodeID
     {{else}}
-    actorCodeID, ok := actors.GetActorCodeID(actors.Version{{.v}}, "paymentchannel")
+    actorCodeID, ok := actors.GetActorCodeID(actorstypes.Version{{.v}}, "paymentchannel")
     if !ok {
       return nil, xerrors.Errorf("error getting actor paymentchannel code id for actor version %d", {{.v}})
     }
@@ -62,8 +63,10 @@ func (m message{{.v}}) Update(paych address.Address, sv *paychtypes.SignedVouche
 	params, aerr := actors.SerializeParams(&paych{{.v}}.UpdateChannelStateParams{
 	{{if (le .v 6)}}
 	    Sv:     toV0SignedVoucher(*sv),
-	{{else}}
+	{{else if (le .v 8)}}
 		Sv:     *sv,
+    {{else}}
+        Sv:     toV{{.v}}SignedVoucher(*sv),
 	{{end}}
 		Secret: secret,
 	})
@@ -79,6 +82,32 @@ func (m message{{.v}}) Update(paych address.Address, sv *paychtypes.SignedVouche
 		Params: params,
 	}, nil
 }
+
+{{if (ge .v 9)}}
+    func toV{{.v}}SignedVoucher(sv paychtypes.SignedVoucher) paych{{.v}}.SignedVoucher {
+    	merges := make([]paych{{.v}}.Merge, len(sv.Merges))
+        for i := range sv.Merges {
+            merges[i] = paych{{.v}}.Merge{
+                Lane:  sv.Merges[i].Lane,
+                Nonce: sv.Merges[i].Nonce,
+            }
+        }
+
+        return paych{{.v}}.SignedVoucher{
+            ChannelAddr:     sv.ChannelAddr,
+            TimeLockMin:     sv.TimeLockMin,
+            TimeLockMax:     sv.TimeLockMax,
+            SecretHash:      sv.SecretHash,
+            Extra:           (*paych{{.v}}.ModVerifyParams)(sv.Extra),
+            Lane:            sv.Lane,
+            Nonce:           sv.Nonce,
+            Amount:          sv.Amount,
+            MinSettleHeight: sv.MinSettleHeight,
+            Merges:          merges,
+            Signature:       sv.Signature,
+        }
+    }
+{{end}}
 
 func (m message{{.v}}) Settle(paych address.Address) (*types.Message, error) {
 	return &types.Message{

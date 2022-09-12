@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	verifregst "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
 
 	lapi "github.com/filecoin-project/lotus/api"
@@ -290,7 +290,7 @@ func TestRemoveDataCap(t *testing.T) {
 		removeProposal := verifregst.RemoveDataCapProposal{
 			VerifiedClient:    verifiedClientID,
 			DataCapAmount:     removeDatacap,
-			RemovalProposalID: proposalID,
+			RemovalProposalID: verifregst.RmDcProposalID{ProposalID: proposalID},
 		}
 
 		buf := bytes.Buffer{}

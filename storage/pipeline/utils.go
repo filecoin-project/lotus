@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -110,4 +111,15 @@ func sendMsg(ctx context.Context, sa interface {
 	}
 
 	return smsg.Cid(), nil
+}
+
+func infoToPreCommitSectorParams(info *miner.SectorPreCommitInfo) *miner.PreCommitSectorParams {
+	return &miner.PreCommitSectorParams{
+		SealProof:     info.SealProof,
+		SectorNumber:  info.SectorNumber,
+		SealedCID:     info.SealedCID,
+		SealRandEpoch: info.SealRandEpoch,
+		DealIDs:       info.DealIDs,
+		Expiration:    info.Expiration,
+	}
 }

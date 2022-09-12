@@ -54,7 +54,7 @@ func main() {
 			if !ok {
 				continue
 			}
-			out[name] = append(out[name], m.Name)
+			out[name] = append(out[name], m.Num)
 			remaining--
 		}
 	}

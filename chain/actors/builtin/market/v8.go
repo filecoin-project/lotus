@@ -12,6 +12,7 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -237,7 +238,11 @@ func (s *dealProposals8) array() adt.Array {
 
 func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
 
-	label := v8.Label
+	label, err := fromV8Label(v8.Label)
+
+	if err != nil {
+		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+	}
 
 	return DealProposal{
 		PieceCID:     v8.PieceCID,
@@ -255,6 +260,22 @@ func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
 		ProviderCollateral: v8.ProviderCollateral,
 		ClientCollateral:   v8.ClientCollateral,
 	}, nil
+}
+
+func fromV8Label(v8 market8.DealLabel) (DealLabel, error) {
+	if v8.IsString() {
+		str, err := v8.ToString()
+		if err != nil {
+			return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+		}
+		return markettypes.NewLabelFromString(str)
+	}
+
+	bs, err := v8.ToBytes()
+	if err != nil {
+		return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+	}
+	return markettypes.NewLabelFromBytes(bs)
 }
 
 func (s *state8) GetState() interface{} {

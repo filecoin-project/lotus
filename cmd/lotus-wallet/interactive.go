@@ -103,7 +103,7 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 					return xerrors.Errorf("looking up dest actor: %w", err)
 				}
 
-				fmt.Println("Method:", filcns.NewActorRegistry().Methods[toact.Code][cmsg.Method].Name)
+				fmt.Println("Method:", filcns.NewActorRegistry().Methods[toact.Code][cmsg.Method].Num)
 				p, err := lcli.JsonParams(toact.Code, cmsg.Method, cmsg.Params)
 				if err != nil {
 					return err
@@ -125,7 +125,7 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 						return xerrors.Errorf("looking up msig dest actor: %w", err)
 					}
 
-					fmt.Println("\tMultiSig Proposal Method:", filcns.NewActorRegistry().Methods[toact.Code][mp.Method].Name) // todo use remote
+					fmt.Println("\tMultiSig Proposal Method:", filcns.NewActorRegistry().Methods[toact.Code][mp.Method].Num) // todo use remote
 					p, err := lcli.JsonParams(toact.Code, mp.Method, mp.Params)
 					if err != nil {
 						return err

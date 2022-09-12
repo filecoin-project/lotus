@@ -94,7 +94,7 @@ func run() error {
 package config
 
 type DocField struct {
-	Name    string
+	Num    string
 	Type    string
 	Comment string
 }
@@ -109,7 +109,7 @@ var Doc = map[string][]DocField{
 
 		for _, f := range typ {
 			fmt.Println("\t\t{")
-			fmt.Printf("\t\t\tName: \"%s\",\n", f.Name)
+			fmt.Printf("\t\t\tNum: \"%s\",\n", f.Name)
 			fmt.Printf("\t\t\tType: \"%s\",\n\n", f.Type)
 			fmt.Printf("\t\t\tComment: `%s`,\n", f.Comment)
 			fmt.Println("\t\t},")

@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/proof"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -18,7 +18,6 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 )
@@ -53,7 +52,7 @@ type PoStProof = proof.PoStProof
 type FilterEstimate = smoothingtypes.FilterEstimate
 
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return miner8.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
 
 func ActorNameByCode(c cid.Cid) string {
@@ -83,9 +82,6 @@ func ActorNameByCode(c cid.Cid) string {
 
 	case builtin7.IsBuiltinActor(c):
 		return builtin7.ActorNameByCode(c)
-
-	case builtin8.IsBuiltinActor(c):
-		return builtin8.ActorNameByCode(c)
 
 	default:
 		return "<unknown>"

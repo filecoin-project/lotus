@@ -1,6 +1,7 @@
 package init
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"golang.org/x/xerrors"
 
@@ -15,10 +16,9 @@ import (
 {{range .versions}}
     {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
-	{{else}}
-        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
     {{end}}
 {{end}}
+    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var (
@@ -35,7 +35,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
        switch av {
             {{range .versions}}
                 {{if (ge . 8)}}
-                case actors.Version{{.}}:
+                case actorstypes.Version{{.}}:
                      return load{{.}}(store, act.Head)
                  {{end}}
             {{end}}
@@ -54,10 +54,10 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, networkName string) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, networkName string) (State, error) {
 	switch av {
 {{range .versions}}
-	case actors.Version{{.}}:
+	case actorstypes.Version{{.}}:
 		return make{{.}}(store, networkName)
 {{end}}
 }

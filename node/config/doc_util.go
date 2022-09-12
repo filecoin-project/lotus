@@ -16,7 +16,7 @@ func findDoc(root interface{}, section, name string) *DocField {
 	return findDocSect("Common", section, name)
 }
 
-func findDocSect(root, section, name string) *DocField {
+func findDocSect(root, section, num string) *DocField {
 	path := strings.Split(section, ".")
 
 	docSection := Doc[root]
@@ -26,7 +26,7 @@ func findDocSect(root, section, name string) *DocField {
 		}
 
 		for _, field := range docSection {
-			if field.Name == e {
+			if field.Num == e {
 				docSection = Doc[field.Type]
 				break
 			}
@@ -35,7 +35,7 @@ func findDocSect(root, section, name string) *DocField {
 	}
 
 	for _, df := range docSection {
-		if df.Name == name {
+		if df.Num == num {
 			return &df
 		}
 	}
