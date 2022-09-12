@@ -1,3 +1,4 @@
+parse error:  open /home/vyzo/src/fvm/lotus/api/.#api_full.go: no such file or directory
 # Groups
 * [](#)
   * [Closing](#Closing)
@@ -294,9 +295,6 @@ Inputs:
 Response: `34359738368`
 
 ### ActorWithdrawBalance
-WithdrawBalance allows to withdraw balance from miner actor to owner address
-Specify amount as "0" to withdraw full balance. This method returns a message CID
-and does not wait for message execution
 
 
 Perms: admin
@@ -495,10 +493,6 @@ Response:
 
 
 ### CreateBackup
-CreateBackup creates node backup onder the specified file name. The
-method requires that the lotus-miner is running with the
-LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
-the path specified when calling CreateBackup is within the base path
 
 
 Perms: admin
@@ -516,7 +510,6 @@ Response: `{}`
 
 
 ### DagstoreGC
-DagstoreGC runs garbage collection on the DAG store.
 
 
 Perms: admin
@@ -535,13 +528,6 @@ Response:
 ```
 
 ### DagstoreInitializeAll
-DagstoreInitializeAll initializes all uninitialized shards in bulk,
-according to the policy passed in the parameters.
-
-It is recommended to set a maximum concurrency to avoid extreme
-IO pressure if the storage subsystem has a large amount of deals.
-
-It returns a stream of events to report progress.
 
 
 Perms: write
@@ -569,23 +555,6 @@ Response:
 ```
 
 ### DagstoreInitializeShard
-DagstoreInitializeShard initializes an uninitialized shard.
-
-Initialization consists of fetching the shard's data (deal payload) from
-the storage subsystem, generating an index, and persisting the index
-to facilitate later retrievals, and/or to publish to external sources.
-
-This operation is intended to complement the initial migration. The
-migration registers a shard for every unique piece CID, with lazy
-initialization. Thus, shards are not initialized immediately to avoid
-IO activity competing with proving. Instead, shard are initialized
-when first accessed. This method forces the initialization of a shard by
-accessing it and immediately releasing it. This is useful to warm up the
-cache to facilitate subsequent retrievals, and to generate the indexes
-to publish them externally.
-
-This operation fails if the shard is not in ShardStateNew state.
-It blocks until initialization finishes.
 
 
 Perms: write
@@ -600,8 +569,6 @@ Inputs:
 Response: `{}`
 
 ### DagstoreListShards
-DagstoreListShards returns information about all shards known to the
-DAG store. Only available on nodes running the markets subsystem.
 
 
 Perms: read
@@ -620,7 +587,6 @@ Response:
 ```
 
 ### DagstoreLookupPieces
-DagstoreLookupPieces returns information about shards that contain the given CID.
 
 
 Perms: admin
@@ -646,11 +612,6 @@ Response:
 ```
 
 ### DagstoreRecoverShard
-DagstoreRecoverShard attempts to recover a failed shard.
-
-This operation fails if the shard is not in ShardStateErrored state.
-It blocks until recovery finishes. If recovery failed, it returns the
-error.
 
 
 Perms: write
@@ -665,7 +626,6 @@ Inputs:
 Response: `{}`
 
 ### DagstoreRegisterShard
-DagstoreRegisterShard registers a shard manually with dagstore with given pieceCID
 
 
 Perms: admin
@@ -922,7 +882,6 @@ Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
 
 
 ### IndexerAnnounceAllDeals
-IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
 
 
 Perms: admin
@@ -932,8 +891,6 @@ Inputs: `null`
 Response: `{}`
 
 ### IndexerAnnounceDeal
-IndexerAnnounceDeal informs indexer nodes that a new deal was received,
-so they can download its index
 
 
 Perms: admin
@@ -1015,7 +972,6 @@ Response: `{}`
 
 
 ### MarketCancelDataTransfer
-MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 
 
 Perms: write
@@ -1032,7 +988,6 @@ Inputs:
 Response: `{}`
 
 ### MarketDataTransferDiagnostics
-MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync
 
 
 Perms: write
@@ -1549,7 +1504,6 @@ Inputs: `null`
 Response: `{}`
 
 ### MarketRestartDataTransfer
-MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 
 
 Perms: write
@@ -2241,7 +2195,6 @@ Response:
 
 
 ### PledgeSector
-Temp api for testing
 
 
 Perms: write
@@ -2290,7 +2243,6 @@ Inputs:
 Response: `{}`
 
 ### ReturnDataCid
-storiface.WorkerReturn
 
 
 Perms: admin
@@ -2708,8 +2660,6 @@ Response: `{}`
 
 
 ### RuntimeSubsystems
-RuntimeSubsystems returns the subsystems that are enabled
-in this instance.
 
 
 Perms: read
@@ -2750,7 +2700,6 @@ Inputs:
 Response: `{}`
 
 ### SealingSchedDiag
-SealingSchedDiag dumps internal sealing scheduler state
 
 
 Perms: admin
@@ -2768,7 +2717,6 @@ Response: `{}`
 
 
 ### SectorAbortUpgrade
-SectorAbortUpgrade can be called on sectors that are in the process of being upgraded to abort it
 
 
 Perms: admin
@@ -2783,9 +2731,6 @@ Inputs:
 Response: `{}`
 
 ### SectorAddPieceToAny
-Add piece to an open sector. If no sectors with enough space are open,
-either a new sector will be created, or this call will block until more
-sectors can be created.
 
 
 Perms: admin
@@ -2831,8 +2776,6 @@ Response:
 ```
 
 ### SectorCommitFlush
-SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
-Returns null if message wasn't sent
 
 
 Perms: admin
@@ -2857,7 +2800,6 @@ Response:
 ```
 
 ### SectorCommitPending
-SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
 
 
 Perms: admin
@@ -2875,7 +2817,6 @@ Response:
 ```
 
 ### SectorGetExpectedSealDuration
-SectorGetExpectedSealDuration gets the expected time for a sector to seal
 
 
 Perms: read
@@ -2885,8 +2826,6 @@ Inputs: `null`
 Response: `60000000000`
 
 ### SectorGetSealDelay
-SectorGetSealDelay gets the time that a newly-created sector
-waits for more deals before it starts sealing
 
 
 Perms: read
@@ -2920,8 +2859,6 @@ Inputs: `null`
 Response: `{}`
 
 ### SectorPreCommitFlush
-SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
-Returns null if message wasn't sent
 
 
 Perms: admin
@@ -2943,7 +2880,6 @@ Response:
 ```
 
 ### SectorPreCommitPending
-SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
 
 
 Perms: admin
@@ -2961,8 +2897,6 @@ Response:
 ```
 
 ### SectorRemove
-SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
-be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
 
 
 Perms: admin
@@ -2977,7 +2911,6 @@ Inputs:
 Response: `{}`
 
 ### SectorSetExpectedSealDuration
-SectorSetExpectedSealDuration sets the expected time for a sector to seal
 
 
 Perms: write
@@ -2992,8 +2925,6 @@ Inputs:
 Response: `{}`
 
 ### SectorSetSealDelay
-SectorSetSealDelay sets the time that a newly-created sector
-waits for more deals before it starts sealing
 
 
 Perms: write
@@ -3008,8 +2939,6 @@ Inputs:
 Response: `{}`
 
 ### SectorStartSealing
-SectorStartSealing can be called on sectors in Empty or WaitDeals states
-to trigger sealing early
 
 
 Perms: write
@@ -3024,8 +2953,6 @@ Inputs:
 Response: `{}`
 
 ### SectorTerminate
-SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
-automatically removes it from storage
 
 
 Perms: admin
@@ -3040,8 +2967,6 @@ Inputs:
 Response: `{}`
 
 ### SectorTerminateFlush
-SectorTerminateFlush immediately sends a terminate message with sectors batched for termination.
-Returns null if message wasn't sent
 
 
 Perms: admin
@@ -3051,7 +2976,6 @@ Inputs: `null`
 Response: `null`
 
 ### SectorTerminatePending
-SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
 
 
 Perms: admin
@@ -3072,7 +2996,6 @@ Response:
 
 
 ### SectorsList
-List all staged sectors
 
 
 Perms: read
@@ -3088,7 +3011,6 @@ Response:
 ```
 
 ### SectorsListInStates
-List sectors in particular states
 
 
 Perms: read
@@ -3131,7 +3053,6 @@ Response:
 ```
 
 ### SectorsStatus
-Get the status of a given sector by ID
 
 
 Perms: read
@@ -3223,7 +3144,6 @@ Response:
 ```
 
 ### SectorsSummary
-Get summary info of sectors
 
 
 Perms: read
@@ -3294,7 +3214,6 @@ Inputs:
 Response: `{}`
 
 ### StorageAttach
-paths.SectorIndex
 
 
 Perms: admin
@@ -3357,9 +3276,6 @@ Response:
 ```
 
 ### StorageBestAlloc
-StorageBestAlloc returns list of paths where sector files of the specified type can be allocated, ordered by preference.
-Paths with more weight and more % of free space are preferred.
-Note: This method doesn't filter paths based on AllowTypes/DenyTypes.
 
 
 Perms: admin
@@ -3441,14 +3357,6 @@ Inputs:
 Response: `{}`
 
 ### StorageFindSector
-StorageFindSector returns list of paths where the specified sector files exist.
-
-If allowFetch is set, list of paths to which the sector can be fetched will also be returned.
-- Paths which have sector files locally (don't require fetching) will be listed first.
-- Paths which have sector files locally will not be filtered based on based on AllowTypes/DenyTypes.
-- Paths which require fetching will be filtered based on AllowTypes/DenyTypes. If multiple
-  file types are specified, each type will be considered individually, and a union of all paths
-  which can accommodate each file type will be returned.
 
 
 Perms: admin
@@ -3689,7 +3597,6 @@ Response: `true`
 
 
 ### WorkerConnect
-WorkerConnect tells the node to connect to workers RPC
 
 
 Perms: admin
