@@ -187,7 +187,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 					mpool.setNonce(m.msg.From, m.mpoolNonce[0])
 				}
 				merr := m.cbErr
-				smsg, err := ms.SignMessage(ctx, m.msg, func(message *types.SignedMessage) error {
+				smsg, err := ms.SignMessage(ctx, m.msg, nil, func(message *types.SignedMessage) error {
 					return merr
 				})
 

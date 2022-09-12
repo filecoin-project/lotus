@@ -264,7 +264,7 @@ func (cfg *Config) ConfigKey() string {
 //}
 //
 // Default initializes this configuration with working defaults.
-func (cfg *Config) Default() error {
+func (cfg *Config) Default() {
 	cfg.DataFolder = "" // empty so it gets omitted
 	cfg.InitPeerset = []peer.ID{}
 	cfg.WaitForLeaderTimeout = DefaultWaitForLeaderTimeout
@@ -282,7 +282,6 @@ func (cfg *Config) Default() error {
 	// Set up logging
 	cfg.RaftConfig.LogOutput = ioutil.Discard
 	//cfg.RaftConfig.Logger = &hcLogToLogger{}
-	return nil
 }
 
 func NewDefaultConfig() *Config {

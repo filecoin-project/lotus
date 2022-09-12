@@ -37,17 +37,17 @@ func generatePrivKey() (*kit.Libp2p, error) {
 		return nil, err
 	}
 
-	return &kit.Libp2p{peerId, privkey}, nil
+	return &kit.Libp2p{PeerID: peerId, PrivKey: privkey}, nil
 }
 
-func getRaftState(t *testing.T, ctx context.Context, node *kit.TestFullNode) consensus.RaftState {
+func getRaftState(ctx context.Context, t *testing.T, node *kit.TestFullNode) consensus.RaftState {
 	raftState, err := node.RaftState(ctx)
 	require.NoError(t, err)
 	rstate := raftState.(consensus.RaftState)
 	return rstate
 }
 
-func setup(t *testing.T, ctx context.Context, node0 *kit.TestFullNode, node1 *kit.TestFullNode, node2 *kit.TestFullNode, miner *kit.TestMiner) *kit.Ensemble {
+func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *kit.TestFullNode, node2 *kit.TestFullNode, miner *kit.TestMiner) *kit.Ensemble {
 
 	blockTime := 5 * time.Millisecond
 
@@ -112,7 +112,7 @@ func TestRaftState(t *testing.T) {
 		miner kit.TestMiner
 	)
 
-	setup(t, ctx, &node0, &node1, &node2, &miner)
+	setup(ctx, t, &node0, &node1, &node2, &miner)
 
 	fmt.Println(node0.WalletList(context.Background()))
 	fmt.Println(node1.WalletList(context.Background()))
@@ -135,9 +135,9 @@ func TestRaftState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	rstate0 := getRaftState(t, ctx, &node0)
-	rstate1 := getRaftState(t, ctx, &node1)
-	rstate2 := getRaftState(t, ctx, &node2)
+	rstate0 := getRaftState(ctx, t, &node0)
+	rstate1 := getRaftState(ctx, t, &node1)
+	rstate2 := getRaftState(ctx, t, &node2)
 
 	require.True(t, reflect.DeepEqual(rstate0, rstate1))
 	require.True(t, reflect.DeepEqual(rstate0, rstate2))
@@ -158,7 +158,7 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 
 	nodes := []*kit.TestFullNode{&node0, &node1, &node2}
 
-	setup(t, ctx, &node0, &node1, &node2, &miner)
+	setup(ctx, t, &node0, &node1, &node2, &miner)
 
 	peerToNode := make(map[peer.ID]*kit.TestFullNode)
 	for _, n := range nodes {
@@ -182,9 +182,9 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	rstate0 := getRaftState(t, ctx, &node0)
-	rstate1 := getRaftState(t, ctx, &node1)
-	rstate2 := getRaftState(t, ctx, &node2)
+	rstate0 := getRaftState(ctx, t, &node0)
+	rstate1 := getRaftState(ctx, t, &node1)
+	rstate2 := getRaftState(ctx, t, &node2)
 
 	require.True(t, reflect.DeepEqual(rstate0, rstate1))
 	require.True(t, reflect.DeepEqual(rstate0, rstate2))
@@ -193,7 +193,8 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 	require.NoError(t, err)
 	leaderNode := peerToNode[leader]
 
-	leaderNode.Stop(ctx)
+	err = leaderNode.Stop(ctx)
+	require.NoError(t, err)
 	oldLeaderNode := leaderNode
 
 	time.Sleep(5 * time.Second)
@@ -225,11 +226,11 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	rstate := getRaftState(t, ctx, leaderNode)
+	rstate := getRaftState(ctx, t, leaderNode)
 
 	for _, n := range nodes {
 		if n != oldLeaderNode {
-			rs := getRaftState(t, ctx, n)
+			rs := getRaftState(ctx, t, n)
 			require.True(t, reflect.DeepEqual(rs, rstate))
 		}
 	}

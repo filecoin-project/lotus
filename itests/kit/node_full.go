@@ -106,8 +106,8 @@ func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn
 	}
 }
 
-func (t *TestFullNode) AssignPrivKey(pkey *Libp2p) {
-	t.Pkey = pkey
+func (f *TestFullNode) AssignPrivKey(pkey *Libp2p) {
+	f.Pkey = pkey
 }
 
 // ChainPredicate encapsulates a chain condition.

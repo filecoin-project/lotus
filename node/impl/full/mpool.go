@@ -149,7 +149,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	// Redirect to leader if current node is not leader. A single non raft based node is always the leader
 	if !a.MessageSigner.IsLeader(ctx) {
 		var signedMsg types.SignedMessage
-		redirected, err := a.MessageSigner.RedirectToLeader(ctx, "MpoolPushMessage", api.MpoolMessageWhole{msg, spec}, &signedMsg)
+		redirected, err := a.MessageSigner.RedirectToLeader(ctx, "MpoolPushMessage", api.MpoolMessageWhole{Msg: msg, Spec: spec}, &signedMsg)
 		if err != nil {
 			return nil, err
 		}
