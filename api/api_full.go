@@ -767,6 +767,7 @@ type FullNode interface {
 	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                    //perm:read
 	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                                               //perm:read
 	EthGasPrice(ctx context.Context) (EthInt, error)                                                           //perm:read
+
 	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (EthHash, error)                               //perm:write
 
 	// CreateBackup creates node backup onder the specified file name. The
