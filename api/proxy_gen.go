@@ -219,7 +219,7 @@ type FullNodeStruct struct {
 
 		EthChainId func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthGasPrice func(p0 context.Context) (EthInt, error) ``
+		EthGasPrice func(p0 context.Context) (EthInt, error) `perm:"read"`
 
 		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
 
