@@ -27,10 +27,10 @@ func (e *pathError) Path() string {
 }
 
 // A Path represents an ipfs content path:
-//   * /<cid>/path/to/file
-//   * /ipfs/<cid>
-//   * /ipns/<cid>/path/to/folder
-//   * etc
+//   - /<cid>/path/to/file
+//   - /ipfs/<cid>
+//   - /ipns/<cid>/path/to/folder
+//   - etc
 type Path string
 
 // ^^^

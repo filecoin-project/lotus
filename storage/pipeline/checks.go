@@ -18,7 +18,8 @@ import (
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
-//  We should implement some wait-for-api logic
+//
+//	We should implement some wait-for-api logic
 type ErrApi struct{ error }
 
 type ErrNoDeals struct{ error }
@@ -91,7 +92,8 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 }
 
 // checkPrecommit checks that data commitment generated in the sealing process
-//  matches pieces, and that the seal ticket isn't expired
+//
+//	matches pieces, and that the seal ticket isn't expired
 func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, height abi.ChainEpoch, api SealingAPI) (err error) {
 	if err := checkPieces(ctx, maddr, si, api, false); err != nil {
 		return err

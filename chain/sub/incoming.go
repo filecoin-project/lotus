@@ -159,9 +159,12 @@ func FetchSignedMessagesByCids(
 }
 
 // Fetch `cids` from the block service, apply `cb` on each of them. Used
-//  by the fetch message functions above.
+//
+//	by the fetch message functions above.
+//
 // We check that each block is received only once and we do not received
-//  blocks we did not request.
+//
+//	blocks we did not request.
 func fetchCids(
 	ctx context.Context,
 	bserv bserv.BlockGetter,

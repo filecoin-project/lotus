@@ -300,3 +300,170 @@ func TestWindowPostMaxSectorsRecoveryConfig(t *testing.T) {
 	sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
 	require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-1, int(sectors)) // -1 not recovered sector
 }
+
+func TestWindowPostManualSectorsRecovery(t *testing.T) {
+	oldVal := wdpost.RecoveringSectorLimit
+	defer func() {
+		wdpost.RecoveringSectorLimit = oldVal
+	}()
+	wdpost.RecoveringSectorLimit = 1
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client, miner, ens := kit.EnsembleMinimal(t,
+		kit.LatestActorsAt(-1),
+		kit.MockProofs())
+	ens.InterconnectAll().BeginMining(2 * time.Millisecond)
+
+	nSectors := 10
+
+	miner.PledgeSectors(ctx, nSectors, 0, nil)
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	mid, err := address.IDFromAddress(maddr)
+	require.NoError(t, err)
+
+	t.Log("Running one proving period")
+	waitUntil := di.Open + di.WPoStProvingPeriod
+	t.Logf("End for head.Height > %d", waitUntil)
+
+	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
+
+	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	ssz, err := miner.ActorSectorSize(ctx, maddr)
+	require.NoError(t, err)
+
+	require.Equal(t, p.MinerPower, p.TotalPower)
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+kit.DefaultPresealsPerBootstrapMiner)))
+
+	failed, err := client.StateMinerFaults(ctx, maddr, types.TipSetKey{})
+	require.NoError(t, err)
+	failedCount, err := failed.Count()
+	require.NoError(t, err)
+
+	require.Equal(t, failedCount, uint64(0))
+
+	t.Log("Drop some sectors")
+
+	// Drop 2 sectors from deadline 2 partition 0 (full partition / deadline)
+	parts, err := client.StateMinerPartitions(ctx, maddr, 2, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Greater(t, len(parts), 0)
+
+	secs := parts[0].AllSectors
+	n, err := secs.Count()
+	require.NoError(t, err)
+	require.Equal(t, uint64(2), n)
+
+	var failedSectors []abi.SectorNumber
+
+	// Drop the partition
+	err = secs.ForEach(func(sid uint64) error {
+		failedSectors = append(failedSectors, abi.SectorNumber(sid))
+		return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(storiface.SectorRef{
+			ID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(sid),
+			},
+		}, true)
+	})
+	require.NoError(t, err)
+
+	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	t.Log("Go through another PP, wait for sectors to become faulty")
+	waitUntil = di.Open + di.WPoStProvingPeriod
+	t.Logf("End for head.Height > %d", waitUntil)
+
+	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
+
+	failed, err = client.StateMinerFaults(ctx, maddr, types.TipSetKey{})
+	require.NoError(t, err)
+	failedCount, err = failed.Count()
+	require.NoError(t, err)
+
+	require.Equal(t, failedCount, uint64(2))
+
+	recovered, err := client.StateMinerRecoveries(ctx, maddr, types.TipSetKey{})
+	require.NoError(t, err)
+	recoveredCount, err := recovered.Count()
+	require.NoError(t, err)
+
+	require.Equal(t, recoveredCount, uint64(0))
+
+	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, p.MinerPower, p.TotalPower)
+
+	t.Log("Make the sectors recoverable")
+
+	err = secs.ForEach(func(sid uint64) error {
+		return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(storiface.SectorRef{
+			ID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(sid),
+			},
+		}, false)
+	})
+	require.NoError(t, err)
+
+	// Try to manually recover the sector
+	t.Log("Send recovery message")
+	_, err = miner.RecoverFault(ctx, failedSectors)
+	require.NoError(t, err)
+
+	currentHeight, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+
+	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(currentHeight.Height()+abi.ChainEpoch(10)))
+	t.Logf("Now head.Height = %d", ts.Height())
+
+	failed, err = client.StateMinerFaults(ctx, maddr, types.TipSetKey{})
+	require.NoError(t, err)
+	failedCount, err = failed.Count()
+	require.NoError(t, err)
+
+	require.Equal(t, failedCount, uint64(2))
+
+	recovered, err = client.StateMinerRecoveries(ctx, maddr, types.TipSetKey{})
+	require.NoError(t, err)
+	recoveredCount, err = recovered.Count()
+	require.NoError(t, err)
+
+	require.Equal(t, recoveredCount, uint64(2))
+
+	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	t.Log("Go through another PP, wait for sectors to become faulty")
+	waitUntil = di.Open + di.WPoStProvingPeriod
+	t.Logf("End for head.Height > %d", waitUntil)
+
+	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
+
+	failed, err = client.StateMinerFaults(ctx, maddr, types.TipSetKey{})
+	require.NoError(t, err)
+	failedCount, err = failed.Count()
+	require.NoError(t, err)
+
+	require.Equal(t, failedCount, uint64(0))
+
+	recovered, err = client.StateMinerRecoveries(ctx, maddr, types.TipSetKey{})
+	require.NoError(t, err)
+	recoveredCount, err = recovered.Count()
+	require.NoError(t, err)
+
+	require.Equal(t, recoveredCount, uint64(0))
+}

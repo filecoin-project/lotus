@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -152,6 +153,9 @@ var sendCmd = &cli.Command{
 
 		sm, err := InteractiveSend(ctx, cctx, srv, proto)
 		if err != nil {
+			if strings.Contains(err.Error(), "no current EF") {
+				return xerrors.Errorf("transaction rejected on ledger: %w", err)
+			}
 			return err
 		}
 

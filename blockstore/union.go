@@ -12,10 +12,9 @@ type unionBlockstore []Blockstore
 
 // Union returns an unioned blockstore.
 //
-// * Reads return from the first blockstore that has the value, querying in the
-//   supplied order.
-// * Writes (puts and deletes) are broadcast to all stores.
-//
+//   - Reads return from the first blockstore that has the value, querying in the
+//     supplied order.
+//   - Writes (puts and deletes) are broadcast to all stores.
 func Union(stores ...Blockstore) Blockstore {
 	return unionBlockstore(stores)
 }

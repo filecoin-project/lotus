@@ -106,6 +106,8 @@
   * [PiecesListPieces](#PiecesListPieces)
 * [Pledge](#Pledge)
   * [PledgeSector](#PledgeSector)
+* [Recover](#Recover)
+  * [RecoverFault](#RecoverFault)
 * [Return](#Return)
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnDataCid](#ReturnDataCid)
@@ -2265,6 +2267,36 @@ Response:
 }
 ```
 
+## Recover
+
+
+### RecoverFault
+RecoverFault can be used to declare recoveries manually. It sends messages
+to the miner actor with details of recovered sectors and returns the CID of messages. It honors the
+maxPartitionsPerRecoveryMessage from the config
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    123,
+    124
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
 ## Return
 
 
@@ -4397,26 +4429,26 @@ Response:
           },
           "seal/v0/datacid": {
             "0": {
-              "MinMemory": 2048,
-              "MaxMemory": 2048,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 2048,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "1": {
-              "MinMemory": 8388608,
-              "MaxMemory": 8388608,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 8388608,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "2": {
-              "MinMemory": 1073741824,
-              "MaxMemory": 1073741824,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
@@ -4433,8 +4465,8 @@ Response:
               "MaxConcurrent": 0
             },
             "4": {
-              "MinMemory": 8589934592,
-              "MaxMemory": 8589934592,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
@@ -4442,26 +4474,26 @@ Response:
               "MaxConcurrent": 0
             },
             "5": {
-              "MinMemory": 2048,
-              "MaxMemory": 2048,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 2048,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "6": {
-              "MinMemory": 8388608,
-              "MaxMemory": 8388608,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 8388608,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "7": {
-              "MinMemory": 1073741824,
-              "MaxMemory": 1073741824,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
@@ -4478,8 +4510,8 @@ Response:
               "MaxConcurrent": 0
             },
             "9": {
-              "MinMemory": 8589934592,
-              "MaxMemory": 8589934592,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,

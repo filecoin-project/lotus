@@ -314,6 +314,11 @@ type StorageMiner interface {
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
 
 	ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtin.PoStProof, error) //perm:read
+
+	// RecoverFault can be used to declare recoveries manually. It sends messages
+	// to the miner actor with details of recovered sectors and returns the CID of messages. It honors the
+	// maxPartitionsPerRecoveryMessage from the config
+	RecoverFault(ctx context.Context, sectors []abi.SectorNumber) ([]cid.Cid, error) //perm:admin
 }
 
 var _ storiface.WorkerReturn = *new(StorageMiner)

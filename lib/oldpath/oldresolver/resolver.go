@@ -39,7 +39,8 @@ type ResolveOnce func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, nam
 // Resolver provides path resolution to IPFS
 // It has a pointer to a DAGService, which is uses to resolve nodes.
 // TODO: now that this is more modular, try to unify this code with the
-//       the resolvers in namesys
+//
+//	the resolvers in namesys
 type Resolver struct {
 	DAG ipld.NodeGetter
 

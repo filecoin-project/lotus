@@ -1,4 +1,4 @@
-//stm: ignore
+// stm: ignore
 // This file does not test any behaviors by itself; rather, it runs other test files
 // Therefore, this file should not be annotated.
 package conformance

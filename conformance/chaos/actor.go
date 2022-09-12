@@ -146,10 +146,10 @@ type CallerValidationArgs struct {
 
 // CallerValidation violates VM call validation constraints.
 //
-//  CallerValidationBranchNone performs no validation.
-//  CallerValidationBranchTwice validates twice.
-//  CallerValidationBranchIsAddress validates caller against CallerValidationArgs.Addrs.
-//  CallerValidationBranchIsType validates caller against CallerValidationArgs.Types.
+//	CallerValidationBranchNone performs no validation.
+//	CallerValidationBranchTwice validates twice.
+//	CallerValidationBranchIsAddress validates caller against CallerValidationArgs.Addrs.
+//	CallerValidationBranchIsType validates caller against CallerValidationArgs.Types.
 func (a Actor) CallerValidation(rt runtime2.Runtime, args *CallerValidationArgs) *abi.EmptyValue {
 	switch args.Branch {
 	case CallerValidationBranchNone:
