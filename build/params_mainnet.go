@@ -87,7 +87,7 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
-var PropagationDelaySecs = uint64(6)
+var PropagationDelaySecs = uint64(10)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
@@ -104,7 +104,7 @@ func init() {
 	if len(os.Getenv("PROPAGATION_DELAY_SECS")) != 0 {
 		PropagationDelaySecs, err := strconv.ParseUint(os.Getenv("PROPAGATION_DELAY_SECS"), 10, 64)
 		if err != nil {
-			PropagationDelaySecs = uint64(6)
+			PropagationDelaySecs = uint64(10)
 			log.Warnw("Error setting PROPAGATION_DELAY_SECS, %v, proceed with default value %s", err,
 				PropagationDelaySecs)
 		} else {
