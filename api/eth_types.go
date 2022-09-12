@@ -109,7 +109,7 @@ func NewEthBlock() EthBlock {
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
-		GasLimit:         build.BlockGasLimit,
+		GasLimit:         EthInt(build.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
 		Uncles:           []EthHash{},
 		Transactions:     []interface{}{},
 	}
