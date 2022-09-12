@@ -4,6 +4,9 @@
 package build
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -83,6 +86,18 @@ func init() {
 	SetAddressNetwork(address.Testnet)
 
 	Devnet = true
+
+	if len(os.Getenv("PROPAGATION_DELAY_SECS")) != 0 {
+		PropagationDelaySecs, err := strconv.ParseUint(os.Getenv("PROPAGATION_DELAY_SECS"), 10, 64)
+		if err != nil {
+			PropagationDelaySecs = uint64(6)
+			log.Warnw("Error setting PROPAGATION_DELAY_SECS, %v, proceed with default value %s", err,
+				PropagationDelaySecs)
+		} else {
+			log.Warnw(" !!WARNING!! propagation delay is set to be %s second, "+
+				"this value impacts your message republish interval and block forming - monitor with caution!!", PropagationDelaySecs)
+		}
+	}
 
 	BuildType = BuildCalibnet
 
