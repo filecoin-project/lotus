@@ -158,10 +158,10 @@ type DealmakingConfig struct {
 	StartEpochSealingBuffer uint64
 
 	// A command used for fine-grained evaluation of storage deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	Filter string
 	// A command used for fine-grained evaluation of retrieval deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	RetrievalFilter string
 
 	RetrievalPricing *RetrievalPricing
