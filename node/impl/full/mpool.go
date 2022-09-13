@@ -3,8 +3,8 @@ package full
 import (
 	"context"
 	"encoding/json"
-	"github.com/google/uuid"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"

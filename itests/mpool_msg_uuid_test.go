@@ -2,16 +2,19 @@ package itests
 
 import (
 	"context"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestMsgWithoutUuidWithMaxFee(t *testing.T) {
