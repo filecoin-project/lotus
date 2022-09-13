@@ -2,11 +2,11 @@ package system
 
 import (
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
-
-	system3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/system"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	system3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/system"
+	"golang.org/x/xerrors"
 )
 
 var _ State = (*state3)(nil)

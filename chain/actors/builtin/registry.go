@@ -1,9 +1,9 @@
 package builtin
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/ipfs/go-cid"
 
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
 	_init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
@@ -15,6 +15,7 @@ import (
 	reward8 "github.com/filecoin-project/go-state-types/builtin/v8/reward"
 	system8 "github.com/filecoin-project/go-state-types/builtin/v8/system"
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+
 	account9 "github.com/filecoin-project/go-state-types/builtin/v9/account"
 	cron9 "github.com/filecoin-project/go-state-types/builtin/v9/cron"
 	_init9 "github.com/filecoin-project/go-state-types/builtin/v9/init"
@@ -26,9 +27,9 @@ import (
 	reward9 "github.com/filecoin-project/go-state-types/builtin/v9/reward"
 	system9 "github.com/filecoin-project/go-state-types/builtin/v9/system"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+
 	"github.com/filecoin-project/go-state-types/cbor"
 	rtt "github.com/filecoin-project/go-state-types/rt"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
