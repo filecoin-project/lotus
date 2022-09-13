@@ -119,6 +119,12 @@ of automatically performing on-chain operations.`,
 	},
 	"ClusterRaftConfig": []DocField{
 		{
+			Num:  "ClusterModeEnabled",
+			Type: "bool",
+
+			Comment: `config to enabled node cluster with raft consensus`,
+		},
+		{
 			Num:  "HostShutdown",
 			Type: "bool",
 

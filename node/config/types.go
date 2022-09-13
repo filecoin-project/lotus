@@ -598,6 +598,8 @@ type FeeConfig struct {
 
 // ClusterRaftConfig allows to configure the Raft Consensus component for the node cluster.
 type ClusterRaftConfig struct {
+	// config to enabled node cluster with raft consensus
+	ClusterModeEnabled bool
 	// will shutdown libp2p host on shutdown. Useful for testing
 	HostShutdown bool
 	// A folder to store Raft's data.

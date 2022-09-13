@@ -3,6 +3,7 @@ package node
 import (
 	"os"
 
+	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -28,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
+	consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
@@ -236,6 +238,15 @@ func ConfigFullNode(c interface{}) Option {
 		If(cfg.Wallet.DisableLocal,
 			Unset(new(*wallet.LocalWallet)),
 			Override(new(wallet.Default), wallet.NilDefault),
+		),
+		// Chain node cluster enabled
+		If(cfg.Raft.ClusterModeEnabled,
+			Override(new(*gorpc.Client), modules.NewRPCClient),
+			Override(new(*consensus.Consensus), consensus2.NewConsensusWithRPCClient(false)),
+			Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
+			Override(new(messagesigner.MsgSigner), func(ms *messagesigner.MessageSignerConsensus) *messagesigner.MessageSignerConsensus { return ms }),
+			Override(new(*modules.RPCHandler), modules.NewRPCHandler),
+			Override(RPCServer, modules.NewRPCServer),
 		),
 	)
 }
