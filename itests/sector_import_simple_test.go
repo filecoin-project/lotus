@@ -117,6 +117,8 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	pc1out, err := sealer.SealPreCommit1(ctx, sref, abi.SealRandomness(rand), []abi.PieceInfo{pieceInfo})
 	require.NoError(t, err)
 
+	os.WriteFile("/tmp/pc1", pc1out, 0666)
+
 	// run pc2
 	scids, err := sealer.SealPreCommit2(ctx, sref, pc1out)
 	require.NoError(t, err)
@@ -239,6 +241,9 @@ func remoteCommit1(s *ffiwrapper.Sealer) func(w http.ResponseWriter, r *http.Req
 			Unsealed: params.Unsealed,
 			Sealed:   params.Sealed,
 		})
+
+		os.WriteFile("/tmp/c1", p, 0666)
+
 		if err != nil {
 			w.WriteHeader(500)
 			return

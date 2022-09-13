@@ -8,8 +8,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/base64"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"math/bits"
@@ -30,6 +28,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/lib/jsonfield"
 	"github.com/filecoin-project/lotus/lib/nullreader"
 	spaths "github.com/filecoin-project/lotus/storage/paths"
 	nr "github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
@@ -778,14 +777,13 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storiface.SectorRef
 		return nil, xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
 	}
 
-	p1odec := map[string]interface{}{}
-	if err := json.Unmarshal(p1o, &p1odec); err != nil {
+	p1out, err := jsonfield.JsonBytesFrom[storiface.PreCommit1OutRaw](p1o)
+	if err != nil {
 		return nil, xerrors.Errorf("unmarshaling pc1 output: %w", err)
 	}
+	p1out.Data.LotusSealRand = ticket
 
-	p1odec["_lotus_SealRandomness"] = ticket
-
-	return json.Marshal(&p1odec)
+	return &p1out, nil
 }
 
 var PC2CheckRounds = 3
@@ -797,7 +795,12 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 	}
 	defer done()
 
-	sealedCID, unsealedCID, err := ffi.SealPreCommitPhase2(phase1Out, paths.Cache, paths.Sealed)
+	p1bytes, err := phase1Out.MarshalJSON()
+	if err != nil {
+		return storiface.SectorCids{}, err
+	}
+
+	sealedCID, unsealedCID, err := ffi.SealPreCommitPhase2(p1bytes, paths.Cache, paths.Sealed)
 	if err != nil {
 		return storiface.SectorCids{}, xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
 	}
@@ -807,20 +810,7 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 		return storiface.SectorCids{}, xerrors.Errorf("get ssize: %w", err)
 	}
 
-	p1odec := map[string]interface{}{}
-	if err := json.Unmarshal(phase1Out, &p1odec); err != nil {
-		return storiface.SectorCids{}, xerrors.Errorf("unmarshaling pc1 output: %w", err)
-	}
-
-	var ticket abi.SealRandomness
-	ti, found := p1odec["_lotus_SealRandomness"]
-
-	if found {
-		ticket, err = base64.StdEncoding.DecodeString(ti.(string))
-		if err != nil {
-			return storiface.SectorCids{}, xerrors.Errorf("decoding ticket: %w", err)
-		}
-
+	if len(phase1Out.Data.LotusSealRand) > 0 {
 		for i := 0; i < PC2CheckRounds; i++ {
 			var sd [32]byte
 			_, _ = rand.Read(sd[:])
@@ -833,13 +823,13 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 				paths.Sealed,
 				sector.ID.Number,
 				sector.ID.Miner,
-				ticket,
+				phase1Out.Data.LotusSealRand,
 				sd[:],
 				[]abi.PieceInfo{{Size: abi.PaddedPieceSize(ssize), PieceCID: unsealedCID}},
 			)
 			if err != nil {
 				log.Warn("checking PreCommit failed: ", err)
-				log.Warnf("num:%d tkt:%v seed:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sd[:], sealedCID, unsealedCID)
+				log.Warnf("num:%d tkt:%v seed:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, phase1Out.Data.LotusSealRand, sd[:], sealedCID, unsealedCID)
 
 				return storiface.SectorCids{}, xerrors.Errorf("checking PreCommit failed: %w", err)
 			}
@@ -858,7 +848,7 @@ func (sb *Sealer) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 		return nil, xerrors.Errorf("acquire sector paths: %w", err)
 	}
 	defer done()
-	output, err := ffi.SealCommitPhase1(
+	rawOut, err := ffi.SealCommitPhase1(
 		sector.ProofType,
 		cids.Sealed,
 		cids.Unsealed,
@@ -876,11 +866,22 @@ func (sb *Sealer) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
-	return output, nil
+
+	out, err := jsonfield.JsonBytesFrom[storiface.Commit1OutRaw](rawOut)
+	if err != nil {
+		return nil, xerrors.Errorf("unmarshaling c1 output: %w", err)
+	}
+
+	return &out, nil
 }
 
 func (sb *Sealer) SealCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.Proof, error) {
-	return ffi.SealCommitPhase2(phase1Out, sector.ID.Number, sector.ID.Miner)
+	p1b, err := phase1Out.MarshalJSON()
+	if err != nil {
+		return nil, xerrors.Errorf("marshaling phase1 out: %w", err)
+	}
+
+	return ffi.SealCommitPhase2(p1b, sector.ID.Number, sector.ID.Miner)
 }
 
 func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, pieces []abi.PieceInfo) (storiface.ReplicaUpdateOut, error) {

@@ -3,9 +3,9 @@ package system
 import (
 	"github.com/ipfs/go-cid"
 
-	system6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/system"
-
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	system6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/system"
 )
 
 var _ State = (*state6)(nil)

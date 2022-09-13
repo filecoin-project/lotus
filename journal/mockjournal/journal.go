@@ -7,9 +7,8 @@ package mockjournal
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	journal "github.com/filecoin-project/lotus/journal"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockJournal is a mock of Journal interface.

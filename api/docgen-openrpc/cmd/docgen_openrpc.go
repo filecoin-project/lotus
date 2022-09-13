@@ -38,7 +38,7 @@ func main() {
 
 	out, err := doc.Discover()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 
 	var jsonOut []byte

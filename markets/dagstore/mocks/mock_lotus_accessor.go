@@ -8,10 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
+	mount "github.com/filecoin-project/dagstore/mount"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
-
-	mount "github.com/filecoin-project/dagstore/mount"
 )
 
 // MockMinerAPI is a mock of MinerAPI interface.

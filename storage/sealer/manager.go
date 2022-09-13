@@ -563,7 +563,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 
 	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTCommit1, sector, ticket, seed, pieces, cids)
 	if err != nil {
-		return storiface.Commit1Out{}, xerrors.Errorf("getWork: %w", err)
+		return nil, xerrors.Errorf("getWork: %w", err)
 	}
 	defer cancel()
 
@@ -585,7 +585,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 	}
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTSealed, storiface.FTCache); err != nil {
-		return storiface.Commit1Out{}, xerrors.Errorf("acquiring sector lock: %w", err)
+		return nil, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
 	// NOTE: We set allowFetch to false in so that we always execute on a worker

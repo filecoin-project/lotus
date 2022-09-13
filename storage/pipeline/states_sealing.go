@@ -608,9 +608,13 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 			return ctx.Send(SectorRemoteCommit1Failed{xerrors.Errorf("remote commit1 received non-200 http response %s", resp.Status)})
 		}
 
-		c2in, err = io.ReadAll(resp.Body) // todo some len constraint
+		c1bytes, err := io.ReadAll(resp.Body) // todo some len constraint
 		if err != nil {
 			return ctx.Send(SectorRemoteCommit1Failed{xerrors.Errorf("reading commit1 response: %w", err)})
+		}
+
+		if err := c2in.UnmarshalJSON(c1bytes); err != nil {
+			return ctx.Send(SectorRemoteCommit1Failed{xerrors.Errorf("unmarshaling commit1 response: %w", err)})
 		}
 	}
 

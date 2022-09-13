@@ -190,7 +190,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.PreCommit1Out (storiface.PreCommit1Out) (slice)
+	// t.PreCommit1Out (jsonfield.JSONBytes[github.com/filecoin-project/lotus/storage/sealer/storiface.PreCommit1OutRaw]) (struct)
 	if len("PreCommit1Out") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"PreCommit1Out\" was too long")
 	}
@@ -202,15 +202,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.PreCommit1Out) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.PreCommit1Out was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.PreCommit1Out))); err != nil {
-		return err
-	}
-
-	if _, err := cw.Write(t.PreCommit1Out[:]); err != nil {
+	if err := t.PreCommit1Out.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
@@ -1049,27 +1041,15 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.TicketEpoch = abi.ChainEpoch(extraI)
 			}
-			// t.PreCommit1Out (storiface.PreCommit1Out) (slice)
+			// t.PreCommit1Out (jsonfield.JSONBytes[github.com/filecoin-project/lotus/storage/sealer/storiface.PreCommit1OutRaw]) (struct)
 		case "PreCommit1Out":
 
-			maj, extra, err = cr.ReadHeader()
-			if err != nil {
-				return err
-			}
+			{
 
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.PreCommit1Out: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
-			}
+				if err := t.PreCommit1Out.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.PreCommit1Out: %w", err)
+				}
 
-			if extra > 0 {
-				t.PreCommit1Out = make([]uint8, extra)
-			}
-
-			if _, err := io.ReadFull(cr, t.PreCommit1Out[:]); err != nil {
-				return err
 			}
 			// t.CommD (cid.Cid) (struct)
 		case "CommD":

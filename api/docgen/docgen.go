@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/jsonfield"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
@@ -350,6 +351,173 @@ func init() {
 			Local:   false,
 			URL:     "https://example.com/sealingservice/sectors/s-f0123-12345",
 			Headers: nil,
+		},
+	})
+
+	addExample(storiface.StringRegisteredProofType("StackedDrg2KiBV1"))
+
+	addExample(map[storiface.StringRegisteredProofType]storiface.Labels{
+		"StackedDrg2KiBV1": {
+			Labels: []storiface.Label{
+				{
+					ID:            "layer-1",
+					Path:          "/tmp/sector-path/cache/s0-t01000-1234",
+					RowsToDiscard: 5,
+					Size:          64,
+				},
+			},
+		},
+	})
+
+	addExample(&jsonfield.JSONBytes[storiface.Commit1OutRaw]{
+		Data: storiface.Commit1OutRaw{
+			CommD:           storiface.Commitment{1, 2, 3, 4},
+			CommR:           storiface.Commitment{87, 75, 54, 80},
+			RegisteredProof: "StackedDrg2KiBV1",
+			ReplicaID:       storiface.Commitment{98, 7, 5, 36, 8},
+			Seed:            storiface.Ticket{99, 99, 99, 99},
+			Ticket:          storiface.Ticket{89, 99, 99, 99, 99},
+			VanillaProofs: map[storiface.StringRegisteredProofType][][]storiface.VanillaStackedProof{
+				"StackedDrg2KiBV1": {
+					{
+						{
+							CommDProofs: storiface.MerkleProof[storiface.Sha256Domain]{
+								Data: storiface.ProofData[storiface.Sha256Domain]{
+									Single: &storiface.SingleProof[storiface.Sha256Domain]{
+										Root: [32]byte{1, 2, 3, 4},
+										Leaf: [32]byte{0, 0, 0, 0, 0},
+										Path: storiface.InclusionPath[storiface.Sha256Domain]{
+											Path: []storiface.PathElement[storiface.Sha256Domain]{
+												{
+													Index: 0,
+													Hashes: []storiface.Sha256Domain{
+														{5, 6, 8, 9},
+														{9, 7, 5, 4},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							CommRLastProof: storiface.MerkleProof[storiface.PoseidonDomain]{
+								Data: storiface.ProofData[storiface.PoseidonDomain]{
+									Single: &storiface.SingleProof[storiface.PoseidonDomain]{
+										Root: [32]byte{87, 75, 54, 80},
+										Leaf: [32]byte{89, 45, 239, 146},
+										Path: storiface.InclusionPath[storiface.PoseidonDomain]{
+											Path: []storiface.PathElement[storiface.PoseidonDomain]{
+												{
+													Index: 0,
+													Hashes: []storiface.PoseidonDomain{
+														{145, 35, 132, 36},
+														{23, 24, 237, 94},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							ReplicaColumnProofs: storiface.ReplicaColumnProof[storiface.PoseidonDomain]{
+								C_X: storiface.ColumnProof[storiface.PoseidonDomain]{
+									Column: storiface.Column[storiface.PoseidonDomain]{
+										Index: 2,
+										Rows:  []storiface.PoseidonDomain{{9, 7, 5, 4}},
+									},
+									InclusionProof: storiface.MerkleProof[storiface.PoseidonDomain]{
+										Data: storiface.ProofData[storiface.PoseidonDomain]{
+											Single: &storiface.SingleProof[storiface.PoseidonDomain]{
+												Root: [32]byte{63, 83, 12, 85},
+												Leaf: [32]byte{42, 16, 52, 235},
+												Path: storiface.InclusionPath[storiface.PoseidonDomain]{
+													Path: []storiface.PathElement[storiface.PoseidonDomain]{
+														{
+															Index: 0,
+															Hashes: []storiface.PoseidonDomain{
+																{14, 96, 34, 12},
+																{86, 14, 34, 74},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								DrgParents: []storiface.ColumnProof[storiface.PoseidonDomain]{
+									{
+										Column: storiface.Column[storiface.PoseidonDomain]{
+											Index: 24,
+											Rows:  []storiface.PoseidonDomain{{234, 23, 47, 23}},
+										},
+										InclusionProof: storiface.MerkleProof[storiface.PoseidonDomain]{
+											Data: storiface.ProofData[storiface.PoseidonDomain]{
+												Single: &storiface.SingleProof[storiface.PoseidonDomain]{
+													Root: [32]byte{63, 83, 12, 85},
+													Leaf: [32]byte{42, 16, 52, 235},
+													Path: storiface.InclusionPath[storiface.PoseidonDomain]{
+														Path: []storiface.PathElement[storiface.PoseidonDomain]{
+															{
+																Index: 0,
+																Hashes: []storiface.PoseidonDomain{
+																	{14, 96, 34, 12},
+																	{86, 14, 34, 74},
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								ExpParents: []storiface.ColumnProof[storiface.PoseidonDomain]{
+									{
+										Column: storiface.Column[storiface.PoseidonDomain]{
+											Index: 52,
+											Rows:  []storiface.PoseidonDomain{{98, 55, 44, 87}},
+										},
+										InclusionProof: storiface.MerkleProof[storiface.PoseidonDomain]{
+											Data: storiface.ProofData[storiface.PoseidonDomain]{
+												Single: &storiface.SingleProof[storiface.PoseidonDomain]{
+													Root: [32]byte{6, 83, 12, 85},
+													Leaf: [32]byte{42, 16, 2, 235},
+													Path: storiface.InclusionPath[storiface.PoseidonDomain]{
+														Path: []storiface.PathElement[storiface.PoseidonDomain]{
+															{
+																Index: 0,
+																Hashes: []storiface.PoseidonDomain{
+																	{14, 6, 34, 12},
+																	{86, 14, 34, 7},
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							LabelingProofs: []storiface.LabelingProof[storiface.PoseidonDomain]{
+								{
+									Parents:    []storiface.PoseidonDomain{{0, 8, 6, 4}},
+									LayerIndex: 0,
+									Node:       0,
+									H:          nil,
+								},
+							},
+							EncodingProof: storiface.EncodingProof[storiface.PoseidonDomain]{
+								Parents:    []storiface.PoseidonDomain{{8, 6, 4, 3}},
+								LayerIndex: 0,
+								Node:       0,
+								H:          nil,
+							},
+						},
+					},
+				},
+			},
 		},
 	})
 }

@@ -28,10 +28,6 @@ type ProverPoSt interface {
 	GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error)
 }
 
-type PreCommit1Out []byte
-
-type Commit1Out []byte
-
 type Proof []byte
 
 type SectorCids struct {

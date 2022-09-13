@@ -530,7 +530,7 @@ type RemoteSectorMeta struct {
 	// Required in PreCommitting and later
 	TicketValue   abi.SealRandomness
 	TicketEpoch   abi.ChainEpoch
-	PreCommit1Out storiface.PreCommit1Out // todo specify better
+	PreCommit1Out storiface.PreCommit1Out
 
 	CommD *cid.Cid
 	CommR *cid.Cid // SectorKey
@@ -594,7 +594,6 @@ type RemoteCommit2Params struct {
 	Sector    abi.SectorID
 	ProofType abi.RegisteredSealProof
 
-	// todo spec better
 	Commit1Out storiface.Commit1Out
 }
 
