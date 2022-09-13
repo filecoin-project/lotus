@@ -2,16 +2,12 @@
 
 This folder contains some Lotus documentation mostly intended for Lotus developers.
 
-User documentation (including documentation for miners) has been moved to https://docs.filecoin.io and https://lotus.filecoin.io:
+User documentation (including documentation for miners) has been moved to https://lotus.filecoin.io:
 
-- https://docs.filecoin.io/get-started/overview/
-  - https://lotus.filecoin.io/lotus/get-started/what-is-lotus/
-- https://docs.filecoin.io/store/
-  - https://lotus.filecoin.io/tutorials/lotus/store-and-retrieve/store-data/
-- https://docs.filecoin.io/storage-provider/
-  - https://lotus.filecoin.io/tutorials/lotus-miner/run-a-miner/
-- https://docs.filecoin.io/build/
-  - https://lotus.filecoin.io/developers/
+- https://lotus.filecoin.io/lotus/get-started/what-is-lotus/
+- https://lotus.filecoin.io/tutorials/lotus/store-and-retrieve/store-data/
+- https://lotus.filecoin.io/tutorials/lotus-miner/run-a-miner/
+- https://lotus.filecoin.io/developers/
 
 ## Documentation Website
 
