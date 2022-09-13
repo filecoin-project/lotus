@@ -27,9 +27,23 @@ type blksInfo struct {
 }
 
 type bcastDict struct {
-	// TODO: Consider making this a KeyMutexed map
-	lk   sync.RWMutex
-	blks map[cid.Cid]*blksInfo // map[epoch + VRFProof]blksInfo
+	// thread-safe map impl for the dictionary
+	// sync.Map accepts `any` as keys and values.
+	// To make it type safe and only support the right
+	// types we use this auxiliary type.
+	m *sync.Map
+}
+
+func (bd *bcastDict) load(key multihash.Multihash) (*blksInfo, bool) {
+	v, ok := bd.m.Load(key.String())
+	if !ok {
+		return nil, ok
+	}
+	return v.(*blksInfo), ok
+}
+
+func (bd *bcastDict) store(key multihash.Multihash, d *blksInfo) {
+	bd.m.Store(key.String(), d)
 }
 
 type ConsistentBCast struct {
@@ -40,16 +54,14 @@ type ConsistentBCast struct {
 }
 
 func newBcastDict(delay time.Duration) *bcastDict {
-	return &bcastDict{
-		blks: make(map[cid.Cid]*blksInfo),
-	}
+	return &bcastDict{new(sync.Map)}
 }
 
 // TODO: What if the VRFProof is already small?? We don´t need the CID. Useless computation.
-func BCastKey(bh *types.BlockHeader) cid.Cid {
+func BCastKey(bh *types.BlockHeader) (multihash.Multihash, error) {
 	proof := bh.Ticket.VRFProof
 	binary.PutVarint(proof, int64(bh.Height))
-	return cid.NewCidV0(multihash.Multihash(proof))
+	return multihash.Sum(proof, multihash.SHA2_256, -1)
 }
 
 func NewConsistentBCast(delay time.Duration) *ConsistentBCast {
@@ -78,14 +90,16 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) er
 	bcastDict, ok := cb.m[blk.Header.Height]
 	if !ok {
 		bcastDict = newBcastDict(cb.delay)
+		cb.m[blk.Header.Height] = bcastDict
 	}
 	cb.lk.Unlock()
-	key := BCastKey(blk.Header)
+	key, err := BCastKey(blk.Header)
+	if err != nil {
+		return err
+	}
 	blkCid := blk.Cid()
 
-	bcastDict.lk.Lock()
-	defer bcastDict.lk.Unlock()
-	bInfo, ok := bcastDict.blks[key]
+	bInfo, ok := bcastDict.load(key)
 	if ok {
 		if len(bInfo.blks) > 1 {
 			return bInfo.eqErr()
@@ -98,17 +112,18 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) er
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, cb.delay)
-	bcastDict.blks[key] = &blksInfo{ctx, cancel, []cid.Cid{blkCid}}
+	ctx, cancel := context.WithTimeout(ctx, cb.delay*time.Second)
+	bcastDict.store(key, &blksInfo{ctx, cancel, []cid.Cid{blkCid}})
 	return nil
 }
 
 func (cb *ConsistentBCast) WaitForDelivery(bh *types.BlockHeader) error {
 	bcastDict := cb.m[bh.Height]
-	key := BCastKey(bh)
-	bcastDict.lk.RLock()
-	defer bcastDict.lk.RUnlock()
-	bInfo, ok := bcastDict.blks[key]
+	key, err := BCastKey(bh)
+	if err != nil {
+		return err
+	}
+	bInfo, ok := bcastDict.load(key)
 	if !ok {
 		return fmt.Errorf("something went wrong, unknown block with Epoch + VRFProof (cid=%s) in consistent broadcast storage", key)
 	}
@@ -126,6 +141,10 @@ func (cb *ConsistentBCast) GarbageCollect(currEpoch abi.ChainEpoch) {
 
 	// keep currEpoch-2 and delete a few more in the past
 	// as a sanity-check
+	// Garbage collection is triggered before block delivery,
+	// and we use the sanity-check in case there were a few rounds
+	// without delivery, and the garbage collection wasn't triggered
+	// for a few epochs.
 	for i := 0; i < GC_SANITY_CHECK; i++ {
 		delete(cb.m, currEpoch-abi.ChainEpoch(2-i))
 	}
