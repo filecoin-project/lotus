@@ -240,14 +240,14 @@
   #StartEpochSealingBuffer = 480
 
   # A command used for fine-grained evaluation of storage deals
-  # see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+  # see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
   #
   # type: string
   # env var: LOTUS_DEALMAKING_FILTER
   #Filter = ""
 
   # A command used for fine-grained evaluation of retrieval deals
-  # see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+  # see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
   #
   # type: string
   # env var: LOTUS_DEALMAKING_RETRIEVALFILTER
