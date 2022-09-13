@@ -10,6 +10,8 @@ import (
 	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -39,10 +41,10 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, r io.Reader) (cid
 
 // LoadBundles loads the bundles for the specified actor versions into the passed blockstore, if and
 // only if the bundle's manifest is not already present in the blockstore.
-func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...actors.Version) error {
+func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...actorstypes.Version) error {
 	for _, av := range versions {
 		// No bundles before version 8.
-		if av < actors.Version8 {
+		if av < actorstypes.Version8 {
 			continue
 		}
 

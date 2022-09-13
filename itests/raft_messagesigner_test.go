@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/filecoin-project/lotus/node/config"
 	"reflect"
 	"testing"
 	"time"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 )
 

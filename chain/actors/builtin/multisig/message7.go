@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
 	multisig7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/multisig"
@@ -63,7 +64,7 @@ func (m message7) Create(
 	return &types.Message{
 		To:     init_.Address,
 		From:   m.from,
-		Method: builtin7.MethodsInit.Exec,
+		Method: builtintypes.MethodsInit.Exec,
 		Params: enc,
 		Value:  initialAmount,
 	}, nil

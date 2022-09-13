@@ -925,6 +925,11 @@ workflows:
           target: "./itests/mempool_test.go"
       
       - test:
+          name: test-itest-mpool_push_with_uuid
+          suite: itest-mpool_push_with_uuid
+          target: "./itests/mpool_push_with_uuid_test.go"
+      
+      - test:
           name: test-itest-multisig
           suite: itest-multisig
           target: "./itests/multisig_test.go"

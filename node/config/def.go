@@ -2,14 +2,14 @@ package config
 
 import (
 	"encoding"
-	hraft "github.com/hashicorp/raft"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
 
+	hraft "github.com/hashicorp/raft"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"

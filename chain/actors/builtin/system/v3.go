@@ -2,6 +2,7 @@ package system
 
 import (
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	system3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/system"
 
@@ -37,5 +38,11 @@ func (s *state3) GetState() interface{} {
 func (s *state3) GetBuiltinActors() cid.Cid {
 
 	return cid.Undef
+
+}
+
+func (s *state3) SetBuiltinActors(c cid.Cid) error {
+
+	return xerrors.New("cannot set manifest cid before v8")
 
 }

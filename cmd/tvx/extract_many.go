@@ -164,7 +164,7 @@ func runExtractMany(c *cli.Context) error {
 		} else if methodnum >= len(m) {
 			return fmt.Errorf("unrecognized method number for actor %s: %d", actorcode, methodnum)
 		} else {
-			methodname = m[abi.MethodNum(methodnum)].Name
+			methodname = m[abi.MethodNum(methodnum)].Num
 		}
 
 		// exitcode string representations are of kind ErrType(0); strip out

@@ -8,10 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -22,7 +22,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 const GenesisNetworkVersion = network.Version0
 
 var NetworkBundle = "calibrationnet"
-var BundleOverrides map[actors.Version]string
+var BundleOverrides map[actorstypes.Version]string
 
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car"
@@ -65,6 +65,8 @@ const UpgradeOhSnapHeight = 682006
 
 // 2022-06-16T17:30:00Z
 const UpgradeSkyrHeight = 1044660
+
+var UpgradeV17Height = abi.ChainEpoch(99999999999999)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

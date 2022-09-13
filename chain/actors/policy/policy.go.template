@@ -1,14 +1,13 @@
 package policy
 
 import (
-	"sort"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors"
 
 	{{range .versions}}
 	{{if (ge . 8)}}
@@ -50,7 +49,7 @@ func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
 			miner{{.}}.PreCommitSealProofTypesV0 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 			miner{{.}}.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types)*2)
 			miner{{.}}.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
-		{{else}}
+		{{else if (le . 7)}}
 			miner{{.}}.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 		{{end}}
 	{{end}}
@@ -84,7 +83,7 @@ func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
                 }
 
                 miner{{.}}.WindowPoStProofTypes[wpp] = struct{}{}
-            {{else}}
+            {{else if (le . 7)}}
                 miner{{.}}.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
                 wpp, err = t.RegisteredWindowPoStProof()
                 if err != nil {
@@ -139,10 +138,10 @@ func SetMinVerifiedDealSize(size abi.StoragePower) {
 	{{end}}
 }
 
-func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) (abi.ChainEpoch, error) {
+func GetMaxProveCommitDuration(ver actorstypes.Version, t abi.RegisteredSealProof) (abi.ChainEpoch, error) {
 	switch ver {
 		{{range .versions}}
-			case actors.Version{{.}}:
+			case actorstypes.Version{{.}}:
 				{{if (eq . 0)}}
 					return miner{{.}}.MaxSealDuration[t], nil
 				{{else}}
@@ -173,13 +172,13 @@ func DealProviderCollateralBounds(
 	rawBytePower, qaPower, baselinePower abi.StoragePower,
 	circulatingFil abi.TokenAmount, nwVer network.Version,
 ) (min, max abi.TokenAmount, err error) {
-	v, err := actors.VersionForNetwork(nwVer)
+	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
 		return big.Zero(), big.Zero(), err
 	}
 	switch v {
 		{{range .versions}}
-			case actors.Version{{.}}:
+			case actorstypes.Version{{.}}:
 				{{if (eq . 0)}}
 					min, max := market{{.}}.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil, nwVer)
 					return min, max, nil
@@ -240,25 +239,6 @@ func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, e
 	return int(uint64(maxSectors) / sectorsPerPart), nil
 }
 
-func GetDefaultSectorSize() abi.SectorSize {
-	// supported sector sizes are the same across versions.
-	szs := make([]abi.SectorSize, 0, len(miner{{.latestVersion}}.PreCommitSealProofTypesV8))
-	for spt := range miner{{.latestVersion}}.PreCommitSealProofTypesV8 {
-		ss, err := spt.SectorSize()
-		if err != nil {
-			panic(err)
-		}
-
-		szs = append(szs, ss)
-	}
-
-	sort.Slice(szs, func(i, j int) bool {
-		return szs[i] < szs[j]
-	})
-
-	return szs[0]
-}
-
 func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
 	return abi.RegisteredAggregationProof_SnarkPackV1
 }
@@ -272,13 +252,13 @@ func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) 
 }
 
 func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
-	v, err := actors.VersionForNetwork(nwVer)
+	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
 		return 0, err
 	}
 	switch v {
 		{{range .versions}}
-			case actors.Version{{.}}:
+			case actorstypes.Version{{.}}:
 				return miner{{.}}.AddressedSectorsMax, nil
 		{{end}}
 	default:
@@ -287,13 +267,13 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 }
 
 func GetDeclarationsMax(nwVer network.Version) (int, error) {
-	v, err := actors.VersionForNetwork(nwVer)
+	v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
 		return 0, err
 	}
 	switch v {
 		{{range .versions}}
-		case actors.Version{{.}}:
+		case actorstypes.Version{{.}}:
 			{{if (eq . 0)}}
 				// TODO: Should we instead error here since the concept doesn't exist yet?
 				return miner{{.}}.AddressedPartitionsMax, nil
@@ -307,13 +287,13 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 }
 
 func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
-   v, err := actors.VersionForNetwork(nwVer)
+   v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
 		return big.Zero(), err
 	}
 	switch v {
 	    {{range .versions}}
-	    case actors.Version{{.}}:
+	    case actorstypes.Version{{.}}:
             {{if (ge . 6)}}
                 return miner{{.}}.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
             {{else if (eq . 5)}}
@@ -328,13 +308,13 @@ func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, ba
 }
 
 func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
-   v, err := actors.VersionForNetwork(nwVer)
+   v, err := actorstypes.VersionForNetwork(nwVer)
 	if err != nil {
 		return big.Zero(), err
 	}
 	switch v {
 	    {{range .versions}}
-	    case actors.Version{{.}}:
+	    case actorstypes.Version{{.}}:
             {{if (ge . 6)}}
                 return miner{{.}}.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
             {{else}}

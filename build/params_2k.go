@@ -10,9 +10,9 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -20,7 +20,7 @@ const BootstrappersFile = ""
 const GenesisFile = ""
 
 var NetworkBundle = "devnet"
-var BundleOverrides map[actors.Version]string
+var BundleOverrides map[actorstypes.Version]string
 
 const GenesisNetworkVersion = network.Version16
 
@@ -55,6 +55,8 @@ var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 
 var UpgradeSkyrHeight = abi.ChainEpoch(-19)
+
+var UpgradeV17Height = abi.ChainEpoch(99999999999999)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -107,6 +109,7 @@ func init() {
 	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
 	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
 	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
+	UpgradeV17Height = getUpgradeHeight("LOTUS_V17_HEIGHT", UpgradeV17Height)
 
 	BuildType |= Build2k
 

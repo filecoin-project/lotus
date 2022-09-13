@@ -21,6 +21,7 @@ import (
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -48,13 +49,20 @@ type FvmExtern struct {
 	base    cid.Cid
 }
 
+type FvmGasCharge struct {
+	Name       string
+	TotalGas   int64
+	ComputeGas int64
+	StorageGas int64
+}
+
 // This may eventually become identical to ExecutionTrace, but we can make incremental progress towards that
 type FvmExecutionTrace struct {
-	Msg    *types.Message
-	MsgRct *types.MessageReceipt
-	Error  string
-
-	Subcalls []FvmExecutionTrace
+	Msg        *types.Message
+	MsgRct     *types.MessageReceipt
+	Error      string
+	GasCharges []FvmGasCharge      `cborgen:"maxlen=1000000000"`
+	Subcalls   []FvmExecutionTrace `cborgen:"maxlen=1000000000"`
 }
 
 func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
@@ -67,6 +75,18 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 		MsgRct:   t.MsgRct,
 		Error:    t.Error,
 		Subcalls: nil, // Should be nil when there are no subcalls for backwards compatibility
+	}
+
+	if len(t.GasCharges) > 0 {
+		ret.GasCharges = make([]*types.GasTrace, len(t.GasCharges))
+		for i, v := range t.GasCharges {
+			ret.GasCharges[i] = &types.GasTrace{
+				Name:       v.Name,
+				TotalGas:   v.TotalGas,
+				ComputeGas: v.ComputeGas,
+				StorageGas: v.StorageGas,
+			}
+		}
 	}
 
 	if len(t.Subcalls) > 0 {
@@ -295,7 +315,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
-		av, err := actors.VersionForNetwork(opts.NetworkVersion)
+		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
 		if err != nil {
 			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
 		}
@@ -311,7 +331,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	fvm, err := ffi.CreateFVM(fvmOpts)
 
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to create FVM: %w", err)
 	}
 
 	return &FVM{
@@ -367,7 +387,7 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
 		for _, key := range actors.GetBuiltinActorsKeys() {
-			from, ok := actors.GetActorCodeID(actors.Version8, key)
+			from, ok := actors.GetActorCodeID(actorstypes.Version8, key)
 			if !ok {
 				log.Warnf("actor missing in the from manifest %s", key)
 				continue
@@ -393,13 +413,13 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil
 	}
 
-	av, err := actors.VersionForNetwork(opts.NetworkVersion)
+	av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
 	}
 
 	switch av {
-	case actors.Version8:
+	case actorstypes.Version8:
 		if debugBundleV8path != "" {
 			if err := createMapping(debugBundleV8path); err != nil {
 				log.Errorf("failed to create v8 debug mapping")

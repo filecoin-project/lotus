@@ -1,10 +1,12 @@
 package consensus
 
 import (
-	"github.com/filecoin-project/lotus/node/config"
+	"time"
+
 	hraft "github.com/hashicorp/raft"
 	"golang.org/x/xerrors"
-	"time"
+
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 // ConfigKey is the default configuration key for holding this component's

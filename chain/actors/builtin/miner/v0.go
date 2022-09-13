@@ -12,7 +12,7 @@ import (
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -511,11 +511,17 @@ func fromV0SectorOnChainInfo(v0 miner0.SectorOnChainInfo) SectorOnChainInfo {
 
 func fromV0SectorPreCommitOnChainInfo(v0 miner0.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
 	return minertypes.SectorPreCommitOnChainInfo{
-		Info:               (minertypes.SectorPreCommitInfo)(v0.Info),
-		PreCommitDeposit:   v0.PreCommitDeposit,
-		PreCommitEpoch:     v0.PreCommitEpoch,
-		DealWeight:         v0.DealWeight,
-		VerifiedDealWeight: v0.VerifiedDealWeight,
+		Info: minertypes.SectorPreCommitInfo{
+			SealProof:     v0.Info.SealProof,
+			SectorNumber:  v0.Info.SectorNumber,
+			SealedCID:     v0.Info.SealedCID,
+			SealRandEpoch: v0.Info.SealRandEpoch,
+			DealIDs:       v0.Info.DealIDs,
+			Expiration:    v0.Info.Expiration,
+			UnsealedCid:   nil,
+		},
+		PreCommitDeposit: v0.PreCommitDeposit,
+		PreCommitEpoch:   v0.PreCommitEpoch,
 	}
 }
 

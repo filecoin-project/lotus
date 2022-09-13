@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/node/config"
 	"sort"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	addr "github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/config"
 
 	//ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"

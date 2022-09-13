@@ -236,6 +236,7 @@ func (s *dealProposals4) array() adt.Array {
 func fromV4DealProposal(v4 market4.DealProposal) (DealProposal, error) {
 
 	label, err := labelFromGoString(v4.Label)
+
 	if err != nil {
 		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
 	}

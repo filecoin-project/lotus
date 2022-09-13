@@ -5109,7 +5109,7 @@ Perms: read
 Inputs:
 ```json
 [
-  16
+  17
 ]
 ```
 
@@ -5124,7 +5124,7 @@ Perms: read
 Inputs:
 ```json
 [
-  16
+  17
 ]
 ```
 
@@ -6377,10 +6377,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   [
     {
@@ -6502,10 +6499,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   [
     {
@@ -6723,7 +6717,7 @@ Inputs:
 ]
 ```
 
-Response: `16`
+Response: `17`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -7143,15 +7137,10 @@ Response:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   "PreCommitDeposit": "0",
-  "PreCommitEpoch": 10101,
-  "DealWeight": "0",
-  "VerifiedDealWeight": "0"
+  "PreCommitEpoch": 10101
 }
 ```
 

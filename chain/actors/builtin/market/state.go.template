@@ -22,7 +22,8 @@ import (
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 {{else}}
 	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
-	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
 )
 
@@ -258,12 +259,12 @@ func (s *dealProposals{{.v}}) array() adt.Array {
 func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, error) {
     {{if (le .v 7)}}
         label, err := labelFromGoString(v{{.v}}.Label)
-        if err != nil {
-            return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
-        }
     {{else}}
-        label := v{{.v}}.Label
+        label, err := fromV{{.v}}Label(v{{.v}}.Label)
     {{end}}
+    if err != nil {
+        return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+    }
 
     return DealProposal{
         PieceCID: v{{.v}}.PieceCID,
@@ -282,6 +283,25 @@ func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, e
         ClientCollateral: v{{.v}}.ClientCollateral,
     }, nil
 }
+
+{{if (ge .v 8)}}
+    func fromV{{.v}}Label(v{{.v}} market{{.v}}.DealLabel) (DealLabel, error) {
+        if v{{.v}}.IsString() {
+            str, err := v{{.v}}.ToString()
+            if err != nil {
+                return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+            }
+            return markettypes.NewLabelFromString(str)
+        }
+
+        bs, err := v{{.v}}.ToBytes()
+        if err != nil {
+            return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+        }
+        return markettypes.NewLabelFromBytes(bs)
+    }
+{{end}}
+
 
 
 func (s *state{{.v}}) GetState() interface{} {

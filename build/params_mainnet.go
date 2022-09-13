@@ -9,10 +9,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -23,7 +22,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 var NetworkBundle = "mainnet"
 
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-var BundleOverrides map[actors.Version]string
+var BundleOverrides map[actorstypes.Version]string
 
 const GenesisNetworkVersion = network.Version0
 
@@ -77,7 +76,9 @@ const UpgradeChocolateHeight = 1231620
 const UpgradeOhSnapHeight = 1594680
 
 // 2022-07-06T14:00:00Z
-var UpgradeSkyrHeight = abi.ChainEpoch(1960320)
+const UpgradeSkyrHeight = 1960320
+
+var UpgradeV17Height = abi.ChainEpoch(99999999999999)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -92,8 +93,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_SKYR") == "1" {
-		UpgradeSkyrHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_V17") == "1" {
+		UpgradeV17Height = math.MaxInt64
 	}
 
 	Devnet = false

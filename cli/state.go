@@ -29,6 +29,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -1231,7 +1232,7 @@ var compStateMsg = `
 <details>
 <summary>Gas Trace</summary>
 <table>
- <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
+ <tr><th>Num</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
  {{define "virt" -}}
  {{- if . -}}
  <span class="deemp">+({{.}})</span>
@@ -1243,7 +1244,7 @@ var compStateMsg = `
  {{- end}}
 
  {{range .GasCharges}}
- <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
+ <tr><td>{{.Num}}{{if .Extra}}:{{.Extra}}{{end}}</td>
  {{template "gasC" .}}
  <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td>
@@ -1368,7 +1369,7 @@ func codeStr(c cid.Cid) string {
 }
 
 func getMethod(code cid.Cid, method abi.MethodNum) string {
-	return filcns.NewActorRegistry().Methods[code][method].Name // todo: use remote
+	return filcns.NewActorRegistry().Methods[code][method].Num // todo: use remote
 }
 
 func toFil(f types.BigInt) types.FIL {
@@ -1904,7 +1905,7 @@ var StateSysActorCIDsCmd = &cli.Command{
 
 		fmt.Printf("Network Version: %d\n", nv)
 
-		actorVersion, err := actors.VersionForNetwork(nv)
+		actorVersion, err := actorstypes.VersionForNetwork(nv)
 		if err != nil {
 			return err
 		}

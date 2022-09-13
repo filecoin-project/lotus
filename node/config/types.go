@@ -1,10 +1,11 @@
 package config
 
 import (
+	"time"
+
 	hraft "github.com/hashicorp/raft"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer"

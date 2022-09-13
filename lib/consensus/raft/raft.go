@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/node/config"
 	"io"
 	"os"
 	"time"
@@ -13,6 +12,8 @@ import (
 	p2praft "github.com/libp2p/go-libp2p-raft"
 	host "github.com/libp2p/go-libp2p/core/host"
 	peer "github.com/libp2p/go-libp2p/core/peer"
+
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 // ErrWaitingForSelf is returned when we are waiting for ourselves to depart

@@ -1,7 +1,8 @@
 package market
 
 import (
-	"unicode/utf8"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+    "unicode/utf8"
 
 	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
@@ -12,14 +13,14 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	market{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin{{import .latestVersion}}market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 {{range .versions}}
     {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
-	{{else}}
-        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
     {{end}}
 {{end}}
+
+    builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -27,8 +28,8 @@ import (
 )
 
 var (
-	Address = builtin{{.latestVersion}}.StorageMarketActorAddr
-	Methods = builtin{{.latestVersion}}.MethodsMarket
+	Address = builtintypes.StorageMarketActorAddr
+	Methods = builtintypes.MethodsMarket
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -40,7 +41,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
        switch av {
             {{range .versions}}
                 {{if (ge . 8)}}
-                case actors.Version{{.}}:
+                case actorstypes.Version{{.}}:
                      return load{{.}}(store, act.Head)
                  {{end}}
             {{end}}
@@ -59,10 +60,10 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	switch av {
 {{range .versions}}
-	case actors.Version{{.}}:
+	case actorstypes.Version{{.}}:
 		return make{{.}}(store)
 {{end}}
 }
@@ -100,11 +101,11 @@ type DealStates interface {
 }
 
 type DealProposals interface {
-	ForEach(cb func(id abi.DealID, dp market{{.latestVersion}}.DealProposal) error) error
-	Get(id abi.DealID) (*market{{.latestVersion}}.DealProposal, bool, error)
+	ForEach(cb func(id abi.DealID, dp markettypes.DealProposal) error) error
+	Get(id abi.DealID) (*markettypes.DealProposal, bool, error)
 
 	array() adt.Array
-	decode(*cbg.Deferred) (*market{{.latestVersion}}.DealProposal, error)
+	decode(*cbg.Deferred) (*markettypes.DealProposal, error)
 }
 
 
@@ -115,23 +116,24 @@ type PublishStorageDealsReturn interface {
 }
 
 func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStorageDealsReturn, error) {
-	av, err := actors.VersionForNetwork(nv)
+	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return nil, err
 	}
 
 	switch av {
 {{range .versions}}
-	case actors.Version{{.}}:
+	case actorstypes.Version{{.}}:
 		return decodePublishStorageDealsReturn{{.}}(b)
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-type DealProposal = market{{.latestVersion}}.DealProposal
+type DealProposal = markettypes.DealProposal
+type DealLabel = markettypes.DealLabel
 
-type DealState = market{{.latestVersion}}.DealState
+type DealState = markettypes.DealState
 
 type DealStateChanges struct {
 	Added	 []DealIDState
@@ -158,7 +160,7 @@ type DealProposalChanges struct {
 
 type ProposalIDState struct {
 	ID		 abi.DealID
-	Proposal market{{.latestVersion}}.DealProposal
+	Proposal markettypes.DealProposal
 }
 
 func EmptyDealState() *DealState {
@@ -170,7 +172,7 @@ func EmptyDealState() *DealState {
 }
 
 // returns the earned fees and pending fees for a given deal
-func GetDealFees(deal market{{.latestVersion}}.DealProposal, height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
+func GetDealFees(deal markettypes.DealProposal, height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
 	   tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
 
 	   ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
@@ -185,14 +187,14 @@ func GetDealFees(deal market{{.latestVersion}}.DealProposal, height abi.ChainEpo
 	   return ef, big.Sub(tf, ef)
 }
 
-func IsDealActive(state market{{.latestVersion}}.DealState) bool {
+func IsDealActive(state markettypes.DealState) bool {
     return state.SectorStartEpoch > -1 && state.SlashEpoch == -1
 }
 
-func labelFromGoString(s string) (market{{.latestVersion}}.DealLabel, error) {
+func labelFromGoString(s string) (markettypes.DealLabel, error) {
 	if utf8.ValidString(s) {
-		return market{{.latestVersion}}.NewLabelFromString(s)
+		return markettypes.NewLabelFromString(s)
 	} else {
-		return market{{.latestVersion}}.NewLabelFromBytes([]byte(s))
+		return markettypes.NewLabelFromBytes([]byte(s))
 	}
 }
