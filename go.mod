@@ -71,7 +71,7 @@ require (
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/ipfs/bbloom v0.0.4
-	github.com/ipfs/go-bitswap v0.8.0
+	github.com/ipfs/go-bitswap v0.10.2
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.4.0
 	github.com/ipfs/go-cid v0.2.0
@@ -110,10 +110,10 @@ require (
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.22.0
-	github.com/libp2p/go-libp2p-kad-dht v0.17.0
-	github.com/libp2p/go-libp2p-peerstore v0.7.1
+	github.com/libp2p/go-libp2p-kad-dht v0.18.0
+	github.com/libp2p/go-libp2p-peerstore v0.8.0
 	github.com/libp2p/go-libp2p-pubsub v0.8.0
-	github.com/libp2p/go-libp2p-record v0.1.3
+	github.com/libp2p/go-libp2p-record v0.2.0
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mattn/go-isatty v0.0.16
@@ -227,7 +227,7 @@ require (
 	github.com/ipfs/go-ipfs-posinfo v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.2 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
-	github.com/ipfs/go-ipns v0.1.3-0.20220819140646-0d8e99ba180a // indirect
+	github.com/ipfs/go-ipns v0.2.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-path v0.3.0 // indirect
 	github.com/ipfs/go-peertaskqueue v0.7.1 // indirect
@@ -247,15 +247,12 @@ require (
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/koron/go-ssdp v0.0.3 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
-	github.com/libp2p/go-eventbus v0.3.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-connmgr v0.4.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.20.0 // indirect
 	github.com/libp2p/go-libp2p-gostream v0.4.0 // indirect
-	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
-	github.com/libp2p/go-libp2p-loggables v0.1.0 // indirect
-	github.com/libp2p/go-libp2p-netutil v0.2.0 // indirect
+	github.com/libp2p/go-libp2p-kbucket v0.5.0 // indirect
 	github.com/libp2p/go-libp2p-noise v0.5.0 // indirect
 	github.com/libp2p/go-libp2p-tls v0.5.0 // indirect
 	github.com/libp2p/go-msgio v0.2.0 // indirect
