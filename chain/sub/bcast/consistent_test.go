@@ -38,6 +38,7 @@ func testSimpleDelivery(t *testing.T, cb *bcast.ConsistentBCast, epoch abi.Chain
 	wg.Add(numBlocks)
 	for i := 0; i < numBlocks; i++ {
 		go func(i int) {
+			defer wg.Done()
 			// Add a random delay in block reception
 			r := mrand.Intn(200)
 			time.Sleep(time.Duration(r) * time.Millisecond)
@@ -47,7 +48,6 @@ func testSimpleDelivery(t *testing.T, cb *bcast.ConsistentBCast, epoch abi.Chain
 			if err != nil {
 				errs = append(errs, err)
 			}
-			wg.Done()
 		}(i)
 	}
 	wg.Wait()
@@ -64,6 +64,7 @@ func TestSeveralEpochs(t *testing.T) {
 	wg.Add(numEpochs)
 	for i := 0; i < numEpochs; i++ {
 		go func(i int) {
+			defer wg.Done()
 			// Add a random delay between epochs
 			r := mrand.Intn(500)
 			time.Sleep(time.Duration(i*TEST_DELAY)*time.Second + time.Duration(r)*time.Millisecond)
@@ -76,10 +77,11 @@ func TestSeveralEpochs(t *testing.T) {
 			} else {
 				testEquivocation(t, cb, abi.ChainEpoch(i), rNumBlocks)
 			}
-			wg.Done()
+			cb.GarbageCollect(abi.ChainEpoch(i))
 		}(i)
 	}
 	wg.Wait()
+	require.Equal(t, cb.Len(), bcast.GC_LOOKBACK)
 }
 
 // bias is expected to be 0-1
@@ -101,28 +103,28 @@ func testEquivocation(t *testing.T, cb *bcast.ConsistentBCast, epoch abi.ChainEp
 		proof := randomProof(t)
 		// Valid blocks
 		go func(i int, proof []byte) {
+			defer wg.Done()
 			r := mrand.Intn(200)
 			time.Sleep(time.Duration(r) * time.Millisecond)
-			blk := newBlock(t, 100, proof, []byte("valid"+strconv.Itoa(i)))
+			blk := newBlock(t, epoch, proof, []byte("valid"+strconv.Itoa(i)))
 			cb.RcvBlock(ctx, blk)
 			err := cb.WaitForDelivery(blk.Header)
 			if err != nil {
 				errs = append(errs, err)
 			}
-			wg.Done()
 		}(i, proof)
 
 		// Equivocation for the last block
 		if i == numBlocks-1 {
 			// Attempting equivocation
 			go func(i int, proof []byte) {
+				defer wg.Done()
 				// Use the same proof and the same epoch
-				blk := newBlock(t, 100, proof, []byte("invalid"+strconv.Itoa(i)))
+				blk := newBlock(t, epoch, proof, []byte("invalid"+strconv.Itoa(i)))
 				cb.RcvBlock(ctx, blk)
 				err := cb.WaitForDelivery(blk.Header)
 				// Equivocation detected
 				require.Error(t, err)
-				wg.Done()
 			}(i, proof)
 		}
 	}
@@ -150,6 +152,7 @@ func TestFailedEquivocation(t *testing.T) {
 		proof := randomProof(t)
 		// Valid blocks
 		go func(i int, proof []byte) {
+			defer wg.Done()
 			r := mrand.Intn(200)
 			time.Sleep(time.Duration(r) * time.Millisecond)
 			blk := newBlock(t, 100, proof, []byte("valid"+strconv.Itoa(i)))
@@ -158,13 +161,13 @@ func TestFailedEquivocation(t *testing.T) {
 			if err != nil {
 				errs = append(errs, err)
 			}
-			wg.Done()
 		}(i, proof)
 
 		// Equivocation for the last block
 		if i == numBlocks-1 {
 			// Attempting equivocation
 			go func(i int, proof []byte) {
+				defer wg.Done()
 				// The equivocated block arrives late
 				time.Sleep(2 * TEST_DELAY * time.Second)
 				// Use the same proof and the same epoch
@@ -173,7 +176,6 @@ func TestFailedEquivocation(t *testing.T) {
 				err := cb.WaitForDelivery(blk.Header)
 				// Equivocation detected
 				require.Error(t, err)
-				wg.Done()
 			}(i, proof)
 		}
 	}

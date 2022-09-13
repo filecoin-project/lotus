@@ -85,6 +85,10 @@ func (bInfo *blksInfo) eqErr() error {
 	return fmt.Errorf("equivocation error detected. Different block with the same ticket already seen")
 }
 
+func (cb *ConsistentBCast) Len() int {
+	return len(cb.m)
+}
+
 func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) error {
 	cb.lk.Lock()
 	bcastDict, ok := cb.m[blk.Header.Height]
@@ -146,6 +150,8 @@ func (cb *ConsistentBCast) GarbageCollect(currEpoch abi.ChainEpoch) {
 	// without delivery, and the garbage collection wasn't triggered
 	// for a few epochs.
 	for i := 0; i < GC_SANITY_CHECK; i++ {
-		delete(cb.m, currEpoch-abi.ChainEpoch(2-i))
+		if currEpoch > GC_LOOKBACK {
+			delete(cb.m, currEpoch-abi.ChainEpoch(GC_LOOKBACK+i))
+		}
 	}
 }
