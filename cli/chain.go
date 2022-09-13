@@ -1705,6 +1705,7 @@ var ChainInvokeCmd = &cli.Command{
 			return xerrors.Errorf("actor execution failed")
 		}
 
+		afmt.Println("Gas used: ", wait.Receipt.GasUsed)
 		if len(wait.Receipt.Return) > 0 {
 			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
 			afmt.Println(result)
@@ -1876,12 +1877,7 @@ var ChainInvokeEVMCmd = &cli.Command{
 			}
 		}
 
-		params, err := actors.SerializeParams(&evm.InvokeParams{
-			InputData: append(entryPoint, inputData...),
-		})
-		if err != nil {
-			return xerrors.Errorf("failed to serialize evm actor invoke params: %w", err)
-		}
+		params := append(entryPoint, inputData...)
 
 		var fromAddr address.Address
 		if from := cctx.String("from"); from == "" {
@@ -1925,6 +1921,7 @@ var ChainInvokeEVMCmd = &cli.Command{
 			return xerrors.Errorf("actor execution failed")
 		}
 
+		afmt.Println("Gas used: ", wait.Receipt.GasUsed)
 		if len(wait.Receipt.Return) > 0 {
 			result := hex.EncodeToString(wait.Receipt.Return)
 			afmt.Println(result)
