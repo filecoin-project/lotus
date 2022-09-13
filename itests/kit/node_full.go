@@ -37,10 +37,6 @@ type TestFullNode struct {
 	ListenAddr multiaddr.Multiaddr
 	DefaultKey *key.Key
 
-	//Libp2p struct {
-	//	PeerID  peer.ID
-	//	PrivKey libp2pcrypto.PrivKey
-	//}
 	Pkey *Libp2p
 
 	Stop node.StopFunc

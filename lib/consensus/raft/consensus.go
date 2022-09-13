@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/config"
 	"sort"
 	"time"
 
@@ -58,7 +59,7 @@ var _ consensus.Op = &ConsensusOp{}
 type Consensus struct {
 	ctx    context.Context
 	cancel func()
-	config *Config
+	config *config.ClusterRaftConfig
 
 	host host.Host
 
@@ -83,11 +84,11 @@ type Consensus struct {
 //
 // The staging parameter controls if the Raft peer should start in
 // staging mode (used when joining a new Raft peerset with other peers).
-func NewConsensus(host host.Host, cfg *Config, staging bool) (*Consensus, error) {
-	//err := cfg.Validate()
-	//if err != nil {
-	//	return nil, err
-	//}
+func NewConsensus(host host.Host, cfg *config.ClusterRaftConfig, staging bool) (*Consensus, error) {
+	err := ValidateConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -124,11 +125,11 @@ func NewConsensus(host host.Host, cfg *Config, staging bool) (*Consensus, error)
 }
 
 func NewConsensusWithRPCClient(staging bool) func(host host.Host,
-	cfg *Config,
+	cfg *config.ClusterRaftConfig,
 	rpcClient *rpc.Client,
 ) (*Consensus, error) {
 
-	return func(host host.Host, cfg *Config, rpcClient *rpc.Client) (*Consensus, error) {
+	return func(host host.Host, cfg *config.ClusterRaftConfig, rpcClient *rpc.Client) (*Consensus, error) {
 		cc, err := NewConsensus(host, cfg, staging)
 		if err != nil {
 			return nil, err
@@ -230,7 +231,7 @@ func (cc *Consensus) Shutdown(ctx context.Context) error {
 		logger.Error(err)
 	}
 
-	if cc.config.hostShutdown {
+	if cc.config.HostShutdown {
 		cc.host.Close()
 	}
 

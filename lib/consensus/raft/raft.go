@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/config"
 	"io"
 	"os"
 	"time"
@@ -42,7 +43,7 @@ type raftWrapper struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	raft          *hraft.Raft
-	config        *Config
+	config        *config.ClusterRaftConfig
 	host          host.Host
 	serverConfig  hraft.Configuration
 	transport     *hraft.NetworkTransport
@@ -58,7 +59,7 @@ type raftWrapper struct {
 // to make sure the raft instance is usable.
 func newRaftWrapper(
 	host host.Host,
-	cfg *Config,
+	cfg *config.ClusterRaftConfig,
 	fsm hraft.FSM,
 	staging bool,
 ) (*raftWrapper, error) {

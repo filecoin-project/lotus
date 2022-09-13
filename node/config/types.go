@@ -1,7 +1,10 @@
 package config
 
 import (
+	hraft "github.com/hashicorp/raft"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer"
@@ -27,6 +30,7 @@ type FullNode struct {
 	Wallet     Wallet
 	Fees       FeeConfig
 	Chainstore Chainstore
+	Raft       ClusterRaftConfig
 }
 
 // // Common
@@ -589,4 +593,38 @@ type Wallet struct {
 
 type FeeConfig struct {
 	DefaultMaxFee types.FIL
+}
+
+// ClusterRaftConfig allows to configure the Raft Consensus component for the node cluster.
+type ClusterRaftConfig struct {
+	// will shutdown libp2p host on shutdown. Useful for testing
+	HostShutdown bool
+	// A folder to store Raft's data.
+	DataFolder string
+	// InitPeerset provides the list of initial cluster peers for new Raft
+	// peers (with no prior state). It is ignored when Raft was already
+	// initialized or when starting in staging mode.
+	InitPeerset []peer.ID
+	// LeaderTimeout specifies how long to wait for a leader before
+	// failing an operation.
+	WaitForLeaderTimeout time.Duration
+	// NetworkTimeout specifies how long before a Raft network
+	// operation is timed out
+	NetworkTimeout time.Duration
+	// CommitRetries specifies how many times we retry a failed commit until
+	// we give up.
+	CommitRetries int
+	// How long to wait between retries
+	CommitRetryDelay time.Duration
+	// BackupsRotate specifies the maximum number of Raft's DataFolder
+	// copies that we keep as backups (renaming) after cleanup.
+	BackupsRotate int
+	// Namespace to use when writing keys to the datastore
+	DatastoreNamespace string
+
+	// A Hashicorp Raft's configuration object.
+	RaftConfig *hraft.Config
+
+	// Tracing enables propagation of contexts across binary boundaries.
+	Tracing bool
 }

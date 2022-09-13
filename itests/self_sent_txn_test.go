@@ -26,7 +26,7 @@ func TestSelfSentTxnV15(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	client15, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version15))
+	client15, _, ens := kit.EnsembleMinimal(t, kit.MockProofs()) //, kit.GenesisNetworkVersion(network.Version15))
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
 	bal, err := client15.WalletBalance(ctx, client15.DefaultKey.Address)

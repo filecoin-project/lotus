@@ -2,6 +2,9 @@ package config
 
 import (
 	"encoding"
+	hraft "github.com/hashicorp/raft"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -99,6 +102,7 @@ func DefaultFullNode() *FullNode {
 				ColdStoreFullGCFrequency: 7,
 			},
 		},
+		Raft: *DefaultClusterRaftConfig(),
 	}
 }
 
@@ -273,4 +277,36 @@ func (dur *Duration) UnmarshalText(text []byte) error {
 func (dur Duration) MarshalText() ([]byte, error) {
 	d := time.Duration(dur)
 	return []byte(d.String()), nil
+}
+
+var (
+	DefaultDataSubFolder        = "raft"
+	DefaultWaitForLeaderTimeout = 15 * time.Second
+	DefaultCommitRetries        = 1
+	DefaultNetworkTimeout       = 100 * time.Second
+	DefaultCommitRetryDelay     = 200 * time.Millisecond
+	DefaultBackupsRotate        = 6
+	DefaultDatastoreNamespace   = "/r" // from "/raft"
+)
+
+func DefaultClusterRaftConfig() *ClusterRaftConfig {
+	var cfg ClusterRaftConfig
+	cfg.DataFolder = "" // empty so it gets omitted
+	cfg.InitPeerset = []peer.ID{}
+	cfg.WaitForLeaderTimeout = DefaultWaitForLeaderTimeout
+	cfg.NetworkTimeout = DefaultNetworkTimeout
+	cfg.CommitRetries = DefaultCommitRetries
+	cfg.CommitRetryDelay = DefaultCommitRetryDelay
+	cfg.BackupsRotate = DefaultBackupsRotate
+	cfg.DatastoreNamespace = DefaultDatastoreNamespace
+	cfg.RaftConfig = hraft.DefaultConfig()
+
+	// These options are imposed over any Default Raft Config.
+	cfg.RaftConfig.ShutdownOnRemove = false
+	cfg.RaftConfig.LocalID = "will_be_set_automatically"
+
+	// Set up logging
+	cfg.RaftConfig.LogOutput = ioutil.Discard
+	//cfg.RaftConfig.Logger = &hcLogToLogger{}
+	return &cfg
 }

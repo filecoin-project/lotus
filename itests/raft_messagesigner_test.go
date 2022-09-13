@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/config"
 	"reflect"
 	"testing"
 	"time"
@@ -59,8 +60,8 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 
 	raftOps := kit.ConstructorOpts(
 		node.Override(new(*gorpc.Client), modules.NewRPCClient),
-		node.Override(new(*consensus.Config), func() *consensus.Config {
-			cfg := consensus.NewDefaultConfig()
+		node.Override(new(*config.ClusterRaftConfig), func() *config.ClusterRaftConfig {
+			cfg := config.DefaultClusterRaftConfig()
 			cfg.InitPeerset = initPeerSet
 			return cfg
 		}),

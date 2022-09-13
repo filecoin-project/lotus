@@ -3,7 +3,6 @@ package full
 import (
 	"context"
 	"encoding/json"
-
 	"github.com/ipfs/go-cid"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/peer"
