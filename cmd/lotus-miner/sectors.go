@@ -1378,7 +1378,7 @@ var sectorsTerminateCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("must pass sector number")
 		}
 
@@ -1488,7 +1488,7 @@ var sectorsRemoveCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("must pass sector number")
 		}
 
@@ -1506,7 +1506,7 @@ var sectorsSnapUpCmd = &cli.Command{
 	Usage:     "Mark a committed capacity sector to be filled with deals",
 	ArgsUsage: "<sectorNum>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
 		}
 
@@ -1550,7 +1550,7 @@ var sectorsSnapAbortCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
 		}
 
@@ -1587,7 +1587,7 @@ var sectorsStartSealCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("must pass sector number")
 		}
 
@@ -1611,7 +1611,7 @@ var sectorsSealDelayCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("must pass duration in minutes")
 		}
 
@@ -1714,7 +1714,7 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.Args().Len() < 2 {
+		if cctx.NArg() < 2 {
 			return xerrors.Errorf("must pass sector number and new state")
 		}
 
@@ -2310,7 +2310,7 @@ var sectorsNumbersReserveCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return xerrors.Errorf("expected 2 arguments: [reservation name] [reserved ranges]")
 		}
 
@@ -2335,7 +2335,7 @@ var sectorsNumbersFreeCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 argument: [reservation name]")
 		}
 

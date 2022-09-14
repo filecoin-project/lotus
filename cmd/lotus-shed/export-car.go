@@ -38,7 +38,7 @@ var exportCarCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return lcli.ShowHelp(cctx, fmt.Errorf("must specify file name and object"))
 		}
 

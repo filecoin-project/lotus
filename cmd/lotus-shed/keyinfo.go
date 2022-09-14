@@ -149,7 +149,7 @@ var keyinfoImportCmd = &cli.Command{
 		flagRepo := cctx.String("repo")
 
 		var input io.Reader
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			input = os.Stdin
 		} else {
 			var err error
@@ -261,7 +261,7 @@ var keyinfoInfoCmd = &cli.Command{
 		format := cctx.String("format")
 
 		var input io.Reader
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			input = os.Stdin
 		} else {
 			var err error

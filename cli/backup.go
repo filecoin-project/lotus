@@ -114,7 +114,7 @@ this command must be within this base path`,
 		},
 		ArgsUsage: "[backup file path]",
 		Action: func(cctx *cli.Context) error {
-			if cctx.Args().Len() != 1 {
+			if cctx.NArg() != 1 {
 				return xerrors.Errorf("expected 1 argument")
 			}
 

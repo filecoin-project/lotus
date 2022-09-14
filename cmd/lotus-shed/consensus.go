@@ -84,7 +84,7 @@ var consensusCheckCmd = &cli.Command{
 		filePath := cctx.Args().First()
 
 		var input *bufio.Reader
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			input = bufio.NewReader(os.Stdin)
 		} else {
 			var err error

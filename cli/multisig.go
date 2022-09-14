@@ -88,7 +88,7 @@ var msigCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 1 {
+		if cctx.NArg() < 1 {
 			return ShowHelp(cctx, fmt.Errorf("multisigs must have at least one signer"))
 		}
 
@@ -365,11 +365,11 @@ var msigProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 3 {
+		if cctx.NArg() < 3 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address, destination, and value"))
 		}
 
-		if cctx.Args().Len() > 3 && cctx.Args().Len() != 5 {
+		if cctx.NArg() > 3 && cctx.NArg() != 5 {
 			return ShowHelp(cctx, fmt.Errorf("must either pass three or five arguments"))
 		}
 
@@ -399,7 +399,7 @@ var msigProposeCmd = &cli.Command{
 
 		var method uint64
 		var params []byte
-		if cctx.Args().Len() == 5 {
+		if cctx.NArg() == 5 {
 			m, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
 			if err != nil {
 				return err
@@ -487,15 +487,15 @@ var msigApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
+		if cctx.NArg() < 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
 		}
 
-		if cctx.Args().Len() > 2 && cctx.Args().Len() < 5 {
+		if cctx.NArg() > 2 && cctx.NArg() < 5 {
 			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value>"))
 		}
 
-		if cctx.Args().Len() > 5 && cctx.Args().Len() != 7 {
+		if cctx.NArg() > 5 && cctx.NArg() != 7 {
 			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
 		}
 
@@ -534,7 +534,7 @@ var msigApproveCmd = &cli.Command{
 		}
 
 		var msgCid cid.Cid
-		if cctx.Args().Len() == 2 {
+		if cctx.NArg() == 2 {
 			proto, err := api.MsigApprove(ctx, msig, txid, from)
 			if err != nil {
 				return err
@@ -571,7 +571,7 @@ var msigApproveCmd = &cli.Command{
 
 			var method uint64
 			var params []byte
-			if cctx.Args().Len() == 7 {
+			if cctx.NArg() == 7 {
 				m, err := strconv.ParseUint(cctx.Args().Get(5), 10, 64)
 				if err != nil {
 					return err
@@ -624,15 +624,15 @@ var msigCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
+		if cctx.NArg() < 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
 		}
 
-		if cctx.Args().Len() > 2 && cctx.Args().Len() < 4 {
+		if cctx.NArg() > 2 && cctx.NArg() < 4 {
 			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value>"))
 		}
 
-		if cctx.Args().Len() > 4 && cctx.Args().Len() != 6 {
+		if cctx.NArg() > 4 && cctx.NArg() != 6 {
 			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value> [ <method> <params> ]"))
 		}
 
@@ -671,7 +671,7 @@ var msigCancelCmd = &cli.Command{
 		}
 
 		var msgCid cid.Cid
-		if cctx.Args().Len() == 2 {
+		if cctx.NArg() == 2 {
 			proto, err := api.MsigCancel(ctx, msig, txid, from)
 			if err != nil {
 				return err
@@ -696,7 +696,7 @@ var msigCancelCmd = &cli.Command{
 
 			var method uint64
 			var params []byte
-			if cctx.Args().Len() == 6 {
+			if cctx.NArg() == 6 {
 				m, err := strconv.ParseUint(cctx.Args().Get(4), 10, 64)
 				if err != nil {
 					return err
@@ -753,7 +753,7 @@ var msigRemoveProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
 		}
 
@@ -840,7 +840,7 @@ var msigAddProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
 		}
 
@@ -949,7 +949,7 @@ var msigAddApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 5 {
+		if cctx.NArg() != 5 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, new signer address, whether to increase threshold"))
 		}
 
@@ -1040,7 +1040,7 @@ var msigAddCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 4 {
+		if cctx.NArg() != 4 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, new signer address, whether to increase threshold"))
 		}
 
@@ -1126,7 +1126,7 @@ var msigSwapProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
+		if cctx.NArg() != 3 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, old signer address, new signer address"))
 		}
 
@@ -1207,7 +1207,7 @@ var msigSwapApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 5 {
+		if cctx.NArg() != 5 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, old signer address, new signer address"))
 		}
 
@@ -1298,7 +1298,7 @@ var msigSwapCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 4 {
+		if cctx.NArg() != 4 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, old signer address, new signer address"))
 		}
 
@@ -1384,7 +1384,7 @@ var msigLockProposeCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 4 {
+		if cctx.NArg() != 4 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, start epoch, unlock duration, and amount"))
 		}
 
@@ -1480,7 +1480,7 @@ var msigLockApproveCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 6 {
+		if cctx.NArg() != 6 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, tx id, start epoch, unlock duration, and amount"))
 		}
 
@@ -1586,7 +1586,7 @@ var msigLockCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 5 {
+		if cctx.NArg() != 5 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount"))
 		}
 
@@ -1693,7 +1693,7 @@ var msigVestedCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address"))
 		}
 
@@ -1749,7 +1749,7 @@ var msigProposeThresholdCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and new threshold value"))
 		}
 

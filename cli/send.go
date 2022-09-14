@@ -67,7 +67,7 @@ var sendCmd = &cli.Command{
 			fmt.Println("'force' flag is deprecated, use global flag 'force-send'")
 		}
 
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
 		}
 

@@ -27,7 +27,7 @@ var msgCmd = &cli.Command{
 	Usage:     "Translate message between various formats",
 	ArgsUsage: "Message in any form",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 argument")
 		}
 

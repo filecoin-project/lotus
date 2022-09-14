@@ -135,7 +135,7 @@ var minerCreateCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if cctx.Args().Len() != 4 {
+		if cctx.NArg() != 4 {
 			return xerrors.Errorf("expected 4 args (sender owner worker sectorSize)")
 		}
 
@@ -273,7 +273,7 @@ var minerUnpackInfoCmd = &cli.Command{
 	Usage:     "unpack miner info all dump",
 	ArgsUsage: "[allinfo.txt] [dir]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return xerrors.Errorf("expected 2 args")
 		}
 

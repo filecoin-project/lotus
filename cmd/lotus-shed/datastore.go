@@ -171,7 +171,7 @@ var datastoreBackupStatCmd = &cli.Command{
 	Description: "validate and print info about datastore backup",
 	ArgsUsage:   "[file]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 argument")
 		}
 
@@ -220,7 +220,7 @@ var datastoreBackupListCmd = &cli.Command{
 	},
 	ArgsUsage: "[file]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 argument")
 		}
 

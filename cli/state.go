@@ -504,7 +504,7 @@ var StateReplayCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			fmt.Println("must provide cid of message to replay")
 			return nil
 		}
@@ -1580,7 +1580,7 @@ var StateCallCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
+		if cctx.NArg() < 2 {
 			return fmt.Errorf("must specify at least actor and method to invoke")
 		}
 
@@ -1619,7 +1619,7 @@ var StateCallCmd = &cli.Command{
 
 		var params []byte
 		// If params were passed in, decode them
-		if cctx.Args().Len() > 2 {
+		if cctx.NArg() > 2 {
 			switch cctx.String("encoding") {
 			case "base64":
 				params, err = base64.StdEncoding.DecodeString(cctx.Args().Get(2))
@@ -1743,7 +1743,7 @@ var StateSectorCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return xerrors.Errorf("expected 2 params: minerAddress and sectorNumber")
 		}
 

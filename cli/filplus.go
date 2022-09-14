@@ -61,7 +61,7 @@ var filplusVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return fmt.Errorf("must specify two arguments: address and allowance")
 		}
 
@@ -289,7 +289,7 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
+		if cctx.NArg() != 3 {
 			return fmt.Errorf("must specify three arguments: notary address, client address, and allowance to remove")
 		}
 

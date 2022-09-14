@@ -314,7 +314,7 @@ var provingDeadlineInfoCmd = &cli.Command{
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
 
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("must pass deadline index")
 		}
 
@@ -461,7 +461,7 @@ var provingCheckProvableCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("must pass deadline index")
 		}
 
@@ -616,7 +616,7 @@ var provingComputeWindowPoStCmd = &cli.Command{
 It will not send any messages to the chain.`,
 	ArgsUsage: "[deadline index]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("must pass deadline index")
 		}
 
@@ -661,7 +661,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 1 {
+		if cctx.NArg() < 1 {
 			return xerrors.Errorf("must pass at least 1 sector number")
 		}
 

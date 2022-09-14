@@ -46,7 +46,7 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 	Usage:     "make a given account a verifier",
 	ArgsUsage: "<message sender> <new verifier> <allowance>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
+		if cctx.NArg() != 3 {
 			return fmt.Errorf("must specify three arguments: sender, verifier, and allowance")
 		}
 
@@ -119,7 +119,7 @@ var verifRegAddVerifierFromAccountCmd = &cli.Command{
 	Usage:     "make a given account a verifier",
 	ArgsUsage: "<verifier root key> <new verifier> <allowance>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
+		if cctx.NArg() != 3 {
 			return fmt.Errorf("must specify three arguments: sender, verifier, and allowance")
 		}
 
@@ -201,7 +201,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return fmt.Errorf("must specify two arguments: address and allowance")
 		}
 
@@ -418,7 +418,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 	Usage:     "Remove data cap from verified client",
 	ArgsUsage: "<message sender> <client address> <allowance to remove> <verifier 1 address> <verifier 1 signature> <verifier 2 address> <verifier 2 signature>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 7 {
+		if cctx.NArg() != 7 {
 			return fmt.Errorf("must specify seven arguments: sender, client, allowance to remove, verifier 1 address, verifier 1 signature, verifier 2 address, verifier 2 signature")
 		}
 

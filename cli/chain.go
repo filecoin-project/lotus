@@ -946,7 +946,7 @@ var ChainBisectCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() < 4 {
+		if cctx.NArg() < 4 {
 			return xerrors.New("need at least 4 args")
 		}
 
@@ -1312,7 +1312,7 @@ var chainDecodeParamsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 3 {
+		if cctx.NArg() != 3 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
@@ -1391,7 +1391,7 @@ var chainEncodeParamsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
 
-		if cctx.Args().Len() != 3 {
+		if cctx.NArg() != 3 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 

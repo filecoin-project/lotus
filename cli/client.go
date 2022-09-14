@@ -212,7 +212,7 @@ var clientCommPCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("usage: commP <inputPath>")
 		}
 
@@ -245,7 +245,7 @@ var clientCarGenCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return fmt.Errorf("usage: generate-car <inputPath> <outputPath>")
 		}
 

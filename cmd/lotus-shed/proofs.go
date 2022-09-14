@@ -42,7 +42,7 @@ var verifySealProofCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
+		if cctx.NArg() != 3 {
 			return fmt.Errorf("must specify commR, commD, and proof to verify")
 		}
 

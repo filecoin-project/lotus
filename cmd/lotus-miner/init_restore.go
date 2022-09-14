@@ -96,7 +96,7 @@ var restoreCmd = &cli.Command{
 }
 
 func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *paths.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi api.MinerInfo) error) error {
-	if cctx.Args().Len() != 1 {
+	if cctx.NArg() != 1 {
 		return xerrors.Errorf("expected 1 argument")
 	}
 

@@ -372,7 +372,7 @@ var sealingAbortCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 argument")
 		}
 
@@ -430,7 +430,7 @@ var sealingDataCidCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 1 || cctx.Args().Len() > 2 {
+		if cctx.NArg() < 1 || cctx.NArg() > 2 {
 			return xerrors.Errorf("expected 1 or 2 arguments")
 		}
 
@@ -484,7 +484,7 @@ var sealingDataCidCmd = &cli.Command{
 		}
 
 		var psize abi.PaddedPieceSize
-		if cctx.Args().Len() == 2 {
+		if cctx.NArg() == 2 {
 			rps, err := humanize.ParseBytes(cctx.Args().Get(1))
 			if err != nil {
 				return xerrors.Errorf("parsing piece size: %w", err)

@@ -112,7 +112,7 @@ var rpcCmd = &cli.Command{
 		}
 
 		if cctx.Args().Present() {
-			if cctx.Args().Len() > 2 {
+			if cctx.NArg() > 2 {
 				return xerrors.Errorf("expected 1 or 2 arguments: method [params]")
 			}
 
