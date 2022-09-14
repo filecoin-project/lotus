@@ -13,6 +13,8 @@
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
+* [Beneficiary](#Beneficiary)
+  * [BeneficiaryWithdrawBalance](#BeneficiaryWithdrawBalance)
 * [Check](#Check)
   * [CheckProvable](#CheckProvable)
 * [Compute](#Compute)
@@ -362,6 +364,31 @@ Response:
 [
   "write"
 ]
+```
+
+## Beneficiary
+
+
+### BeneficiaryWithdrawBalance
+BeneficiaryWithdrawBalance allows the beneficiary of a miner to withdraw balance from miner actor
+Specify amount as "0" to withdraw full balance. This method returns a message CID
+and does not wait for message execution
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
 ```
 
 ## Check

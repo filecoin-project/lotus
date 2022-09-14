@@ -38,7 +38,7 @@ var actorCmd = &cli.Command{
 
 var actorWithdrawCmd = &cli.Command{
 	Name:      "withdraw",
-	Usage:     "withdraw available balance",
+	Usage:     "withdraw available balance to beneficiary",
 	ArgsUsage: "[amount (FIL)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -49,6 +49,10 @@ var actorWithdrawCmd = &cli.Command{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
 			Value: int(build.MessageConfidence),
+		},
+		&cli.BoolFlag{
+			Name:  "beneficiary",
+			Usage: "send withdraw message from the beneficiary address",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -113,9 +117,16 @@ var actorWithdrawCmd = &cli.Command{
 			return err
 		}
 
+		var sender address.Address
+		if cctx.IsSet("beneficiary") {
+			sender = mi.Beneficiary
+		} else {
+			sender = mi.Owner
+		}
+
 		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 			To:     maddr,
-			From:   mi.Owner,
+			From:   sender,
 			Value:  types.NewInt(0),
 			Method: builtin.MethodsMiner.WithdrawBalance,
 			Params: params,

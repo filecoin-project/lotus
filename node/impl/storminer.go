@@ -1349,6 +1349,14 @@ func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubs
 }
 
 func (sm *StorageMinerAPI) ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) {
+	return sm.withdrawBalance(ctx, amount, true)
+}
+
+func (sm *StorageMinerAPI) BeneficiaryWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) {
+	return sm.withdrawBalance(ctx, amount, false)
+}
+
+func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.TokenAmount, fromOwner bool) (cid.Cid, error) {
 	available, err := sm.Full.StateMinerAvailableBalance(ctx, sm.Miner.Address(), types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("Error getting miner balance: %w", err)
@@ -1374,9 +1382,16 @@ func (sm *StorageMinerAPI) ActorWithdrawBalance(ctx context.Context, amount abi.
 		return cid.Undef, xerrors.Errorf("Error getting miner's owner address: %w", err)
 	}
 
+	var sender address.Address
+	if fromOwner {
+		sender = mi.Owner
+	} else {
+		sender = mi.Beneficiary
+	}
+
 	smsg, err := sm.Full.MpoolPushMessage(ctx, &types.Message{
 		To:     sm.Miner.Address(),
-		From:   mi.Owner,
+		From:   sender,
 		Value:  types.NewInt(0),
 		Method: builtintypes.MethodsMiner.WithdrawBalance,
 		Params: params,

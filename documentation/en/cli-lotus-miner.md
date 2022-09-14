@@ -232,7 +232,7 @@ USAGE:
 
 COMMANDS:
    set-addresses, set-addrs  set addresses that your miner can be publicly dialed on
-   withdraw                  withdraw available balance
+   withdraw                  withdraw available balance to beneficiary
    repay-debt                pay down a miner's debt
    set-peer-id               set the peer id of your miner
    set-owner                 Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)
@@ -254,12 +254,13 @@ OPTIONS:
 ### lotus-miner actor withdraw
 ```
 NAME:
-   lotus-miner actor withdraw - withdraw available balance
+   lotus-miner actor withdraw - withdraw available balance to beneficiary
 
 USAGE:
    lotus-miner actor withdraw [command options] [amount (FIL)]
 
 OPTIONS:
+   --beneficiary       send withdraw message from the beneficiary address (default: false)
    --confidence value  number of block confirmations to wait for (default: 5)
    
 ```

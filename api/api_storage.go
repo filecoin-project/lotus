@@ -54,6 +54,11 @@ type StorageMiner interface {
 	// and does not wait for message execution
 	ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) //perm:admin
 
+	// BeneficiaryWithdrawBalance allows the beneficiary of a miner to withdraw balance from miner actor
+	// Specify amount as "0" to withdraw full balance. This method returns a message CID
+	// and does not wait for message execution
+	BeneficiaryWithdrawBalance(context.Context, abi.TokenAmount) (cid.Cid, error) //perm:admin
+
 	MiningBase(context.Context) (*types.TipSet, error) //perm:read
 
 	ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) //perm:admin
