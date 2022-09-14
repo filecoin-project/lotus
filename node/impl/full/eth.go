@@ -54,9 +54,9 @@ var _ EthModuleAPI = *new(api.FullNode)
 type EthModule struct {
 	fx.In
 
-	Chain *store.ChainStore
-	Mpool *messagepool.MessagePool
-	StateManager  *stmgr.StateManager
+	Chain        *store.ChainStore
+	Mpool        *messagepool.MessagePool
+	StateManager *stmgr.StateManager
 
 	ChainAPI
 	MpoolAPI
@@ -241,13 +241,13 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 	msg := &types.Message{
-		From:   from,
-		To:     to,
-		Value:  big.Int(tx.Value),
-		Method: abi.MethodNum(2),
-		Params: tx.Data,
-		GasLimit: build.BlockGasLimit,
-		GasFeeCap: big.Zero(),
+		From:       from,
+		To:         to,
+		Value:      big.Int(tx.Value),
+		Method:     abi.MethodNum(2),
+		Params:     tx.Data,
+		GasLimit:   build.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
 	}
 	ts := a.Chain.GetHeaviestTipSet()
