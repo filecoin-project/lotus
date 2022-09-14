@@ -53,15 +53,16 @@ type ConsistentBCast struct {
 	m map[abi.ChainEpoch]*bcastDict
 }
 
-func newBcastDict(delay time.Duration) *bcastDict {
+func newBcastDict() *bcastDict {
 	return &bcastDict{new(sync.Map)}
 }
 
 // TODO: What if the VRFProof is already small?? We don´t need the CID. Useless computation.
 func BCastKey(bh *types.BlockHeader) (multihash.Multihash, error) {
-	proof := bh.Ticket.VRFProof
-	binary.PutVarint(proof, int64(bh.Height))
-	return multihash.Sum(proof, multihash.SHA2_256, -1)
+	k := make([]byte, len(bh.Ticket.VRFProof))
+	copy(k, bh.Ticket.VRFProof)
+	binary.PutVarint(k, int64(bh.Height))
+	return multihash.Sum(k, multihash.SHA2_256, -1)
 }
 
 func NewConsistentBCast(delay time.Duration) *ConsistentBCast {
@@ -93,7 +94,7 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) er
 	cb.lk.Lock()
 	bcastDict, ok := cb.m[blk.Header.Height]
 	if !ok {
-		bcastDict = newBcastDict(cb.delay)
+		bcastDict = newBcastDict()
 		cb.m[blk.Header.Height] = bcastDict
 	}
 	cb.lk.Unlock()
@@ -116,7 +117,7 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) er
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, cb.delay*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, cb.delay)
 	bcastDict.store(key, &blksInfo{ctx, cancel, []cid.Cid{blkCid}})
 	return nil
 }

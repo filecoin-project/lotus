@@ -44,7 +44,7 @@ var msgCidPrefix = cid.Prefix{
 	MhLength: 32,
 }
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, self peer.ID, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
 	// Timeout after (block time + propagation delay). This is useless at
 	// this point.
 	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
@@ -107,13 +107,19 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				log.Warnw("received block with large delay from miner", "block", blk.Cid(), "delay", delay, "miner", blk.Header.Miner)
 			}
 
-			if err := cb.WaitForDelivery(blk.Header); err != nil {
-				log.Errorf("couldn't deliver block to syncer over pubsub: %s; source: %s", err, src)
-				return
+			// When we propose a new block ourselves, the proposed block also gets here through SyncSubmitBlock.
+			// If we are the block proposers we don't need to wait for delivery, we know the blocks are
+			// honest.
+			if src != self {
+				log.Infof("Waiting for consistent broadcast of block in height: %v", blk.Header.Height)
+				if err := cb.WaitForDelivery(blk.Header); err != nil {
+					log.Errorf("couldn't deliver block to syncer over pubsub: %s; source: %s", err, src)
+					return
+				}
 			}
-
 			// Garbage collect the broadcast state
 			cb.GarbageCollect(blk.Header.Height)
+			log.Infof("Block in height %v delivered successfully", blk.Header.Height)
 
 			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
 				Header:        blk.Header,
