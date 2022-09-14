@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -87,19 +88,23 @@ func ExtractTar(body io.Reader, dir string, buf []byte) (int64, error) {
 		case nil:
 		}
 
-		//nolint:gosec
-		f, err := os.Create(filepath.Join(dir, header.Name))
-		if err != nil {
-			//nolint:gosec
-			return read, xerrors.Errorf("creating file %s: %w", filepath.Join(dir, header.Name), err)
-		}
-
 		sz, found := CacheFileConstraints[header.Name]
 		if !found {
 			return read, xerrors.Errorf("tar file %#v isn't expected")
 		}
 		if header.Size > sz {
 			return read, xerrors.Errorf("tar file %#v is bigger than expected: %d > %d", header.Name, header.Size, sz)
+		}
+
+		out := filepath.Join(dir, header.Name) //nolint:gosec
+
+		if !strings.HasPrefix(out, filepath.Clean(dir)) {
+			return read, xerrors.Errorf("unsafe tar path %#v (must be within %#v)", out, filepath.Clean(dir))
+		}
+
+		f, err := os.Create(out)
+		if err != nil {
+			return read, xerrors.Errorf("creating file %s: %w", out, err)
 		}
 
 		ltr := io.LimitReader(tr, header.Size)
