@@ -101,7 +101,7 @@ var mmProposeWithdrawBalance = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Propose owner change tx failed!")
 			return err
 		}
@@ -180,7 +180,7 @@ var mmApproveWithdrawBalance = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Approve owner change tx failed!")
 			return err
 		}
@@ -261,7 +261,7 @@ var mmProposeChangeOwner = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Propose owner change tx failed!")
 			return err
 		}
@@ -351,7 +351,7 @@ var mmApproveChangeOwner = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Approve owner change tx failed!")
 			return err
 		}
@@ -448,7 +448,7 @@ var mmProposeChangeWorker = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!")
 			return err
 		}
@@ -532,7 +532,7 @@ var mmConfirmChangeWorker = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!")
 			return err
 		}
@@ -647,7 +647,7 @@ var mmProposeControlSet = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!")
 			return err
 		}

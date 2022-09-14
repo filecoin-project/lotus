@@ -171,7 +171,7 @@ var terminateSectorCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("terminate sectors message returned exit %d", wait.Receipt.ExitCode)
 		}
 

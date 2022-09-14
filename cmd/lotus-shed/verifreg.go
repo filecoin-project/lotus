@@ -104,7 +104,7 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verifier: %d", mwait.Receipt.ExitCode)
 		}
 
@@ -170,7 +170,7 @@ var verifRegAddVerifierFromAccountCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
 		}
 
@@ -246,7 +246,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
 		}
 
@@ -555,7 +555,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to removed verified data cap: %d", mwait.Receipt.ExitCode)
 		}
 

@@ -707,7 +707,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 					return
 				}
 
-				if wait.Receipt.ExitCode != 0 {
+				if wait.Receipt.ExitCode.IsError() {
 					results <- xerrors.Errorf("Failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
 					return
 				}

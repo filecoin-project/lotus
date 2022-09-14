@@ -167,7 +167,7 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "actor creation failed!")
 			return err
 		}
@@ -456,7 +456,7 @@ var msigProposeCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -605,7 +605,7 @@ var msigApproveCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -730,7 +730,7 @@ var msigCancelCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("cancel returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -810,7 +810,7 @@ var msigRemoveProposeCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("add proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -930,7 +930,7 @@ var msigAddProposeCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("add proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1021,7 +1021,7 @@ var msigAddApproveCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("add approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1107,7 +1107,7 @@ var msigAddCancelCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("add cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1188,7 +1188,7 @@ var msigSwapProposeCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("swap proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1279,7 +1279,7 @@ var msigSwapApproveCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("swap approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1365,7 +1365,7 @@ var msigSwapCancelCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("swap cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1461,7 +1461,7 @@ var msigLockProposeCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("lock proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1567,7 +1567,7 @@ var msigLockApproveCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("lock approval returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1668,7 +1668,7 @@ var msigLockCancelCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("lock cancellation returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -1814,7 +1814,7 @@ var msigProposeThresholdCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("change threshold proposal returned exit %d", wait.Receipt.ExitCode)
 		}
 

@@ -475,7 +475,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println(cctx.App.Writer, "Invalid PoST message failed!")
 			return err
 		}
@@ -574,7 +574,7 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println(cctx.App.Writer, "Report consensus fault failed!")
 			return err
 		}

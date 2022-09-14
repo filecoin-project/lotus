@@ -120,7 +120,7 @@ var filplusVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
 		}
 

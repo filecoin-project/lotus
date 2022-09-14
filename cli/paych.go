@@ -286,7 +286,7 @@ var paychSettleCmd = &cli.Command{
 		if err != nil {
 			return nil
 		}
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
@@ -326,7 +326,7 @@ var paychCloseCmd = &cli.Command{
 		if err != nil {
 			return nil
 		}
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
@@ -634,7 +634,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
