@@ -231,7 +231,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 				new(corebig.Rat).Inv(winRatio),
 			).Float64()
 
-			fmt.Print("Projected average block win rate: ")
+			fmt.Print("Projected average block win rate: 1")
 			color.Blue(
 				"%.02f/week (every %s)",
 				weekly,
