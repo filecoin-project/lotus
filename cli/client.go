@@ -130,7 +130,7 @@ var clientImportCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 1 {
-			return xerrors.New("expected input path as the only arg")
+			return IncorrectNumArgs(cctx)
 		}
 
 		absPath, err := filepath.Abs(cctx.Args().First())
@@ -213,7 +213,7 @@ var clientCommPCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("usage: commP <inputPath>")
+			return IncorrectNumArgs(cctx)
 		}
 
 		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0))
@@ -246,7 +246,7 @@ var clientCarGenCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 2 {
-			return fmt.Errorf("usage: generate-car <inputPath> <outputPath>")
+			return IncorrectNumArgs(cctx)
 		}
 
 		ref := lapi.FileRef{
@@ -376,7 +376,7 @@ The minimum value is 518400 (6 months).`,
 		afmt := NewAppFmt(cctx.App)
 
 		if cctx.NArg() != 4 {
-			return xerrors.New(expectedArgsMsg)
+			return IncorrectNumArgs(cctx)
 		}
 
 		// [data, miner, price, dur]

@@ -62,7 +62,7 @@ var filplusVerifyClientCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 2 {
-			return fmt.Errorf("must specify two arguments: address and allowance")
+			return IncorrectNumArgs(cctx)
 		}
 
 		target, err := address.NewFromString(cctx.Args().Get(0))
@@ -290,7 +290,7 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 3 {
-			return fmt.Errorf("must specify three arguments: notary address, client address, and allowance to remove")
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)

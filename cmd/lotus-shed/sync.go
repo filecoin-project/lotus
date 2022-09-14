@@ -39,9 +39,7 @@ var syncValidateCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() < 1 {
-			fmt.Println("usage: <blockCid1> <blockCid2>...")
-			fmt.Println("At least one block cid must be provided")
-			return nil
+			return lcli.ShowHelp(cctx, fmt.Errorf("at least one block cid must be provided"))
 		}
 
 		args := cctx.Args().Slice()
@@ -91,9 +89,7 @@ var syncScrapePowerCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() < 1 {
-			fmt.Println("usage: <blockCid1> <blockCid2>...")
-			fmt.Println("At least one block cid must be provided")
-			return nil
+			return lcli.ShowHelp(cctx, fmt.Errorf("at least one block cid must be provided"))
 		}
 
 		h, err := strconv.ParseInt(cctx.Args().Get(0), 10, 0)

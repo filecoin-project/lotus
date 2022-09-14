@@ -32,7 +32,7 @@ var sigsVerifyBlsMsgsCmd = &cli.Command{
 	Usage:       "<blockCid>",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("usage: <blockCid>")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -102,7 +102,7 @@ var sigsVerifyVoteCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 
 		if cctx.NArg() != 3 {
-			return xerrors.Errorf("usage: verify-vote <FIPnumber> <signingAddress> <signature>")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		fip, err := strconv.ParseInt(cctx.Args().First(), 10, 64)

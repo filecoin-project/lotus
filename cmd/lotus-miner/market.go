@@ -370,8 +370,8 @@ var dealsImportDataCmd = &cli.Command{
 
 		ctx := lcli.DaemonContext(cctx)
 
-		if cctx.NArg() < 2 {
-			return fmt.Errorf("must specify proposal CID and file path")
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		propCid, err := cid.Decode(cctx.Args().Get(0))
@@ -618,7 +618,7 @@ var setSealDurationCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass duration in minutes")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)

@@ -128,7 +128,7 @@ var mmApproveWithdrawBalance = &cli.Command{
 	ArgsUsage: "[amount txnId proposer]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 3 {
-			return fmt.Errorf("must pass amount, txn Id, and proposer address")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -287,7 +287,7 @@ var mmApproveChangeOwner = &cli.Command{
 	ArgsUsage: "[newOwner txnId proposer]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 3 {
-			return fmt.Errorf("must pass new owner address, txn Id, and proposer address")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)

@@ -89,7 +89,7 @@ var msigCreateCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 1 {
-			return ShowHelp(cctx, fmt.Errorf("multisigs must have at least one signer"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -754,7 +754,7 @@ var msigRemoveProposeCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -841,7 +841,7 @@ var msigAddProposeCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -950,7 +950,7 @@ var msigAddApproveCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 5 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, new signer address, whether to increase threshold"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1041,7 +1041,7 @@ var msigAddCancelCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 4 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, new signer address, whether to increase threshold"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1127,7 +1127,7 @@ var msigSwapProposeCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 3 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, old signer address, new signer address"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1208,7 +1208,7 @@ var msigSwapApproveCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 5 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, old signer address, new signer address"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1299,7 +1299,7 @@ var msigSwapCancelCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 4 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, old signer address, new signer address"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1385,7 +1385,7 @@ var msigLockProposeCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 4 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, start epoch, unlock duration, and amount"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1481,7 +1481,7 @@ var msigLockApproveCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 6 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, tx id, start epoch, unlock duration, and amount"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1587,7 +1587,7 @@ var msigLockCancelCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 5 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -1694,7 +1694,7 @@ var msigVestedCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1750,7 +1750,7 @@ var msigProposeThresholdCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and new threshold value"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)

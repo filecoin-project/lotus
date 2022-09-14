@@ -1379,7 +1379,7 @@ var sectorsTerminateCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass sector number")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -1489,7 +1489,7 @@ var sectorsRemoveCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass sector number")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -1507,7 +1507,7 @@ var sectorsSnapUpCmd = &cli.Command{
 	ArgsUsage: "<sectorNum>",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -1588,7 +1588,7 @@ var sectorsStartSealCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass sector number")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -1612,7 +1612,7 @@ var sectorsSealDelayCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass duration in minutes")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -1715,7 +1715,7 @@ var sectorsUpdateCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 		if cctx.NArg() < 2 {
-			return xerrors.Errorf("must pass sector number and new state")
+			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number and new state"))
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -2311,7 +2311,7 @@ var sectorsNumbersReserveCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() != 2 {
-			return xerrors.Errorf("expected 2 arguments: [reservation name] [reserved ranges]")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		bf, err := strle.HumanRangesToBitField(cctx.Args().Get(1))
@@ -2336,7 +2336,7 @@ var sectorsNumbersFreeCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("expected 1 argument: [reservation name]")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		return minerAPI.SectorNumFree(ctx, cctx.Args().First())

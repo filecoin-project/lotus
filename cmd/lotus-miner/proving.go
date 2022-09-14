@@ -315,7 +315,7 @@ var provingDeadlineInfoCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -462,7 +462,7 @@ var provingCheckProvableCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -617,7 +617,7 @@ It will not send any messages to the chain.`,
 	ArgsUsage: "[deadline index]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -662,7 +662,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() < 1 {
-			return xerrors.Errorf("must pass at least 1 sector number")
+			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass at least 1 sector number"))
 		}
 
 		arglist := cctx.Args().Slice()

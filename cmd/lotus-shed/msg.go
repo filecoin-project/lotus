@@ -28,7 +28,7 @@ var msgCmd = &cli.Command{
 	ArgsUsage: "Message in any form",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("expected 1 argument")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		msg, err := messageFromString(cctx, cctx.Args().First())

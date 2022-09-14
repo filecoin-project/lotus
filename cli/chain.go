@@ -947,7 +947,7 @@ var ChainBisectCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() < 4 {
-			return xerrors.New("need at least 4 args")
+			return IncorrectNumArgs(cctx)
 		}
 
 		start, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -1313,7 +1313,7 @@ var chainDecodeParamsCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 3 {
-			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		to, err := address.NewFromString(cctx.Args().First())
@@ -1392,7 +1392,7 @@ var chainEncodeParamsCmd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		if cctx.NArg() != 3 {
-			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		method, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)

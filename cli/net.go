@@ -142,7 +142,7 @@ var NetPing = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("please provide a peerID")
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetAPI(cctx)

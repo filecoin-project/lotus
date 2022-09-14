@@ -34,7 +34,7 @@ var sendCsvCmd = &cli.Command{
 	ArgsUsage: "[csvfile]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return xerrors.New("must supply path to csv file")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := lcli.GetFullNodeAPIV1(cctx)

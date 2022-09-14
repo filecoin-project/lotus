@@ -68,7 +68,7 @@ var sendCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)

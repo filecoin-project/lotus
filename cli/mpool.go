@@ -611,7 +611,7 @@ var MpoolConfig = &cli.Command{
 	ArgsUsage: "[new-config]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() > 1 {
-			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+			return IncorrectNumArgs(cctx)
 		}
 
 		afmt := NewAppFmt(cctx.App)
