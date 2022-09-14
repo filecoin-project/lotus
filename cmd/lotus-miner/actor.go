@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -232,13 +233,17 @@ var actorSetPeeridCmd = &cli.Command{
 
 var actorWithdrawCmd = &cli.Command{
 	Name:      "withdraw",
-	Usage:     "withdraw available balance",
+	Usage:     "withdraw available balance to beneficiary",
 	ArgsUsage: "[amount (FIL)]",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
 			Value: int(build.MessageConfidence),
+		},
+		&cli.BoolFlag{
+			Name:  "beneficiary",
+			Usage: "send withdraw message from the beneficiary address",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -267,7 +272,12 @@ var actorWithdrawCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		res, err := nodeApi.ActorWithdrawBalance(ctx, amount)
+		var res cid.Cid
+		if cctx.IsSet("beneficiary") {
+			res, err = nodeApi.BeneficiaryWithdrawBalance(ctx, amount)
+		} else {
+			res, err = nodeApi.ActorWithdrawBalance(ctx, amount)
+		}
 		if err != nil {
 			return err
 		}

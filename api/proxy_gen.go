@@ -664,6 +664,8 @@ type StorageMinerStruct struct {
 
 		ActorWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
 
+		BeneficiaryWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
+
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
@@ -4033,6 +4035,17 @@ func (s *StorageMinerStruct) ActorWithdrawBalance(p0 context.Context, p1 abi.Tok
 }
 
 func (s *StorageMinerStub) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) BeneficiaryWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	if s.Internal.BeneficiaryWithdrawBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.BeneficiaryWithdrawBalance(p0, p1)
+}
+
+func (s *StorageMinerStub) BeneficiaryWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
 	return *new(cid.Cid), ErrNotSupported
 }
 
