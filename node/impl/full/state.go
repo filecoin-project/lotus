@@ -178,7 +178,7 @@ func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
 		Beneficiary:                info.Beneficiary,
-		BeneficiaryTerm:            info.BeneficiaryTerm,
+		BeneficiaryTerm:            &info.BeneficiaryTerm,
 		PendingBeneficiaryTerm:     info.PendingBeneficiaryTerm,
 	}
 
