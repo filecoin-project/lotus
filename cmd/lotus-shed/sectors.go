@@ -58,6 +58,10 @@ var terminateSectorCmd = &cli.Command{
 			Name:  "really-do-it",
 			Usage: "pass this flag if you know what you are doing",
 		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "specify the address to send the terminate message from",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 {
@@ -137,8 +141,19 @@ var terminateSectorCmd = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
+		var fromAddr address.Address
+		if from := cctx.String("from"); from != "" {
+			var err error
+			fromAddr, err = address.NewFromString(from)
+			if err != nil {
+				return fmt.Errorf("parsing address %s: %w", from, err)
+			}
+		} else {
+			fromAddr = mi.Worker
+		}
+
 		smsg, err := nodeApi.MpoolPushMessage(ctx, &types.Message{
-			From:   mi.Owner,
+			From:   fromAddr,
 			To:     maddr,
 			Method: builtin.MethodsMiner.TerminateSectors,
 
