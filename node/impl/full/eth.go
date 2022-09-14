@@ -216,7 +216,8 @@ func (a *EthModule) NetListening(ctx context.Context) (bool, error) {
 }
 
 func (a *EthModule) EthProtocolVersion(ctx context.Context) (api.EthInt, error) {
-	return api.EthInt(0), nil
+	height := a.Chain.GetHeaviestTipSet().Height()
+	return api.EthInt(a.StateManager.GetNetworkVersion(ctx, height)), nil
 }
 
 func (a *EthModule) EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error) {
