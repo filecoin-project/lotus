@@ -90,13 +90,13 @@ var terminateSectorCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if maddr.Empty() {
-			api, acloser, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, acloser, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer acloser()
 
-			maddr, err = api.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -222,13 +222,13 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if maddr.Empty() {
-			api, acloser, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, acloser, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer acloser()
 
-			maddr, err = api.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
