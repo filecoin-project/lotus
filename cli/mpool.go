@@ -404,7 +404,7 @@ var MpoolReplaceCmd = &cli.Command{
 
 		var from address.Address
 		var nonce uint64
-		switch cctx.Args().Len() {
+		switch cctx.NArg() {
 		case 1:
 			mcid, err := cid.Decode(cctx.Args().First())
 			if err != nil {
@@ -610,8 +610,8 @@ var MpoolConfig = &cli.Command{
 	Usage:     "get or set current mpool configuration",
 	ArgsUsage: "[new-config]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() > 1 {
-			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		if cctx.NArg() > 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		afmt := NewAppFmt(cctx.App)
@@ -624,7 +624,7 @@ var MpoolConfig = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			cfg, err := api.MpoolGetConfig(ctx)
 			if err != nil {
 				return err

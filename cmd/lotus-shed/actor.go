@@ -74,13 +74,13 @@ var actorWithdrawCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if maddr.Empty() {
-			minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer closer()
 
-			maddr, err = minerAPI.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -144,7 +144,7 @@ var actorWithdrawCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println(cctx.App.Writer, "withdrawal failed!")
 			return err
 		}
@@ -192,7 +192,7 @@ var actorSetOwnerCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 2 {
-			return fmt.Errorf("must pass new owner address and sender address")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		var maddr address.Address
@@ -233,13 +233,13 @@ var actorSetOwnerCmd = &cli.Command{
 		}
 
 		if maddr.Empty() {
-			minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer closer()
 
-			maddr, err = minerAPI.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -279,7 +279,7 @@ var actorSetOwnerCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println("owner change failed!")
 			return err
 		}
@@ -339,13 +339,13 @@ var actorControlList = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if maddr.Empty() {
-			minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer closer()
 
-			maddr, err = minerAPI.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -448,13 +448,13 @@ var actorControlSet = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if maddr.Empty() {
-			minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer closer()
 
-			maddr, err = minerAPI.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -590,13 +590,13 @@ var actorProposeChangeWorker = &cli.Command{
 		}
 
 		if maddr.Empty() {
-			minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer closer()
 
-			maddr, err = minerAPI.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -647,7 +647,7 @@ var actorProposeChangeWorker = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Propose worker change failed!")
 			return err
 		}
@@ -720,13 +720,13 @@ var actorConfirmChangeWorker = &cli.Command{
 		}
 
 		if maddr.Empty() {
-			minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer closer()
 
-			maddr, err = minerAPI.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -768,7 +768,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
 			return err
 		}

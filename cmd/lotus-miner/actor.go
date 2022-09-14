@@ -81,7 +81,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return fmt.Errorf("unset can only be used with no arguments")
 		}
 
-		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ var actorSetAddrsCmd = &cli.Command{
 			addrs = append(addrs, maddrNop2p.Bytes())
 		}
 
-		maddr, err := nodeAPI.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -177,7 +177,7 @@ var actorSetPeeridCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ var actorSetPeeridCmd = &cli.Command{
 			return fmt.Errorf("failed to parse input as a peerId: %w", err)
 		}
 
-		maddr, err := nodeAPI.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -258,7 +258,7 @@ var actorWithdrawCmd = &cli.Command{
 			amount = abi.TokenAmount(f)
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -274,9 +274,9 @@ var actorWithdrawCmd = &cli.Command{
 
 		var res cid.Cid
 		if cctx.IsSet("beneficiary") {
-			res, err = nodeApi.BeneficiaryWithdrawBalance(ctx, amount)
+			res, err = minerApi.BeneficiaryWithdrawBalance(ctx, amount)
 		} else {
-			res, err = nodeApi.ActorWithdrawBalance(ctx, amount)
+			res, err = minerApi.ActorWithdrawBalance(ctx, amount)
 		}
 		if err != nil {
 			return err
@@ -290,7 +290,7 @@ var actorWithdrawCmd = &cli.Command{
 			return xerrors.Errorf("Timeout waiting for withdrawal message %s", wait.Message)
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
 		}
 
@@ -326,7 +326,7 @@ var actorRepayDebtCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -340,7 +340,7 @@ var actorRepayDebtCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -441,7 +441,7 @@ var actorControlList = &cli.Command{
 			color.NoColor = !cctx.Bool("color")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -473,7 +473,7 @@ var actorControlList = &cli.Command{
 			tablewriter.Col("balance"),
 		)
 
-		ac, err := nodeApi.ActorAddressConfig(ctx)
+		ac, err := minerApi.ActorAddressConfig(ctx)
 		if err != nil {
 			return err
 		}
@@ -610,7 +610,7 @@ var actorControlSet = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -624,7 +624,7 @@ var actorControlSet = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -729,7 +729,7 @@ var actorSetOwnerCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 2 {
-			return fmt.Errorf("must pass new owner address and sender address")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -799,7 +799,7 @@ var actorSetOwnerCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println("owner change failed!")
 			return err
 		}
@@ -826,7 +826,7 @@ var actorProposeChangeWorker = &cli.Command{
 			return fmt.Errorf("must pass address of new worker address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -850,7 +850,7 @@ var actorProposeChangeWorker = &cli.Command{
 			return err
 		}
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -905,7 +905,7 @@ var actorProposeChangeWorker = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Propose worker change failed!")
 			return err
 		}
@@ -941,7 +941,7 @@ var actorConfirmChangeWorker = &cli.Command{
 			return fmt.Errorf("must pass address of new worker address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -965,7 +965,7 @@ var actorConfirmChangeWorker = &cli.Command{
 			return err
 		}
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -1011,7 +1011,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Fprintln(cctx.App.Writer, "Worker change failed!")
 			return err
 		}
@@ -1056,7 +1056,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 			return fmt.Errorf("must pass address of new owner address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -1070,7 +1070,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -1170,7 +1170,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println("Propose owner change failed!")
 			return err
 		}

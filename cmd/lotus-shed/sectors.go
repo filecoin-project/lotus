@@ -64,8 +64,8 @@ var terminateSectorCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 1 {
-			return fmt.Errorf("at least one sector must be specified")
+		if cctx.NArg() < 1 {
+			return lcli.ShowHelp(cctx, fmt.Errorf("at least one sector must be specified"))
 		}
 
 		var maddr address.Address
@@ -90,13 +90,13 @@ var terminateSectorCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if maddr.Empty() {
-			api, acloser, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, acloser, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer acloser()
 
-			maddr, err = api.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -171,7 +171,7 @@ var terminateSectorCmd = &cli.Command{
 			return err
 		}
 
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("terminate sectors message returned exit %d", wait.Receipt.ExitCode)
 		}
 
@@ -200,8 +200,8 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 1 {
-			return fmt.Errorf("at least one sector must be specified")
+		if cctx.NArg() < 1 {
+			return lcli.ShowHelp(cctx, fmt.Errorf("at least one sector must be specified"))
 		}
 
 		var maddr address.Address
@@ -222,13 +222,13 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if maddr.Empty() {
-			api, acloser, err := lcli.GetStorageMinerAPI(cctx)
+			minerApi, acloser, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
 			}
 			defer acloser()
 
-			maddr, err = api.ActorAddress(ctx)
+			maddr, err = minerApi.ActorAddress(ctx)
 			if err != nil {
 				return err
 			}

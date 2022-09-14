@@ -56,7 +56,7 @@ var computeStateRangeCmd = &cli.Command{
 	ArgsUsage: "[START_TIPSET_REF] [END_TIPSET_REF]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
-			return fmt.Errorf("expected two arguments: a start and an end tipset")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
