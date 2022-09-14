@@ -521,7 +521,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	return nil
 }
 
-func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize) (minTarget, target abi.ChainEpoch, err error) {
+func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize, cfg sealiface.Config) (minExp, target abi.ChainEpoch, err error) {
 	var candidates []*pendingPiece
 
 	for _, piece := range m.pendingPieces {
@@ -537,30 +537,49 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 	})
 
 	var totalBytes uint64
+	var full bool
+
+	// Find the expiration of the last deal which can fit into the sector, use that as the initial target
 	for _, candidate := range candidates {
 		totalBytes += uint64(candidate.size)
+		target = candidate.deal.DealProposal.EndEpoch
 
 		if totalBytes >= uint64(abi.PaddedPieceSize(ssize).Unpadded()) {
-			return candidates[0].deal.DealProposal.EndEpoch, candidate.deal.DealProposal.EndEpoch, nil
+			full = true
+			break
 		}
 	}
 
-	ts, err := m.Api.ChainHead(ctx)
-	if err != nil {
-		return 0, 0, xerrors.Errorf("getting current epoch: %w", err)
+	// if the sector isn't full, use max deal duration as the target
+	if !full {
+		ts, err := m.Api.ChainHead(ctx)
+		if err != nil {
+			return 0, 0, xerrors.Errorf("getting current epoch: %w", err)
+		}
+
+		minDur, maxDur := policy.DealDurationBounds(0)
+		minExp = ts.Height() + minDur
+
+		target = maxDur
 	}
 
-	minDur, maxDur := policy.DealDurationBounds(0)
-	minTarget = ts.Height() + minDur
-
-	if len(candidates) > 0 && candidates[0].deal.DealProposal.EndEpoch > minTarget {
-		minTarget = candidates[0].deal.DealProposal.EndEpoch
+	// make sure that at least one deal in the queue is within the expiration
+	if len(candidates) > 0 && candidates[0].deal.DealProposal.EndEpoch > minExp {
+		minExp = candidates[0].deal.DealProposal.EndEpoch
 	}
 
-	return minTarget, ts.Height() + maxDur, nil
+	// apply user minimums
+	if abi.ChainEpoch(cfg.MinUpgradeSectorExpiration) > minExp {
+		minExp = abi.ChainEpoch(cfg.MinUpgradeSectorExpiration)
+	}
+	if abi.ChainEpoch(cfg.MinTargetUpgradeSectorExpiration) > target {
+		target = abi.ChainEpoch(cfg.MinTargetUpgradeSectorExpiration)
+	}
+
+	return minExp, target, nil
 }
 
-func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) (bool, error) {
+func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, cfg sealiface.Config, ef expFn) (bool, error) {
 	if len(m.available) == 0 {
 		return false, nil
 	}
@@ -569,7 +588,7 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 	if err != nil {
 		return false, xerrors.Errorf("getting sector size: %w", err)
 	}
-	minExpiration, targetExpiration, err := m.calcTargetExpiration(ctx, ssize)
+	minExpiration, targetExpiration, err := m.calcTargetExpiration(ctx, ssize, cfg)
 	if err != nil {
 		return false, xerrors.Errorf("calculating min target expiration: %w", err)
 	}
@@ -687,7 +706,7 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 		"shouldUpgrade", shouldUpgrade)
 
 	if shouldUpgrade {
-		got, err := m.maybeUpgradeSector(ctx, sp, ef)
+		got, err := m.maybeUpgradeSector(ctx, sp, cfg, ef)
 		if err != nil {
 			return err
 		}
