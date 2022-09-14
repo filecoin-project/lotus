@@ -9,12 +9,15 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type EthModuleAPI interface {
@@ -53,6 +56,7 @@ type EthModule struct {
 
 	Chain *store.ChainStore
 	Mpool *messagepool.MessagePool
+	StateManager  *stmgr.StateManager
 
 	ChainAPI
 	MpoolAPI
@@ -67,6 +71,10 @@ type EthAPI struct {
 	Chain *store.ChainStore
 
 	EthModuleAPI
+}
+
+func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
+	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
 func (a *EthModule) EthBlockNumber(context.Context) (api.EthInt, error) {
@@ -223,59 +231,65 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {
 // 	return api.EthHash{}, nil
 // }
 
-func (a *EthModule) invokeEvmActor(ctx context.Context, tx api.EthCall) (*api.MsgLookup, error) {
+func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.InvocResult, error) {
 	from, err := tx.From.ToFilecoinAddress()
 	if err != nil {
-		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
+		return nil, err
 	}
-
 	to, err := tx.To.ToFilecoinAddress()
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
-
 	msg := &types.Message{
 		From:   from,
 		To:     to,
 		Value:  big.Int(tx.Value),
 		Method: abi.MethodNum(2),
 		Params: tx.Data,
+		GasLimit: build.BlockGasLimit,
+		GasFeeCap: big.Zero(),
+		GasPremium: big.Zero(),
 	}
+	ts := a.Chain.GetHeaviestTipSet()
 
-	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg, nil)
+	// Try calling until we find a height with no migration.
+	var res *api.InvocResult
+	for {
+		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
 	if err != nil {
-		return nil, xerrors.Errorf("failed to push message: %w", err)
+		return nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
-
-	return a.StateAPI.StateWaitMsg(ctx, smsg.Cid(), 0, api.LookbackNoLimit, true)
+	if res.MsgRct.ExitCode != exitcode.Ok {
+		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
+	}
+	return res, nil
 }
 
 func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error) {
-	lookup, err := a.invokeEvmActor(ctx, tx)
+	invokeResult, err := a.applyEvmMsg(ctx, tx)
 	if err != nil {
 		return api.EthInt(0), err
 	}
-
-	if lookup.Receipt.ExitCode != 0 {
-		return api.EthInt(0), xerrors.Errorf("actor execution failed")
-	}
-	return api.EthInt(lookup.Receipt.GasUsed), nil
+	ret := invokeResult.MsgRct.GasUsed
+	return api.EthInt(ret), nil
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error) {
-	lookup, err := a.invokeEvmActor(ctx, tx)
+	invokeResult, err := a.applyEvmMsg(ctx, tx)
 	if err != nil {
 		return nil, err
 	}
-
-	if lookup.Receipt.ExitCode != 0 {
-		return api.EthBytes{}, xerrors.Errorf("actor execution failed")
+	if len(invokeResult.MsgRct.Return) > 0 {
+		return api.EthBytes(invokeResult.MsgRct.Return), nil
 	}
-
-	if len(lookup.Receipt.Return) > 0 {
-		return api.EthBytes(lookup.Receipt.Return), nil
-	}
-
 	return api.EthBytes{}, nil
 }
 
