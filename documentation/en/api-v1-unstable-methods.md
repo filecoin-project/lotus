@@ -2160,13 +2160,13 @@ Inputs:
     "gas": "0x5",
     "gasPrice": "0x0",
     "value": "0x0",
-    "data": "Ynl0ZSBhcnJheQ=="
+    "data": "0x07"
   },
   "string value"
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x07"`
 
 ### EthChainId
 
@@ -2191,7 +2191,7 @@ Inputs:
     "gas": "0x5",
     "gasPrice": "0x0",
     "value": "0x0",
-    "data": "Ynl0ZSBhcnJheQ=="
+    "data": "0x07"
   },
   "string value"
 ]

@@ -937,10 +937,10 @@ func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Cal
 }
 
 // EthCall mocks base method.
-func (m *MockFullNode) EthCall(arg0 context.Context, arg1 api.EthCall, arg2 string) (string, error) {
+func (m *MockFullNode) EthCall(arg0 context.Context, arg1 api.EthCall, arg2 string) (api.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthCall", arg0, arg1, arg2)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(api.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

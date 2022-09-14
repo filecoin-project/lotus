@@ -136,3 +136,22 @@ func TestUnmarshalEthCall(t *testing.T) {
 	err := c.UnmarshalJSON([]byte(data))
 	require.Nil(t, err)
 }
+
+func TestUnmarshalEthBytes(t *testing.T) {
+	testcases := []string{
+		`"0x00"`,
+		strings.ToLower(`"0xd4c5fb16488Aa48081296299d54b0c648C9333dA"`),
+		strings.ToLower(`"0x2C2EC67e3e1FeA8e4A39601cB3A3Cd44f5fa830d"`),
+		strings.ToLower(`"0x01184F793982104363F9a8a5845743f452dE0586"`),
+	}
+
+	for _, tc := range testcases {
+		var s EthBytes
+		err := s.UnmarshalJSON([]byte(tc))
+		require.Nil(t, err)
+
+		data, err := s.MarshalJSON()
+		require.Nil(t, err)
+		require.Equal(t, string(data), tc)
+	}
+}

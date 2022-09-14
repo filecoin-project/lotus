@@ -8,9 +8,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -36,7 +38,7 @@ type EthModuleAPI interface {
 	EthProtocolVersion(ctx context.Context) (api.EthInt, error)
 	EthGasPrice(ctx context.Context) (api.EthInt, error)
 	EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error)
-	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (string, error)
+	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error)
 	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (api.EthHash, error)
 }
@@ -50,8 +52,10 @@ type EthModule struct {
 	fx.In
 
 	Chain *store.ChainStore
+	Mpool *messagepool.MessagePool
 
 	ChainAPI
+	MpoolAPI
 	StateAPI
 }
 
@@ -140,7 +144,15 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash api.EthH
 }
 
 func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkParam string) (api.EthInt, error) {
-	return api.EthInt(0), nil
+	addr, err := sender.ToFilecoinAddress()
+	if err != nil {
+		return api.EthInt(0), err
+	}
+	nonce, err := a.Mpool.GetNonce(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return api.EthInt(0), err
+	}
+	return api.EthInt(nonce), nil
 }
 
 func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, blkHash api.EthHash) (api.EthTxReceipt, error) {
@@ -211,12 +223,60 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {
 // 	return api.EthHash{}, nil
 // }
 
-func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error) {
-	return api.EthInt(0), nil
+func (a *EthModule) invokeEvmActor(ctx context.Context, tx api.EthCall) (*api.MsgLookup, error) {
+	from, err := tx.From.ToFilecoinAddress()
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
+	}
+
+	to, err := tx.To.ToFilecoinAddress()
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
+	}
+
+	msg := &types.Message{
+		From:   from,
+		To:     to,
+		Value:  big.Int(tx.Value),
+		Method: abi.MethodNum(2),
+		Params: tx.Data,
+	}
+
+	smsg, err := a.MpoolAPI.MpoolPushMessage(ctx, msg, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to push message: %w", err)
+	}
+
+	return a.StateAPI.StateWaitMsg(ctx, smsg.Cid(), 0, api.LookbackNoLimit, true)
 }
 
-func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (string, error) {
-	return "", nil
+func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error) {
+	lookup, err := a.invokeEvmActor(ctx, tx)
+	if err != nil {
+		return api.EthInt(0), err
+	}
+
+	if lookup.Receipt.ExitCode != 0 {
+		return api.EthInt(0), xerrors.Errorf("actor execution failed")
+	}
+	return api.EthInt(lookup.Receipt.GasUsed), nil
+}
+
+func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error) {
+	lookup, err := a.invokeEvmActor(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	if lookup.Receipt.ExitCode != 0 {
+		return api.EthBytes{}, xerrors.Errorf("actor execution failed")
+	}
+
+	if len(lookup.Receipt.Return) > 0 {
+		return api.EthBytes(lookup.Receipt.Return), nil
+	}
+
+	return api.EthBytes{}, nil
 }
 
 func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (api.EthBlock, error) {

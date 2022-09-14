@@ -70,6 +70,33 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type EthBytes []byte
+
+func (e EthBytes) MarshalJSON() ([]byte, error) {
+	encoded := "0x" + hex.EncodeToString(e)
+	return json.Marshal(encoded)
+}
+
+func (e *EthBytes) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	s = strings.Replace(s, "0x", "", -1)
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+
+	decoded, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+
+	*e = decoded
+	return nil
+}
+
 type EthBlock struct {
 	ParentHash       EthHash    `json:"parentHash"`
 	Sha3Uncles       EthHash    `json:"sha3Uncles"`
@@ -141,7 +168,7 @@ type EthCall struct {
 	Gas      EthInt     `json:"gas"`
 	GasPrice EthBigInt  `json:"gasPrice"`
 	Value    EthBigInt  `json:"value"`
-	Data     []byte     `json:"data"`
+	Data     EthBytes   `json:"data"`
 }
 
 func (c *EthCall) UnmarshalJSON(b []byte) error {

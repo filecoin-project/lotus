@@ -217,7 +217,7 @@ type FullNodeStruct struct {
 
 		EthBlockNumber func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthCall func(p0 context.Context, p1 EthCall, p2 string) (string, error) `perm:"read"`
+		EthCall func(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) `perm:"read"`
 
 		EthChainId func(p0 context.Context) (EthInt, error) `perm:"read"`
 
@@ -1780,15 +1780,15 @@ func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthCall(p0 context.Context, p1 EthCall, p2 string) (string, error) {
+func (s *FullNodeStruct) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
 	if s.Internal.EthCall == nil {
-		return "", ErrNotSupported
+		return *new(EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthCall(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthCall(p0 context.Context, p1 EthCall, p2 string) (string, error) {
-	return "", ErrNotSupported
+func (s *FullNodeStub) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
+	return *new(EthBytes), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthChainId(p0 context.Context) (EthInt, error) {
