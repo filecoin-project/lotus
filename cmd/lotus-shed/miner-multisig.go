@@ -541,7 +541,7 @@ var mmProposeChangeBeneficiary = &cli.Command{
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
+			fmt.Println("Pass --really-do-it to actually execute this action. Review what you're about to approve CAREFULLY please")
 			return nil
 		}
 
@@ -705,7 +705,7 @@ var mmConfirmChangeBeneficiary = &cli.Command{
 		fmt.Println("Expiration Epoch:", mi.PendingBeneficiaryTerm.NewExpiration)
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
+			fmt.Println("Pass --really-do-it to actually execute this action. Review what you're about to approve CAREFULLY please")
 			return nil
 		}
 
@@ -734,8 +734,8 @@ var mmConfirmChangeBeneficiary = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			return fmt.Errorf("confirm beneficiary change failed")
+		if wait.Receipt.ExitCode.IsError() {
+			return fmt.Errorf("confirm beneficiary change failed with code %d", wait.Receipt.ExitCode)
 		}
 
 		updatedMinerInfo, err := api.StateMinerInfo(ctx, minerAddr, types.EmptyTSK)
@@ -743,7 +743,7 @@ var mmConfirmChangeBeneficiary = &cli.Command{
 			return err
 		}
 
-		if updatedMinerInfo.PendingBeneficiaryTerm == nil {
+		if updatedMinerInfo.PendingBeneficiaryTerm == nil && updatedMinerInfo.Beneficiary == mi.PendingBeneficiaryTerm.NewBeneficiary {
 			fmt.Println("Beneficiary address successfully changed")
 		} else {
 			fmt.Println("Beneficiary address change awaiting additional confirmations")

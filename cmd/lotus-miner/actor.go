@@ -1006,7 +1006,7 @@ var actorProposeChangeBeneficiary = &cli.Command{
 		}
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
+			fmt.Println("Pass --really-do-it to actually execute this action. Review what you're about to approve CAREFULLY please")
 			return nil
 		}
 
@@ -1050,7 +1050,7 @@ var actorProposeChangeBeneficiary = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		if updatedMinerInfo.PendingBeneficiaryTerm == nil {
+		if updatedMinerInfo.PendingBeneficiaryTerm == nil && updatedMinerInfo.Beneficiary == newAddr {
 			fmt.Println("Beneficiary address successfully changed")
 		} else {
 			fmt.Println("Beneficiary address change awaiting additional confirmations")
@@ -1210,7 +1210,7 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 		}
 
 		if (cctx.IsSet("existing-beneficiary") && cctx.IsSet("new-beneficiary")) || (!cctx.IsSet("existing-beneficiary") && !cctx.IsSet("new-beneficiary")) {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must pass exactly one of --existing-beneficiary or --existing-beneficiary"))
+			return lcli.ShowHelp(cctx, fmt.Errorf("must pass exactly one of --existing-beneficiary or --new-beneficiary"))
 		}
 
 		var fromAddr address.Address
@@ -1232,7 +1232,7 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 		fmt.Println("Expiration Epoch:", mi.PendingBeneficiaryTerm.NewExpiration)
 
 		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
+			fmt.Println("Pass --really-do-it to actually execute this action. Review what you're about to approve CAREFULLY please")
 			return nil
 		}
 
@@ -1268,7 +1268,7 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			return fmt.Errorf("confirm beneficiary change failed")
+			return fmt.Errorf("confirm beneficiary change failed with code %d", wait.Receipt.ExitCode)
 		}
 
 		updatedMinerInfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
@@ -1276,7 +1276,7 @@ var actorConfirmChangeBeneficiary = &cli.Command{
 			return err
 		}
 
-		if updatedMinerInfo.PendingBeneficiaryTerm == nil {
+		if updatedMinerInfo.PendingBeneficiaryTerm == nil && updatedMinerInfo.Beneficiary == mi.PendingBeneficiaryTerm.NewBeneficiary {
 			fmt.Println("Beneficiary address successfully changed")
 		} else {
 			fmt.Println("Beneficiary address change awaiting additional confirmations")
