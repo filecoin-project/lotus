@@ -169,6 +169,22 @@ var StateMinerInfo = &cli.Command{
 		for i, controlAddress := range mi.ControlAddresses {
 			fmt.Printf("Control %d: \t%s\n", i, controlAddress)
 		}
+		if mi.Beneficiary != address.Undef {
+			fmt.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
+			if mi.Beneficiary != mi.Owner {
+				fmt.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
+				fmt.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
+				fmt.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
+			}
+		}
+		if mi.PendingBeneficiaryTerm != nil {
+			fmt.Printf("Pending Beneficiary Term:\n")
+			fmt.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
+			fmt.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
+			fmt.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
+			fmt.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
+			fmt.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
+		}
 
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("Multiaddrs:\t")
