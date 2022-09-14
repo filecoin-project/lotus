@@ -302,6 +302,6 @@ func handleErrors(ctx statemachine.Context, err error, sector SectorInfo) error 
 	case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
 		return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 	default:
-		return xerrors.Errorf("checkPieces sanity check error: %w", err)
+		return xerrors.Errorf("checkPieces sanity check error: %w (%+v)", err, err)
 	}
 }

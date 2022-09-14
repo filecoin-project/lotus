@@ -396,7 +396,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		e abi.ChainEpoch
 		p abi.TokenAmount
 	})
-	expF := func(sn abi.SectorNumber) (abi.ChainEpoch, abi.TokenAmount, error) {
+	getExpirationCached := func(sn abi.SectorNumber) (abi.ChainEpoch, abi.TokenAmount, error) {
 		if e, ok := memo[sn]; ok {
 			return e.e, e.p, nil
 		}
@@ -440,13 +440,13 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 			avail := abi.PaddedPieceSize(ssize).Unpadded() - sector.used
 			// check that sector lifetime is long enough to fit deal using latest expiration from on chain
 
-			ok, err := sector.dealFitsInLifetime(piece.deal.DealProposal.EndEpoch, expF)
+			ok, err := sector.dealFitsInLifetime(piece.deal.DealProposal.EndEpoch, getExpirationCached)
 			if err != nil {
 				log.Errorf("failed to check expiration for cc Update sector %d", sector.number)
 				continue
 			}
 			if !ok {
-				exp, _, _ := expF(sector.number)
+				exp, _, _ := getExpirationCached(sector.number)
 				log.Debugf("CC update sector %d cannot fit deal, expiration %d before deal end epoch %d", id, exp, piece.deal.DealProposal.EndEpoch)
 				continue
 			}
@@ -513,7 +513,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 
 	if len(toAssign) > 0 {
 		log.Errorf("we are trying to create a new sector with open sectors %v", m.openSectors)
-		if err := m.tryGetDealSector(ctx, sp, expF); err != nil {
+		if err := m.tryGetDealSector(ctx, sp, getExpirationCached); err != nil {
 			log.Errorw("Failed to create a new sector for deals", "error", err)
 		}
 	}
@@ -551,8 +551,13 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 	}
 
 	minDur, maxDur := policy.DealDurationBounds(0)
+	minTarget = ts.Height() + minDur
 
-	return ts.Height() + minDur, ts.Height() + maxDur, nil
+	if len(candidates) > 0 && candidates[0].deal.DealProposal.EndEpoch > minTarget {
+		minTarget = candidates[0].deal.DealProposal.EndEpoch
+	}
+
+	return minTarget, ts.Height() + maxDur, nil
 }
 
 func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) (bool, error) {
