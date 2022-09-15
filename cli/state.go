@@ -1900,7 +1900,6 @@ var StateSysActorCIDsCmd = &cli.Command{
 		&cli.UintFlag{
 			Name:  "network-version",
 			Usage: "specify network version",
-			Value: uint(build.NewestNetworkVersion),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1916,7 +1915,15 @@ var StateSysActorCIDsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		nv := network.Version(cctx.Uint64("network-version"))
+		var nv network.Version
+		if cctx.IsSet("network-version") {
+			nv = network.Version(cctx.Uint64("network-version"))
+		} else {
+			nv, err = api.StateNetworkVersion(ctx, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+		}
 
 		fmt.Printf("Network Version: %d\n", nv)
 
