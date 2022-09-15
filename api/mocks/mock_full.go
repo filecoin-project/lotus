@@ -982,10 +982,10 @@ func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1, arg2 interface{})
 }
 
 // EthGasPrice mocks base method.
-func (m *MockFullNode) EthGasPrice(arg0 context.Context) (api.EthInt, error) {
+func (m *MockFullNode) EthGasPrice(arg0 context.Context) (api.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGasPrice", arg0)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

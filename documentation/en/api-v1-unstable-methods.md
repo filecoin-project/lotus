@@ -2206,7 +2206,7 @@ Perms: read
 
 Inputs: `null`
 
-Response: `"0x5"`
+Response: `"0x0"`
 
 ### EthGetBalance
 

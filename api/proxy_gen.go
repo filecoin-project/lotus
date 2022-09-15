@@ -223,7 +223,7 @@ type FullNodeStruct struct {
 
 		EthEstimateGas func(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) `perm:"read"`
 
-		EthGasPrice func(p0 context.Context) (EthInt, error) `perm:"read"`
+		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
 		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
 
@@ -1813,15 +1813,15 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall, p2 string)
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthInt, error) {
+func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthBigInt, error) {
 	if s.Internal.EthGasPrice == nil {
-		return *new(EthInt), ErrNotSupported
+		return *new(EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthGasPrice(p0)
 }
 
-func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthInt, error) {
-	return *new(EthInt), ErrNotSupported
+func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthBigInt, error) {
+	return *new(EthBigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) {

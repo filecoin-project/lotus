@@ -40,7 +40,7 @@ type EthModuleAPI interface {
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (api.EthInt, error)
-	EthGasPrice(ctx context.Context) (api.EthInt, error)
+	EthGasPrice(ctx context.Context) (api.EthBigInt, error)
 	EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error)
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
@@ -229,8 +229,20 @@ func (a *EthModule) EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt,
 	return api.EthBigInt(gasPremium), nil
 }
 
-func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {
-	return api.EthInt(0), nil
+func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthBigInt, error) {
+	// According to Geth's implementation, eth_gasPrice should return base + tip
+	// Ref: https://github.com/ethereum/pm/issues/328#issuecomment-853234014
+
+	ts := a.Chain.GetHeaviestTipSet()
+	baseFee := ts.Blocks()[0].ParentBaseFee
+
+	premium, err := a.EthMaxPriorityFeePerGas(ctx)
+	if err != nil {
+		return api.EthBigInt(big.Zero()), nil
+	}
+
+	gasPrice := big.Add(baseFee, big.Int(premium))
+	return api.EthBigInt(gasPrice), nil
 }
 
 // func (a *EthModule) EthSendRawTransaction(ctx context.Context tx api.EthTx) (api.EthHash, error) {
