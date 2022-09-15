@@ -767,7 +767,7 @@ type FullNode interface {
 	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                    //perm:read
 	EthGasPrice(ctx context.Context) (EthInt, error)                                                           //perm:read
 
-	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                     //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)                  //perm:read
 	EthEstimateGas(ctx context.Context, tx EthCall, blkParam string) (EthInt, error) //perm:read
 	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error)      //perm:read
 

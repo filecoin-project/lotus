@@ -1177,10 +1177,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionReceipt(arg0, arg1 interfac
 }
 
 // EthMaxPriorityFeePerGas mocks base method.
-func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (api.EthInt, error) {
+func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (api.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthMaxPriorityFeePerGas", arg0)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -42,7 +43,7 @@ type EthModuleAPI interface {
 	EthGasPrice(ctx context.Context) (api.EthInt, error)
 	EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error)
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
-	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error)
+	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (api.EthHash, error)
 }
 
@@ -220,8 +221,12 @@ func (a *EthModule) EthProtocolVersion(ctx context.Context) (api.EthInt, error) 
 	return api.EthInt(a.StateManager.GetNetworkVersion(ctx, height)), nil
 }
 
-func (a *EthModule) EthMaxPriorityFeePerGas(ctx context.Context) (api.EthInt, error) {
-	return api.EthInt(0), nil
+func (a *EthModule) EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error) {
+	gasPremium, err := a.GasAPI.GasEstimateGasPremium(ctx, 0, builtin.SystemActorAddr, 10000, types.EmptyTSK)
+	if err != nil {
+		return api.EthBigInt(big.Zero()), err
+	}
+	return api.EthBigInt(gasPremium), nil
 }
 
 func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthInt, error) {

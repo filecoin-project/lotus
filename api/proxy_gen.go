@@ -249,7 +249,7 @@ type FullNodeStruct struct {
 
 		EthGetTransactionReceipt func(p0 context.Context, p1 EthHash) (EthTxReceipt, error) `perm:"read"`
 
-		EthMaxPriorityFeePerGas func(p0 context.Context) (EthInt, error) `perm:"read"`
+		EthMaxPriorityFeePerGas func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
 		EthProtocolVersion func(p0 context.Context) (EthInt, error) `perm:"read"`
 
@@ -1956,15 +1956,15 @@ func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) 
 	return *new(EthTxReceipt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthInt, error) {
+func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
 	if s.Internal.EthMaxPriorityFeePerGas == nil {
-		return *new(EthInt), ErrNotSupported
+		return *new(EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthMaxPriorityFeePerGas(p0)
 }
 
-func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthInt, error) {
-	return *new(EthInt), ErrNotSupported
+func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
+	return *new(EthBigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthInt, error) {
