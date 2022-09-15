@@ -585,7 +585,7 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 }
 
 func openFDs(t *testing.T) int {
-	dent, err := ioutil.ReadDir("/proc/self/fd")
+	dent, err := os.ReadDir("/proc/self/fd")
 	require.NoError(t, err)
 
 	var skip int
@@ -611,7 +611,7 @@ func requireFDsClosed(t *testing.T, start int) {
 	openNow := openFDs(t)
 
 	if start != openNow {
-		dent, err := ioutil.ReadDir("/proc/self/fd")
+		dent, err := os.ReadDir("/proc/self/fd")
 		require.NoError(t, err)
 
 		for _, info := range dent {
