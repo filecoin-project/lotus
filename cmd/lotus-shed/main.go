@@ -73,6 +73,7 @@ func main() {
 		migrationsCmd,
 		diffCmd,
 		itestdCmd,
+		msigCmd,
 	}
 
 	app := &cli.App{
