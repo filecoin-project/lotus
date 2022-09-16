@@ -1169,7 +1169,7 @@ func (sb *Sealer) Remove(ctx context.Context, sector storiface.SectorRef) error 
 	return xerrors.Errorf("not supported at this layer") // happens in localworker
 }
 
-func (sb *Sealer) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) error {
+func (sb *Sealer) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) error {
 	var todo storiface.SectorFileType
 	for fileType := range src {
 		todo |= fileType

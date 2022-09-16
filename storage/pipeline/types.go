@@ -94,9 +94,9 @@ type SectorInfo struct {
 	TerminatedAt     abi.ChainEpoch
 
 	// Remote import
-	RemoteDataUnsealed        *storiface.SectorData
-	RemoteDataSealed          *storiface.SectorData
-	RemoteDataCache           *storiface.SectorData
+	RemoteDataUnsealed        *storiface.SectorLocation
+	RemoteDataSealed          *storiface.SectorLocation
+	RemoteDataCache           *storiface.SectorLocation
 	RemoteCommit1Endpoint     string
 	RemoteCommit2Endpoint     string
 	RemoteSealingDoneEndpoint string

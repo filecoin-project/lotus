@@ -87,7 +87,7 @@ type Sealer interface {
 
 	FinalizeReplicaUpdate(ctx context.Context, sector SectorRef, keepUnsealed []Range) error
 
-	DownloadSectorData(ctx context.Context, sector SectorRef, finalized bool, src map[SectorFileType]SectorData) error
+	DownloadSectorData(ctx context.Context, sector SectorRef, finalized bool, src map[SectorFileType]SectorLocation) error
 }
 
 type Unsealer interface {
@@ -123,7 +123,7 @@ type Prover interface {
 	AggregateSealProofs(aggregateInfo proof.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error)
 }
 
-type SectorData struct {
+type SectorLocation struct {
 	// Local when set to true indicates to lotus that sector data is already
 	// available locally; When set lotus will skip fetching sector data, and
 	// only check that sector data exists in sector storage
@@ -140,7 +140,7 @@ type SectorData struct {
 	Headers []SecDataHttpHeader
 }
 
-func (sd *SectorData) HttpHeaders() http.Header {
+func (sd *SectorLocation) HttpHeaders() http.Header {
 	out := http.Header{}
 	for _, header := range sd.Headers {
 		out[header.Key] = append(out[header.Key], header.Value)

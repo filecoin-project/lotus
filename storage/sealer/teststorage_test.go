@@ -21,7 +21,7 @@ type testExec struct {
 	apch chan chan apres
 }
 
-func (t *testExec) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) error {
+func (t *testExec) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) error {
 	panic("implement me")
 }
 

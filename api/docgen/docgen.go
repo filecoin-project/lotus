@@ -345,7 +345,7 @@ func init() {
 		"Authorization": []string{"Bearer ey.."},
 	})
 
-	addExample(map[storiface.SectorFileType]storiface.SectorData{
+	addExample(map[storiface.SectorFileType]storiface.SectorLocation{
 		storiface.FTSealed: {
 			Local:   false,
 			URL:     "https://example.com/sealingservice/sectors/s-f0123-12345",

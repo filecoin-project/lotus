@@ -91,8 +91,13 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 
 	switch SectorState(meta.State) {
 	case Proving, Available:
-		// todo possibly check
-		info.CommitMessage = meta.CommitMessage
+		if meta.CommitMessage != nil {
+			if err := checkMessagePrefix(*meta.CommitMessage); err != nil {
+				return SectorInfo{}, xerrors.Errorf("commit message prefix: %w", err)
+			}
+
+			info.CommitMessage = meta.CommitMessage
+		}
 
 		fallthrough
 	case SubmitCommit:
@@ -100,10 +105,14 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 			return SectorInfo{}, xerrors.Errorf("sector PreCommitDeposit was null")
 		}
 
-		info.PreCommitInfo = meta.PreCommitInfo
 		info.PreCommitDeposit = *meta.PreCommitDeposit
-		info.PreCommitMessage = meta.PreCommitMessage
 		info.PreCommitTipSet = meta.PreCommitTipSet
+		if info.PreCommitMessage != nil {
+			if err := checkMessagePrefix(*meta.PreCommitMessage); err != nil {
+				return SectorInfo{}, xerrors.Errorf("commit message prefix: %w", err)
+			}
+			info.PreCommitMessage = meta.PreCommitMessage
+		}
 
 		// check provided seed
 		if len(meta.SeedValue) != abi.RandomnessLength {
@@ -256,9 +265,9 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 }
 
 func (m *Sealing) handleReceiveSector(ctx statemachine.Context, sector SectorInfo) error {
-	toFetch := map[storiface.SectorFileType]storiface.SectorData{}
+	toFetch := map[storiface.SectorFileType]storiface.SectorLocation{}
 
-	for fileType, data := range map[storiface.SectorFileType]*storiface.SectorData{
+	for fileType, data := range map[storiface.SectorFileType]*storiface.SectorLocation{
 		storiface.FTUnsealed: sector.RemoteDataUnsealed,
 		storiface.FTSealed:   sector.RemoteDataSealed,
 		storiface.FTCache:    sector.RemoteDataCache,
@@ -284,4 +293,12 @@ func (m *Sealing) handleReceiveSector(ctx statemachine.Context, sector SectorInf
 	// todo data checks?
 
 	return ctx.Send(SectorReceived{})
+}
+
+func checkMessagePrefix(c cid.Cid) error {
+	p := c.Prefix()
+	if p.Version != 1 || p.MhLength != 32 || p.MhType != multihash.BLAKE2B_MIN+31 || p.Codec != cid.DagCBOR {
+		return xerrors.New("invalid message prefix")
+	}
+	return nil
 }

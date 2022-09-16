@@ -87,7 +87,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// CRETE THE UNSEALED FILE
+	// CREATE THE UNSEALED FILE
 
 	// create a reader for all-zero (CC) data
 	dataReader := bytes.NewReader(bytes.Repeat([]byte{0}, int(pieceSize.Unpadded())))
@@ -169,15 +169,15 @@ func TestSectorImportAfterPC2(t *testing.T) {
 		CommD: &scids.Unsealed,
 		CommR: &scids.Sealed,
 
-		DataUnsealed: &storiface.SectorData{
+		DataUnsealed: &storiface.SectorLocation{
 			Local: false,
 			URL:   unsealedURL,
 		},
-		DataSealed: &storiface.SectorData{
+		DataSealed: &storiface.SectorLocation{
 			Local: false,
 			URL:   sealedURL,
 		},
-		DataCache: &storiface.SectorData{
+		DataCache: &storiface.SectorLocation{
 			Local: false,
 			URL:   cacheURL,
 		},

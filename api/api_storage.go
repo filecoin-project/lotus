@@ -563,11 +563,11 @@ type RemoteSectorMeta struct {
 	// Sector urls - lotus will use those for fetching files into local storage
 
 	// Required in all states
-	DataUnsealed *storiface.SectorData
+	DataUnsealed *storiface.SectorLocation
 
 	// Required in PreCommitting and later
-	DataSealed *storiface.SectorData
-	DataCache  *storiface.SectorData
+	DataSealed *storiface.SectorLocation
+	DataCache  *storiface.SectorLocation
 
 	////////
 	// SEALING SERVICE HOOKS

@@ -517,7 +517,7 @@ func (mgr *SectorMgr) ReleaseSectorKey(ctx context.Context, sector storiface.Sec
 	return nil
 }
 
-func (mgr *SectorMgr) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) error {
+func (mgr *SectorMgr) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) error {
 	return xerrors.Errorf("not supported")
 }
 

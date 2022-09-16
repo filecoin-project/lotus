@@ -31,7 +31,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{184, 39}); err != nil {
+	if _, err := cw.Write([]byte{184, 38}); err != nil {
 		return err
 	}
 
@@ -655,7 +655,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.RemoteDataUnsealed (storiface.SectorData) (struct)
+	// t.RemoteDataUnsealed (storiface.SectorLocation) (struct)
 	if len("RemoteDataUnsealed") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"RemoteDataUnsealed\" was too long")
 	}
@@ -671,7 +671,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.RemoteDataSealed (storiface.SectorData) (struct)
+	// t.RemoteDataSealed (storiface.SectorLocation) (struct)
 	if len("RemoteDataSealed") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"RemoteDataSealed\" was too long")
 	}
@@ -687,7 +687,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.RemoteDataCache (storiface.SectorData) (struct)
+	// t.RemoteDataCache (storiface.SectorLocation) (struct)
 	if len("RemoteDataCache") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"RemoteDataCache\" was too long")
 	}
@@ -1488,7 +1488,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.TerminatedAt = abi.ChainEpoch(extraI)
 			}
-			// t.RemoteDataUnsealed (storiface.SectorData) (struct)
+			// t.RemoteDataUnsealed (storiface.SectorLocation) (struct)
 		case "RemoteDataUnsealed":
 
 			{
@@ -1501,14 +1501,14 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 					if err := cr.UnreadByte(); err != nil {
 						return err
 					}
-					t.RemoteDataUnsealed = new(storiface.SectorData)
+					t.RemoteDataUnsealed = new(storiface.SectorLocation)
 					if err := t.RemoteDataUnsealed.UnmarshalCBOR(cr); err != nil {
 						return xerrors.Errorf("unmarshaling t.RemoteDataUnsealed pointer: %w", err)
 					}
 				}
 
 			}
-			// t.RemoteDataSealed (storiface.SectorData) (struct)
+			// t.RemoteDataSealed (storiface.SectorLocation) (struct)
 		case "RemoteDataSealed":
 
 			{
@@ -1521,14 +1521,14 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 					if err := cr.UnreadByte(); err != nil {
 						return err
 					}
-					t.RemoteDataSealed = new(storiface.SectorData)
+					t.RemoteDataSealed = new(storiface.SectorLocation)
 					if err := t.RemoteDataSealed.UnmarshalCBOR(cr); err != nil {
 						return xerrors.Errorf("unmarshaling t.RemoteDataSealed pointer: %w", err)
 					}
 				}
 
 			}
-			// t.RemoteDataCache (storiface.SectorData) (struct)
+			// t.RemoteDataCache (storiface.SectorLocation) (struct)
 		case "RemoteDataCache":
 
 			{
@@ -1541,7 +1541,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 					if err := cr.UnreadByte(); err != nil {
 						return err
 					}
-					t.RemoteDataCache = new(storiface.SectorData)
+					t.RemoteDataCache = new(storiface.SectorLocation)
 					if err := t.RemoteDataCache.UnmarshalCBOR(cr); err != nil {
 						return xerrors.Errorf("unmarshaling t.RemoteDataCache pointer: %w", err)
 					}

@@ -282,7 +282,7 @@ func (t *SecDataHttpHeader) UnmarshalCBOR(r io.Reader) (err error) {
 
 	return nil
 }
-func (t *SectorData) MarshalCBOR(w io.Writer) error {
+func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -360,8 +360,8 @@ func (t *SectorData) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *SectorData) UnmarshalCBOR(r io.Reader) (err error) {
-	*t = SectorData{}
+func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = SectorLocation{}
 
 	cr := cbg.NewCborReader(r)
 
@@ -380,7 +380,7 @@ func (t *SectorData) UnmarshalCBOR(r io.Reader) (err error) {
 	}
 
 	if extra > cbg.MaxLength {
-		return fmt.Errorf("SectorData: map struct too large (%d)", extra)
+		return fmt.Errorf("SectorLocation: map struct too large (%d)", extra)
 	}
 
 	var name string

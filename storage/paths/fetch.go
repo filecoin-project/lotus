@@ -72,6 +72,7 @@ func fetch(ctx context.Context, url, outname string, header http.Header) (rerr e
 }
 
 // FetchWithTemp fetches data into a temp 'fetching' directory, then moves the file to destination
+// The set of URLs must refer to the same object, if one fails, another one will be tried.
 func FetchWithTemp(ctx context.Context, urls []string, dest string, header http.Header) (string, error) {
 	var merr error
 	for _, url := range urls {

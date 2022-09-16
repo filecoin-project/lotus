@@ -1089,7 +1089,7 @@ func (m *Manager) ProveReplicaUpdate2(ctx context.Context, sector storiface.Sect
 	return out, waitErr
 }
 
-func (m *Manager) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorData) error {
+func (m *Manager) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -1098,7 +1098,7 @@ func (m *Manager) DownloadSectorData(ctx context.Context, sector storiface.Secto
 	// get a sorted list of sectors files to make a consistent work key from
 	ents := make([]struct {
 		T storiface.SectorFileType
-		S storiface.SectorData
+		S storiface.SectorLocation
 	}, 0, len(src))
 	for fileType, data := range src {
 		if len(fileType.AllSet()) != 1 {
@@ -1109,7 +1109,7 @@ func (m *Manager) DownloadSectorData(ctx context.Context, sector storiface.Secto
 
 		ents = append(ents, struct {
 			T storiface.SectorFileType
-			S storiface.SectorData
+			S storiface.SectorLocation
 		}{T: fileType, S: data})
 	}
 	sort.Slice(ents, func(i, j int) bool {
