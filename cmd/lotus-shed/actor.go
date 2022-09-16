@@ -378,7 +378,9 @@ var actorControlList = &cli.Command{
 
 			kstr := k.String()
 			if !cctx.Bool("verbose") {
-				kstr = kstr[:9] + "..."
+				if len(kstr) > 9 {
+					kstr = kstr[:6] + "..."
+				}
 			}
 
 			bstr := types.FIL(b).String()
