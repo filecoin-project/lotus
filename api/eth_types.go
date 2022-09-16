@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -183,20 +185,61 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 }
 
 type EthTxReceipt struct {
-	TransactionHash  EthHash    `json:"transactionHash"`
-	TransactionIndex EthInt     `json:"transacionIndex"`
-	BlockHash        EthHash    `json:"blockHash"`
-	BlockNumber      EthHash    `json:"blockNumber"`
-	From             EthAddress `json:"from"`
-	To               EthAddress `json:"to"`
+	TransactionHash  EthHash     `json:"transactionHash"`
+	TransactionIndex EthInt      `json:"transacionIndex"`
+	BlockHash        EthHash     `json:"blockHash"`
+	BlockNumber      EthInt      `json:"blockNumber"`
+	From             EthAddress  `json:"from"`
+	To               *EthAddress `json:"to"`
 	// Logs
 	// LogsBloom
 	StateRoot         EthHash     `json:"root"`
 	Status            EthInt      `json:"status"`
 	ContractAddress   *EthAddress `json:"contractAddress"`
-	CumulativeGasUsed EthBigInt   `json:"cumulativeGasUsed"`
-	GasUsed           EthBigInt   `json:"gasUsed"`
+	CumulativeGasUsed EthInt      `json:"cumulativeGasUsed"`
+	GasUsed           EthInt      `json:"gasUsed"`
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
+}
+
+func NewEthTxReceipt(tx EthTx) EthTxReceipt {
+	return EthTxReceipt{
+		TransactionHash:  tx.Hash,
+		TransactionIndex: tx.TransactionIndex,
+		BlockHash:        tx.BlockHash,
+		BlockNumber:      tx.BlockNumber,
+		From:             tx.From,
+		To:               &tx.To,
+		StateRoot:        EmptyEthHash,
+	}
+}
+
+func (r *EthTxReceipt) PopulateReceipt(lookup *MsgLookup, replay *InvocResult) error {
+	// check if this is a contract creation
+	var result init8.ExecReturn
+	ret := bytes.NewReader(lookup.Receipt.Return)
+	if err := result.UnmarshalCBOR(ret); lookup.Receipt.ExitCode.IsSuccess() && err == nil {
+		contractAddr, err := EthAddressFromFilecoinIDAddress(result.IDAddress)
+		if err == nil {
+			r.To = nil
+			r.ContractAddress = &contractAddr
+		}
+	}
+
+	if lookup.Receipt.ExitCode.IsSuccess() {
+		r.Status = 1
+	}
+	if lookup.Receipt.ExitCode.IsError() {
+		r.Status = 0
+	}
+
+	r.GasUsed = EthInt(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	r.CumulativeGasUsed = EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	r.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
+	return nil
 }
 
 const (

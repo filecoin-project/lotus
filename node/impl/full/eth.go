@@ -30,7 +30,7 @@ type EthModuleAPI interface {
 	EthGetBlockByNumber(ctx context.Context, blkNum api.EthInt, fullTxInfo bool) (api.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash api.EthHash) (api.EthTx, error)
 	EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkOpt string) (api.EthInt, error)
-	EthGetTransactionReceipt(ctx context.Context, blkHash api.EthHash) (api.EthTxReceipt, error)
+	EthGetTransactionReceipt(ctx context.Context, txHash api.EthHash) (api.EthTxReceipt, error)
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthInt) (api.EthTx, error)
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthInt, txIndex api.EthInt) (api.EthTx, error)
 	EthGetCode(ctx context.Context, address api.EthAddress) (string, error)
@@ -164,8 +164,27 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender api.EthAd
 	return api.EthInt(nonce), nil
 }
 
-func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, blkHash api.EthHash) (api.EthTxReceipt, error) {
-	return api.EthTxReceipt{}, nil
+func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.EthHash) (api.EthTxReceipt, error) {
+	cid := txHash.ToCid()
+
+	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
+	if err != nil {
+		return api.EthTxReceipt{}, err
+	}
+
+	tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
+	if err != nil {
+		return api.EthTxReceipt{}, err
+	}
+
+	replay, err := a.StateAPI.StateReplay(ctx, types.EmptyTSK, cid)
+	if err != nil {
+		return api.EthTxReceipt{}, err
+	}
+
+	receipt := api.NewEthTxReceipt(tx)
+	receipt.PopulateReceipt(msgLookup, replay)
+	return receipt, nil
 }
 
 func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthInt) (api.EthTx, error) {
@@ -398,7 +417,7 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return api.EthTx{}, err
 	}
 
-	toFilAddr, err := a.StateAPI.StateLookupID(ctx, msg.From, types.EmptyTSK)
+	toFilAddr, err := a.StateAPI.StateLookupID(ctx, msg.To, types.EmptyTSK)
 	if err != nil {
 		return api.EthTx{}, err
 	}

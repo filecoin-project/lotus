@@ -754,7 +754,7 @@ type FullNode interface {
 	EthGetBlockByNumber(ctx context.Context, blkNum EthInt, fullTxInfo bool) (EthBlock, error)                //perm:read
 	EthGetTransactionByHash(ctx context.Context, txHash EthHash) (EthTx, error)                               //perm:read
 	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthInt, error)             //perm:read
-	EthGetTransactionReceipt(ctx context.Context, blkHash EthHash) (EthTxReceipt, error)                      //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (EthTxReceipt, error)                       //perm:read
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthInt) (EthTx, error) //perm:read
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthInt, txIndex EthInt) (EthTx, error) //perm:read
 
