@@ -521,7 +521,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	return nil
 }
 
-func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize, cfg sealiface.Config) (minExp, target abi.ChainEpoch, err error) {
+func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize, cfg sealiface.Config) (minExpEpoch, targetEpoch abi.ChainEpoch, err error) {
 	var candidates []*pendingPiece
 
 	for _, piece := range m.pendingPieces {
@@ -542,7 +542,7 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 	// Find the expiration of the last deal which can fit into the sector, use that as the initial target
 	for _, candidate := range candidates {
 		totalBytes += uint64(candidate.size)
-		target = candidate.deal.DealProposal.EndEpoch
+		targetEpoch = candidate.deal.DealProposal.EndEpoch
 
 		if totalBytes >= uint64(abi.PaddedPieceSize(ssize).Unpadded()) {
 			full = true
@@ -550,33 +550,33 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 		}
 	}
 
+	ts, err := m.Api.ChainHead(ctx)
+	if err != nil {
+		return 0, 0, xerrors.Errorf("getting current epoch: %w", err)
+	}
+
 	// if the sector isn't full, use max deal duration as the target
 	if !full {
-		ts, err := m.Api.ChainHead(ctx)
-		if err != nil {
-			return 0, 0, xerrors.Errorf("getting current epoch: %w", err)
-		}
-
 		minDur, maxDur := policy.DealDurationBounds(0)
-		minExp = ts.Height() + minDur
 
-		target = maxDur
+		minExpEpoch = ts.Height() + minDur
+		targetEpoch = ts.Height() + maxDur
 	}
 
 	// make sure that at least one deal in the queue is within the expiration
-	if len(candidates) > 0 && candidates[0].deal.DealProposal.EndEpoch > minExp {
-		minExp = candidates[0].deal.DealProposal.EndEpoch
+	if len(candidates) > 0 && candidates[0].deal.DealProposal.EndEpoch > minExpEpoch {
+		minExpEpoch = candidates[0].deal.DealProposal.EndEpoch
 	}
 
 	// apply user minimums
-	if abi.ChainEpoch(cfg.MinUpgradeSectorExpiration) > minExp {
-		minExp = abi.ChainEpoch(cfg.MinUpgradeSectorExpiration)
+	if abi.ChainEpoch(cfg.MinUpgradeSectorExpiration)+ts.Height() > minExpEpoch {
+		minExpEpoch = abi.ChainEpoch(cfg.MinUpgradeSectorExpiration) + ts.Height()
 	}
-	if abi.ChainEpoch(cfg.MinTargetUpgradeSectorExpiration) > target {
-		target = abi.ChainEpoch(cfg.MinTargetUpgradeSectorExpiration)
+	if abi.ChainEpoch(cfg.MinTargetUpgradeSectorExpiration)+ts.Height() > targetEpoch {
+		targetEpoch = abi.ChainEpoch(cfg.MinTargetUpgradeSectorExpiration) + ts.Height()
 	}
 
-	return minExp, target, nil
+	return minExpEpoch, targetEpoch, nil
 }
 
 func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, cfg sealiface.Config, ef expFn) (bool, error) {
@@ -588,7 +588,7 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 	if err != nil {
 		return false, xerrors.Errorf("getting sector size: %w", err)
 	}
-	minExpiration, targetExpiration, err := m.calcTargetExpiration(ctx, ssize, cfg)
+	minExpirationEpoch, targetExpirationEpoch, err := m.calcTargetExpiration(ctx, ssize, cfg)
 	if err != nil {
 		return false, xerrors.Errorf("calculating min target expiration: %w", err)
 	}
@@ -598,7 +598,7 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 	bestPledge := types.TotalFilecoinInt
 
 	for s := range m.available {
-		expiration, pledge, err := ef(s.Number)
+		expirationEpoch, pledge, err := ef(s.Number)
 		if err != nil {
 			log.Errorw("checking sector expiration", "error", err)
 			continue
@@ -620,24 +620,24 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 		// if best is below target, we want larger expirations
 		// if best is above target, we want lower pledge, but only if still above target
 
-		if bestExpiration < targetExpiration {
-			if expiration > bestExpiration && slowChecks(s.Number) {
-				bestExpiration = expiration
+		if bestExpiration < targetExpirationEpoch {
+			if expirationEpoch > bestExpiration && slowChecks(s.Number) {
+				bestExpiration = expirationEpoch
 				bestPledge = pledge
 				candidate = s
 			}
 			continue
 		}
 
-		if expiration >= targetExpiration && pledge.LessThan(bestPledge) && slowChecks(s.Number) {
-			bestExpiration = expiration
+		if expirationEpoch >= targetExpirationEpoch && pledge.LessThan(bestPledge) && slowChecks(s.Number) {
+			bestExpiration = expirationEpoch
 			bestPledge = pledge
 			candidate = s
 		}
 	}
 
-	if bestExpiration < minExpiration {
-		log.Infow("Not upgrading any sectors", "available", len(m.available), "pieces", len(m.pendingPieces), "bestExp", bestExpiration, "target", targetExpiration, "min", minExpiration, "candidate", candidate)
+	if bestExpiration < minExpirationEpoch {
+		log.Infow("Not upgrading any sectors", "available", len(m.available), "pieces", len(m.pendingPieces), "bestExp", bestExpiration, "target", targetExpirationEpoch, "min", minExpirationEpoch, "candidate", candidate)
 		// didn't find a good sector / no sectors were available
 		return false, nil
 	}
