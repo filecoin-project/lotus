@@ -253,6 +253,8 @@ type FullNodeStruct struct {
 
 		EthProtocolVersion func(p0 context.Context) (EthInt, error) `perm:"read"`
 
+		EthSendRawTransaction func(p0 context.Context, p1 EthBytes) (EthHash, error) `perm:"read"`
+
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) `perm:"read"`
@@ -1976,6 +1978,17 @@ func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthInt, error) 
 
 func (s *FullNodeStub) EthProtocolVersion(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
+	if s.Internal.EthSendRawTransaction == nil {
+		return *new(EthHash), ErrNotSupported
+	}
+	return s.Internal.EthSendRawTransaction(p0, p1)
+}
+
+func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
+	return *new(EthHash), ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {

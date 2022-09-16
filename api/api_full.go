@@ -771,6 +771,8 @@ type FullNode interface {
 	EthEstimateGas(ctx context.Context, tx EthCall, blkParam string) (EthInt, error) //perm:read
 	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error)      //perm:read
 
+	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that

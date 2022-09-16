@@ -44,7 +44,7 @@ type EthModuleAPI interface {
 	EthEstimateGas(ctx context.Context, tx api.EthCall, blkParam string) (api.EthInt, error)
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
-	// EthSendRawTransaction(ctx context.Context, tx api.EthTx) (api.EthHash, error)
+	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
 }
 
 var _ EthModuleAPI = *new(api.FullNode)
@@ -267,9 +267,9 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthBigInt, error) {
 	return api.EthBigInt(gasPrice), nil
 }
 
-// func (a *EthModule) EthSendRawTransaction(ctx context.Context tx api.EthTx) (api.EthHash, error) {
-// 	return api.EthHash{}, nil
-// }
+func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error) {
+	return api.EthHash{}, nil
+}
 
 func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.InvocResult, error) {
 	from, err := tx.From.ToFilecoinAddress()

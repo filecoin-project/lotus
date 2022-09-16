@@ -85,6 +85,7 @@
   * [EthGetTransactionReceipt](#EthGetTransactionReceipt)
   * [EthMaxPriorityFeePerGas](#EthMaxPriorityFeePerGas)
   * [EthProtocolVersion](#EthProtocolVersion)
+  * [EthSendRawTransaction](#EthSendRawTransaction)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2534,6 +2535,20 @@ Perms: read
 Inputs: `null`
 
 Response: `"0x5"`
+
+### EthSendRawTransaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x07"
+]
+```
+
+Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
 
 ## Gas
 
