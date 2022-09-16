@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const TEST_DELAY = 1
+const TEST_DELAY = 1 * time.Second
 
 func TestSimpleDelivery(t *testing.T) {
 	cb := bcast.NewConsistentBCast(TEST_DELAY)
@@ -27,7 +27,7 @@ func TestSimpleDelivery(t *testing.T) {
 	start := time.Now()
 	testSimpleDelivery(t, cb, 100, 5)
 	since := time.Since(start)
-	require.GreaterOrEqual(t, since, TEST_DELAY*time.Second)
+	require.GreaterOrEqual(t, since, TEST_DELAY)
 }
 
 func testSimpleDelivery(t *testing.T, cb *bcast.ConsistentBCast, epoch abi.ChainEpoch, numBlocks int) {
@@ -67,7 +67,7 @@ func TestSeveralEpochs(t *testing.T) {
 			defer wg.Done()
 			// Add a random delay between epochs
 			r := mrand.Intn(500)
-			time.Sleep(time.Duration(i*TEST_DELAY)*time.Second + time.Duration(r)*time.Millisecond)
+			time.Sleep(time.Duration(i)*TEST_DELAY + time.Duration(r)*time.Millisecond)
 			rNumBlocks := mrand.Intn(5)
 			flip, err := flipCoin(0.7)
 			require.NoError(t, err)
@@ -169,7 +169,7 @@ func TestFailedEquivocation(t *testing.T) {
 			go func(i int, proof []byte) {
 				defer wg.Done()
 				// The equivocated block arrives late
-				time.Sleep(2 * TEST_DELAY * time.Second)
+				time.Sleep(2 * TEST_DELAY)
 				// Use the same proof and the same epoch
 				blk := newBlock(t, 100, proof, []byte("invalid"+strconv.Itoa(i)))
 				cb.RcvBlock(ctx, blk)
