@@ -313,7 +313,7 @@ var storageListCmd = &cli.Command{
 
 		for _, s := range sorted {
 
-			var cnt [3]int
+			var cnt [5]int
 			for _, decl := range s.sectors {
 				for i := range cnt {
 					if decl.SectorFileType&(1<<i) != 0 {
@@ -392,10 +392,12 @@ var storageListCmd = &cli.Command{
 					color.New(percCol).Sprintf("%d%%", usedPercent))
 			}
 
-			fmt.Printf("\t%s; %s; %s; Reserved: %s\n",
+			fmt.Printf("\t%s; %s; %s; %s; %s; Reserved: %s\n",
 				color.YellowString("Unsealed: %d", cnt[0]),
 				color.GreenString("Sealed: %d", cnt[1]),
 				color.BlueString("Caches: %d", cnt[2]),
+				color.GreenString("Updated: %d", cnt[3]),
+				color.BlueString("Update-caches: %d", cnt[4]),
 				types.SizeStr(types.NewInt(uint64(st.Reserved))))
 
 			si, err := minerApi.StorageInfo(ctx, s.ID)
