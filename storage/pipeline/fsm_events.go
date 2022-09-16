@@ -205,7 +205,6 @@ type SectorPreCommitted struct {
 func (evt SectorPreCommitted) apply(state *SectorInfo) {
 	state.PreCommitMessage = &evt.Message
 	state.PreCommitDeposit = evt.PreCommitDeposit
-	state.PreCommitInfo = &evt.PreCommitInfo
 }
 
 type SectorSeedReady struct {
