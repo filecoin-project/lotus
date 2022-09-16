@@ -119,7 +119,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, self p
 			}
 			// Garbage collect the broadcast state
 			cb.GarbageCollect(blk.Header.Height)
-			log.Infof("Block in height %v delivered successfully", blk.Header.Height)
+			log.Infof("Block in height %v delivered successfully (cid=)", blk.Header.Height, blk.Cid())
 
 			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
 				Header:        blk.Header,
