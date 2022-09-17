@@ -430,13 +430,19 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return api.EthTx{}, err
 	}
 
+	toAddr := &toEthAddr
+	_, err = api.CheckContractCreation(msgLookup)
+	if err == nil {
+		toAddr = nil
+	}
+
 	tx := api.EthTx{
 		ChainID:              api.EthInt(build.Eip155ChainId),
 		Hash:                 txHash,
 		BlockHash:            blkHash,
 		BlockNumber:          api.EthInt(msgLookup.Height),
 		From:                 fromEthAddr,
-		To:                   toEthAddr,
+		To:                   toAddr,
 		Value:                api.EthBigInt(msg.Value),
 		Type:                 api.EthInt(2),
 		Gas:                  api.EthInt(msg.GasLimit),
@@ -445,7 +451,7 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		V:                    api.EthBigIntZero,
 		R:                    api.EthBigIntZero,
 		S:                    api.EthBigIntZero,
-		// TODO: Input:
+		Input:                msg.Params,
 	}
 	return tx, nil
 }

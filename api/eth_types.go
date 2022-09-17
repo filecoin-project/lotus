@@ -145,23 +145,23 @@ func NewEthBlock() EthBlock {
 }
 
 type EthTx struct {
-	ChainID              EthInt     `json:"chainId"`
-	Nonce                uint64     `json:"nonce"`
-	Hash                 EthHash    `json:"hash"`
-	BlockHash            EthHash    `json:"blockHash"`
-	BlockNumber          EthInt     `json:"blockNumber"`
-	TransactionIndex     EthInt     `json:"transacionIndex"`
-	From                 EthAddress `json:"from"`
-	To                   EthAddress `json:"to"`
-	Value                EthBigInt  `json:"value"`
-	Type                 EthInt     `json:"type"`
-	Input                []byte     `json:"input"`
-	Gas                  EthInt     `json:"gas"`
-	MaxFeePerGas         EthBigInt  `json:"maxFeePerGas"`
-	MaxPriorityFeePerGas EthBigInt  `json:"maxPriorityFeePerGas"`
-	V                    EthBigInt  `json:"v"`
-	R                    EthBigInt  `json:"r"`
-	S                    EthBigInt  `json:"s"`
+	ChainID              EthInt      `json:"chainId"`
+	Nonce                uint64      `json:"nonce"`
+	Hash                 EthHash     `json:"hash"`
+	BlockHash            EthHash     `json:"blockHash"`
+	BlockNumber          EthInt      `json:"blockNumber"`
+	TransactionIndex     EthInt      `json:"transacionIndex"`
+	From                 EthAddress  `json:"from"`
+	To                   *EthAddress `json:"to"`
+	Value                EthBigInt   `json:"value"`
+	Type                 EthInt      `json:"type"`
+	Input                EthBytes    `json:"input"`
+	Gas                  EthInt      `json:"gas"`
+	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
+	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
+	V                    EthBigInt   `json:"v"`
+	R                    EthBigInt   `json:"r"`
+	S                    EthBigInt   `json:"s"`
 }
 
 type EthCall struct {
@@ -208,21 +208,29 @@ func NewEthTxReceipt(tx EthTx) EthTxReceipt {
 		BlockHash:        tx.BlockHash,
 		BlockNumber:      tx.BlockNumber,
 		From:             tx.From,
-		To:               &tx.To,
+		To:               tx.To,
 		StateRoot:        EmptyEthHash,
 	}
 }
 
-func (r *EthTxReceipt) PopulateReceipt(lookup *MsgLookup, replay *InvocResult) error {
-	// check if this is a contract creation
+func CheckContractCreation(lookup *MsgLookup) (*EthAddress, error) {
 	var result init8.ExecReturn
 	ret := bytes.NewReader(lookup.Receipt.Return)
 	if err := result.UnmarshalCBOR(ret); lookup.Receipt.ExitCode.IsSuccess() && err == nil {
 		contractAddr, err := EthAddressFromFilecoinIDAddress(result.IDAddress)
 		if err == nil {
-			r.To = nil
-			r.ContractAddress = &contractAddr
+			return &contractAddr, nil
 		}
+	}
+	return nil, xerrors.Errorf("not a contract creation tx")
+}
+
+func (r *EthTxReceipt) PopulateReceipt(lookup *MsgLookup, replay *InvocResult) error {
+	// check if this is a contract creation
+	contractAddr, err := CheckContractCreation(lookup)
+	if err == nil {
+		r.To = nil
+		r.ContractAddress = contractAddr
 	}
 
 	if lookup.Receipt.ExitCode.IsSuccess() {
