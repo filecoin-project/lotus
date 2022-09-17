@@ -49,6 +49,11 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	delete(m.assignedPieces, m.minerSectorID(sector.SectorNumber))
 	m.inputLk.Unlock()
 
+	// if this is a snapdeals sector, but it ended up not having any deals, abort the upgrade
+	if sector.State == SnapDealsPacking && !sector.hasDeals() {
+		return ctx.Send(SectorAbortUpgrade{xerrors.New("sector had no deals")})
+	}
+
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
 
 	var allocated abi.UnpaddedPieceSize

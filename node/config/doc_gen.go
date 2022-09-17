@@ -923,6 +923,30 @@ flow when the volume of storage deals is lower.`,
 			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)`,
 		},
 		{
+			Name: "MinUpgradeSectorExpiration",
+			Type: "uint64",
+
+			Comment: `When set to a non-zero value, minimum number of epochs until sector expiration required for sectors to be considered
+for upgrades (0 = DealMinDuration = 180 days = 518400 epochs)
+
+Note that if all deals waiting in the input queue have lifetimes longer than this value, upgrade sectors will be
+required to have expiration of at least the soonest-ending deal`,
+		},
+		{
+			Name: "MinTargetUpgradeSectorExpiration",
+			Type: "uint64",
+
+			Comment: `When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
+be selected based on lowest initial pledge.
+
+Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
+selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
+where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
+
+Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
+initial pledge - upgrade sectors will always be chosen based on longest expiration`,
+		},
+		{
 			Name: "CommittedCapacitySectorLifetime",
 			Type: "Duration",
 

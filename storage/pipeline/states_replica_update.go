@@ -21,6 +21,11 @@ import (
 )
 
 func (m *Sealing) handleReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
+	// if the sector ended up not having any deals, abort the upgrade
+	if !sector.hasDeals() {
+		return ctx.Send(SectorAbortUpgrade{xerrors.New("sector had no deals")})
+	}
+
 	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api, true); err != nil { // Sanity check state
 		return handleErrors(ctx, err, sector)
 	}
@@ -297,6 +302,6 @@ func handleErrors(ctx statemachine.Context, err error, sector SectorInfo) error 
 	case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
 		return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 	default:
-		return xerrors.Errorf("checkPieces sanity check error: %w", err)
+		return xerrors.Errorf("checkPieces sanity check error: %w (%+v)", err, err)
 	}
 }
