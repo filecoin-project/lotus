@@ -826,6 +826,9 @@ func planOneOrIgnore(ts ...func() (mut mutator, next func(*SectorInfo) (more boo
 	}
 }
 
+// maybeNotifyRemoteDone will send sealing-done notification to the RemoteSealingDone
+// if the RemoteSealingDoneEndpoint is set. If RemoteSealingDoneEndpoint is not set,
+// this is no-op
 func maybeNotifyRemoteDone(success bool, state string) func(*SectorInfo) {
 	return func(sector *SectorInfo) {
 		if sector.RemoteSealingDoneEndpoint == "" {
