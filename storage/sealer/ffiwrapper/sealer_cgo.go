@@ -64,7 +64,9 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 			log.Warnf("DataCid: cannot close pieceData reader %T because it is not an io.Closer", origPieceData)
 			return
 		}
-		closer.Close() //nolint:errcheck
+		if err := closer.Close(); err != nil {
+			log.Warnw("closing pieceData in DataCid", "error", err)
+		}
 	}()
 
 	pieceData = io.LimitReader(io.MultiReader(
@@ -186,7 +188,19 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 	}, nil
 }
 
-func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storiface.Data) (abi.PieceInfo, error) {
+func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
+	origPieceData := pieceData
+	defer func() {
+		closer, ok := origPieceData.(io.Closer)
+		if !ok {
+			log.Warnf("AddPiece: cannot close pieceData reader %T because it is not an io.Closer", origPieceData)
+			return
+		}
+		if err := closer.Close(); err != nil {
+			log.Warnw("closing pieceData in AddPiece", "error", err)
+		}
+	}()
+
 	// TODO: allow tuning those:
 	chunk := abi.PaddedPieceSize(4 << 20)
 	parallel := runtime.NumCPU()
@@ -252,7 +266,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, exis
 
 	pw := fr32.NewPadWriter(w)
 
-	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), pw)
+	pr := io.TeeReader(io.LimitReader(pieceData, int64(pieceSize)), pw)
 
 	throttle := make(chan []byte, parallel)
 	piecePromises := make([]func() (abi.PieceInfo, error), 0)
