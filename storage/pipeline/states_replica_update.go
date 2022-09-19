@@ -240,6 +240,10 @@ func (m *Sealing) handleFinalizeReplicaUpdate(ctx statemachine.Context, sector S
 }
 
 func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.ReplicaUpdateMessage == nil {
+		return xerrors.Errorf("nil sector.ReplicaUpdateMessage!")
+	}
+
 	try := func() error {
 		mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.ReplicaUpdateMessage, build.MessageConfidence, api.LookbackNoLimit, true)
 		if err != nil {
