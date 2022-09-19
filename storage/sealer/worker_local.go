@@ -202,6 +202,7 @@ const (
 	ReleaseUnsealed       ReturnType = "ReleaseUnsealed"
 	MoveStorage           ReturnType = "MoveStorage"
 	UnsealPiece           ReturnType = "UnsealPiece"
+	DownloadSector        ReturnType = "DownloadSector"
 	Fetch                 ReturnType = "Fetch"
 )
 
@@ -255,6 +256,7 @@ var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storifac
 	FinalizeReplicaUpdate: rfunc(storiface.WorkerReturn.ReturnFinalizeReplicaUpdate),
 	MoveStorage:           rfunc(storiface.WorkerReturn.ReturnMoveStorage),
 	UnsealPiece:           rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
+	DownloadSector:        rfunc(storiface.WorkerReturn.ReturnDownloadSector),
 	Fetch:                 rfunc(storiface.WorkerReturn.ReturnFetch),
 }
 
@@ -583,6 +585,17 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storiface.SectorRe
 		log.Debugf("worker has unsealed piece, sector=%+v", sector.ID)
 
 		return nil, nil
+	})
+}
+
+func (l *LocalWorker) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, sector, DownloadSector, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		return nil, sb.DownloadSectorData(ctx, sector, finalized, src)
 	})
 }
 

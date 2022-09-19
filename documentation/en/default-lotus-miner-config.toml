@@ -612,8 +612,10 @@
   # env var: LOTUS_STORAGE_PARALLELFETCHLIMIT
   #ParallelFetchLimit = 10
 
-  # Local worker config
-  #
+  # type: bool
+  # env var: LOTUS_STORAGE_ALLOWSECTORDOWNLOAD
+  #AllowSectorDownload = true
+
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWADDPIECE
   #AllowAddPiece = true

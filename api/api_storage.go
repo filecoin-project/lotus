@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
@@ -144,6 +145,8 @@ type StorageMiner interface {
 	// SectorNumFree drops a sector reservation
 	SectorNumFree(ctx context.Context, name string) error //perm:admin
 
+	SectorReceive(ctx context.Context, meta RemoteSectorMeta) error //perm:admin
+
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
 	WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) //perm:admin
@@ -166,6 +169,7 @@ type StorageMiner interface {
 	ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                       //perm:admin retry:true
 	ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                       //perm:admin retry:true
 	ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error                                                //perm:admin retry:true
+	ReturnDownloadSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                    //perm:admin retry:true
 	ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                             //perm:admin retry:true
 
 	// SealingSchedDiag dumps internal sealing scheduler state
@@ -503,4 +507,110 @@ type NumAssignerMeta struct {
 	InUse bitfield.BitField
 
 	Next abi.SectorNumber
+}
+
+type RemoteSectorMeta struct {
+	////////
+	// BASIC SECTOR INFORMATION
+
+	// State specifies the first state the sector will enter after being imported
+	// Must be one of the following states:
+	// * Packing
+	// * GetTicket
+	// * PreCommitting
+	// * SubmitCommit
+	// * Proving/Available
+	State SectorState
+
+	Sector abi.SectorID
+	Type   abi.RegisteredSealProof
+
+	////////
+	// SEALING METADATA
+	// (allows lotus to continue the sealing process)
+
+	// Required in Packing and later
+	Pieces []SectorPiece // todo better type?
+
+	// Required in PreCommitting and later
+	TicketValue   abi.SealRandomness
+	TicketEpoch   abi.ChainEpoch
+	PreCommit1Out storiface.PreCommit1Out // todo specify better
+
+	CommD *cid.Cid
+	CommR *cid.Cid // SectorKey
+
+	// Required in SubmitCommit and later
+	PreCommitInfo    *miner.SectorPreCommitInfo
+	PreCommitDeposit *big.Int
+	PreCommitMessage *cid.Cid
+	PreCommitTipSet  types.TipSetKey
+
+	SeedValue abi.InteractiveSealRandomness
+	SeedEpoch abi.ChainEpoch
+
+	CommitProof []byte
+
+	// Required in Proving/Available
+	CommitMessage *cid.Cid
+
+	// Optional sector metadata to import
+	Log []SectorLog
+
+	////////
+	// SECTOR DATA SOURCE
+
+	// Sector urls - lotus will use those for fetching files into local storage
+
+	// Required in all states
+	DataUnsealed *storiface.SectorLocation
+
+	// Required in PreCommitting and later
+	DataSealed *storiface.SectorLocation
+	DataCache  *storiface.SectorLocation
+
+	////////
+	// SEALING SERVICE HOOKS
+
+	// URL
+	// RemoteCommit1Endpoint is an URL of POST endpoint which lotus will call requesting Commit1 (seal_commit_phase1)
+	// request body will be json-serialized RemoteCommit1Params struct
+	RemoteCommit1Endpoint string
+
+	// RemoteCommit2Endpoint is an URL of POST endpoint which lotus will call requesting Commit2 (seal_commit_phase2)
+	// request body will be json-serialized RemoteCommit2Params struct
+	RemoteCommit2Endpoint string
+
+	// RemoteSealingDoneEndpoint is called after the sector exists the sealing pipeline
+	// request body will be json-serialized RemoteSealingDoneParams struct
+	RemoteSealingDoneEndpoint string
+}
+
+type RemoteCommit1Params struct {
+	Ticket, Seed []byte
+
+	Unsealed cid.Cid
+	Sealed   cid.Cid
+
+	ProofType abi.RegisteredSealProof
+}
+
+type RemoteCommit2Params struct {
+	Sector    abi.SectorID
+	ProofType abi.RegisteredSealProof
+
+	// todo spec better
+	Commit1Out storiface.Commit1Out
+}
+
+type RemoteSealingDoneParams struct {
+	// Successful is true if the sector has entered state considered as "successfully sealed"
+	Successful bool
+
+	// State is the state the sector has entered
+	// For example "Proving" / "Removing"
+	State string
+
+	// Optional commit message CID
+	CommitMessage *cid.Cid
 }

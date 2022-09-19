@@ -22,18 +22,6 @@ type Context interface {
 	Send(evt interface{}) error
 }
 
-// Piece is a tuple of piece and deal info
-type PieceWithDealInfo struct {
-	Piece    abi.PieceInfo
-	DealInfo api.PieceDealInfo
-}
-
-// Piece is a tuple of piece info and optional deal
-type Piece struct {
-	Piece    abi.PieceInfo
-	DealInfo *api.PieceDealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
-}
-
 type Log struct {
 	Timestamp uint64
 	Trace     string // for errors
@@ -61,7 +49,7 @@ type SectorInfo struct {
 
 	// Packing
 	CreationTime int64 // unix seconds
-	Pieces       []Piece
+	Pieces       []api.SectorPiece
 
 	// PreCommit1
 	TicketValue   abi.SealRandomness
@@ -89,7 +77,7 @@ type SectorInfo struct {
 
 	// CCUpdate
 	CCUpdate             bool
-	CCPieces             []Piece
+	CCPieces             []api.SectorPiece
 	UpdateSealed         *cid.Cid
 	UpdateUnsealed       *cid.Cid
 	ReplicaUpdateProof   storiface.ReplicaUpdateProof
@@ -98,12 +86,21 @@ type SectorInfo struct {
 	// Faults
 	FaultReportMsg *cid.Cid
 
-	// Recovery
+	// Recovery / Import
 	Return ReturnState
 
 	// Termination
 	TerminateMessage *cid.Cid
 	TerminatedAt     abi.ChainEpoch
+
+	// Remote import
+	RemoteDataUnsealed        *storiface.SectorLocation
+	RemoteDataSealed          *storiface.SectorLocation
+	RemoteDataCache           *storiface.SectorLocation
+	RemoteCommit1Endpoint     string
+	RemoteCommit2Endpoint     string
+	RemoteSealingDoneEndpoint string
+	RemoteDataFinalized       bool
 
 	// Debug
 	LastErr string
@@ -161,7 +158,7 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 
 // Returns list of offset/length tuples of sector data ranges which clients
 // requested to keep unsealed
-func (t *SectorInfo) keepUnsealedRanges(pieces []Piece, invert, alwaysKeep bool) []storiface.Range {
+func (t *SectorInfo) keepUnsealedRanges(pieces []api.SectorPiece, invert, alwaysKeep bool) []storiface.Range {
 	var out []storiface.Range
 
 	var at abi.UnpaddedPieceSize

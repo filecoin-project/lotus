@@ -31,6 +31,8 @@ const (
 	TTRegenSectorKey        TaskType = "seal/v0/regensectorkey"
 	TTFinalizeReplicaUpdate TaskType = "seal/v0/finalize/replicaupdate"
 
+	TTDownloadSector TaskType = "seal/v0/download/sector"
+
 	TTGenerateWindowPoSt  TaskType = "post/v0/windowproof"
 	TTGenerateWinningPoSt TaskType = "post/v0/winningproof"
 )
@@ -48,11 +50,12 @@ var order = map[TaskType]int{
 	TTCommit1:             2,
 	TTUnseal:              1,
 
-	TTFetch:    -1,
-	TTFinalize: -2,
+	TTFetch:          -1,
+	TTDownloadSector: -2,
+	TTFinalize:       -3,
 
-	TTGenerateWindowPoSt:  -3,
-	TTGenerateWinningPoSt: -4, // most priority
+	TTGenerateWindowPoSt:  -4,
+	TTGenerateWinningPoSt: -5, // most priority
 }
 
 var shortNames = map[TaskType]string{
@@ -74,6 +77,8 @@ var shortNames = map[TaskType]string{
 	TTProveReplicaUpdate2:   "PR2",
 	TTRegenSectorKey:        "GSK",
 	TTFinalizeReplicaUpdate: "FRU",
+
+	TTDownloadSector: "DL",
 
 	TTGenerateWindowPoSt:  "WDP",
 	TTGenerateWinningPoSt: "WNP",

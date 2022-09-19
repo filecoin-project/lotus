@@ -498,6 +498,8 @@ var stateList = []stateMeta{
 	{col: color.FgGreen, state: sealing.Available},
 	{col: color.FgGreen, state: sealing.UpdateActivating},
 
+	{col: color.FgMagenta, state: sealing.ReceiveSector},
+
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
 	{col: color.FgBlue, state: sealing.AddPiece},
@@ -543,6 +545,7 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
 	{col: color.FgRed, state: sealing.PreCommitFailed},
 	{col: color.FgRed, state: sealing.ComputeProofFailed},
+	{col: color.FgRed, state: sealing.RemoteCommitFailed},
 	{col: color.FgRed, state: sealing.CommitFailed},
 	{col: color.FgRed, state: sealing.CommitFinalizeFailed},
 	{col: color.FgRed, state: sealing.PackingFailed},

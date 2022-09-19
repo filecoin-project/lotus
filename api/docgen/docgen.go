@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"net/http"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -340,6 +341,17 @@ func init() {
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
 
+	addExample(http.Header{
+		"Authorization": []string{"Bearer ey.."},
+	})
+
+	addExample(map[storiface.SectorFileType]storiface.SectorLocation{
+		storiface.FTSealed: {
+			Local:   false,
+			URL:     "https://example.com/sealingservice/sectors/s-f0123-12345",
+			Headers: nil,
+		},
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

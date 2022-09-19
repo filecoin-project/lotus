@@ -778,6 +778,8 @@ type StorageMinerStruct struct {
 
 		ReturnDataCid func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
 
+		ReturnDownloadSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+
 		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
 		ReturnFinalizeReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
@@ -845,6 +847,8 @@ type StorageMinerStruct struct {
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
+
+		SectorReceive func(p0 context.Context, p1 RemoteSectorMeta) error `perm:"admin"`
 
 		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
@@ -950,6 +954,8 @@ type WorkerStruct struct {
 		AddPiece func(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storiface.Data) (storiface.CallID, error) `perm:"admin"`
 
 		DataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (storiface.CallID, error) `perm:"admin"`
+
+		DownloadSectorData func(p0 context.Context, p1 storiface.SectorRef, p2 bool, p3 map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) `perm:"admin"`
 
 		Enabled func(p0 context.Context) (bool, error) `perm:"admin"`
 
@@ -4665,6 +4671,17 @@ func (s *StorageMinerStub) ReturnDataCid(p0 context.Context, p1 storiface.CallID
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) ReturnDownloadSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnDownloadSector == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ReturnDownloadSector(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ReturnDownloadSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
 	if s.Internal.ReturnFetch == nil {
 		return ErrNotSupported
@@ -5037,6 +5054,17 @@ func (s *StorageMinerStruct) SectorPreCommitPending(p0 context.Context) ([]abi.S
 
 func (s *StorageMinerStub) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
 	return *new([]abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorReceive(p0 context.Context, p1 RemoteSectorMeta) error {
+	if s.Internal.SectorReceive == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorReceive(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorReceive(p0 context.Context, p1 RemoteSectorMeta) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
@@ -5520,6 +5548,17 @@ func (s *WorkerStruct) DataCid(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 
 }
 
 func (s *WorkerStub) DataCid(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) DownloadSectorData(p0 context.Context, p1 storiface.SectorRef, p2 bool, p3 map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) {
+	if s.Internal.DownloadSectorData == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.DownloadSectorData(p0, p1, p2, p3)
+}
+
+func (s *WorkerStub) DownloadSectorData(p0 context.Context, p1 storiface.SectorRef, p2 bool, p3 map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

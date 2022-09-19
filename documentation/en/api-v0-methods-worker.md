@@ -12,6 +12,8 @@
   * [AddPiece](#AddPiece)
 * [Data](#Data)
   * [DataCid](#DataCid)
+* [Download](#Download)
+  * [DownloadSectorData](#DownloadSectorData)
 * [Finalize](#Finalize)
   * [FinalizeReplicaUpdate](#FinalizeReplicaUpdate)
   * [FinalizeSector](#FinalizeSector)
@@ -1528,6 +1530,46 @@ Inputs:
 [
   1024,
   {}
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+## Download
+
+
+### DownloadSectorData
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  true,
+  {
+    "2": {
+      "Local": false,
+      "URL": "https://example.com/sealingservice/sectors/s-f0123-12345",
+      "Headers": null
+    }
+  }
 ]
 ```
 

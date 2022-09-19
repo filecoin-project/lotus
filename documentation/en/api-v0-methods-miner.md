@@ -113,6 +113,7 @@
 * [Return](#Return)
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnDataCid](#ReturnDataCid)
+  * [ReturnDownloadSector](#ReturnDownloadSector)
   * [ReturnFetch](#ReturnFetch)
   * [ReturnFinalizeReplicaUpdate](#ReturnFinalizeReplicaUpdate)
   * [ReturnFinalizeSector](#ReturnFinalizeSector)
@@ -150,6 +151,7 @@
   * [SectorNumReserveCount](#SectorNumReserveCount)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
+  * [SectorReceive](#SectorReceive)
   * [SectorRemove](#SectorRemove)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
@@ -2388,6 +2390,30 @@ Inputs:
 
 Response: `{}`
 
+### ReturnDownloadSector
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
 ### ReturnFetch
 
 
@@ -3150,6 +3176,134 @@ Response:
   }
 ]
 ```
+
+### SectorReceive
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "State": "Proving",
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "Type": 8,
+    "Pieces": [
+      {
+        "Piece": {
+          "Size": 1032,
+          "PieceCID": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
+        },
+        "DealInfo": {
+          "PublishCid": null,
+          "DealID": 5432,
+          "DealProposal": {
+            "PieceCID": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "PieceSize": 1032,
+            "VerifiedDeal": true,
+            "Client": "f01234",
+            "Provider": "f01234",
+            "Label": "",
+            "StartEpoch": 10101,
+            "EndEpoch": 10101,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "DealSchedule": {
+            "StartEpoch": 10101,
+            "EndEpoch": 10101
+          },
+          "KeepUnsealed": true
+        }
+      }
+    ],
+    "TicketValue": "Bw==",
+    "TicketEpoch": 10101,
+    "PreCommit1Out": "Bw==",
+    "CommD": null,
+    "CommR": null,
+    "PreCommitInfo": {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "SealRandEpoch": 10101,
+      "DealIDs": [
+        5432
+      ],
+      "Expiration": 10101,
+      "UnsealedCid": null
+    },
+    "PreCommitDeposit": "0",
+    "PreCommitMessage": null,
+    "PreCommitTipSet": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      {
+        "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+      }
+    ],
+    "SeedValue": "Bw==",
+    "SeedEpoch": 10101,
+    "CommitProof": "Ynl0ZSBhcnJheQ==",
+    "CommitMessage": null,
+    "Log": [
+      {
+        "Kind": "string value",
+        "Timestamp": 42,
+        "Trace": "string value",
+        "Message": "string value"
+      }
+    ],
+    "DataUnsealed": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
+    },
+    "DataSealed": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
+    },
+    "DataCache": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
+    },
+    "RemoteCommit1Endpoint": "string value",
+    "RemoteCommit2Endpoint": "string value",
+    "RemoteSealingDoneEndpoint": "string value"
+  }
+]
+```
+
+Response: `{}`
 
 ### SectorRemove
 SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can

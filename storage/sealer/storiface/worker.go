@@ -134,6 +134,7 @@ type WorkerCalls interface {
 	MoveStorage(ctx context.Context, sector SectorRef, types SectorFileType) (CallID, error)
 	UnsealPiece(context.Context, SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
 	Fetch(context.Context, SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
+	DownloadSectorData(ctx context.Context, sector SectorRef, finalized bool, src map[SectorFileType]SectorLocation) (CallID, error)
 
 	// sync
 	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error)
@@ -215,5 +216,6 @@ type WorkerReturn interface {
 	ReturnMoveStorage(ctx context.Context, callID CallID, err *CallError) error
 	ReturnUnsealPiece(ctx context.Context, callID CallID, err *CallError) error
 	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err *CallError) error
+	ReturnDownloadSector(ctx context.Context, callID CallID, err *CallError) error
 	ReturnFetch(ctx context.Context, callID CallID, err *CallError) error
 }

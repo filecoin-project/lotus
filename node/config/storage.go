@@ -54,6 +54,7 @@ func WriteStorageFile(path string, config paths.StorageConfig) error {
 func (c *StorageMiner) StorageManager() sealer.Config {
 	return sealer.Config{
 		ParallelFetchLimit:       c.Storage.ParallelFetchLimit,
+		AllowSectorDownload:      c.Storage.AllowSectorDownload,
 		AllowAddPiece:            c.Storage.AllowAddPiece,
 		AllowPreCommit1:          c.Storage.AllowPreCommit1,
 		AllowPreCommit2:          c.Storage.AllowPreCommit2,
