@@ -260,7 +260,16 @@ var dataexplCmd = &cli.Command{
 
 					typ = fmt.Sprintf("FILE(%s)", mimeType)
 					s = uint64(len(node.RawData()))
+				case cid.DagCBOR:
+					var i interface{}
+					err := cbor.DecodeInto(node.RawData(), &i)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 
+					typ = fmt.Sprintf("DAG-CBOR")
+					s = uint64(len(node.RawData()))
 				default:
 					http.Error(w, "unknown codec "+fmt.Sprint(root.Type()), http.StatusInternalServerError)
 					return
