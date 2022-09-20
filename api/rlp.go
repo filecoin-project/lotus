@@ -28,7 +28,7 @@ func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
 		if 1+listLenInBytes+listLen > len(data) {
 			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
 		}
-		result, err := decodeListElems(data[1+listLenInBytes:], int(listLen))
+		result, err := decodeListElems(data[1+listLenInBytes:], listLen)
 		return result, 1 + listLenInBytes + listLen, err
 	} else if data[0] >= 0xc0 {
 		length := int(data[0]) - 0xc0
@@ -40,7 +40,7 @@ func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
 		if err != nil {
 			return nil, 0, err
 		}
-		totalLen := 1 + strLenInBytes + int(strLen)
+		totalLen := 1 + strLenInBytes + strLen
 		if totalLen > len(data) {
 			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing string")
 		}
@@ -83,7 +83,7 @@ func decodeListElems(data []byte, length int) (res []interface{}, err error) {
 		result = append(result, elem)
 	}
 	if totalConsumed != length {
-		return nil, xerrors.Errorf("invalid rlp data: incorrect list length", err)
+		return nil, xerrors.Errorf("invalid rlp data: incorrect list length")
 	}
 	return result, nil
 }
