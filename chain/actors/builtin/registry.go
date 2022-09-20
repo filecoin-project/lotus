@@ -55,8 +55,8 @@ func MakeRegistryLegacy(actors []rtt.VMActor) []RegistryEntry {
 
 	for _, actor := range actors {
 		methodMap := make(map[uint64]interface{})
-		for i, method := range actor.Exports() {
-			methodMap[uint64(i)] = method
+		for methodNum, method := range actor.Exports() {
+			methodMap[uint64(methodNum)] = method
 		}
 		registry = append(registry, RegistryEntry{
 			code:    actor.Code(),

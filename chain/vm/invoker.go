@@ -78,7 +78,7 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 	if err := act.predicate(rt, codeCid); err != nil {
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "unsupported actor: %s", err)
 	}
-	if method >= abi.MethodNum(len(act.methods)) || act.methods[uint64(method)] == nil {
+	if act.methods[uint64(method)] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
 	return act.methods[uint64(method)](rt, params)
