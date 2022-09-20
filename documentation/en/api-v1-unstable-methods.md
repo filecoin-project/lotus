@@ -2383,7 +2383,7 @@ Response:
 ```json
 {
   "chainId": "0x5",
-  "nonce": 42,
+  "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
@@ -2394,6 +2394,7 @@ Response:
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
+  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
   "v": "0x0",
@@ -2419,7 +2420,7 @@ Response:
 ```json
 {
   "chainId": "0x5",
-  "nonce": 42,
+  "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
@@ -2430,6 +2431,7 @@ Response:
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
+  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
   "v": "0x0",
@@ -2454,7 +2456,7 @@ Response:
 ```json
 {
   "chainId": "0x5",
-  "nonce": 42,
+  "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
@@ -2465,6 +2467,7 @@ Response:
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
+  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
   "v": "0x0",

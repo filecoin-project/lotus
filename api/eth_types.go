@@ -146,7 +146,7 @@ func NewEthBlock() EthBlock {
 
 type EthTx struct {
 	ChainID              EthInt      `json:"chainId"`
-	Nonce                uint64      `json:"nonce"`
+	Nonce                EthInt      `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            EthHash     `json:"blockHash"`
 	BlockNumber          EthInt      `json:"blockNumber"`
@@ -157,11 +157,113 @@ type EthTx struct {
 	Type                 EthInt      `json:"type"`
 	Input                EthBytes    `json:"input"`
 	Gas                  EthInt      `json:"gas"`
+	GasLimit             *EthInt     `json:"gasLimit,omitempty"`
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
 	V                    EthBigInt   `json:"v"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
+}
+
+func bytesToEthInt(v interface{}) (EthInt, error) {
+	data, ok := v.([]byte)
+	if !ok {
+		return EthInt(0), xerrors.Errorf("cannot parse bytes to EthInt: input is not a byte array")
+	}
+	if len(data) > 8 {
+		return EthInt(0), xerrors.Errorf("cannot parse bytes to EthInt: length is more than 8 bytes")
+	}
+	var value int64
+	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
+	if err := binary.Read(r, binary.BigEndian, &value); err != nil {
+		return EthInt(0), xerrors.Errorf("cannot parse bytes to EthInt: %w", err)
+	}
+	return EthInt(value), nil
+}
+
+func bytesToEthBigInt(v interface{}) (EthBigInt, error) {
+	data, ok := v.([]byte)
+	if !ok {
+		return EthBigIntZero, xerrors.Errorf("cannot parse bytes to EthBigInt: input is not a byte array")
+	}
+	var b mathbig.Int
+	b.SetBytes(data)
+	return EthBigInt{Int: &b}, nil
+}
+
+func parseEip1559Tx(data []byte) (*EthTx, error) {
+	if data[0] != 2 {
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not 2")
+	}
+	v, err := DecodeRLP(data[1:])
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(v)
+	decoded, ok := v.([]interface{})
+	if !ok {
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: decoded data is not a list")
+	}
+
+	chainId, err := bytesToEthInt(decoded[0])
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := bytesToEthInt(decoded[1])
+	if err != nil {
+		return nil, err
+	}
+
+	maxPriorityFeePerGas, err := bytesToEthBigInt(decoded[2])
+	if err != nil {
+		return nil, err
+	}
+
+	maxFeePerGas, err := bytesToEthBigInt(decoded[3])
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit, err := bytesToEthInt(decoded[4])
+	if err != nil {
+		return nil, err
+	}
+
+	to, ok := decoded[5].([]byte)
+	if !ok {
+		return nil, xerrors.Errorf("not an EIP-1559 transaction: decoded data[5] is not a byte array")
+	}
+
+	toAddr, err := EthAddressFromBytes(to)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := EthTx{
+		ChainID:              chainId,
+		Nonce:                nonce,
+		To:                   &toAddr,
+		MaxPriorityFeePerGas: maxPriorityFeePerGas,
+		MaxFeePerGas:         maxFeePerGas,
+		GasLimit:             &gasLimit,
+		Type:                 2,
+	}
+	return &tx, nil
+}
+
+func ParseEthTx(data []byte) (*EthTx, error) {
+	if data[0] > 0x7f {
+		// legacy transaction
+		return nil, xerrors.Errorf("legacy transaction is not supported")
+	} else if data[0] == 1 {
+		// EIP-2930
+		return nil, xerrors.Errorf("EIP-2930 transaction is not supported")
+	} else if data[0] == 2 {
+		// EIP-1559
+		return parseEip1559Tx(data)
+	}
+	return nil, xerrors.Errorf("unsupported transaction type")
 }
 
 type EthCall struct {
@@ -316,6 +418,15 @@ func EthAddressFromHex(s string) (EthAddress, error) {
 	var h EthAddress
 	copy(h[ETH_ADDRESS_LENGTH-len(b):], b)
 	return h, nil
+}
+
+func EthAddressFromBytes(b []byte) (EthAddress, error) {
+	var a EthAddress
+	if len(b) != ETH_ADDRESS_LENGTH {
+		return EthAddress{}, xerrors.Errorf("cannot initiate a new EthAddress: incorrect input length")
+	}
+	copy(a[:], b[:])
+	return a, nil
 }
 
 type EthHash [ETH_HASH_LENGTH]byte

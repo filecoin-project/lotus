@@ -2,6 +2,7 @@
 package api
 
 import (
+	mathbig "math/big"
 	"strings"
 	"testing"
 
@@ -154,4 +155,50 @@ func TestUnmarshalEthBytes(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, string(data), tc)
 	}
+}
+
+func TestParseEthTx(t *testing.T) {
+	mustParseEthAddr := func(s string) *EthAddress {
+		a, err := EthAddressFromHex(s)
+		if err != nil {
+			panic(err)
+		}
+		return &a
+	}
+	takePointer := func(v EthInt) *EthInt {
+		return &v
+	}
+
+	testcases := []TestCase{
+		{`"0x02f1030185012a05f2008504a817c800825208942b87d1cb599bc2a606db9a0169fcec96af04ad3a880de0b6b3a764000080c0"`,
+			EthTx{
+				ChainID:              EthInt(3),
+				Nonce:                EthInt(1),
+				Type:                 2,
+				To:                   mustParseEthAddr("0x2b87d1CB599Bc2a606Db9A0169fcEc96Af04ad3a"),
+				MaxPriorityFeePerGas: EthBigInt{Int: mathbig.NewInt(5000000000)},
+				MaxFeePerGas:         EthBigInt{Int: mathbig.NewInt(20000000000)},
+				GasLimit:             takePointer(EthInt(21000)),
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		var b EthBytes
+		err := b.UnmarshalJSON([]byte(tc.Input.(string)))
+		require.Nil(t, err)
+
+		tx, err := ParseEthTx(b)
+		require.Nil(t, err)
+
+		expected := tc.Output.(EthTx)
+		require.Equal(t, expected.ChainID, tx.ChainID)
+		require.Equal(t, expected.Nonce, tx.Nonce)
+		require.Equal(t, expected.Type, tx.Type)
+		require.Equal(t, expected.To, tx.To)
+		require.Equal(t, expected.MaxFeePerGas, tx.MaxFeePerGas)
+		require.Equal(t, expected.MaxPriorityFeePerGas, tx.MaxPriorityFeePerGas)
+		require.Equal(t, expected.GasLimit, tx.GasLimit)
+	}
+
 }
