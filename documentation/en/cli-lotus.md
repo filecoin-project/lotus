@@ -9,7 +9,6 @@ USAGE:
 VERSION:
    1.18.0-rc1
 
-
 COMMANDS:
    daemon   Start a lotus daemon process
    backup   Create node metadata backup
