@@ -49,19 +49,19 @@ func init() {
 	cbor.RegisterCborType(basicParams{})
 }
 
-func (b basicContract) Exports() []interface{} {
-	return []interface{}{
-		b.InvokeSomething0,
-		b.BadParam,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		b.InvokeSomething10,
+func (b basicContract) Exports() map[uint64]interface{} {
+	return map[uint64]interface{}{
+		0:  b.InvokeSomething0,
+		1:  b.BadParam,
+		2:  nil,
+		3:  nil,
+		4:  nil,
+		5:  nil,
+		6:  nil,
+		7:  nil,
+		8:  nil,
+		9:  nil,
+		10: b.InvokeSomething10,
 	}
 }
 
