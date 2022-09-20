@@ -37,11 +37,7 @@ func BuildTypeString() string {
 }
 
 // BuildVersion is the local build version
-<<<<<<< HEAD
-const BuildVersion = "1.17.2"
-=======
-const BuildVersion = "1.17.3-dev"
->>>>>>> 8ca1f89ba (build: Bump version to v1.17.3-dev)
+const BuildVersion = "1.18.0-rc1"
 
 func UserVersion() string {
 	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
