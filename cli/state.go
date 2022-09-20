@@ -1247,7 +1247,7 @@ var compStateMsg = `
 <details>
 <summary>Gas Trace</summary>
 <table>
- <tr><th>Num</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
+ <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
  {{define "virt" -}}
  {{- if . -}}
  <span class="deemp">+({{.}})</span>
@@ -1259,7 +1259,7 @@ var compStateMsg = `
  {{- end}}
 
  {{range .GasCharges}}
- <tr><td>{{.Num}}{{if .Extra}}:{{.Extra}}{{end}}</td>
+ <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
  {{template "gasC" .}}
  <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td>
