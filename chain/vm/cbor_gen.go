@@ -57,7 +57,7 @@ func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.GasCharges ([]vm.FvmGasCharge) (slice)
-	if len(t.GasCharges) > cbg.MaxLength {
+	if len(t.GasCharges) > 1000000000 {
 		return xerrors.Errorf("Slice value in field t.GasCharges was too long")
 	}
 
@@ -71,7 +71,7 @@ func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Subcalls ([]vm.FvmExecutionTrace) (slice)
-	if len(t.Subcalls) > cbg.MaxLength {
+	if len(t.Subcalls) > 1000000000 {
 		return xerrors.Errorf("Slice value in field t.Subcalls was too long")
 	}
 
@@ -164,7 +164,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 1000000000 {
 		return fmt.Errorf("t.GasCharges: array too large (%d)", extra)
 	}
 
@@ -193,7 +193,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 1000000000 {
 		return fmt.Errorf("t.Subcalls: array too large (%d)", extra)
 	}
 
