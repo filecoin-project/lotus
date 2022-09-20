@@ -1575,7 +1575,7 @@ func upgradeActorsV9Common(
 //	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, types.StateTreeVersion4, newStateTreeVersion)
 //}
 
-func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actorstypes.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
+func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, oldAv actorstypes.Version, newAv actorstypes.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(bstore, blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
 	adtStore := gstStore.WrapStore(ctx, store)
@@ -1615,10 +1615,10 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		return cid.Undef, xerrors.Errorf("error loading new manifest data: %w", err)
 	}
 
-	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
+	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys(oldAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete old manifest with %d code CIDs", len(oldManifestData.Entries))
 	}
-	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
+	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys(newAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete new manifest with %d code CIDs", len(newManifestData.Entries))
 	}
 
@@ -1650,7 +1650,7 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		}
 		var head cid.Cid
 		if addr == system.Address {
-			newSystemState, err := system.MakeState(store, av, newManifest.Data)
+			newSystemState, err := system.MakeState(store, newAv, newManifest.Data)
 			if err != nil {
 				return xerrors.Errorf("could not make system actor state: %w", err)
 			}

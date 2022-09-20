@@ -384,10 +384,15 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 			return xerrors.Errorf("loading debug manifest: %w", err)
 		}
 
+		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
+		if err != nil {
+			return xerrors.Errorf("getting actors version: %w", err)
+		}
+
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
-		for _, key := range actors.GetBuiltinActorsKeys() {
-			from, ok := actors.GetActorCodeID(actorstypes.Version8, key)
+		for _, key := range actors.GetBuiltinActorsKeys(av) {
+			from, ok := actors.GetActorCodeID(av, key)
 			if !ok {
 				log.Warnf("actor missing in the from manifest %s", key)
 				continue
