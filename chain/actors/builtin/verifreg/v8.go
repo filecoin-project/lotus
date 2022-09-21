@@ -47,7 +47,9 @@ func (s *state8) RootKey() (address.Address, error) {
 }
 
 func (s *state8) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+
 	return getDataCap(s.store, actors.Version8, s.verifiedClients, addr)
+
 }
 
 func (s *state8) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -63,11 +65,15 @@ func (s *state8) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state8) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+
 	return forEachCap(s.store, actors.Version8, s.verifiedClients, cb)
+
 }
 
 func (s *state8) verifiedClients() (adt.Map, error) {
+
 	return adt8.AsMap(s.store, s.VerifiedClients, builtin8.DefaultHamtBitwidth)
+
 }
 
 func (s *state8) verifiers() (adt.Map, error) {
