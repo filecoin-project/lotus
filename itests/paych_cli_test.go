@@ -71,7 +71,7 @@ func TestPaymentChannelsBasic(t *testing.T) {
 	// This makes us wait as much as 10 epochs before giving up and failing
 	retry := 0
 	_, err = paymentReceiver.StateLookupID(ctx, chAddr, types.EmptyTSK)
-	for err != nil && xerrors.Is(err, api.ErrActorNotFound{}) {
+	for err != nil && xerrors.Is(err, &api.ErrActorNotFound{}) {
 		time.Sleep(blocktime)
 		_, err = paymentReceiver.StateLookupID(ctx, chAddr, types.EmptyTSK)
 		retry++

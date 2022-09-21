@@ -291,7 +291,7 @@ func gasEstimateGasLimit(
 		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
 	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
-		return -1, api.ErrOutOfGas{}
+		return -1, &api.ErrOutOfGas{}
 	}
 
 	if res.MsgRct.ExitCode != exitcode.Ok {
