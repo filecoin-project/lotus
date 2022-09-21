@@ -118,6 +118,23 @@ var dataexplCmd = &cli.Command{
 
 		m := mux.NewRouter()
 
+		m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			tpl, err := template.ParseFS(dres, "dexpl/index.gohtml")
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			data := map[string]interface{}{}
+			if err := tpl.Execute(w, data); err != nil {
+				fmt.Println(err)
+				return
+			}
+
+		}).Methods("GET")
+
 		m.HandleFunc("/miners", func(w http.ResponseWriter, r *http.Request) {
 			tpl, err := template.ParseFS(dres, "dexpl/miners.gohtml")
 			if err != nil {
