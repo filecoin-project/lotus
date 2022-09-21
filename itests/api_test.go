@@ -176,7 +176,7 @@ func (ts *apiSuite) testOutOfGasError(t *testing.T) {
 
 	_, err = full.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
 	require.Error(t, err, "should have failed")
-	require.True(t, xerrors.Is(err, lapi.ErrOutOfGas{}))
+	require.True(t, xerrors.Is(err, &lapi.ErrOutOfGas{}))
 }
 
 func (ts *apiSuite) testLookupNotFoundError(t *testing.T) {
@@ -189,7 +189,7 @@ func (ts *apiSuite) testLookupNotFoundError(t *testing.T) {
 
 	_, err = full.StateLookupID(ctx, addr, types.EmptyTSK)
 	require.Error(t, err)
-	require.True(t, xerrors.Is(err, lapi.ErrActorNotFound{}))
+	require.True(t, xerrors.Is(err, &lapi.ErrActorNotFound{}))
 }
 
 func (ts *apiSuite) testMining(t *testing.T) {
