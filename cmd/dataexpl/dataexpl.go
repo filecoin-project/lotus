@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
@@ -254,6 +255,36 @@ var dataexplCmd = &cli.Command{
 				return
 			}
 
+			var deals []abi.DealID
+			for _, info := range ms {
+				for _, d := range info.DealIDs {
+					deals = append(deals, d)
+				}
+			}
+
+			ctx := r.Context()
+
+			commps := map[abi.DealID]cid.Cid{}
+			var wg sync.WaitGroup
+			wg.Add(len(deals))
+			var lk sync.Mutex
+
+			for _, deal := range deals {
+				go func(deal abi.DealID) {
+					defer wg.Done()
+
+					md, err := api.StateMarketStorageDeal(ctx, deal, types.EmptyTSK)
+					if err != nil {
+						return
+					}
+
+					lk.Lock()
+					commps[deal] = md.Proposal.PieceCID
+					lk.Unlock()
+				}(deal)
+			}
+			wg.Wait()
+
 			tpl, err := template.ParseFS(dres, "dexpl/sectors.gohtml")
 			if err != nil {
 				fmt.Println(err)
@@ -265,6 +296,7 @@ var dataexplCmd = &cli.Command{
 			data := map[string]interface{}{
 				"maddr":   ma,
 				"sectors": ms,
+				"deals":   commps,
 			}
 			if err := tpl.Execute(w, data); err != nil {
 				fmt.Println(err)
@@ -283,7 +315,7 @@ var dataexplCmd = &cli.Command{
 
 			d, err := api.StateMarketStorageDeal(ctx, abi.DealID(did), types.EmptyTSK)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, xerrors.Errorf("StateMarketStorageDeal: %w", err).Error(), http.StatusInternalServerError)
 				return
 			}
 
@@ -685,7 +717,7 @@ func retrieve(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address
 		{ // Directed retrieval
 			offer, err = fapi.ClientMinerQueryOffer(ctx, minerAddr, file, &pieceCid)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("offer: %w", err)
 			}
 		}
 		if offer.Err != "" {
@@ -881,7 +913,7 @@ func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.A
 
 		eref, err := retrieve(r.Context(), api, ma, pcid, dcid, &sel)
 		if err != nil {
-			return cid.Undef, nil, err
+			return cid.Undef, nil, xerrors.Errorf("retrieve: %w", err)
 		}
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{

@@ -15,14 +15,18 @@
 <body>
 <div>
     {{ $ma := .maddr }}
+    {{ $deals := .deals }}
     {{range .sectors}}
         {{if (gt (len .DealIDs) 0)}}
             <div>
-                <h3>Sector {{.SectorNumber}}
+                <div style="font-size: 20; font-weight: bold; display: inline-block">Sector {{.SectorNumber}}
                     {{range .DealIDs}}
-                        <a href="/deal/{{.}}">Deal {{.}}</a>
+                        <div style="display: inline-block">
+                            <div><a href="/deal/{{.}}">Deal {{.}}</a></div>
+                            <div><span style="font-size: 4px">{{ index $deals . }}</span></div>
+                        </div>
                     {{end}}
-                </h3>
+                </div>
             </div>
         {{end}}
     {{end}}
