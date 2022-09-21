@@ -35,22 +35,7 @@ const (
 )
 
 func GetBuiltinActorsKeys(av actorstypes.Version) []string {
-	if av <= 8 {
-		return []string{
-			AccountKey,
-			CronKey,
-			InitKey,
-			MarketKey,
-			MinerKey,
-			MultisigKey,
-			PaychKey,
-			PowerKey,
-			RewardKey,
-			SystemKey,
-			VerifregKey,
-		}
-	}
-	return []string{
+	keys := []string{
 		AccountKey,
 		CronKey,
 		InitKey,
@@ -62,8 +47,11 @@ func GetBuiltinActorsKeys(av actorstypes.Version) []string {
 		RewardKey,
 		SystemKey,
 		VerifregKey,
-		DatacapKey,
 	}
+	if av >= 9 {
+		keys = append(keys, DatacapKey)
+	}
+	return keys
 }
 
 var (

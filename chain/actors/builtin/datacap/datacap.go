@@ -41,8 +41,10 @@ func MakeState(store adt.Store, av actorstypes.Version, governor address.Address
 	case actorstypes.Version9:
 		return make9(store, governor, bitwidth)
 
+	default:
+		return nil, xerrors.Errorf("datacap actor only valid for actors v9 and above, got %d", av)
+
 	}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
