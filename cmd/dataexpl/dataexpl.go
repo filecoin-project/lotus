@@ -7,14 +7,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"html/template"
 	"io"
 	"mime"
 	"net"
 	"net/http"
 	gopath "path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -75,7 +79,123 @@ var dataexplCmd = &cli.Command{
 			return xerrors.Errorf("could not get API info: %w", err)
 		}
 
+		mpcs, err := api.StateMarketParticipants(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting market participants: %w", err)
+		}
+
+		type mminer struct {
+			Addr   address.Address
+			Locked types.FIL
+		}
+		var mminers []mminer
+
+		for sa, mb := range mpcs {
+			if mb.Locked.IsZero() {
+				continue
+			}
+
+			a, err := address.NewFromString(sa)
+			if err != nil {
+				return err
+			}
+
+			ac, err := api.StateGetActor(ctx, a, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			if builtin.IsStorageMinerActor(ac.Code) {
+				mminers = append(mminers, mminer{
+					Addr:   a,
+					Locked: types.FIL(mb.Locked),
+				})
+			}
+		}
+		sort.Slice(mminers, func(i, j int) bool {
+			return big.Cmp(abi.TokenAmount(mminers[i].Locked), abi.TokenAmount(mminers[j].Locked)) > 0
+		})
+
 		m := mux.NewRouter()
+
+		m.HandleFunc("/miners", func(w http.ResponseWriter, r *http.Request) {
+			tpl, err := template.ParseFS(dres, "dexpl/miners.gohtml")
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			data := map[string]interface{}{
+				"miners": mminers,
+			}
+			if err := tpl.Execute(w, data); err != nil {
+				fmt.Println(err)
+				return
+			}
+
+		}).Methods("GET")
+
+		m.HandleFunc("/ping/miner/{id}", func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+
+			vars := mux.Vars(r)
+			a, err := address.NewFromString(vars["id"])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			mi, err := api.StateMinerInfo(ctx, a, types.EmptyTSK)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if mi.PeerId == nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+			for i, a := range mi.Multiaddrs {
+				maddr, err := multiaddr.NewMultiaddrBytes(a)
+				if err != nil {
+					log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
+					continue
+				}
+				multiaddrs = append(multiaddrs, maddr)
+			}
+
+			pi := peer.AddrInfo{
+				ID:    *mi.PeerId,
+				Addrs: multiaddrs,
+			}
+
+			{
+				ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+				defer cancel()
+
+				if err := api.NetConnect(ctx, pi); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+			defer cancel()
+
+			d, err := api.NetPing(ctx, pi.ID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(fmt.Sprintf("%s %s", pi.ID, d.Round(time.Millisecond))))
+		}).Methods("GET")
 
 		m.HandleFunc("/deals", func(w http.ResponseWriter, r *http.Request) {
 			deals, err := api.ClientListDeals(r.Context())

@@ -1,0 +1,39 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Miners - Data Explorer</title>
+    <style>
+        html, body {
+            font-family: monospace;
+        }
+        td {
+            padding: 0 1em;
+        }
+        tr:nth-child(even) {background: #e0e0e0}
+    </style>
+</head>
+<body>
+<div>
+    {{range .miners}}
+        <div>
+            <a href="/minersectors/{{.Addr}}">Miner {{.Addr}}</a> (Locked: {{.Locked}}) <span id="ping{{.Addr}}" onload="pingMiner()">..</span>
+        </div>
+    {{end}}
+</div>
+<script>
+async function pingMiner(ma) {
+    document.getElementById("ping"+ma).innerText = "connecting.."
+
+    let r = await fetch("/ping/miner/"+ma)
+
+    document.getElementById("ping"+ma).innerText = await r.text()
+}
+
+addEventListener('load', (_) => {
+    {{range .miners}}
+        pingMiner('{{.Addr}}')
+    {{end}}
+})
+</script>
+</body>
+</html>
