@@ -484,7 +484,7 @@ func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, t
 
 	ret, err := m.StateManager.LookupID(ctx, addr, ts)
 	if err != nil && xerrors.Is(err, types.ErrActorNotFound) {
-		return address.Undef, api.ErrActorNotFound{}
+		return address.Undef, &api.ErrActorNotFound{}
 	}
 
 	return ret, err

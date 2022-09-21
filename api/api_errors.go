@@ -11,19 +11,19 @@ const (
 
 type ErrOutOfGas struct{}
 
-func (e ErrOutOfGas) Error() string {
+func (e *ErrOutOfGas) Error() string {
 	return "call ran out of gas"
 }
 
 type ErrActorNotFound struct{}
 
-func (e ErrActorNotFound) Error() string {
+func (e *ErrActorNotFound) Error() string {
 	return "actor not found"
 }
 
 var RPCErrors = jsonrpc.NewErrors()
 
 func init() {
-	RPCErrors.Register(EOutOfGas, new(ErrOutOfGas))
-	RPCErrors.Register(EActorNotFound, new(ErrActorNotFound))
+	RPCErrors.Register(EOutOfGas, new(*ErrOutOfGas))
+	RPCErrors.Register(EActorNotFound, new(*ErrActorNotFound))
 }
