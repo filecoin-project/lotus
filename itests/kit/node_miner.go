@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 
@@ -97,6 +97,10 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 }
 
 func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.SectorNumber]struct{}) {
+	tm.WaitSectorsProvingAllowFails(ctx, toCheck, map[api.SectorState]struct{}{})
+}
+
+func (tm *TestMiner) WaitSectorsProvingAllowFails(ctx context.Context, toCheck map[abi.SectorNumber]struct{}, okFails map[api.SectorState]struct{}) {
 	for len(toCheck) > 0 {
 		tm.FlushSealingBatches(ctx)
 
@@ -105,11 +109,13 @@ func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.Sec
 			st, err := tm.StorageMiner.SectorsStatus(ctx, n, false)
 			require.NoError(tm.t, err)
 			states[st.State]++
-			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) {
+			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) || st.State == api.SectorState(sealing.Removed) {
 				delete(toCheck, n)
 			}
 			if strings.Contains(string(st.State), "Fail") {
-				tm.t.Fatal("sector in a failed state", st.State)
+				if _, ok := okFails[st.State]; !ok {
+					tm.t.Fatal("sector in a failed state", st.State)
+				}
 			}
 		}
 

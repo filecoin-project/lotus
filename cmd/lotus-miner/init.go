@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -42,7 +42,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -91,7 +90,7 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
-			Value: units.BytesSize(float64(policy.GetDefaultSectorSize())),
+			Value: units.BytesSize(float64(abi.SectorSize(2048))),
 		},
 		&cli.StringSliceFlag{
 			Name:  "pre-sealed-sectors",
@@ -315,7 +314,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []pipeline.Piece{
+			Pieces: []lapi.SectorPiece{
 				{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
@@ -387,7 +386,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
-	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
+	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
 }
 
 func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market8.DealProposal) (abi.DealID, error) {

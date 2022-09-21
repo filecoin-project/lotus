@@ -1,6 +1,7 @@
 package paych
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"encoding/base64"
 	"fmt"
 
@@ -35,7 +36,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
        switch av {
             {{range .versions}}
                 {{if (ge . 8)}}
-                case actors.Version{{.}}:
+                case actorstypes.Version{{.}}:
                      return load{{.}}(store, act.Head)
                  {{end}}
             {{end}}
@@ -99,10 +100,10 @@ func DecodeSignedVoucher(s string) (*paychtypes.SignedVoucher, error) {
 	return &sv, nil
 }
 
-func Message(version actors.Version, from address.Address) MessageBuilder {
+func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 	switch version {
 {{range .versions}}
-	case actors.Version{{.}}:
+	case actorstypes.Version{{.}}:
 		return message{{.}}{from}
 {{end}}
 	default:

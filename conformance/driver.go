@@ -11,13 +11,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -249,7 +249,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		av, _ := actors.VersionForNetwork(params.NetworkVersion)
+		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
 		invoker.Register(av, nil, chaos.Actor{})
 	}
 
@@ -276,7 +276,8 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 // messages that originate from secp256k senders, leaving all
 // others untouched.
 // TODO: generate a signature in the DSL so that it's encoded in
-//  the test vector.
+//
+//	the test vector.
 func toChainMsg(msg *types.Message) (ret types.ChainMsg) {
 	ret = msg
 	if msg.From.Protocol() == address.SECP256K1 {

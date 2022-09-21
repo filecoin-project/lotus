@@ -27,8 +27,8 @@ var msgCmd = &cli.Command{
 	Usage:     "Translate message between various formats",
 	ArgsUsage: "Message in any form",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("expected 1 argument")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		msg, err := messageFromString(cctx, cctx.Args().First())
@@ -141,7 +141,7 @@ func printMessage(cctx *cli.Context, msg *types.Message) error {
 		return nil
 	}
 
-	fmt.Println("Method:", filcns.NewActorRegistry().Methods[toact.Code][msg.Method].Name) // todo use remote
+	fmt.Println("Method:", filcns.NewActorRegistry().Methods[toact.Code][msg.Method].Num) // todo use remote
 	p, err := lcli.JsonParams(toact.Code, msg.Method, msg.Params)
 	if err != nil {
 		return err

@@ -20,7 +20,7 @@ import (
 {{else}}
 	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
 	power{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}power"
-	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
 )
 

@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
@@ -34,7 +35,7 @@ var migrationsCmd = &cli.Command{
 		ctx := context.TODO()
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must pass block cid")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		blkCid, err := cid.Decode(cctx.Args().First())

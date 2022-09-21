@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -716,4 +716,8 @@ func (s *WindowPoStScheduler) ComputePoSt(ctx context.Context, dlIdx uint64, ts 
 	dl.Challenge += epochDiff
 
 	return s.runPoStCycle(ctx, true, *dl, ts)
+}
+
+func (s *WindowPoStScheduler) ManualFaultRecovery(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber) ([]cid.Cid, error) {
+	return s.declareManualRecoveries(ctx, maddr, sectors, types.TipSetKey{})
 }

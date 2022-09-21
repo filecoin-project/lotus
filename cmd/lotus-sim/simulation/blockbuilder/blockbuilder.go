@@ -9,10 +9,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
@@ -273,8 +273,8 @@ func (bb *BlockBuilder) StateManager() *stmgr.StateManager {
 }
 
 // ActorsVersion returns the actors version for the target block.
-func (bb *BlockBuilder) ActorsVersion() (actors.Version, error) {
-	return actors.VersionForNetwork(bb.NetworkVersion())
+func (bb *BlockBuilder) ActorsVersion() (actorstypes.Version, error) {
+	return actorstypes.VersionForNetwork(bb.NetworkVersion())
 }
 
 func (bb *BlockBuilder) L() *zap.SugaredLogger {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -96,8 +96,8 @@ var restoreCmd = &cli.Command{
 }
 
 func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *paths.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi api.MinerInfo) error) error {
-	if cctx.Args().Len() != 1 {
-		return xerrors.Errorf("expected 1 argument")
+	if cctx.NArg() != 1 {
+		return lcli.IncorrectNumArgs(cctx)
 	}
 
 	log.Info("Trying to connect to full node RPC")

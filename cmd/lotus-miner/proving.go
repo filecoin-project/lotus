@@ -7,10 +7,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"text/tabwriter"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -37,6 +40,7 @@ var provingCmd = &cli.Command{
 		provingCheckProvableCmd,
 		workersCmd(false),
 		provingComputeCmd,
+		provingRecoverFaultsCmd,
 	},
 }
 
@@ -310,8 +314,8 @@ var provingDeadlineInfoCmd = &cli.Command{
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
 
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -457,8 +461,8 @@ var provingCheckProvableCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -472,7 +476,7 @@ var provingCheckProvableCmd = &cli.Command{
 		}
 		defer closer()
 
-		sapi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, scloser, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -480,7 +484,7 @@ var provingCheckProvableCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		addr, err := sapi.ActorAddress(ctx)
+		addr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -506,7 +510,7 @@ var provingCheckProvableCmd = &cli.Command{
 		var filter map[abi.SectorID]struct{}
 
 		if cctx.IsSet("storage-id") {
-			sl, err := sapi.StorageList(ctx)
+			sl, err := minerApi.StorageList(ctx)
 			if err != nil {
 				return err
 			}
@@ -578,7 +582,7 @@ var provingCheckProvableCmd = &cli.Command{
 				})
 			}
 
-			bad, err := sapi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
+			bad, err := minerApi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
 			if err != nil {
 				return err
 			}
@@ -612,8 +616,8 @@ var provingComputeWindowPoStCmd = &cli.Command{
 It will not send any messages to the chain.`,
 	ArgsUsage: "[deadline index]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -621,7 +625,7 @@ It will not send any messages to the chain.`,
 			return xerrors.Errorf("could not parse deadline index: %w", err)
 		}
 
-		sapi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, scloser, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -630,7 +634,7 @@ It will not send any messages to the chain.`,
 		ctx := lcli.ReqContext(cctx)
 
 		start := time.Now()
-		res, err := sapi.ComputeWindowPoSt(ctx, dlIdx, types.EmptyTSK)
+		res, err := minerApi.ComputeWindowPoSt(ctx, dlIdx, types.EmptyTSK)
 		fmt.Printf("Took %s\n", time.Now().Sub(start))
 		if err != nil {
 			return err
@@ -641,6 +645,85 @@ It will not send any messages to the chain.`,
 		}
 		fmt.Println(string(jr))
 
+		return nil
+	},
+}
+
+var provingRecoverFaultsCmd = &cli.Command{
+	Name:      "recover-faults",
+	Usage:     "Manually recovers faulty sectors on chain",
+	ArgsUsage: "<faulty sectors>",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "confidence",
+			Usage: "number of block confirmations to wait for",
+			Value: int(build.MessageConfidence),
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass at least 1 sector number"))
+		}
+
+		arglist := cctx.Args().Slice()
+		var sectors []abi.SectorNumber
+		for _, v := range arglist {
+			s, err := strconv.ParseUint(v, 10, 64)
+			if err != nil {
+				return xerrors.Errorf("failed to convert sectors, please check the arguments: %w", err)
+			}
+			sectors = append(sectors, abi.SectorNumber(s))
+		}
+
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		msgs, err := minerApi.RecoverFault(ctx, sectors)
+		if err != nil {
+			return err
+		}
+
+		// wait for msgs to get mined into a block
+		var wg sync.WaitGroup
+		wg.Add(len(msgs))
+		results := make(chan error, len(msgs))
+		for _, msg := range msgs {
+			go func(m cid.Cid) {
+				defer wg.Done()
+				wait, err := api.StateWaitMsg(ctx, m, uint64(cctx.Int("confidence")))
+				if err != nil {
+					results <- xerrors.Errorf("Timeout waiting for message to land on chain %s", wait.Message)
+					return
+				}
+
+				if wait.Receipt.ExitCode.IsError() {
+					results <- xerrors.Errorf("Failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+					return
+				}
+				results <- nil
+				return
+			}(msg)
+		}
+
+		wg.Wait()
+		close(results)
+
+		for v := range results {
+			if v != nil {
+				fmt.Println("Failed to execute the message %w", v)
+			}
+		}
 		return nil
 	},
 }

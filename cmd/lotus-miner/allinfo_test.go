@@ -1,4 +1,4 @@
-//stm: #integration
+// stm: #integration
 package main
 
 import (

@@ -12,9 +12,9 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/connmgr"
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/connmgr"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
@@ -159,9 +159,12 @@ func FetchSignedMessagesByCids(
 }
 
 // Fetch `cids` from the block service, apply `cb` on each of them. Used
-//  by the fetch message functions above.
+//
+//	by the fetch message functions above.
+//
 // We check that each block is received only once and we do not received
-//  blocks we did not request.
+//
+//	blocks we did not request.
 func fetchCids(
 	ctx context.Context,
 	bserv bserv.BlockGetter,

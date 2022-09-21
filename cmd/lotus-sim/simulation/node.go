@@ -115,7 +115,7 @@ func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
 // Create creates a new simulation.
 //
 // - This will fail if a simulation already exists with the given name.
-// - Name must not contain a '/'.
+// - Num must not contain a '/'.
 func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) (*Simulation, error) {
 	if strings.Contains(name, "/") {
 		return nil, xerrors.Errorf("simulation name %q cannot contain a '/'", name)

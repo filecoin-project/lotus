@@ -5,7 +5,6 @@
 //
 // Its purpose is to unlock various degrees of flexibility and parametrization
 // when writing Testground plans for Lotus.
-//
 package build
 
 import (
@@ -14,10 +13,10 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -108,6 +107,7 @@ var (
 	UpgradeChocolateHeight  abi.ChainEpoch = -16
 	UpgradeOhSnapHeight     abi.ChainEpoch = -17
 	UpgradeSkyrHeight       abi.ChainEpoch = -18
+	UpgradeV17Height        abi.ChainEpoch = -19
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
@@ -115,10 +115,10 @@ var (
 
 	GenesisNetworkVersion = network.Version0
 	NetworkBundle         = "devnet"
-	BundleOverrides       map[actors.Version]string
+	BundleOverrides       map[actorstypes.Version]string
 
-	NewestNetworkVersion       = network.Version15
-	ActorUpgradeNetworkVersion = network.Version15
+	NewestNetworkVersion       = network.Version16
+	ActorUpgradeNetworkVersion = network.Version16
 
 	Devnet      = true
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")

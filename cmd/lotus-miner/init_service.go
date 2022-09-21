@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 

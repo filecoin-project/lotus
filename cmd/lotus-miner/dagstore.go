@@ -77,7 +77,7 @@ var dagstoreRegisterShardCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must provide a single shard key")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		marketsAPI, closer, err := lcli.GetMarketsAPI(cctx)
@@ -116,7 +116,7 @@ var dagstoreInitializeShardCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must provide a single shard key")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
@@ -148,7 +148,7 @@ var dagstoreRecoverShardCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must provide a single shard key")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
@@ -330,7 +330,7 @@ var dagstoreLookupPiecesCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must provide a CID")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		cidStr := cctx.Args().First()

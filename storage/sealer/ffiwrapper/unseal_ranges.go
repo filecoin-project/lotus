@@ -11,7 +11,8 @@ import (
 )
 
 // merge gaps between ranges which are close to each other
-//  TODO: more benchmarking to come up with more optimal number
+//
+//	TODO: more benchmarking to come up with more optimal number
 const mergeGaps = 32 << 20
 
 // TODO const expandRuns = 16 << 20 // unseal more than requested for future requests

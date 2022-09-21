@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
@@ -84,7 +84,7 @@ var consensusCheckCmd = &cli.Command{
 		filePath := cctx.Args().First()
 
 		var input *bufio.Reader
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			input = bufio.NewReader(os.Stdin)
 		} else {
 			var err error

@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -70,7 +70,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 	defer closer()
 
-	fullapi, acloser, err := lcli.GetFullNodeAPI(cctx)
+	fullapi, acloser, err := lcli.GetFullNodeAPIV1(cctx)
 	if err != nil {
 		return err
 	}
@@ -94,33 +94,10 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Print("Chain: ")
 
-	head, err := fullapi.ChainHead(ctx)
+	err = lcli.SyncBasefeeCheck(ctx, fullapi)
 	if err != nil {
 		return err
 	}
-
-	switch {
-	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*3/2): // within 1.5 epochs
-		fmt.Printf("[%s]", color.GreenString("sync ok"))
-	case time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs*5): // within 5 epochs
-		fmt.Printf("[%s]", color.YellowString("sync slow (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
-	default:
-		fmt.Printf("[%s]", color.RedString("sync behind! (%s behind)", time.Now().Sub(time.Unix(int64(head.MinTimestamp()), 0)).Truncate(time.Second)))
-	}
-
-	basefee := head.MinTicketBlock().ParentBaseFee
-	gasCol := []color.Attribute{color.FgBlue}
-	switch {
-	case basefee.GreaterThan(big.NewInt(7000_000_000)): // 7 nFIL
-		gasCol = []color.Attribute{color.BgRed, color.FgBlack}
-	case basefee.GreaterThan(big.NewInt(3000_000_000)): // 3 nFIL
-		gasCol = []color.Attribute{color.FgRed}
-	case basefee.GreaterThan(big.NewInt(750_000_000)): // 750 uFIL
-		gasCol = []color.Attribute{color.FgYellow}
-	case basefee.GreaterThan(big.NewInt(100_000_000)): // 100 uFIL
-		gasCol = []color.Attribute{color.FgGreen}
-	}
-	fmt.Printf(" [basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short()))
 
 	fmt.Println()
 
@@ -152,7 +129,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	return nil
 }
 
-func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.FullNode, nodeApi api.StorageMiner) error {
+func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.FullNode, nodeApi api.StorageMiner) error {
 	maddr, err := getActorAddress(ctx, cctx)
 	if err != nil {
 		return err
@@ -292,7 +269,10 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 	if err != nil {
 		return xerrors.Errorf("getting available balance: %w", err)
 	}
-	spendable = big.Add(spendable, availBalance)
+
+	if availBalance.GreaterThan(big.Zero()) {
+		spendable = big.Add(spendable, availBalance)
+	}
 
 	fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
 	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
@@ -333,6 +313,23 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 	}
 	colorTokenAmount("Total Spendable:  %s\n", spendable)
 
+	if mi.Beneficiary != address.Undef {
+		fmt.Println()
+		fmt.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
+		if mi.Beneficiary != mi.Owner {
+			fmt.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
+			fmt.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
+			fmt.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
+		}
+	}
+	if mi.PendingBeneficiaryTerm != nil {
+		fmt.Printf("Pending Beneficiary Term:\n")
+		fmt.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
+		fmt.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
+		fmt.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
+		fmt.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
+		fmt.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
+	}
 	fmt.Println()
 
 	if !cctx.Bool("hide-sectors-info") {
@@ -501,6 +498,8 @@ var stateList = []stateMeta{
 	{col: color.FgGreen, state: sealing.Available},
 	{col: color.FgGreen, state: sealing.UpdateActivating},
 
+	{col: color.FgMagenta, state: sealing.ReceiveSector},
+
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
 	{col: color.FgBlue, state: sealing.AddPiece},
@@ -546,6 +545,7 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
 	{col: color.FgRed, state: sealing.PreCommitFailed},
 	{col: color.FgRed, state: sealing.ComputeProofFailed},
+	{col: color.FgRed, state: sealing.RemoteCommitFailed},
 	{col: color.FgRed, state: sealing.CommitFailed},
 	{col: color.FgRed, state: sealing.CommitFinalizeFailed},
 	{col: color.FgRed, state: sealing.PackingFailed},
@@ -612,7 +612,7 @@ func colorTokenAmount(format string, amount abi.TokenAmount) {
 	}
 }
 
-func producedBlocks(ctx context.Context, count int, maddr address.Address, napi v0api.FullNode) error {
+func producedBlocks(ctx context.Context, count int, maddr address.Address, napi v1api.FullNode) error {
 	var err error
 	head, err := napi.ChainHead(ctx)
 	if err != nil {

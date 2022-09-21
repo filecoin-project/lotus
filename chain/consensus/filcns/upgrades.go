@@ -14,7 +14,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
@@ -184,6 +186,17 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Migration: UpgradeActorsV8,
 		PreMigrations: []stmgr.PreMigration{{
 			PreMigration:    PreUpgradeActorsV8,
+			StartWithin:     180,
+			DontStartWithin: 60,
+			StopWithin:      5,
+		}},
+		Expensive: true,
+	}, {
+		Height:    build.UpgradeV17Height,
+		Network:   network.Version17,
+		Migration: UpgradeActorsV9,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV9,
 			StartWithin:     180,
 			DontStartWithin: 60,
 			StopWithin:      5,
@@ -1377,7 +1390,7 @@ func upgradeActorsV8Common(
 	store := store.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := bundle.LoadBundles(ctx, buf, actors.Version8); err != nil {
+	if err := bundle.LoadBundles(ctx, buf, actorstypes.Version8); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -1394,7 +1407,7 @@ func upgradeActorsV8Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actors.Version8)
+	manifest, ok := actors.GetManifest(actorstypes.Version8)
 	if !ok {
 		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
 	}
@@ -1403,6 +1416,115 @@ func upgradeActorsV8Common(
 	newHamtRoot, err := nv16.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v8: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &types.StateRoot{
+		Version: types.StateTreeVersion4,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+		}
+	}
+
+	return newRoot, nil
+}
+
+func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv17.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := upgradeActorsV9Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v8 state: %w", err)
+	}
+
+	fmt.Print(fvmLiftoffBanner)
+
+	return newRoot, nil
+}
+
+func PreUpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid,
+	epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv17.Config{MaxWorkers: uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5}
+
+	_, err = upgradeActorsV9Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func upgradeActorsV9Common(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config nv17.Config,
+) (cid.Cid, error) {
+	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
+	store := store.ActorStore(ctx, buf)
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, buf, actorstypes.Version9); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot types.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != types.StateTreeVersion4 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 4 for actors v9 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version9)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v9 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv17.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v9: %w", err)
 	}
 
 	// Persist the result.
@@ -1453,7 +1575,7 @@ func upgradeActorsV8Common(
 //	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, types.StateTreeVersion4, newStateTreeVersion)
 //}
 
-func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
+func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actorstypes.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(bstore, blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
 	adtStore := gstStore.WrapStore(ctx, store)

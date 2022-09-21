@@ -13,7 +13,7 @@ description: |
 
   https://fil.org
 
-  https://docs.filecoin.io
+  https://lotus.filecoin.io
 
   https://github.com/filecoin-project/lotus
 
@@ -85,7 +85,7 @@ apps:
   lotus-daemon:
     command: snap-lotus-entrypoint.sh
     daemon: simple
-    install-mode: enable
+    install-mode: disable
     plugs:
       - network
       - network-bind

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	system8 "github.com/filecoin-project/go-state-types/builtin/v8/system"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/specs-actors/v8/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -59,7 +59,7 @@ func TestLiteMigration(t *testing.T) {
 	// populate the entries field of the manifest
 	require.NoError(t, newManifest.Load(ctx, ctxStore), "error loading new manifest")
 
-	newStateRoot, err := filcns.LiteMigration(ctx, bs, newManifestCid, stateRoot, actors.Version8, types.StateTreeVersion4, types.StateTreeVersion4)
+	newStateRoot, err := filcns.LiteMigration(ctx, bs, newManifestCid, stateRoot, actorstypes.Version8, types.StateTreeVersion4, types.StateTreeVersion4)
 	require.NoError(t, err)
 
 	newStateTree, err := state.LoadStateTree(ctxStore, newStateRoot)

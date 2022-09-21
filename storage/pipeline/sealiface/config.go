@@ -20,6 +20,10 @@ type Config struct {
 
 	PreferNewSectorsForDeals bool
 
+	MinUpgradeSectorExpiration uint64
+
+	MinTargetUpgradeSectorExpiration uint64
+
 	MaxUpgradingSectors uint64
 
 	MakeNewSectorForDeals bool

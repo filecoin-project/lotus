@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package chain_test
 
 import (
@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
@@ -147,6 +147,10 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 		Network:   network.Version16,
 		Height:    v5height + 20,
 		Migration: filcns.UpgradeActorsV8,
+	}, {
+		Network:   network.Version17,
+		Height:    v5height + 25,
+		Migration: filcns.UpgradeActorsV9,
 	}}
 
 	g, err := gen.NewGeneratorWithUpgradeSchedule(sched)

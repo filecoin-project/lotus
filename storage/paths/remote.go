@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"math/bits"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,7 +23,6 @@ import (
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/filecoin-project/lotus/storage/sealer/tarutil"
 )
 
 var FetchTempSubdir = "fetching"
@@ -236,7 +234,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 				return "", xerrors.Errorf("removing dest: %w", err)
 			}
 
-			err = r.fetch(ctx, url, tempDest)
+			err = r.fetchThrottled(ctx, url, tempDest)
 			if err != nil {
 				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, tempDest, err))
 				continue
@@ -256,9 +254,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 	return "", xerrors.Errorf("failed to acquire sector %v from remote (tried %v): %w", s, si, merr)
 }
 
-func (r *Remote) fetch(ctx context.Context, url, outname string) error {
-	log.Infof("Fetch %s -> %s", url, outname)
-
+func (r *Remote) fetchThrottled(ctx context.Context, url, outname string) (rerr error) {
 	if len(r.limit) >= cap(r.limit) {
 		log.Infof("Throttling fetch, %d already running", len(r.limit))
 	}
@@ -274,59 +270,7 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 		return xerrors.Errorf("context error while waiting for fetch limiter: %w", ctx.Err())
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return xerrors.Errorf("request: %w", err)
-	}
-	req.Header = r.auth
-	req = req.WithContext(ctx)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return xerrors.Errorf("do request: %w", err)
-	}
-	defer resp.Body.Close() // nolint
-
-	if resp.StatusCode != 200 {
-		return xerrors.Errorf("non-200 code: %d", resp.StatusCode)
-	}
-
-	/*bar := pb.New64(w.sizeForType(typ))
-	bar.ShowPercent = true
-	bar.ShowSpeed = true
-	bar.Units = pb.U_BYTES
-
-	barreader := bar.NewProxyReader(resp.Body)
-
-	bar.Start()
-	defer bar.Finish()*/
-
-	mediatype, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
-	if err != nil {
-		return xerrors.Errorf("parse media type: %w", err)
-	}
-
-	if err := os.RemoveAll(outname); err != nil {
-		return xerrors.Errorf("removing dest: %w", err)
-	}
-
-	switch mediatype {
-	case "application/x-tar":
-		return tarutil.ExtractTar(resp.Body, outname, make([]byte, CopyBuf))
-	case "application/octet-stream":
-		f, err := os.Create(outname)
-		if err != nil {
-			return err
-		}
-		_, err = io.CopyBuffer(f, resp.Body, make([]byte, CopyBuf))
-		if err != nil {
-			f.Close() // nolint
-			return err
-		}
-		return f.Close()
-	default:
-		return xerrors.Errorf("unknown content type: '%s'", mediatype)
-	}
+	return fetch(ctx, url, outname, r.auth)
 }
 
 func (r *Remote) checkAllocated(ctx context.Context, url string, spt abi.RegisteredSealProof, offset, size abi.PaddedPieceSize) (bool, error) {

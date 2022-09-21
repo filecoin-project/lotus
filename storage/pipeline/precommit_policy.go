@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -16,7 +17,7 @@ import (
 )
 
 type PreCommitPolicy interface {
-	Expiration(ctx context.Context, ps ...Piece) (abi.ChainEpoch, error)
+	Expiration(ctx context.Context, ps ...api.SectorPiece) (abi.ChainEpoch, error)
 }
 
 type Chain interface {
@@ -59,7 +60,7 @@ func NewBasicPreCommitPolicy(api Chain, cfgGetter dtypes.GetSealingConfigFunc, p
 
 // Expiration produces the pre-commit sector expiration epoch for an encoded
 // replica containing the provided enumeration of pieces and deals.
-func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi.ChainEpoch, error) {
+func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...api.SectorPiece) (abi.ChainEpoch, error) {
 	ts, err := p.api.ChainHead(ctx)
 	if err != nil {
 		return 0, err

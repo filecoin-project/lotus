@@ -8,15 +8,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -136,13 +137,7 @@ type NetStat struct {
 }
 
 type NetLimit struct {
-	Dynamic bool `json:",omitempty"`
-	// set if Dynamic is false
 	Memory int64 `json:",omitempty"`
-	// set if Dynamic is true
-	MemoryFraction float64 `json:",omitempty"`
-	MinMemory      int64   `json:",omitempty"`
-	MaxMemory      int64   `json:",omitempty"`
 
 	Streams, StreamsInbound, StreamsOutbound int
 	Conns, ConnsInbound, ConnsOutbound       int
@@ -301,6 +296,9 @@ type MinerInfo struct {
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 	ConsensusFaultElapsed      abi.ChainEpoch
+	Beneficiary                address.Address
+	BeneficiaryTerm            *miner.BeneficiaryTerm
+	PendingBeneficiaryTerm     *miner.PendingBeneficiaryChange
 }
 
 type NetworkParams struct {

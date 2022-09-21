@@ -8,9 +8,9 @@ unexport GOFLAGS
 GOCC?=go
 
 GOVERSION:=$(shell $(GOCC) version | tr ' ' '\n' | grep go1 | sed 's/^go//' | awk -F. '{printf "%d%03d%03d", $$1, $$2, $$3}')
-ifeq ($(shell expr $(GOVERSION) \< 1016000), 1)
+ifeq ($(shell expr $(GOVERSION) \< 1018001), 1)
 $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell expr $(GOVERSION) % 1000000 / 1000).$(shell expr $(GOVERSION) % 1000))
-$(error Update Golang to version to at least 1.17.9)
+$(error Update Golang to version to at least 1.18.1)
 endif
 
 # git modules that need to be loaded

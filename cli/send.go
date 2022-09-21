@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -66,8 +67,8 @@ var sendCmd = &cli.Command{
 			fmt.Println("'force' flag is deprecated, use global flag 'force-send'")
 		}
 
-		if cctx.Args().Len() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		srv, err := GetFullNodeServices(cctx)
@@ -152,6 +153,9 @@ var sendCmd = &cli.Command{
 
 		sm, err := InteractiveSend(ctx, cctx, srv, proto)
 		if err != nil {
+			if strings.Contains(err.Error(), "no current EF") {
+				return xerrors.Errorf("transaction rejected on ledger: %w", err)
+			}
 			return err
 		}
 

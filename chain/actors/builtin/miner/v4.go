@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
@@ -542,11 +542,17 @@ func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
 
 func fromV4SectorPreCommitOnChainInfo(v4 miner4.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
 	return minertypes.SectorPreCommitOnChainInfo{
-		Info:               (minertypes.SectorPreCommitInfo)(v4.Info),
-		PreCommitDeposit:   v4.PreCommitDeposit,
-		PreCommitEpoch:     v4.PreCommitEpoch,
-		DealWeight:         v4.DealWeight,
-		VerifiedDealWeight: v4.VerifiedDealWeight,
+		Info: minertypes.SectorPreCommitInfo{
+			SealProof:     v4.Info.SealProof,
+			SectorNumber:  v4.Info.SectorNumber,
+			SealedCID:     v4.Info.SealedCID,
+			SealRandEpoch: v4.Info.SealRandEpoch,
+			DealIDs:       v4.Info.DealIDs,
+			Expiration:    v4.Info.Expiration,
+			UnsealedCid:   nil,
+		},
+		PreCommitDeposit: v4.PreCommitDeposit,
+		PreCommitEpoch:   v4.PreCommitEpoch,
 	}
 }
 

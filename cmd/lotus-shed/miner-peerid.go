@@ -7,7 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -35,7 +36,7 @@ var minerPeeridCmd = &cli.Command{
 		ctx := context.TODO()
 
 		if cctx.NArg() != 2 {
-			return fmt.Errorf("must pass peer id and state root")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		pid, err := peer.Decode(cctx.Args().Get(0))

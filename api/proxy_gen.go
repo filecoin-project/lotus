@@ -10,10 +10,10 @@ import (
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -24,8 +24,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
@@ -343,6 +343,8 @@ type FullNodeStruct struct {
 
 		StateActorCodeCIDs func(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) `perm:"read"`
 
+		StateActorManifestCID func(p0 context.Context, p1 abinetwork.Version) (cid.Cid, error) `perm:"read"`
+
 		StateAllMinerFaults func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*Fault, error) `perm:"read"`
 
 		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) `perm:"read"`
@@ -390,6 +392,8 @@ type FullNodeStruct struct {
 		StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) `perm:"read"`
 
 		StateMinerActiveSectors func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
+
+		StateMinerAllocated func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) `perm:"read"`
 
 		StateMinerAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -660,6 +664,8 @@ type StorageMinerStruct struct {
 
 		ActorWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
 
+		BeneficiaryWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
+
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
@@ -766,9 +772,13 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(p0 context.Context) (abi.SectorID, error) `perm:"write"`
 
+		RecoverFault func(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) `perm:"admin"`
+
 		ReturnAddPiece func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
 
 		ReturnDataCid func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
+
+		ReturnDownloadSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
 		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
@@ -824,9 +834,21 @@ type StorageMinerStruct struct {
 
 		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
 
+		SectorNumAssignerMeta func(p0 context.Context) (NumAssignerMeta, error) `perm:"read"`
+
+		SectorNumFree func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		SectorNumReservations func(p0 context.Context) (map[string]bitfield.BitField, error) `perm:"read"`
+
+		SectorNumReserve func(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error `perm:"admin"`
+
+		SectorNumReserveCount func(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) `perm:"admin"`
+
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
+
+		SectorReceive func(p0 context.Context, p1 RemoteSectorMeta) error `perm:"admin"`
 
 		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
@@ -932,6 +954,8 @@ type WorkerStruct struct {
 		AddPiece func(p0 context.Context, p1 storiface.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storiface.Data) (storiface.CallID, error) `perm:"admin"`
 
 		DataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (storiface.CallID, error) `perm:"admin"`
+
+		DownloadSectorData func(p0 context.Context, p1 storiface.SectorRef, p2 bool, p3 map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) `perm:"admin"`
 
 		Enabled func(p0 context.Context) (bool, error) `perm:"admin"`
 
@@ -2447,6 +2471,17 @@ func (s *FullNodeStub) StateActorCodeCIDs(p0 context.Context, p1 abinetwork.Vers
 	return *new(map[string]cid.Cid), ErrNotSupported
 }
 
+func (s *FullNodeStruct) StateActorManifestCID(p0 context.Context, p1 abinetwork.Version) (cid.Cid, error) {
+	if s.Internal.StateActorManifestCID == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.StateActorManifestCID(p0, p1)
+}
+
+func (s *FullNodeStub) StateActorManifestCID(p0 context.Context, p1 abinetwork.Version) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
+}
+
 func (s *FullNodeStruct) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*Fault, error) {
 	if s.Internal.StateAllMinerFaults == nil {
 		return *new([]*Fault), ErrNotSupported
@@ -2709,6 +2744,17 @@ func (s *FullNodeStruct) StateMinerActiveSectors(p0 context.Context, p1 address.
 
 func (s *FullNodeStub) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	return *new([]*miner.SectorOnChainInfo), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateMinerAllocated(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) {
+	if s.Internal.StateMinerAllocated == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateMinerAllocated(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateMinerAllocated(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
@@ -3998,6 +4044,17 @@ func (s *StorageMinerStub) ActorWithdrawBalance(p0 context.Context, p1 abi.Token
 	return *new(cid.Cid), ErrNotSupported
 }
 
+func (s *StorageMinerStruct) BeneficiaryWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	if s.Internal.BeneficiaryWithdrawBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.BeneficiaryWithdrawBalance(p0, p1)
+}
+
+func (s *StorageMinerStub) BeneficiaryWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
@@ -4581,6 +4638,17 @@ func (s *StorageMinerStub) PledgeSector(p0 context.Context) (abi.SectorID, error
 	return *new(abi.SectorID), ErrNotSupported
 }
 
+func (s *StorageMinerStruct) RecoverFault(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) {
+	if s.Internal.RecoverFault == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
+	return s.Internal.RecoverFault(p0, p1)
+}
+
+func (s *StorageMinerStub) RecoverFault(p0 context.Context, p1 []abi.SectorNumber) ([]cid.Cid, error) {
+	return *new([]cid.Cid), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
 	if s.Internal.ReturnAddPiece == nil {
 		return ErrNotSupported
@@ -4600,6 +4668,17 @@ func (s *StorageMinerStruct) ReturnDataCid(p0 context.Context, p1 storiface.Call
 }
 
 func (s *StorageMinerStub) ReturnDataCid(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) ReturnDownloadSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnDownloadSector == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ReturnDownloadSector(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ReturnDownloadSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
 	return ErrNotSupported
 }
 
@@ -4900,6 +4979,61 @@ func (s *StorageMinerStub) SectorMatchPendingPiecesToOpenSectors(p0 context.Cont
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) SectorNumAssignerMeta(p0 context.Context) (NumAssignerMeta, error) {
+	if s.Internal.SectorNumAssignerMeta == nil {
+		return *new(NumAssignerMeta), ErrNotSupported
+	}
+	return s.Internal.SectorNumAssignerMeta(p0)
+}
+
+func (s *StorageMinerStub) SectorNumAssignerMeta(p0 context.Context) (NumAssignerMeta, error) {
+	return *new(NumAssignerMeta), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumFree(p0 context.Context, p1 string) error {
+	if s.Internal.SectorNumFree == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorNumFree(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorNumFree(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReservations(p0 context.Context) (map[string]bitfield.BitField, error) {
+	if s.Internal.SectorNumReservations == nil {
+		return *new(map[string]bitfield.BitField), ErrNotSupported
+	}
+	return s.Internal.SectorNumReservations(p0)
+}
+
+func (s *StorageMinerStub) SectorNumReservations(p0 context.Context) (map[string]bitfield.BitField, error) {
+	return *new(map[string]bitfield.BitField), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReserve(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error {
+	if s.Internal.SectorNumReserve == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorNumReserve(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SectorNumReserve(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReserveCount(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) {
+	if s.Internal.SectorNumReserveCount == nil {
+		return *new(bitfield.BitField), ErrNotSupported
+	}
+	return s.Internal.SectorNumReserveCount(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) SectorNumReserveCount(p0 context.Context, p1 string, p2 uint64) (bitfield.BitField, error) {
+	return *new(bitfield.BitField), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
 	if s.Internal.SectorPreCommitFlush == nil {
 		return *new([]sealiface.PreCommitBatchRes), ErrNotSupported
@@ -4920,6 +5054,17 @@ func (s *StorageMinerStruct) SectorPreCommitPending(p0 context.Context) ([]abi.S
 
 func (s *StorageMinerStub) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
 	return *new([]abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorReceive(p0 context.Context, p1 RemoteSectorMeta) error {
+	if s.Internal.SectorReceive == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorReceive(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorReceive(p0 context.Context, p1 RemoteSectorMeta) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
@@ -5403,6 +5548,17 @@ func (s *WorkerStruct) DataCid(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 
 }
 
 func (s *WorkerStub) DataCid(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) DownloadSectorData(p0 context.Context, p1 storiface.SectorRef, p2 bool, p3 map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) {
+	if s.Internal.DownloadSectorData == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.DownloadSectorData(p0, p1, p2, p3)
+}
+
+func (s *WorkerStub) DownloadSectorData(p0 context.Context, p1 storiface.SectorRef, p2 bool, p3 map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

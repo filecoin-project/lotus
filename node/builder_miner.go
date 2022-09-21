@@ -108,7 +108,6 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(storiface.ProverPoSt), From(new(sectorstorage.SectorManager))),
 
 			// Sealing (todo should be under EnableSealing, but storagefsm is currently bundled with storage.Miner)
-			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
 			Override(GetParamsKey, modules.GetParams),
 
 			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),

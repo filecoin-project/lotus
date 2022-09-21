@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: cimg/go:1.17.9
+      - image: cimg/go:1.18.1
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -52,7 +52,7 @@ commands:
             - run:
                 name: Install Go
                 command: |
-                  curl https://dl.google.com/go/go1.17.9.darwin-amd64.pkg -o /tmp/go.pkg && \
+                  curl https://dl.google.com/go/go1.18.1.darwin-amd64.pkg -o /tmp/go.pkg && \
                   sudo installer -pkg /tmp/go.pkg -target /
             - run:
                 name: Export Go
@@ -925,6 +925,11 @@ workflows:
           target: "./itests/mempool_test.go"
       
       - test:
+          name: test-itest-mpool_msg_uuid
+          suite: itest-mpool_msg_uuid
+          target: "./itests/mpool_msg_uuid_test.go"
+      
+      - test:
           name: test-itest-multisig
           suite: itest-multisig
           target: "./itests/multisig_test.go"
@@ -970,6 +975,16 @@ workflows:
           target: "./itests/sector_finalize_early_test.go"
       
       - test:
+          name: test-itest-sector_import_full
+          suite: itest-sector_import_full
+          target: "./itests/sector_import_full_test.go"
+      
+      - test:
+          name: test-itest-sector_import_simple
+          suite: itest-sector_import_simple
+          target: "./itests/sector_import_simple_test.go"
+      
+      - test:
           name: test-itest-sector_make_cc_avail
           suite: itest-sector_make_cc_avail
           target: "./itests/sector_make_cc_avail_test.go"
@@ -978,6 +993,11 @@ workflows:
           name: test-itest-sector_miner_collateral
           suite: itest-sector_miner_collateral
           target: "./itests/sector_miner_collateral_test.go"
+      
+      - test:
+          name: test-itest-sector_numassign
+          suite: itest-sector_numassign
+          target: "./itests/sector_numassign_test.go"
       
       - test:
           name: test-itest-sector_pledge

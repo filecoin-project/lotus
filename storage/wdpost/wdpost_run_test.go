@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package wdpost
 
 import (
@@ -13,9 +13,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -500,7 +501,7 @@ func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, add
 }
 
 func (m *mockStorageMinerAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
-	code, ok := actors.GetActorCodeID(actors.Version7, actors.MinerKey)
+	code, ok := actors.GetActorCodeID(actorstypes.Version7, actors.MinerKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get miner actor code ID for actors version %d", actors.Version7)
 	}

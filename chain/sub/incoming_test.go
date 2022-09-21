@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package sub
 
 import (
@@ -9,9 +9,9 @@ import (
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pb "github.com/libp2p/go-libp2p-pubsub/pb"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-legs/dtsync"

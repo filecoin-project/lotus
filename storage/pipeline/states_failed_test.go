@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package sealing_test
 
 import (
@@ -76,7 +76,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 	// TODO sctx should satisfy an interface so it can be useable for mocking.  This will fail because we are passing in an empty context now to get this to build.
 	// https://github.com/filecoin-project/lotus/issues/7867
 	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, pipeline.SectorInfo{
-		Pieces: []pipeline.Piece{
+		Pieces: []api2.SectorPiece{
 			{
 				DealInfo: &api2.PieceDealInfo{
 					DealID:     dealId,

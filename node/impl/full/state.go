@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -16,8 +16,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -176,6 +177,9 @@ func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
+		Beneficiary:                info.Beneficiary,
+		BeneficiaryTerm:            &info.BeneficiaryTerm,
+		PendingBeneficiaryTerm:     info.PendingBeneficiaryTerm,
 	}
 
 	if info.PendingWorkerKey != nil {
@@ -880,6 +884,18 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	return api.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
+func (a *StateAPI) StateMinerAllocated(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*bitfield.BitField, error) {
+	act, err := a.StateManager.LoadActorTsk(ctx, addr, tsk)
+	if err != nil {
+		return nil, err
+	}
+	mas, err := miner.Load(a.Chain.ActorStore(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return mas.GetAllocatedSectors()
+}
+
 func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1173,16 +1189,20 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	store := a.Chain.ActorStore(ctx)
 
 	var sectorWeight abi.StoragePower
-	if act, err := state.GetActor(market.Address); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading market actor %s: %w", maddr, err)
-	} else if s, err := market.Load(store, act); err != nil {
-		return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
-	} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
-		return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+	if a.StateManager.GetNetworkVersion(ctx, ts.Height()) <= network.Version16 {
+		if act, err := state.GetActor(market.Address); err != nil {
+			return types.EmptyInt, xerrors.Errorf("loading market actor %s: %w", maddr, err)
+		} else if s, err := market.Load(store, act); err != nil {
+			return types.EmptyInt, xerrors.Errorf("loading market actor state %s: %w", maddr, err)
+		} else if w, vw, err := s.VerifyDealsForActivation(maddr, pci.DealIDs, ts.Height(), pci.Expiration); err != nil {
+			return types.EmptyInt, xerrors.Errorf("verifying deals for activation: %w", err)
+		} else {
+			// NB: not exactly accurate, but should always lead us to *over* estimate, not under
+			duration := pci.Expiration - ts.Height()
+			sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		}
 	} else {
-		// NB: not exactly accurate, but should always lead us to *over* estimate, not under
-		duration := pci.Expiration - ts.Height()
-		sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
+		sectorWeight = minertypes.QAPowerMax(ssize)
 	}
 
 	var powerSmoothed builtin.FilterEstimate
@@ -1524,7 +1544,7 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 }
 
 func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
-	actorVersion, err := actors.VersionForNetwork(nv)
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return nil, xerrors.Errorf("invalid network version %d: %w", nv, err)
 	}
@@ -1535,6 +1555,20 @@ func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (
 	}
 
 	return cids, nil
+}
+
+func (a *StateAPI) StateActorManifestCID(ctx context.Context, nv network.Version) (cid.Cid, error) {
+	actorVersion, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("invalid network version")
+	}
+
+	c, ok := actors.GetManifest(actorVersion)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("could not find manifest cid for network version %d, actors version %d", nv, actorVersion)
+	}
+
+	return c, nil
 }
 
 func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {

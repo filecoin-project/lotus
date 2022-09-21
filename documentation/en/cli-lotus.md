@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.17.2-dev
+   1.17.3-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -18,6 +18,7 @@ COMMANDS:
    BASIC:
      send     Send funds between accounts
      wallet   Manage wallet
+     info     Print node info
      client   Make deals, store data, retrieve data
      msig     Interact with a multisig wallet
      filplus  Interact with the verified registry actor used by Filplus
@@ -395,6 +396,22 @@ USAGE:
 OPTIONS:
    --address value, -a value  Market address to move funds to (account or miner actor address, defaults to --from address)
    --from value, -f value     Specify address to move funds from, otherwise it will use the default wallet address
+   
+```
+
+## lotus info
+```
+NAME:
+   lotus info - Print node info
+
+USAGE:
+   lotus info [command options] [arguments...]
+
+CATEGORY:
+   BASIC
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2012,7 +2029,7 @@ USAGE:
    lotus state actor-cids [command options] [arguments...]
 
 OPTIONS:
-   --network-version value  specify network version (default: 16)
+   --network-version value  specify network version (default: 0)
    
 ```
 

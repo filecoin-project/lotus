@@ -3,6 +3,7 @@ package storiface
 import (
 	"context"
 	"io"
+	"net/http"
 
 	"github.com/ipfs/go-cid"
 
@@ -85,6 +86,8 @@ type Sealer interface {
 	GenerateSectorKeyFromData(ctx context.Context, sector SectorRef, unsealed cid.Cid) error
 
 	FinalizeReplicaUpdate(ctx context.Context, sector SectorRef, keepUnsealed []Range) error
+
+	DownloadSectorData(ctx context.Context, sector SectorRef, finalized bool, src map[SectorFileType]SectorLocation) error
 }
 
 type Unsealer interface {
@@ -118,4 +121,35 @@ type Prover interface {
 	// TODO: move GenerateWinningPoStSectorChallenge from the Verifier interface to here
 
 	AggregateSealProofs(aggregateInfo proof.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error)
+}
+
+type SectorLocation struct {
+	// Local when set to true indicates to lotus that sector data is already
+	// available locally; When set lotus will skip fetching sector data, and
+	// only check that sector data exists in sector storage
+	Local bool
+
+	// URL to the sector data
+	// For sealed/unsealed sector, lotus expects octet-stream
+	// For cache, lotus expects a tar archive with cache files
+	// Valid schemas:
+	// - http:// / https://
+	URL string
+
+	// optional http headers to use when requesting sector data
+	Headers []SecDataHttpHeader
+}
+
+func (sd *SectorLocation) HttpHeaders() http.Header {
+	out := http.Header{}
+	for _, header := range sd.Headers {
+		out[header.Key] = append(out[header.Key], header.Value)
+	}
+	return out
+}
+
+// note: we can't use http.Header as that's backed by a go map, which is all kinds of messy
+type SecDataHttpHeader struct {
+	Key   string
+	Value string
 }

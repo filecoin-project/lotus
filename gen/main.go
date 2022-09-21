@@ -41,6 +41,7 @@ func main() {
 
 	err = gen.WriteTupleEncodersToFile("./chain/vm/cbor_gen.go", "vm",
 		vm.FvmExecutionTrace{},
+		vm.FvmGasCharge{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -64,6 +65,7 @@ func main() {
 		api.SealTicket{},
 		api.SealSeed{},
 		api.PieceDealInfo{},
+		api.SectorPiece{},
 		api.DealSchedule{},
 	)
 	if err != nil {
@@ -101,6 +103,8 @@ func main() {
 
 	err = gen.WriteMapEncodersToFile("./storage/sealer/storiface/cbor_gen.go", "storiface",
 		storiface.CallID{},
+		storiface.SecDataHttpHeader{},
+		storiface.SectorLocation{},
 	)
 	if err != nil {
 		fmt.Println(err)

@@ -13,9 +13,9 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -141,8 +141,8 @@ var NetPing = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("please provide a peerID")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetAPI(cctx)

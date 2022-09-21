@@ -33,8 +33,6 @@ snap alias lotus.lotus-daemon lotus-daemon
 snap alias lotus.lotus-miner lotus-miner
 snap alias lotus.lotus-worker lotus-worker
 
-snap stop lotus.lotus-daemon
-
 # Setup firewall
 yes | ufw enable
 ufw default deny incoming

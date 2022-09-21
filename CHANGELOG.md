@@ -1,5 +1,110 @@
 # Lotus changelog
 
+# v1.17.1 / 2022-09-06
+
+This is an optional release of Lotus. This release introduces the [Splitstore v2 - beta](https://github.com/filecoin-project/lotus/blob/master/blockstore/splitstore/README.md)(beta). Splitstore aims to reduce the node performance impact that's caused by the Filecoin's very large, and continuously growing datastore. Splitstore v2 introduces  the coldstore auto prune/GC feature & some improvements for the hotstore.  We welcome all lotus users to join the early testers and try the new Splitstore out, you can leave any feedback or report issues in [this discussion](https://github.com/filecoin-project/lotus/discussions/9179) or create an issue. As always,  multiple small bug fixes, new features & improvements are also included in this release.
+
+
+## New features
+
+- feat:chain:splitstore auto prune ([filecoin-project/lotus#9123](https://github.com/filecoin-project/lotus/pull/9123))
+  - Trigger SplitStore chain prune on head events. [Link to the documentation](https://lotus.filecoin.io/lotus/manage/chain-management/#cold-store-garbage-collection)
+- feat:chain:splitstore chain prune ([filecoin-project/lotus#9056](https://github.com/filecoin-project/lotus/pull/9056))
+  - Adds `chain prune` command to trigger manual garbage collection. [Link to the documentation](https://lotus.filecoin.io/lotus/manage/chain-management/#cold-store-garbage-collection)
+- feat: storage: Path type filters ([filecoin-project/lotus#9013](https://github.com/filecoin-project/lotus/pull/9013))
+  - Adds new fields to `sectorstore.json` to allow file type filtering. [Link to the documentation](https://lotus.filecoin.io/storage-providers/operate/custom-storage-layout/#filter-sector-types-1)
+- feat: sealing: storage redeclare/detach ([filecoin-project/lotus#9032](https://github.com/filecoin-project/lotus/pull/9032))
+  - Adds new Lotus commands to detach and redeclare storage paths. [Link to the documentation](https://lotus.filecoin.io/storage-providers/operate/custom-storage-layout/#detach-storage-paths)
+- feat: worker: Add stop cmd for lotus worker ([filecoin-project/lotus#9101](https://github.com/filecoin-project/lotus/pull/9101))
+  - Adds new `lotus-worker stop` command. [Link to the documentation](https://lotus.filecoin.io/storage-providers/seal-workers/seal-workers/#stop-the-worker)
+- feat: market: Add lotus-shed cmd to get total active deal storage ([filecoin-project/lotus#9113](https://github.com/filecoin-project/lotus/pull/9113))
+  - `get-deals-total-storage` - View the total storage available in all active market deals
+- feat: wdpost: Envvar for limiting recovering sectors ([filecoin-project/lotus#9106](https://github.com/filecoin-project/lotus/pull/9106))
+  - Adds new envvar to limit the number of sectors declared in the recover message
+
+
+## Improvements
+
+- feat: sealing: Allow overriding worker hostname ([filecoin-project/lotus#9116](https://github.com/filecoin-project/lotus/pull/9116))
+- feat: build: run fiximports on make actors-gen ([filecoin-project/lotus#9114](https://github.com/filecoin-project/lotus/pull/9114))
+- feat: FVM: always enable tracing for user-triggered executions ([filecoin-project/lotus#9036](https://github.com/filecoin-project/lotus/pull/9036))
+- feat: miner cli: proving deadline command enchantments ([filecoin-project/lotus#9109](https://github.com/filecoin-project/lotus/pull/9109))
+- FVM: Use MaxInt64 for Implicit Message gas limits ([filecoin-project/lotus#9037](https://github.com/filecoin-project/lotus/pull/9037))
+- lotus shed addr decode
+- push lotus-gateway to docker hub ([filecoin-project/lotus#8969](https://github.com/filecoin-project/lotus/pull/8969))
+- Review Response
+- test: net: net and conngater tests ([filecoin-project/lotus#8084](https://github.com/filecoin-project/lotus/pull/8084))
+- Update FFI ([filecoin-project/lotus#9139](https://github.com/filecoin-project/lotus/pull/9139))
+
+## Bug Fixes
+
+- backport: 9153: detach storage on worker shutdown ([filecoin-project/lotus#9127](https://github.com/filecoin-project/lotus/pull/9165))
+- fix makegen
+- fix: build: use GOCC when building lotus-fountain ([filecoin-project/lotus#9127](https://github.com/filecoin-project/lotus/pull/9127))
+- fix: ci: Forgot a .sh on the end of a the new publish script ([filecoin-project/lotus#9088](https://github.com/filecoin-project/lotus/pull/9088))
+- fix: cli: ./lotus-miner actor control list, if the owner is not account ([filecoin-project/lotus#9072](https://github.com/filecoin-project/lotus/pull/9072))
+- fix: deps: update FFI to fix a slow memory leak ([filecoin-project/lotus#9042](https://github.com/filecoin-project/lotus/pull/9042))
+- fix: FVM: record message applied metrics ([filecoin-project/lotus#9052](https://github.com/filecoin-project/lotus/pull/9052))
+- fix: gas: estimate gas with a zero base-fee ([filecoin-project/lotus#8991](https://github.com/filecoin-project/lotus/pull/8991))
+- fix: post: restrict recoveries per deadline ([filecoin-project/lotus#9111](https://github.com/filecoin-project/lotus/pull/9111))
+- fix: sealing: Workaround for sealing bug ([filecoin-project/lotus#9043](https://github.com/filecoin-project/lotus/pull/9043))
+- fix: storage: don't panic in getCommitCutoff when precommit is not found ([filecoin-project/lotus#9141](https://github.com/filecoin-project/lotus/pull/9141))
+- fix: test: deflake TestQuotePriceForUnsealedRetrieval ([filecoin-project/lotus#9084](https://github.com/filecoin-project/lotus/pull/9084))
+
+## Dependency Updates
+
+- github.com/multiformats/go-multibase (v0.0.3 -> v0.1.1)
+
+## Others
+
+- chore: ci: Update xcode version for macos builds ([filecoin-project/lotus#9164)](https://github.com/filecoin-project/lotus/pull/9164))
+- Merge branch 'docs/ysrotciv-desc'
+- Merge branch 'feat/f8-worker-env'
+- Merge branch 'LexLuthr-feat/minerWithdrawBalanceAPI'
+- Merge branch 'LexLuthr-feat/SchedRemoveRequest'
+- base256emoji ([filecoin-project/lotus#9038)](https://github.com/filecoin-project/lotus/pull/9038))
+- chore: interop: update interop assets ([filecoin-project/lotus#9093)](https://github.com/filecoin-project/lotus/pull/9093))
+- chore: merge: releases (v1.17.0) to master ([filecoin-project/lotus#9146)](https://github.com/filecoin-project/lotus/pull/9146))
+- chore: sealer: Fixup typos ([filecoin-project/lotus#9040)](https://github.com/filecoin-project/lotus/pull/9040))
+- chore:docs:remove readme reference to deprecated specs-actors ([filecoin-project/lotus#8984)](https://github.com/filecoin-project/lotus/pull/8984))
+- ci : Change default shell options for snapcraft publish ([filecoin-project/lotus#9122)](https://github.com/filecoin-project/lotus/pull/9122))
+- ci: More tweaks to snapcraft release process ([filecoin-project/lotus#9090)](https://github.com/filecoin-project/lotus/pull/9090))
+- ci: Publish to both lotus and lotus-filecoin for snap ([filecoin-project/lotus#9119)](https://github.com/filecoin-project/lotus/pull/9119))
+- ci: Run snap builds for lotus and lotus-filecoin in parallel ([filecoin-project/lotus#9133)](https://github.com/filecoin-project/lotus/pull/9133))
+- ci: Switches goreleaser notes back to default (keep-existing) ([filecoin-project/lotus#9120)](https://github.com/filecoin-project/lotus/pull/9120))
+- ci: update snapcraft and release flow logic ([filecoin-project/lotus#8994)](https://github.com/filecoin-project/lotus/pull/8994))
+- ci: Use goreleaser to build macos universal binaries (including M1 macs) ([filecoin-project/lotus#9096)](https://github.com/filecoin-project/lotus/pull/9096))
+- ci:testing:remove codecov ([filecoin-project/lotus#9062)](https://github.com/filecoin-project/lotus/pull/9062))
+
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Łukasz Magiera | 34 | +2329/-317 | 163 |
+| ZenGround0 | 2 | +1527/-89 | 38 |
+| Ian Davis | 14 | +751/-232 | 30 |
+| LexLuthr | 17 | +480/-225 | 63 |
+| TheMenko | 4 | +323/-61 | 5 |
+| Aayush | 10 | +285/-92 | 30 |
+| beck | 3 | +143/-93 | 3 |
+| Steven Allen | 4 | +95/-75 | 9 |
+| zenground0 | 5 | +44/-116 | 9 |
+| Shrenuj Bansal | 7 | +136/-7 | 16 |
+| Patrick Deuse | 3 | +76/-57 | 3 |
+| Jennifer Wang | 3 | +6/-52 | 11 |
+| zl | 2 | +20/-16 | 2 |
+| Aayush Rajasekaran | 2 | +6/-6 | 2 |
+| Clint Armstrong | 1 | +7/-3 | 1 |
+| Cory Schwartz | 2 | +9/-0 | 2 |
+| Jorropo | 1 | +3/-2 | 2 |
+| Geoff Stuart | 1 | +5/-0 | 1 |
+| Frank Y | 1 | +2/-2 | 2 |
+| Aloxaf | 1 | +2/-2 | 1 |
+
+
+# Lotus changelog
+
 # v1.17.0 / 2022-08-02
 
 This is an optional release of Lotus. This feature release introduces a lot of new sealing and scheduler improvements, and many other functionalities and bug fixes.
@@ -368,7 +473,7 @@ This is an optional release of lotus that include new APIs, some improvements an
 
 This is a highly recommended feature lotus release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on.
 
-Note: You need to be using go v1.17.9&up from this release onwards.
+Note: You need to be using go v1.18.1&up from this release onwards.
 
 ## Highlights
 ### ❣️❣️❣️ PoSt Workers ❣️❣️❣️
@@ -1336,7 +1441,7 @@ storage providers and clients.
 
 ## Highlights
 - 🌟🌟🌟 Introduce Dagstore and CARv2 for deal-making (#6671) ([filecoin-project/lotus#6671](https://github.com/filecoin-project/lotus/pull/6671))
-  - **[lotus miner markets' Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)** is a
+  - **[lotus miner markets' Dagstore](https://lotus.filecoin.io/storage-providers/operate/dagstore/)** is a
     component of the `markets` subsystem in lotus-miner. It is a sharded store to hold large IPLD graphs efficiently,
     packaged as  location-transparent attachable CAR files and it replaces the former Badger staging blockstore. It
     is designed to provide high efficiency and throughput, and minimize resource utilization during deal-making operations.  
@@ -1344,18 +1449,18 @@ storage providers and clients.
     blockstores, which are served as the direct medium for data exchanges in markets for both storage and retrieval
     deal making without requiring intermediate buffers.
   - In the future, lotus will leverage and interact with Dagstore a lot for new features and improvements for deal
-    making, therefore, it's highly recommended to lotus users to go through [Lotus Miner: About the markets dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview) thoroughly to learn more about Dagstore's
+    making, therefore, it's highly recommended to lotus users to go through [Lotus Miner: About the markets dagstore](https://lotus.filecoin.io/storage-providers/operate/dagstore/) thoroughly to learn more about Dagstore's
     conceptual overview, terminology, directory structure, configuration and so on.
   - **Note**:
     - When you first start your lotus-miner or market subsystem with this release, a one-time/first-time **dagstore migration** will be triggered which replaces the former Badger staging blockstore with dagstore. We highly
-      recommend storage providers to read this [section](https://docs.filecoin.io/mine/lotus/dagstore/#first-time-migration) to learn more about
+      recommend storage providers to read this [section](https://lotus.filecoin.io/storage-providers/operate/dagstore/#first-time-migration) to learn more about
       what the process does, what to expect and how monitor it.
     - It is highly recommended to **wait all ongoing data transfer to finish or cancel inbound storage deals that
       are still transferring**, using the `lotus-miner data-transfers cancel` command before upgrade your market nodes. Reason being that the new dagstore changes attributes in the internal deal state objects, and the paths to the staging CARs where the deal data was being placed will be lost.
     - ‼️Having your dags initialized will become important in the near feature for you to provide a better storage
       and retrieval service. We'd suggest you to start [forced bulk initialization] soon if possible as this process
       places relatively high IP workload on your storage system and is better to be carried out gradually and over a
-      longer timeframe. Read how to do properly perform a force bulk initialization [here](https://docs.filecoin.io/mine/lotus/dagstore/#forcing-bulk-initialization).
+      longer timeframe. Read how to do properly perform a force bulk initialization [here](https://lotus.filecoin.io/storage-providers/operate/dagstore/#forcing-bulk-initialization).
     - ⏮ Rollback Alert(from v1.11.2-rcX to any version lower): If a storages deal is initiated with M1/v1.11.2(-rcX)
       release, it needs to get to the `StorageDealAwaitingPrecommit` state before you can do a version rollback or the markets process may panic.
   - 💙 **Special thanks to [MinerX fellows for testing and providing valuable feedbacks](https://github.com/filecoin-project/lotus/discussions/6852) for Dagstore in the past month!**
@@ -1485,8 +1590,8 @@ Contributors
 This is a  **highly recommended** but optional Lotus v1.11.1 release that introduces many deal making and datastore improvements and new features along with other bug fixes.
 
 ## Highlights
-- ⭐️⭐️⭐️[**lotus-miner market subsystem**](https://docs.filecoin.io/mine/lotus/split-markets-miners/#frontmatter-title) is introduced in this release! It is **highly recommended** for storage providers to run markets processes on a separate machine! Doing so, only this machine needs to exposes public ports for deal making. This also means that the other miner operations can now be completely isolated by from the deal making processes and storage providers can stop and restarts the markets process without affecting an ongoing Winning/Window PoSt!
-  - More details on the concepts, architecture and how to split the market process can be found [here](https://docs.filecoin.io/mine/lotus/split-markets-miners/#concepts).
+- ⭐️⭐️⭐️[**lotus-miner market subsystem**](https://lotus.filecoin.io/storage-providers/advanced-configurations/split-markets-miners/) is introduced in this release! It is **highly recommended** for storage providers to run markets processes on a separate machine! Doing so, only this machine needs to exposes public ports for deal making. This also means that the other miner operations can now be completely isolated by from the deal making processes and storage providers can stop and restarts the markets process without affecting an ongoing Winning/Window PoSt!
+  - More details on the concepts, architecture and how to split the market process can be found [here](https://lotus.filecoin.io/storage-providers/advanced-configurations/split-markets-miners/#concepts).
   - Base on your system setup(running on separate machines, same machine and so on), please see the suggested practice by community members [here](https://github.com/filecoin-project/lotus/discussions/7047#discussion-3515335).
     - Note: if you are running lotus-worker on a different machine, you will need to set `MARKETS_API_INFO` for certain CLI to work properly. This will be improved by #7072.
   - Huge thanks to MinerX fellows for [helping testing the implementation, reporting the issues so they were fixed by now and providing feedbacks](https://github.com/filecoin-project/lotus/discussions/6861) to user docs in the past three weeks!
@@ -1496,7 +1601,7 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
     - `AvailableBalanceBuffer`: minimum available balance to keep in the miner actor before sending it with messages, default is 0FIL.
     - `DisableCollateralFallback`: whether to send collateral with messages even if there is no available balance in the miner actor, default is `false`.
 - Config for deal publishing control addresses ([filecoin-project/lotus#6697](https://github.com/filecoin-project/lotus/pull/6697))
-  - Set `DealPublishControl` to set the wallet used for sending `PublishStorageDeals` messages, instructions [here](https://docs.filecoin.io/mine/lotus/miner-addresses/#control-addresses).
+  - Set `DealPublishControl` to set the wallet used for sending `PublishStorageDeals` messages, instructions [here](https://lotus.filecoin.io/storage-providers/operate/addresses/#control-addresses).
 - Config UX improvements ([filecoin-project/lotus#6848](https://github.com/filecoin-project/lotus/pull/6848))
   - You can now preview the the default and updated node config by running `lotus/lotus-miner config default/updated`
 
@@ -1925,7 +2030,7 @@ Note that this release is built on top of Lotus v1.9.0. Enterprising users can u
 
 FIPs [0008](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0008.md) and [0013](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0013.md) combine to allow for a significant increase in the rate of onboarding storage on the Filecoin network. This aims to lead to more useful data being stored on the network, reduced network congestion, and lower network base fee.
 
-**Check out the documentation [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#precommitsectorsbatch) for details on the new Lotus miner sealing config options, [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#fees-section) for fee config options, and explanations of the new features.**
+**Check out the documentation [here]((https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#precommitsectorsbatch) for details on the new Lotus miner sealing config options, [here](https://lotus.filecoin.io/storage-providers/setup/configuration/#fees-section) for fee config options, and explanations of the new features.**
 
 Note:
 - We recommend to keep `PreCommitSectorsBatch` as 1.
@@ -1941,7 +2046,7 @@ Given these assumptions:
 
 - We'd expect a network storage growth rate of around 530PiB per day. 😳 🎉 🥳 😅
 - We'd expect network bandwidth dedicated to `SubmitWindowedPoSt` to grow by about 0.02% per day.
-- We'd expect the [state-tree](https://spec.filecoin.io/#section-systems.filecoin_vm.state_tree) (and therefore [snapshot](https://docs.filecoin.io/get-started/lotus/chain/#lightweight-snapshot)) size to grow by 1.16GiB per day.
+- We'd expect the [state-tree](https://spec.filecoin.io/#section-systems.filecoin_vm.state_tree) (and therefore [snapshot](https://lotus.filecoin.io/lotus/manage/chain-management/#lightweight-snapshot)) size to grow by 1.16GiB per day.
   - Nearly all of the state-tree growth is expected to come from new sector metadata.
 - We'd expect the daily lotus datastore growth rate to increase by about 10-15% (from current ~21GiB/day).
   - Most "growth" of the lotus datastore is due to "churn", historical data that's no longer referenced by the latest state-tree.
@@ -1962,7 +2067,7 @@ Included in the HyperDrive upgrade is [FIP-0015](https://github.com/filecoin-pro
 
 - Implement FIP-0015 ([filecoin-project/lotus#6361](https://github.com/filecoin-project/lotus/pull/6361))
 - Integrate FIP0013 and FIP0008 ([filecoin-project/lotus#6235](https://github.com/filecoin-project/lotus/pull/6235))
-  - [Configuration docs and cli examples](https://docs.filecoin.io/mine/lotus/miner-configuration/#precommitsectorsbatch)
+  - [Configuration docs and cli examples](https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#precommitsectorsbatch)
   - [cli docs](https://github.com/filecoin-project/lotus/blob/master/documentation/en/cli-lotus-miner.md#lotus-miner-sectors-batching)
   - Introduce gas prices for aggregate verifications ([filecoin-project/lotus#6347](https://github.com/filecoin-project/lotus/pull/6347))
 - Introduce v5 actors ([filecoin-project/lotus#6195](https://github.com/filecoin-project/lotus/pull/6195))
@@ -2280,7 +2385,7 @@ Note that this release does NOT set an upgrade epoch for v3 actors to take effec
 - [#5309](https://github.com/filecoin-project/lotus/pull/5309) Batch multiple deals in one `PublishStorageMessages`
   - [#5411](https://github.com/filecoin-project/lotus/pull/5411) Handle batch `PublishStorageDeals` message in sealing recovery
   - [#5505](https://github.com/filecoin-project/lotus/pull/5505) Exclude expired deals from batching in `PublishStorageDeals` messages
-  - Added `PublishMsgPeriod` and `MaxDealsPerPublishMsg` to miner `Dealmaking` [configuration](https://docs.filecoin.io/mine/lotus/miner-configuration/#dealmaking-section). See how they work [here](https://docs.filecoin.io/mine/lotus/miner-configuration/#publishing-several-deals-in-one-message).
+  - Added `PublishMsgPeriod` and `MaxDealsPerPublishMsg` to miner `Dealmaking` [configuration](https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#dealmaking-section). See how they work [here](https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#publishing-several-deals-in-one-message).
   - [#5538](https://github.com/filecoin-project/lotus/pull/5538), [#5549](https://github.com/filecoin-project/lotus/pull/5549) Added a command to list pending deals and force publish messages.
     - Run `lotus-miner market pending-publish`
   - [#5428](https://github.com/filecoin-project/lotus/pull/5428) Moved waiting for `PublishStorageDeals` messages' receipt from markets to lotus

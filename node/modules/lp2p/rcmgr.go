@@ -10,11 +10,14 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
+	"github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
+	rcmgrObs "github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
 	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
@@ -36,38 +39,52 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		// enable debug logs for rcmgr
 		logging.SetLogLevel("rcmgr", "debug")
 
-		// Adjust default limits
+		// Adjust default defaultLimits
 		// - give it more memory, up to 4G, min of 1G
-		// - if maxconns are too high, adjust Conn/FD/Stream limits
-		defaultLimits := rcmgr.DefaultLimits.WithSystemMemory(.125, 1<<30, 4<<30)
+		// - if maxconns are too high, adjust Conn/FD/Stream defaultLimits
+		defaultLimits := rcmgr.DefaultLimits
+
+		// TODO: also set appropriate default limits for lotus protocols
+		libp2p.SetDefaultServiceLimits(&defaultLimits)
+
+		// Minimum 1GB of memory
+		defaultLimits.SystemBaseLimit.Memory = 1 << 30
+		// For every extra 1GB of memory we have available, increase our limit by 1GiB
+		defaultLimits.SystemLimitIncrease.Memory = 1 << 30
+		defaultLimitConfig := defaultLimits.AutoScale()
+		if defaultLimitConfig.System.Memory > 4<<30 {
+			// Cap our memory limit
+			defaultLimitConfig.System.Memory = 4 << 30
+		}
+
 		maxconns := int(connMgrHi)
-		if 2*maxconns > defaultLimits.SystemBaseLimit.ConnsInbound {
+		if 2*maxconns > defaultLimitConfig.System.ConnsInbound {
 			// adjust conns to 2x to allow for two conns per peer (TCP+QUIC)
-			defaultLimits.SystemBaseLimit.ConnsInbound = logScale(2 * maxconns)
-			defaultLimits.SystemBaseLimit.ConnsOutbound = logScale(2 * maxconns)
-			defaultLimits.SystemBaseLimit.Conns = logScale(4 * maxconns)
+			defaultLimitConfig.System.ConnsInbound = logScale(2 * maxconns)
+			defaultLimitConfig.System.ConnsOutbound = logScale(2 * maxconns)
+			defaultLimitConfig.System.Conns = logScale(4 * maxconns)
 
-			defaultLimits.SystemBaseLimit.StreamsInbound = logScale(16 * maxconns)
-			defaultLimits.SystemBaseLimit.StreamsOutbound = logScale(64 * maxconns)
-			defaultLimits.SystemBaseLimit.Streams = logScale(64 * maxconns)
+			defaultLimitConfig.System.StreamsInbound = logScale(16 * maxconns)
+			defaultLimitConfig.System.StreamsOutbound = logScale(64 * maxconns)
+			defaultLimitConfig.System.Streams = logScale(64 * maxconns)
 
-			if 2*maxconns > defaultLimits.SystemBaseLimit.FD {
-				defaultLimits.SystemBaseLimit.FD = logScale(2 * maxconns)
+			if 2*maxconns > defaultLimitConfig.System.FD {
+				defaultLimitConfig.System.FD = logScale(2 * maxconns)
 			}
 
-			defaultLimits.ServiceBaseLimit.StreamsInbound = logScale(8 * maxconns)
-			defaultLimits.ServiceBaseLimit.StreamsOutbound = logScale(32 * maxconns)
-			defaultLimits.ServiceBaseLimit.Streams = logScale(32 * maxconns)
+			defaultLimitConfig.ServiceDefault.StreamsInbound = logScale(8 * maxconns)
+			defaultLimitConfig.ServiceDefault.StreamsOutbound = logScale(32 * maxconns)
+			defaultLimitConfig.ServiceDefault.Streams = logScale(32 * maxconns)
 
-			defaultLimits.ProtocolBaseLimit.StreamsInbound = logScale(8 * maxconns)
-			defaultLimits.ProtocolBaseLimit.StreamsOutbound = logScale(32 * maxconns)
-			defaultLimits.ProtocolBaseLimit.Streams = logScale(32 * maxconns)
+			defaultLimitConfig.ProtocolDefault.StreamsInbound = logScale(8 * maxconns)
+			defaultLimitConfig.ProtocolDefault.StreamsOutbound = logScale(32 * maxconns)
+			defaultLimitConfig.ProtocolDefault.Streams = logScale(32 * maxconns)
 
 			log.Info("adjusted default resource manager limits")
 		}
 
 		// initialize
-		var limiter *rcmgr.BasicLimiter
+		var limiter rcmgr.Limiter
 		var opts []rcmgr.Option
 
 		repoPath := repo.Path()
@@ -78,22 +95,29 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		switch {
 		case err == nil:
 			defer limitsIn.Close() //nolint:errcheck
-			limiter, err = rcmgr.NewLimiterFromJSON(limitsIn, defaultLimits)
+			limiter, err = rcmgr.NewLimiterFromJSON(limitsIn, defaultLimitConfig)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing limit file: %w", err)
 			}
 
 		case errors.Is(err, os.ErrNotExist):
-			limiter = rcmgr.NewStaticLimiter(defaultLimits)
+			limiter = rcmgr.NewFixedLimiter(defaultLimitConfig)
 
 		default:
 			return nil, err
 		}
 
-		// TODO: also set appropriate default limits for lotus protocols
-		libp2p.SetDefaultServiceLimits(limiter)
+		str, err := rcmgrObs.NewStatsTraceReporter()
+		if err != nil {
+			return nil, fmt.Errorf("error creating resource manager stats reporter: %w", err)
+		}
+		err = view.Register(obs.DefaultViews...)
+		if err != nil {
+			return nil, fmt.Errorf("error registering rcmgr metrics: %w", err)
+		}
 
-		opts = append(opts, rcmgr.WithMetrics(rcmgrMetrics{}))
+		// Metrics
+		opts = append(opts, rcmgr.WithMetrics(rcmgrMetrics{}), rcmgr.WithTraceReporter(str))
 
 		if os.Getenv("LOTUS_DEBUG_RCMGR") != "" {
 			debugPath := filepath.Join(repoPath, "debug")

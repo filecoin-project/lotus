@@ -31,6 +31,10 @@ func ShowHelp(cctx *ufcli.Context, err error) error {
 	return &PrintHelpErr{Err: err, Ctx: cctx}
 }
 
+func IncorrectNumArgs(cctx *ufcli.Context) error {
+	return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments, got %d", cctx.NArg()))
+}
+
 func RunApp(app *ufcli.App) {
 	if err := app.Run(os.Args); err != nil {
 		if os.Getenv("LOTUS_DEV") != "" {

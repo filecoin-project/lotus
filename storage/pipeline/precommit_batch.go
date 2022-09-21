@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -280,14 +280,15 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 	return res, nil
 }
 
-func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
+func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, entry *preCommitEntry) (cid.Cid, error) {
+	msgParams := infoToPreCommitSectorParams(entry.pci)
 	enc := new(bytes.Buffer)
 
-	if err := params.pci.MarshalCBOR(enc); err != nil {
+	if err := msgParams.MarshalCBOR(enc); err != nil {
 		return cid.Undef, xerrors.Errorf("marshaling precommit params: %w", err)
 	}
 
-	deposit := params.deposit
+	deposit := entry.deposit
 	if cfg.CollateralFromMinerBalance {
 		c := big.Sub(deposit, *avail)
 		*avail = big.Sub(*avail, deposit)
@@ -328,7 +329,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKe
 		}
 
 		res.Sectors = append(res.Sectors, p.pci.SectorNumber)
-		params.Sectors = append(params.Sectors, *p.pci)
+		params.Sectors = append(params.Sectors, *infoToPreCommitSectorParams(p.pci))
 		deposit = big.Add(deposit, p.deposit)
 	}
 

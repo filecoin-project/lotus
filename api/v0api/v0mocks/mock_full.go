@@ -13,10 +13,10 @@ import (
 	uuid "github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
-	network0 "github.com/libp2p/go-libp2p-core/network"
-	peer "github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	metrics "github.com/libp2p/go-libp2p/core/metrics"
+	network0 "github.com/libp2p/go-libp2p/core/network"
+	peer "github.com/libp2p/go-libp2p/core/peer"
+	protocol "github.com/libp2p/go-libp2p/core/protocol"
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
@@ -26,8 +26,8 @@ import (
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	miner "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
@@ -2185,6 +2185,21 @@ func (m *MockFullNode) StateActorCodeCIDs(arg0 context.Context, arg1 network.Ver
 func (mr *MockFullNodeMockRecorder) StateActorCodeCIDs(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateActorCodeCIDs", reflect.TypeOf((*MockFullNode)(nil).StateActorCodeCIDs), arg0, arg1)
+}
+
+// StateActorManifestCID mocks base method.
+func (m *MockFullNode) StateActorManifestCID(arg0 context.Context, arg1 network.Version) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateActorManifestCID", arg0, arg1)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateActorManifestCID indicates an expected call of StateActorManifestCID.
+func (mr *MockFullNodeMockRecorder) StateActorManifestCID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateActorManifestCID", reflect.TypeOf((*MockFullNode)(nil).StateActorManifestCID), arg0, arg1)
 }
 
 // StateAllMinerFaults mocks base method.
