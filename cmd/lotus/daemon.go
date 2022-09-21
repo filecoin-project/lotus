@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-paramfetch"
 
-	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -314,7 +313,7 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
-		var api api.FullNode
+		var api lapi.FullNode
 		stop, err := node.New(ctx,
 			node.FullAPI(&api, node.Lite(isLite)),
 
@@ -393,7 +392,7 @@ var DaemonCmd = &cli.Command{
 	},
 }
 
-func importKey(ctx context.Context, api api.FullNode, f string) error {
+func importKey(ctx context.Context, api lapi.FullNode, f string) error {
 	f, err := homedir.Expand(f)
 	if err != nil {
 		return err
