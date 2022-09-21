@@ -185,7 +185,7 @@ func TestDeadlineToggling(t *testing.T) {
 			require.NoError(t, err)
 
 			// cron happened on the same epoch some other condition would have happened
-			if di.Open == ts.Height() {
+			if di.Open <= ts.Height() {
 				act, err := mst.DeadlineCronActive()
 				require.NoError(t, err)
 				require.Equal(t, activeIfCron, act)
