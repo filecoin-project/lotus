@@ -137,7 +137,7 @@ func init() {
 	addExample(&textSelExample)
 	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
-	addExample(build.NewestNetworkVersion)
+	addExample(build.TestNetworkVersion)
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{
