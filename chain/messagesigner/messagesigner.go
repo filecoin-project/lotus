@@ -37,7 +37,7 @@ type MsgSigner interface {
 	StoreSignedMessage(ctx context.Context, uuid uuid.UUID, message *types.SignedMessage) error
 	NextNonce(ctx context.Context, addr address.Address) (uint64, error)
 	SaveNonce(ctx context.Context, addr address.Address, nonce uint64) error
-	DstoreKey(addr address.Address) datastore.Key
+	dstoreKey(addr address.Address) datastore.Key
 	IsLeader(ctx context.Context) bool
 	RaftLeader(ctx context.Context) (peer.ID, error)
 	RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error)
@@ -143,7 +143,7 @@ func (ms *MessageSigner) NextNonce(ctx context.Context, addr address.Address) (u
 	}
 
 	// Get the next nonce for this address from the datastore
-	addrNonceKey := ms.DstoreKey(addr)
+	addrNonceKey := ms.dstoreKey(addr)
 	dsNonceBytes, err := ms.ds.Get(ctx, addrNonceKey)
 
 	switch {
@@ -183,7 +183,7 @@ func (ms *MessageSigner) SaveNonce(ctx context.Context, addr address.Address, no
 	nonce++
 
 	// Write the nonce to the datastore
-	addrNonceKey := ms.DstoreKey(addr)
+	addrNonceKey := ms.dstoreKey(addr)
 	buf := bytes.Buffer{}
 	_, err := buf.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, nonce))
 	if err != nil {
@@ -196,7 +196,7 @@ func (ms *MessageSigner) SaveNonce(ctx context.Context, addr address.Address, no
 	return nil
 }
 
-func (ms *MessageSigner) DstoreKey(addr address.Address) datastore.Key {
+func (ms *MessageSigner) dstoreKey(addr address.Address) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
 }
 

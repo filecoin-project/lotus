@@ -293,10 +293,10 @@ func DefaultClusterRaftConfig() *ClusterRaftConfig {
 	var cfg ClusterRaftConfig
 	cfg.DataFolder = "" // empty so it gets omitted
 	cfg.InitPeerset = []peer.ID{}
-	cfg.WaitForLeaderTimeout = DefaultWaitForLeaderTimeout
-	cfg.NetworkTimeout = DefaultNetworkTimeout
+	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
+	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
 	cfg.CommitRetries = DefaultCommitRetries
-	cfg.CommitRetryDelay = DefaultCommitRetryDelay
+	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
 	cfg.BackupsRotate = DefaultBackupsRotate
 	cfg.DatastoreNamespace = DefaultDatastoreNamespace
 	cfg.RaftConfig = hraft.DefaultConfig()

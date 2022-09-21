@@ -44,23 +44,17 @@ func (h *RPCHandler) AddPeer(ctx context.Context, pid peer.ID, ret *struct{}) er
 // Add other consensus RPC calls here
 
 func NewRPCClient(host host.Host) *rpc.Client {
-	protocolID := protocol.ID("/p2p/rpc/ping")
+	protocolID := protocol.ID("/rpc/lotus-chain/v0")
 	return rpc.NewClient(host, protocolID)
 }
 
-func NewRPCServer(host host.Host, rpcHandler *RPCHandler) error {
-	protocolID := protocol.ID("/p2p/rpc/ping")
-	rpcServer := rpc.NewServer(host, protocolID)
+func NewRPCServer(ctx context.Context, host host.Host, rpcHandler *RPCHandler) error {
+
+	authF := func(pid peer.ID, svc, method string) bool {
+		return rpcHandler.cons.IsTrustedPeer(ctx, pid)
+	}
+
+	protocolID := protocol.ID("/rpc/lotus-chain/v0")
+	rpcServer := rpc.NewServer(host, protocolID, rpc.WithAuthorizeFunc(authF))
 	return rpcServer.RegisterName("Consensus", rpcHandler)
-	//return err
 }
-
-// contructorsfor rpc client and rpc server
-// rpc handler
-
-// rpcClient
-// Consensus
-// MessageSigner
-// MpoolAPI
-// RPC handler
-// RPC server

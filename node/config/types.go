@@ -1,8 +1,6 @@
 package config
 
 import (
-	"time"
-
 	hraft "github.com/hashicorp/raft"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -610,15 +608,15 @@ type ClusterRaftConfig struct {
 	InitPeerset []peer.ID
 	// LeaderTimeout specifies how long to wait for a leader before
 	// failing an operation.
-	WaitForLeaderTimeout time.Duration
+	WaitForLeaderTimeout Duration
 	// NetworkTimeout specifies how long before a Raft network
 	// operation is timed out
-	NetworkTimeout time.Duration
+	NetworkTimeout Duration
 	// CommitRetries specifies how many times we retry a failed commit until
 	// we give up.
 	CommitRetries int
 	// How long to wait between retries
-	CommitRetryDelay time.Duration
+	CommitRetryDelay Duration
 	// BackupsRotate specifies the maximum number of Raft's DataFolder
 	// copies that we keep as backups (renaming) after cleanup.
 	BackupsRotate int

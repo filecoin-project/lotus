@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"sort"
 	"time"
 
@@ -72,6 +73,8 @@ type Consensus struct {
 	rpcReady  chan struct{}
 	readyCh   chan struct{}
 
+	peerSet []peer.ID
+
 	//shutdownLock sync.RWMutex
 	//shutdown     bool
 }
@@ -115,6 +118,7 @@ func NewConsensus(host host.Host, cfg *config.ClusterRaftConfig, staging bool) (
 		actor:     actor,
 		state:     state,
 		raft:      raft,
+		peerSet:   cfg.InitPeerset,
 		rpcReady:  make(chan struct{}, 1),
 		readyCh:   make(chan struct{}, 1),
 	}
@@ -146,7 +150,7 @@ func (cc *Consensus) WaitForSync(ctx context.Context) error {
 
 	leaderCtx, cancel := context.WithTimeout(
 		ctx,
-		cc.config.WaitForLeaderTimeout)
+		time.Duration(cc.config.WaitForLeaderTimeout))
 	defer cancel()
 
 	// 1 - wait for leader
@@ -258,7 +262,7 @@ func (cc *Consensus) Ready(ctx context.Context) <-chan struct{} {
 
 // IsTrustedPeer returns true. In Raft we trust all peers.
 func (cc *Consensus) IsTrustedPeer(ctx context.Context, p peer.ID) bool {
-	return true
+	return slices.Contains(cc.peerSet, p)
 }
 
 // Trust is a no-Op.
@@ -287,7 +291,7 @@ func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interf
 			logger.Warn("there seems to be no leader. Waiting for one")
 			rctx, cancel := context.WithTimeout(
 				ctx,
-				cc.config.WaitForLeaderTimeout,
+				time.Duration(cc.config.WaitForLeaderTimeout),
 			)
 			defer cancel()
 			pidstr, err := cc.raft.WaitForLeader(rctx)
@@ -303,7 +307,8 @@ func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interf
 			}
 		}
 
-		logger.Infof("leader: %s, curr host: &s", leader, cc.host.ID())
+		logger.Infof("leader: %s, curr host: %s, peerSet: %s", leader, cc.host.ID(), cc.peerSet)
+
 		// We are the leader. Do not redirect
 		if leader == cc.host.ID() {
 			return false, nil
@@ -374,7 +379,7 @@ func (cc *Consensus) Commit(ctx context.Context, op *ConsensusOp) error {
 		}
 
 	RETRY:
-		time.Sleep(cc.config.CommitRetryDelay)
+		time.Sleep(time.Duration(cc.config.CommitRetryDelay))
 	}
 	return finalErr
 }
@@ -402,7 +407,7 @@ func (cc *Consensus) AddPeer(ctx context.Context, pid peer.ID) error {
 
 		//cc.shutdownLock.RUnlock()
 		if finalErr != nil {
-			time.Sleep(cc.config.CommitRetryDelay)
+			time.Sleep(time.Duration(cc.config.CommitRetryDelay))
 			continue
 		}
 		logger.Infof("peer added to Raft: %s", pid.Pretty())
@@ -432,7 +437,7 @@ func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 		finalErr = cc.raft.RemovePeer(ctx, peer.Encode(pid))
 		//cc.shutdownLock.RUnlock()
 		if finalErr != nil {
-			time.Sleep(cc.config.CommitRetryDelay)
+			time.Sleep(time.Duration(cc.config.CommitRetryDelay))
 			continue
 		}
 		logger.Infof("peer removed from Raft: %s", pid.Pretty())
