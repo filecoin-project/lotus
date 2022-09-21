@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -514,8 +515,11 @@ var dataexplCmd = &cli.Command{
 
 			if r.Method != "HEAD" {
 				ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+
 				sel = ssb.ExploreUnion(
 					ssb.Matcher(),
+					//ssb.ExploreInterpretAs("unixfs", ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreAll(ssb.Matcher()))),
+
 					ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 						eb.Insert("Links", ssb.ExploreRange(0, maxDirTypeChecks,
 							ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
@@ -563,16 +567,45 @@ var dataexplCmd = &cli.Command{
 				}
 
 				switch fsNode.Type() {
-				case unixfs.TDirectory:
-					d, err := io2.NewDirectoryFromNode(dserv, node)
+				case unixfs.THAMTShard:
+					// TODO This in principle should be in the case below, and just use NewDirectoryFromNode; but that doesn't work
+					// non-working example: http://127.0.0.1:5658/view/f01872811/baga6ea4seaqej7xagp2cmxdclpzqspd7zmu6dpnjt3qr2tywdzovqosmlvhxemi/bafybeif7kzcu2ezkkr34zu562kvutrsypr5o3rjeqrwgukellocbidfcsu/Links/3/Hash/Links/0/Hash/?filename=baf...qhgi
+					ls := node.Links()
+
+					links, err := parseLinks(ctx, ls, node, dserv, maxDirTypeChecks)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 
+					tpl, err := template.New("dir.gohtml").ParseFS(dres, "dexpl/dir.gohtml")
+					if err != nil {
+						fmt.Println(err)
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					w.Header().Set("Content-Type", "text/html")
+					w.WriteHeader(http.StatusOK)
+					data := map[string]interface{}{
+						"entries": links,
+						"url":     r.URL.Path,
+					}
+					if err := tpl.Execute(w, data); err != nil {
+						fmt.Println(err)
+						return
+					}
+
+					return
+				case unixfs.TDirectory:
+					d, err := io2.NewDirectoryFromNode(dserv, node)
+					if err != nil {
+						http.Error(w, xerrors.Errorf("newdir: %w", err).Error(), http.StatusInternalServerError)
+						return
+					}
+
 					ls, err := d.Links(ctx)
 					if err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
+						http.Error(w, xerrors.Errorf("links: %w", err).Error(), http.StatusInternalServerError)
 						return
 					}
 
@@ -634,7 +667,7 @@ var dataexplCmd = &cli.Command{
 					}
 
 				default:
-					http.Error(w, "unknown ufs type "+fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
+					http.Error(w, "(2) unknown ufs type "+fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
 					return
 				}
 			case cid.Raw:
@@ -842,6 +875,9 @@ func parseLinks(ctx context.Context, ls []*format.Link, node format.Node, dserv 
 				case unixfs.TDirectory:
 					links[i].Desc = fmt.Sprintf("DIR (%d entries)", len(fnode.Links()))
 					continue
+				case unixfs.THAMTShard:
+					links[i].Desc = fmt.Sprintf("HAMT (%d links)", len(fnode.Links()))
+					continue
 				case unixfs.TSymlink:
 					links[i].Desc = fmt.Sprintf("LINK")
 					continue
@@ -917,7 +953,8 @@ func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.A
 		}
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
-			DataSelector: &sel,
+			DataSelector:      &sel,
+			ExportMerkleProof: true,
 		})
 
 		rc, err := lcli.ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
@@ -948,7 +985,9 @@ func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.A
 			return cid.Undef, nil, xerrors.Errorf("wanted one root")
 		}
 
-		return roots[0], merkledag.NewDAGService(blockservice.New(cbs, offline.Exchange(cbs))), nil
+		bs := bstore.NewTieredBstore(bstore.Adapt(cbs), bstore.NewMemory())
+
+		return roots[0], merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))), nil
 	}
 }
 
