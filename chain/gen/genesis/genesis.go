@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -213,6 +215,15 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 	if err := state.SetActor(verifreg.Address, verifact); err != nil {
 		return nil, nil, xerrors.Errorf("set verified registry actor: %w", err)
+	}
+
+	// Create verified registry
+	dcapact, err := SetupDatacapActor(ctx, bs, av)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("setup datacap actor: %w", err)
+	}
+	if err := state.SetActor(datacap.Address, dcapact); err != nil {
+		return nil, nil, xerrors.Errorf("set datacap actor: %w", err)
 	}
 
 	bact, err := MakeAccountActor(ctx, cst, av, builtin.BurntFundsActorAddr, big.Zero())
