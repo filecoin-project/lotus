@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/blockstore"
 	"io"
 	"os"
 
@@ -30,13 +31,14 @@ func carWalkFunc(nd format.Node) (out []*format.Link, err error) {
 
 var exportCarCmd = &cli.Command{
 	Name:        "export-car",
-	Description: "Export a car from repo (requires node to be offline)",
+	Description: "Export a car from repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
 			Value: "~/.lotus",
 		},
 	},
+	ArgsUsage: "[outfile] [root cid]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
 			return lcli.IncorrectNumArgs(cctx)
@@ -67,11 +69,25 @@ var exportCarCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
+		var bs blockstore.Blockstore
+
 		lr, err := r.Lock(repo.FullNode)
-		if err != nil {
-			return err
+		if err == nil {
+			bs, err = lr.Blockstore(ctx, repo.UniversalBlockstore)
+			if err != nil {
+				return fmt.Errorf("failed to open blockstore: %w", err)
+			}
+			defer lr.Close() //nolint:errcheck
+		} else {
+			api, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return err
+			}
+
+			defer closer()
+
+			bs = blockstore.NewAPIBlockstore(api)
 		}
-		defer lr.Close() //nolint:errcheck
 
 		fi, err := os.Create(outfile)
 		if err != nil {
@@ -79,11 +95,6 @@ var exportCarCmd = &cli.Command{
 		}
 
 		defer fi.Close() //nolint:errcheck
-
-		bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
-		if err != nil {
-			return fmt.Errorf("failed to open blockstore: %w", err)
-		}
 
 		defer func() {
 			if c, ok := bs.(io.Closer); ok {

@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/ipfs/go-unixfsnode"
 	dagpb "github.com/ipld/go-codec-dagpb"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"html/template"
@@ -42,8 +45,6 @@ import (
 	"github.com/ipfs/go-unixfs"
 	io2 "github.com/ipfs/go-unixfs/io"
 
-	carv2 "github.com/ipld/go-car/v2"
-	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
@@ -294,7 +295,7 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 
 	{
 		// get left side of the dag up to typeCheckDepth
-		g := get(h.ainfo, h.api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
+		g := getFilRetrieval(h.ainfo, h.api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
 
 		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 		root, dserv, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
@@ -358,9 +359,7 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *dxhnd) handleView(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
+func (h *dxhnd) handleViewFil(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ma, err := address.NewFromString(vars["mid"])
 	if err != nil {
@@ -381,7 +380,86 @@ func (h *dxhnd) handleView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// retr root
-	g := get(h.ainfo, h.api, r, ma, pcid, dcid)
+	g := getFilRetrieval(h.ainfo, h.api, r, ma, pcid, dcid)
+	h.handleViewInner(w, r, g)
+}
+
+func (h *dxhnd) handleViewIPFS(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	dcid, err := cid.Parse(vars["cid"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	sg := func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
+		lbs, err := bstore.NewLocalIPFSBlockstore(r.Context(), true)
+		if err != nil {
+			return cid.Cid{}, nil, err
+		}
+
+		bs := bstore.NewTieredBstore(bstore.Adapt(lbs), bstore.NewMemory())
+		ds := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+
+		rs, err := textselector.SelectorSpecFromPath(textselector.Expression(vars["path"]), false, ss)
+		if err != nil {
+			return cid.Cid{}, nil, xerrors.Errorf("failed to parse path-selector: %w", err)
+		}
+
+		root, err := findRoot(r.Context(), dcid, rs, ds)
+		return root, ds, err
+	}
+
+	h.handleViewInner(w, r, sg)
+}
+
+func findRoot(ctx context.Context, root cid.Cid, selspec builder.SelectorSpec, ds format.DAGService) (cid.Cid, error) {
+	rsn := selspec.Node()
+
+	var newRoot cid.Cid
+	var errHalt = errors.New("halt walk")
+	if err := utils.TraverseDag(
+		ctx,
+		ds,
+		root,
+		rsn,
+		nil,
+		func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+			if r == traversal.VisitReason_SelectionMatch {
+				if p.LastBlock.Path.String() != p.Path.String() {
+					return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
+				}
+
+				if p.LastBlock.Link == nil {
+					// this is likely the root node that we've matched here
+					newRoot = root
+					return errHalt
+				}
+
+				cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+				if !castOK {
+					return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
+				}
+
+				newRoot = cidLnk.Cid
+
+				return errHalt
+			}
+			return nil
+		},
+	); err != nil && err != errHalt {
+		return cid.Undef, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
+	}
+
+	if newRoot == cid.Undef {
+		return cid.Undef, xerrors.Errorf("path selection does not match a node within %s", root)
+	}
+	return newRoot, nil
+}
+
+func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGetter) {
+	ctx := r.Context()
 
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 	sel := ssb.Matcher()
@@ -782,7 +860,7 @@ func (h *dxhnd) handleCar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// retr root
-	g := getCar(h.ainfo, h.api, r, ma, pcid, dcid)
+	g := getCarFilRetrieval(h.ainfo, h.api, r, ma, pcid, dcid)
 
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 	sel := ssb.ExploreRecursive(selector.RecursionLimitNone(), ssb.ExploreUnion(
@@ -876,7 +954,8 @@ var dataexplCmd = &cli.Command{
 		m.HandleFunc("/minersectors/{id}", dh.handleMinerSectors).Methods("GET")
 
 		m.HandleFunc("/deal/{id}", dh.handleDeal).Methods("GET")
-		m.HandleFunc("/view/{mid}/{piece}/{cid}/{path:.*}", dh.handleView).Methods("GET", "HEAD")
+		m.HandleFunc("/view/ipfs/{cid}/{path:.*}", dh.handleViewIPFS).Methods("GET", "HEAD")
+		m.HandleFunc("/view/{mid}/{piece}/{cid}/{path:.*}", dh.handleViewFil).Methods("GET", "HEAD")
 		m.HandleFunc("/car/{mid}/{piece}/{cid}/{path:.*}", dh.handleCar).Methods("GET")
 
 		server := &http.Server{Addr: ":5658", Handler: m, BaseContext: func(_ net.Listener) context.Context {
@@ -894,7 +973,7 @@ var dataexplCmd = &cli.Command{
 	},
 }
 
-func retrieve(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address, pieceCid, file cid.Cid, sel *lapi.Selector) (*lapi.ExportRef, error) {
+func retrieveFil(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address, pieceCid, file cid.Cid, sel *lapi.Selector) (*lapi.ExportRef, error) {
 	payer, err := fapi.WalletDefaultAddress(ctx)
 	if err != nil {
 		return nil, err
@@ -1137,71 +1216,7 @@ func getHeadReader(ctx context.Context, get func(ss builder.SelectorSpec) (cid.C
 	return io2.NewDagReader(ctx, node, dserv)
 }
 
-func getCar(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (io.ReadCloser, error) {
-	return func(ss builder.SelectorSpec) (io.ReadCloser, error) {
-		vars := mux.Vars(r)
-
-		sel, err := pathToSel(vars["path"], false, ss)
-		if err != nil {
-			return nil, err
-		}
-
-		eref, err := retrieve(r.Context(), api, ma, pcid, dcid, &sel)
-		if err != nil {
-			return nil, xerrors.Errorf("retrieve: %w", err)
-		}
-
-		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
-			DataSelector:      &sel,
-			ExportMerkleProof: true,
-		})
-
-		rc, err := lcli.ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
-		if err != nil {
-			return nil, err
-		}
-
-		return rc, nil
-	}
-}
-
-func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
-	gc := getCar(ainfo, api, r, ma, pcid, dcid)
-
-	return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
-		rc, err := gc(ss)
-		if err != nil {
-			return cid.Cid{}, nil, err
-		}
-		defer rc.Close() // nolint
-
-		var memcar bytes.Buffer
-		_, err = io.Copy(&memcar, rc)
-		if err != nil {
-			return cid.Undef, nil, err
-		}
-
-		cbs, err := blockstore.NewReadOnly(&bytesReaderAt{bytes.NewReader(memcar.Bytes())}, nil,
-			carv2.ZeroLengthSectionAsEOF(true),
-			blockstore.UseWholeCIDs(true))
-		if err != nil {
-			return cid.Undef, nil, err
-		}
-
-		roots, err := cbs.Roots()
-		if err != nil {
-			return cid.Undef, nil, err
-		}
-
-		if len(roots) != 1 {
-			return cid.Undef, nil, xerrors.Errorf("wanted one root")
-		}
-
-		bs := bstore.NewTieredBstore(bstore.Adapt(cbs), bstore.NewMemory())
-
-		return roots[0], merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))), nil
-	}
-}
+type selGetter func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error)
 
 func pathToSel(psel string, matchTraversal bool, sub builder.SelectorSpec) (lapi.Selector, error) {
 	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), matchTraversal, sub)
