@@ -9,7 +9,6 @@ import (
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-unixfsnode"
 	dagpb "github.com/ipld/go-codec-dagpb"
 	"github.com/ipld/go-ipld-prime"
@@ -291,14 +290,13 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 	lstr = dcid.String()
 	d.Proposal.Label, _ = market.NewLabelFromString(lstr) // if it's b64, will break urls
 
-	var typ string
-	var sz string
-	var linkc int
-	var dents []dirEntry
+	var cdesc string
 
 	{
-		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+		// get left side of the dag up to typeCheckDepth
 		g := get(h.ainfo, h.api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
+
+		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 		root, dserv, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
 			ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 				eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
@@ -311,99 +309,19 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		node, err := dserv.Get(ctx, root)
+		// this gets type / size / linkcount for root
+
+		desc, _, err := linkDesc(ctx, root, "", dserv)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		var s uint64
+		cdesc = desc.Desc
 
-		switch root.Type() {
-		case cid.DagProtobuf:
-			protoBufNode, ok := node.(*merkledag.ProtoNode)
-			if !ok {
-				http.Error(w, "not a dir", http.StatusInternalServerError)
-				return
-			}
-
-			fsNode, err := unixfs.FSNodeFromBytes(protoBufNode.Data())
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			s = fsNode.FileSize()
-
-			switch fsNode.Type() {
-			case unixfs.TDirectory:
-				d, err := io2.NewDirectoryFromNode(dserv, node)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				ls, err := d.Links(ctx)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				if r.FormValue("expand") == "1" {
-					dents, err = parseLinks(ctx, ls, node, dserv, 0)
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-				}
-
-				linkc = len(ls)
-				typ = "DIR"
-			case unixfs.TFile:
-				rd, err := io2.NewDagReader(ctx, node, dserv)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				mimeType, err := mimetype.DetectReader(rd)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("cannot detect content-type: %s", err.Error()), http.StatusInternalServerError)
-					return
-				}
-
-				typ = fmt.Sprintf("FILE(%s)", mimeType)
-
-			default:
-				http.Error(w, "unknown ufs type "+fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
-				return
-			}
-		case cid.Raw:
-			typ = "FILE"
-			mimeType, err := mimetype.DetectReader(bytes.NewReader(node.RawData()))
-			if err != nil {
-				http.Error(w, fmt.Sprintf("cannot detect content-type: %s", err.Error()), http.StatusInternalServerError)
-				return
-			}
-
-			typ = fmt.Sprintf("FILE(%s)", mimeType)
-			s = uint64(len(node.RawData()))
-		case cid.DagCBOR:
-			var i interface{}
-			err := cbor.DecodeInto(node.RawData(), &i)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			typ = fmt.Sprintf("DAG-CBOR")
-			s = uint64(len(node.RawData()))
-		default:
-			http.Error(w, "unknown codec "+fmt.Sprint(root.Type()), http.StatusInternalServerError)
-			return
+		if desc.Size != "" {
+			cdesc = fmt.Sprintf("%s %s", cdesc, desc.Size)
 		}
-
-		sz = types.SizeStr(types.NewInt(s))
 	}
 
 	now, err := h.api.ChainHead(r.Context())
@@ -432,11 +350,7 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 		"label": lstr,
 		"id":    did,
 
-		"type":  typ,
-		"size":  sz,
-		"links": linkc,
-
-		"dirents": dents,
+		"contentDesc": cdesc,
 	}
 	if err := tpl.Execute(w, data); err != nil {
 		fmt.Println(err)
@@ -510,156 +424,7 @@ func (h *dxhnd) handleView(w http.ResponseWriter, r *http.Request) {
 	viewIPLD := root.Type() == cid.DagCBOR || r.FormValue("view") == "ipld"
 
 	if viewIPLD {
-		w.Header().Set("X-HumanSize", types.SizeStr(types.NewInt(must(node.Size))))
-
-		// not sure what this is for TBH: we also provide ctx in  &traversal.Config{}
-		linkContext := ipld.LinkContext{Ctx: ctx}
-
-		// this is what allows us to understand dagpb
-		nodePrototypeChooser := dagpb.AddSupportToChooser(
-			func(ipld.Link, ipld.LinkContext) (ipld.NodePrototype, error) {
-				return basicnode.Prototype.Any, nil
-			},
-		)
-
-		// this is how we implement GETs
-		linkSystem := cidlink.DefaultLinkSystem()
-		linkSystem.StorageReadOpener = func(lctx ipld.LinkContext, lnk ipld.Link) (io.Reader, error) {
-			cl, isCid := lnk.(cidlink.Link)
-			if !isCid {
-				return nil, fmt.Errorf("unexpected link type %#v", lnk)
-			}
-
-			if node.Cid() != cl.Cid {
-				return nil, fmt.Errorf("not found")
-			}
-
-			return bytes.NewBuffer(node.RawData()), nil
-		}
-		unixfsnode.AddUnixFSReificationToLinkSystem(&linkSystem)
-
-		// this is how we pull the start node out of the DS
-		startLink := cidlink.Link{Cid: node.Cid()}
-		startNodePrototype, err := nodePrototypeChooser(startLink, linkContext)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		startNode, err := linkSystem.Load(
-			linkContext,
-			startLink,
-			startNodePrototype,
-		)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		var dumpNode func(n ipld.Node, p string) (string, error)
-		dumpNode = func(n ipld.Node, recPath string) (string, error) {
-			switch n.Kind() {
-			case datamodel.Kind_Invalid:
-				return `<span class="node">INVALID</span>`, nil
-			case datamodel.Kind_Map:
-				var inner string
-
-				it := n.MapIterator()
-				for !it.Done() {
-					k, v, err := it.Next()
-					if err != nil {
-						return "", err
-					}
-
-					ks, err := dumpNode(k, recPath)
-					if err != nil {
-						return "", err
-					}
-					vs, err := dumpNode(v, recPath+must(k.AsString)+"/")
-					if err != nil {
-						return "", err
-					}
-
-					inner += fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", ks, vs)
-				}
-
-				return fmt.Sprintf(`<div class="node"><div><span>MAP</span></div><div><table>%s</table></div></div>`, inner), nil
-			case datamodel.Kind_List:
-				var inner string
-
-				it := n.ListIterator()
-				for !it.Done() {
-					k, v, err := it.Next()
-					if err != nil {
-						return "", err
-					}
-
-					vs, err := dumpNode(v, recPath+fmt.Sprint(k)+"/")
-					if err != nil {
-						return "", err
-					}
-
-					inner += fmt.Sprintf("<tr><td class='listkey'>%d</td><td class='listval'>%s</td></tr>", k, vs)
-				}
-
-				return fmt.Sprintf(`<div class="node"><div><span>LIST</span></div><div><table>%s</table></div></div>`, inner), nil
-			case datamodel.Kind_Null:
-				return `<span class="node">NULL</span>`, nil
-			case datamodel.Kind_Bool:
-				return fmt.Sprintf(`<span class="node">%t</span>`, must(n.AsBool)), nil
-			case datamodel.Kind_Int:
-				return fmt.Sprintf(`<span class="node">%d</span>`, must(n.AsInt)), nil
-			case datamodel.Kind_Float:
-				return fmt.Sprintf(`<span class="node">%f</span>`, must(n.AsFloat)), nil
-			case datamodel.Kind_String:
-				return fmt.Sprintf(`<span class="node">"%s"</span>`, template.HTMLEscapeString(must(n.AsString))), nil
-			case datamodel.Kind_Bytes:
-				return fmt.Sprintf(`<span class="node">%x</span>`, must(n.AsBytes)), nil
-			case datamodel.Kind_Link:
-				lnk := must(n.AsLink)
-
-				cl, isCid := lnk.(cidlink.Link)
-				if !isCid {
-					return "", fmt.Errorf("unexpected link type %#v", lnk)
-				}
-
-				ld, full, err := linkDesc(ctx, cl.Cid, gopath.Base(recPath), dserv)
-				if err != nil {
-					return "", xerrors.Errorf("link desc: %w", err)
-				}
-
-				if !full {
-					ld = fmt.Sprintf(`%s <a href="javascript:void(0)" onclick="checkDesc(this, '%s?filename=%s')">[?]</a>`, ld, recPath, gopath.Base(recPath))
-				}
-
-				carpath := strings.Replace(recPath, "/view", "/car", 1)
-
-				return fmt.Sprintf(`<span class="node"><a href="%s">%s</a> <a href="%s">[car]</a><a href="%s">[ipld]</a> <span>(%s)</span></span>`, recPath, lnk.String(), carpath, recPath+"?view=ipld", ld), nil
-			default:
-				return `<span>UNKNOWN</span>`, nil
-			}
-		}
-
-		res, err := dumpNode(startNode, r.URL.Path)
-		if err != nil {
-			return
-		}
-
-		tpl, err := txtempl.New("ipld.gohtml").ParseFS(dres, "dexpl/ipld.gohtml")
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		data := map[string]interface{}{
-			"content": res,
-		}
-		if err := tpl.Execute(w, data); err != nil {
-			fmt.Println(err)
-			return
-		}
-
+		h.handleViewIPLD(w, r, node, dserv)
 		return
 	}
 
@@ -691,7 +456,7 @@ func (h *dxhnd) handleView(w http.ResponseWriter, r *http.Request) {
 			// non-working example: http://127.0.0.1:5658/view/f01872811/baga6ea4seaqej7xagp2cmxdclpzqspd7zmu6dpnjt3qr2tywdzovqosmlvhxemi/bafybeif7kzcu2ezkkr34zu562kvutrsypr5o3rjeqrwgukellocbidfcsu/Links/3/Hash/Links/0/Hash/?filename=baf...qhgi
 			ls := node.Links()
 
-			links, err := parseLinks(ctx, ls, node, dserv, maxDirTypeChecks)
+			links, err := parseLinks(ctx, ls, dserv, maxDirTypeChecks)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -739,7 +504,7 @@ func (h *dxhnd) handleView(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			links, err := parseLinks(ctx, ls, node, dserv, maxDirTypeChecks)
+			links, err := parseLinks(ctx, ls, dserv, maxDirTypeChecks)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -835,6 +600,165 @@ func (h *dxhnd) handleView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.ServeContent(w, r, r.FormValue("filename"), time.Time{}, rd)
+}
+
+func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node format.Node, dserv format.DAGService) {
+	ctx := r.Context()
+
+	w.Header().Set("X-HumanSize", types.SizeStr(types.NewInt(must(node.Size))))
+
+	// not sure what this is for TBH: we also provide ctx in  &traversal.Config{}
+	linkContext := ipld.LinkContext{Ctx: ctx}
+
+	// this is what allows us to understand dagpb
+	nodePrototypeChooser := dagpb.AddSupportToChooser(
+		func(ipld.Link, ipld.LinkContext) (ipld.NodePrototype, error) {
+			return basicnode.Prototype.Any, nil
+		},
+	)
+
+	// this is how we implement GETs
+	linkSystem := cidlink.DefaultLinkSystem()
+	linkSystem.StorageReadOpener = func(lctx ipld.LinkContext, lnk ipld.Link) (io.Reader, error) {
+		cl, isCid := lnk.(cidlink.Link)
+		if !isCid {
+			return nil, fmt.Errorf("unexpected link type %#v", lnk)
+		}
+
+		if node.Cid() != cl.Cid {
+			return nil, fmt.Errorf("not found")
+		}
+
+		return bytes.NewBuffer(node.RawData()), nil
+	}
+	unixfsnode.AddUnixFSReificationToLinkSystem(&linkSystem)
+
+	// this is how we pull the start node out of the DS
+	startLink := cidlink.Link{Cid: node.Cid()}
+	startNodePrototype, err := nodePrototypeChooser(startLink, linkContext)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	startNode, err := linkSystem.Load(
+		linkContext,
+		startLink,
+		startNodePrototype,
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var dumpNode func(n ipld.Node, p string) (string, error)
+	dumpNode = func(n ipld.Node, recPath string) (string, error) {
+		switch n.Kind() {
+		case datamodel.Kind_Invalid:
+			return `<span class="node">INVALID</span>`, nil
+		case datamodel.Kind_Map:
+			var inner string
+
+			it := n.MapIterator()
+			for !it.Done() {
+				k, v, err := it.Next()
+				if err != nil {
+					return "", err
+				}
+
+				ks, err := dumpNode(k, recPath)
+				if err != nil {
+					return "", err
+				}
+				vs, err := dumpNode(v, recPath+must(k.AsString)+"/")
+				if err != nil {
+					return "", err
+				}
+
+				inner += fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", ks, vs)
+			}
+
+			return fmt.Sprintf(`<div class="node"><div><span>MAP</span></div><div><table>%s</table></div></div>`, inner), nil
+		case datamodel.Kind_List:
+			var inner string
+
+			it := n.ListIterator()
+			for !it.Done() {
+				k, v, err := it.Next()
+				if err != nil {
+					return "", err
+				}
+
+				vs, err := dumpNode(v, recPath+fmt.Sprint(k)+"/")
+				if err != nil {
+					return "", err
+				}
+
+				inner += fmt.Sprintf("<tr><td class='listkey'>%d</td><td class='listval'>%s</td></tr>", k, vs)
+			}
+
+			return fmt.Sprintf(`<div class="node"><div><span>LIST</span></div><div><table>%s</table></div></div>`, inner), nil
+		case datamodel.Kind_Null:
+			return `<span class="node">NULL</span>`, nil
+		case datamodel.Kind_Bool:
+			return fmt.Sprintf(`<span class="node">%t</span>`, must(n.AsBool)), nil
+		case datamodel.Kind_Int:
+			return fmt.Sprintf(`<span class="node">%d</span>`, must(n.AsInt)), nil
+		case datamodel.Kind_Float:
+			return fmt.Sprintf(`<span class="node">%f</span>`, must(n.AsFloat)), nil
+		case datamodel.Kind_String:
+			return fmt.Sprintf(`<span class="node">"%s"</span>`, template.HTMLEscapeString(must(n.AsString))), nil
+		case datamodel.Kind_Bytes:
+			return fmt.Sprintf(`<span class="node">%x</span>`, must(n.AsBytes)), nil
+		case datamodel.Kind_Link:
+			lnk := must(n.AsLink)
+
+			cl, isCid := lnk.(cidlink.Link)
+			if !isCid {
+				return "", fmt.Errorf("unexpected link type %#v", lnk)
+			}
+
+			ni, full, err := linkDesc(ctx, cl.Cid, gopath.Base(recPath), dserv)
+			if err != nil {
+				return "", xerrors.Errorf("link desc: %w", err)
+			}
+			ldescr := ni.Desc
+			if ni.Size != "" {
+				ldescr = fmt.Sprintf("%s %s", ldescr, ni.Size)
+			}
+
+			if !full {
+				ldescr = fmt.Sprintf(`%s <a href="javascript:void(0)" onclick="checkDesc(this, '%s?filename=%s')">[?]</a>`, ldescr, recPath, gopath.Base(recPath))
+			}
+
+			carpath := strings.Replace(recPath, "/view", "/car", 1)
+
+			return fmt.Sprintf(`<span class="node"><a href="%s">%s</a> <a href="%s">[car]</a><a href="%s">[ipld]</a> <span>%s</span></span>`, recPath, lnk.String(), carpath, recPath+"?view=ipld", ldescr), nil
+		default:
+			return `<span>UNKNOWN</span>`, nil
+		}
+	}
+
+	res, err := dumpNode(startNode, r.URL.Path)
+	if err != nil {
+		return
+	}
+
+	tpl, err := txtempl.New("ipld.gohtml").ParseFS(dres, "dexpl/ipld.gohtml")
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	data := map[string]interface{}{
+		"content": res,
+	}
+	if err := tpl.Execute(w, data); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 }
 
 func (h *dxhnd) handleCar(w http.ResponseWriter, r *http.Request) {
@@ -1067,146 +991,105 @@ func retrieve(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address
 	return eref, nil
 }
 
-type dirEntry struct {
+type nodeInfo struct {
 	Name string
 	Size string
 	Cid  cid.Cid
 	Desc string
 }
 
-func parseLinks(ctx context.Context, ls []*format.Link, node format.Node, dserv format.DAGService, maxChecks int64) ([]dirEntry, error) {
-	links := make([]dirEntry, len(ls))
+func parseLinks(ctx context.Context, ls []*format.Link, dserv format.DAGService, maxChecks int64) ([]nodeInfo, error) {
+	links := make([]nodeInfo, len(ls))
 
 	for i, l := range ls {
-		links[i] = dirEntry{
+		links[i] = nodeInfo{
 			Name: l.Name,
 			Size: types.SizeStr(types.NewInt(l.Size)),
 			Cid:  l.Cid,
 		}
 
 		if int64(i) < maxChecks {
-			// todo use linkDesc here
-
-			var rrd interface {
-				io.ReadSeeker
+			ni, _, err := linkDesc(ctx, l.Cid, l.Name, dserv)
+			if err != nil {
+				return nil, err
 			}
 
-			switch l.Cid.Type() {
-			case cid.DagProtobuf:
-				fnode, err := dserv.Get(ctx, l.Cid)
-				if err != nil {
-					links[i].Desc = "DAG-PB"
-					continue
-				}
-				protoBufNode, ok := fnode.(*merkledag.ProtoNode)
-				if !ok {
-					links[i].Desc = "?? (e1)"
-					continue
-				}
-				fsNode, err := unixfs.FSNodeFromBytes(protoBufNode.Data())
-				if err != nil {
-					return nil, err
-				}
-
-				switch fsNode.Type() {
-				case unixfs.TDirectory:
-					links[i].Desc = fmt.Sprintf("DIR (%d entries)", len(fnode.Links()))
-					continue
-				case unixfs.THAMTShard:
-					links[i].Desc = fmt.Sprintf("HAMT (%d links)", len(fnode.Links()))
-					continue
-				case unixfs.TSymlink:
-					links[i].Desc = fmt.Sprintf("LINK")
-					continue
-				case unixfs.TFile:
-				default:
-					return nil, xerrors.Errorf("unknown ufs type " + fmt.Sprint(fsNode.Type()))
-				}
-
-				rrd, err = io2.NewDagReader(ctx, fnode, dserv)
-				if err != nil {
-					return nil, err
-				}
-
-				fallthrough
-			case cid.Raw:
-				if rrd == nil {
-					rrd = bytes.NewReader(node.RawData())
-				}
-
-				ctype := mime.TypeByExtension(gopath.Ext(l.Name))
-				if ctype == "" {
-					mimeType, err := mimetype.DetectReader(rrd)
-					if err != nil {
-						return nil, err
-					}
-
-					ctype = mimeType.String()
-				}
-
-				links[i].Desc = fmt.Sprintf("FILE (%s)", ctype)
-			case cid.DagCBOR:
-				links[i].Desc = "DAG-CBOR"
-			}
+			links[i].Desc = ni.Desc
 		}
 	}
 
 	return links, nil
 }
 
-func linkDesc(ctx context.Context, c cid.Cid, name string, dserv format.DAGService) (string, bool, error) {
+func linkDesc(ctx context.Context, c cid.Cid, name string, dserv format.DAGService) (*nodeInfo, bool, error) {
 	var rrd interface {
 		io.ReadSeeker
 	}
 
+	out := &nodeInfo{
+		Cid: c,
+	}
+
 	switch c.Type() {
 	case cid.DagProtobuf:
+		out.Desc = "DAG-PB"
+
 		fnode, err := dserv.Get(ctx, c)
 		if err != nil {
-			return "DAG-PB", false, nil
+			return out, false, nil
 		}
 		protoBufNode, ok := fnode.(*merkledag.ProtoNode)
 		if !ok {
-			return "?? (e1)", false, nil
+			out.Desc = "NOT!?-DAG-PB"
+			return out, false, nil
 		}
 		fsNode, err := unixfs.FSNodeFromBytes(protoBufNode.Data())
 		if err != nil {
-			return "nil", false, err
+			return out, true, err
 		}
 
 		switch fsNode.Type() {
 		case unixfs.TDirectory:
-			return fmt.Sprintf("DIR (%d entries)", len(fnode.Links())), true, nil
+			out.Desc = fmt.Sprintf("DIR (%d entries)", len(fnode.Links()))
+			return out, true, nil
 		case unixfs.THAMTShard:
-			return fmt.Sprintf("HAMT (%d links)", len(fnode.Links())), true, nil
+			out.Desc = fmt.Sprintf("HAMT (%d links)", len(fnode.Links()))
+			return out, true, nil
 		case unixfs.TSymlink:
-			return fmt.Sprintf("LINK"), true, nil
+			out.Desc = fmt.Sprintf("SYMLINK")
+			return out, true, nil
 		case unixfs.TFile:
+			out.Size = types.SizeStr(types.NewInt(fsNode.FileSize()))
 		default:
-			return "", false, xerrors.Errorf("unknown ufs type " + fmt.Sprint(fsNode.Type()))
+			return nil, false, xerrors.Errorf("unknown ufs type " + fmt.Sprint(fsNode.Type()))
 		}
 
 		rrd, err = io2.NewDagReader(ctx, fnode, dserv)
 		if err != nil {
-			return "", false, err
+			return nil, false, err
 		}
 
 		ctype := mime.TypeByExtension(gopath.Ext(name))
 		if ctype == "" {
 			mimeType, err := mimetype.DetectReader(rrd)
 			if err != nil {
-				return "", false, err
+				return nil, false, err
 			}
 
 			ctype = mimeType.String()
 		}
 
-		return fmt.Sprintf("FILE (pb,%s)", ctype), true, nil
+		out.Desc = fmt.Sprintf("FILE (pb,%s)", ctype)
+
+		return out, true, nil
 	case cid.Raw:
 		fnode, err := dserv.Get(ctx, c)
 		if err != nil {
-			return "RAW", false, nil
+			out.Desc = "RAW"
+			return out, false, nil
 		}
+
+		out.Size = types.SizeStr(types.NewInt(uint64(len(fnode.RawData()))))
 
 		rrd = bytes.NewReader(fnode.RawData())
 
@@ -1214,17 +1097,20 @@ func linkDesc(ctx context.Context, c cid.Cid, name string, dserv format.DAGServi
 		if ctype == "" {
 			mimeType, err := mimetype.DetectReader(rrd)
 			if err != nil {
-				return "", false, err
+				return nil, false, err
 			}
 
 			ctype = mimeType.String()
 		}
 
-		return fmt.Sprintf("FILE (raw,%s)", ctype), true, nil
+		out.Desc = fmt.Sprintf("FILE (raw,%s)", ctype)
+		return out, true, nil
 	case cid.DagCBOR:
-		return "DAG-CBOR", true, nil
+		out.Desc = "DAG-CBOR"
+		return out, true, nil
 	default:
-		return fmt.Sprintf("UNK:0x%x", c.Type()), true, nil
+		out.Desc = fmt.Sprintf("UNK:0x%x", c.Type())
+		return out, true, nil
 	}
 }
 

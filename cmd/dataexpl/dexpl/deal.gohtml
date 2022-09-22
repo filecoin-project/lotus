@@ -29,7 +29,7 @@
 
         <tr><td><b>Fil+</b></td><td><i>{{.deal.Proposal.VerifiedDeal}}</i></td></tr>
 
-        <tr><td><b>Content</b></td><td>{{.type}}, {{if eq .type "DIR"}}{{.links}} entries{{else}}{{.size}}{{end}}</td></tr>
+        <tr><td><b>Content</b></td><td>{{.contentDesc}}</td></tr>
     </table>
 
 
@@ -38,18 +38,6 @@
         <a href="/view/{{.deal.Proposal.Provider}}/{{.deal.Proposal.PieceCID}}/{{.label}}/?view=ipld">[EXPLORE IPLD]</a>
         <a href="/car/{{.deal.Proposal.Provider}}/{{.deal.Proposal.PieceCID}}/{{.label}}/">[GET .CAR]</a>
     </h2>
-
-    <table>
-        {{$deal := .deal}}
-        {{$label := .label}}
-        {{range $i, $e := .dirents}}
-            <tr>
-                <td><a href="/view/{{$deal.Proposal.Provider}}/{{$deal.Proposal.PieceCID}}/{{$label}}/Links/{{$i}}/Hash/?filename={{$e.Name}}">{{$e.Name}}</a></td>
-                <td>{{$e.Size}}</td>
-                <td><span><i>({{$e.Cid}})</i></span></td>
-            </tr>
-        {{end}}
-    </table>
 </div>
 </body>
 </html>
