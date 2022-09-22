@@ -3,20 +3,18 @@ package genesis
 import (
 	"context"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -24,7 +22,7 @@ var GovernorId address.Address
 
 func init() {
 
-	idk, err := address.NewFromString("t085")
+	idk, err := address.NewFromString("t06")
 	if err != nil {
 		panic(err)
 	}
