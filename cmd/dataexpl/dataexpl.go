@@ -597,6 +597,7 @@ var dataexplCmd = &cli.Command{
 
 					return
 				case unixfs.TDirectory:
+
 					d, err := io2.NewDirectoryFromNode(dserv, node)
 					if err != nil {
 						http.Error(w, xerrors.Errorf("newdir: %w", err).Error(), http.StatusInternalServerError)
@@ -985,7 +986,7 @@ func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.A
 			return cid.Undef, nil, xerrors.Errorf("wanted one root")
 		}
 
-		bs := bstore.NewTieredBstore(bstore.Adapt(cbs), bstore.NewMemory())
+		bs := bstore.NewTieredBstore(&LogBlockstore{bstore.Adapt(cbs)}, bstore.NewMemory())
 
 		return roots[0], merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))), nil
 	}
@@ -1001,6 +1002,8 @@ func pathToSel(psel string, matchTraversal bool, sub builder.SelectorSpec) (lapi
 	if err := dagjson.Encode(rs.Node(), &b); err != nil {
 		return "", err
 	}
+
+	fmt.Println(string(b.String()))
 
 	return lapi.Selector(b.String()), nil
 }

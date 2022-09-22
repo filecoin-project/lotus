@@ -581,6 +581,7 @@ var clientRetrieveLsCmd = &cli.Command{
 				dserv,
 				roots[0],
 				sel,
+				nil,
 				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 					if r == traversal.VisitReason_SelectionMatch {
 						fmt.Println(p.Path)
