@@ -69,7 +69,7 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 		node.Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
 		node.Override(new(messagesigner.MsgSigner), func(ms *messagesigner.MessageSignerConsensus) *messagesigner.MessageSignerConsensus { return ms }),
 		node.Override(new(*modules.RPCHandler), modules.NewRPCHandler),
-		node.Override(node.RPCServer, modules.NewRPCServer),
+		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
 	//raftOps := kit.ConstructorOpts()
 
@@ -140,9 +140,8 @@ func TestRaftState(t *testing.T) {
 	rstate1 := getRaftState(ctx, t, &node1)
 	rstate2 := getRaftState(ctx, t, &node2)
 
-	require.True(t, reflect.DeepEqual(rstate0, rstate1))
-	require.True(t, reflect.DeepEqual(rstate0, rstate2))
-
+	require.EqualValues(t, rstate0, rstate1)
+	require.EqualValues(t, rstate0, rstate2)
 }
 
 func TestRaftStateLeaderDisconnects(t *testing.T) {
@@ -210,7 +209,6 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 	}
 
 	require.NotEqual(t, newLeader, leader)
-
 	leaderNode = peerToNode[newLeader]
 
 	msg2 := &types.Message{

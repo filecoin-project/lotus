@@ -19,11 +19,6 @@ type RPCHandler struct {
 	cons     *consensus.Consensus
 }
 
-//type ConsensusRPCAPI struct {
-//	cons       *consensus.Consensus
-//	rpcHandler *RPCHandler
-//}
-
 func NewRPCHandler(mpoolAPI full.MpoolAPI, cons *consensus.Consensus) *RPCHandler {
 	return &RPCHandler{mpoolAPI, cons}
 }

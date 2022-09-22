@@ -295,5 +295,5 @@ func (a *MpoolAPI) GetRaftState(ctx context.Context) (consensus.State, error) {
 }
 
 func (a *MpoolAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
-	return a.MessageSigner.RaftLeader(ctx)
+	return a.MessageSigner.Leader(ctx)
 }

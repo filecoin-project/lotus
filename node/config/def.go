@@ -286,7 +286,7 @@ var (
 	DefaultNetworkTimeout       = 100 * time.Second
 	DefaultCommitRetryDelay     = 200 * time.Millisecond
 	DefaultBackupsRotate        = 6
-	DefaultDatastoreNamespace   = "/r" // from "/raft"
+	DefaultDatastoreNamespace   = "/raft"
 )
 
 func DefaultClusterRaftConfig() *ClusterRaftConfig {

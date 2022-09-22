@@ -94,6 +94,6 @@ func (ms *MessageSignerConsensus) GetRaftState(ctx context.Context) (libp2pconse
 	return ms.consensus.State(ctx)
 }
 
-func (ms *MessageSignerConsensus) RaftLeader(ctx context.Context) (peer.ID, error) {
+func (ms *MessageSignerConsensus) Leader(ctx context.Context) (peer.ID, error) {
 	return ms.consensus.Leader(ctx)
 }

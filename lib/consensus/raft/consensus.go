@@ -6,11 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"sort"
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/exp/slices"
 
 	addr "github.com/filecoin-project/go-address"
 
@@ -457,7 +457,6 @@ func (cc *Consensus) State(ctx context.Context) (consensus.State, error) {
 
 	st, err := cc.consensus.GetLogHead()
 	if err == libp2praft.ErrNoState {
-		fmt.Println("Err no state return")
 		return newRaftState(), nil
 	}
 

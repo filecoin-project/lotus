@@ -146,14 +146,14 @@ initialized or when starting in staging mode.`,
 		},
 		{
 			Num:  "WaitForLeaderTimeout",
-			Type: "time.Duration",
+			Type: "Duration",
 
 			Comment: `LeaderTimeout specifies how long to wait for a leader before
 failing an operation.`,
 		},
 		{
 			Num:  "NetworkTimeout",
-			Type: "time.Duration",
+			Type: "Duration",
 
 			Comment: `NetworkTimeout specifies how long before a Raft network
 operation is timed out`,
@@ -167,7 +167,7 @@ we give up.`,
 		},
 		{
 			Num:  "CommitRetryDelay",
-			Type: "time.Duration",
+			Type: "Duration",
 
 			Comment: `How long to wait between retries`,
 		},

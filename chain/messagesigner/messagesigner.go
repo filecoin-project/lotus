@@ -39,7 +39,7 @@ type MsgSigner interface {
 	SaveNonce(ctx context.Context, addr address.Address, nonce uint64) error
 	dstoreKey(addr address.Address) datastore.Key
 	IsLeader(ctx context.Context) bool
-	RaftLeader(ctx context.Context) (peer.ID, error)
+	Leader(ctx context.Context) (peer.ID, error)
 	RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error)
 	GetRaftState(ctx context.Context) (consensus.State, error)
 }
@@ -205,13 +205,13 @@ func (ms *MessageSigner) IsLeader(ctx context.Context) bool {
 }
 
 func (ms *MessageSigner) RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error) {
-	return false, xerrors.Errorf("Single node shouldn't have any redirects")
+	return false, xerrors.Errorf("single node shouldn't have any redirects")
 }
 
 func (ms *MessageSigner) GetRaftState(ctx context.Context) (consensus.State, error) {
-	return nil, xerrors.Errorf("This is a non raft consensus message signer")
+	return nil, xerrors.Errorf("this is a non raft consensus message signer")
 }
 
-func (ms *MessageSigner) RaftLeader(ctx context.Context) (peer.ID, error) {
-	return "", xerrors.Errorf("No leaders in non raft message signer")
+func (ms *MessageSigner) Leader(ctx context.Context) (peer.ID, error) {
+	return "", xerrors.Errorf("no leaders in non raft message signer")
 }
