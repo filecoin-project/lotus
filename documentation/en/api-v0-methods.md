@@ -5682,7 +5682,8 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQaPower": true
   }
 ]
 ```
@@ -6154,7 +6155,8 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQaPower": true
   }
 ]
 ```
@@ -6577,7 +6579,8 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": null
+  "SectorKeyCID": null,
+  "SimpleQaPower": true
 }
 ```
 
