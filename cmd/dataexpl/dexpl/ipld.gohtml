@@ -1,0 +1,53 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>IPLD - Data Explorer</title>
+    <style>
+        html, body {
+            font-family: monospace;
+        }
+        td {
+            padding: 0 1em;
+            vertical-align: top;
+        }
+        tr:nth-child(even) {background: #e0e0e0}
+        tr:nth-child(odd) {background: #f0f0f0}
+
+        div.node {
+            padding-left: 8px;
+        }
+    </style>
+    <script>
+        async function checkDesc(h, u) {
+            let e = h.parentElement
+            e.innerHTML = "<i>Checking</i>"
+
+            let fr = await fetch(u, {method: 'HEAD'})
+
+            e.innerHTML = ""
+
+            if(!fr.ok) {
+                e.innerText = "ERR: " + fr.statusText
+                return
+            }
+
+            let size = ""
+
+            if(fr.headers.has("X-HumanSize")) {
+                size = " " + fr.headers.get("X-HumanSize")
+            }
+
+            if(fr.headers.has("X-Desc")) {
+                e.innerText = fr.headers.get("X-Desc") + size
+            } else {
+                e.innerText = "FILE (" + fr.headers.get("Content-Type") + ")" + size
+            }
+        }
+    </script>
+</head>
+<body>
+<div>
+{{ .content }}
+</div>
+</body>
+</html>
