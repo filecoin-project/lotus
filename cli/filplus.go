@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -169,15 +171,40 @@ var filplusListClientsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		apibs := blockstore.NewAPIBlockstore(api)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		apibs := blockstore.NewAPIBlockstore(api)
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+		av, err := actorstypes.VersionForNetwork(nv)
+		if err != nil {
+			return err
+		}
 
-		st, err := verifreg.Load(store, act)
+		if av <= 8 {
+			act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			st, err := verifreg.Load(store, act)
+			if err != nil {
+				return err
+			}
+			return st.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
+				_, err := fmt.Printf("%s: %s\n", addr, dcap)
+				return err
+			})
+		}
+		act, err := api.StateGetActor(ctx, datacap.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		st, err := datacap.Load(store, act)
 		if err != nil {
 			return err
 		}
@@ -336,7 +363,7 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			return err
 		}
 
-		_, dataCap, err := st.VerifiedClientDataCap(clientIdAddr)
+		dataCap, err := api.StateVerifiedClientStatus(ctx, clientIdAddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("failed to find verified client data cap: %w", err)
 		}
