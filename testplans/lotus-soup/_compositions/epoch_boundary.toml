@@ -25,7 +25,7 @@
   balance = "20000000.5" # These balances will work for maximum 100 nodes, as TotalFilecoin is 2B
   sectors = "10"
   random_beacon_type = "mock"
-  mining_mode = "natural"
+  mining_mode = "synchronized"
 
 [[groups]]
   id = "bootstrapper"
@@ -49,10 +49,11 @@
   id = "attacker"
   [groups.build]
 
-   # TODO: Configure different versions for the different nodes.
-   # [[groups.build.dependencies]]
-   #      module = "github.com/filecoin-project/lotus"
-   #      version = "master"
+   # Implementation of the attacker.
+   [[groups.build.dependencies]]
+        module = "github.com/filecoin-project/lotus"
+        module = "github.com/adlrocha/lotus"
+        version = "b9ca4b71bf613ef9a1f21f302238c0d1fc55e65d"
 
   [groups.instances]
     count = 1
