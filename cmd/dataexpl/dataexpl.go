@@ -566,6 +566,8 @@ var dataexplCmd = &cli.Command{
 					return
 				}
 
+				carpath := strings.Replace(r.URL.Path, "/view", "/car", 1)
+
 				switch fsNode.Type() {
 				case unixfs.THAMTShard:
 					// TODO This in principle should be in the case below, and just use NewDirectoryFromNode; but that doesn't work
@@ -589,6 +591,7 @@ var dataexplCmd = &cli.Command{
 					data := map[string]interface{}{
 						"entries": links,
 						"url":     r.URL.Path,
+						"carurl":  carpath,
 					}
 					if err := tpl.Execute(w, data); err != nil {
 						fmt.Println(err)
@@ -635,6 +638,7 @@ var dataexplCmd = &cli.Command{
 					data := map[string]interface{}{
 						"entries": links,
 						"url":     r.URL.Path,
+						"carurl":  carpath,
 					}
 					if err := tpl.Execute(w, data); err != nil {
 						fmt.Println(err)
@@ -721,6 +725,54 @@ var dataexplCmd = &cli.Command{
 
 			http.ServeContent(w, r, r.FormValue("filename"), time.Time{}, rd)
 		}).Methods("GET", "HEAD")
+
+		m.HandleFunc("/car/{mid}/{piece}/{cid}/{path:.*}", func(w http.ResponseWriter, r *http.Request) {
+			vars := mux.Vars(r)
+			ma, err := address.NewFromString(vars["mid"])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			pcid, err := cid.Parse(vars["piece"])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			dcid, err := cid.Parse(vars["cid"])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// retr root
+			g := getCar(ainfo, api, r, ma, pcid, dcid)
+
+			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+			sel := ssb.ExploreRecursive(selector.RecursionLimitNone(), ssb.ExploreUnion(
+				ssb.Matcher(),
+				ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
+			))
+
+			reader, err := g(sel)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/vnd.ipld.car")
+
+			name := r.FormValue("filename")
+			if name == "" {
+				name = dcid.String()
+			}
+			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.car"`, name))
+
+			w.WriteHeader(http.StatusOK)
+			_, _ = io.Copy(w, reader)
+			_ = reader.Close()
+		}).Methods("GET")
 
 		server := &http.Server{Addr: ":5658", Handler: m, BaseContext: func(_ net.Listener) context.Context {
 			return cctx.Context
@@ -939,18 +991,18 @@ func getHeadReader(ctx context.Context, get func(ss builder.SelectorSpec) (cid.C
 	return io2.NewDagReader(ctx, node, dserv)
 }
 
-func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
-	return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
+func getCar(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (io.ReadCloser, error) {
+	return func(ss builder.SelectorSpec) (io.ReadCloser, error) {
 		vars := mux.Vars(r)
 
 		sel, err := pathToSel(vars["path"], false, ss)
 		if err != nil {
-			return cid.Undef, nil, err
+			return nil, err
 		}
 
 		eref, err := retrieve(r.Context(), api, ma, pcid, dcid, &sel)
 		if err != nil {
-			return cid.Undef, nil, xerrors.Errorf("retrieve: %w", err)
+			return nil, xerrors.Errorf("retrieve: %w", err)
 		}
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
@@ -960,7 +1012,20 @@ func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.A
 
 		rc, err := lcli.ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
 		if err != nil {
-			return cid.Undef, nil, err
+			return nil, err
+		}
+
+		return rc, nil
+	}
+}
+
+func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
+	gc := getCar(ainfo, api, r, ma, pcid, dcid)
+
+	return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
+		rc, err := gc(ss)
+		if err != nil {
+			return cid.Cid{}, nil, err
 		}
 		defer rc.Close() // nolint
 
@@ -986,7 +1051,7 @@ func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.A
 			return cid.Undef, nil, xerrors.Errorf("wanted one root")
 		}
 
-		bs := bstore.NewTieredBstore(&LogBlockstore{bstore.Adapt(cbs)}, bstore.NewMemory())
+		bs := bstore.NewTieredBstore(bstore.Adapt(cbs), bstore.NewMemory())
 
 		return roots[0], merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))), nil
 	}

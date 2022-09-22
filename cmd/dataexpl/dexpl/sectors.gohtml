@@ -14,6 +14,21 @@
 </head>
 <body>
 <div>
+    <span id="ping{{.maddr}}" onload="pingMiner()">pinging..</span>
+    <script>
+        async function pingMiner(ma) {
+            document.getElementById("ping"+ma).innerText = "connecting.."
+
+            let r = await fetch("/ping/miner/"+ma)
+
+            document.getElementById("ping"+ma).innerText = await r.text()
+        }
+
+        addEventListener('load', (_) => {
+            pingMiner('{{.maddr}}')
+        })
+    </script>
+
     {{ $ma := .maddr }}
     {{ $deals := .deals }}
     {{range .sectors}}
