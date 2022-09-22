@@ -818,7 +818,16 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 
 	res, err := dumpNode(startNode, r.URL.Path)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	ni, _, err := linkDesc(ctx, node.Cid(), "", dserv)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if ni.Size != "" {
+		ni.Desc = fmt.Sprintf("%s %s", ni.Desc, ni.Size)
 	}
 
 	tpl, err := txtempl.New("ipld.gohtml").ParseFS(dres, "dexpl/ipld.gohtml")
@@ -831,6 +840,9 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 	w.WriteHeader(http.StatusOK)
 	data := map[string]interface{}{
 		"content": res,
+		"desc":    ni.Desc,
+
+		"node": node.Cid(),
 	}
 	if err := tpl.Execute(w, data); err != nil {
 		fmt.Println(err)
