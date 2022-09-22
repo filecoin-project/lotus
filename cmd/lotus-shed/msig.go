@@ -6,22 +6,21 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/node/repo"
-	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 type msigBriefInfo struct {
@@ -40,7 +39,7 @@ var msigCmd = &cli.Command{
 
 var multisigGetAllCmd = &cli.Command{
 	Name:      "all",
-	Usage:     "get all multisig actor on chain with id, siigners, threshold and balance at a tipset",
+	Usage:     "get all multisig actor on chain with id, signers, threshold and balance at a tipset",
 	ArgsUsage: "[state root]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -105,7 +104,8 @@ var multisigGetAllCmd = &cli.Command{
 			if builtin.IsMultisigActor(act.Code) {
 				ms, err := multisig.Load(store, act)
 				if err != nil {
-					return err
+					return fmt.Errorf("load msig failed %v", err)
+
 				}
 
 				signers, _ := ms.Signers()
