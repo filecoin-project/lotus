@@ -1,6 +1,9 @@
 package api
 
 import (
+	"errors"
+	"reflect"
+
 	"github.com/filecoin-project/go-jsonrpc"
 )
 
@@ -22,6 +25,16 @@ func (e *ErrActorNotFound) Error() string {
 }
 
 var RPCErrors = jsonrpc.NewErrors()
+
+func ErrorIsIn(err error, errorTypes []error) bool {
+	for _, etype := range errorTypes {
+		tmp := reflect.New(reflect.PointerTo(reflect.ValueOf(etype).Elem().Type())).Interface()
+		if errors.As(err, tmp) {
+			return true
+		}
+	}
+	return false
+}
 
 func init() {
 	RPCErrors.Register(EOutOfGas, new(*ErrOutOfGas))
