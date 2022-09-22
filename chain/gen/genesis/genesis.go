@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -31,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -217,13 +216,15 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("set verified registry actor: %w", err)
 	}
 
-	// Create verified registry
-	dcapact, err := SetupDatacapActor(ctx, bs, av)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("setup datacap actor: %w", err)
-	}
-	if err := state.SetActor(datacap.Address, dcapact); err != nil {
-		return nil, nil, xerrors.Errorf("set datacap actor: %w", err)
+	// Create datacap actor
+	if av >= 9 {
+		dcapact, err := SetupDatacapActor(ctx, bs, av)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("setup datacap actor: %w", err)
+		}
+		if err := state.SetActor(datacap.Address, dcapact); err != nil {
+			return nil, nil, xerrors.Errorf("set datacap actor: %w", err)
+		}
 	}
 
 	bact, err := MakeAccountActor(ctx, cst, av, builtin.BurntFundsActorAddr, big.Zero())
