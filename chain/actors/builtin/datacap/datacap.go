@@ -4,6 +4,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -50,6 +51,8 @@ func MakeState(store adt.Store, av actorstypes.Version, governor address.Address
 type State interface {
 	cbor.Marshaler
 
+	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
+	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	Governor() (address.Address, error)
 	GetState() interface{}
 }

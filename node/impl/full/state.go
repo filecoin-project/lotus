@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -1399,26 +1400,56 @@ func (a *StateAPI) StateVerifierStatus(ctx context.Context, addr address.Address
 // Returns zero if there is no entry in the data cap table for the
 // address.
 func (m *StateModule) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
-	act, err := m.StateGetActor(ctx, verifreg.Address, tsk)
-	if err != nil {
-		return nil, err
-	}
-
 	aid, err := m.StateLookupID(ctx, addr, tsk)
 	if err != nil {
 		log.Warnf("lookup failure %v", err)
 		return nil, err
 	}
 
-	vrs, err := verifreg.Load(m.StateManager.ChainStore().ActorStore(ctx), act)
+	nv, err := m.StateNetworkVersion(ctx, tsk)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
+		return nil, err
 	}
 
-	verified, dcap, err := vrs.VerifiedClientDataCap(aid)
+	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		return nil, xerrors.Errorf("looking up verified client: %w", err)
+		return nil, err
 	}
+
+	var dcap abi.StoragePower
+	var verified bool
+	if av <= 8 {
+		act, err := m.StateGetActor(ctx, verifreg.Address, tsk)
+		if err != nil {
+			return nil, err
+		}
+
+		vrs, err := verifreg.Load(m.StateManager.ChainStore().ActorStore(ctx), act)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load verified registry state: %w", err)
+		}
+
+		verified, dcap, err = vrs.VerifiedClientDataCap(aid)
+		if err != nil {
+			return nil, xerrors.Errorf("looking up verified client: %w", err)
+		}
+	} else {
+		act, err := m.StateGetActor(ctx, datacap.Address, tsk)
+		if err != nil {
+			return nil, err
+		}
+
+		dcs, err := datacap.Load(m.StateManager.ChainStore().ActorStore(ctx), act)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load datacap actor state: %w", err)
+		}
+
+		verified, dcap, err = dcs.VerifiedClientDataCap(aid)
+		if err != nil {
+			return nil, xerrors.Errorf("looking up verified client: %w", err)
+		}
+	}
+
 	if !verified {
 		return nil, nil
 	}
