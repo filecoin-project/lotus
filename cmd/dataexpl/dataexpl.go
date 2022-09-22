@@ -811,7 +811,9 @@ var dataexplCmd = &cli.Command{
 							ld = fmt.Sprintf(`%s <a href="javascript:void(0)" onclick="checkDesc(this, '%s?filename=%s')">[?]</a>`, ld, recPath, gopath.Base(recPath))
 						}
 
-						return fmt.Sprintf(`<span class="node"><a href="%s">%s</a> <span>(%s)</span></span>`, recPath, lnk.String(), ld), nil
+						carpath := strings.Replace(recPath, "/view", "/car", 1)
+
+						return fmt.Sprintf(`<span class="node"><a href="%s">%s</a> <a href="%s">[car]</a> <span>(%s)</span></span>`, recPath, lnk.String(), carpath, ld), nil
 					default:
 						return `<span>UNKNOWN</span>`, nil
 					}
@@ -1053,6 +1055,8 @@ func parseLinks(ctx context.Context, ls []*format.Link, node format.Node, dserv 
 		}
 
 		if int64(i) < maxChecks {
+			// todo use linkDesc here
+
 			var rrd interface {
 				io.ReadSeeker
 			}
