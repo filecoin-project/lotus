@@ -25,7 +25,7 @@ import (
 
 type msigBriefInfo struct {
 	ID        address.Address
-	Signer    interface{}
+	Signer    []address.Address
 	Balance   abi.TokenAmount
 	Threshold uint64
 }
