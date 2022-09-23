@@ -52,7 +52,7 @@
    # Implementation of the attacker.
    [[groups.build.dependencies]]
         module = "github.com/filecoin-project/lotus"
-        module = "github.com/adlrocha/lotus"
+        target = "github.com/adlrocha/lotus"
         version = "b9ca4b71bf613ef9a1f21f302238c0d1fc55e65d"
 
   [groups.instances]
