@@ -101,7 +101,7 @@ func testDealsRetryLackOfFunds(t *testing.T, publishStorageAccountFunds abi.Toke
 	propcid := *deal
 
 	go func() {
-		time.Sleep(3 * time.Second)
+		time.Sleep(30 * time.Second)
 
 		kit.SendFunds(ctx, t, minerFullNode, publishStorageDealKey.Address, types.FromFil(1))
 
