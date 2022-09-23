@@ -868,7 +868,7 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 				if i%16 == 15 {
 					rows = append(rows, "<div class='hex-row'>"+row+"</div>")
 					printableRows = append(printableRows, fmt.Sprintf("<div class='hex-printrow'>|%s|</div>", printable))
-					offsets = append(offsets, fmt.Sprintf("<div class='hex-row'>%08x</div>", i))
+					offsets = append(offsets, fmt.Sprintf("<div class='hex-row'>%08x</div>", i-15))
 
 					row = ""
 					printable = ""
