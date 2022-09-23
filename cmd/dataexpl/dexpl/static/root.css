@@ -127,3 +127,24 @@ a:hover {
     color: #96D18E;
     text-decoration: none;
 }
+
+.hex-offsets {
+    display: inline-block;
+}
+
+.hex-bytes, .hex-printables {
+    display: inline-block;
+    margin-left: 1em;
+}
+
+.hex-noprint-null {
+    color: #3A4B55;
+}
+
+.hex-noprint-low {
+    color: #A474AB;
+}
+
+.hex-noprint-high {
+    color: #96D18E;
+}

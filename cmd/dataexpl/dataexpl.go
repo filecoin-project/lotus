@@ -830,7 +830,58 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 		case datamodel.Kind_String:
 			return fmt.Sprintf(`<span class="node strnode">"%s"</span>`, template.HTMLEscapeString(must(n.AsString))), nil
 		case datamodel.Kind_Bytes:
-			return fmt.Sprintf(`<span class="node bytenode">%x</span>`, must(n.AsBytes)), nil
+			b := must(n.AsBytes)
+
+			var row string
+			var printable string
+
+			var rows []string
+			var offsets []string
+
+			var printableRows []string
+
+			for i, byt := range b {
+				row = fmt.Sprintf("%s%02x&nbsp;", row, byt)
+				if i%16 == 7 {
+					row += "&nbsp;"
+				}
+
+				switch {
+				case byt == 0:
+					printable = fmt.Sprintf("%s<span class='hex-noprint-null'>.</span>", printable)
+				case byt > 0 && byt < ' ':
+					printable = fmt.Sprintf("%s<span class='hex-noprint-low'>.</span>", printable)
+				case byt == ' ':
+					printable += "&nbsp;"
+				case byt == '<':
+					printable = printable + "&lt;"
+				case byt == '>':
+					printable = printable + "&gt;"
+				case byt == '&':
+					printable = printable + "&amp;"
+				case byt > ' ' && byt <= '~':
+					printable = fmt.Sprintf("%s%c", printable, byt)
+				default:
+					printable = fmt.Sprintf("%s<span class='hex-noprint-high'>.</span>", printable)
+				}
+
+				if i%16 == 15 {
+					rows = append(rows, "<div class='hex-row'>"+row+"</div>")
+					printableRows = append(printableRows, fmt.Sprintf("<div class='hex-printrow'>|%s|</div>", printable))
+					offsets = append(offsets, fmt.Sprintf("<div class='hex-row'>%08x</div>", i))
+
+					row = ""
+					printable = ""
+				}
+			}
+
+			if row != "" {
+				rows = append(rows, "<div class='hex-row'>"+row+"</div>")
+				printableRows = append(printableRows, fmt.Sprintf("<div class='hex-printrow'>|%s|</div>", printable))
+				offsets = append(offsets, fmt.Sprintf("<div class='hex-row'>%08x</div>", (len(b)/16)*16))
+			}
+
+			return fmt.Sprintf(`<div class="node bytenode"><div class='hex-offsets'>%s</div><div class='hex-bytes'>%s</div><div class='hex-printables'>%s</div></div>`, strings.Join(offsets, "\n"), strings.Join(rows, "\n"), strings.Join(printableRows, "\n")), nil
 		case datamodel.Kind_Link:
 			lnk := must(n.AsLink)
 
