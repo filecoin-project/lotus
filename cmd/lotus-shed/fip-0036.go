@@ -390,17 +390,17 @@ var clientCmd = &cli.Command{
 				return xerrors.Errorf("cannot resolve singer: ", ai)
 			}
 			if err := dps.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
-				p, found, _ := dps.Get(dealID)
-				if found && p.Client == ai {
+
+				if d.Client == ai {
 					if v.OptionID == APPROVE {
-						acceptanceBytes += p.PieceSize
+						acceptanceBytes += d.PieceSize
 						acceptanceCount += 1
 					} else {
-						rejectionBytes += p.PieceSize
+						rejectionBytes += d.PieceSize
 						rejectionCount += 1
 					}
 				}
-				return xerrors.Errorf("cant get deal ", err)
+				return nil
 			}); err != nil {
 				return err
 			}
