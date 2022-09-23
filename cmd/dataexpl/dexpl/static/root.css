@@ -1,0 +1,117 @@
+.bgcols {
+    color: #55443A;
+    color: #3D553A;
+    color: #3A4B55;
+    color: #523A55;
+}
+
+.bgmono {
+    color: #735C4F;
+
+    color: #8E7261;
+    color: #A38878;
+}
+
+.txt {
+    color: #FCF9F5;
+}
+
+.tcols-w3 {
+    color: #F5EEF2;
+    color: #F5F4EE;
+    color: #EEF5F1;
+    color: #EEEEF5;
+}
+
+.tcols-w2 {
+    color: #E3D0DB;
+    color: #E3E1D0;
+    color: #D0E3D8;
+    color: #D0D1E3;
+}
+
+.tcols-w1 {
+    color: #D3B4C6;
+    color: #D3D0B4;
+    color: #B4D3C1;
+    color: #B4B7D3;
+}
+
+.tcols-w0 {
+    color: #C6A0B6;
+    color: #C6C3A0;
+    color: #A0C6B0;
+    color: #A0A3C6;
+}
+
+/* common */
+
+html, body {
+    font-family: monospace;
+
+    background-color: #1F1F1F;
+    color: #aaaaaa;
+}
+
+table {
+    font-size: 0.95em;
+
+    background: #454545;
+
+    /*border: #171717 solid 0.3em;*/
+}
+
+td {
+    padding: 0.2em 0.3em;
+    vertical-align: top;
+    text-align: left;
+}
+
+/*
+tr:nth-child(even) {background: #333333}
+tr:nth-child(odd) {background: #454545}
+ */
+
+div.node {
+    padding: 1px 1px 1px 3px;
+}
+
+div.subnode {
+    padding-left: 2em;
+}
+
+div.multinode {
+    display: block;
+}
+
+.nodekey {
+    color: #A0A3C6;
+}
+
+.strnode {
+    color: #C6A0B6;
+}
+
+.numnode {
+    color: #A0C6B0;
+}
+
+a:link {
+    color: #9ECDE8;
+    text-decoration: none;
+}
+
+a:active {
+    color: #3A4B55;
+    text-decoration: none;
+}
+
+a:visited {
+    color: #A474AB;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #96D18E;
+    text-decoration: none;
+}

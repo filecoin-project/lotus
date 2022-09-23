@@ -21,6 +21,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"html/template"
 	"io"
+	"io/fs"
 	"mime"
 	"net"
 	"net/http"
@@ -752,10 +753,10 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 					return "", err
 				}
 
-				inner += fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", ks, vs)
+				inner += fmt.Sprintf("<div class'multinode'><div class='node nodekey'>%s:</div><div class='subnode'>%s</div></div>", ks, vs)
 			}
 
-			return fmt.Sprintf(`<div class="node"><div><span>MAP</span></div><div><table>%s</table></div></div>`, inner), nil
+			return fmt.Sprintf(`<div class="node"><div>%s</div></div>`, inner), nil
 		case datamodel.Kind_List:
 			var inner string
 
@@ -771,22 +772,22 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 					return "", err
 				}
 
-				inner += fmt.Sprintf("<tr><td class='listkey'>%d</td><td class='listval'>%s</td></tr>", k, vs)
+				inner += fmt.Sprintf("<div class'multinode'><div class='node nodekey'>%d:</div><div class='subnode'>%s</div></div>", k, vs)
 			}
 
-			return fmt.Sprintf(`<div class="node"><div><span>LIST</span></div><div><table>%s</table></div></div>`, inner), nil
+			return fmt.Sprintf(`<div class="node"><div>%s</div></div>`, inner), nil
 		case datamodel.Kind_Null:
-			return `<span class="node">NULL</span>`, nil
+			return `<span class="node nullnode">NULL</span>`, nil
 		case datamodel.Kind_Bool:
-			return fmt.Sprintf(`<span class="node">%t</span>`, must(n.AsBool)), nil
+			return fmt.Sprintf(`<span class="node boolnode">%t</span>`, must(n.AsBool)), nil
 		case datamodel.Kind_Int:
-			return fmt.Sprintf(`<span class="node">%d</span>`, must(n.AsInt)), nil
+			return fmt.Sprintf(`<span class="node numnode">%d</span>`, must(n.AsInt)), nil
 		case datamodel.Kind_Float:
-			return fmt.Sprintf(`<span class="node">%f</span>`, must(n.AsFloat)), nil
+			return fmt.Sprintf(`<span class="node numnode">%f</span>`, must(n.AsFloat)), nil
 		case datamodel.Kind_String:
-			return fmt.Sprintf(`<span class="node">"%s"</span>`, template.HTMLEscapeString(must(n.AsString))), nil
+			return fmt.Sprintf(`<span class="node strnode">"%s"</span>`, template.HTMLEscapeString(must(n.AsString))), nil
 		case datamodel.Kind_Bytes:
-			return fmt.Sprintf(`<span class="node">%x</span>`, must(n.AsBytes)), nil
+			return fmt.Sprintf(`<span class="node bytenode">%x</span>`, must(n.AsBytes)), nil
 		case datamodel.Kind_Link:
 			lnk := must(n.AsLink)
 
@@ -958,6 +959,14 @@ var dataexplCmd = &cli.Command{
 		}
 
 		m := mux.NewRouter()
+
+		var staticFS = fs.FS(dres)
+		static, err := fs.Sub(staticFS, "dexpl")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		m.PathPrefix("/static/").Handler(http.FileServer(http.FS(static))).Methods("GET", "HEAD")
 
 		m.HandleFunc("/", dh.handleIndex).Methods("GET")
 		m.HandleFunc("/miners", dh.handleMiners).Methods("GET")
