@@ -19,6 +19,7 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"html/template"
 	"io"
 	"io/fs"
@@ -494,6 +495,22 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 		return
 	}
 
+	swapCodec := func(c cid.Cid, cd uint64) cid.Cid {
+		if c.Prefix().Version == 0 && cd == cid.DagProtobuf {
+			return cid.NewCidV0(c.Hash())
+		}
+		return cid.NewCidV1(cd, c.Hash())
+	}
+
+	switch r.FormValue("reinterp") {
+	case "dag-cbor":
+		root = swapCodec(root, cid.DagCBOR)
+	case "dag-pb":
+		root = swapCodec(root, cid.DagProtobuf)
+	case "raw":
+		root = swapCodec(root, cid.Raw)
+	}
+
 	node, err := dserv.Get(ctx, root)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -833,6 +850,22 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 		}
 	}
 
+	// check if the node can be reinterpreted
+	var reinterpRaw, reinterpCbor, reinterpPB bool
+
+	switch node.Cid().Type() {
+	case cid.Raw:
+		if cbg.ScanForLinks(bytes.NewReader(node.RawData()), func(c cid.Cid) {}) == nil {
+			reinterpCbor = true
+		}
+		if _, err := merkledag.DecodeProtobuf(node.RawData()); err == nil {
+			reinterpPB = true
+		}
+	default:
+		reinterpRaw = true
+	}
+
+	// get node info
 	res, err := dumpNode(startNode, r.URL.Path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -861,6 +894,10 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 		"carurl": strings.Replace(r.URL.Path, "/view", "/car", 1),
 		"url":    r.URL.Path,
 		"ipfs":   node.Cid().Type() == cid.DagProtobuf || node.Cid().Type() == cid.Raw,
+
+		"reinterpCbor": reinterpCbor,
+		"reinterpPB":   reinterpPB,
+		"reinterpRaw":  reinterpRaw,
 
 		"desc": ni.Desc,
 		"node": node.Cid(),

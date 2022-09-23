@@ -67,7 +67,7 @@ func getFilRetrieval(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, 
 
 		cbs, err := blockstore.NewReadOnly(&bytesReaderAt{bytes.NewReader(memcar.Bytes())}, nil,
 			carv2.ZeroLengthSectionAsEOF(true),
-			blockstore.UseWholeCIDs(true))
+			blockstore.UseWholeCIDs(false))
 		if err != nil {
 			return cid.Undef, nil, err
 		}

@@ -36,11 +36,14 @@
     <h4>
         <a href="{{.carurl}}">[CAR]</a>
         {{if .ipfs}}<a href="{{.url}}?view=ipfs">[IPFS]</a>{{end}}
+        {{if .reinterpCbor}}<a href="{{.url}}?view=ipld&reinterp=dag-cbor">[AS DAG-CBOR]</a>{{end}}
+        {{if .reinterpPB}}<a href="{{.url}}?view=ipld&reinterp=dag-pb">[AS DAG-PB]</a>{{end}}
+        {{if .reinterpRaw}}<a href="{{.url}}?view=ipld&reinterp=raw">[AS RAW]</a>{{end}}
     </h4>
     <span>node: <i>{{ .node }}</i> (<b>{{ .desc }}</b>)</span>
     <hr>
 
-    <div>
+    <div class="ipld-data">
     {{ .content }}
     </div>
 </body>

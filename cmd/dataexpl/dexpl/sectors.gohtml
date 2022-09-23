@@ -26,7 +26,7 @@
     {{range .sectors}}
         {{if (gt (len .DealIDs) 0)}}
             <div>
-                <div style="font-size: 20; font-weight: bold; display: inline-block">Sector {{.SectorNumber}}
+                <div style="font-weight: bold; display: inline-block">Sector {{.SectorNumber}}
                     {{range .DealIDs}}
                         <div style="display: inline-block">
                             <div><a href="/deal/{{.}}">Deal {{.}}</a></div>

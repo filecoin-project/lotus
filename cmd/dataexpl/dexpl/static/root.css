@@ -67,13 +67,25 @@ td {
     text-align: left;
 }
 
+tr:hover {
+    background: #353535;
+}
+
 /*
 tr:nth-child(even) {background: #333333}
 tr:nth-child(odd) {background: #454545}
  */
 
+div.ipld-data {
+    background: #454545;
+}
+
 div.node {
     padding: 1px 1px 1px 3px;
+}
+
+span.node:hover {
+    background: #353535;
 }
 
 div.subnode {
