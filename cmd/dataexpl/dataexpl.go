@@ -466,7 +466,17 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 	sel := ssb.Matcher()
 
-	if r.Method != "HEAD" {
+	dirchecks := maxDirTypeChecks
+	if r.FormValue("dirchecks") != "" {
+		var err error
+		dirchecks, err = strconv.ParseInt(r.FormValue("dirchecks"), 0, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if r.Method != "HEAD" && dirchecks > 0 {
 		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 
 		sel = ssb.ExploreUnion(
@@ -474,7 +484,7 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 			//ssb.ExploreInterpretAs("unixfs", ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreAll(ssb.Matcher()))),
 
 			ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
-				eb.Insert("Links", ssb.ExploreRange(0, maxDirTypeChecks,
+				eb.Insert("Links", ssb.ExploreRange(0, dirchecks,
 					ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 						eb.Insert("Hash", ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
 							ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
@@ -491,7 +501,7 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 
 	root, dserv, err := g(sel)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, xerrors.Errorf("inner get 0: %w", err).Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -552,7 +562,7 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 			// non-working example: http://127.0.0.1:5658/view/f01872811/baga6ea4seaqej7xagp2cmxdclpzqspd7zmu6dpnjt3qr2tywdzovqosmlvhxemi/bafybeif7kzcu2ezkkr34zu562kvutrsypr5o3rjeqrwgukellocbidfcsu/Links/3/Hash/Links/0/Hash/?filename=baf...qhgi
 			ls := node.Links()
 
-			links, err := parseLinks(ctx, ls, dserv, maxDirTypeChecks)
+			links, err := parseLinks(ctx, ls, dserv, dirchecks)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -600,7 +610,7 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 				return
 			}
 
-			links, err := parseLinks(ctx, ls, dserv, maxDirTypeChecks)
+			links, err := parseLinks(ctx, ls, dserv, dirchecks)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -873,7 +883,7 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 	}
 	ni, _, err := linkDesc(ctx, node.Cid(), "", dserv)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, xerrors.Errorf("linkdesc: %w", err).Error(), http.StatusInternalServerError)
 		return
 	}
 	if ni.Size != "" {
@@ -1223,14 +1233,16 @@ func linkDesc(ctx context.Context, c cid.Cid, name string, dserv format.DAGServi
 
 		rrd, err = io2.NewDagReader(ctx, fnode, dserv)
 		if err != nil {
-			return nil, false, err
+			out.Desc = fmt.Sprintf("FILE (pb,e1:%s)", err)
+			return out, true, nil
 		}
 
 		ctype := mime.TypeByExtension(gopath.Ext(name))
 		if ctype == "" {
 			mimeType, err := mimetype.DetectReader(rrd)
 			if err != nil {
-				return nil, false, err
+				out.Desc = fmt.Sprintf("FILE (pb,e2:%s)", err)
+				return out, true, nil
 			}
 
 			ctype = mimeType.String()
