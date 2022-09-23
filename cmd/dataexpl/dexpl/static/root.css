@@ -84,15 +84,15 @@ div.multinode {
     display: block;
 }
 
-.nodekey {
+.nodekey, .size-k {
     color: #A0A3C6;
 }
 
-.strnode {
+.strnode, .size-m {
     color: #C6A0B6;
 }
 
-.numnode {
+.numnode, .size-g {
     color: #A0C6B0;
 }
 

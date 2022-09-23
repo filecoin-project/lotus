@@ -32,12 +32,16 @@
     </script>
 </head>
 <body>
-<h3>IPLD View</h3>
-<span>node: <i>{{ .node }}</i> (<b>{{ .desc }}</b>)</span>
-<hr>
+    <h3>IPLD View</h3>
+    <h4>
+        <a href="{{.carurl}}">[CAR]</a>
+        {{if .ipfs}}<a href="{{.url}}?view=ipfs">[IPFS]</a>{{end}}
+    </h4>
+    <span>node: <i>{{ .node }}</i> (<b>{{ .desc }}</b>)</span>
+    <hr>
 
-<div>
-{{ .content }}
-</div>
+    <div>
+    {{ .content }}
+    </div>
 </body>
 </html>

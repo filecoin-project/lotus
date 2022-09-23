@@ -589,7 +589,20 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 				return
 			}
 
-			tpl, err := template.New("dir.gohtml").ParseFS(dres, "dexpl/dir.gohtml")
+			tpl, err := template.New("dir.gohtml").Funcs(map[string]any{
+				"sizeClass": func(s string) string {
+					switch {
+					case strings.Contains(s, "GiB"):
+						return "g"
+					case strings.Contains(s, "MiB"):
+						return "m"
+					case strings.Contains(s, "KiB"):
+						return "k"
+					default:
+						return "b"
+					}
+				},
+			}).ParseFS(dres, "dexpl/dir.gohtml")
 			if err != nil {
 				fmt.Println(err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -601,6 +614,9 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 				"entries": links,
 				"url":     r.URL.Path,
 				"carurl":  carpath,
+
+				"desc": fmt.Sprintf("DIR (%d entries)", len(links)),
+				"node": node.Cid(),
 			}
 			if err := tpl.Execute(w, data); err != nil {
 				fmt.Println(err)
@@ -841,8 +857,12 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 	w.WriteHeader(http.StatusOK)
 	data := map[string]interface{}{
 		"content": res,
-		"desc":    ni.Desc,
 
+		"carurl": strings.Replace(r.URL.Path, "/view", "/car", 1),
+		"url":    r.URL.Path,
+		"ipfs":   node.Cid().Type() == cid.DagProtobuf || node.Cid().Type() == cid.Raw,
+
+		"desc": ni.Desc,
 		"node": node.Cid(),
 	}
 	if err := tpl.Execute(w, data); err != nil {

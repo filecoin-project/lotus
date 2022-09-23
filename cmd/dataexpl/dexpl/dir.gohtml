@@ -27,6 +27,13 @@
             }
         }
     </script>
+    <h3>IPFS View</h3>
+    <h4>
+        <a href="{{.carurl}}">[CAR]</a>
+        <a href="{{.url}}?view=ipld">[IPLD]</a>
+    </h4>
+    <span>node: <i>{{ .node }}</i> (<b>{{ .desc }}</b>)</span>
+    <hr>
     <table>
     {{$url := .url}}
     {{$carurl := .carurl}}
@@ -34,7 +41,7 @@
         <tr>
             <td><a href="{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}">{{$e.Name}}</a></td>
             <td><a href="{{$carurl}}Links/{{$i}}/Hash/?filename={{$e.Name}}">[CAR]</a><a href="{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}&view=ipld">[IPLD]</a></td>
-            <td>{{$e.Size}}</td>
+            <td class="size-{{$e.Size | sizeClass}}">{{$e.Size}}</td>
             <td>{{if eq "" $e.Desc}}??? (<a href="javascript:void(0)" onclick="checkDesc(this, '{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}')">check</a>){{else}}{{$e.Desc}}{{end}}</td>
             <td><span><i>({{$e.Cid}})</i></span></td>
         </tr>
