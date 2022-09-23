@@ -201,7 +201,7 @@ func (h *dxhnd) handlePingLotus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	{
-		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
 
 		if err := h.api.NetConnect(ctx, pi); err != nil {
@@ -210,7 +210,7 @@ func (h *dxhnd) handlePingLotus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	d, err := h.api.NetPing(ctx, pi.ID)
@@ -241,17 +241,7 @@ func (h *dxhnd) handlePingIPFS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	{
-		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
-		defer cancel()
-
-		if err := h.api.NetConnect(ctx, pi); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	iapi, err := httpapi.NewLocalApi()
@@ -1005,7 +995,7 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 
 			carpath := strings.Replace(recPath, "/view", "/car", 1)
 
-			return fmt.Sprintf(`<span class="node"><a href="%s">%s</a> <a href="%s">[car]</a><a href="%s">[ipld]</a> <span>%s</span></span>`, recPath, lnk.String(), carpath, recPath+"?view=ipld", ldescr), nil
+			return fmt.Sprintf(`<span class="node"><a href="%s">%s</a> <a href="%s">[car]</a><a href="%s">[ipld]</a><a href="/find/%s">[find]</a> <span>%s</span></span>`, recPath, lnk.String(), carpath, recPath+"?view=ipld", lnk.String(), ldescr), nil
 		default:
 			return `<span>UNKNOWN</span>`, nil
 		}

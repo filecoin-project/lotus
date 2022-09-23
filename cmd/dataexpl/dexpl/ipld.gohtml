@@ -40,7 +40,7 @@
         {{if .reinterpPB}}<a href="{{.url}}?view=ipld&reinterp=dag-pb&dirchecks=0">[AS DAG-PB]</a>{{end}}
         {{if .reinterpRaw}}<a href="{{.url}}?view=ipld&reinterp=raw">[AS RAW]</a>{{end}}
     </h4>
-    <span>node: <i>{{ .node }}</i> (<b>{{ .desc }}</b>)</span>
+    <span>node: <i>{{ .node }}</i><a href="/find/{{ .node }}">[find]</a> (<b>{{ .desc }}</b>)</span>
     <hr>
 
     <div class="ipld-data">
