@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/go-jsonrpc"
 )
 
 func goCmd() string {
