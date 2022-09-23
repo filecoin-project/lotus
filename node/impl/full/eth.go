@@ -268,7 +268,22 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (api.EthBigInt, error) {
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error) {
-	return api.EthHash{}, nil
+	txArgs, err := api.ParseEthTxArgs(rawTx)
+	if err != nil {
+		return api.EmptyEthHash, err
+	}
+
+	smsg, err := txArgs.ToSignedMessage()
+	if err != nil {
+		return api.EmptyEthHash, err
+	}
+
+	cid, err := a.MpoolAPI.MpoolPush(ctx, smsg)
+	if err != nil {
+		return api.EmptyEthHash, err
+	}
+
+	return api.EthHashFromCid(cid)
 }
 
 func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.InvocResult, error) {
@@ -448,9 +463,9 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		Gas:                  api.EthInt(msg.GasLimit),
 		MaxFeePerGas:         api.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: api.EthBigInt(msg.GasPremium),
-		V:                    api.EthBigIntZero,
-		R:                    api.EthBigIntZero,
-		S:                    api.EthBigIntZero,
+		V:                    api.EthBytes{},
+		R:                    api.EthBytes{},
+		S:                    api.EthBytes{},
 		Input:                msg.Params,
 	}
 	return tx, nil

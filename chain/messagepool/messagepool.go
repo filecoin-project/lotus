@@ -3,6 +3,7 @@ package messagepool
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -63,7 +64,7 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
-//const MaxMessageSize = 64 << 10 // 64KiB
+// const MaxMessageSize = 64 << 10 // 64KiB
 const MaxMessageSize = 1<<20 - 128 // 1MiB minus some change for pb stuff
 
 var (
@@ -771,6 +772,16 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
+	case crypto.SigTypeDelegated:
+		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		if err != nil {
+			return "", err
+		}
+		msg, err := txArgs.HashedOriginalRlpMsg()
+		if err != nil {
+			return "", err
+		}
+		return hex.EncodeToString(msg), nil
 	default:
 		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
 	}
@@ -788,7 +799,19 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
+	if m.Signature.Type == crypto.SigTypeDelegated {
+		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		if err != nil {
+			return err
+		}
+		msg, err := txArgs.OriginalRlpMsg()
+		if err != nil {
+			return err
+		}
+		if err := sigs.Verify(&m.Signature, m.Message.From, msg); err != nil {
+			return err
+		}
+	} else if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
 		return err
 	}
 
@@ -1057,9 +1080,9 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 
 // this method is provided for the gateway to push messages.
 // differences from Push:
-//  - strict checks are enabled
-//  - extra strict add checks are used when adding the messages to the msgSet
-//    that means: no nonce gaps, at most 10 pending messages for the actor
+//   - strict checks are enabled
+//   - extra strict add checks are used when adding the messages to the msgSet
+//     that means: no nonce gaps, at most 10 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
 	err := mp.checkMessage(m)
 	if err != nil {

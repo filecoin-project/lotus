@@ -3,9 +3,92 @@ package api
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 
 	"golang.org/x/xerrors"
 )
+
+func EncodeRLP(val interface{}) ([]byte, error) {
+	return encodeRLP(val)
+}
+
+func encodeRLPListItems(list []interface{}) (result []byte, err error) {
+	res := []byte{}
+	for _, elem := range list {
+		encoded, err := encodeRLP(elem)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, encoded...)
+	}
+	return res, nil
+}
+
+func encodeLength(length int) (lenInBytes []byte, err error) {
+	if length == 0 {
+		return nil, fmt.Errorf("cannot encode length: length should be larger than 0")
+	}
+
+	buf := new(bytes.Buffer)
+	err = binary.Write(buf, binary.BigEndian, int64(length))
+	if err != nil {
+		return nil, err
+	}
+
+	firstNonZeroIndex := len(buf.Bytes()) - 1
+	for i, b := range buf.Bytes() {
+		if b != 0 {
+			firstNonZeroIndex = i
+			break
+		}
+	}
+
+	res := buf.Bytes()[firstNonZeroIndex:]
+	return res, nil
+}
+
+func encodeRLP(val interface{}) ([]byte, error) {
+	if data, ok := val.([]byte); ok {
+		if len(data) == 1 && data[0] <= 0x7f {
+			return data, nil
+		} else if len(data) <= 55 {
+			prefix := byte(0x80 + len(data))
+			return append([]byte{prefix}, data...), nil
+		} else {
+			lenInBytes, err := encodeLength(len(data))
+			if err != nil {
+				return nil, err
+			}
+			prefix := byte(0xb7 + len(lenInBytes))
+			return append(
+				[]byte{prefix},
+				append(lenInBytes, data...)...,
+			), nil
+		}
+	} else if data, ok := val.([]interface{}); ok {
+		encodedList, err := encodeRLPListItems(data)
+		if err != nil {
+			return nil, err
+		}
+		if len(encodedList) <= 55 {
+			prefix := byte(0xc0 + len(encodedList))
+			return append(
+				[]byte{prefix},
+				encodedList...,
+			), nil
+		}
+		lenInBytes, err := encodeLength(len(encodedList))
+		if err != nil {
+			return nil, err
+		}
+		prefix := byte(0xf7 + len(lenInBytes))
+		return append(
+			[]byte{prefix},
+			append(lenInBytes, encodedList...)...,
+		), nil
+	}
+	return nil, fmt.Errorf("input data should either be a list of a byte array")
+}
 
 func DecodeRLP(data []byte) (interface{}, error) {
 	res, consumed, err := decodeRLP(data)
@@ -13,12 +96,15 @@ func DecodeRLP(data []byte) (interface{}, error) {
 		return nil, err
 	}
 	if consumed != len(data) {
-		return nil, xerrors.Errorf("cannot decode rlp: length %d, consumed %d", len(data), consumed)
+		return nil, xerrors.Errorf("invalid rlp data: length %d, consumed %d", len(data), consumed)
 	}
 	return res, nil
 }
 
 func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
+	if len(data) == 0 {
+		return data, 0, xerrors.Errorf("invalid rlp data: data cannot be empty")
+	}
 	if data[0] >= 0xf8 {
 		listLenInBytes := int(data[0]) - 0xf7
 		listLen, err := decodeLength(data[1:], listLenInBytes)
@@ -74,7 +160,8 @@ func decodeListElems(data []byte, length int) (res []interface{}, err error) {
 	totalConsumed := 0
 	result := []interface{}{}
 
-	for totalConsumed < length {
+	// set a limit to make sure it doesn't loop infinitely
+	for i := 0; totalConsumed < length && i < 5000; i++ {
 		elem, consumed, err := decodeRLP(data[totalConsumed:])
 		if err != nil {
 			return nil, xerrors.Errorf("invalid rlp data: cannot decode list element: %w", err)

@@ -1,4 +1,4 @@
-//stm: #integration
+// stm: #integration
 package stmgr_test
 
 import (

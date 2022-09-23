@@ -2397,9 +2397,9 @@ Response:
   "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
-  "r": "0x0",
-  "s": "0x0"
+  "v": "0x07",
+  "r": "0x07",
+  "s": "0x07"
 }
 ```
 
@@ -2434,9 +2434,9 @@ Response:
   "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
-  "r": "0x0",
-  "s": "0x0"
+  "v": "0x07",
+  "r": "0x07",
+  "s": "0x07"
 }
 ```
 
@@ -2470,9 +2470,9 @@ Response:
   "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
-  "r": "0x0",
-  "s": "0x0"
+  "v": "0x07",
+  "r": "0x07",
+  "s": "0x07"
 }
 ```
 
