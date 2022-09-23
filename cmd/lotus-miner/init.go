@@ -547,7 +547,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 
 		addr = a
 	} else {
-		a, err := createStorageMiner(ctx, api, peerid, gasPrice, cctx)
+		a, err := createStorageMiner(ctx, api, ssize, peerid, gasPrice, cctx)
 		if err != nil {
 			return xerrors.Errorf("creating miner failed: %w", err)
 		}
@@ -627,7 +627,7 @@ func configureStorageMiner(ctx context.Context, api v1api.FullNode, addr address
 	return nil
 }
 
-func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID, gasPrice types.BigInt, cctx *cli.Context) (address.Address, error) {
+func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.SectorSize, peerid peer.ID, gasPrice types.BigInt, cctx *cli.Context) (address.Address, error) {
 	var err error
 	var owner address.Address
 	if cctx.String("owner") != "" {
@@ -637,11 +637,6 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 	}
 	if err != nil {
 		return address.Undef, err
-	}
-
-	ssize, err := units.RAMInBytes(cctx.String("sector-size"))
-	if err != nil {
-		return address.Undef, fmt.Errorf("failed to parse sector size: %w", err)
 	}
 
 	worker := owner
@@ -718,7 +713,7 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 	}
 
 	// Note: the correct thing to do would be to call SealProofTypeFromSectorSize if actors version is v3 or later, but this still works
-	spt, err := miner.WindowPoStProofTypeFromSectorSize(abi.SectorSize(ssize))
+	spt, err := miner.WindowPoStProofTypeFromSectorSize(ssize)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting post proof type: %w", err)
 	}
