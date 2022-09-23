@@ -96,7 +96,7 @@ div.multinode {
     display: block;
 }
 
-.nodekey, .size-k {
+.nodekey, .size-k, .find-fastretr {
     color: #A0A3C6;
 }
 
@@ -104,7 +104,7 @@ div.multinode {
     color: #C6A0B6;
 }
 
-.numnode, .size-g {
+.numnode, .size-g, .find-verified {
     color: #A0C6B0;
 }
 
@@ -147,4 +147,14 @@ a:hover {
 
 .hex-noprint-high {
     color: #96D18E;
+}
+
+/* find */
+
+.find-content {
+    background: #454545;
+}
+
+.find-provider-entry {
+    margin-left: 1em;
 }

@@ -1,0 +1,104 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Find - Data Explorer</title>
+    <link rel="stylesheet" href="/static/root.css">
+    <script>
+        async function pingPeer(ma, mode, addrinfo) {
+            document.getElementById("ping"+mode+ma).innerText = "connecting.."
+
+            let r = await fetch("/ping/peer/"+ mode +"/"+addrinfo)
+
+            document.getElementById("ping"+mode+ma).innerText = await r.text()
+        }
+
+        async function matchPieceDeals(ma, piece) {
+            document.getElementById("pdeals"+ma+"-"+piece).innerText = "matching deals.."
+
+            let r = await fetch("/matchdeal/" + ma + "/" + piece)
+            let deals = await r.json()
+
+            let delem = document.getElementById("pdeals"+ma+"-"+piece)
+            delem.innerText = ""
+
+            deals.map(id => {
+                let line = document.createElement("div")
+                line.appendChild(document.createTextNode("Deal "))
+
+                let link = document.createElement("a")
+                link.innerText = id
+                link.href = "/deal/" + id
+
+                line.appendChild(link)
+
+                return line
+            }).forEach(e => delem.appendChild(e))
+        }
+    </script>
+</head>
+<body>
+<h3>Find content</h3>
+<span>node: <i><a href="/view/ipfs/{{.root}}/">{{.root}}</a></i></span>
+<span><a href="/car/ipfs/{{.root}}/">[CAR]</a></span>
+<span><a href="/view/ipfs/{{.root}}/?view=ipld">[IPLD]</a></span>
+<hr>
+
+<div class="find-content">
+    {{ $root := .root }}
+
+    {{range .providers}}
+        <div>
+            <hr>
+            <div><h4>Provider {{.Provider.ID}}</h4></div>
+            <div class="find-provider-entry">
+                <div>
+                    {{range .Provider.Addrs}}
+                        <div>Multiaddr: {{.}}</div>
+                    {{end}}
+                </div>
+
+                <div>Protocol: <b>{{.Protocol}}</b></div>
+
+                {{if ne .MinerAddr ""}}
+                    <div>Miner Address: <a href="/minersectors/{{.MinerAddr}}">{{.MinerAddr}}</a> </div>
+                {{end}}
+
+                <br>
+
+                <div>Ping <i>(lotus)</i>: <span id="pinglotus{{.Provider.ID}}"></span></div>
+                <div>Ping <i>(ipfs)</i>: <span id="pingipfs{{.Provider.ID}}"></span></div>
+
+                <script>
+                    addEventListener('load', (_) => {
+                        pingPeer('{{.Provider.ID}}', 'lotus', '{{.BasePI}}')
+                        pingPeer('{{.Provider.ID}}', 'ipfs', '{{.BasePI}}')
+                    })
+                </script>
+
+                <br>
+
+                {{if eq .Protocol "Graphsync"}}
+                    <div>
+                        <span>Piece </span>
+                        {{if ne .MinerAddr ""}}
+                            <span><a href="/view/{{.MinerAddr}}/{{.Piece}}/{{$root}}/">{{.Piece}}</a></span>
+                            <span><a href="/car/{{.MinerAddr}}/{{.Piece}}/{{$root}}/">[CAR]</a></span>
+                            <span><a href="/view/{{.MinerAddr}}/{{.Piece}}/{{$root}}/?view=ipld">[IPLD]</a></span>
+                            <div id="pdeals{{.MinerAddr}}-{{.Piece}}" style="padding-left: 2em">..</div>
+                            <script>
+                                addEventListener('load', (_) => {
+                                    matchPieceDeals('{{.MinerAddr}}', '{{.Piece}}')
+                                })
+                            </script>
+                        {{else}}
+                            <b>{{.Piece}}</b>
+                        {{end}}
+                        <span> {{if .FastRetrieval}}<span class="find-fastretr">fast-retr</span>{{end}} {{if .VerifiedDeal}}<span class="find-verified">verified</span>{{end}}</span>
+                    </div>
+                {{end}}
+            </div>
+        </div>
+    {{end}}
+</div>
+</body>
+</html>

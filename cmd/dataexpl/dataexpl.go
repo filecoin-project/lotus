@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/index-provider/metadata"
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/markets/utils"
+	finderhttpclient "github.com/filecoin-project/storetheindex/api/v0/finder/client/http"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/go-unixfsnode"
 	dagpb "github.com/ipld/go-codec-dagpb"
 	"github.com/ipld/go-ipld-prime"
@@ -79,7 +83,10 @@ type dxhnd struct {
 	api   lapi.FullNode
 	ainfo cliutil.APIInfo
 
-	mminers []marketMiner
+	idx *finderhttpclient.Client
+
+	mminers   []marketMiner
+	minerPids map[peer.ID]address.Address
 }
 
 func (h *dxhnd) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -174,6 +181,99 @@ func (h *dxhnd) handlePingMiner(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(fmt.Sprintf("%s %s", pi.ID, d.Round(time.Millisecond))))
+}
+
+func (h *dxhnd) handlePingLotus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	aijson, err := base64.URLEncoding.DecodeString(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	pi := peer.AddrInfo{}
+	if err := json.Unmarshal(aijson, &pi); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	{
+		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+		defer cancel()
+
+		if err := h.api.NetConnect(ctx, pi); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+
+	d, err := h.api.NetPing(ctx, pi.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(fmt.Sprintf("%s", d.Round(time.Millisecond))))
+}
+
+func (h *dxhnd) handlePingIPFS(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	vars := mux.Vars(r)
+
+	aijson, err := base64.URLEncoding.DecodeString(vars["id"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	pi := peer.AddrInfo{}
+	if err := json.Unmarshal(aijson, &pi); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	{
+		ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+		defer cancel()
+
+		if err := h.api.NetConnect(ctx, pi); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+
+	iapi, err := httpapi.NewLocalApi()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	start := time.Now()
+
+	// todo: not quite pinging
+
+	if err := iapi.Swarm().Connect(ctx, pi); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	d := time.Now().Sub(start)
+
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(fmt.Sprintf("%s", d.Round(time.Millisecond))))
 }
 
 func (h *dxhnd) handleDeals(w http.ResponseWriter, r *http.Request) {
@@ -1018,6 +1118,145 @@ func (h *dxhnd) handleCar(w http.ResponseWriter, r *http.Request) {
 	_ = reader.Close()
 }
 
+func (h *dxhnd) handleFind(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	dcid, err := cid.Parse(vars["cid"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ctx := r.Context()
+
+	resp, err := h.idx.Find(ctx, dcid.Hash())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type providerProto struct {
+		Provider peer.AddrInfo
+		BasePI   string
+		Protocol string
+
+		MinerAddr string
+
+		Piece         cid.Cid
+		VerifiedDeal  bool
+		FastRetrieval bool
+	}
+
+	var providers []providerProto
+
+	for _, result := range resp.MultihashResults {
+		for _, providerResult := range result.ProviderResults {
+			var meta metadata.Metadata
+			if err := meta.UnmarshalBinary(providerResult.Metadata); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			for _, proto := range meta.Protocols() {
+				res := providerProto{
+					Provider: providerResult.Provider,
+					BasePI:   base64.URLEncoding.EncodeToString(noerr(json.Marshal(providerResult.Provider))),
+				}
+
+				if maddr, found := h.minerPids[providerResult.Provider.ID]; found {
+					res.MinerAddr = maddr.String()
+				}
+
+				switch p := meta.Get(proto).(type) {
+				case *metadata.GraphsyncFilecoinV1:
+					res.Protocol = "Graphsync"
+
+					res.Piece = p.PieceCID
+					res.VerifiedDeal = p.VerifiedDeal
+					res.FastRetrieval = p.FastRetrieval
+				case *metadata.Bitswap:
+					res.Protocol = "Bitswap"
+				}
+
+				providers = append(providers, res)
+			}
+		}
+	}
+
+	tpl, err := txtempl.New("find.gohtml").ParseFS(dres, "dexpl/find.gohtml")
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	data := map[string]interface{}{
+		"root":      dcid,
+		"providers": providers,
+	}
+	if err := tpl.Execute(w, data); err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
+func (h *dxhnd) handleMatchPiece(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	ma, err := address.NewFromString(vars["mid"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	pcid, err := cid.Parse(vars["piece"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ctx := r.Context()
+
+	ms, err := h.api.StateMinerSectors(ctx, ma, nil, types.EmptyTSK)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var deals []abi.DealID
+	for _, info := range ms {
+		for _, d := range info.DealIDs {
+			deals = append(deals, d)
+		}
+	}
+
+	var matchedDeals []abi.DealID
+	var wg sync.WaitGroup
+	wg.Add(len(deals))
+	var lk sync.Mutex
+
+	for _, deal := range deals {
+		go func(deal abi.DealID) {
+			defer wg.Done()
+
+			md, err := h.api.StateMarketStorageDeal(ctx, deal, types.EmptyTSK)
+			if err != nil {
+				return
+			}
+
+			if md.Proposal.PieceCID.Equals(pcid) {
+				lk.Lock()
+				matchedDeals = append(matchedDeals, deal)
+				lk.Unlock()
+			}
+		}(deal)
+	}
+	wg.Wait()
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(noerr(json.Marshal(matchedDeals)))
+}
+
 var dataexplCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Explore data stored on filecoin",
@@ -1031,6 +1270,11 @@ var dataexplCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
+		idx, err := finderhttpclient.New("https://cid.contact")
+		if err != nil {
+			return err
+		}
+
 		ainfo, err := lcli.GetAPIInfo(cctx, repo.FullNode)
 		if err != nil {
 			return xerrors.Errorf("could not get API info: %w", err)
@@ -1042,6 +1286,9 @@ var dataexplCmd = &cli.Command{
 		}
 
 		var mminers []marketMiner
+		pidMiners := map[peer.ID]address.Address{}
+
+		fmt.Println("loading miner states")
 
 		for sa, mb := range mpcs {
 			if mb.Locked.IsZero() {
@@ -1053,16 +1300,16 @@ var dataexplCmd = &cli.Command{
 				return err
 			}
 
-			ac, err := api.StateGetActor(ctx, a, types.EmptyTSK)
-			if err != nil {
-				return err
-			}
-
-			if builtin.IsStorageMinerActor(ac.Code) {
+			mi, err := api.StateMinerInfo(ctx, a, types.EmptyTSK)
+			if err == nil {
 				mminers = append(mminers, marketMiner{
 					Addr:   a,
 					Locked: types.FIL(mb.Locked),
 				})
+
+				if mi.PeerId != nil {
+					pidMiners[*mi.PeerId] = a
+				}
 			}
 		}
 		sort.Slice(mminers, func(i, j int) bool {
@@ -1073,7 +1320,10 @@ var dataexplCmd = &cli.Command{
 			api:   api,
 			ainfo: ainfo,
 
-			mminers: mminers,
+			idx: idx,
+
+			mminers:   mminers,
+			minerPids: pidMiners,
 		}
 
 		m := mux.NewRouter()
@@ -1089,6 +1339,8 @@ var dataexplCmd = &cli.Command{
 		m.HandleFunc("/", dh.handleIndex).Methods("GET")
 		m.HandleFunc("/miners", dh.handleMiners).Methods("GET")
 		m.HandleFunc("/ping/miner/{id}", dh.handlePingMiner).Methods("GET")
+		m.HandleFunc("/ping/peer/ipfs/{id}", dh.handlePingIPFS).Methods("GET")
+		m.HandleFunc("/ping/peer/lotus/{id}", dh.handlePingLotus).Methods("GET")
 		m.HandleFunc("/deals", dh.handleDeals).Methods("GET")
 		m.HandleFunc("/minersectors/{id}", dh.handleMinerSectors).Methods("GET")
 
@@ -1096,6 +1348,10 @@ var dataexplCmd = &cli.Command{
 		m.HandleFunc("/view/ipfs/{cid}/{path:.*}", dh.handleViewIPFS).Methods("GET", "HEAD")
 		m.HandleFunc("/view/{mid}/{piece}/{cid}/{path:.*}", dh.handleViewFil).Methods("GET", "HEAD")
 		m.HandleFunc("/car/{mid}/{piece}/{cid}/{path:.*}", dh.handleCar).Methods("GET")
+
+		m.HandleFunc("/matchdeal/{mid}/{piece}", dh.handleMatchPiece).Methods("GET")
+
+		m.HandleFunc("/find/{cid}", dh.handleFind).Methods("GET")
 
 		server := &http.Server{Addr: ":5658", Handler: m, BaseContext: func(_ net.Listener) context.Context {
 			return cctx.Context
@@ -1385,6 +1641,13 @@ func (b bytesReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
 
 func must[T any](c func() (T, error)) T {
 	res, err := c()
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func noerr[T any](res T, err error) T {
 	if err != nil {
 		panic(err)
 	}
