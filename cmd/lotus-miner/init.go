@@ -90,7 +90,6 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
-			Value: units.BytesSize(float64(abi.SectorSize(2048))),
 		},
 		&cli.StringSliceFlag{
 			Name:  "pre-sealed-sectors",
@@ -129,11 +128,18 @@ var initCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus miner")
 
-		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		ssize, err := abi.RegisteredSealProof_StackedDrg32GiBV1.SectorSize()
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to calculate default sector size: %w", err)
 		}
-		ssize := abi.SectorSize(sectorSizeInt)
+
+		if cctx.IsSet("sector-size") {
+			sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+			if err != nil {
+				return err
+			}
+			ssize = abi.SectorSize(sectorSizeInt)
+		}
 
 		gasPrice, err := types.BigFromString(cctx.String("gas-premium"))
 		if err != nil {
