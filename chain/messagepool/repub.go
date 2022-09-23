@@ -79,7 +79,7 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		return chains[i].Before(chains[j])
 	})
 
-	gasLimit := int64(build.BlockGasLimit)
+	gasLimit := build.BlockGasLimit
 	minGas := int64(gasguess.MinGas)
 	var msgs []*types.SignedMessage
 loop:
