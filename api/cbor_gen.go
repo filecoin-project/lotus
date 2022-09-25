@@ -1285,3 +1285,368 @@ func (t *DealSchedule) UnmarshalCBOR(r io.Reader) (err error) {
 
 	return nil
 }
+func (t *HttpHeader) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.Key (string) (string)
+	if len("Key") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Key\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Key"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Key")); err != nil {
+		return err
+	}
+
+	if len(t.Key) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Key was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Key))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Key)); err != nil {
+		return err
+	}
+
+	// t.Value (string) (string)
+	if len("Value") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Value\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Value"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Value")); err != nil {
+		return err
+	}
+
+	if len(t.Value) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Value was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Value))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Value)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *HttpHeader) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = HttpHeader{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("HttpHeader: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Key (string) (string)
+		case "Key":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.Key = string(sval)
+			}
+			// t.Value (string) (string)
+		case "Value":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.Value = string(sval)
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
+func (t *URLTemplate) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.UrlTemplate (string) (string)
+	if len("UrlTemplate") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"UrlTemplate\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("UrlTemplate"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("UrlTemplate")); err != nil {
+		return err
+	}
+
+	if len(t.UrlTemplate) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.UrlTemplate was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.UrlTemplate))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.UrlTemplate)); err != nil {
+		return err
+	}
+
+	// t.Headers ([]api.HttpHeader) (slice)
+	if len("Headers") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Headers\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Headers"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Headers")); err != nil {
+		return err
+	}
+
+	if len(t.Headers) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Headers was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Headers))); err != nil {
+		return err
+	}
+	for _, v := range t.Headers {
+		if err := v.MarshalCBOR(cw); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *URLTemplate) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = URLTemplate{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("URLTemplate: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.UrlTemplate (string) (string)
+		case "UrlTemplate":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.UrlTemplate = string(sval)
+			}
+			// t.Headers ([]api.HttpHeader) (slice)
+		case "Headers":
+
+			maj, extra, err = cr.ReadHeader()
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.MaxLength {
+				return fmt.Errorf("t.Headers: array too large (%d)", extra)
+			}
+
+			if maj != cbg.MajArray {
+				return fmt.Errorf("expected cbor array")
+			}
+
+			if extra > 0 {
+				t.Headers = make([]HttpHeader, extra)
+			}
+
+			for i := 0; i < int(extra); i++ {
+
+				var v HttpHeader
+				if err := v.UnmarshalCBOR(cr); err != nil {
+					return err
+				}
+
+				t.Headers[i] = v
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
+func (a *RemoteStore) MarshalCBOR(w io.Writer) error {
+	if a == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{161}); err != nil {
+		return err
+	}
+
+	// t.Put (api.URLTemplate) (struct)
+	if len("Put") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Put\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Put"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Put")); err != nil {
+		return err
+	}
+
+	if err := a.Put.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *RemoteStore) UnmarshalCBOR(r io.Reader) (err error) {
+	*a = RemoteStore{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("RemoteStore: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Put (api.URLTemplate) (struct)
+		case "Put":
+
+			{
+
+				if err := a.Put.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.Put: %w", err)
+				}
+
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}

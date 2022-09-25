@@ -1985,6 +1985,17 @@ Inputs:
       "Address": "f01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
+    },
+    "RemoteStore": {
+      "Put": {
+        "UrlTemplate": "string value",
+        "Headers": [
+          {
+            "Key": "string value",
+            "Value": "string value"
+          }
+        ]
+      }
     }
   }
 ]

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"os"
 
 	"go.uber.org/fx"
@@ -123,6 +124,9 @@ var ChainNode = Options(
 	Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 	Override(new(retrievalmarket.BlockstoreAccessor), modules.RetrievalBlockstoreAccessor),
 	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(false)),
+	Override(new(dtypes.ClientApiStoresDatastore), modules.NewClientApiStoresDatastore),
+	Override(new(dtypes.ApiBstoreStates), modules.NewAPIStoreStates),
+	Override(new(*retrievaladapter.APIBlockstoreAccessor), retrievaladapter.NewAPIBlockstoreAdapter),
 	Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
 
 	// Markets (storage)

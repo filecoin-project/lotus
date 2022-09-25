@@ -2,14 +2,19 @@ package retrievaladapter
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"path/filepath"
 	"sync"
 
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-car/v2/blockstore"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-statestore"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 // ProxyBlockstoreAccessor is an accessor that returns a fixed blockstore.
@@ -31,6 +36,47 @@ func (p *ProxyBlockstoreAccessor) Get(_ retrievalmarket.DealID, _ retrievalmarke
 func (p *ProxyBlockstoreAccessor) Done(_ retrievalmarket.DealID) error {
 	return nil
 }
+
+func NewAPIBlockstoreAdapter(sub retrievalmarket.BlockstoreAccessor, apiStoreStates dtypes.ApiBstoreStates) *APIBlockstoreAccessor {
+	return &APIBlockstoreAccessor{
+		sub:       sub,
+		apiStores: apiStoreStates,
+	}
+}
+
+// APIBlockstoreAccessor adds support to API-specified remote blockstores
+type APIBlockstoreAccessor struct {
+	sub retrievalmarket.BlockstoreAccessor
+
+	apiStores *statestore.StateStore
+}
+
+func (a *APIBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCID retrievalmarket.PayloadCID) (bstore.Blockstore, error) {
+	has, err := a.apiStores.Has(uint64(id))
+	if err != nil {
+		return nil, xerrors.Errorf("check apiStore exists: %w", err)
+	}
+	if !has {
+		return a.sub.Get(id, payloadCID)
+	}
+
+	var ar api.RemoteStore
+	if err := a.apiStores.Get(uint64(id)).Get(&ar); err != nil {
+		return nil, xerrors.Errorf("getting api store: %w", err)
+	}
+
+	return &ar, nil
+}
+
+func (a *APIBlockstoreAccessor) Done(id retrievalmarket.DealID) error {
+	return a.apiStores.Get(uint64(id)).End()
+}
+
+func (a *APIBlockstoreAccessor) Register(id retrievalmarket.DealID, as *api.RemoteStore) error {
+	return a.apiStores.Begin(uint64(id), as)
+}
+
+var _ retrievalmarket.BlockstoreAccessor = &APIBlockstoreAccessor{}
 
 type CARBlockstoreAccessor struct {
 	rootdir string

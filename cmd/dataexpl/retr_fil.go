@@ -2,11 +2,9 @@ package main
 
 import (
 	"bytes"
-	"github.com/filecoin-project/go-address"
-	lapi "github.com/filecoin-project/lotus/api"
-	bstore "github.com/filecoin-project/lotus/blockstore"
-	lcli "github.com/filecoin-project/lotus/cli"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"io"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -17,8 +15,13 @@ import (
 	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"golang.org/x/xerrors"
-	"io"
-	"net/http"
+
+	"github.com/filecoin-project/go-address"
+
+	lapi "github.com/filecoin-project/lotus/api"
+	bstore "github.com/filecoin-project/lotus/blockstore"
+	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 func getCarFilRetrieval(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (io.ReadCloser, error) {

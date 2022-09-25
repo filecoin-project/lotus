@@ -1,9 +1,15 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/multiformats/go-multicodec"
+	"github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
+	"html/template"
+	"net/http"
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -1000,6 +1006,110 @@ type RetrievalOrder struct {
 	Client                  address.Address
 	Miner                   address.Address
 	MinerPeer               *retrievalmarket.RetrievalPeer
+
+	RemoteStore *RemoteStore `json:"RemoteStore,omitempty"`
+}
+
+type RemoteStore struct {
+	PutURL URLTemplate
+}
+
+func (a *RemoteStore) DeleteBlock(ctx context.Context, c cid.Cid) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *RemoteStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *RemoteStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *RemoteStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *RemoteStore) Put(ctx context.Context, block blocks.Block) error {
+	t, err := template.New("url").Parse(a.PutURL.UrlTemplate)
+	if err != nil {
+		return xerrors.Errorf("parsing put url template: %w", err)
+	}
+
+	blkCid := block.Cid()
+
+	mhName, ok := multihash.Codes[blkCid.Prefix().MhType]
+	if !ok {
+		return fmt.Errorf("unrecognized multihash function: %s", blkCid.Prefix().MhType)
+	}
+
+	//codecName}}&mhtype={{.hashName}}&mhlen={{.hashLen
+	var urlbuf bytes.Buffer
+	err = t.Execute(&urlbuf, map[string]interface{}{
+		"codecName": multicodec.Code(blkCid.Prefix().Codec).String(),
+		"hashName":  mhName,
+		"hashLen":   blkCid.Prefix().MhLength,
+		"cid":       blkCid,
+	})
+	if err != nil {
+		return xerrors.Errorf("executing put url template: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", urlbuf.String(), bytes.NewReader(block.RawData()))
+	if err != nil {
+		return xerrors.Errorf("making put request: %w", err)
+	}
+
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return xerrors.Errorf("requesting remote blockstore put put: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return xerrors.Errorf("put http response wasn't ok: was %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (a *RemoteStore) PutMany(ctx context.Context, i []blocks.Block) error {
+	// todo make parallel
+	for _, block := range i {
+		if err := a.Put(ctx, block); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *RemoteStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *RemoteStore) HashOnRead(enabled bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+type URLTemplate struct {
+	// UrlTemplate specifies a template for building the request URL.
+	//
+	// Example PUT url template for kubo rpc api:
+	// - template: "http://127.0.0.1:5001/api/v0/block/put?cid-codec={{.codecName}}&mhtype={{.hashName}}&mhlen={{.hashLen}}&pin=false"
+	// - example:  "http://127.0.0.1:5001/api/v0/block/put?cid-codec=raw&mhtype=sha2-256&mhlen=32&pin=false"
+	UrlTemplate string
+
+	Headers []HttpHeader
+}
+
+type HttpHeader struct {
+	Key   string
+	Value string
 }
 
 type InvocResult struct {

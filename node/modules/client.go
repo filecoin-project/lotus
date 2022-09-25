@@ -3,6 +3,7 @@ package modules
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-statestore"
 	"os"
 	"path/filepath"
 	"time"
@@ -89,6 +90,10 @@ func ClientImportMgr(ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ClientImpo
 	return imports.NewManager(ns, dir), nil
 }
 
+func NewAPIStoreStates(ds dtypes.ClientApiStoresDatastore) dtypes.ApiBstoreStates {
+	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/")))
+}
+
 // TODO this should be removed.
 func ClientBlockstore() dtypes.ClientBlockstore {
 	// in most cases this is now unused in normal operations -- however, it's important to preserve for the IPFS use case
@@ -156,6 +161,11 @@ func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey("/deals/client"))
 }
 
+// NewClientApiStoresDatastore creates a datastore for the client api blockstore accessor to store its state
+func NewClientApiStoresDatastore(ds dtypes.MetadataDS) dtypes.ClientApiStoresDatastore {
+	return namespace.Wrap(ds, datastore.NewKey("/deals/api-stores"))
+}
+
 // StorageBlockstoreAccessor returns the default storage blockstore accessor
 // from the import manager.
 func StorageBlockstoreAccessor(importmgr dtypes.ClientImportMgr) storagemarket.BlockstoreAccessor {
@@ -202,9 +212,9 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataT
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
 func RetrievalClient(forceOffChain bool) func(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
-	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, accessor *retrievaladapter.APIBlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 	return func(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
-		ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+		ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, accessor *retrievaladapter.APIBlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 		adapter := retrievaladapter.NewRetrievalClientNode(forceOffChain, payAPI, chainAPI, stateAPI)
 		network := rmnet.NewFromLibp2pHost(h)
 		ds = namespace.Wrap(ds, datastore.NewKey("/retrievals/client"))

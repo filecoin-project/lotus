@@ -98,6 +98,7 @@ type API struct {
 	Imports                   dtypes.ClientImportMgr
 	StorageBlockstoreAccessor storagemarket.BlockstoreAccessor
 	RtvlBlockstoreAccessor    rm.BlockstoreAccessor
+	ApiBlockstoreAccessor     *retrievaladapter.APIBlockstoreAccessor
 
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
@@ -846,6 +847,13 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 	}
 
 	id := a.Retrieval.NextID()
+
+	if order.RemoteStore != nil {
+		if err := a.ApiBlockstoreAccessor.Register(id, order.RemoteStore); err != nil {
+			return 0, xerrors.Errorf("registering api store: %w", err)
+		}
+	}
+
 	id, err = a.Retrieval.Retrieve(
 		ctx,
 		id,
