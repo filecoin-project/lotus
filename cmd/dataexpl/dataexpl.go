@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -50,7 +51,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -78,8 +78,9 @@ type marketMiner struct {
 }
 
 type dxhnd struct {
-	api   lapi.FullNode
-	ainfo cliutil.APIInfo
+	api    lapi.FullNode
+	ainfo  cliutil.APIInfo
+	apiBss *apiBstoreServer
 
 	idx *finderhttpclient.Client
 
@@ -385,7 +386,7 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 
 	{
 		// get left side of the dag up to typeCheckDepth
-		g := getFilRetrieval(h.ainfo, h.api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
+		g := getFilRetrieval(h.apiBss, h.api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
 
 		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 		root, dserv, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
@@ -470,7 +471,7 @@ func (h *dxhnd) handleViewFil(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// retr root
-	g := getFilRetrieval(h.ainfo, h.api, r, ma, pcid, dcid)
+	g := getFilRetrieval(h.apiBss, h.api, r, ma, pcid, dcid)
 	h.handleViewInner(w, r, g)
 }
 
@@ -1304,6 +1305,11 @@ var dataexplCmd = &cli.Command{
 			return big.Cmp(abi.TokenAmount(mminers[i].Locked), abi.TokenAmount(mminers[j].Locked)) > 0
 		})
 
+		apiBss := &apiBstoreServer{
+			urlPrefix: "http://127.0.0.1:5658/stores/",
+			stores:    map[uuid.UUID]bstore.Blockstore{},
+		}
+
 		dh := &dxhnd{
 			api:   api,
 			ainfo: ainfo,
@@ -1312,6 +1318,8 @@ var dataexplCmd = &cli.Command{
 
 			mminers:   mminers,
 			minerPids: pidMiners,
+
+			apiBss: apiBss,
 		}
 
 		m := mux.NewRouter()
@@ -1341,6 +1349,8 @@ var dataexplCmd = &cli.Command{
 
 		m.HandleFunc("/find/{cid}", dh.handleFind).Methods("GET")
 
+		m.HandleFunc("/stores/put", apiBss.ServePut)
+
 		server := &http.Server{Addr: ":5658", Handler: m, BaseContext: func(_ net.Listener) context.Context {
 			return cctx.Context
 		}}
@@ -1354,103 +1364,6 @@ var dataexplCmd = &cli.Command{
 
 		return nil
 	},
-}
-
-func retrieveFil(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address, pieceCid, file cid.Cid, sel *lapi.Selector) (*lapi.ExportRef, error) {
-	payer, err := fapi.WalletDefaultAddress(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var eref *lapi.ExportRef
-
-	// no local found, so make a retrieval
-	if eref == nil {
-		var offer lapi.QueryOffer
-		{ // Directed retrieval
-			offer, err = fapi.ClientMinerQueryOffer(ctx, minerAddr, file, &pieceCid)
-			if err != nil {
-				return nil, xerrors.Errorf("offer: %w", err)
-			}
-		}
-		if offer.Err != "" {
-			return nil, fmt.Errorf("offer error: %s", offer.Err)
-		}
-
-		maxPrice := big.Zero()
-		//maxPrice := big.NewInt(6818260582400)
-
-		if offer.MinPrice.GreaterThan(maxPrice) {
-			return nil, xerrors.Errorf("failed to find offer satisfying maxPrice: %s (min %s, %s)", maxPrice, offer.MinPrice, types.FIL(offer.MinPrice))
-		}
-
-		o := offer.Order(payer)
-		o.DataSelector = sel
-
-		subscribeEvents, err := fapi.ClientGetRetrievalUpdates(ctx)
-		if err != nil {
-			return nil, xerrors.Errorf("error setting up retrieval updates: %w", err)
-		}
-		retrievalRes, err := fapi.ClientRetrieve(ctx, o)
-		if err != nil {
-			return nil, xerrors.Errorf("error setting up retrieval: %w", err)
-		}
-
-		start := time.Now()
-	readEvents:
-		for {
-			var evt lapi.RetrievalInfo
-			select {
-			case <-ctx.Done():
-				go func() {
-					err := fapi.ClientCancelRetrievalDeal(context.Background(), retrievalRes.DealID)
-					if err != nil {
-						log.Errorw("cancelling deal failed", "error", err)
-					}
-				}()
-
-				return nil, xerrors.New("Retrieval Timed Out")
-			case evt = <-subscribeEvents:
-				if evt.ID != retrievalRes.DealID {
-					// we can't check the deal ID ahead of time because:
-					// 1. We need to subscribe before retrieving.
-					// 2. We won't know the deal ID until after retrieving.
-					continue
-				}
-			}
-
-			event := "New"
-			if evt.Event != nil {
-				event = retrievalmarket.ClientEvents[*evt.Event]
-			}
-
-			fmt.Printf("Recv %s, Paid %s, %s (%s), %s\n",
-				types.SizeStr(types.NewInt(evt.BytesReceived)),
-				types.FIL(evt.TotalPaid),
-				strings.TrimPrefix(event, "ClientEvent"),
-				strings.TrimPrefix(retrievalmarket.DealStatuses[evt.Status], "DealStatus"),
-				time.Now().Sub(start).Truncate(time.Millisecond),
-			)
-
-			switch evt.Status {
-			case retrievalmarket.DealStatusCompleted:
-				break readEvents
-			case retrievalmarket.DealStatusRejected:
-				return nil, xerrors.Errorf("Retrieval Proposal Rejected: %s", evt.Message)
-			case
-				retrievalmarket.DealStatusDealNotFound,
-				retrievalmarket.DealStatusErrored:
-				return nil, xerrors.Errorf("Retrieval Error: %s", evt.Message)
-			}
-		}
-
-		eref = &lapi.ExportRef{
-			Root:   file,
-			DealID: retrievalRes.DealID,
-		}
-	}
-
-	return eref, nil
 }
 
 type nodeInfo struct {

@@ -1,7 +1,6 @@
 package node
 
 import (
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"os"
 
 	"go.uber.org/fx"
@@ -30,6 +29,7 @@ import (
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"

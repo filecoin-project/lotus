@@ -3,7 +3,6 @@ package modules
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-statestore"
 	"os"
 	"path/filepath"
 	"time"
@@ -28,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/market"

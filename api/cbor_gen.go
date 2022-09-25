@@ -1563,8 +1563,8 @@ func (t *URLTemplate) UnmarshalCBOR(r io.Reader) (err error) {
 
 	return nil
 }
-func (a *RemoteStore) MarshalCBOR(w io.Writer) error {
-	if a == nil {
+func (t *RemoteStore) MarshalCBOR(w io.Writer) error {
+	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
@@ -1575,26 +1575,26 @@ func (a *RemoteStore) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Put (api.URLTemplate) (struct)
-	if len("Put") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Put\" was too long")
+	// t.PutURL (api.URLTemplate) (struct)
+	if len("PutURL") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PutURL\" was too long")
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Put"))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PutURL"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Put")); err != nil {
+	if _, err := io.WriteString(w, string("PutURL")); err != nil {
 		return err
 	}
 
-	if err := a.Put.MarshalCBOR(cw); err != nil {
+	if err := t.PutURL.MarshalCBOR(cw); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *RemoteStore) UnmarshalCBOR(r io.Reader) (err error) {
-	*a = RemoteStore{}
+func (t *RemoteStore) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = RemoteStore{}
 
 	cr := cbg.NewCborReader(r)
 
@@ -1631,13 +1631,13 @@ func (a *RemoteStore) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		switch name {
-		// t.Put (api.URLTemplate) (struct)
-		case "Put":
+		// t.PutURL (api.URLTemplate) (struct)
+		case "PutURL":
 
 			{
 
-				if err := a.Put.UnmarshalCBOR(cr); err != nil {
-					return xerrors.Errorf("unmarshaling t.Put: %w", err)
+				if err := t.PutURL.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.PutURL: %w", err)
 				}
 
 			}

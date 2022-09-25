@@ -2,7 +2,6 @@ package retrievaladapter
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"path/filepath"
 	"sync"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 // ProxyBlockstoreAccessor is an accessor that returns a fixed blockstore.
