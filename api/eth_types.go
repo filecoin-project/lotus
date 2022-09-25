@@ -201,8 +201,8 @@ type EthTxReceipt struct {
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 }
 
-func NewEthTxReceipt(tx EthTx) EthTxReceipt {
-	return EthTxReceipt{
+func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxReceipt, error) {
+	receipt := EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		TransactionIndex: tx.TransactionIndex,
 		BlockHash:        tx.BlockHash,
@@ -211,43 +211,43 @@ func NewEthTxReceipt(tx EthTx) EthTxReceipt {
 		To:               tx.To,
 		StateRoot:        EmptyEthHash,
 	}
+
+	contractAddr, err := CheckContractCreation(lookup)
+	if err == nil {
+		receipt.To = nil
+		receipt.ContractAddress = contractAddr
+	}
+
+	if lookup.Receipt.ExitCode.IsSuccess() {
+		receipt.Status = 1
+	}
+	if lookup.Receipt.ExitCode.IsError() {
+		receipt.Status = 0
+	}
+
+	receipt.GasUsed = EthInt(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	receipt.CumulativeGasUsed = EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	receipt.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
+	return receipt, nil
 }
 
 func CheckContractCreation(lookup *MsgLookup) (*EthAddress, error) {
+	if lookup.Receipt.ExitCode.IsError() {
+		return nil, xerrors.Errorf("message execution was not successful")
+	}
 	var result init8.ExecReturn
 	ret := bytes.NewReader(lookup.Receipt.Return)
-	if err := result.UnmarshalCBOR(ret); lookup.Receipt.ExitCode.IsSuccess() && err == nil {
+	if err := result.UnmarshalCBOR(ret); err == nil {
 		contractAddr, err := EthAddressFromFilecoinIDAddress(result.IDAddress)
 		if err == nil {
 			return &contractAddr, nil
 		}
 	}
 	return nil, xerrors.Errorf("not a contract creation tx")
-}
-
-func (r *EthTxReceipt) PopulateReceipt(lookup *MsgLookup, replay *InvocResult) error {
-	// check if this is a contract creation
-	contractAddr, err := CheckContractCreation(lookup)
-	if err == nil {
-		r.To = nil
-		r.ContractAddress = contractAddr
-	}
-
-	if lookup.Receipt.ExitCode.IsSuccess() {
-		r.Status = 1
-	}
-	if lookup.Receipt.ExitCode.IsError() {
-		r.Status = 0
-	}
-
-	r.GasUsed = EthInt(lookup.Receipt.GasUsed)
-
-	// TODO: handle CumulativeGasUsed
-	r.CumulativeGasUsed = EmptyEthInt
-
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
-	r.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
-	return nil
 }
 
 const (
