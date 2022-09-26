@@ -151,7 +151,7 @@ func (s *dealStates9) Get(dealID abi.DealID) (*DealState, bool, error) {
 	var deal9 market9.DealState
 	found, err := s.Array.Get(uint64(dealID), &deal9)
 	if err != nil {
-		return nil, false, err
+		return nil, false, xerrors.Errorf("failed to get deal from deal state : %w", err)
 	}
 	if !found {
 		return nil, false, nil

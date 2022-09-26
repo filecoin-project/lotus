@@ -251,13 +251,13 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 
 	proposals, err := state.Proposals()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get proposals from state : %w", err)
 	}
 
 	proposal, found, err := proposals.Get(dealID)
 
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get proposal : %w", err)
 	} else if !found {
 		return nil, xerrors.Errorf(
 			"deal %d not found "+
@@ -268,12 +268,12 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 
 	states, err := state.States()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get states : %w", err)
 	}
 
 	st, found, err := states.Get(dealID)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get state : %w", err)
 	}
 
 	if !found {
