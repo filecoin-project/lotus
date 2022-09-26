@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -32,7 +31,7 @@ func init() {
 
 func SetupDatacapActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
-	vst, err := datacap.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, GovernorId, builtin.DefaultHamtBitwidth)
+	vst, err := datacap.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, GovernorId, 3) // TODO make into variable
 	if err != nil {
 		return nil, err
 	}
