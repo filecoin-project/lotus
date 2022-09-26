@@ -74,7 +74,7 @@ func main() {
 		diffCmd,
 		itestdCmd,
 		msigCmd,
-		fip0036PollResultcmd,
+		fip36PollCmd,
 	}
 
 	app := &cli.App{
