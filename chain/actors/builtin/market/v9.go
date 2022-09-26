@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -151,7 +151,7 @@ func (s *dealStates9) Get(dealID abi.DealID) (*DealState, bool, error) {
 	var deal9 market9.DealState
 	found, err := s.Array.Get(uint64(dealID), &deal9)
 	if err != nil {
-		return nil, false, xerrors.Errorf("failed to get deal from deal state : %w", err)
+		return nil, false, err
 	}
 	if !found {
 		return nil, false, nil
@@ -181,7 +181,9 @@ func (s *dealStates9) array() adt.Array {
 }
 
 func fromV9DealState(v9 market9.DealState) DealState {
+
 	return (DealState)(v9)
+
 }
 
 type dealProposals9 struct {

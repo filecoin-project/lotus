@@ -211,7 +211,7 @@ func runSender(ctx context.Context, t *testkit.TestEnvironment, clients []*testk
 		return fmt.Errorf("failed to settle payment channel: %w", err)
 	}
 
-	t.SyncClient.Publish(ctx, SettleTopic, settleMsgCid)
+	_, err = t.SyncClient.Publish(ctx, SettleTopic, settleMsgCid)
 	if err != nil {
 		return fmt.Errorf("failed to publish settle message cid: %w", err)
 	}
