@@ -87,7 +87,7 @@ func encodeRLP(val interface{}) ([]byte, error) {
 			append(lenInBytes, encodedList...)...,
 		), nil
 	}
-	return nil, fmt.Errorf("input data should either be a list of a byte array")
+	return nil, fmt.Errorf("input data should either be a list or a byte array")
 }
 
 func DecodeRLP(data []byte) (interface{}, error) {

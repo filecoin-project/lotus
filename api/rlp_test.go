@@ -110,7 +110,6 @@ func TestDecodeList(t *testing.T) {
 				mustDecodeHex("0xabcdabcdabcdabcdabcd"),
 			},
 		},
-		// EIP-1559 tx: rlp([chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination, amount, data, access_list
 		{"0xf1030185012a05f2008504a817c800825208942b87d1cb599bc2a606db9a0169fcec96af04ad3a880de0b6b3a764000080c0",
 			[]interface{}{
 				[]byte{3},

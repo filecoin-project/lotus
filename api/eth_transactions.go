@@ -189,12 +189,12 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 		return nil, err
 	}
 
-	maxPriorityFeePerGas, err := tx.MaxPriorityFeePerGas.Bytes()
+	maxPriorityFeePerGas, err := formatBigInt(tx.MaxPriorityFeePerGas)
 	if err != nil {
 		return nil, err
 	}
 
-	maxFeePerGas, err := tx.MaxFeePerGas.Bytes()
+	maxFeePerGas, err := formatBigInt(tx.MaxFeePerGas)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 		return nil, err
 	}
 
-	value, err := tx.Value.Bytes()
+	value, err := formatBigInt(tx.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -212,11 +212,11 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 	res := []interface{}{
 		chainId,
 		nonce,
-		removeLeadingZeros(maxPriorityFeePerGas),
-		removeLeadingZeros(maxFeePerGas),
+		maxPriorityFeePerGas,
+		maxFeePerGas,
 		gasLimit,
 		formatEthAddr(tx.To),
-		removeLeadingZeros(value),
+		value,
 		tx.Input,
 		[]interface{}{}, // access list
 	}
@@ -412,6 +412,14 @@ func formatEthAddr(addr *EthAddress) []byte {
 		return nil
 	}
 	return addr[:]
+}
+
+func formatBigInt(val big.Int) ([]byte, error) {
+	b, err := val.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	return removeLeadingZeros(b), nil
 }
 
 func parseInt(v interface{}) (int, error) {
