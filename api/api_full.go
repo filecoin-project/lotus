@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	ipld "github.com/ipfs/go-ipld-format"
 	"html/template"
+	"io"
 	"net/http"
 	"time"
 
@@ -1011,6 +1013,7 @@ type RetrievalOrder struct {
 }
 
 type RemoteStore struct {
+	GetURL URLTemplate
 	PutURL URLTemplate
 }
 
@@ -1024,9 +1027,55 @@ func (a *RemoteStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
 	panic("implement me")
 }
 
-func (a *RemoteStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
-	//TODO implement me
-	panic("implement me")
+func (a *RemoteStore) Get(ctx context.Context, blkCid cid.Cid) (blocks.Block, error) {
+	t, err := template.New("url").Parse(a.GetURL.UrlTemplate)
+	if err != nil {
+		return nil, xerrors.Errorf("parsing get url template: %w", err)
+	}
+
+	mhName, ok := multihash.Codes[blkCid.Prefix().MhType]
+	if !ok {
+		return nil, fmt.Errorf("unrecognized multihash function: %d", blkCid.Prefix().MhType)
+	}
+
+	var urlbuf bytes.Buffer
+	err = t.Execute(&urlbuf, map[string]interface{}{
+		"codecName": multicodec.Code(blkCid.Prefix().Codec).String(),
+		"hashName":  mhName,
+		"hashLen":   blkCid.Prefix().MhLength,
+		"cid":       blkCid,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("executing put url template: %w", err)
+	}
+
+	req, err := http.NewRequest("GET", urlbuf.String(), nil)
+	if err != nil {
+		return nil, xerrors.Errorf("making put request: %w", err)
+	}
+
+	req = req.WithContext(ctx)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, xerrors.Errorf("requesting remote blockstore put put: %w", err)
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, ipld.ErrNotFound{Cid: blkCid}
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, xerrors.Errorf("put http response wasn't ok: was %d", resp.StatusCode)
+	}
+
+	blkb, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, xerrors.Errorf("reading block data: %w", err)
+	}
+	b, err := blocks.NewBlockWithCid(blkb, blkCid)
+	if err != nil {
+		return nil, xerrors.Errorf("create block: %w", err)
+	}
+
+	return b, nil
 }
 
 func (a *RemoteStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
@@ -1044,10 +1093,9 @@ func (a *RemoteStore) Put(ctx context.Context, block blocks.Block) error {
 
 	mhName, ok := multihash.Codes[blkCid.Prefix().MhType]
 	if !ok {
-		return fmt.Errorf("unrecognized multihash function: %s", blkCid.Prefix().MhType)
+		return fmt.Errorf("unrecognized multihash function: %d", blkCid.Prefix().MhType)
 	}
 
-	//codecName}}&mhtype={{.hashName}}&mhlen={{.hashLen
 	var urlbuf bytes.Buffer
 	err = t.Execute(&urlbuf, map[string]interface{}{
 		"codecName": multicodec.Code(blkCid.Prefix().Codec).String(),
@@ -1069,8 +1117,11 @@ func (a *RemoteStore) Put(ctx context.Context, block blocks.Block) error {
 	if err != nil {
 		return xerrors.Errorf("requesting remote blockstore put put: %w", err)
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return xerrors.Errorf("put http response wasn't ok: was %d", resp.StatusCode)
+		rb, _ := io.ReadAll(resp.Body)
+
+		return xerrors.Errorf("put http response wasn't ok: was %d (%s)", resp.StatusCode, string(rb))
 	}
 
 	return nil

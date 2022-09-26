@@ -389,7 +389,7 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 		g := getFilRetrieval(h.apiBss, h.api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
 
 		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-		root, dserv, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
+		root, dserv, done, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
 			ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 				eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 					eb.Insert("Hash", ssb.ExploreRecursiveEdge())
@@ -400,6 +400,7 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		defer done()
 
 		// this gets type / size / linkcount for root
 
@@ -484,10 +485,10 @@ func (h *dxhnd) handleViewIPFS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sg := func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
+	sg := func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, func(), error) {
 		lbs, err := bstore.NewLocalIPFSBlockstore(r.Context(), true)
 		if err != nil {
-			return cid.Cid{}, nil, err
+			return cid.Cid{}, nil, nil, err
 		}
 
 		bs := bstore.NewTieredBstore(bstore.Adapt(lbs), bstore.NewMemory())
@@ -495,11 +496,11 @@ func (h *dxhnd) handleViewIPFS(w http.ResponseWriter, r *http.Request) {
 
 		rs, err := textselector.SelectorSpecFromPath(textselector.Expression(vars["path"]), false, ss)
 		if err != nil {
-			return cid.Cid{}, nil, xerrors.Errorf("failed to parse path-selector: %w", err)
+			return cid.Cid{}, nil, nil, xerrors.Errorf("failed to parse path-selector: %w", err)
 		}
 
 		root, err := findRoot(r.Context(), dcid, rs, ds)
-		return root, ds, err
+		return root, ds, func() {}, err
 	}
 
 	h.handleViewInner(w, r, sg)
@@ -588,11 +589,14 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 		)
 	}
 
-	root, dserv, err := g(sel)
+	root, dserv, done, err := g(sel)
 	if err != nil {
 		http.Error(w, xerrors.Errorf("inner get 0: %w", err).Error(), http.StatusInternalServerError)
 		return
 	}
+	defer func() {
+		done()
+	}()
 
 	swapCodec := func(c cid.Cid, cd uint64) cid.Cid {
 		if c.Prefix().Version == 0 && cd == cid.DagProtobuf {
@@ -745,6 +749,9 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 			if r.Method == "HEAD" {
+				done()
+				done = func() {}
+
 				rd, err = getHeadReader(ctx, g, func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec {
 					return spec
 				})
@@ -754,10 +761,13 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 				}
 				break
 			} else {
-				_, dserv, err = g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))))
+				done()
+				_, dserv, done, err = g(
+					ssb.ExploreInterpretAs("unixfs", ssb.Matcher()),
+				)
 			}
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("%+v", err), http.StatusInternalServerError)
 				return
 			}
 
@@ -1274,33 +1284,46 @@ var dataexplCmd = &cli.Command{
 			return xerrors.Errorf("getting market participants: %w", err)
 		}
 
+		var lk sync.Mutex
+		var wg sync.WaitGroup
 		var mminers []marketMiner
 		pidMiners := map[peer.ID]address.Address{}
 
 		fmt.Println("loading miner states")
 
+		wg.Add(len(mpcs))
 		for sa, mb := range mpcs {
 			if mb.Locked.IsZero() {
+				wg.Done()
 				continue
 			}
 
 			a, err := address.NewFromString(sa)
 			if err != nil {
+				wg.Done()
 				return err
 			}
 
-			mi, err := api.StateMinerInfo(ctx, a, types.EmptyTSK)
-			if err == nil {
-				mminers = append(mminers, marketMiner{
-					Addr:   a,
-					Locked: types.FIL(mb.Locked),
-				})
+			go func() {
+				defer wg.Done()
 
-				if mi.PeerId != nil {
-					pidMiners[*mi.PeerId] = a
+				mi, err := api.StateMinerInfo(ctx, a, types.EmptyTSK)
+				if err == nil {
+					lk.Lock()
+					defer lk.Unlock()
+
+					mminers = append(mminers, marketMiner{
+						Addr:   a,
+						Locked: types.FIL(mb.Locked),
+					})
+
+					if mi.PeerId != nil {
+						pidMiners[*mi.PeerId] = a
+					}
 				}
-			}
+			}()
 		}
+		wg.Wait()
 		sort.Slice(mminers, func(i, j int) bool {
 			return big.Cmp(abi.TokenAmount(mminers[i].Locked), abi.TokenAmount(mminers[j].Locked)) > 0
 		})
@@ -1350,6 +1373,7 @@ var dataexplCmd = &cli.Command{
 		m.HandleFunc("/find/{cid}", dh.handleFind).Methods("GET")
 
 		m.HandleFunc("/stores/put", apiBss.ServePut)
+		m.HandleFunc("/stores/get", apiBss.ServeGet)
 
 		server := &http.Server{Addr: ":5658", Handler: m, BaseContext: func(_ net.Listener) context.Context {
 			return cctx.Context
@@ -1491,11 +1515,11 @@ func linkDesc(ctx context.Context, c cid.Cid, name string, dserv format.DAGServi
 	}
 }
 
-func getHeadReader(ctx context.Context, get func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error), pss func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec) (io.ReadSeeker, error) {
+func getHeadReader(ctx context.Context, get selGetter, pss func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec) (io.ReadSeeker, error) {
 
 	// (.) / Links / 0 / Hash @
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-	root, dserv, err := get(pss(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
+	root, dserv, _, err := get(pss(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
 		ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 			eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 				eb.Insert("Hash", ssb.ExploreRecursiveEdge())
@@ -1514,7 +1538,7 @@ func getHeadReader(ctx context.Context, get func(ss builder.SelectorSpec) (cid.C
 	return io2.NewDagReader(ctx, node, dserv)
 }
 
-type selGetter func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error)
+type selGetter func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, func(), error)
 
 func pathToSel(psel string, matchTraversal bool, sub builder.SelectorSpec) (lapi.Selector, error) {
 	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), matchTraversal, sub)

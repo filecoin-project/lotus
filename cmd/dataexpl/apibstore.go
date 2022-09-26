@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	ipld "github.com/ipfs/go-ipld-format"
 	"io"
 	"net/http"
 	"sync"
@@ -32,7 +33,11 @@ func (a *apiBstoreServer) MakeRemoteBstore(bs blockstore.Blockstore) api.RemoteS
 
 	return api.RemoteStore{
 		PutURL: api.URLTemplate{
-			UrlTemplate: a.urlPrefix + fmt.Sprintf("/put?store=%s&cid={{.cid}}", id),
+			UrlTemplate: a.urlPrefix + fmt.Sprintf("put?store=%s&cid={{.cid}}", id),
+			Headers:     nil,
+		},
+		GetURL: api.URLTemplate{
+			UrlTemplate: a.urlPrefix + fmt.Sprintf("get?store=%s&cid={{.cid}}", id),
 			Headers:     nil,
 		},
 	}
@@ -62,7 +67,7 @@ func (a *apiBstoreServer) ServePut(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !chkc.Equals(c) {
-		http.Error(w, "bad block data", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("bad block data %s != %s", c, chkc), http.StatusInternalServerError)
 		return
 	}
 
@@ -90,4 +95,40 @@ func (a *apiBstoreServer) ServePut(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (a *apiBstoreServer) ServeGet(w http.ResponseWriter, r *http.Request) {
+	a.lk.RLock()
+	defer a.lk.RUnlock()
+
+	c, err := cid.Parse(r.FormValue("cid"))
+	if err != nil {
+		http.Error(w, xerrors.Errorf("parsing cid: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+
+	storeID, err := uuid.Parse(r.FormValue("store"))
+	if err != nil {
+		http.Error(w, xerrors.Errorf("parsing store id: %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+
+	st, found := a.stores[storeID]
+	if !found {
+		http.Error(w, "store not found", http.StatusInternalServerError)
+		return
+	}
+
+	blk, err := st.Get(r.Context(), c)
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(blk.RawData())
+		return
+	}
+	if ipld.IsNotFound(err) {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	http.Error(w, xerrors.Errorf("get: %w", err).Error(), http.StatusInternalServerError)
 }
