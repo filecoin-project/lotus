@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
@@ -183,7 +183,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
-	var params market8.PublishStorageDealsParams
+	var params markettypes.PublishStorageDealsParams
 	if err := params.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return 0, err
 	}
@@ -268,12 +268,12 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market8.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal markettypes.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
 	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, proposal, *publishCid, cb)
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market8.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal markettypes.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, proposal, *publishCid, cb)
 }
 
@@ -367,7 +367,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	return nil
 }
 
-func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market8.DealProposal) (*market8.ClientDealProposal, error) {
+func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal markettypes.DealProposal) (*markettypes.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
 	buf, err := cborutil.Dump(&proposal)
 	if err != nil {
@@ -386,7 +386,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	return &market8.ClientDealProposal{
+	return &markettypes.ClientDealProposal{
 		Proposal:        proposal,
 		ClientSignature: *sig,
 	}, nil

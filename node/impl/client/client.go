@@ -52,7 +52,7 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
@@ -228,12 +228,12 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	// stateless flow from here to the end
 	//
 
-	label, err := market8.NewLabelFromString(params.Data.Root.Encode(multibase.MustNewEncoder('u')))
+	label, err := markettypes.NewLabelFromString(params.Data.Root.Encode(multibase.MustNewEncoder('u')))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to encode label: %w", err)
 	}
 
-	dealProposal := &market8.DealProposal{
+	dealProposal := &markettypes.DealProposal{
 		PieceCID:             *params.Data.PieceCid,
 		PieceSize:            params.Data.PieceSize.Padded(),
 		Client:               walletKey,
@@ -265,7 +265,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		return nil, xerrors.Errorf("failed to sign proposal : %w", err)
 	}
 
-	dealProposalSigned := &market8.ClientDealProposal{
+	dealProposalSigned := &markettypes.ClientDealProposal{
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}

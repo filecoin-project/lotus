@@ -5557,7 +5557,8 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101
+      "SlashEpoch": 10101,
+      "VerifiedClaim": 0
     }
   }
 }
@@ -5635,7 +5636,8 @@ Response:
   "State": {
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101
+    "SlashEpoch": 10101,
+    "VerifiedClaim": 0
   }
 }
 ```

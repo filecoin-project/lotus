@@ -22,7 +22,7 @@ import (
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 {{else}}
 	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 {{end}}
 )
@@ -201,7 +201,16 @@ func (s *dealStates{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-        return (DealState)(v{{.v}})
+    {{if (le .v 8)}}
+    return DealState{
+        SectorStartEpoch: v{{.v}}.SectorStartEpoch,
+        LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
+        SlashEpoch: v{{.v}}.SlashEpoch,
+        VerifiedClaim: 0,
+    }
+    {{else}}
+    return (DealState)(v{{.v}})
+    {{end}}
 }
 
 type dealProposals{{.v}} struct {
