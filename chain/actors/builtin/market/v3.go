@@ -178,7 +178,14 @@ func (s *dealStates3) array() adt.Array {
 }
 
 func fromV3DealState(v3 market3.DealState) DealState {
-	return (DealState)(v3)
+
+	return DealState{
+		SectorStartEpoch: v3.SectorStartEpoch,
+		LastUpdatedEpoch: v3.LastUpdatedEpoch,
+		SlashEpoch:       v3.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
 }
 
 type dealProposals3 struct {

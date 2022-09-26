@@ -12,8 +12,8 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -181,7 +181,14 @@ func (s *dealStates8) array() adt.Array {
 }
 
 func fromV8DealState(v8 market8.DealState) DealState {
-	return (DealState)(v8)
+
+	return DealState{
+		SectorStartEpoch: v8.SectorStartEpoch,
+		LastUpdatedEpoch: v8.LastUpdatedEpoch,
+		SlashEpoch:       v8.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
 }
 
 type dealProposals8 struct {
