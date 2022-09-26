@@ -547,7 +547,7 @@ func (m *LotusMiner) RunDefault() error {
 			defer t.RecordMessage("shutting down mining")
 			defer close(done)
 
-			mine := true
+			mine = true
 			var i int
 			for i = 0; mine; i++ {
 				// synchronize all miners to mine the next block

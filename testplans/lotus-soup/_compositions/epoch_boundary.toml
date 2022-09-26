@@ -55,6 +55,12 @@
         target = "github.com/adlrocha/lotus"
         version = "b9ca4b71bf613ef9a1f21f302238c0d1fc55e65d"
 
+   # Modification of gossipsub 
+   [[groups.build.dependencies]]
+        module = "github.com/libp2p/go-libp2p-pubsub"
+        target = "github.com/adlrocha/go-libp2p-pubsub"
+        version = "781f60ae88e4bcb79226232832e0a9b5a08dd3ed"
+
   [groups.instances]
     count = 1
     percentage = 0.0
