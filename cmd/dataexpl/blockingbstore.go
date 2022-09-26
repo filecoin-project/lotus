@@ -103,9 +103,15 @@ func (b *blockReadBs) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 }
 
 func (b *blockReadBs) availableMh(mh multihash.Multihash) {
-	if wch, ok := b.waiting[string(mh)]; ok {
-		fmt.Println("avail md ", mh)
-		close(wch)
+	select {
+	case <-b.finalized:
+	case <-b.waiting[string(mh)]:
+
+	default:
+		if wch, ok := b.waiting[string(mh)]; ok {
+			fmt.Println("avail md ", mh)
+			close(wch)
+		}
 	}
 }
 

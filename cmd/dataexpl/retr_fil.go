@@ -59,6 +59,8 @@ func getCarFilRetrieval(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Reques
 }
 
 func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) selGetter {
+	cbs := bstore.Blockstore(bstore.NewMemorySync())
+
 	return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, func(), error) {
 		vars := mux.Vars(r)
 
@@ -67,15 +69,14 @@ func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, m
 			return cid.Undef, nil, nil, err
 		}
 
-		cbs := bstore.NewMemorySync()
-
 		bbs := &blockReadBs{
 			finalized: make(chan struct{}),
 			waiting:   map[string]chan struct{}{},
 			sub:       bstore.Adapt(cbs),
 		}
+		cbs = bbs
 
-		apistore := abs.MakeRemoteBstore(bstore.Adapt(bbs))
+		apistore := abs.MakeRemoteBstore(cbs)
 
 		eref, done, err := retrieveFil(r.Context(), api, &apistore, ma, pcid, dcid, &sel, bbs.Finalize)
 		if err != nil {
@@ -87,7 +88,7 @@ func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, m
 			ExportMerkleProof: true,
 		})
 
-		bs := bstore.NewTieredBstore(bbs, bstore.NewMemory())
+		bs := bstore.NewTieredBstore(cbs, bstore.NewMemory())
 		ds := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 
 		rs, err := textselector.SelectorSpecFromPath(textselector.Expression(vars["path"]), false, ss)

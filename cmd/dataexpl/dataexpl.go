@@ -747,6 +747,37 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 		case unixfs.TFile:
 			w.Header().Set("X-HumanSize", types.SizeStr(types.NewInt(fsNode.FileSize())))
 
+			var startoff, endoff uint64 = 0, fsNode.FileSize()
+
+			rhead := r.Header.Get("Range")
+			if rhead != "" {
+				if !strings.HasPrefix(rhead, "bytes=") {
+					http.Error(w, "no bytes= prefix in Range", http.StatusBadRequest)
+					return
+				}
+				rhead = strings.TrimPrefix(rhead, "bytes=")
+				seg := strings.Split(rhead, "-")
+				if len(seg) != 2 {
+					http.Error(w, "no support for multi-range", http.StatusBadRequest)
+					return
+				}
+
+				if seg[0] != "" {
+					startoff, err = strconv.ParseUint(seg[0], 10, 64)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+				}
+				if seg[1] != "" {
+					endoff, err = strconv.ParseUint(seg[1], 10, 64)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+				}
+			}
+
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 			if r.Method == "HEAD" {
 				done()
@@ -762,9 +793,11 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 				break
 			} else {
 				done()
+
 				_, dserv, done, err = g(
-					ssb.ExploreInterpretAs("unixfs", ssb.Matcher()),
+					ssb.ExploreInterpretAs("unixfs", ssb.MatcherSubset(int64(startoff), int64(endoff))),
 				)
+
 			}
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%+v", err), http.StatusInternalServerError)
