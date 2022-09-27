@@ -425,6 +425,12 @@ jobs:
       - attach_workspace:
           at: "."
       - run:
+          name: Update Go
+          command: |
+            curl -L https://golang.org/dl/go1.18.1.linux-amd64.tar.gz -o /tmp/go.tar.gz && \
+            sudo tar -C /usr/local -xvf /tmp/go.tar.gz
+      - run: go version
+      - run:
           name: install appimage-builder
           command: |
             # appimage-builder requires /dev/snd to exist. It creates containers during the testing phase
