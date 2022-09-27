@@ -50,12 +50,7 @@ type Consensus interface {
 type RewardFunc func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
 	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error
 
-// ValidateBlockPubsub implements the common checks performed by all consensus implementations
-// when a block is received through the pubsub channel.
 func ValidateBlockPubsub(ctx context.Context, cns Consensus, self bool, msg *pubsub.Message) (pubsub.ValidationResult, string) {
-	if self {
-		return validateLocalBlock(ctx, msg)
-	}
 
 	// track validation time
 	begin := build.Clock.Now()
