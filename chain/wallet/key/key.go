@@ -45,7 +45,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	switch k.Type {
-	case types.KTSecp256k1:
+	case types.KTSecp256k1, types.KTDelegated:
 		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
@@ -68,6 +68,8 @@ func ActSigType(typ types.KeyType) crypto.SigType {
 		return crypto.SigTypeBLS
 	case types.KTSecp256k1:
 		return crypto.SigTypeSecp256k1
+	case types.KTDelegated:
+		return crypto.SigTypeDelegated
 	default:
 		return crypto.SigTypeUnknown
 	}

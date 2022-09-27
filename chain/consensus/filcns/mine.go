@@ -65,7 +65,7 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
-		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 {
+		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 || msg.Signature.Type == crypto.SigTypeDelegated {
 			c, err := filec.sm.ChainStore().PutMessage(ctx, msg)
 			if err != nil {
 				return nil, err

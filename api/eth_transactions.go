@@ -120,7 +120,7 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)
 		}
 
-		evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "reward")
+		evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "evm")
 		if !ok {
 			return nil, fmt.Errorf("failed to lookup evm actor code CID")
 		}
