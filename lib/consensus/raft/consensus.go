@@ -4,6 +4,7 @@ package consensus
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -28,14 +29,67 @@ import (
 
 var logger = logging.Logger("raft")
 
+type NonceMapType map[addr.Address]uint64
+type MsgUuidMapType map[uuid.UUID]*types.SignedMessage
+
 type RaftState struct {
-	NonceMap map[addr.Address]uint64
-	MsgUuids map[uuid.UUID]*types.SignedMessage
+	NonceMap NonceMapType
+	MsgUuids MsgUuidMapType
 }
 
-func newRaftState() RaftState {
-	return RaftState{NonceMap: make(map[addr.Address]uint64),
+func newRaftState() *RaftState {
+	return &RaftState{NonceMap: make(map[addr.Address]uint64),
 		MsgUuids: make(map[uuid.UUID]*types.SignedMessage)}
+}
+
+func (n *NonceMapType) MarshalJSON() ([]byte, error) {
+	marshalled := make(map[string]uint64)
+	for a, n := range *n {
+		marshalled[a.String()] = n
+	}
+	return json.Marshal(marshalled)
+}
+
+func (n *NonceMapType) UnmarshalJSON(b []byte) error {
+	unmarshalled := make(map[string]uint64)
+	err := json.Unmarshal(b, &unmarshalled)
+	if err != nil {
+		return err
+	}
+	*n = make(map[addr.Address]uint64)
+	for saddr, nonce := range unmarshalled {
+		a, err := addr.NewFromString(saddr)
+		if err != nil {
+			return err
+		}
+		(*n)[a] = nonce
+	}
+	return nil
+}
+
+func (m *MsgUuidMapType) MarshalJSON() ([]byte, error) {
+	marshalled := make(map[string]*types.SignedMessage)
+	for u, msg := range *m {
+		marshalled[u.String()] = msg
+	}
+	return json.Marshal(marshalled)
+}
+
+func (m *MsgUuidMapType) UnmarshalJSON(b []byte) error {
+	unmarshalled := make(map[string]*types.SignedMessage)
+	err := json.Unmarshal(b, &unmarshalled)
+	if err != nil {
+		return err
+	}
+	*m = make(map[uuid.UUID]*types.SignedMessage)
+	for suid, msg := range unmarshalled {
+		u, err := uuid.Parse(suid)
+		if err != nil {
+			return err
+		}
+		(*m)[u] = msg
+	}
+	return nil
 }
 
 type ConsensusOp struct {
@@ -46,7 +100,7 @@ type ConsensusOp struct {
 }
 
 func (c ConsensusOp) ApplyTo(state consensus.State) (consensus.State, error) {
-	s := state.(RaftState)
+	s := state.(*RaftState)
 	s.NonceMap[c.Addr] = c.Nonce
 	s.MsgUuids[c.Uuid] = c.SignedMsg
 	return s, nil
@@ -67,7 +121,7 @@ type Consensus struct {
 	consensus consensus.OpLogConsensus
 	actor     consensus.Actor
 	raft      *raftWrapper
-	state     RaftState
+	state     *RaftState
 
 	rpcClient *rpc.Client
 	rpcReady  chan struct{}
@@ -138,7 +192,8 @@ func NewConsensusWithRPCClient(staging bool) func(host host.Host,
 		if err != nil {
 			return nil, err
 		}
-		cc.SetClient(rpcClient)
+		cc.rpcClient = rpcClient
+		cc.rpcReady <- struct{}{}
 		return cc, nil
 	}
 }
@@ -243,12 +298,6 @@ func (cc *Consensus) Shutdown(ctx context.Context) error {
 	cc.cancel()
 	close(cc.rpcReady)
 	return nil
-}
-
-// SetClient makes the component ready to perform RPC requets
-func (cc *Consensus) SetClient(c *rpc.Client) {
-	cc.rpcClient = c
-	cc.rpcReady <- struct{}{}
 }
 
 // Ready returns a channel which is signaled when the Consensus
@@ -451,7 +500,7 @@ func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 // last agreed-upon RaftState known by this node. No writes are allowed, as all
 // writes to the shared state should happen through the Consensus component
 // methods.
-func (cc *Consensus) State(ctx context.Context) (consensus.State, error) {
+func (cc *Consensus) State(ctx context.Context) (*RaftState, error) {
 	//_, span := trace.StartSpan(ctx, "consensus/RaftState")
 	//defer span.End()
 
@@ -463,7 +512,7 @@ func (cc *Consensus) State(ctx context.Context) (consensus.State, error) {
 	if err != nil {
 		return nil, err
 	}
-	state, ok := st.(RaftState)
+	state, ok := st.(*RaftState)
 	if !ok {
 		return nil, errors.New("wrong state type")
 	}

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -81,7 +82,7 @@ func init() {
 //
 //	var full TestFullNode
 //	var miner TestMiner
-//	ens.FullNode(&full, opts...)       // populates a full node
+//	ens.FullNodes(&full, opts...)       // populates a full node
 //	ens.Miner(&miner, &full, opts...)  // populates a miner, using the full node as its chain daemon
 //
 // It is possible to pass functional options to set initial balances,
@@ -101,7 +102,7 @@ func init() {
 //
 // The API is chainable, so it's possible to do a lot in a very succinct way:
 //
-//	kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
+//	kit.NewEnsemble().FullNodes(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
 //
 // You can also find convenient fullnode:miner presets, such as 1:1, 1:2,
 // and 2:1, e.g.:
@@ -318,6 +319,12 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	return n
 }
 
+//func (n *Ensemble) MinerWithMultipleNodes(minerNode *TestMiner, full []*TestFullNode, opts ...NodeOpt) *Ensemble {
+//	n.MinerEnroll(minerNode, full, opts...)
+//	n.AddInactiveMiner(minerNode)
+//	return n
+//}
+
 // Worker enrolls a new worker, using the provided full node for chain
 // interactions.
 func (n *Ensemble) Worker(minerNode *TestMiner, worker *TestWorker, opts ...NodeOpt) *Ensemble {
@@ -342,6 +349,43 @@ func (n *Ensemble) Worker(minerNode *TestMiner, worker *TestWorker, opts ...Node
 	n.inactive.workers = append(n.inactive.workers, worker)
 
 	return n
+}
+
+func proxy(ins []api.FullNode, outstr *api.FullNodeStruct) {
+	outs := api.GetInternalStructs(outstr)
+
+	var rins []reflect.Value
+	//peertoNode := make(map[peer.ID]reflect.Value)
+	for _, in := range ins {
+		rin := reflect.ValueOf(in)
+		rins = append(rins, rin)
+		//peertoNode[ins] = rin
+	}
+
+	for _, out := range outs {
+		rint := reflect.ValueOf(out).Elem()
+		//ra := reflect.ValueOf(in)
+
+		for f := 0; f < rint.NumField(); f++ {
+			field := rint.Type().Field(f)
+
+			var fns []reflect.Value
+			for _, rin := range rins {
+				fns = append(fns, rin.MethodByName(field.Name))
+			}
+			//fn := ra.MethodByName(field.Name)
+
+			rint.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+				//ctx := args[0].Interface().(context.Context)
+				//
+				//rin := peertoNode[ins[0].Leader(ctx)]
+				//fn := rin.MethodByName(field.Name)
+				//
+				//return fn.Call(args)
+				return fns[0].Call(args)
+			}))
+		}
+	}
 }
 
 // Start starts all enrolled nodes.
@@ -463,10 +507,17 @@ func (n *Ensemble) Start() *Ensemble {
 		err = full.WalletSetDefault(context.Background(), addr)
 		require.NoError(n.t, err)
 
+		var rpcShutdownOnce sync.Once
 		// Are we hitting this node through its RPC?
 		if full.options.rpc {
-			withRPC := fullRpc(n.t, full)
+			withRPC, rpcCloser := fullRpc(n.t, full)
 			n.inactive.fullnodes[i] = withRPC
+			full.Stop = func(ctx2 context.Context) error {
+				//rpcCloser()
+				rpcShutdownOnce.Do(rpcCloser)
+				return stop(ctx)
+			}
+			n.t.Cleanup(func() { rpcShutdownOnce.Do(rpcCloser) })
 		}
 
 		n.t.Cleanup(func() {
@@ -563,7 +614,7 @@ func (n *Ensemble) Start() *Ensemble {
 		}
 
 		// // Set it as the default address.
-		// err = m.FullNode.WalletSetDefault(ctx, m.OwnerAddr.Address)
+		// err = m.FullNodes.WalletSetDefault(ctx, m.OwnerAddr.Address)
 		// require.NoError(n.t, err)
 
 		r := repo.NewMemory(nil)
@@ -663,7 +714,21 @@ func (n *Ensemble) Start() *Ensemble {
 		assigner := m.options.minerAssigner
 		disallowRemoteFinalize := m.options.disallowRemoteFinalize
 
+		//var wrappedFullNode api.FullNodeStruct
+		//var fullNodes []api.FullNode
+		//for _, fn := range m.FullNodes {
+		//	fullNodes = append(fullNodes, fn.FullNode)
+		//}
+		//proxy(fullNodes, &wrappedFullNode)
+
 		var mineBlock = make(chan lotusminer.MineReq)
+
+		copy := *m.FullNode
+		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
+		m.FullNode = &copy
+
+		//m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
+
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
 			node.Base(),
@@ -671,7 +736,9 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-			node.Override(new(v1api.RawFullNodeAPI), m.FullNode.FullNode),
+			//node.Override(new(v1api.RawFullNodeAPI), func() api.FullNode { return modules.MakeUuidWrapper(m.FullNode) }),
+			//node.Override(new(v1api.RawFullNodeAPI), modules.MakeUuidWrapper),
+			node.Override(new(v1api.RawFullNodeAPI), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
 			// disable resource filtering so that local worker gets assigned tasks

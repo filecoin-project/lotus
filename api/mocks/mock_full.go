@@ -14,7 +14,6 @@ import (
 	uuid "github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
-	consensus "github.com/libp2p/go-libp2p-consensus"
 	metrics "github.com/libp2p/go-libp2p/core/metrics"
 	network0 "github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
@@ -38,6 +37,7 @@ import (
 	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
+	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
 	imports "github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -2260,10 +2260,10 @@ func (mr *MockFullNodeMockRecorder) RaftLeader(arg0 interface{}) *gomock.Call {
 }
 
 // RaftState mocks base method.
-func (m *MockFullNode) RaftState(arg0 context.Context) (consensus.State, error) {
+func (m *MockFullNode) RaftState(arg0 context.Context) (*consensus.RaftState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RaftState", arg0)
-	ret0, _ := ret[0].(consensus.State)
+	ret0, _ := ret[0].(*consensus.RaftState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

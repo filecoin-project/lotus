@@ -5069,7 +5069,13 @@ Perms: read
 
 Inputs: `null`
 
-Response: `{}`
+Response:
+```json
+{
+  "NonceMap": {},
+  "MsgUuids": {}
+}
+```
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.

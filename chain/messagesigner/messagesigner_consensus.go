@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	libp2pconsensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/xerrors"
 
@@ -77,12 +76,12 @@ func (ms *MessageSignerConsensus) SignMessage(
 }
 
 func (ms *MessageSignerConsensus) GetSignedMessage(ctx context.Context, uuid uuid.UUID) (*types.SignedMessage, error) {
-	state, err := ms.consensus.State(ctx)
+	cstate, err := ms.consensus.State(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	cstate := state.(consensus.RaftState)
+	//cstate := state.(consensus.RaftState)
 	msg, ok := cstate.MsgUuids[uuid]
 	if !ok {
 		return nil, xerrors.Errorf("Msg with Uuid %s not available", uuid)
@@ -90,7 +89,7 @@ func (ms *MessageSignerConsensus) GetSignedMessage(ctx context.Context, uuid uui
 	return msg, nil
 }
 
-func (ms *MessageSignerConsensus) GetRaftState(ctx context.Context) (libp2pconsensus.State, error) {
+func (ms *MessageSignerConsensus) GetRaftState(ctx context.Context) (*consensus.RaftState, error) {
 	return ms.consensus.State(ctx)
 }
 

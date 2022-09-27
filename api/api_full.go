@@ -8,7 +8,6 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
@@ -30,6 +29,7 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
+	consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -753,8 +753,8 @@ type FullNode interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	RaftState(ctx context.Context) (consensus.State, error) //perm:read
-	RaftLeader(ctx context.Context) (peer.ID, error)        //perm:read
+	RaftState(ctx context.Context) (*consensus2.RaftState, error) //perm:read
+	RaftLeader(ctx context.Context) (peer.ID, error)              //perm:read
 }
 
 type StorageAsk struct {

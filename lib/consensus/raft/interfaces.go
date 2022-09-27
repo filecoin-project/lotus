@@ -4,21 +4,10 @@ import (
 	"context"
 
 	consensus "github.com/libp2p/go-libp2p-consensus"
-	rpc "github.com/libp2p/go-libp2p-gorpc"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-// Component represents a piece of ipfscluster. Cluster components
-// usually run their own goroutines (a http server for example). They
-// communicate with the main Cluster component and other components
-// (both local and remote), using an instance of rpc.Client.
-type Component interface {
-	SetClient(*rpc.Client)
-	Shutdown(context.Context) error
-}
-
 type ConsensusAPI interface {
-	Component
 	// Returns a channel to signal that the consensus layer is ready
 	// allowing the main component to wait for it during start.
 	Ready(context.Context) <-chan struct{}
@@ -47,4 +36,6 @@ type ConsensusAPI interface {
 	Distrust(context.Context, peer.ID) error
 	// Returns true if current node is the cluster leader
 	IsLeader(ctx context.Context) bool
+
+	Shutdown(context.Context) error
 }

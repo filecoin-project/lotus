@@ -5,11 +5,11 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-	consensus "github.com/libp2p/go-libp2p-consensus"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -35,6 +35,7 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
+	full.RaftAPI
 
 	DS          dtypes.MetadataDS
 	NetworkName dtypes.NetworkName
@@ -118,8 +119,12 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 	return status, nil
 }
 
-func (n *FullNodeAPI) RaftState(ctx context.Context) (consensus.State, error) {
-	return n.MpoolAPI.GetRaftState(ctx)
+func (n *FullNodeAPI) RaftState(ctx context.Context) (*consensus2.RaftState, error) {
+	return n.RaftAPI.GetRaftState(ctx)
+}
+
+func (n *FullNodeAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
+	return n.RaftAPI.Leader(ctx)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

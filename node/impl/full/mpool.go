@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/ipfs/go-cid"
-	consensus "github.com/libp2p/go-libp2p-consensus"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -45,6 +43,8 @@ type MpoolAPI struct {
 	WalletAPI
 
 	GasAPI
+
+	RaftAPI
 
 	MessageSigner messagesigner.MsgSigner
 	//	MessageSigner *messagesigner.MessageSigner
@@ -147,9 +147,9 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	inMsg := *msg
 
 	// Redirect to leader if current node is not leader. A single non raft based node is always the leader
-	if !a.MessageSigner.IsLeader(ctx) {
+	if !a.RaftAPI.IsLeader(ctx) {
 		var signedMsg types.SignedMessage
-		redirected, err := a.MessageSigner.RedirectToLeader(ctx, "MpoolPushMessage", api.MpoolMessageWhole{Msg: msg, Spec: spec}, &signedMsg)
+		redirected, err := a.RaftAPI.RedirectToLeader(ctx, "MpoolPushMessage", api.MpoolMessageWhole{Msg: msg, Spec: spec}, &signedMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -290,10 +290,11 @@ func (a *MpoolAPI) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error)
 	return a.Mpool.Updates(ctx)
 }
 
-func (a *MpoolAPI) GetRaftState(ctx context.Context) (consensus.State, error) {
-	return a.MessageSigner.GetRaftState(ctx)
-}
-
-func (a *MpoolAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
-	return a.MessageSigner.Leader(ctx)
-}
+//func (a *MpoolAPI) GetRaftState(ctx context.Context) (consensus.RaftState, error) {
+//	state, err := a.MessageSigner.GetRaftState(ctx)
+//	raftState := state.()
+//}
+//
+//func (a *MpoolAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
+//	return a.MessageSigner.Leader(ctx)
+//}

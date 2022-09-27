@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"reflect"
 	"strings"
 	"syscall"
 
@@ -36,7 +37,7 @@ const (
 //  2. *_API_INFO environment variables
 //  3. deprecated *_API_INFO environment variables
 //  4. *-repo command line flags.
-func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
+func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
 	for _, f := range t.APIFlags() {
@@ -46,7 +47,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		strma := ctx.String(f)
 		strma = strings.TrimSpace(strma)
 
-		return APIInfo{Addr: strma}, nil
+		return []APIInfo{APIInfo{Addr: strma}}, nil
 	}
 
 	//
@@ -56,14 +57,14 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	primaryEnv, fallbacksEnvs, deprecatedEnvs := t.APIInfoEnvVars()
 	env, ok := os.LookupEnv(primaryEnv)
 	if ok {
-		return ParseApiInfo(env), nil
+		return ParseApiInfoMulti(env), nil
 	}
 
 	for _, env := range deprecatedEnvs {
 		env, ok := os.LookupEnv(env)
 		if ok {
 			log.Warnf("Using deprecated env(%s) value, please use env(%s) instead.", env, primaryEnv)
-			return ParseApiInfo(env), nil
+			return ParseApiInfoMulti(env), nil
 		}
 	}
 
@@ -76,26 +77,26 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 		p, err := homedir.Expand(path)
 		if err != nil {
-			return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
+			return []APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
 		}
 
 		r, err := repo.NewFS(p)
 		if err != nil {
-			return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+			return []APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
 		}
 
 		exists, err := r.Exists()
 		if err != nil {
-			return APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
+			return []APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
 		}
 
 		if !exists {
-			return APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
+			return []APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
 		}
 
 		ma, err := r.APIEndpoint()
 		if err != nil {
-			return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+			return []APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
 		}
 
 		token, err := r.APIToken()
@@ -103,38 +104,80 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 			log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
 		}
 
-		return APIInfo{
+		return []APIInfo{APIInfo{
 			Addr:  ma.String(),
 			Token: token,
-		}, nil
+		}}, nil
 	}
 
 	for _, env := range fallbacksEnvs {
 		env, ok := os.LookupEnv(env)
 		if ok {
-			return ParseApiInfo(env), nil
+			return ParseApiInfoMulti(env), nil
 		}
 	}
 
-	return APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t.Type())
+	return []APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t.Type())
+}
+
+func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
+	ainfos, err := GetAPIInfoMulti(ctx, t)
+	if err != nil {
+		return APIInfo{}, err
+	}
+
+	if len(ainfos) > 1 {
+		log.Warn("multiple API infos received when only one was expected")
+	}
+
+	return ainfos[0], nil
+
+}
+
+type HttpHead struct {
+	addr   string
+	header http.Header
+}
+
+func GetRawAPIMulti(ctx *cli.Context, t repo.RepoType, version string) ([]HttpHead, error) {
+
+	var httpHeads []HttpHead
+	ainfos, err := GetAPIInfoMulti(ctx, t)
+	if err != nil {
+		return httpHeads, xerrors.Errorf("could not get API info for %s: %w", t.Type(), err)
+	}
+
+	for _, ainfo := range ainfos {
+		addr, err := ainfo.DialArgs(version)
+		if err != nil {
+			return httpHeads, xerrors.Errorf("could not get DialArgs: %w", err)
+		}
+		httpHeads = append(httpHeads, HttpHead{addr: addr, header: ainfo.AuthHeader()})
+	}
+
+	//addr, err := ainfo.DialArgs(version)
+	//if err != nil {
+	//	return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
+	//}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, httpHeads[0].addr)
+	}
+
+	return httpHeads, nil
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
-	ainfo, err := GetAPIInfo(ctx, t)
+	heads, err := GetRawAPIMulti(ctx, t, version)
 	if err != nil {
-		return "", nil, xerrors.Errorf("could not get API info for %s: %w", t.Type(), err)
+		return "", nil, err
 	}
 
-	addr, err := ainfo.DialArgs(version)
-	if err != nil {
-		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
+	if len(heads) > 1 {
+		log.Warnf("More than 1 header received when expecting only one")
 	}
 
-	if IsVeryVerbose {
-		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, addr)
-	}
-
-	return addr, ainfo.AuthHeader(), nil
+	return heads[0].addr, heads[0].header, nil
 }
 
 func GetCommonAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error) {
@@ -185,6 +228,76 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
 }
 
+func RouteRequest() {
+
+}
+
+func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
+	outs := api.GetInternalStructs(outstr)
+
+	var rins []reflect.Value
+	//peertoNode := make(map[peer.ID]reflect.Value)
+	for _, in := range ins {
+		rin := reflect.ValueOf(in)
+		rins = append(rins, rin)
+		//peertoNode[ins] = rin
+	}
+
+	for _, out := range outs {
+		rint := reflect.ValueOf(out).Elem()
+		//ra := reflect.ValueOf(in)
+
+		for f := 0; f < rint.NumField(); f++ {
+			field := rint.Type().Field(f)
+
+			var fns []reflect.Value
+			for _, rin := range rins {
+				fns = append(fns, rin.MethodByName(field.Name))
+			}
+			//fn := ra.MethodByName(field.Name)
+
+			//curr := 0
+			//total := len(rins)
+
+			//retryFunc := func(args []reflect.Value) (results []reflect.Value) {
+			//	//ctx := args[0].Interface().(context.Context)
+			//	//
+			//	//rin := peertoNode[ins[0].Leader(ctx)]
+			//	//fn := rin.MethodByName(field.Name)
+			//	//
+			//	//return fn.Call(args)
+			//
+			//	toCall := curr
+			//	curr += 1 % total
+			//	return fns[toCall].Call(args)
+			//}
+
+			rint.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+				//errorsToRetry := []error{&jsonrpc.RPCConnectionError{}}
+				//initialBackoff, err := time.ParseDuration("1s")
+				//if err != nil {
+				//	return nil
+				//}
+				//result, err := retry.Retry(5, initialBackoff, errorsToRetry, func() (results []reflect.Value, err2 error) {
+				//	//ctx := args[0].Interface().(context.Context)
+				//	//
+				//	//rin := peertoNode[ins[0].Leader(ctx)]
+				//	//fn := rin.MethodByName(field.Name)
+				//	//
+				//	//return fn.Call(args)
+				//
+				//	toCall := curr
+				//	curr += 1 % total
+				//	result := fns[toCall].Call(args)
+				//	return result, results[len(results)-1].Interface().(error)
+				//})
+				//return result
+				return fns[0].Call(args)
+			}))
+		}
+	}
+}
+
 func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
 		return tn.(v1api.FullNode), func() {}, nil
@@ -212,6 +325,51 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 		return nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
 	}
 	return v1API, closer, nil
+}
+
+func GetFullNodeAPIV1New(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
+		return tn.(v1api.FullNode), func() {}, nil
+	}
+
+	heads, err := GetRawAPIMulti(ctx, repo.FullNode, "v1")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v1 endpoint:", heads[0].addr)
+	}
+
+	var fullNodes []api.FullNode
+	var closers []jsonrpc.ClientCloser
+
+	for _, head := range heads {
+		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header)
+		if err != nil {
+			return nil, nil, err
+		}
+		fullNodes = append(fullNodes, v1api)
+		closers = append(closers, closer)
+	}
+
+	finalCloser := func() {
+		for _, c := range closers {
+			c()
+		}
+	}
+
+	var v1API api.FullNodeStruct
+	FullNodeProxy(fullNodes, &v1API)
+
+	v, err := v1API.Version(ctx.Context)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
+		return nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
+	}
+	return &v1API, finalCloser, nil
 }
 
 type GetStorageMinerOptions struct {
