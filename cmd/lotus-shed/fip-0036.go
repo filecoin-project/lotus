@@ -95,7 +95,7 @@ func getVotesMap(file string, st *state.StateTree) (map[address.Address]uint64 /
 	return vm, nil
 }
 
-func getAllMsigSingerMap(st *state.StateTree, store adt.Store) (map[address.Address][]address.Address /*map[Singer ID address]msigActorId[]*/, error) {
+func getAllMsigSignerMap(st *state.StateTree, store adt.Store) (map[address.Address][]address.Address /*map[Signer ID address]msigActorId[]*/, error) {
 	sm := make(map[address.Address][]address.Address)
 	err := st.ForEach(func(addr address.Address, act *types.Actor) error {
 		if builtin.IsMultisigActor(act.Code) {
@@ -345,7 +345,7 @@ var spRBPAndDealCmd = &cli.Command{
 			return err
 		}
 
-		//get all the votes' singer ID address && their vote
+		//get all the votes' signer ID address && their vote
 		vj, err := homedir.Expand(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("fail to get votes json")
@@ -509,7 +509,7 @@ var tokenHolderCmd = &cli.Command{
 			return err
 		}
 
-		//get all the votes' singer address && their vote
+		//get all the votes' signer address && their vote
 		vj, err := homedir.Expand(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("fail to get votes json")
@@ -519,8 +519,8 @@ var tokenHolderCmd = &cli.Command{
 			return xerrors.Errorf("fail to get voter map ", err)
 		}
 
-		//get all the msig singers & their msigs
-		msigs, err := getAllMsigSingerMap(tree, store)
+		//get all the msig signers & their msigs
+		msigs, err := getAllMsigSignerMap(tree, store)
 
 		approveVote := 0
 		rejectionVote := 0
@@ -545,7 +545,7 @@ var tokenHolderCmd = &cli.Command{
 
 			//process msigs
 			if mss, found := msigs[s]; found {
-				for _, ms := range mss { //get all the msig singer has
+				for _, ms := range mss { //get all the msig signer has
 					if mpv, found := msigPendingVotes[ms]; found { //other signers of the multisig have voted, yet the threshold has not met
 						if v == APPROVE {
 							if mpv.ApproveCount+1 == mpv.Multisig.Threshold { //met threshold
@@ -634,7 +634,7 @@ var tokenHolderCmd = &cli.Command{
 			}
 		}
 
-		fmt.Printf("\nTotal amount of singers: %v\n ", len(vm))
+		fmt.Printf("\nTotal amount of signer: %v\n ", len(vm))
 		fmt.Printf("Total amount of valid multisig vote: %v\n ", msigFinalVotes)
 		fmt.Printf("Total balance: %v\n", types.BigAdd(approveBalance, rejectionBalance).String())
 		fmt.Printf("Approve (#): %v\n", approveVote)
@@ -720,7 +720,7 @@ var clientCmd = &cli.Command{
 			return err
 		}
 
-		//get all the votes' singer ID address && their voted option
+		//get all the votes' signer ID address && their voted option
 		vj, err := homedir.Expand(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("fail to get votes json")
