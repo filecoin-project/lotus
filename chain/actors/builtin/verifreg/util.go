@@ -28,8 +28,15 @@ func getDataCap(store adt.Store, ver actors.Version, root rootFunc, addr address
 		return false, big.Zero(), xerrors.Errorf("loading verifreg: %w", err)
 	}
 
+	var keyedAddr abi.Keyer
+	if ver <= 8 {
+		keyedAddr = abi.AddrKey(addr)
+	} else {
+		keyedAddr = abi.IdAddrKey(addr)
+	}
+
 	var dcap abi.StoragePower
-	if found, err := vh.Get(abi.AddrKey(addr), &dcap); err != nil {
+	if found, err := vh.Get(keyedAddr, &dcap); err != nil {
 		return false, big.Zero(), xerrors.Errorf("looking up addr: %w", err)
 	} else if !found {
 		return false, big.Zero(), nil
