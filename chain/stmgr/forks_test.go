@@ -1,4 +1,4 @@
-//stm: #integration
+// stm: #integration
 package stmgr_test
 
 import (
@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
@@ -125,7 +126,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	sm, err := NewStateManager(
-		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
+		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
@@ -166,7 +167,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inv := filcns.NewActorRegistry()
+	inv := consensus.NewActorRegistry()
 	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
@@ -270,7 +271,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 
 	var migrationCount int
 	sm, err := NewStateManager(
-		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
+		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network:   network.Version1,
 			Expensive: true,
 			Height:    testForkHeight,
@@ -283,7 +284,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		t.Fatal(err)
 	}
 
-	inv := filcns.NewActorRegistry()
+	inv := consensus.NewActorRegistry()
 	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
@@ -407,7 +408,7 @@ func TestForkPreMigration(t *testing.T) {
 	counter := make(chan struct{}, 10)
 
 	sm, err := NewStateManager(
-		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
+		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
@@ -504,7 +505,7 @@ func TestForkPreMigration(t *testing.T) {
 		require.NoError(t, sm.Stop(context.Background()))
 	}()
 
-	inv := filcns.NewActorRegistry()
+	inv := consensus.NewActorRegistry()
 	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {

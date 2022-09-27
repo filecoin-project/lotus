@@ -39,7 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -499,7 +499,7 @@ var ChainInspectUsage = &cli.Command{
 				return err
 			}
 
-			mm := filcns.NewActorRegistry().Methods[code][m.Message.Method] // TODO: use remote map
+			mm := consensus.NewActorRegistry().Methods[code][m.Message.Method] // TODO: use remote map
 
 			byMethod[mm.Name] += m.Message.GasLimit
 			byMethodC[mm.Name]++

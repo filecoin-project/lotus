@@ -1,4 +1,4 @@
-package filcns
+package consensus
 
 import (
 	"context"
@@ -66,10 +66,12 @@ func NewActorRegistry() *vm.ActorRegistry {
 	return inv
 }
 
-type TipSetExecutor struct{}
+type TipSetExecutor struct {
+	reward RewardFunc
+}
 
-func NewTipSetExecutor() *TipSetExecutor {
-	return &TipSetExecutor{}
+func NewTipSetExecutor(r RewardFunc) *TipSetExecutor {
+	return &TipSetExecutor{reward: r}
 }
 
 func (t *TipSetExecutor) NewActorRegistry() *vm.ActorRegistry {
@@ -222,29 +224,9 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
 		}
 
-		rwMsg := &types.Message{
-			From:       builtin.SystemActorAddr,
-			To:         reward.Address,
-			Nonce:      uint64(epoch),
-			Value:      types.NewInt(0),
-			GasFeeCap:  types.NewInt(0),
-			GasPremium: types.NewInt(0),
-			GasLimit:   1 << 30,
-			Method:     reward.Methods.AwardBlockReward,
-			Params:     params,
-		}
-		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
-		if actErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, actErr)
-		}
-		if em != nil {
-			if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on reward message: %w", err)
-			}
-		}
-
-		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
+		rErr := t.reward(ctx, vmi, em, epoch, ts, params)
+		if rErr != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", err)
 		}
 	}
 

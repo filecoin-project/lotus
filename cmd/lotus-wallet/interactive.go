@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -103,7 +103,7 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 					return xerrors.Errorf("looking up dest actor: %w", err)
 				}
 
-				fmt.Println("Method:", filcns.NewActorRegistry().Methods[toact.Code][cmsg.Method].Name)
+				fmt.Println("Method:", consensus.NewActorRegistry().Methods[toact.Code][cmsg.Method].Name)
 				p, err := lcli.JsonParams(toact.Code, cmsg.Method, cmsg.Params)
 				if err != nil {
 					return err
@@ -125,7 +125,7 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 						return xerrors.Errorf("looking up msig dest actor: %w", err)
 					}
 
-					fmt.Println("\tMultiSig Proposal Method:", filcns.NewActorRegistry().Methods[toact.Code][mp.Method].Name) // todo use remote
+					fmt.Println("\tMultiSig Proposal Method:", consensus.NewActorRegistry().Methods[toact.Code][mp.Method].Name) // todo use remote
 					p, err := lcli.JsonParams(toact.Code, mp.Method, mp.Params)
 					if err != nil {
 						return err
