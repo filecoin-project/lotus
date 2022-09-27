@@ -11,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var proofsCmd = &cli.Command{
@@ -42,8 +44,8 @@ var verifySealProofCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must specify commR, commD, and proof to verify")
+		if cctx.NArg() != 3 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		commr, err := cid.Decode(cctx.Args().Get(0))

@@ -645,7 +645,7 @@ var walletMarketWithdraw = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			afmt.Println(cctx.App.Writer, "withdrawal failed!")
 			return err
 		}

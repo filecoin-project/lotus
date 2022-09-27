@@ -6,6 +6,7 @@ package build
 import (
 	"math"
 	"os"
+	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -87,6 +88,7 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
+var PropagationDelaySecs = uint64(10)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
@@ -97,14 +99,27 @@ func init() {
 		UpgradeV17Height = math.MaxInt64
 	}
 
+	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
+	//set this value too high may impacts your block submission; set this value too low may cause you miss
+	//parent tipsets for blocking forming and mining.
+	if len(os.Getenv("PROPAGATION_DELAY_SECS")) != 0 {
+		pds, err := strconv.ParseUint(os.Getenv("PROPAGATION_DELAY_SECS"), 10, 64)
+		if err != nil {
+			log.Warnw("Error setting PROPAGATION_DELAY_SECS, %v, proceed with default value %s", err,
+				PropagationDelaySecs)
+		} else {
+			PropagationDelaySecs = pds
+			log.Warnw(" !!WARNING!! propagation delay is set to be %s second, "+
+				"this value impacts your message republish interval and block forming - monitor with caution!!", PropagationDelaySecs)
+		}
+	}
+
 	Devnet = false
 
 	BuildType = BuildMainnet
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
-
-const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4

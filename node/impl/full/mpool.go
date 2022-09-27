@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -41,7 +42,6 @@ type MpoolAPI struct {
 	MpoolModuleAPI
 
 	WalletAPI
-
 	GasAPI
 
 	RaftAPI
@@ -160,8 +160,8 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 		}
 	}
 
-	// Check if this uuid has already been processed
-	if spec != nil {
+	// Check if this uuid has already been processed. Ignore if uuid is not populated
+	if (spec != nil) && (spec.MsgUuid != uuid.UUID{}) {
 		signedMessage, err := a.MessageSigner.GetSignedMessage(ctx, spec.MsgUuid)
 		if err == nil {
 			log.Warnf("Message already processed. cid=%s", signedMessage.Cid())
@@ -224,7 +224,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	}
 
 	// Store uuid->signed message in datastore
-	if spec != nil {
+	if (spec != nil) && (spec.MsgUuid != uuid.UUID{}) {
 		err = a.MessageSigner.StoreSignedMessage(ctx, spec.MsgUuid, signedMsg)
 		if err != nil {
 			return nil, err
@@ -289,12 +289,3 @@ func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uin
 func (a *MpoolAPI) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return a.Mpool.Updates(ctx)
 }
-
-//func (a *MpoolAPI) GetRaftState(ctx context.Context) (consensus.RaftState, error) {
-//	state, err := a.MessageSigner.GetRaftState(ctx)
-//	raftState := state.()
-//}
-//
-//func (a *MpoolAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
-//	return a.MessageSigner.Leader(ctx)
-//}

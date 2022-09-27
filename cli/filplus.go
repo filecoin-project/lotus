@@ -61,8 +61,8 @@ var filplusVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must specify two arguments: address and allowance")
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		target, err := address.NewFromString(cctx.Args().Get(0))
@@ -120,7 +120,7 @@ var filplusVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
 		}
 
@@ -289,8 +289,8 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must specify three arguments: notary address, client address, and allowance to remove")
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)

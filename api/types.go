@@ -17,6 +17,7 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -300,6 +301,9 @@ type MinerInfo struct {
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 	ConsensusFaultElapsed      abi.ChainEpoch
+	Beneficiary                address.Address
+	BeneficiaryTerm            *miner.BeneficiaryTerm
+	PendingBeneficiaryTerm     *miner.PendingBeneficiaryChange
 }
 
 type NetworkParams struct {

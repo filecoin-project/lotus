@@ -3,6 +3,9 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -48,6 +51,11 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	delete(m.openSectors, m.minerSectorID(sector.SectorNumber))
 	delete(m.assignedPieces, m.minerSectorID(sector.SectorNumber))
 	m.inputLk.Unlock()
+
+	// if this is a snapdeals sector, but it ended up not having any deals, abort the upgrade
+	if sector.State == SnapDealsPacking && !sector.hasDeals() {
+		return ctx.Send(SectorAbortUpgrade{xerrors.New("sector had no deals")})
+	}
 
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorNumber)
 
@@ -202,7 +210,7 @@ func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) e
 }
 
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api, false); err != nil { // Sanity check state
+	if err := checkPieces(ctx.Context(), m.maddr, sector.SectorNumber, sector.Pieces, m.Api, false); err != nil { // Sanity check state
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
@@ -564,18 +572,99 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
 	}
 
-	cids := storiface.SectorCids{
-		Unsealed: *sector.CommD,
-		Sealed:   *sector.CommR,
-	}
-	c2in, err := m.sealer.SealCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.SeedValue, sector.pieceInfos(), cids)
-	if err != nil {
-		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(1): %w", err)})
+	var c2in storiface.Commit1Out
+	if sector.RemoteCommit1Endpoint == "" {
+		// Local Commit1
+		cids := storiface.SectorCids{
+			Unsealed: *sector.CommD,
+			Sealed:   *sector.CommR,
+		}
+		c2in, err = m.sealer.SealCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.SeedValue, sector.pieceInfos(), cids)
+		if err != nil {
+			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(1): %w", err)})
+		}
+	} else {
+		// Remote Commit1
+
+		reqData := api.RemoteCommit1Params{
+			Ticket:    sector.TicketValue,
+			Seed:      sector.SeedValue,
+			Unsealed:  *sector.CommD,
+			Sealed:    *sector.CommR,
+			ProofType: sector.SectorType,
+		}
+		reqBody, err := json.Marshal(&reqData)
+		if err != nil {
+			return xerrors.Errorf("marshaling remote commit1 request: %w", err)
+		}
+
+		req, err := http.NewRequest("POST", sector.RemoteCommit1Endpoint, bytes.NewReader(reqBody))
+		if err != nil {
+			return ctx.Send(SectorRemoteCommit1Failed{xerrors.Errorf("creating new remote commit1 request: %w", err)})
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req = req.WithContext(ctx.Context())
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return ctx.Send(SectorRemoteCommit1Failed{xerrors.Errorf("requesting remote commit1: %w", err)})
+		}
+
+		defer resp.Body.Close() //nolint:errcheck
+
+		if resp.StatusCode != http.StatusOK {
+			return ctx.Send(SectorRemoteCommit1Failed{xerrors.Errorf("remote commit1 received non-200 http response %s", resp.Status)})
+		}
+
+		c2in, err = io.ReadAll(resp.Body) // todo some len constraint
+		if err != nil {
+			return ctx.Send(SectorRemoteCommit1Failed{xerrors.Errorf("reading commit1 response: %w", err)})
+		}
 	}
 
-	proof, err := m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
-	if err != nil {
-		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
+	var porepProof storiface.Proof
+
+	if sector.RemoteCommit2Endpoint == "" {
+		// Local Commit2
+
+		porepProof, err = m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
+		if err != nil {
+			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
+		}
+	} else {
+		// Remote Commit2
+
+		reqData := api.RemoteCommit2Params{
+			ProofType: sector.SectorType,
+			Sector:    m.minerSectorID(sector.SectorNumber),
+
+			Commit1Out: c2in,
+		}
+		reqBody, err := json.Marshal(&reqData)
+		if err != nil {
+			return xerrors.Errorf("marshaling remote commit2 request: %w", err)
+		}
+
+		req, err := http.NewRequest("POST", sector.RemoteCommit2Endpoint, bytes.NewReader(reqBody))
+		if err != nil {
+			return ctx.Send(SectorRemoteCommit2Failed{xerrors.Errorf("creating new remote commit2 request: %w", err)})
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req = req.WithContext(ctx.Context())
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return ctx.Send(SectorRemoteCommit2Failed{xerrors.Errorf("requesting remote commit2: %w", err)})
+		}
+
+		defer resp.Body.Close() //nolint:errcheck
+
+		if resp.StatusCode != http.StatusOK {
+			return ctx.Send(SectorRemoteCommit2Failed{xerrors.Errorf("remote commit2 received non-200 http response %s", resp.Status)})
+		}
+
+		porepProof, err = io.ReadAll(resp.Body) // todo some len constraint
+		if err != nil {
+			return ctx.Send(SectorRemoteCommit2Failed{xerrors.Errorf("reading commit2 response: %w", err)})
+		}
 	}
 
 	{
@@ -585,19 +674,19 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 			return nil
 		}
 
-		if err := m.checkCommit(ctx.Context(), sector, proof, ts.Key()); err != nil {
+		if err := m.checkCommit(ctx.Context(), sector, porepProof, ts.Key()); err != nil {
 			return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 		}
 	}
 
 	if cfg.FinalizeEarly {
 		return ctx.Send(SectorProofReady{
-			Proof: proof,
+			Proof: porepProof,
 		})
 	}
 
 	return ctx.Send(SectorCommitted{
-		Proof: proof,
+		Proof: porepProof,
 	})
 }
 

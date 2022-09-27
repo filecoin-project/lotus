@@ -209,7 +209,7 @@ var runCmd = &cli.Command{
 			rpcApi = api.PermissionedWalletAPI(rpcApi)
 		}
 
-		rpcServer := jsonrpc.NewServer()
+		rpcServer := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors))
 		rpcServer.Register("Filecoin", rpcApi)
 
 		mux.Handle("/rpc/v0", rpcServer)

@@ -31,7 +31,7 @@ var diffStateTrees = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() != 2 {
-			return xerrors.Errorf("expected two state-tree roots")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		argA := cctx.Args().Get(0)

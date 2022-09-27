@@ -161,10 +161,10 @@ type DealmakingConfig struct {
 	StartEpochSealingBuffer uint64
 
 	// A command used for fine-grained evaluation of storage deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	Filter string
 	// A command used for fine-grained evaluation of retrieval deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	RetrievalFilter string
 
 	RetrievalPricing *RetrievalPricing
@@ -322,6 +322,24 @@ type SealingConfig struct {
 	// Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)
 	MaxUpgradingSectors uint64
 
+	// When set to a non-zero value, minimum number of epochs until sector expiration required for sectors to be considered
+	// for upgrades (0 = DealMinDuration = 180 days = 518400 epochs)
+	//
+	// Note that if all deals waiting in the input queue have lifetimes longer than this value, upgrade sectors will be
+	// required to have expiration of at least the soonest-ending deal
+	MinUpgradeSectorExpiration uint64
+
+	// When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
+	// be selected based on lowest initial pledge.
+	//
+	// Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
+	// selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
+	// where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
+	//
+	// Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
+	// initial pledge - upgrade sectors will always be chosen based on longest expiration
+	MinTargetUpgradeSectorExpiration uint64
+
 	// CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 	// live before it must be extended or converted into sector containing deals before it is
 	// terminated. Value must be between 180-540 days inclusive
@@ -394,7 +412,7 @@ type SealingConfig struct {
 type SealerConfig struct {
 	ParallelFetchLimit int
 
-	// Local worker config
+	AllowSectorDownload      bool
 	AllowAddPiece            bool
 	AllowPreCommit1          bool
 	AllowPreCommit2          bool

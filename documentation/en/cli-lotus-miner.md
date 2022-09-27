@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.17.2-dev
+   1.17.3-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -71,7 +71,7 @@ OPTIONS:
    --create-worker-key          create separate worker key (default: false)
    --worker value, -w value     worker key to use (overrides --create-worker-key)
    --owner value, -o value      owner key to use
-   --sector-size value          specify sector size to use (default: "2KiB")
+   --sector-size value          specify sector size to use
    --pre-sealed-sectors value   specify set of presealed sectors for starting as a genesis miner  (accepts multiple inputs)
    --pre-sealed-metadata value  specify the metadata file for the presealed sectors
    --nosync                     don't check full-node sync status (default: false)
@@ -231,16 +231,18 @@ USAGE:
    lotus-miner actor command [command options] [arguments...]
 
 COMMANDS:
-   set-addresses, set-addrs  set addresses that your miner can be publicly dialed on
-   withdraw                  withdraw available balance
-   repay-debt                pay down a miner's debt
-   set-peer-id               set the peer id of your miner
-   set-owner                 Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)
-   control                   Manage control addresses
-   propose-change-worker     Propose a worker address change
-   confirm-change-worker     Confirm a worker address change
-   compact-allocated         compact allocated sectors bitfield
-   help, h                   Shows a list of commands or help for one command
+   set-addresses, set-addrs    set addresses that your miner can be publicly dialed on
+   withdraw                    withdraw available balance to beneficiary
+   repay-debt                  pay down a miner's debt
+   set-peer-id                 set the peer id of your miner
+   set-owner                   Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)
+   control                     Manage control addresses
+   propose-change-worker       Propose a worker address change
+   confirm-change-worker       Confirm a worker address change
+   compact-allocated           compact allocated sectors bitfield
+   propose-change-beneficiary  Propose a beneficiary address change
+   confirm-change-beneficiary  Confirm a beneficiary address change
+   help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -254,12 +256,13 @@ OPTIONS:
 ### lotus-miner actor withdraw
 ```
 NAME:
-   lotus-miner actor withdraw - withdraw available balance
+   lotus-miner actor withdraw - withdraw available balance to beneficiary
 
 USAGE:
    lotus-miner actor withdraw [command options] [amount (FIL)]
 
 OPTIONS:
+   --beneficiary       send withdraw message from the beneficiary address (default: false)
    --confidence value  number of block confirmations to wait for (default: 5)
    
 ```
@@ -386,6 +389,36 @@ OPTIONS:
    --mask-last-offset value  Mask sector IDs from 0 to 'higest_allocated - offset' (default: 0)
    --mask-upto-n value       Mask sector IDs from 0 to 'n' (default: 0)
    --really-do-it            Actually send transaction performing the action (default: false)
+   
+```
+
+### lotus-miner actor propose-change-beneficiary
+```
+NAME:
+   lotus-miner actor propose-change-beneficiary - Propose a beneficiary address change
+
+USAGE:
+   lotus-miner actor propose-change-beneficiary [command options] [beneficiaryAddress quota expiration]
+
+OPTIONS:
+   --actor value               specify the address of miner actor
+   --overwrite-pending-change  Overwrite the current beneficiary change proposal (default: false)
+   --really-do-it              Actually send transaction performing the action (default: false)
+   
+```
+
+### lotus-miner actor confirm-change-beneficiary
+```
+NAME:
+   lotus-miner actor confirm-change-beneficiary - Confirm a beneficiary address change
+
+USAGE:
+   lotus-miner actor confirm-change-beneficiary [command options] [minerAddress]
+
+OPTIONS:
+   --existing-beneficiary  send confirmation from the existing beneficiary address (default: false)
+   --new-beneficiary       send confirmation from the new beneficiary address (default: false)
+   --really-do-it          Actually send transaction performing the action (default: false)
    
 ```
 

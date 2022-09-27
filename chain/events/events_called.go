@@ -554,7 +554,7 @@ func (me *messageEvents) Called(ctx context.Context, check CheckFunc, msgHnd Msg
 
 	id, err := me.hcAPI.onHeadChanged(ctx, check, hnd, rev, confidence, timeout)
 	if err != nil {
-		return err
+		return xerrors.Errorf("on head changed error: %w", err)
 	}
 
 	me.lk.Lock()

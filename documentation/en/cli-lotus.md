@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.17.2-dev
+   1.17.3-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -2029,7 +2029,7 @@ USAGE:
    lotus state actor-cids [command options] [arguments...]
 
 OPTIONS:
-   --network-version value  specify network version (default: 17)
+   --network-version value  specify network version (default: 0)
    
 ```
 

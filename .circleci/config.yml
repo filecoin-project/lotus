@@ -925,6 +925,11 @@ workflows:
           target: "./itests/mempool_test.go"
       
       - test:
+          name: test-itest-mpool_msg_uuid
+          suite: itest-mpool_msg_uuid
+          target: "./itests/mpool_msg_uuid_test.go"
+      
+      - test:
           name: test-itest-mpool_push_with_uuid
           suite: itest-mpool_push_with_uuid
           target: "./itests/mpool_push_with_uuid_test.go"
@@ -978,6 +983,16 @@ workflows:
           name: test-itest-sector_finalize_early
           suite: itest-sector_finalize_early
           target: "./itests/sector_finalize_early_test.go"
+      
+      - test:
+          name: test-itest-sector_import_full
+          suite: itest-sector_import_full
+          target: "./itests/sector_import_full_test.go"
+      
+      - test:
+          name: test-itest-sector_import_simple
+          suite: itest-sector_import_simple
+          target: "./itests/sector_import_simple_test.go"
       
       - test:
           name: test-itest-sector_make_cc_avail
@@ -1124,12 +1139,15 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^v\d+\.\d+\.\d+$/
       - build-macos:
           filters:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
       - build-appimage:
           filters:
             branches:

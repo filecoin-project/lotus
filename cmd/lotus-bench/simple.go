@@ -959,7 +959,7 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 }
 
 func ParsePieceInfos(cctx *cli.Context, firstArg int) ([]abi.PieceInfo, error) {
-	args := cctx.Args().Len() - firstArg
+	args := cctx.NArg() - firstArg
 	if args%2 != 0 {
 		return nil, xerrors.Errorf("piece info argunemts need to be supplied in pairs")
 	}

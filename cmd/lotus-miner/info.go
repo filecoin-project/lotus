@@ -313,6 +313,23 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	}
 	colorTokenAmount("Total Spendable:  %s\n", spendable)
 
+	if mi.Beneficiary != address.Undef {
+		fmt.Println()
+		fmt.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
+		if mi.Beneficiary != mi.Owner {
+			fmt.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
+			fmt.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
+			fmt.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
+		}
+	}
+	if mi.PendingBeneficiaryTerm != nil {
+		fmt.Printf("Pending Beneficiary Term:\n")
+		fmt.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
+		fmt.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
+		fmt.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
+		fmt.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
+		fmt.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
+	}
 	fmt.Println()
 
 	if !cctx.Bool("hide-sectors-info") {
@@ -481,6 +498,8 @@ var stateList = []stateMeta{
 	{col: color.FgGreen, state: sealing.Available},
 	{col: color.FgGreen, state: sealing.UpdateActivating},
 
+	{col: color.FgMagenta, state: sealing.ReceiveSector},
+
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
 	{col: color.FgBlue, state: sealing.AddPiece},
@@ -526,6 +545,7 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
 	{col: color.FgRed, state: sealing.PreCommitFailed},
 	{col: color.FgRed, state: sealing.ComputeProofFailed},
+	{col: color.FgRed, state: sealing.RemoteCommitFailed},
 	{col: color.FgRed, state: sealing.CommitFailed},
 	{col: color.FgRed, state: sealing.CommitFinalizeFailed},
 	{col: color.FgRed, state: sealing.PackingFailed},

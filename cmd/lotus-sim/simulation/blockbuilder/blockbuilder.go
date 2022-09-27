@@ -31,11 +31,12 @@ const (
 	// has.
 	// 5 per tipset, but we effectively get 4 blocks worth of messages.
 	expectedBlocks = 4
-	// TODO: This will produce invalid blocks but it will accurately model the amount of gas
-	// we're willing to use per-tipset.
-	// A more correct approach would be to produce 5 blocks. We can do that later.
-	targetGas = build.BlockGasTarget * expectedBlocks
 )
+
+// TODO: This will produce invalid blocks but it will accurately model the amount of gas
+// we're willing to use per-tipset.
+// A more correct approach would be to produce 5 blocks. We can do that later.
+var targetGas = build.BlockGasTarget * expectedBlocks
 
 type BlockBuilder struct {
 	ctx    context.Context

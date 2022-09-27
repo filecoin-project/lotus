@@ -747,6 +747,7 @@ func (n *Ensemble) Start() *Ensemble {
 				scfg := config.DefaultStorageMiner()
 
 				if noLocal {
+					scfg.Storage.AllowSectorDownload = false
 					scfg.Storage.AllowAddPiece = false
 					scfg.Storage.AllowPreCommit1 = false
 					scfg.Storage.AllowPreCommit2 = false
@@ -1073,7 +1074,7 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []pipeline.Piece{
+			Pieces: []api.SectorPiece{
 				{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),

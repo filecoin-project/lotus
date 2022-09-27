@@ -150,6 +150,7 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Storage: SealerConfig{
+			AllowSectorDownload:      true,
 			AllowAddPiece:            true,
 			AllowPreCommit1:          true,
 			AllowPreCommit2:          true,

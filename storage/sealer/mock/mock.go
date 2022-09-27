@@ -517,6 +517,10 @@ func (mgr *SectorMgr) ReleaseSectorKey(ctx context.Context, sector storiface.Sec
 	return nil
 }
 
+func (mgr *SectorMgr) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) error {
+	return xerrors.Errorf("not supported")
+}
+
 func (mgr *SectorMgr) Remove(ctx context.Context, sector storiface.SectorRef) error {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
@@ -610,6 +614,10 @@ func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callI
 }
 
 func (mgr *SectorMgr) ReturnFinalizeReplicaUpdate(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnDownloadSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
 	panic("not supported")
 }
 

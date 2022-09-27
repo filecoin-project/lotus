@@ -177,6 +177,9 @@ func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
+		Beneficiary:                info.Beneficiary,
+		BeneficiaryTerm:            &info.BeneficiaryTerm,
+		PendingBeneficiaryTerm:     info.PendingBeneficiaryTerm,
 	}
 
 	if info.PendingWorkerKey != nil {
@@ -479,7 +482,12 @@ func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, t
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return m.StateManager.LookupID(ctx, addr, ts)
+	ret, err := m.StateManager.LookupID(ctx, addr, ts)
+	if err != nil && xerrors.Is(err, types.ErrActorNotFound) {
+		return address.Undef, &api.ErrActorNotFound{}
+	}
+
+	return ret, err
 }
 
 func (a *StateAPI) StateLookupRobustAddress(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
