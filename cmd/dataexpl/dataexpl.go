@@ -174,7 +174,7 @@ var dataexplCmd = &cli.Command{
 				return err
 			}
 
-			go func() {
+			go func(a address.Address, mb lapi.MarketBalance) {
 				defer wg.Done()
 
 				mi, err := api.StateMinerInfo(ctx, a, types.EmptyTSK)
@@ -191,7 +191,7 @@ var dataexplCmd = &cli.Command{
 						pidMiners[*mi.PeerId] = a
 					}
 				}
-			}()
+			}(a, mb)
 		}
 		wg.Wait()
 		sort.Slice(mminers, func(i, j int) bool {
