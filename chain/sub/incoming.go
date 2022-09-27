@@ -270,7 +270,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	}()
 
 	var what string
-	res, what = bv.consensus.ValidateBlockPubsub(ctx, pid == bv.self, msg)
+	res, what = consensus.ValidateBlockPubsub(ctx, bv.consensus, pid == bv.self, msg)
 	if res == pubsub.ValidationAccept {
 		// it's a good block! make sure we've only seen it once
 		if count := bv.recvBlocks.add(msg.ValidatorData.(*types.BlockMsg).Cid()); count > 0 {
