@@ -28,7 +28,7 @@ func getDataCap(store adt.Store, ver actors.Version, root rootFunc, addr address
 	}
 
 	var dcap abi.StoragePower
-	if found, err := vh.Get(abi.AddrKey(addr), &dcap); err != nil {
+	if found, err := vh.Get(abi.IdAddrKey(addr), &dcap); err != nil {
 		return false, big.Zero(), xerrors.Errorf("looking up addr: %w", err)
 	} else if !found {
 		return false, big.Zero(), nil
