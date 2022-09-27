@@ -132,7 +132,6 @@ func CommonBlkChecks(ctx context.Context, sm *stmgr.StateManager, cs *store.Chai
 }
 
 // Check the validity of the messages included in a block.
-// TODO: We should extract this somewhere else and make the message pool and miner use the same logic
 func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.ChainStore, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
 		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
