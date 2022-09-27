@@ -47,7 +47,8 @@ func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error)
 	if !ok {
 		return nil, ipld.ErrNotFound{Cid: k}
 	}
-	return b, nil
+
+	return blocks.NewBlockWithCid(b.RawData(), k)
 }
 
 // GetSize returns the CIDs mapped BlockSize
