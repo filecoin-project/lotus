@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	"io"
 	"net/http"
 	"strings"
@@ -28,6 +30,8 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
+
+type selGetter func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, func(), error)
 
 func getCarFilRetrieval(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (io.ReadCloser, error) {
 	return func(ss builder.SelectorSpec) (io.ReadCloser, error) {
@@ -236,4 +240,20 @@ func retrieveFil(ctx context.Context, fapi lapi.FullNode, apiStore *lapi.RemoteS
 	}
 
 	return eref, func() {}, nil
+}
+
+func pathToSel(psel string, matchTraversal bool, sub builder.SelectorSpec) (lapi.Selector, error) {
+	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), matchTraversal, sub)
+	if err != nil {
+		return "", xerrors.Errorf("failed to parse path-selector: %w", err)
+	}
+
+	var b bytes.Buffer
+	if err := dagjson.Encode(rs.Node(), &b); err != nil {
+		return "", err
+	}
+
+	fmt.Println(b.String())
+
+	return lapi.Selector(b.String()), nil
 }
