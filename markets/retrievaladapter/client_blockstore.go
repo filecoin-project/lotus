@@ -69,7 +69,14 @@ func (a *APIBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCID retrie
 }
 
 func (a *APIBlockstoreAccessor) Done(id retrievalmarket.DealID) error {
-	return a.apiStores.Get(uint64(id)).End()
+	h, err := a.apiStores.Has(uint64(id))
+	if err != nil {
+		return err
+	}
+	if h {
+		return a.apiStores.Get(uint64(id)).End()
+	}
+	return nil
 }
 
 func (a *APIBlockstoreAccessor) Register(id retrievalmarket.DealID, as *api.RemoteStore) error {
