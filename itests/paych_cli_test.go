@@ -13,6 +13,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -65,6 +66,21 @@ func TestPaymentChannelsBasic(t *testing.T) {
 	voucherAmt := 100
 	vamt := strconv.Itoa(voucherAmt)
 	voucher := creatorCLI.RunCmd("paych", "voucher", "create", chAddr.String(), vamt)
+
+	// DEFLAKE: We have observed this test flakily failing when the receiver node hasn't seen the paych create message
+	// This makes us wait as much as 10 epochs before giving up and failing
+	retry := 0
+	_, err = paymentReceiver.StateLookupID(ctx, chAddr, types.EmptyTSK)
+	for err != nil && xerrors.Is(err, &api.ErrActorNotFound{}) {
+		time.Sleep(blocktime)
+		_, err = paymentReceiver.StateLookupID(ctx, chAddr, types.EmptyTSK)
+		retry++
+		if retry > 10 {
+			break
+		}
+	}
+
+	require.NoError(t, err)
 
 	// receiver: paych voucher add <channel> <voucher>
 	receiverCLI.RunCmd("paych", "voucher", "add", chAddr.String(), voucher)
