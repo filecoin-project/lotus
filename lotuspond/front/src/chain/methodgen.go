@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 )
 
 func main() {
@@ -44,7 +44,7 @@ func main() {
 
 	out := map[string][]string{}
 
-	for c, methods := range filcns.NewActorRegistry().Methods {
+	for c, methods := range consensus.NewActorRegistry().Methods {
 		name := builtin.ActorNameByCode(c)
 		remaining := len(methods)
 

@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -29,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
@@ -126,7 +126,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	sm, err := NewStateManager(
-		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
+		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
@@ -167,8 +167,8 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inv := filcns.NewActorRegistry()
-	inv.Register(actorstypes.Version0, nil, testActor{})
+	inv := consensus.NewActorRegistry()
+	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
@@ -271,7 +271,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 
 	var migrationCount int
 	sm, err := NewStateManager(
-		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
+		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network:   network.Version1,
 			Expensive: true,
 			Height:    testForkHeight,
@@ -284,8 +284,8 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		t.Fatal(err)
 	}
 
-	inv := filcns.NewActorRegistry()
-	inv.Register(actorstypes.Version0, nil, testActor{})
+	inv := consensus.NewActorRegistry()
+	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
@@ -408,7 +408,7 @@ func TestForkPreMigration(t *testing.T) {
 	counter := make(chan struct{}, 10)
 
 	sm, err := NewStateManager(
-		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
+		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
@@ -505,8 +505,8 @@ func TestForkPreMigration(t *testing.T) {
 		require.NoError(t, sm.Stop(context.Background()))
 	}()
 
-	inv := filcns.NewActorRegistry()
-	inv.Register(actorstypes.Version0, nil, testActor{})
+	inv := consensus.NewActorRegistry()
+	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)

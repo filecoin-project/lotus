@@ -21,13 +21,16 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -54,6 +57,35 @@ type FilecoinEC struct {
 // Blocks that are more than MaxHeightDrift epochs above
 // the theoretical max height based on systime are quickly rejected
 const MaxHeightDrift = 5
+
+var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
+	epoch abi.ChainEpoch, ts *types.TipSet, params []byte) error {
+	rwMsg := &types.Message{
+		From:       builtin.SystemActorAddr,
+		To:         reward.Address,
+		Nonce:      uint64(epoch),
+		Value:      types.NewInt(0),
+		GasFeeCap:  types.NewInt(0),
+		GasPremium: types.NewInt(0),
+		GasLimit:   1 << 30,
+		Method:     reward.Methods.AwardBlockReward,
+		Params:     params,
+	}
+	ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
+	if actErr != nil {
+		return xerrors.Errorf("failed to apply reward message: %w", actErr)
+	}
+	if em != nil {
+		if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
+			return xerrors.Errorf("callback failed on reward message: %w", err)
+		}
+	}
+
+	if ret.ExitCode != 0 {
+		return xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
+	}
+	return nil
+}
 
 func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier storiface.Verifier, genesis chain.Genesis) consensus.Consensus {
 	if build.InsecurePoStValidation {
