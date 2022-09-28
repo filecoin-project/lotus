@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sort"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -21,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -33,11 +32,16 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-const APPROVE = 49
-const Reject = 50
+type Option uint64
+
+const (
+	Approve Option = 49
+	Reject         = 50
+)
 
 type Vote struct {
-	OptionID      uint64
+	ID            uint64
+	OptionID      Option
 	SignerAddress address.Address
 }
 
@@ -142,7 +146,7 @@ var finalResultCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("fail to get votes json")
 		}
-		votes, err := getVotesMap(vj, st)
+		votes, err := getVotesMap(vj)
 		if err != nil {
 			return xerrors.Errorf("failed to get voters: ", err)
 		}
@@ -175,40 +179,13 @@ var finalResultCmd = &cli.Command{
 			return xerrors.Errorf("fail to load market state: ", err)
 		}
 
-		//init actor
-		ia, err := st.GetActor(_init.Address)
-		if err != nil {
-			return xerrors.Errorf("fail to get init actor: ", err)
-		}
-
-		initState, err := _init.Load(store, ia)
-		if err != nil {
-			return xerrors.Errorf("fail to load init state: ", err)
-		}
-
-		initMap, err := initState.AddressMap()
-		if err != nil {
-			return xerrors.Errorf("fail to load init map: ", err)
-		}
-
 		lookupId := func(addr address.Address) address.Address {
-			if addr.Protocol() == address.ID {
-				return addr
-			}
-
-			var actorID cbg.CborInt
-			if found, err := initMap.Get(abi.AddrKey(addr), &actorID); err != nil {
+			ret, err := st.LookupID(addr)
+			if err != nil {
 				panic(err)
-			} else if found {
-				// Reconstruct address from the ActorID.
-				idAddr, err := address.NewIDAddress(uint64(actorID))
-				if err != nil {
-					panic(err)
-				}
-				return idAddr
 			}
 
-			panic("didn't find addr")
+			return ret
 		}
 
 		// we need to build several pieces of information, as we traverse the state tree:
@@ -216,11 +193,11 @@ var finalResultCmd = &cli.Command{
 		accountsToMultisigs := make(map[address.Address][]address.Address)
 		// a map of multisigs to some info about them for quick lookup
 		msigActorsInfo := make(map[address.Address]msigBriefInfo)
-		// a map of accounts to every miner that they are an owner of
+		// a map of actors (accounts+multisigs) to every miner that they are an owner of
 		ownerMap := make(map[address.Address][]address.Address)
 		// a map of accounts to every miner that they are a worker of
 		workerMap := make(map[address.Address][]address.Address)
-		// a map of miners to some info aboout them for quick lookup
+		// a map of miners to some info about them for quick lookup
 		minerActorsInfo := make(map[address.Address]minerBriefInfo)
 		// a map of client addresses to deal data stored in proposals
 		clientToDealStorage := make(map[address.Address]abi.StoragePower)
@@ -246,13 +223,7 @@ var finalResultCmd = &cli.Command{
 				}
 				for _, s := range signers {
 					signerId := lookupId(s)
-					if m, found := accountsToMultisigs[signerId]; found { //add msig id to signer's collection
-						m = append(m, addr)
-						accountsToMultisigs[signerId] = m
-					} else {
-						n := []address.Address{addr}
-						accountsToMultisigs[signerId] = n
-					}
+					accountsToMultisigs[signerId] = append(accountsToMultisigs[signerId], addr)
 				}
 
 				locked, err := ms.LockedBalance(abi.ChainEpoch(height))
@@ -264,7 +235,7 @@ var finalResultCmd = &cli.Command{
 				info := msigBriefInfo{
 					ID:        addr,
 					Signer:    signers,
-					Balance:   big.Min(big.Zero(), types.BigSub(act.Balance, locked)),
+					Balance:   big.Max(big.Zero(), types.BigSub(act.Balance, locked)),
 					Threshold: threshold,
 				}
 				msigActorsInfo[addr] = info
@@ -282,27 +253,18 @@ var finalResultCmd = &cli.Command{
 				}
 
 				ownerId := lookupId(info.Owner)
-				if m, found := ownerMap[ownerId]; found { //add miner id to owner list
-					m = append(m, addr)
-					ownerMap[ownerId] = m
-				} else {
-					n := []address.Address{addr}
-					ownerMap[ownerId] = n
-				}
+				ownerMap[ownerId] = append(ownerMap[ownerId], addr)
 
 				workerId := lookupId(info.Worker)
-				if m, found := workerMap[workerId]; found { //add miner id to worker list
-					m = append(m, addr)
-					workerMap[workerId] = m
-				} else {
-					n := []address.Address{addr}
-					workerMap[workerId] = n
-				}
+				workerMap[workerId] = append(workerMap[workerId], addr)
 
-				bal, err := m.AvailableBalance(act.Balance)
+				lockedFunds, err := m.LockedFunds()
 				if err != nil {
 					return err
 				}
+
+				bal := big.Sub(act.Balance, lockedFunds.TotalLockedFunds())
+				bal = big.Max(big.Zero(), bal)
 
 				pow, ok, err := powerState.MinerPower(addr)
 				if err != nil {
@@ -359,11 +321,16 @@ var finalResultCmd = &cli.Command{
 		clientApproveBytes := big.Zero()
 		clientRejectBytes := big.Zero()
 		msigPendingVotes := make(map[address.Address]msigVote) //map[msig ID]msigVote
-		votedMsigs := make(map[address.Address]struct{})
-		votesIncludingMsigs := make(map[address.Address]uint64)
+		msigVotes := make(map[address.Address]Option)
+		minerVotes := make(map[address.Address]Option)
 		fmt.Println("counting account and multisig votes")
-		for signer, v := range votes {
-			signerId := lookupId(signer)
+		for _, vote := range votes {
+			signerId, err := st.LookupID(vote.SignerAddress)
+			if err != nil {
+				fmt.Println("voter ", vote.SignerAddress, " not found in state tree, skipping")
+				continue
+			}
+
 			//process votes for regular accounts
 			accountActor, err := st.GetActor(signerId)
 			if err != nil {
@@ -375,33 +342,44 @@ var finalResultCmd = &cli.Command{
 				clientBytes = big.Zero()
 			}
 
-			if v == APPROVE {
+			if vote.OptionID == Approve {
 				approveBalance = types.BigAdd(approveBalance, accountActor.Balance)
-				votesIncludingMsigs[signerId] = APPROVE
 				clientApproveBytes = big.Add(clientApproveBytes, clientBytes)
 			} else {
 				rejectionBalance = types.BigAdd(rejectionBalance, accountActor.Balance)
-				votesIncludingMsigs[signerId] = Reject
 				clientRejectBytes = big.Add(clientRejectBytes, clientBytes)
 			}
 
+			if minerInfos, found := ownerMap[signerId]; found {
+				for _, minerInfo := range minerInfos {
+					minerVotes[minerInfo] = vote.OptionID
+				}
+			}
+			if minerInfos, found := workerMap[signerId]; found {
+				for _, minerInfo := range minerInfos {
+					if _, ok := minerVotes[minerInfo]; !ok {
+						minerVotes[minerInfo] = vote.OptionID
+					}
+				}
+			}
+
 			//process msigs
-			// TODO: Oh god, oh god, there's a possibility that a multisig has voted in both directions
-			// and we'll pick a winner non-deterministically as we iterate...
-			// We need to factor in vote time if that happens and pick whoever went first
+			// There is a possibilty that enough signers have voted for BOTH options in the poll to be above the threshold
+			// Because we are iterating over votes in order they arrived, the first option to go over the threshold will win
+			// This is in line with onchain behaviour (consider a case where signers are competing to withdraw all the funds
+			// in an msig into 2 different accounts)
 			if mss, found := accountsToMultisigs[signerId]; found {
 				for _, ms := range mss { //get all the msig signer has
-					if _, ok := votedMsigs[ms]; ok {
+					if _, ok := msigVotes[ms]; ok {
 						// msig has already voted, skip
 						continue
 					}
 					if mpv, found := msigPendingVotes[ms]; found { //other signers of the multisig have voted, yet the threshold has not met
-						if v == APPROVE {
+						if vote.OptionID == Approve {
 							if mpv.ApproveCount+1 == mpv.Multisig.Threshold { //met threshold
 								approveBalance = types.BigAdd(approveBalance, mpv.Multisig.Balance)
 								delete(msigPendingVotes, ms) //threshold, can skip later signer votes
-								votedMsigs[ms] = struct{}{}
-								votesIncludingMsigs[ms] = APPROVE
+								msigVotes[ms] = vote.OptionID
 
 							} else {
 								mpv.ApproveCount++
@@ -411,8 +389,7 @@ var finalResultCmd = &cli.Command{
 							if mpv.RejectCount+1 == mpv.Multisig.Threshold { //met threshold
 								rejectionBalance = types.BigAdd(rejectionBalance, mpv.Multisig.Balance)
 								delete(msigPendingVotes, ms) //threshold, can skip later signer votes
-								votedMsigs[ms] = struct{}{}
-								votesIncludingMsigs[ms] = Reject
+								msigVotes[ms] = vote.OptionID
 
 							} else {
 								mpv.RejectCount++
@@ -426,17 +403,16 @@ var finalResultCmd = &cli.Command{
 						}
 
 						if msi.Threshold == 1 { //met threshold with this signer's single vote
-							if v == APPROVE {
+							if vote.OptionID == Approve {
 								approveBalance = types.BigAdd(approveBalance, msi.Balance)
-								votesIncludingMsigs[ms] = APPROVE
+								msigVotes[ms] = Approve
 
 							} else {
 								rejectionBalance = types.BigAdd(rejectionBalance, msi.Balance)
-								votesIncludingMsigs[ms] = Reject
+								msigVotes[ms] = Reject
 							}
-							votedMsigs[ms] = struct{}{}
 						} else { //threshold not met, add to pending vote
-							if v == APPROVE {
+							if vote.OptionID == Approve {
 								msigPendingVotes[ms] = msigVote{
 									Multisig:     msi,
 									ApproveCount: 1,
@@ -453,10 +429,7 @@ var finalResultCmd = &cli.Command{
 			}
 		}
 
-		// time to process miners based on what we know about votesIncludingMsigs
-		minerVotes := make(map[address.Address]uint64)
-		fmt.Println("counting miner votes")
-		for s, v := range votes {
+		for s, v := range msigVotes {
 			if minerInfos, found := ownerMap[s]; found {
 				for _, minerInfo := range minerInfos {
 					minerVotes[minerInfo] = v
@@ -482,7 +455,7 @@ var finalResultCmd = &cli.Command{
 				return xerrors.Errorf("failed to find miner info for %s", minerAddr)
 			}
 
-			if vote == APPROVE {
+			if vote == Approve {
 				approveBalance = big.Add(approveBalance, mbi.balance)
 				approveRBP = big.Add(approveRBP, mbi.rawBytePower)
 				approveDealPower = big.Add(approveDealPower, mbi.dealPower)
@@ -506,7 +479,7 @@ var finalResultCmd = &cli.Command{
 		fmt.Println("Total rejection Client rb power: ", clientRejectBytes)
 
 		fmt.Println("\n\nFinal results **drumroll**")
-		if rejectionBalance.GreaterThanEqual(big.Mul(approveBalance, big.NewInt(2))) {
+		if rejectionBalance.GreaterThanEqual(big.Mul(approveBalance, big.NewInt(3))) {
 			fmt.Println("token holders VETO FIP-0036!!!")
 		} else if approveBalance.LessThanEqual(rejectionBalance) {
 			fmt.Println("token holders REJECT FIP-0036 :(")
@@ -514,7 +487,7 @@ var finalResultCmd = &cli.Command{
 			fmt.Println("token holders ACCEPT FIP-0036 :)")
 		}
 
-		if rejectionDealPower.GreaterThanEqual(big.Mul(approveDealPower, big.NewInt(2))) {
+		if rejectionDealPower.GreaterThanEqual(big.Mul(approveDealPower, big.NewInt(3))) {
 			fmt.Println("SPs by deall data stored VETO FIP-0036!!!")
 		} else if approveDealPower.LessThanEqual(rejectionDealPower) {
 			fmt.Println("SPs by deal data stored REJECT FIP-0036 :(")
@@ -522,7 +495,7 @@ var finalResultCmd = &cli.Command{
 			fmt.Println("SPs by deal data stored ACCEPT FIP-0036 :)")
 		}
 
-		if rejectionRBP.GreaterThanEqual(big.Mul(approveRBP, big.NewInt(2))) {
+		if rejectionRBP.GreaterThanEqual(big.Mul(approveRBP, big.NewInt(3))) {
 			fmt.Println("SPs by total raw byte power VETO FIP-0036!!!")
 		} else if approveRBP.LessThanEqual(rejectionRBP) {
 			fmt.Println("SPs by total raw byte power REJECT FIP-0036 :(")
@@ -530,7 +503,7 @@ var finalResultCmd = &cli.Command{
 			fmt.Println("SPs by total raw byte power ACCEPT FIP-0036 :)")
 		}
 
-		if clientRejectBytes.GreaterThanEqual(big.Mul(clientApproveBytes, big.NewInt(2))) {
+		if clientRejectBytes.GreaterThanEqual(big.Mul(clientApproveBytes, big.NewInt(3))) {
 			fmt.Println("Storage Clients VETO FIP-0036!!!")
 		} else if clientApproveBytes.LessThanEqual(clientRejectBytes) {
 			fmt.Println("Storage Clients REJECT FIP-0036 :(")
@@ -542,7 +515,8 @@ var finalResultCmd = &cli.Command{
 	},
 }
 
-func getVotesMap(file string, st *state.StateTree) (map[address.Address]uint64 /*map[Signer ID address]Option*/, error) {
+// Returns voted sorted by votes from earliest to latest
+func getVotesMap(file string) ([]Vote, error) {
 	var votes []Vote
 	vb, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -553,13 +527,9 @@ func getVotesMap(file string, st *state.StateTree) (map[address.Address]uint64 /
 		return nil, xerrors.Errorf("unmarshal vote: %w", err)
 	}
 
-	vm := make(map[address.Address]uint64)
-	for _, v := range votes {
-		si, err := st.LookupID(v.SignerAddress)
-		if err != nil {
-			return nil, xerrors.Errorf("fail to lookup address", err)
-		}
-		vm[si] = v.OptionID
-	}
-	return vm, nil
+	sort.SliceStable(votes, func(i, j int) bool {
+		return votes[i].ID < votes[j].ID
+	})
+
+	return votes, nil
 }
