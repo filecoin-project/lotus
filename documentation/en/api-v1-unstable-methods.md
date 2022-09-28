@@ -86,6 +86,7 @@
   * [EthGetTransactionReceipt](#EthGetTransactionReceipt)
   * [EthMaxPriorityFeePerGas](#EthMaxPriorityFeePerGas)
   * [EthProtocolVersion](#EthProtocolVersion)
+  * [EthSendRawTransaction](#EthSendRawTransaction)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2189,13 +2190,13 @@ Inputs:
     "gas": "0x5",
     "gasPrice": "0x0",
     "value": "0x0",
-    "data": "Ynl0ZSBhcnJheQ=="
+    "data": "0x07"
   },
   "string value"
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x07"`
 
 ### EthChainId
 
@@ -2220,7 +2221,7 @@ Inputs:
     "gas": "0x5",
     "gasPrice": "0x0",
     "value": "0x0",
-    "data": "Ynl0ZSBhcnJheQ=="
+    "data": "0x07"
   },
   "string value"
 ]
@@ -2235,7 +2236,7 @@ Perms: read
 
 Inputs: `null`
 
-Response: `"0x5"`
+Response: `"0x0"`
 
 ### EthGetBalance
 
@@ -2417,10 +2418,10 @@ Response:
   "blockNumber": "0x5",
   "transacionIndex": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
   "type": "0x5",
-  "input": "Ynl0ZSBhcnJheQ==",
+  "input": "0x07",
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
@@ -2453,10 +2454,10 @@ Response:
   "blockNumber": "0x5",
   "transacionIndex": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
   "type": "0x5",
-  "input": "Ynl0ZSBhcnJheQ==",
+  "input": "0x07",
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
@@ -2488,10 +2489,10 @@ Response:
   "blockNumber": "0x5",
   "transacionIndex": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
   "type": "0x5",
-  "input": "Ynl0ZSBhcnJheQ==",
+  "input": "0x07",
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
@@ -2534,14 +2535,14 @@ Response:
   "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "transacionIndex": "0x5",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockNumber": "0x0707070707070707070707070707070707070707070707070707070707070707",
+  "blockNumber": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x0707070707070707070707070707070707070707",
+  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "root": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "status": "0x5",
   "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "cumulativeGasUsed": "0x0",
-  "gasUsed": "0x0",
+  "cumulativeGasUsed": "0x5",
+  "gasUsed": "0x5",
   "effectiveGasPrice": "0x0"
 }
 ```
@@ -2553,7 +2554,7 @@ Perms: read
 
 Inputs: `null`
 
-Response: `"0x5"`
+Response: `"0x0"`
 
 ### EthProtocolVersion
 
@@ -2563,6 +2564,20 @@ Perms: read
 Inputs: `null`
 
 Response: `"0x5"`
+
+### EthSendRawTransaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x07"
+]
+```
+
+Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
 
 ## Gas
 

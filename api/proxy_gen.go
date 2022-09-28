@@ -222,13 +222,13 @@ type FullNodeStruct struct {
 
 		EthBlockNumber func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthCall func(p0 context.Context, p1 EthCall, p2 string) (string, error) `perm:"read"`
+		EthCall func(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) `perm:"read"`
 
 		EthChainId func(p0 context.Context) (EthInt, error) `perm:"read"`
 
 		EthEstimateGas func(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) `perm:"read"`
 
-		EthGasPrice func(p0 context.Context) (EthInt, error) `perm:"read"`
+		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
 		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
 
@@ -254,9 +254,11 @@ type FullNodeStruct struct {
 
 		EthGetTransactionReceipt func(p0 context.Context, p1 EthHash) (EthTxReceipt, error) `perm:"read"`
 
-		EthMaxPriorityFeePerGas func(p0 context.Context) (EthInt, error) `perm:"read"`
+		EthMaxPriorityFeePerGas func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
 		EthProtocolVersion func(p0 context.Context) (EthInt, error) `perm:"read"`
+
+		EthSendRawTransaction func(p0 context.Context, p1 EthBytes) (EthHash, error) `perm:"read"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -1857,15 +1859,15 @@ func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthCall(p0 context.Context, p1 EthCall, p2 string) (string, error) {
+func (s *FullNodeStruct) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
 	if s.Internal.EthCall == nil {
-		return "", ErrNotSupported
+		return *new(EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthCall(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthCall(p0 context.Context, p1 EthCall, p2 string) (string, error) {
-	return "", ErrNotSupported
+func (s *FullNodeStub) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
+	return *new(EthBytes), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthChainId(p0 context.Context) (EthInt, error) {
@@ -1890,15 +1892,15 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall, p2 string)
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthInt, error) {
+func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthBigInt, error) {
 	if s.Internal.EthGasPrice == nil {
-		return *new(EthInt), ErrNotSupported
+		return *new(EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthGasPrice(p0)
 }
 
-func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthInt, error) {
-	return *new(EthInt), ErrNotSupported
+func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthBigInt, error) {
+	return *new(EthBigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) {
@@ -2033,15 +2035,15 @@ func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) 
 	return *new(EthTxReceipt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthInt, error) {
+func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
 	if s.Internal.EthMaxPriorityFeePerGas == nil {
-		return *new(EthInt), ErrNotSupported
+		return *new(EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthMaxPriorityFeePerGas(p0)
 }
 
-func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthInt, error) {
-	return *new(EthInt), ErrNotSupported
+func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
+	return *new(EthBigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthInt, error) {
@@ -2053,6 +2055,17 @@ func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthInt, error) 
 
 func (s *FullNodeStub) EthProtocolVersion(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
+	if s.Internal.EthSendRawTransaction == nil {
+		return *new(EthHash), ErrNotSupported
+	}
+	return s.Internal.EthSendRawTransaction(p0, p1)
+}
+
+func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
+	return *new(EthHash), ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
