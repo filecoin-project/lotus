@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/retry"
+	"go.uber.org/atomic"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,6 +13,7 @@ import (
 	"reflect"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -256,9 +259,6 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 			}
 			//fn := ra.MethodByName(field.Name)
 
-			//curr := 0
-			//total := len(rins)
-
 			//retryFunc := func(args []reflect.Value) (results []reflect.Value) {
 			//	//ctx := args[0].Interface().(context.Context)
 			//	//
@@ -273,26 +273,34 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 			//}
 
 			rint.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
-				//errorsToRetry := []error{&jsonrpc.RPCConnectionError{}}
-				//initialBackoff, err := time.ParseDuration("1s")
-				//if err != nil {
-				//	return nil
-				//}
-				//result, err := retry.Retry(5, initialBackoff, errorsToRetry, func() (results []reflect.Value, err2 error) {
-				//	//ctx := args[0].Interface().(context.Context)
-				//	//
-				//	//rin := peertoNode[ins[0].Leader(ctx)]
-				//	//fn := rin.MethodByName(field.Name)
-				//	//
-				//	//return fn.Call(args)
-				//
-				//	toCall := curr
-				//	curr += 1 % total
-				//	result := fns[toCall].Call(args)
-				//	return result, results[len(results)-1].Interface().(error)
-				//})
-				//return result
-				return fns[0].Call(args)
+				errorsToRetry := []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
+				initialBackoff, err := time.ParseDuration("1s")
+				if err != nil {
+					return nil
+				}
+				var curr atomic.Int64
+				curr.Store(-1)
+				total := len(rins)
+				ctx := args[0].Interface().(context.Context)
+				result, err := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() (results []reflect.Value, err2 error) {
+					//ctx := args[0].Interface().(context.Context)
+					//
+					//rin := peertoNode[ins[0].Leader(ctx)]
+					//fn := rin.MethodByName(field.Name)
+					//
+					//return fn.Call(args)
+
+					toCall := curr.Inc() % int64(total)
+
+					result := fns[toCall].Call(args)
+					if result[len(result)-1].IsNil() {
+						return result, nil
+					}
+					e := result[len(result)-1].Interface().(error)
+					return result, e
+				})
+				return result
+				//return fns[0].Call(args)
 			}))
 		}
 	}
