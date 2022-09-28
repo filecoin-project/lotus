@@ -951,10 +951,10 @@ func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Cal
 }
 
 // EthCall mocks base method.
-func (m *MockFullNode) EthCall(arg0 context.Context, arg1 api.EthCall, arg2 string) (string, error) {
+func (m *MockFullNode) EthCall(arg0 context.Context, arg1 api.EthCall, arg2 string) (api.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthCall", arg0, arg1, arg2)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(api.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -996,10 +996,10 @@ func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1, arg2 interface{})
 }
 
 // EthGasPrice mocks base method.
-func (m *MockFullNode) EthGasPrice(arg0 context.Context) (api.EthInt, error) {
+func (m *MockFullNode) EthGasPrice(arg0 context.Context) (api.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGasPrice", arg0)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1191,10 +1191,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionReceipt(arg0, arg1 interfac
 }
 
 // EthMaxPriorityFeePerGas mocks base method.
-func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (api.EthInt, error) {
+func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (api.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthMaxPriorityFeePerGas", arg0)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1218,6 +1218,21 @@ func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (api.EthInt, err
 func (mr *MockFullNodeMockRecorder) EthProtocolVersion(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthProtocolVersion", reflect.TypeOf((*MockFullNode)(nil).EthProtocolVersion), arg0)
+}
+
+// EthSendRawTransaction mocks base method.
+func (m *MockFullNode) EthSendRawTransaction(arg0 context.Context, arg1 api.EthBytes) (api.EthHash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthSendRawTransaction", arg0, arg1)
+	ret0, _ := ret[0].(api.EthHash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthSendRawTransaction indicates an expected call of EthSendRawTransaction.
+func (mr *MockFullNodeMockRecorder) EthSendRawTransaction(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSendRawTransaction", reflect.TypeOf((*MockFullNode)(nil).EthSendRawTransaction), arg0, arg1)
 }
 
 // GasEstimateFeeCap mocks base method.

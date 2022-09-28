@@ -762,7 +762,7 @@ type FullNode interface {
 	EthGetBlockByNumber(ctx context.Context, blkNum EthInt, fullTxInfo bool) (EthBlock, error)                //perm:read
 	EthGetTransactionByHash(ctx context.Context, txHash EthHash) (EthTx, error)                               //perm:read
 	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthInt, error)             //perm:read
-	EthGetTransactionReceipt(ctx context.Context, blkHash EthHash) (EthTxReceipt, error)                      //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (EthTxReceipt, error)                       //perm:read
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthInt) (EthTx, error) //perm:read
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthInt, txIndex EthInt) (EthTx, error) //perm:read
 
@@ -773,11 +773,13 @@ type FullNode interface {
 	NetVersion(ctx context.Context) (string, error)                                                            //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                            //perm:read
 	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                    //perm:read
-	EthGasPrice(ctx context.Context) (EthInt, error)                                                           //perm:read
+	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                        //perm:read
 
-	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                     //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)                  //perm:read
 	EthEstimateGas(ctx context.Context, tx EthCall, blkParam string) (EthInt, error) //perm:read
-	EthCall(ctx context.Context, tx EthCall, blkParam string) (string, error)        //perm:read
+	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error)      //perm:read
+
+	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
