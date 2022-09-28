@@ -377,11 +377,9 @@ var finalResultCmd = &cli.Command{
 
 			if v == APPROVE {
 				approveBalance = types.BigAdd(approveBalance, accountActor.Balance)
-				votesIncludingMsigs[signerId] = APPROVE
 				clientApproveBytes = big.Add(clientApproveBytes, clientBytes)
 			} else {
 				rejectionBalance = types.BigAdd(rejectionBalance, accountActor.Balance)
-				votesIncludingMsigs[signerId] = Reject
 				clientRejectBytes = big.Add(clientRejectBytes, clientBytes)
 			}
 
@@ -399,7 +397,7 @@ var finalResultCmd = &cli.Command{
 						if v == APPROVE {
 							if mpv.ApproveCount+1 == mpv.Multisig.Threshold { //met threshold
 								approveBalance = types.BigAdd(approveBalance, mpv.Multisig.Balance)
-								delete(msigPendingVotes, ms) //threshold, can skip later signer votes
+								delete(msigPendingVotes, ms) //threshold is met, can skip later signer votes
 								votedMsigs[ms] = struct{}{}
 								votesIncludingMsigs[ms] = APPROVE
 
@@ -538,6 +536,14 @@ var finalResultCmd = &cli.Command{
 			fmt.Println("Storage Clients ACCEPT FIP-0036 :)")
 		}
 
+		fmt.Printf("voted: %v,  also voted %v", len(votedMsigs), len(votesIncludingMsigs))
+		pendingmsigcount := 0
+		for _, v := range msigPendingVotes {
+			if (v.RejectCount == 1 && v.ApproveCount == 0) || (v.ApproveCount == 1 && v.ApproveCount == 0) {
+				pendingmsigcount += 1
+			}
+		}
+		fmt.Printf("pending msig: %v,  msig only had 1 signer voted and not meet threshold %v", len(msigPendingVotes), pendingmsigcount)
 		return nil
 	},
 }
