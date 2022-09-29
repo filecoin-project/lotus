@@ -44,7 +44,7 @@ type EthModuleAPI interface {
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthUint64) (api.EthTx, error)
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthUint64, txIndex api.EthUint64) (api.EthTx, error)
 	EthGetCode(ctx context.Context, address api.EthAddress) (api.EthBytes, error)
-	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthUint64, blkParam string) (api.EthBytes, error)
+	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthBytes, blkParam string) (api.EthBytes, error)
 	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
 	EthChainId(ctx context.Context) (api.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
@@ -283,8 +283,81 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api
 	return blk.RawData(), nil
 }
 
-func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress, position api.EthUint64, blkParam string) (api.EthBytes, error) {
-	return nil, nil
+func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress, position api.EthBytes, blkParam string) (api.EthBytes, error) {
+	if l := len(position); l > 32 {
+		return nil, fmt.Errorf("supplied storage key is too long")
+	} else {
+		// pad with zero bytes if smaller than 32 bytes
+		position = append(make([]byte, 32-l, 32-l), position...)
+	}
+
+	fmt.Printf("%x\n", position)
+
+	to, err := ethAddr.ToFilecoinAddress()
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
+	}
+
+	// use the system actor as the caller
+	from, err := address.NewIDAddress(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+	}
+
+	// TODO super duper hack (raulk). The EVM runtime actor uses the U256 parameter type in
+	//  GetStorageAtParams, which serializes as a hex-encoded string. It should serialize
+	//  as bytes. We didn't get to fix in time for Iron, so for now we just pass
+	//  through the hex-encoded value passed through the Eth JSON-RPC API, by remarshalling it.
+	//  We don't fix this at origin (builtin-actors) because we are not updating the bundle
+	//  for Iron.
+	tmp, err := position.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%x\n", tmp)
+	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
+		StorageKey: tmp[1 : len(tmp)-1], // TODO strip the JSON-encoding quotes -- yuck
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
+	}
+	fmt.Printf("%x\n", params)
+
+	msg := &types.Message{
+		From:       from,
+		To:         to,
+		Value:      big.Zero(),
+		Method:     abi.MethodNum(4), // GetStorageAt
+		Params:     params,
+		GasLimit:   build.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
+	}
+
+	ts := a.Chain.GetHeaviestTipSet()
+
+	// Try calling until we find a height with no migration.
+	var res *api.InvocResult
+	for {
+		res, err = a.StateManager.Call(ctx, msg, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
+
+	if err != nil {
+		return nil, xerrors.Errorf("Call failed: %w", err)
+	}
+
+	if res.MsgRct == nil {
+		return nil, fmt.Errorf("no message receipt")
+	}
+
+	return res.MsgRct.Return, nil
 }
 
 func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error) {

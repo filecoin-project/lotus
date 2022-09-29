@@ -1087,7 +1087,7 @@ func (mr *MockFullNodeMockRecorder) EthGetCode(arg0, arg1 interface{}) *gomock.C
 }
 
 // EthGetStorageAt mocks base method.
-func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 api.EthAddress, arg2 api.EthUint64, arg3 string) (api.EthBytes, error) {
+func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 api.EthAddress, arg2 api.EthBytes, arg3 string) (api.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetStorageAt", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(api.EthBytes)

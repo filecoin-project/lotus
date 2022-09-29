@@ -238,7 +238,7 @@ type FullNodeStruct struct {
 
 		EthGetCode func(p0 context.Context, p1 EthAddress) (EthBytes, error) `perm:"read"`
 
-		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthUint64, p3 string) (EthBytes, error) `perm:"read"`
+		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) `perm:"read"`
 
 		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) `perm:"read"`
 
@@ -1893,14 +1893,14 @@ func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, 
 	return *new(EthBytes), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthUint64, p3 string) (EthBytes, error) {
+func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) {
 	if s.Internal.EthGetStorageAt == nil {
 		return *new(EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthUint64, p3 string) (EthBytes, error) {
+func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) {
 	return *new(EthBytes), ErrNotSupported
 }
 
