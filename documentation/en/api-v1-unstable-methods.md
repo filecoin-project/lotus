@@ -2347,7 +2347,7 @@ Inputs:
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x07"`
 
 ### EthGetStorageAt
 
@@ -2363,7 +2363,7 @@ Inputs:
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x07"`
 
 ### EthGetTransactionByBlockHashAndIndex
 

@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -236,9 +236,9 @@ type FullNodeStruct struct {
 
 		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 EthInt) (EthInt, error) `perm:"read"`
 
-		EthGetCode func(p0 context.Context, p1 EthAddress) (string, error) `perm:"read"`
+		EthGetCode func(p0 context.Context, p1 EthAddress) (EthBytes, error) `perm:"read"`
 
-		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthInt, p3 string) (string, error) `perm:"read"`
+		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthInt, p3 string) (EthBytes, error) `perm:"read"`
 
 		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 EthHash, p2 EthInt) (EthTx, error) `perm:"read"`
 
@@ -1882,26 +1882,26 @@ func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress) (string, error) {
+func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
 	if s.Internal.EthGetCode == nil {
-		return "", ErrNotSupported
+		return *new(EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthGetCode(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress) (string, error) {
-	return "", ErrNotSupported
+func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
+	return *new(EthBytes), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthInt, p3 string) (string, error) {
+func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthInt, p3 string) (EthBytes, error) {
 	if s.Internal.EthGetStorageAt == nil {
-		return "", ErrNotSupported
+		return *new(EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthInt, p3 string) (string, error) {
-	return "", ErrNotSupported
+func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthInt, p3 string) (EthBytes, error) {
+	return *new(EthBytes), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 EthHash, p2 EthInt) (EthTx, error) {

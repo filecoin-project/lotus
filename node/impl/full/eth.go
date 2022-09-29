@@ -1,10 +1,13 @@
 package full
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -40,8 +43,8 @@ type EthModuleAPI interface {
 	EthGetTransactionReceipt(ctx context.Context, txHash api.EthHash) (*api.EthTxReceipt, error)
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthInt) (api.EthTx, error)
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthInt, txIndex api.EthInt) (api.EthTx, error)
-	EthGetCode(ctx context.Context, address api.EthAddress) (string, error)
-	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthInt, blkParam string) (string, error)
+	EthGetCode(ctx context.Context, address api.EthAddress) (api.EthBytes, error)
+	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthInt, blkParam string) (api.EthBytes, error)
 	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
 	EthChainId(ctx context.Context) (api.EthInt, error)
 	NetVersion(ctx context.Context) (string, error)
@@ -216,12 +219,72 @@ func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, 
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *EthModule) EthGetCode(ctx context.Context, address api.EthAddress) (string, error) {
-	return "", nil
+func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api.EthBytes, error) {
+	to, err := ethAddr.ToFilecoinAddress()
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
+	}
+
+	// use the system actor as the caller
+	from, err := address.NewIDAddress(0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+	}
+	msg := &types.Message{
+		From:       from,
+		To:         to,
+		Value:      big.Zero(),
+		Method:     abi.MethodNum(3), // GetBytecode
+		Params:     nil,
+		GasLimit:   build.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
+	}
+
+	ts := a.Chain.GetHeaviestTipSet()
+
+	// Try calling until we find a height with no migration.
+	var res *api.InvocResult
+	for {
+		res, err = a.StateManager.Call(ctx, msg, ts)
+		if err != stmgr.ErrExpensiveFork {
+			break
+		}
+		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("getting parent tipset: %w", err)
+		}
+	}
+
+	if err != nil {
+		return nil, xerrors.Errorf("Call failed: %w", err)
+	}
+
+	if res.MsgRct == nil {
+		return nil, fmt.Errorf("no message receipt")
+	}
+
+	if res.MsgRct.ExitCode != exitcode.Ok {
+		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
+	}
+
+	fmt.Printf("%x\n", res.MsgRct.Return)
+
+	var bytecodeCid cbg.CborCid
+	if err := bytecodeCid.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+		return nil, fmt.Errorf("failed to decode EVM bytecode CID: %w", err)
+	}
+
+	blk, err := a.Chain.StateBlockstore().Get(ctx, cid.Cid(bytecodeCid))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get EVM bytecode: %w", err)
+	}
+
+	return blk.RawData(), nil
 }
 
-func (a *EthModule) EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthInt, blkParam string) (string, error) {
-	return "", nil
+func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress, position api.EthInt, blkParam string) (api.EthBytes, error) {
+	return nil, nil
 }
 
 func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error) {
