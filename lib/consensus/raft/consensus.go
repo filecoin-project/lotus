@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/repo"
 	"sort"
 	"time"
 
@@ -83,6 +84,7 @@ type Consensus struct {
 	readyCh   chan struct{}
 
 	peerSet []peer.ID
+	repo    repo.LockedRepo
 
 	//shutdownLock sync.RWMutex
 	//shutdown     bool
@@ -96,7 +98,7 @@ type Consensus struct {
 //
 // The staging parameter controls if the Raft peer should start in
 // staging mode (used when joining a new Raft peerset with other peers).
-func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.MessagePool, staging bool) (*Consensus, error) {
+func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.MessagePool, repo repo.LockedRepo, staging bool) (*Consensus, error) {
 	err := ValidateConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -109,7 +111,7 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 
 	consensus := libp2praft.NewOpLog(state, &ConsensusOp{})
 
-	raft, err := newRaftWrapper(host, cfg, consensus.FSM(), staging)
+	raft, err := newRaftWrapper(host, cfg, consensus.FSM(), repo, staging)
 	if err != nil {
 		logger.Error("error creating raft: ", err)
 		cancel()
@@ -130,6 +132,7 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 		peerSet:   cfg.InitPeerset,
 		rpcReady:  make(chan struct{}, 1),
 		readyCh:   make(chan struct{}, 1),
+		repo:      repo,
 	}
 
 	go cc.finishBootstrap()
@@ -141,10 +144,11 @@ func NewConsensusWithRPCClient(staging bool) func(host host.Host,
 	cfg *ClusterRaftConfig,
 	rpcClient *rpc.Client,
 	mpool *messagepool.MessagePool,
+	repo repo.LockedRepo,
 ) (*Consensus, error) {
 
-	return func(host host.Host, cfg *ClusterRaftConfig, rpcClient *rpc.Client, mpool *messagepool.MessagePool) (*Consensus, error) {
-		cc, err := NewConsensus(host, cfg, mpool, staging)
+	return func(host host.Host, cfg *ClusterRaftConfig, rpcClient *rpc.Client, mpool *messagepool.MessagePool, repo repo.LockedRepo) (*Consensus, error) {
+		cc, err := NewConsensus(host, cfg, mpool, repo, staging)
 		if err != nil {
 			return nil, err
 		}

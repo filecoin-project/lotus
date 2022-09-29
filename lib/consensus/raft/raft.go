@@ -4,15 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/ipfs/go-log/v2"
+	"go.uber.org/zap"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	hraft "github.com/hashicorp/raft"
+	raftboltdb "github.com/hashicorp/raft-boltdb"
 	p2praft "github.com/libp2p/go-libp2p-raft"
 	host "github.com/libp2p/go-libp2p/core/host"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 )
+
+var raftLogger = log.Logger("raft-cluster")
 
 // ErrWaitingForSelf is returned when we are waiting for ourselves to depart
 // the peer set, which won't happen
@@ -49,8 +56,9 @@ type raftWrapper struct {
 	snapshotStore hraft.SnapshotStore
 	logStore      hraft.LogStore
 	stableStore   hraft.StableStore
-	//boltdb        *raftboltdb.BoltStore
-	staging bool
+	boltdb        *raftboltdb.BoltStore
+	repo          repo.LockedRepo
+	staging       bool
 }
 
 // newRaftWrapper creates a Raft instance and initializes
@@ -60,6 +68,7 @@ func newRaftWrapper(
 	host host.Host,
 	cfg *ClusterRaftConfig,
 	fsm hraft.FSM,
+	repo repo.LockedRepo,
 	staging bool,
 ) (*raftWrapper, error) {
 
@@ -67,18 +76,19 @@ func newRaftWrapper(
 	raftW.config = cfg
 	raftW.host = host
 	raftW.staging = staging
+	raftW.repo = repo
 	// Set correct LocalID
 	cfg.RaftConfig.LocalID = hraft.ServerID(peer.Encode(host.ID()))
 
-	//df := cfg.GetDataFolder()
-	//err := makeDataFolder(df)
-	//if err != nil {
-	//	return nil, err
-	//}
+	df := cfg.GetDataFolder(repo)
+	err := makeDataFolder(df)
+	if err != nil {
+		return nil, err
+	}
 
 	raftW.makeServerConfig()
 
-	err := raftW.makeTransport()
+	err = raftW.makeTransport()
 	if err != nil {
 		return nil, err
 	}
@@ -124,13 +134,13 @@ func (rw *raftWrapper) makeTransport() (err error) {
 }
 
 func (rw *raftWrapper) makeStores() error {
-	//logger.Debug("creating BoltDB store")
-	//df := rw.config.GetDataFolder()
-	//store, err := raftboltdb.NewBoltStore(filepath.Join(df, "raft.db"))
-	//if err != nil {
-	//	return err
-	//}
-	store := hraft.NewInmemStore()
+	logger.Debug("creating BoltDB store")
+	df := rw.config.GetDataFolder(rw.repo)
+	store, err := raftboltdb.NewBoltStore(filepath.Join(df, "raft.db"))
+	if err != nil {
+		return err
+	}
+	//store := hraft.NewInmemStore()
 	// wraps the store in a LogCache to improve performance.
 	// See consul/agent/consul/server.go
 	cacheStore, err := hraft.NewLogCache(RaftLogCacheSize, store)
@@ -138,22 +148,22 @@ func (rw *raftWrapper) makeStores() error {
 		return err
 	}
 
-	//logger.Debug("creating raft snapshot store")
-	//snapstore, err := hraft.NewFileSnapshotStoreWithLogger(
-	//	df,
-	//	RaftMaxSnapshots,
-	//	raftStdLogger,
-	//)
+	logger.Debug("creating raft snapshot store")
+	snapstore, err := hraft.NewFileSnapshotStoreWithLogger(
+		df,
+		RaftMaxSnapshots,
+		zap.NewStdLog(log.Logger("raft-snapshot").SugaredLogger.Desugar()),
+	)
+	if err != nil {
+		return err
+	}
 
-	snapstore := hraft.NewInmemSnapshotStore()
-	//if err != nil {
-	//	return err
-	//}
+	//snapstore := hraft.NewInmemSnapshotStore()
 
 	rw.logStore = cacheStore
 	rw.stableStore = store
 	rw.snapshotStore = snapstore
-	//rw.boltdb = store
+	rw.boltdb = store
 	return nil
 }
 
@@ -420,10 +430,10 @@ func (rw *raftWrapper) Shutdown(ctx context.Context) error {
 		errMsgs += "could not shutdown raft: " + err.Error() + ".\n"
 	}
 
-	//err = rw.boltdb.Close() // important!
-	//if err != nil {
-	//	errMsgs += "could not close boltdb: " + err.Error()
-	//}
+	err = rw.boltdb.Close() // important!
+	if err != nil {
+		errMsgs += "could not close boltdb: " + err.Error()
+	}
 
 	if errMsgs != "" {
 		return errors.New(errMsgs)

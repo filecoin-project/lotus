@@ -1,7 +1,9 @@
 package consensus
 
 import (
+	"github.com/filecoin-project/lotus/node/repo"
 	"io/ioutil"
+	"path/filepath"
 	"time"
 
 	hraft "github.com/hashicorp/raft"
@@ -18,7 +20,7 @@ var envConfigKey = "cluster_raft"
 
 // Configuration defaults
 var (
-	DefaultDataSubFolder        = "raft"
+	DefaultDataSubFolder        = "raft-cluster"
 	DefaultWaitForLeaderTimeout = 15 * time.Second
 	DefaultCommitRetries        = 1
 	DefaultNetworkTimeout       = 100 * time.Second
@@ -350,13 +352,14 @@ func ValidateConfig(cfg *ClusterRaftConfig) error {
 //	return cfg.applyJSONConfig(jcfg)
 //}
 //
-//// GetDataFolder returns the Raft data folder that we are using.
-//func (cfg *Config) GetDataFolder() string {
-//	if cfg.DataFolder == "" {
-//		return filepath.Join(cfg.BaseDir, DefaultDataSubFolder)
-//	}
-//	return cfg.DataFolder
-//}
+// GetDataFolder returns the Raft data folder that we are using.
+func (cfg *ClusterRaftConfig) GetDataFolder(repo repo.LockedRepo) string {
+	if cfg.DataFolder == "" {
+		return filepath.Join(repo.Path() + DefaultDataSubFolder)
+	}
+	return filepath.Join(repo.Path() + cfg.DataFolder)
+}
+
 //
 //// ToDisplayJSON returns JSON config as a string.
 //func (cfg *Config) ToDisplayJSON() ([]byte, error) {
