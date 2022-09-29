@@ -26,6 +26,7 @@ import (
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
+	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -543,7 +544,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
 		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version14 {
-			if m.Signature.Type != crypto.SigTypeSecp256k1 {
+			if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
 				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 			}
 		}
@@ -559,7 +560,20 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}
 
-		if err := sigs.Verify(&m.Signature, kaddr, m.Message.Cid().Bytes()); err != nil {
+		digest := m.Message.Cid().Bytes()
+		if m.Signature.Type == crypto.SigTypeDelegated {
+			txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+			if err != nil {
+				return err
+			}
+			msg, err := txArgs.OriginalRlpMsg()
+			if err != nil {
+				return err
+			}
+			digest = msg
+		}
+
+		if err := sigs.Verify(&m.Signature, kaddr, digest); err != nil {
 			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
 		}
 
