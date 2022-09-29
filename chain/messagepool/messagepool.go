@@ -3,6 +3,7 @@ package messagepool
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -62,7 +63,7 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
-//const MaxMessageSize = 64 << 10 // 64KiB
+// const MaxMessageSize = 64 << 10 // 64KiB
 const MaxMessageSize = 1<<20 - 128 // 1MiB minus some change for pb stuff
 
 var (
@@ -770,6 +771,16 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
+	case crypto.SigTypeDelegated:
+		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		if err != nil {
+			return "", err
+		}
+		msg, err := txArgs.HashedOriginalRlpMsg()
+		if err != nil {
+			return "", err
+		}
+		return hex.EncodeToString(msg), nil
 	default:
 		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
 	}

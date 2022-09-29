@@ -36,6 +36,7 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal/alerting"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
@@ -225,7 +226,7 @@ type FullNodeStruct struct {
 
 		EthChainId func(p0 context.Context) (EthInt, error) `perm:"read"`
 
-		EthEstimateGas func(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) `perm:"read"`
+		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthInt, error) `perm:"read"`
 
 		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
@@ -233,7 +234,7 @@ type FullNodeStruct struct {
 
 		EthGetBlockByHash func(p0 context.Context, p1 EthHash, p2 bool) (EthBlock, error) `perm:"read"`
 
-		EthGetBlockByNumber func(p0 context.Context, p1 EthInt, p2 bool) (EthBlock, error) `perm:"read"`
+		EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (EthBlock, error) `perm:"read"`
 
 		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 EthHash) (EthInt, error) `perm:"read"`
 
@@ -247,11 +248,11 @@ type FullNodeStruct struct {
 
 		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 EthInt, p2 EthInt) (EthTx, error) `perm:"read"`
 
-		EthGetTransactionByHash func(p0 context.Context, p1 EthHash) (EthTx, error) `perm:"read"`
+		EthGetTransactionByHash func(p0 context.Context, p1 *EthHash) (*EthTx, error) `perm:"read"`
 
 		EthGetTransactionCount func(p0 context.Context, p1 EthAddress, p2 string) (EthInt, error) `perm:"read"`
 
-		EthGetTransactionReceipt func(p0 context.Context, p1 EthHash) (EthTxReceipt, error) `perm:"read"`
+		EthGetTransactionReceipt func(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) `perm:"read"`
 
 		EthMaxPriorityFeePerGas func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
@@ -1870,14 +1871,14 @@ func (s *FullNodeStub) EthChainId(p0 context.Context) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) {
+func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 EthCall) (EthInt, error) {
 	if s.Internal.EthEstimateGas == nil {
 		return *new(EthInt), ErrNotSupported
 	}
-	return s.Internal.EthEstimateGas(p0, p1, p2)
+	return s.Internal.EthEstimateGas(p0, p1)
 }
 
-func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall, p2 string) (EthInt, error) {
+func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthInt, error) {
 	return *new(EthInt), ErrNotSupported
 }
 
@@ -1914,14 +1915,14 @@ func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 EthHash, p2 bool
 	return *new(EthBlock), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 EthInt, p2 bool) (EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
 	if s.Internal.EthGetBlockByNumber == nil {
 		return *new(EthBlock), ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 EthInt, p2 bool) (EthBlock, error) {
+func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
 	return *new(EthBlock), ErrNotSupported
 }
 
@@ -1991,15 +1992,15 @@ func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context
 	return *new(EthTx), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 EthHash) (EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 *EthHash) (*EthTx, error) {
 	if s.Internal.EthGetTransactionByHash == nil {
-		return *new(EthTx), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByHash(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 EthHash) (EthTx, error) {
-	return *new(EthTx), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 *EthHash) (*EthTx, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 EthAddress, p2 string) (EthInt, error) {
@@ -2013,15 +2014,15 @@ func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 EthAddress,
 	return *new(EthInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (EthTxReceipt, error) {
+func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) {
 	if s.Internal.EthGetTransactionReceipt == nil {
-		return *new(EthTxReceipt), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionReceipt(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (EthTxReceipt, error) {
-	return *new(EthTxReceipt), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {

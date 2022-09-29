@@ -2181,7 +2181,7 @@ Inputs:
 [
   {
     "from": "0x0707070707070707070707070707070707070707",
-    "to": "0x0707070707070707070707070707070707070707",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
     "gas": "0x5",
     "gasPrice": "0x0",
     "value": "0x0",
@@ -2212,13 +2212,12 @@ Inputs:
 [
   {
     "from": "0x0707070707070707070707070707070707070707",
-    "to": "0x0707070707070707070707070707070707070707",
+    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
     "gas": "0x5",
     "gasPrice": "0x0",
     "value": "0x0",
     "data": "0x07"
-  },
-  "string value"
+  }
 ]
 ```
 
@@ -2297,7 +2296,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "0x5",
+  "string value",
   true
 ]
 ```
@@ -2407,7 +2406,7 @@ Response:
 ```json
 {
   "chainId": "0x5",
-  "nonce": 42,
+  "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
@@ -2418,11 +2417,12 @@ Response:
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
+  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
-  "r": "0x0",
-  "s": "0x0"
+  "v": "0x07",
+  "r": "0x07",
+  "s": "0x07"
 }
 ```
 
@@ -2443,7 +2443,7 @@ Response:
 ```json
 {
   "chainId": "0x5",
-  "nonce": 42,
+  "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
@@ -2454,11 +2454,12 @@ Response:
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
+  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
-  "r": "0x0",
-  "s": "0x0"
+  "v": "0x07",
+  "r": "0x07",
+  "s": "0x07"
 }
 ```
 
@@ -2470,7 +2471,7 @@ Perms: read
 Inputs:
 ```json
 [
-  "0x0707070707070707070707070707070707070707070707070707070707070707"
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
 ]
 ```
 
@@ -2478,7 +2479,7 @@ Response:
 ```json
 {
   "chainId": "0x5",
-  "nonce": 42,
+  "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
@@ -2489,11 +2490,12 @@ Response:
   "type": "0x5",
   "input": "0x07",
   "gas": "0x5",
+  "gasLimit": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
-  "r": "0x0",
-  "s": "0x0"
+  "v": "0x07",
+  "r": "0x07",
+  "s": "0x07"
 }
 ```
 
@@ -2528,7 +2530,7 @@ Response:
 ```json
 {
   "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "transacionIndex": "0x5",
+  "transactionIndex": "0x5",
   "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
   "blockNumber": "0x5",
   "from": "0x0707070707070707070707070707070707070707",
@@ -2538,7 +2540,11 @@ Response:
   "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "cumulativeGasUsed": "0x5",
   "gasUsed": "0x5",
-  "effectiveGasPrice": "0x0"
+  "effectiveGasPrice": "0x0",
+  "logsBloom": "0x07",
+  "logs": [
+    "string value"
+  ]
 }
 ```
 
