@@ -5685,7 +5685,7 @@ Response:
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
     "SectorKeyCID": null,
-    "SimpleQaPower": true
+    "SimpleQAPower": true
   }
 ]
 ```
@@ -6158,7 +6158,7 @@ Response:
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
     "SectorKeyCID": null,
-    "SimpleQaPower": true
+    "SimpleQAPower": true
   }
 ]
 ```
@@ -6582,7 +6582,7 @@ Response:
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
   "SectorKeyCID": null,
-  "SimpleQaPower": true
+  "SimpleQAPower": true
 }
 ```
 
