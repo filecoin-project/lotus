@@ -36,7 +36,6 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal/alerting"
-	consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
@@ -342,7 +341,7 @@ type FullNodeStruct struct {
 
 		RaftLeader func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
-		RaftState func(p0 context.Context) (*consensus2.RaftState, error) `perm:"read"`
+		RaftState func(p0 context.Context) (*RaftStateData, error) `perm:"read"`
 
 		StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
@@ -2465,14 +2464,14 @@ func (s *FullNodeStub) RaftLeader(p0 context.Context) (peer.ID, error) {
 	return *new(peer.ID), ErrNotSupported
 }
 
-func (s *FullNodeStruct) RaftState(p0 context.Context) (*consensus2.RaftState, error) {
+func (s *FullNodeStruct) RaftState(p0 context.Context) (*RaftStateData, error) {
 	if s.Internal.RaftState == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.RaftState(p0)
 }
 
-func (s *FullNodeStub) RaftState(p0 context.Context) (*consensus2.RaftState, error) {
+func (s *FullNodeStub) RaftState(p0 context.Context) (*RaftStateData, error) {
 	return nil, ErrNotSupported
 }
 

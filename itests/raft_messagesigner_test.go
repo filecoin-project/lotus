@@ -42,7 +42,7 @@ func generatePrivKey() (*kit.Libp2p, error) {
 	return &kit.Libp2p{PeerID: peerId, PrivKey: privkey}, nil
 }
 
-func getRaftState(ctx context.Context, t *testing.T, node *kit.TestFullNode) *consensus.RaftState {
+func getRaftState(ctx context.Context, t *testing.T, node *kit.TestFullNode) *api.RaftStateData {
 	raftState, err := node.RaftState(ctx)
 	require.NoError(t, err)
 	//rstate := raftState.(*consensus.RaftState)
@@ -51,7 +51,7 @@ func getRaftState(ctx context.Context, t *testing.T, node *kit.TestFullNode) *co
 
 func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *kit.TestFullNode, node2 *kit.TestFullNode, miner *kit.TestMiner) *kit.Ensemble {
 
-	//blockTime := 1000 * time.Millisecond
+	blockTime := 1 * time.Second
 
 	pkey0, _ := generatePrivKey()
 	pkey1, _ := generatePrivKey()
@@ -61,8 +61,8 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 
 	raftOps := kit.ConstructorOpts(
 		node.Override(new(*gorpc.Client), modules.NewRPCClient),
-		node.Override(new(*config.ClusterRaftConfig), func() *config.ClusterRaftConfig {
-			cfg := config.DefaultClusterRaftConfig()
+		node.Override(new(*consensus.ClusterRaftConfig), func() *consensus.ClusterRaftConfig {
+			cfg := consensus.DefaultClusterRaftConfig()
 			cfg.InitPeerset = initPeerSet
 			return cfg
 		}),
@@ -304,35 +304,11 @@ func TestRaftStateLeaderDisconnectsMiner(t *testing.T) {
 		peerToNode[n.Pkey.PeerID] = n
 	}
 
-	//bal, err := node0.WalletBalance(ctx, node0.DefaultKey.Address)
-	//require.NoError(t, err)
-
-	//msgHalfBal := &types.Message{
-	//	From:  miner.OwnerKey.Address,
-	//	To:    node0.DefaultKey.Address,
-	//	Value: big.Div(bal, big.NewInt(2)),
-	//}
-	//mu := uuid.New()
-	//smHalfBal, err := miner.FullNode.MpoolPushMessage(ctx, msgHalfBal, &api.MessageSendSpec{
-	//	MsgUuid: mu,
-	//})
-	//require.NoError(t, err)
-	//mLookup, err := node0.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
-	//require.NoError(t, err)
-	//require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
-	//
-	//rstate0 := getRaftState(ctx, t, &node0)
-	//rstate1 := getRaftState(ctx, t, &node1)
-	//rstate2 := getRaftState(ctx, t, &node2)
-	//
-	//require.True(t, reflect.DeepEqual(rstate0, rstate1))
-	//require.True(t, reflect.DeepEqual(rstate0, rstate2))
-
-	// Take leader node down
-	leader, err := node1.RaftLeader(ctx)
+	leader, err := node0.RaftLeader(ctx)
 	require.NoError(t, err)
 	leaderNode := peerToNode[leader]
 
+	// Take leader node down
 	err = leaderNode.Stop(ctx)
 	require.NoError(t, err)
 	oldLeaderNode := leaderNode
@@ -351,11 +327,6 @@ func TestRaftStateLeaderDisconnectsMiner(t *testing.T) {
 	require.NotEqual(t, newLeader, leader)
 	leaderNode = peerToNode[newLeader]
 
-	fmt.Println("New leader: ", newLeader)
-
-	//err = node0.Stop(ctx)
-	//require.NoError(t, err)
-
 	msg2 := &types.Message{
 		From:  miner.OwnerKey.Address,
 		To:    node0.DefaultKey.Address,
@@ -372,8 +343,6 @@ func TestRaftStateLeaderDisconnectsMiner(t *testing.T) {
 	mLookup, err := leaderNode.StateWaitMsg(ctx, signedMsg2.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
-
-	fmt.Println("!!!!!!!!!!!!!!!!TEST FINISHED!!!!!!!!!!!!!!!!!!!")
 
 	rstate := getRaftState(ctx, t, leaderNode)
 
@@ -420,24 +389,16 @@ func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	//
-	//rstate0 := getRaftState(ctx, t, &node0)
-	//rstate1 := getRaftState(ctx, t, &node1)
-	//rstate2 := getRaftState(ctx, t, &node2)
-	//
-	//require.True(t, reflect.DeepEqual(rstate0, rstate1))
-	//require.True(t, reflect.DeepEqual(rstate0, rstate2))
-
-	// Take leader node down
-	leader, err := node1.RaftLeader(ctx)
+	leader, err := node0.RaftLeader(ctx)
 	require.NoError(t, err)
 	leaderNode := peerToNode[leader]
 
+	// Take leader node down
 	err = leaderNode.Stop(ctx)
 	require.NoError(t, err)
 	oldLeaderNode := leaderNode
 
-	//time.Sleep(5 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	newLeader := leader
 	for _, n := range nodes {
@@ -451,16 +412,9 @@ func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 	require.NotEqual(t, newLeader, leader)
 	leaderNode = peerToNode[newLeader]
 
-	fmt.Println("New leader: ", newLeader)
-
 	mLookup, err := leaderNode.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
-
-	//err = node0.Stop(ctx)
-	//require.NoError(t, err)
-
-	fmt.Println("!!!!!!!!!!!!!!!!TEST FINISHED!!!!!!!!!!!!!!!!!!!")
 
 	rstate := getRaftState(ctx, t, leaderNode)
 
@@ -468,6 +422,56 @@ func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 		if n != oldLeaderNode {
 			rs := getRaftState(ctx, t, n)
 			require.True(t, reflect.DeepEqual(rs, rstate))
+		}
+	}
+}
+
+func TestChainStoreSync(t *testing.T) {
+
+	kit.QuietMiningLogs()
+	ctx := context.Background()
+
+	var (
+		node0 kit.TestFullNode
+		node1 kit.TestFullNode
+		node2 kit.TestFullNode
+		miner kit.TestMiner
+	)
+
+	nodes := []*kit.TestFullNode{&node0, &node1, &node2}
+
+	setup(ctx, t, &node0, &node1, &node2, &miner)
+
+	peerToNode := make(map[peer.ID]*kit.TestFullNode)
+	for _, n := range nodes {
+		peerToNode[n.Pkey.PeerID] = n
+	}
+
+	bal, err := node0.WalletBalance(ctx, node0.DefaultKey.Address)
+	require.NoError(t, err)
+
+	leader, err := node0.RaftLeader(ctx)
+	require.NoError(t, err)
+	leaderNode := peerToNode[leader]
+
+	msgHalfBal := &types.Message{
+		From:  miner.OwnerKey.Address,
+		To:    node0.DefaultKey.Address,
+		Value: big.Div(bal, big.NewInt(2)),
+	}
+	mu := uuid.New()
+	smHalfBal, err := miner.FullNode.MpoolPushMessage(ctx, msgHalfBal, &api.MessageSendSpec{
+		MsgUuid: mu,
+	})
+	require.NoError(t, err)
+
+	for _, n := range nodes {
+		fmt.Println(n != leaderNode)
+		if n != leaderNode {
+			mLookup, err := n.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+			require.NoError(t, err)
+			require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
+			//break
 		}
 	}
 }

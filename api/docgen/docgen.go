@@ -40,7 +40,6 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
@@ -341,7 +340,7 @@ func init() {
 	addExample(map[string]bitfield.BitField{
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
-	addExample(&consensus.RaftState{
+	addExample(&api.RaftStateData{
 		NonceMap: make(map[address.Address]uint64),
 		MsgUuids: make(map[uuid.UUID]*types.SignedMessage),
 	})
@@ -357,6 +356,7 @@ func init() {
 			Headers: nil,
 		},
 	})
+
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

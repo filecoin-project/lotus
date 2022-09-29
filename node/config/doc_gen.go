@@ -117,86 +117,6 @@ without existing payment channels with available funds will fail instead
 of automatically performing on-chain operations.`,
 		},
 	},
-	"ClusterRaftConfig": []DocField{
-		{
-			Name: "ClusterModeEnabled",
-			Type: "bool",
-
-			Comment: `config to enabled node cluster with raft consensus`,
-		},
-		{
-			Name: "HostShutdown",
-			Type: "bool",
-
-			Comment: `will shutdown libp2p host on shutdown. Useful for testing`,
-		},
-		{
-			Name: "DataFolder",
-			Type: "string",
-
-			Comment: `A folder to store Raft's data.`,
-		},
-		{
-			Name: "InitPeerset",
-			Type: "[]peer.ID",
-
-			Comment: `InitPeerset provides the list of initial cluster peers for new Raft
-peers (with no prior state). It is ignored when Raft was already
-initialized or when starting in staging mode.`,
-		},
-		{
-			Name: "WaitForLeaderTimeout",
-			Type: "Duration",
-
-			Comment: `LeaderTimeout specifies how long to wait for a leader before
-failing an operation.`,
-		},
-		{
-			Name: "NetworkTimeout",
-			Type: "Duration",
-
-			Comment: `NetworkTimeout specifies how long before a Raft network
-operation is timed out`,
-		},
-		{
-			Name: "CommitRetries",
-			Type: "int",
-
-			Comment: `CommitRetries specifies how many times we retry a failed commit until
-we give up.`,
-		},
-		{
-			Name: "CommitRetryDelay",
-			Type: "Duration",
-
-			Comment: `How long to wait between retries`,
-		},
-		{
-			Name: "BackupsRotate",
-			Type: "int",
-
-			Comment: `BackupsRotate specifies the maximum number of Raft's DataFolder
-copies that we keep as backups (renaming) after cleanup.`,
-		},
-		{
-			Name: "DatastoreNamespace",
-			Type: "string",
-
-			Comment: `Namespace to use when writing keys to the datastore`,
-		},
-		{
-			Name: "RaftConfig",
-			Type: "*hraft.Config",
-
-			Comment: `A Hashicorp Raft's configuration object.`,
-		},
-		{
-			Name: "Tracing",
-			Type: "bool",
-
-			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
-		},
-	},
 	"Common": []DocField{
 		{
 			Name: "API",
@@ -456,7 +376,7 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 		},
 		{
 			Name: "Raft",
-			Type: "ClusterRaftConfig",
+			Type: "UserRaftConfig",
 
 			Comment: ``,
 		},
@@ -1301,6 +1221,80 @@ finalities beyond the compaction boundary, default is 0, -1 retains everything`,
 			Type: "DAGStoreConfig",
 
 			Comment: ``,
+		},
+	},
+	"UserRaftConfig": []DocField{
+		{
+			Name: "ClusterModeEnabled",
+			Type: "bool",
+
+			Comment: `config to enabled node cluster with raft consensus`,
+		},
+		{
+			Name: "HostShutdown",
+			Type: "bool",
+
+			Comment: `will shutdown libp2p host on shutdown. Useful for testing`,
+		},
+		{
+			Name: "DataFolder",
+			Type: "string",
+
+			Comment: `A folder to store Raft's data.`,
+		},
+		{
+			Name: "InitPeerset",
+			Type: "[]peer.ID",
+
+			Comment: `InitPeerset provides the list of initial cluster peers for new Raft
+peers (with no prior state). It is ignored when Raft was already
+initialized or when starting in staging mode.`,
+		},
+		{
+			Name: "WaitForLeaderTimeout",
+			Type: "Duration",
+
+			Comment: `LeaderTimeout specifies how long to wait for a leader before
+failing an operation.`,
+		},
+		{
+			Name: "NetworkTimeout",
+			Type: "Duration",
+
+			Comment: `NetworkTimeout specifies how long before a Raft network
+operation is timed out`,
+		},
+		{
+			Name: "CommitRetries",
+			Type: "int",
+
+			Comment: `CommitRetries specifies how many times we retry a failed commit until
+we give up.`,
+		},
+		{
+			Name: "CommitRetryDelay",
+			Type: "Duration",
+
+			Comment: `How long to wait between retries`,
+		},
+		{
+			Name: "BackupsRotate",
+			Type: "int",
+
+			Comment: `BackupsRotate specifies the maximum number of Raft's DataFolder
+copies that we keep as backups (renaming) after cleanup.`,
+		},
+		{
+			Name: "DatastoreNamespace",
+			Type: "string",
+
+			Comment: `Namespace to use when writing keys to the datastore`,
+		},
+		{
+			Name: "Tracing",
+			Type: "bool",
+
+			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
 		},
 	},
 	"Wallet": []DocField{

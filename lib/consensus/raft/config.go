@@ -1,9 +1,11 @@
 package consensus
 
 import (
+	"io/ioutil"
 	"time"
 
 	hraft "github.com/hashicorp/raft"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/config"
@@ -25,45 +27,88 @@ var (
 	DefaultDatastoreNamespace   = "/r" // from "/raft"
 )
 
-// Config allows to configure the Raft Consensus component for ipfs-cluster.
-// The component's configuration section is represented by ConfigJSON.
-// Config implements the ComponentConfig interface.
-//type Config struct {
-//	//config.Saver
-//	//
-//	//// will shutdown libp2p host on shutdown. Useful for testing
-//	hostShutdown bool
-//
-//	// A folder to store Raft's data.
-//	DataFolder string
-//
-//	// InitPeerset provides the list of initial cluster peers for new Raft
-//	// peers (with no prior state). It is ignored when Raft was already
-//	// initialized or when starting in staging mode.
-//	InitPeerset []peer.ID
-//	// LeaderTimeout specifies how long to wait for a leader before
-//	// failing an operation.
-//	WaitForLeaderTimeout time.Duration
-//	// NetworkTimeout specifies how long before a Raft network
-//	// operation is timed out
-//	NetworkTimeout time.Duration
-//	// CommitRetries specifies how many times we retry a failed commit until
-//	// we give up.
-//	CommitRetries int
-//	// How long to wait between retries
-//	CommitRetryDelay time.Duration
-//	// BackupsRotate specifies the maximum number of Raft's DataFolder
-//	// copies that we keep as backups (renaming) after cleanup.
-//	BackupsRotate int
-//	// Namespace to use when writing keys to the datastore
-//	DatastoreNamespace string
-//
-//	// A Hashicorp Raft's configuration object.
-//	RaftConfig *hraft.Config
-//
-//	// Tracing enables propagation of contexts across binary boundaries.
-//	Tracing bool
-//}
+// ClusterRaftConfig allows to configure the Raft Consensus component for the node cluster.
+type ClusterRaftConfig struct {
+	// config to enabled node cluster with raft consensus
+	ClusterModeEnabled bool
+	// will shutdown libp2p host on shutdown. Useful for testing
+	HostShutdown bool
+	// A folder to store Raft's data.
+	DataFolder string
+	// InitPeerset provides the list of initial cluster peers for new Raft
+	// peers (with no prior state). It is ignored when Raft was already
+	// initialized or when starting in staging mode.
+	InitPeerset []peer.ID
+	// LeaderTimeout specifies how long to wait for a leader before
+	// failing an operation.
+	WaitForLeaderTimeout time.Duration
+	// NetworkTimeout specifies how long before a Raft network
+	// operation is timed out
+	NetworkTimeout time.Duration
+	// CommitRetries specifies how many times we retry a failed commit until
+	// we give up.
+	CommitRetries int
+	// How long to wait between retries
+	CommitRetryDelay time.Duration
+	// BackupsRotate specifies the maximum number of Raft's DataFolder
+	// copies that we keep as backups (renaming) after cleanup.
+	BackupsRotate int
+	// Namespace to use when writing keys to the datastore
+	DatastoreNamespace string
+
+	// A Hashicorp Raft's configuration object.
+	RaftConfig *hraft.Config
+
+	// Tracing enables propagation of contexts across binary boundaries.
+	Tracing bool
+}
+
+func DefaultClusterRaftConfig() *ClusterRaftConfig {
+	var cfg ClusterRaftConfig
+	cfg.DataFolder = "" // empty so it gets omitted
+	cfg.InitPeerset = []peer.ID{}
+	cfg.WaitForLeaderTimeout = DefaultWaitForLeaderTimeout
+	cfg.NetworkTimeout = DefaultNetworkTimeout
+	cfg.CommitRetries = DefaultCommitRetries
+	cfg.CommitRetryDelay = DefaultCommitRetryDelay
+	cfg.BackupsRotate = DefaultBackupsRotate
+	cfg.DatastoreNamespace = DefaultDatastoreNamespace
+	cfg.RaftConfig = hraft.DefaultConfig()
+
+	// These options are imposed over any Default Raft Config.
+	cfg.RaftConfig.ShutdownOnRemove = false
+	cfg.RaftConfig.LocalID = "will_be_set_automatically"
+
+	// Set up logging
+	cfg.RaftConfig.LogOutput = ioutil.Discard
+	//cfg.RaftConfig.Logger = &hcLogToLogger{}
+	return &cfg
+}
+
+func NewClusterRaftConfig(userRaftConfig *config.UserRaftConfig) *ClusterRaftConfig {
+	var cfg ClusterRaftConfig
+	cfg.DataFolder = userRaftConfig.DataFolder
+	cfg.InitPeerset = userRaftConfig.InitPeerset
+	cfg.WaitForLeaderTimeout = time.Duration(userRaftConfig.WaitForLeaderTimeout)
+	cfg.NetworkTimeout = time.Duration(userRaftConfig.NetworkTimeout)
+	cfg.CommitRetries = userRaftConfig.CommitRetries
+	cfg.CommitRetryDelay = time.Duration(userRaftConfig.CommitRetryDelay)
+	cfg.BackupsRotate = userRaftConfig.BackupsRotate
+	cfg.DatastoreNamespace = userRaftConfig.DatastoreNamespace
+
+	// Keep this to be default hraft config for now
+	cfg.RaftConfig = hraft.DefaultConfig()
+
+	// These options are imposed over any Default Raft Config.
+	cfg.RaftConfig.ShutdownOnRemove = false
+	cfg.RaftConfig.LocalID = "will_be_set_automatically"
+
+	// Set up logging
+	cfg.RaftConfig.LogOutput = ioutil.Discard
+	//cfg.RaftConfig.Logger = &hcLogToLogger{}
+	return &cfg
+
+}
 
 // ConfigJSON represents a human-friendly Config
 // object which can be saved to JSON.  Most configuration keys are converted
@@ -145,7 +190,7 @@ var (
 
 //// Validate checks that this configuration has working values,
 //// at least in appearance.
-func ValidateConfig(cfg *config.ClusterRaftConfig) error {
+func ValidateConfig(cfg *ClusterRaftConfig) error {
 	if cfg.RaftConfig == nil {
 		return xerrors.Errorf("no hashicorp/raft.Config")
 	}

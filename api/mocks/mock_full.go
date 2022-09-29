@@ -37,7 +37,6 @@ import (
 	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
-	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
 	imports "github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -2260,10 +2259,10 @@ func (mr *MockFullNodeMockRecorder) RaftLeader(arg0 interface{}) *gomock.Call {
 }
 
 // RaftState mocks base method.
-func (m *MockFullNode) RaftState(arg0 context.Context) (*consensus.RaftState, error) {
+func (m *MockFullNode) RaftState(arg0 context.Context) (*api.RaftStateData, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RaftState", arg0)
-	ret0, _ := ret[0].(*consensus.RaftState)
+	ret0, _ := ret[0].(*api.RaftStateData)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

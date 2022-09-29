@@ -9,7 +9,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
+
+	//consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -119,7 +120,7 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 	return status, nil
 }
 
-func (n *FullNodeAPI) RaftState(ctx context.Context) (*consensus2.RaftState, error) {
+func (n *FullNodeAPI) RaftState(ctx context.Context) (*api.RaftStateData, error) {
 	return n.RaftAPI.GetRaftState(ctx)
 }
 

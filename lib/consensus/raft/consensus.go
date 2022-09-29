@@ -4,7 +4,6 @@ package consensus
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -15,8 +14,9 @@ import (
 
 	addr "github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/config"
 
 	//ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -29,67 +29,21 @@ import (
 
 var logger = logging.Logger("raft")
 
-type NonceMapType map[addr.Address]uint64
-type MsgUuidMapType map[uuid.UUID]*types.SignedMessage
+//type NonceMapType map[addr.Address]uint64
+//type MsgUuidMapType map[uuid.UUID]*types.SignedMessage
 
 type RaftState struct {
-	NonceMap NonceMapType
-	MsgUuids MsgUuidMapType
+	NonceMap api.NonceMapType
+	MsgUuids api.MsgUuidMapType
+	Mpool    *messagepool.MessagePool
 }
 
-func newRaftState() *RaftState {
-	return &RaftState{NonceMap: make(map[addr.Address]uint64),
-		MsgUuids: make(map[uuid.UUID]*types.SignedMessage)}
-}
-
-func (n *NonceMapType) MarshalJSON() ([]byte, error) {
-	marshalled := make(map[string]uint64)
-	for a, n := range *n {
-		marshalled[a.String()] = n
+func newRaftState(mpool *messagepool.MessagePool) *RaftState {
+	return &RaftState{
+		NonceMap: make(map[addr.Address]uint64),
+		MsgUuids: make(map[uuid.UUID]*types.SignedMessage),
+		Mpool:    mpool,
 	}
-	return json.Marshal(marshalled)
-}
-
-func (n *NonceMapType) UnmarshalJSON(b []byte) error {
-	unmarshalled := make(map[string]uint64)
-	err := json.Unmarshal(b, &unmarshalled)
-	if err != nil {
-		return err
-	}
-	*n = make(map[addr.Address]uint64)
-	for saddr, nonce := range unmarshalled {
-		a, err := addr.NewFromString(saddr)
-		if err != nil {
-			return err
-		}
-		(*n)[a] = nonce
-	}
-	return nil
-}
-
-func (m *MsgUuidMapType) MarshalJSON() ([]byte, error) {
-	marshalled := make(map[string]*types.SignedMessage)
-	for u, msg := range *m {
-		marshalled[u.String()] = msg
-	}
-	return json.Marshal(marshalled)
-}
-
-func (m *MsgUuidMapType) UnmarshalJSON(b []byte) error {
-	unmarshalled := make(map[string]*types.SignedMessage)
-	err := json.Unmarshal(b, &unmarshalled)
-	if err != nil {
-		return err
-	}
-	*m = make(map[uuid.UUID]*types.SignedMessage)
-	for suid, msg := range unmarshalled {
-		u, err := uuid.Parse(suid)
-		if err != nil {
-			return err
-		}
-		(*m)[u] = msg
-	}
-	return nil
 }
 
 type ConsensusOp struct {
@@ -103,6 +57,7 @@ func (c ConsensusOp) ApplyTo(state consensus.State) (consensus.State, error) {
 	s := state.(*RaftState)
 	s.NonceMap[c.Addr] = c.Nonce
 	s.MsgUuids[c.Uuid] = c.SignedMsg
+	s.Mpool.Add(context.TODO(), c.SignedMsg)
 	return s, nil
 }
 
@@ -114,7 +69,7 @@ var _ consensus.Op = &ConsensusOp{}
 type Consensus struct {
 	ctx    context.Context
 	cancel func()
-	config *config.ClusterRaftConfig
+	config *ClusterRaftConfig
 
 	host host.Host
 
@@ -141,7 +96,7 @@ type Consensus struct {
 //
 // The staging parameter controls if the Raft peer should start in
 // staging mode (used when joining a new Raft peerset with other peers).
-func NewConsensus(host host.Host, cfg *config.ClusterRaftConfig, staging bool) (*Consensus, error) {
+func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.MessagePool, staging bool) (*Consensus, error) {
 	err := ValidateConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -150,7 +105,7 @@ func NewConsensus(host host.Host, cfg *config.ClusterRaftConfig, staging bool) (
 	ctx, cancel := context.WithCancel(context.Background())
 
 	logger.Debug("starting Consensus and waiting for a leader...")
-	state := newRaftState()
+	state := newRaftState(mpool)
 
 	consensus := libp2praft.NewOpLog(state, &ConsensusOp{})
 
@@ -183,12 +138,13 @@ func NewConsensus(host host.Host, cfg *config.ClusterRaftConfig, staging bool) (
 }
 
 func NewConsensusWithRPCClient(staging bool) func(host host.Host,
-	cfg *config.ClusterRaftConfig,
+	cfg *ClusterRaftConfig,
 	rpcClient *rpc.Client,
+	mpool *messagepool.MessagePool,
 ) (*Consensus, error) {
 
-	return func(host host.Host, cfg *config.ClusterRaftConfig, rpcClient *rpc.Client) (*Consensus, error) {
-		cc, err := NewConsensus(host, cfg, staging)
+	return func(host host.Host, cfg *ClusterRaftConfig, rpcClient *rpc.Client, mpool *messagepool.MessagePool) (*Consensus, error) {
+		cc, err := NewConsensus(host, cfg, mpool, staging)
 		if err != nil {
 			return nil, err
 		}
@@ -506,7 +462,7 @@ func (cc *Consensus) State(ctx context.Context) (*RaftState, error) {
 
 	st, err := cc.consensus.GetLogHead()
 	if err == libp2praft.ErrNoState {
-		return newRaftState(), nil
+		return newRaftState(nil), nil
 	}
 
 	if err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -23,11 +24,6 @@ const dsKeyActorNonce = "ActorNextNonce"
 const dsKeyMsgUUIDSet = "MsgUuidSet"
 
 var log = logging.Logger("messagesigner")
-
-type MpoolNonceAPI interface {
-	GetNonce(context.Context, address.Address, types.TipSetKey) (uint64, error)
-	GetActor(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
-}
 
 type MsgSigner interface {
 	SignMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, cb func(*types.SignedMessage) error) (*types.SignedMessage, error)
@@ -47,13 +43,13 @@ type MsgSigner interface {
 type MessageSigner struct {
 	wallet api.Wallet
 	lk     sync.Mutex
-	mpool  MpoolNonceAPI
+	mpool  messagepool.MpoolNonceAPI
 	ds     datastore.Batching
 }
 
 //var _ full.MsgSigner = &MessageSigner{}
 
-func NewMessageSigner(wallet api.Wallet, mpool MpoolNonceAPI, ds dtypes.MetadataDS) *MessageSigner {
+func NewMessageSigner(wallet api.Wallet, mpool messagepool.MpoolNonceAPI, ds dtypes.MetadataDS) *MessageSigner {
 	ds = namespace.Wrap(ds, datastore.NewKey("/message-signer/"))
 	return &MessageSigner{
 		wallet: wallet,

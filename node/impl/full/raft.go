@@ -2,12 +2,13 @@ package full
 
 import (
 	"context"
+
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
-	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
 )
 
 type RaftAPI struct {
@@ -16,11 +17,15 @@ type RaftAPI struct {
 	MessageSigner *messagesigner.MessageSignerConsensus `optional:"true"`
 }
 
-func (r *RaftAPI) GetRaftState(ctx context.Context) (*consensus.RaftState, error) {
+func (r *RaftAPI) GetRaftState(ctx context.Context) (*api.RaftStateData, error) {
 	if r.MessageSigner == nil {
 		return nil, xerrors.Errorf("Raft consensus not enabled. Please check your configuration")
 	}
-	return r.MessageSigner.GetRaftState(ctx)
+	raftState, err := r.MessageSigner.GetRaftState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &api.RaftStateData{NonceMap: raftState.NonceMap, MsgUuids: raftState.MsgUuids}, nil
 }
 
 func (r *RaftAPI) Leader(ctx context.Context) (peer.ID, error) {

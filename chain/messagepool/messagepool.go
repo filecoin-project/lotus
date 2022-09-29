@@ -1583,3 +1583,8 @@ func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
 
 	return baseFeeLowerBound
 }
+
+type MpoolNonceAPI interface {
+	GetNonce(context.Context, address.Address, types.TipSetKey) (uint64, error)
+	GetActor(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
+}

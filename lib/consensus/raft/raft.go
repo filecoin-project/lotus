@@ -12,8 +12,6 @@ import (
 	p2praft "github.com/libp2p/go-libp2p-raft"
 	host "github.com/libp2p/go-libp2p/core/host"
 	peer "github.com/libp2p/go-libp2p/core/peer"
-
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 // ErrWaitingForSelf is returned when we are waiting for ourselves to depart
@@ -44,7 +42,7 @@ type raftWrapper struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	raft          *hraft.Raft
-	config        *config.ClusterRaftConfig
+	config        *ClusterRaftConfig
 	host          host.Host
 	serverConfig  hraft.Configuration
 	transport     *hraft.NetworkTransport
@@ -60,7 +58,7 @@ type raftWrapper struct {
 // to make sure the raft instance is usable.
 func newRaftWrapper(
 	host host.Host,
-	cfg *config.ClusterRaftConfig,
+	cfg *ClusterRaftConfig,
 	fsm hraft.FSM,
 	staging bool,
 ) (*raftWrapper, error) {

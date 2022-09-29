@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -22,7 +23,7 @@ type MessageSignerConsensus struct {
 
 func NewMessageSignerConsensus(
 	wallet api.Wallet,
-	mpool MpoolNonceAPI,
+	mpool messagepool.MpoolNonceAPI,
 	ds dtypes.MetadataDS,
 	consensus *consensus.Consensus) *MessageSignerConsensus {
 
