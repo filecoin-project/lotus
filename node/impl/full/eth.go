@@ -182,8 +182,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.Eth
 		return api.EthTxReceipt{}, err
 	}
 
-	receipt := api.NewEthTxReceipt(tx)
-	err = receipt.PopulateReceipt(msgLookup, replay)
+	receipt, err := api.NewEthTxReceipt(tx, msgLookup, replay)
 	if err != nil {
 		return api.EthTxReceipt{}, err
 	}
