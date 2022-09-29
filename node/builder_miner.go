@@ -94,6 +94,10 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(paths.Store), From(new(*paths.Remote))),
 		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
+		If(cfg.Subsystems.EnableMining || cfg.Subsystems.EnableSealing,
+			Override(GetParamsKey, modules.GetParams(!cfg.Proving.DisableBuiltinWindowPoSt || !cfg.Proving.DisableBuiltinWinningPoSt || cfg.Storage.AllowCommit || cfg.Storage.AllowProveReplicaUpdate2)),
+		),
+
 		If(!cfg.Subsystems.EnableMining,
 			If(cfg.Subsystems.EnableSealing, Error(xerrors.Errorf("sealing can only be enabled on a mining node"))),
 			If(cfg.Subsystems.EnableSectorStorage, Error(xerrors.Errorf("sealing can only be enabled on a mining node"))),
@@ -106,9 +110,6 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
 			Override(new(storiface.Prover), ffiwrapper.ProofProver),
 			Override(new(storiface.ProverPoSt), From(new(sectorstorage.SectorManager))),
-
-			// Sealing (todo should be under EnableSealing, but storagefsm is currently bundled with storage.Miner)
-			Override(GetParamsKey, modules.GetParams),
 
 			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
 			Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
