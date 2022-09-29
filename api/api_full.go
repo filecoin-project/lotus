@@ -149,7 +149,7 @@ type FullNode interface {
 
 	// ChainGetPath returns a set of revert/apply operations needed to get from
 	// one tipset to another, for example:
-	//```
+	// ```
 	//        to
 	//         ^
 	// from   tAA
@@ -158,7 +158,7 @@ type FullNode interface {
 	//  ^---*--^
 	//      ^
 	//     tRR
-	//```
+	// ```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error) //perm:read
 
@@ -386,12 +386,12 @@ type FullNode interface {
 	ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error //perm:write
 
 	// ClientUnimport removes references to the specified file from filestore
-	//ClientUnimport(path string)
+	// ClientUnimport(path string)
 
 	// ClientListImports lists imported files and their root CIDs
 	ClientListImports(ctx context.Context) ([]Import, error) //perm:write
 
-	//ClientListAsks() []Ask
+	// ClientListAsks() []Ask
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
@@ -627,14 +627,14 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <start epoch>, <end epoch>
 	MsigGetVested(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error) //perm:read
 
-	//MsigGetPending returns pending transactions for the given multisig
-	//wallet. Once pending transactions are fully approved, they will no longer
-	//appear here.
+	// MsigGetPending returns pending transactions for the given multisig
+	// wallet. Once pending transactions are fully approved, they will no longer
+	// appear here.
 	MsigGetPending(context.Context, address.Address, types.TipSetKey) ([]*MsigTransaction, error) //perm:read
 
 	// MsigCreate creates a multisig wallet
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
-	//<initial balance>, <sender address of the create msg>, <gas price>
+	// <initial balance>, <sender address of the create msg>, <gas price>
 	MsigCreate(context.Context, uint64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (*MessagePrototype, error) //perm:sign
 
 	// MsigPropose proposes a multisig message

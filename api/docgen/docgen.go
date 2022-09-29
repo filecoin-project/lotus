@@ -425,7 +425,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
-			//ExampleValues[t] = es
+			// ExampleValues[t] = es
 			return es
 		}
 	case reflect.Interface:
