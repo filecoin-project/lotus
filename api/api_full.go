@@ -744,31 +744,31 @@ type FullNode interface {
 	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
 	EthAccounts(ctx context.Context) ([]EthAddress, error) //perm:read
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
-	EthBlockNumber(ctx context.Context) (EthInt, error) //perm:read
+	EthBlockNumber(ctx context.Context) (EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthInt) (EthInt, error) //perm:read
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthUint64) (EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthInt, error) //perm:read
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthUint64, error) //perm:read
 
-	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (EthBlock, error)                //perm:read
-	EthGetTransactionByHash(ctx context.Context, txHash *EthHash) (*EthTx, error)                             //perm:read
-	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthInt, error)             //perm:read
-	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (*EthTxReceipt, error)                      //perm:read
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthInt) (EthTx, error) //perm:read
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthInt, txIndex EthInt) (EthTx, error) //perm:read
+	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                      //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (EthBlock, error)                      //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *EthHash) (*EthTx, error)                                   //perm:read
+	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthUint64, error)                //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (*EthTxReceipt, error)                            //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthUint64) (EthTx, error)    //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthUint64, txIndex EthUint64) (EthTx, error) //perm:read
 
-	EthGetCode(ctx context.Context, address EthAddress) (EthBytes, error)                                        //perm:read
-	EthGetStorageAt(ctx context.Context, address EthAddress, position EthInt, blkParam string) (EthBytes, error) //perm:read
-	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                   //perm:read
-	EthChainId(ctx context.Context) (EthInt, error)                                                              //perm:read
-	NetVersion(ctx context.Context) (string, error)                                                              //perm:read
-	NetListening(ctx context.Context) (bool, error)                                                              //perm:read
-	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                      //perm:read
-	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                          //perm:read
+	EthGetCode(ctx context.Context, address EthAddress) (EthBytes, error)                                           //perm:read
+	EthGetStorageAt(ctx context.Context, address EthAddress, position EthUint64, blkParam string) (EthBytes, error) //perm:read
+	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                      //perm:read
+	EthChainId(ctx context.Context) (EthUint64, error)                                                              //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                 //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                 //perm:read
+	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                      //perm:read
+	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                             //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)             //perm:read
-	EthEstimateGas(ctx context.Context, tx EthCall) (EthInt, error)             //perm:read
+	EthEstimateGas(ctx context.Context, tx EthCall) (EthUint64, error)          //perm:read
 	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error) //perm:read
 
 	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read

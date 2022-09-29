@@ -32,26 +32,26 @@ import (
 )
 
 type EthModuleAPI interface {
-	EthBlockNumber(ctx context.Context) (api.EthInt, error)
+	EthBlockNumber(ctx context.Context) (api.EthUint64, error)
 	EthAccounts(ctx context.Context) ([]api.EthAddress, error)
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum api.EthInt) (api.EthInt, error)
-	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash api.EthHash) (api.EthInt, error)
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum api.EthUint64) (api.EthUint64, error)
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash api.EthHash) (api.EthUint64, error)
 	EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, fullTxInfo bool) (api.EthBlock, error)
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (api.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash *api.EthHash) (*api.EthTx, error)
-	EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkOpt string) (api.EthInt, error)
+	EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkOpt string) (api.EthUint64, error)
 	EthGetTransactionReceipt(ctx context.Context, txHash api.EthHash) (*api.EthTxReceipt, error)
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthInt) (api.EthTx, error)
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthInt, txIndex api.EthInt) (api.EthTx, error)
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthUint64) (api.EthTx, error)
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthUint64, txIndex api.EthUint64) (api.EthTx, error)
 	EthGetCode(ctx context.Context, address api.EthAddress) (api.EthBytes, error)
-	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthInt, blkParam string) (api.EthBytes, error)
+	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthUint64, blkParam string) (api.EthBytes, error)
 	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
-	EthChainId(ctx context.Context) (api.EthInt, error)
+	EthChainId(ctx context.Context) (api.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
-	EthProtocolVersion(ctx context.Context) (api.EthInt, error)
+	EthProtocolVersion(ctx context.Context) (api.EthUint64, error)
 	EthGasPrice(ctx context.Context) (api.EthBigInt, error)
-	EthEstimateGas(ctx context.Context, tx api.EthCall) (api.EthInt, error)
+	EthEstimateGas(ctx context.Context, tx api.EthCall) (api.EthUint64, error)
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
@@ -88,9 +88,9 @@ func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, e
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *EthModule) EthBlockNumber(context.Context) (api.EthInt, error) {
+func (a *EthModule) EthBlockNumber(context.Context) (api.EthUint64, error) {
 	height := a.Chain.GetHeaviestTipSet().Height()
-	return api.EthInt(height), nil
+	return api.EthUint64(height), nil
 }
 
 func (a *EthModule) EthAccounts(context.Context) ([]api.EthAddress, error) {
@@ -112,23 +112,23 @@ func (a *EthModule) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int,
 	return count, nil
 }
 
-func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum api.EthInt) (api.EthInt, error) {
+func (a *EthModule) EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum api.EthUint64) (api.EthUint64, error) {
 	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(blkNum), nil, false)
 	if err != nil {
-		return api.EthInt(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
+		return api.EthUint64(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
 
 	count, err := a.countTipsetMsgs(ctx, ts)
-	return api.EthInt(count), err
+	return api.EthUint64(count), err
 }
 
-func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash api.EthHash) (api.EthInt, error) {
+func (a *EthModule) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash api.EthHash) (api.EthUint64, error) {
 	ts, err := a.Chain.GetTipSetByCid(ctx, blkHash.ToCid())
 	if err != nil {
-		return api.EthInt(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
+		return api.EthUint64(0), xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
 	count, err := a.countTipsetMsgs(ctx, ts)
-	return api.EthInt(count), err
+	return api.EthUint64(count), err
 }
 
 func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, fullTxInfo bool) (api.EthBlock, error) {
@@ -140,10 +140,10 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, 
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (api.EthBlock, error) {
-	var num api.EthInt
+	var num api.EthUint64
 	err := num.UnmarshalJSON([]byte(`"` + blkNum + `"`))
 	if err != nil {
-		num = api.EthInt(a.Chain.GetHeaviestTipSet().Height())
+		num = api.EthUint64(a.Chain.GetHeaviestTipSet().Height())
 	}
 
 	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), nil, false)
@@ -173,16 +173,16 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *api.Eth
 	return &tx, nil
 }
 
-func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkParam string) (api.EthInt, error) {
+func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkParam string) (api.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return api.EthInt(0), err
+		return api.EthUint64(0), err
 	}
 	nonce, err := a.Mpool.GetNonce(ctx, addr, types.EmptyTSK)
 	if err != nil {
-		return api.EthInt(0), err
+		return api.EthUint64(0), err
 	}
-	return api.EthInt(nonce), nil
+	return api.EthUint64(nonce), nil
 }
 
 func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.EthHash) (*api.EthTxReceipt, error) {
@@ -210,11 +210,11 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.Eth
 	return &receipt, nil
 }
 
-func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthInt) (api.EthTx, error) {
+func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthUint64) (api.EthTx, error) {
 	return api.EthTx{}, nil
 }
 
-func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthInt, txIndex api.EthInt) (api.EthTx, error) {
+func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthUint64, txIndex api.EthUint64) (api.EthTx, error) {
 	return api.EthTx{}, nil
 }
 
@@ -283,7 +283,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api
 	return blk.RawData(), nil
 }
 
-func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress, position api.EthInt, blkParam string) (api.EthBytes, error) {
+func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress, position api.EthUint64, blkParam string) (api.EthBytes, error) {
 	return nil, nil
 }
 
@@ -301,8 +301,8 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, b
 	return api.EthBigInt{Int: actor.Balance.Int}, nil
 }
 
-func (a *EthModule) EthChainId(ctx context.Context) (api.EthInt, error) {
-	return api.EthInt(build.Eip155ChainId), nil
+func (a *EthModule) EthChainId(ctx context.Context) (api.EthUint64, error) {
+	return api.EthUint64(build.Eip155ChainId), nil
 }
 
 func (a *EthModule) NetVersion(ctx context.Context) (string, error) {
@@ -318,9 +318,9 @@ func (a *EthModule) NetListening(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (a *EthModule) EthProtocolVersion(ctx context.Context) (api.EthInt, error) {
+func (a *EthModule) EthProtocolVersion(ctx context.Context) (api.EthUint64, error) {
 	height := a.Chain.GetHeaviestTipSet().Height()
-	return api.EthInt(a.StateManager.GetNetworkVersion(ctx, height)), nil
+	return api.EthUint64(a.StateManager.GetNetworkVersion(ctx, height)), nil
 }
 
 func (a *EthModule) EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error) {
@@ -462,13 +462,13 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 	return res, nil
 }
 
-func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall) (api.EthInt, error) {
+func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall) (api.EthUint64, error) {
 	invokeResult, err := a.applyEvmMsg(ctx, tx)
 	if err != nil {
-		return api.EthInt(0), err
+		return api.EthUint64(0), err
 	}
 	ret := invokeResult.MsgRct.GasUsed
-	return api.EthInt(ret), nil
+	return api.EthUint64(ret), nil
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error) {
@@ -529,11 +529,11 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 		}
 	}
 
-	block.Number = api.EthInt(ts.Height())
+	block.Number = api.EthUint64(ts.Height())
 	block.ParentHash = parentBlkHash
-	block.Timestamp = api.EthInt(ts.Blocks()[0].Timestamp)
+	block.Timestamp = api.EthUint64(ts.Blocks()[0].Timestamp)
 	block.BaseFeePerGas = api.EthBigInt{Int: ts.Blocks()[0].ParentBaseFee.Int}
-	block.GasUsed = api.EthInt(gasUsed)
+	block.GasUsed = api.EthUint64(gasUsed)
 	return block, nil
 }
 
@@ -589,15 +589,15 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 	}
 
 	tx := api.EthTx{
-		ChainID:              api.EthInt(build.Eip155ChainId),
+		ChainID:              api.EthUint64(build.Eip155ChainId),
 		Hash:                 txHash,
 		BlockHash:            blkHash,
-		BlockNumber:          api.EthInt(msgLookup.Height),
+		BlockNumber:          api.EthUint64(msgLookup.Height),
 		From:                 fromEthAddr,
 		To:                   toAddr,
 		Value:                api.EthBigInt(msg.Value),
-		Type:                 api.EthInt(2),
-		Gas:                  api.EthInt(msg.GasLimit),
+		Type:                 api.EthUint64(2),
+		Gas:                  api.EthUint64(msg.GasLimit),
 		MaxFeePerGas:         api.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: api.EthBigInt(msg.GasPremium),
 		V:                    api.EthBytes{},
