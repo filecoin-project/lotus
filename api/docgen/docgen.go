@@ -363,7 +363,8 @@ func init() {
 		},
 	})
 
-	ethint := api.EthInt(5)
+	ethint := api.EthUint64(5)
+
 	addExample(ethint)
 	addExample(&ethint)
 	ethaddr, _ := api.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
@@ -444,7 +445,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
-			//ExampleValues[t] = es
+			// ExampleValues[t] = es
 			return es
 		}
 	case reflect.Interface:

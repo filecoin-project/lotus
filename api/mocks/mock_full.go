@@ -937,10 +937,10 @@ func (mr *MockFullNodeMockRecorder) EthAccounts(arg0 interface{}) *gomock.Call {
 }
 
 // EthBlockNumber mocks base method.
-func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (api.EthInt, error) {
+func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthBlockNumber", arg0)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -967,10 +967,10 @@ func (mr *MockFullNodeMockRecorder) EthCall(arg0, arg1, arg2 interface{}) *gomoc
 }
 
 // EthChainId mocks base method.
-func (m *MockFullNode) EthChainId(arg0 context.Context) (api.EthInt, error) {
+func (m *MockFullNode) EthChainId(arg0 context.Context) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthChainId", arg0)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -982,10 +982,10 @@ func (mr *MockFullNodeMockRecorder) EthChainId(arg0 interface{}) *gomock.Call {
 }
 
 // EthEstimateGas mocks base method.
-func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 api.EthCall) (api.EthInt, error) {
+func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 api.EthCall) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1057,10 +1057,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockByNumber(arg0, arg1, arg2 interfa
 }
 
 // EthGetBlockTransactionCountByHash mocks base method.
-func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 api.EthHash) (api.EthInt, error) {
+func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 api.EthHash) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByHash", arg0, arg1)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1072,10 +1072,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByHash(arg0, arg1
 }
 
 // EthGetBlockTransactionCountByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 api.EthInt) (api.EthInt, error) {
+func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 api.EthUint64) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByNumber", arg0, arg1)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1087,10 +1087,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByNumber(arg0, ar
 }
 
 // EthGetCode mocks base method.
-func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 api.EthAddress) (string, error) {
+func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 api.EthAddress) (api.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetCode", arg0, arg1)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(api.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1102,10 +1102,10 @@ func (mr *MockFullNodeMockRecorder) EthGetCode(arg0, arg1 interface{}) *gomock.C
 }
 
 // EthGetStorageAt mocks base method.
-func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 api.EthAddress, arg2 api.EthInt, arg3 string) (string, error) {
+func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 api.EthAddress, arg2 api.EthBytes, arg3 string) (api.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetStorageAt", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(api.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1117,7 +1117,7 @@ func (mr *MockFullNodeMockRecorder) EthGetStorageAt(arg0, arg1, arg2, arg3 inter
 }
 
 // EthGetTransactionByBlockHashAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 api.EthHash, arg2 api.EthInt) (api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 api.EthHash, arg2 api.EthUint64) (api.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockHashAndIndex", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.EthTx)
@@ -1132,7 +1132,7 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockHashAndIndex(arg0, a
 }
 
 // EthGetTransactionByBlockNumberAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 api.EthInt) (api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 api.EthUint64) (api.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockNumberAndIndex", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.EthTx)
@@ -1162,10 +1162,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByHash(arg0, arg1 interface
 }
 
 // EthGetTransactionCount mocks base method.
-func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthInt, error) {
+func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionCount", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1207,10 +1207,10 @@ func (mr *MockFullNodeMockRecorder) EthMaxPriorityFeePerGas(arg0 interface{}) *g
 }
 
 // EthProtocolVersion mocks base method.
-func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (api.EthInt, error) {
+func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthProtocolVersion", arg0)
-	ret0, _ := ret[0].(api.EthInt)
+	ret0, _ := ret[0].(api.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
