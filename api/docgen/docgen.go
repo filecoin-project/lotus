@@ -339,6 +339,8 @@ func init() {
 	addExample(&ethint)
 	ethaddr, _ := api.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
 	addExample(&ethaddr)
+	ethhash, _ := api.EthHashFromCid(c)
+	addExample(&ethhash)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

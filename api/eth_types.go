@@ -24,6 +24,9 @@ import (
 type EthInt int64
 
 func (e EthInt) MarshalJSON() ([]byte, error) {
+	if e == 0 {
+		return json.Marshal("0x0")
+	}
 	return json.Marshal(fmt.Sprintf("0x%x", e))
 }
 
@@ -75,8 +78,14 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 type EthBytes []byte
 
 func (e EthBytes) MarshalJSON() ([]byte, error) {
-	encoded := "0x" + hex.EncodeToString(e)
-	return json.Marshal(encoded)
+	if len(e) == 0 {
+		return json.Marshal("0x00")
+	}
+	s := hex.EncodeToString(e)
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+	return json.Marshal("0x" + s)
 }
 
 func (e *EthBytes) UnmarshalJSON(b []byte) error {
@@ -145,12 +154,12 @@ func NewEthBlock() EthBlock {
 }
 
 type EthCall struct {
-	From     EthAddress `json:"from"`
-	To       EthAddress `json:"to"`
-	Gas      EthInt     `json:"gas"`
-	GasPrice EthBigInt  `json:"gasPrice"`
-	Value    EthBigInt  `json:"value"`
-	Data     EthBytes   `json:"data"`
+	From     EthAddress  `json:"from"`
+	To       *EthAddress `json:"to"`
+	Gas      EthInt      `json:"gas"`
+	GasPrice EthBigInt   `json:"gasPrice"`
+	Value    EthBigInt   `json:"value"`
+	Data     EthBytes    `json:"data"`
 }
 
 func (c *EthCall) UnmarshalJSON(b []byte) error {
@@ -166,7 +175,7 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 
 type EthTxReceipt struct {
 	TransactionHash  EthHash     `json:"transactionHash"`
-	TransactionIndex EthInt      `json:"transacionIndex"`
+	TransactionIndex EthInt      `json:"transactionIndex"`
 	BlockHash        EthHash     `json:"blockHash"`
 	BlockNumber      EthInt      `json:"blockNumber"`
 	From             EthAddress  `json:"from"`
@@ -179,6 +188,8 @@ type EthTxReceipt struct {
 	CumulativeGasUsed EthInt      `json:"cumulativeGasUsed"`
 	GasUsed           EthInt      `json:"gasUsed"`
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
+	LogsBloom         EthBytes    `json:"logsBloom"`
+	Logs              []string    `json:"logs"`
 }
 
 func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxReceipt, error) {
@@ -190,6 +201,8 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 		From:             tx.From,
 		To:               tx.To,
 		StateRoot:        EmptyEthHash,
+		LogsBloom:        []byte{0},
+		Logs:             []string{},
 	}
 
 	contractAddr, err := CheckContractCreation(lookup)
