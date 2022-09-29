@@ -52,7 +52,7 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 	// log := logging.FromContext(ctx, log).With("miner", m.ID())
 
 	log.Infof("Miner info:\n\twallet - %s\n\tnetwork - %s\n\tsubnet - %s\n\tMir ID - %s\n\tvalidators - %v",
-		m.Addr, m.NetName, m.SubnetID, m.MirID, m.InitialValidatorSet.GetValidators())
+		m.Addr, m.NetName, m.MirID, m.InitialValidatorSet.GetValidators())
 
 	mirErrors := m.Start(ctx)
 

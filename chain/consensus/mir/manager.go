@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
@@ -58,7 +57,7 @@ type Manager struct {
 	CurrentMempool chan mempool.Descriptor
 
 	// Reconfiguration related types.
-	// InitialValidatorSet  *hierarchical.ValidatorSet
+	InitialValidatorSet  *ValidatorSet
 	reconfigurationNonce uint64
 }
 
@@ -73,15 +72,15 @@ func NewManager(ctx context.Context, addr address.Address, api v1api.FullNode) (
 	// 	return nil, err
 	// }
 
-	libp2pKeyBytes, err := api.PrivKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
+	// libp2pKeyBytes, err := api.PrivKey(ctx)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to get private key: %w", err)
+	// }
 
-	libp2pKey, err := crypto.UnmarshalPrivateKey(libp2pKeyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal private key: %w", err)
-	}
+	// libp2pKey, err := crypto.UnmarshalPrivateKey(libp2pKeyBytes)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to unmarshal private key: %w", err)
+	// }
 
 	// initialValidatorSet, err := getSubnetValidators(ctx, subnetID, api)
 	// if err != nil {
@@ -96,18 +95,18 @@ func NewManager(ctx context.Context, addr address.Address, api v1api.FullNode) (
 	// 	return nil, fmt.Errorf("failed to build node membership: %w", err)
 	// }
 
-	memberships := make([]map[t.NodeID]t.NodeAddress, ConfigOffset+1)
-	for i := 0; i < ConfigOffset+1; i++ {
-		memberships[t.EpochNr(i)] = initialMembership
-	}
+	// memberships := make([]map[t.NodeID]t.NodeAddress, ConfigOffset+1)
+	// for i := 0; i < ConfigOffset+1; i++ {
+	// 	memberships[t.EpochNr(i)] = initialMembership
+	// }
 
-	mirID := newMirID(subnetID.String(), addr.String())
-	mirAddr := initialMembership[t.NodeID(mirID)]
+	// mirID := newMirID(subnetID.String(), addr.String())
+	// mirAddr := initialMembership[t.NodeID(mirID)]
 
-	log.Info("Eudico node's Mir ID: ", mirID)
-	log.Info("Eudico node's address in Mir: ", mirAddr)
-	log.Info("Mir nodes IDs: ", nodeIDs)
-	log.Info("Mir nodes addresses: ", initialMembership)
+	// log.Info("Eudico node's Mir ID: ", mirID)
+	// log.Info("Eudico node's address in Mir: ", mirAddr)
+	// log.Info("Mir nodes IDs: ", nodeIDs)
+	// log.Info("Mir nodes addresses: ", initialMembership)
 
 	peerID, err := peer.AddrInfoFromP2pAddr(mirAddr)
 	if err != nil {

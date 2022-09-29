@@ -1,3 +1,5 @@
+//go:generate go run ./gen/gen.go
+
 // Package mir implements Eudico consensus in Mir framework.
 package mir
 
@@ -66,7 +68,7 @@ func (bft *Mir) VerifyBlockSignature(ctx context.Context, h *types.BlockHeader,
 }
 
 func (bft *Mir) SignBlock(ctx context.Context, w api.Wallet,
-	addr address.Address) error {
+	addr address.Address, next *types.BlockHeader) error {
 
 	// nosigbytes, err := next.SigningBytes()
 	// if err != nil {
