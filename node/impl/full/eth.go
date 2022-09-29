@@ -284,12 +284,13 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api
 }
 
 func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress, position api.EthBytes, blkParam string) (api.EthBytes, error) {
-	if l := len(position); l > 32 {
+	l := len(position)
+	if l > 32 {
 		return nil, fmt.Errorf("supplied storage key is too long")
-	} else {
-		// pad with zero bytes if smaller than 32 bytes
-		position = append(make([]byte, 32-l, 32-l), position...)
 	}
+
+	// pad with zero bytes if smaller than 32 bytes
+	position = append(make([]byte, 32-l, 32-l), position...)
 
 	fmt.Printf("%x\n", position)
 
