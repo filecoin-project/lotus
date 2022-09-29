@@ -43,8 +43,9 @@ var filplusCmd = &cli.Command{
 }
 
 var filplusVerifyClientCmd = &cli.Command{
-	Name:  "grant-datacap",
-	Usage: "give allowance to the specified verified client address",
+	Name:      "grant-datacap",
+	Usage:     "give allowance to the specified verified client address",
+	ArgsUsage: "[clientAddress datacap]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "from",
@@ -134,6 +135,10 @@ var filplusListNotariesCmd = &cli.Command{
 	Name:  "list-notaries",
 	Usage: "list all notaries",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 0 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -164,6 +169,10 @@ var filplusListClientsCmd = &cli.Command{
 	Name:  "list-clients",
 	Usage: "list all verified clients",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 0 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -216,10 +225,11 @@ var filplusListClientsCmd = &cli.Command{
 }
 
 var filplusCheckClientCmd = &cli.Command{
-	Name:  "check-client-datacap",
-	Usage: "check verified client remaining bytes",
+	Name:      "check-client-datacap",
+	Usage:     "check verified client remaining bytes",
+	ArgsUsage: "clientAddress",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify client address to check")
 		}
 
@@ -250,10 +260,11 @@ var filplusCheckClientCmd = &cli.Command{
 }
 
 var filplusCheckNotaryCmd = &cli.Command{
-	Name:  "check-notary-datacap",
-	Usage: "check a notary's remaining bytes",
+	Name:      "check-notary-datacap",
+	Usage:     "check a notary's remaining bytes",
+	ArgsUsage: "notaryAddress",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify notary address to check")
 		}
 
@@ -306,8 +317,9 @@ func checkNotary(ctx context.Context, api v0api.FullNode, vaddr address.Address)
 }
 
 var filplusSignRemoveDataCapProposal = &cli.Command{
-	Name:  "sign-remove-data-cap-proposal",
-	Usage: "allows a notary to sign a Remove Data Cap Proposal",
+	Name:      "sign-remove-data-cap-proposal",
+	Usage:     "allows a notary to sign a Remove Data Cap Proposal",
+	ArgsUsage: "[verifierAddress clientAddress allowanceToRemove]",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:     "id",

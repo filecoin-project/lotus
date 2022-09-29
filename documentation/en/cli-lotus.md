@@ -1221,7 +1221,7 @@ NAME:
    lotus filplus grant-datacap - give allowance to the specified verified client address
 
 USAGE:
-   lotus filplus grant-datacap [command options] [arguments...]
+   lotus filplus grant-datacap [command options] [clientAddress datacap]
 
 OPTIONS:
    --from value  specify your notary address to send the message from
@@ -1260,7 +1260,7 @@ NAME:
    lotus filplus check-client-datacap - check verified client remaining bytes
 
 USAGE:
-   lotus filplus check-client-datacap [command options] [arguments...]
+   lotus filplus check-client-datacap [command options] clientAddress
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1273,7 +1273,7 @@ NAME:
    lotus filplus check-notary-datacap - check a notary's remaining bytes
 
 USAGE:
-   lotus filplus check-notary-datacap [command options] [arguments...]
+   lotus filplus check-notary-datacap [command options] notaryAddress
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1286,7 +1286,7 @@ NAME:
    lotus filplus sign-remove-data-cap-proposal - allows a notary to sign a Remove Data Cap Proposal
 
 USAGE:
-   lotus filplus sign-remove-data-cap-proposal [command options] [arguments...]
+   lotus filplus sign-remove-data-cap-proposal [command options] [verifierAddress clientAddress allowanceToRemove]
 
 OPTIONS:
    --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
