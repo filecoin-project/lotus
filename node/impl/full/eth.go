@@ -17,7 +17,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
 	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
@@ -264,11 +263,9 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api
 		return nil, fmt.Errorf("no message receipt")
 	}
 
-	if res.MsgRct.ExitCode != exitcode.Ok {
+	if res.MsgRct.ExitCode.IsError() {
 		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 	}
-
-	fmt.Printf("%x\n", res.MsgRct.Return)
 
 	var bytecodeCid cbg.CborCid
 	if err := bytecodeCid.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
@@ -292,8 +289,6 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress,
 	// pad with zero bytes if smaller than 32 bytes
 	position = append(make([]byte, 32-l, 32-l), position...)
 
-	fmt.Printf("%x\n", position)
-
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
@@ -315,14 +310,12 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress,
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%x\n", tmp)
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
 		StorageKey: tmp[1 : len(tmp)-1], // TODO strip the JSON-encoding quotes -- yuck
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
 	}
-	fmt.Printf("%x\n", params)
 
 	msg := &types.Message{
 		From:       from,
@@ -530,7 +523,7 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 	if err != nil {
 		return nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
-	if res.MsgRct.ExitCode != exitcode.Ok {
+	if res.MsgRct.ExitCode.IsError() {
 		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 	}
 	return res, nil
