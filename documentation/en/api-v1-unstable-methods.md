@@ -2347,7 +2347,7 @@ Inputs:
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x07"`
 
 ### EthGetStorageAt
 
@@ -2358,12 +2358,12 @@ Inputs:
 ```json
 [
   "0x0707070707070707070707070707070707070707",
-  "0x5",
+  "0x07",
   "string value"
 ]
 ```
 
-Response: `"string value"`
+Response: `"0x07"`
 
 ### EthGetTransactionByBlockHashAndIndex
 
