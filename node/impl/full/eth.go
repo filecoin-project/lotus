@@ -151,12 +151,12 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum string, full
 }
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *api.EthHash) (*api.EthTx, error) {
-	cid := txHash.ToCid()
-
 	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
 	if txHash == nil {
 		return nil, nil
 	}
+
+	cid := txHash.ToCid()
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
 	if err != nil {
