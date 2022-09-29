@@ -291,8 +291,27 @@ var finalResultCmd = &cli.Command{
 		}
 
 		fmt.Println("iterating over proposals")
-		dps, _ := marketState.Proposals()
-		if err := dps.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
+		dealProposals, err := marketState.Proposals()
+		if err != nil {
+			return err
+		}
+
+		dealStates, err := marketState.States()
+		if err != nil {
+			return err
+		}
+
+		if err := dealProposals.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
+
+			dealState, ok, err := dealStates.Get(dealID)
+			if err != nil {
+				return err
+			}
+			if !ok || dealState.SectorStartEpoch == -1 {
+				// effectively a continue
+				return nil
+			}
+
 			clientId := lookupId(d.Client)
 			if cd, found := clientToDealStorage[clientId]; found {
 				clientToDealStorage[clientId] = big.Add(cd, big.NewInt(int64(d.PieceSize)))
@@ -364,7 +383,7 @@ var finalResultCmd = &cli.Command{
 			}
 
 			//process msigs
-			// There is a possibilty that enough signers have voted for BOTH options in the poll to be above the threshold
+			// There is a possibility that enough signers have voted for BOTH options in the poll to be above the threshold
 			// Because we are iterating over votes in order they arrived, the first option to go over the threshold will win
 			// This is in line with onchain behaviour (consider a case where signers are competing to withdraw all the funds
 			// in an msig into 2 different accounts)
@@ -480,35 +499,35 @@ var finalResultCmd = &cli.Command{
 
 		fmt.Println("\n\nFinal results **drumroll**")
 		if rejectionBalance.GreaterThanEqual(big.Mul(approveBalance, big.NewInt(3))) {
-			fmt.Println("token holders VETO FIP-0036!!!")
+			fmt.Println("token holders VETO FIP-0036!")
 		} else if approveBalance.LessThanEqual(rejectionBalance) {
-			fmt.Println("token holders REJECT FIP-0036 :(")
+			fmt.Println("token holders REJECT FIP-0036")
 		} else {
-			fmt.Println("token holders ACCEPT FIP-0036 :)")
+			fmt.Println("token holders ACCEPT FIP-0036")
 		}
 
 		if rejectionDealPower.GreaterThanEqual(big.Mul(approveDealPower, big.NewInt(3))) {
-			fmt.Println("SPs by deall data stored VETO FIP-0036!!!")
+			fmt.Println("SPs by deal data stored VETO FIP-0036!")
 		} else if approveDealPower.LessThanEqual(rejectionDealPower) {
-			fmt.Println("SPs by deal data stored REJECT FIP-0036 :(")
+			fmt.Println("SPs by deal data stored REJECT FIP-0036")
 		} else {
-			fmt.Println("SPs by deal data stored ACCEPT FIP-0036 :)")
+			fmt.Println("SPs by deal data stored ACCEPT FIP-0036")
 		}
 
 		if rejectionRBP.GreaterThanEqual(big.Mul(approveRBP, big.NewInt(3))) {
-			fmt.Println("SPs by total raw byte power VETO FIP-0036!!!")
+			fmt.Println("SPs by total raw byte power VETO FIP-0036!")
 		} else if approveRBP.LessThanEqual(rejectionRBP) {
-			fmt.Println("SPs by total raw byte power REJECT FIP-0036 :(")
+			fmt.Println("SPs by total raw byte power REJECT FIP-0036")
 		} else {
-			fmt.Println("SPs by total raw byte power ACCEPT FIP-0036 :)")
+			fmt.Println("SPs by total raw byte power ACCEPT FIP-0036")
 		}
 
 		if clientRejectBytes.GreaterThanEqual(big.Mul(clientApproveBytes, big.NewInt(3))) {
-			fmt.Println("Storage Clients VETO FIP-0036!!!")
+			fmt.Println("Storage Clients VETO FIP-0036!")
 		} else if clientApproveBytes.LessThanEqual(clientRejectBytes) {
-			fmt.Println("Storage Clients REJECT FIP-0036 :(")
+			fmt.Println("Storage Clients REJECT FIP-0036")
 		} else {
-			fmt.Println("Storage Clients ACCEPT FIP-0036 :)")
+			fmt.Println("Storage Clients ACCEPT FIP-0036")
 		}
 
 		return nil
