@@ -918,6 +918,9 @@ var sectorsRenewCmd = &cli.Command{
 				}
 
 				si, found := activeSectorsInfo[abi.SectorNumber(id)]
+				if len(si.DealIDs) > 0 && cctx.Bool("only-cc") {
+					continue
+				}
 				if !found {
 					return xerrors.Errorf("sector %d is not active", id)
 				}
