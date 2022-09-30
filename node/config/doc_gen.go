@@ -1243,10 +1243,10 @@ finalities beyond the compaction boundary, default is 0, -1 retains everything`,
 			Comment: `A folder to store Raft's data.`,
 		},
 		{
-			Name: "InitPeerset",
-			Type: "[]peer.ID",
+			Name: "InitPeersetMultiAddr",
+			Type: "[]string",
 
-			Comment: `InitPeerset provides the list of initial cluster peers for new Raft
+			Comment: `InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
 peers (with no prior state). It is ignored when Raft was already
 initialized or when starting in staging mode.`,
 		},

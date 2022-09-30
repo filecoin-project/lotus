@@ -2,7 +2,6 @@ package config
 
 import (
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer"
@@ -654,10 +653,10 @@ type UserRaftConfig struct {
 	HostShutdown bool
 	// A folder to store Raft's data.
 	DataFolder string
-	// InitPeerset provides the list of initial cluster peers for new Raft
+	// InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
 	// peers (with no prior state). It is ignored when Raft was already
 	// initialized or when starting in staging mode.
-	InitPeerset []peer.ID
+	InitPeersetMultiAddr []string
 	// LeaderTimeout specifies how long to wait for a leader before
 	// failing an operation.
 	WaitForLeaderTimeout Duration

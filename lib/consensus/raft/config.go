@@ -1,16 +1,15 @@
 package consensus
 
 import (
-	"github.com/filecoin-project/lotus/node/repo"
 	"io/ioutil"
 	"path/filepath"
 	"time"
 
 	hraft "github.com/hashicorp/raft"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 // ConfigKey is the default configuration key for holding this component's
@@ -40,7 +39,7 @@ type ClusterRaftConfig struct {
 	// InitPeerset provides the list of initial cluster peers for new Raft
 	// peers (with no prior state). It is ignored when Raft was already
 	// initialized or when starting in staging mode.
-	InitPeerset []peer.ID
+	InitPeerset []string
 	// LeaderTimeout specifies how long to wait for a leader before
 	// failing an operation.
 	WaitForLeaderTimeout time.Duration
@@ -68,7 +67,7 @@ type ClusterRaftConfig struct {
 func DefaultClusterRaftConfig() *ClusterRaftConfig {
 	var cfg ClusterRaftConfig
 	cfg.DataFolder = "" // empty so it gets omitted
-	cfg.InitPeerset = []peer.ID{}
+	cfg.InitPeerset = []string{}
 	cfg.WaitForLeaderTimeout = DefaultWaitForLeaderTimeout
 	cfg.NetworkTimeout = DefaultNetworkTimeout
 	cfg.CommitRetries = DefaultCommitRetries
@@ -90,7 +89,7 @@ func DefaultClusterRaftConfig() *ClusterRaftConfig {
 func NewClusterRaftConfig(userRaftConfig *config.UserRaftConfig) *ClusterRaftConfig {
 	var cfg ClusterRaftConfig
 	cfg.DataFolder = userRaftConfig.DataFolder
-	cfg.InitPeerset = userRaftConfig.InitPeerset
+	cfg.InitPeerset = userRaftConfig.InitPeersetMultiAddr
 	cfg.WaitForLeaderTimeout = time.Duration(userRaftConfig.WaitForLeaderTimeout)
 	cfg.NetworkTimeout = time.Duration(userRaftConfig.NetworkTimeout)
 	cfg.CommitRetries = userRaftConfig.CommitRetries
@@ -108,6 +107,15 @@ func NewClusterRaftConfig(userRaftConfig *config.UserRaftConfig) *ClusterRaftCon
 	// Set up logging
 	cfg.RaftConfig.LogOutput = ioutil.Discard
 	//cfg.RaftConfig.Logger = &hcLogToLogger{}
+
+	//addrInfos, err := addrutil.ParseAddresses(context.Background(), userRaftConfig.InitPeersetMultiAddr)
+	//if err != nil {
+	//	return nil
+	//}
+	//for _, addrInfo := range addrInfos {
+	//	cfg.InitPeerset = append(cfg.InitPeerset, addrInfo.ID)
+	//}
+
 	return &cfg
 
 }
@@ -355,9 +363,9 @@ func ValidateConfig(cfg *ClusterRaftConfig) error {
 // GetDataFolder returns the Raft data folder that we are using.
 func (cfg *ClusterRaftConfig) GetDataFolder(repo repo.LockedRepo) string {
 	if cfg.DataFolder == "" {
-		return filepath.Join(repo.Path() + DefaultDataSubFolder)
+		return filepath.Join(repo.Path(), DefaultDataSubFolder)
 	}
-	return filepath.Join(repo.Path() + cfg.DataFolder)
+	return filepath.Join(repo.Path(), cfg.DataFolder)
 }
 
 //

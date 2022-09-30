@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
@@ -22,7 +23,7 @@ type mockMpool struct {
 	nonces map[address.Address]uint64
 }
 
-var _ MpoolNonceAPI = (*mockMpool)(nil)
+var _ messagepool.MpoolNonceAPI = (*mockMpool)(nil)
 
 func newMockMpool() *mockMpool {
 	return &mockMpool{nonces: make(map[address.Address]uint64)}

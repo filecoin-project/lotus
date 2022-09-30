@@ -245,13 +245,13 @@
   # env var: LOTUS_RAFT_DATAFOLDER
   #DataFolder = ""
 
-  # InitPeerset provides the list of initial cluster peers for new Raft
+  # InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
   # peers (with no prior state). It is ignored when Raft was already
   # initialized or when starting in staging mode.
   #
-  # type: []peer.ID
-  # env var: LOTUS_RAFT_INITPEERSET
-  #InitPeerset = []
+  # type: []string
+  # env var: LOTUS_RAFT_INITPEERSETMULTIADDR
+  #InitPeersetMultiAddr = []
 
   # LeaderTimeout specifies how long to wait for a leader before
   # failing an operation.

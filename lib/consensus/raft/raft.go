@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/ipfs/go-log/v2"
-	"go.uber.org/zap"
+	"github.com/filecoin-project/lotus/lib/addrutil"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,9 +12,13 @@ import (
 
 	hraft "github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"github.com/ipfs/go-log/v2"
 	p2praft "github.com/libp2p/go-libp2p-raft"
 	host "github.com/libp2p/go-libp2p/core/host"
 	peer "github.com/libp2p/go-libp2p/core/peer"
+	"go.uber.org/zap"
+
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var raftLogger = log.Logger("raft-cluster")
@@ -86,7 +88,10 @@ func newRaftWrapper(
 		return nil, err
 	}
 
-	raftW.makeServerConfig()
+	err = raftW.makeServerConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	err = raftW.makeTransport()
 	if err != nil {
@@ -225,8 +230,17 @@ func (rw *raftWrapper) Bootstrap() (bool, error) {
 
 // create Raft servers configuration. The result is used
 // by Bootstrap() when it proceeds to Bootstrap.
-func (rw *raftWrapper) makeServerConfig() {
-	rw.serverConfig = makeServerConf(append(rw.config.InitPeerset, rw.host.ID()))
+func (rw *raftWrapper) makeServerConfig() error {
+	peers := []peer.ID{}
+	addrInfos, err := addrutil.ParseAddresses(context.Background(), rw.config.InitPeerset)
+	if err != nil {
+		return err
+	}
+	for _, addrInfo := range addrInfos {
+		peers = append(peers, addrInfo.ID)
+	}
+	rw.serverConfig = makeServerConf(append(peers, rw.host.ID()))
+	return nil
 }
 
 // creates a server configuration with all peers as Voters.

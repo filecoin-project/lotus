@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -313,7 +312,7 @@ var (
 func DefaultUserRaftConfig() *UserRaftConfig {
 	var cfg UserRaftConfig
 	cfg.DataFolder = "" // empty so it gets omitted
-	cfg.InitPeerset = []peer.ID{}
+	cfg.InitPeersetMultiAddr = []string{}
 	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
 	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
 	cfg.CommitRetries = DefaultCommitRetries

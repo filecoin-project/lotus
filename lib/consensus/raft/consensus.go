@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/lib/addrutil"
 	"sort"
 	"time"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/repo"
 
 	//ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -36,7 +37,21 @@ var logger = logging.Logger("raft")
 type RaftState struct {
 	NonceMap api.NonceMapType
 	MsgUuids api.MsgUuidMapType
-	Mpool    *messagepool.MessagePool
+
+	// TODO: add comment explaining why this is needed
+	// We need a reference to the messagepool in the raft state in order to
+	// sync messages that have been sent by the leader node
+	// Miner calls StateWaitMsg after MpoolPushMessage to check if the message has
+	// landed on chain. This check requires the message be stored in the local chainstore
+	// If a leadernode goes down after sending a message to the chain and is replaced by
+	// another node, the other node needs to have this message in its chainstore for the
+	// above check to succeed.
+
+	// This is because the miner only stores signed CIDs but the message received from in a
+	// block will be unsigned (for BLS). Hence, the process relies on the node to store the
+	// signed message which holds a copy of the unsigned message to properly perform all the
+	// needed checks
+	Mpool *messagepool.MessagePool
 }
 
 func newRaftState(mpool *messagepool.MessagePool) *RaftState {
@@ -120,6 +135,15 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 	actor := libp2praft.NewActor(raft.raft)
 	consensus.SetActor(actor)
 
+	peers := []peer.ID{}
+	addrInfos, err := addrutil.ParseAddresses(ctx, cfg.InitPeerset)
+	for _, addrInfo := range addrInfos {
+		peers = append(peers, addrInfo.ID)
+
+		// Add peer to address book
+		host.Peerstore().AddAddrs(addrInfo.ID, addrInfo.Addrs, time.Duration(time.Hour*100))
+	}
+
 	cc := &Consensus{
 		ctx:       ctx,
 		cancel:    cancel,
@@ -129,7 +153,7 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 		actor:     actor,
 		state:     state,
 		raft:      raft,
-		peerSet:   cfg.InitPeerset,
+		peerSet:   peers,
 		rpcReady:  make(chan struct{}, 1),
 		readyCh:   make(chan struct{}, 1),
 		repo:      repo,

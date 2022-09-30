@@ -242,7 +242,8 @@ func ConfigFullNode(c interface{}) Option {
 		// Chain node cluster enabled
 		If(cfg.Raft.ClusterModeEnabled,
 			Override(new(*gorpc.Client), modules.NewRPCClient),
-			Override(new(*consensus.Consensus), consensus2.NewConsensusWithRPCClient(false)),
+			Override(new(*consensus2.ClusterRaftConfig), consensus2.NewClusterRaftConfig(&cfg.Raft)),
+			Override(new(*consensus2.Consensus), consensus2.NewConsensusWithRPCClient(false)),
 			Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
 			Override(new(messagesigner.MsgSigner), From(new(*messagesigner.MessageSignerConsensus))),
 			Override(new(*modules.RPCHandler), modules.NewRPCHandler),

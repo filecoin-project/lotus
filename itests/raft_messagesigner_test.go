@@ -45,7 +45,6 @@ func generatePrivKey() (*kit.Libp2p, error) {
 func getRaftState(ctx context.Context, t *testing.T, node *kit.TestFullNode) *api.RaftStateData {
 	raftState, err := node.RaftState(ctx)
 	require.NoError(t, err)
-	//rstate := raftState.(*consensus.RaftState)
 	return raftState
 }
 
@@ -57,7 +56,13 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 	pkey1, _ := generatePrivKey()
 	pkey2, _ := generatePrivKey()
 
-	initPeerSet := []peer.ID{pkey0.PeerID, pkey1.PeerID, pkey2.PeerID}
+	pkeys := []*kit.Libp2p{pkey0, pkey1, pkey2}
+	initPeerSet := []string{}
+	for _, pkey := range pkeys {
+		initPeerSet = append(initPeerSet, "/p2p/"+pkey.PeerID.String())
+	}
+
+	//initPeerSet := []peer.ID{pkey0.PeerID, pkey1.PeerID, pkey2.PeerID}
 
 	raftOps := kit.ConstructorOpts(
 		node.Override(new(*gorpc.Client), modules.NewRPCClient),
