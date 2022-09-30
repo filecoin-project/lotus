@@ -13,3 +13,30 @@ const (
 )
 
 var log = logging.Logger("mir-consensus")
+
+const (
+	ConfigMessageType = 0 // Mir specific config message
+	SignedMessageType = 1 // Eudico signed message
+	CrossMessageType  = 2 // Eudico cross-message
+)
+
+func NewSignedMessageBytes(msg, opaque []byte) []byte {
+	var payload []byte
+	payload = append(msg, opaque...)
+	payload = append(payload, SignedMessageType)
+	return payload
+}
+
+func NewCrossMessageBytes(msg, opaque []byte) []byte {
+	var payload []byte
+	payload = append(msg, opaque...)
+	payload = append(payload, CrossMessageType)
+	return payload
+}
+
+func NewConfigMessageBytes(msg, opaque []byte) []byte {
+	var payload []byte
+	payload = append(msg, opaque...)
+	payload = append(payload, ConfigMessageType)
+	return payload
+}

@@ -8,13 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/consensus/mir/mempool"
-	"github.com/filecoin-project/lotus/chain/consensus/mir/mempool/fifo"
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool"
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/fifo"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/mir"
@@ -46,84 +45,54 @@ type Manager struct {
 	Pool    *fifo.Pool
 
 	// Mir related types.
-	MirNode        *mir.Node
-	MirID          string
-	WAL            *simplewal.WAL
-	Net            net.Transport
-	ISS            *iss.ISS
-	CryptoManager  *CryptoManager
-	StateManager   *StateManager
-	interceptor    *eventlog.Recorder
-	CurrentMempool chan mempool.Descriptor
+	MirNode       *mir.Node
+	MirID         string
+	WAL           *simplewal.WAL
+	Net           net.Transport
+	ISS           *iss.ISS
+	CryptoManager *CryptoManager
+	StateManager  *StateManager
+	interceptor   *eventlog.Recorder
+	ToMir         chan chan []*mirproto.Request
 
 	// Reconfiguration related types.
 	InitialValidatorSet  *ValidatorSet
 	reconfigurationNonce uint64
 }
 
-func NewManager(ctx context.Context, addr address.Address, api v1api.FullNode) (*Manager, error) {
+func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1api.FullNode) (*Manager, error) {
 	netName, err := api.StateNetworkName(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// subnetID, err := address.SubnetIDFromString(string(netName))
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// libp2pKeyBytes, err := api.PrivKey(ctx)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to get private key: %w", err)
-	// }
-
-	// libp2pKey, err := crypto.UnmarshalPrivateKey(libp2pKeyBytes)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to unmarshal private key: %w", err)
-	// }
-
-	// initialValidatorSet, err := getSubnetValidators(ctx, subnetID, api)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to get validator set: %w", err)
-	// }
-	// if initialValidatorSet.Size() == 0 {
-	// 	return nil, fmt.Errorf("empty validator set")
-	// }
-
-	// nodeIDs, initialMembership, err := validatorsMembership(initialValidatorSet.Validators)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to build node membership: %w", err)
-	// }
-
-	// memberships := make([]map[t.NodeID]t.NodeAddress, ConfigOffset+1)
-	// for i := 0; i < ConfigOffset+1; i++ {
-	// 	memberships[t.EpochNr(i)] = initialMembership
-	// }
-
-	// mirID := newMirID(subnetID.String(), addr.String())
-	// mirAddr := initialMembership[t.NodeID(mirID)]
-
-	// log.Info("Eudico node's Mir ID: ", mirID)
-	// log.Info("Eudico node's address in Mir: ", mirAddr)
-	// log.Info("Mir nodes IDs: ", nodeIDs)
-	// log.Info("Mir nodes addresses: ", initialMembership)
-
-	peerID, err := peer.AddrInfoFromP2pAddr(mirAddr)
+	initialValidatorSet, err := getSubnetValidators(ctx, api)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get addr info: %w", err)
+		return nil, fmt.Errorf("failed to get validator set: %w", err)
+	}
+	if initialValidatorSet.Size() == 0 {
+		return nil, fmt.Errorf("empty validator set")
 	}
 
-	h, err := libp2p.New(
-		libp2p.Identity(libp2pKey),
-		libp2p.DefaultTransports,
-		libp2p.ListenAddrs(peerID.Addrs[0]),
-	)
+	nodeIDs, initialMembership, err := validatorsMembership(initialValidatorSet.Validators)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create libp2p host: %w", err)
+		return nil, fmt.Errorf("failed to build node membership: %w", err)
 	}
+
+	memberships := make([]map[t.NodeID]t.NodeAddress, ConfigOffset+1)
+	for i := 0; i < ConfigOffset+1; i++ {
+		memberships[t.EpochNr(i)] = initialMembership
+	}
+
+	mirID := newMirID(addr.String())
+	mirAddr := initialMembership[t.NodeID(mirID)]
+
+	log.Info("Eudico node's Mir ID: ", mirID)
+	log.Info("Eudico node's address in Mir: ", mirAddr)
+	log.Info("Mir nodes IDs: ", nodeIDs)
+	log.Info("Mir nodes addresses: ", initialMembership)
 
 	// Logger.
-
 	logger := newManagerLogger()
 
 	// Create Mir modules.
@@ -162,7 +131,7 @@ func NewManager(ctx context.Context, addr address.Address, api v1api.FullNode) (
 
 	// Instantiate the ISS protocol module with default configuration.
 
-	issConfig := iss.DefaultConfig(initialMembership)
+	issConfig := iss.DefaultParams(initialMembership)
 	issConfig.ConfigOffset = ConfigOffset
 	issProtocol, err := iss.New(
 		t.NodeID(mirID),
@@ -184,7 +153,6 @@ func NewManager(ctx context.Context, addr address.Address, api v1api.FullNode) (
 
 	m := Manager{
 		Addr:                addr,
-		SubnetID:            subnetID,
 		NetName:             netName,
 		Pool:                fifo.New(),
 		MirID:               mirID,
@@ -194,19 +162,19 @@ func NewManager(ctx context.Context, addr address.Address, api v1api.FullNode) (
 		Net:                 netTransport,
 		ISS:                 issProtocol,
 		InitialValidatorSet: initialValidatorSet,
-		CurrentMempool:      make(chan mempool.Descriptor),
+		ToMir:               make(chan chan []*mirproto.Request),
 	}
 
 	sm := NewStateManager(initialMembership, &m)
 
 	// Use a mempool for incoming requests.
-	mpool := mempool.NewModule(
-		m.CurrentMempool,
-		&mempool.ModuleConfig{
+	mpool := pool.NewModule(
+		m.ToMir,
+		&pool.ModuleConfig{
 			Self:   "mempool",
 			Hasher: "hasher",
 		},
-		&mempool.ModuleParams{
+		&pool.ModuleParams{
 			MaxTransactionsInBatch: 10,
 		},
 	)
@@ -326,16 +294,14 @@ func parseTx(tx []byte) (interface{}, error) {
 	var msg interface{}
 
 	lastByte := tx[ln-1]
-	// switch lastByte {
-	// case common.SignedMessageType:
-	// 	msg, err = types.DecodeSignedMessage(tx[:ln-1])
-	// case common.CrossMessageType:
-	// 	msg, err = types.DecodeUnverifiedCrossMessage(tx[:ln-1])
-	// case common.ConfigMessageType:
-	// 	return nil, fmt.Errorf("config message is not supported")
-	// default:
-	// 	err = fmt.Errorf("unknown message type %d", lastByte)
-	// }
+	switch lastByte {
+	case SignedMessageType:
+		msg, err = types.DecodeSignedMessage(tx[:ln-1])
+	case ConfigMessageType:
+		return nil, fmt.Errorf("config message is not supported")
+	default:
+		err = fmt.Errorf("unknown message type %d", lastByte)
+	}
 
 	if err != nil {
 		return nil, err
@@ -364,14 +330,6 @@ func (m *Manager) GetMessages(batch *Batch) (msgs []*types.SignedMessage, crossM
 			}
 			msgs = append(msgs, msg)
 			log.Infof("got message: to=%s, nonce= %d", msg.Message.To, msg.Message.Nonce)
-		case *types.UnverifiedCrossMsg:
-			found := m.Pool.DeleteRequest(msg.Cid().String())
-			if !found {
-				log.Errorf("unable to find a request with %v hash", msg.Cid())
-				continue
-			}
-			crossMsgs = append(crossMsgs, msg.Message)
-			log.Infof("got cross-message: to=%s, nonce= %d", msg.Message.To, msg.Message.Nonce)
 		default:
 			log.Error("got unknown type request in a block")
 		}
@@ -379,11 +337,10 @@ func (m *Manager) GetMessages(batch *Batch) (msgs []*types.SignedMessage, crossM
 	return
 }
 
-func (m *Manager) TransportRequests(msgs []*types.SignedMessage, crossMsgs []*types.UnverifiedCrossMsg) (
+func (m *Manager) TransportRequests(msgs []*types.SignedMessage) (
 	requests []*mirproto.Request,
 ) {
 	requests = append(requests, m.batchSignedMessages(msgs)...)
-	requests = append(requests, m.batchCrossMessages(crossMsgs)...)
 	return
 }
 
@@ -403,7 +360,7 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 	requests []*mirproto.Request,
 ) {
 	for _, msg := range msgs {
-		clientID := newMirID(m.SubnetID.String(), msg.Message.From.String())
+		clientID := newMirID(msg.Message.From.String())
 		nonce := msg.Message.Nonce
 		if !m.Pool.IsTargetRequest(clientID) {
 			continue
@@ -414,7 +371,7 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 			log.Error("unable to serialize message:", err)
 			continue
 		}
-		// data := common.NewSignedMessageBytes(msgBytes, nil)
+		data := NewSignedMessageBytes(msgBytes, nil)
 
 		r := &mirproto.Request{
 			ClientId: clientID,
@@ -425,41 +382,6 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 
 		m.Pool.AddRequest(msg.Cid().String(), r)
 
-		requests = append(requests, r)
-	}
-	return requests
-}
-
-// batchCrossMessages batches cross messages into the request pool and sends them to Mir.
-func (m *Manager) batchCrossMessages(crossMsgs []*types.UnverifiedCrossMsg) (
-	requests []*mirproto.Request,
-) {
-	for _, msg := range crossMsgs {
-		msn, err := msg.Message.From.Subnet()
-		if err != nil {
-			log.Error("unable to get subnet from message:", err)
-			continue
-		}
-		clientID := newMirID(msn.String(), msg.Message.From.String())
-		nonce := msg.Message.Nonce
-		if !m.Pool.IsTargetRequest(clientID) {
-			continue
-		}
-
-		msgBytes, err := msg.Serialize()
-		if err != nil {
-			log.Error("unable to serialize cross-message:", err)
-			continue
-		}
-
-		// data := common.NewCrossMessageBytes(msgBytes, nil)
-		r := &mirproto.Request{
-			ClientId: clientID,
-			ReqNo:    nonce,
-			Type:     TransportType,
-			Data:     data,
-		}
-		m.Pool.AddRequest(msg.Cid().String(), r)
 		requests = append(requests, r)
 	}
 	return requests
@@ -468,5 +390,5 @@ func (m *Manager) batchCrossMessages(crossMsgs []*types.UnverifiedCrossMsg) (
 // ID prints Manager ID.
 func (m *Manager) ID() string {
 	addr := m.Addr.String()
-	return fmt.Sprintf("%v:%v", m.SubnetID, addr[len(addr)-6:])
+	return fmt.Sprintf("%v:%v", addr[len(addr)-6:])
 }

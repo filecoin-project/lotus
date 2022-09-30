@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"go.uber.org/zap/buffer"
-
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/types"
 	ltypes "github.com/filecoin-project/lotus/chain/types"
 	mirproto "github.com/filecoin-project/mir/pkg/pb/requestpb"
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/zap/buffer"
 )
 
 const (
@@ -41,17 +40,16 @@ const (
 //    This approach can be used to run Mir in the root network with persistent membership only.
 // 2) Hierarchical consensus framework: ID and network address of joining validators are received via subnet actor state.
 //    The same mechanism is used for reconfiguration. This method is used to run Mir in a subnet.
-func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
+func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.FullNode) error {
 	log.With("addr", addr).Infof("Mir miner started")
 	defer log.With("addr", addr).Infof("Mir miner completed")
 
-	m, err := NewManager(ctx, addr, api)
+	m, err := NewManager(ctx, addr, h, api)
 	if err != nil {
 		return fmt.Errorf("unable to create a manager: %w", err)
 	}
-	// log := logging.FromContext(ctx, log).With("miner", m.ID())
 
-	log.Infof("Miner info:\n\twallet - %s\n\tnetwork - %s\n\tsubnet - %s\n\tMir ID - %s\n\tvalidators - %v",
+	log.Infof("Miner info:\n\twallet - %s\n\tsubnet - %s\n\tMir ID - %s\n\tvalidators - %v",
 		m.Addr, m.NetName, m.MirID, m.InitialValidatorSet.GetValidators())
 
 	mirErrors := m.Start(ctx)
@@ -60,6 +58,8 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 	defer reconfigure.Stop()
 
 	lastValidatorSet := m.InitialValidatorSet
+
+	var configRequests []*mirproto.Request
 
 	for {
 		// Here we use `ctx.Err()` in the beginning of the `for` loop instead of using it in the `select` statement,
@@ -93,10 +93,10 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 			}
 
 		case <-reconfigure.C:
-			// Reconfiguration is not used in the rootnet.
-			if m.SubnetID == address.RootSubnet {
-				continue
-			}
+			// // Reconfiguration is not used in the rootnet.
+			// if m.SubnetID == address.RootSubnet {
+			// 	continue
+			// }
 			//
 			// Send a reconfiguration transaction if the validator set in the actor has been changed.
 			//
@@ -111,7 +111,7 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 			// So if you don't unset the variable after instantiation Mir in the rootnet
 			// the subnet Mir miner cannot get membership.
 			// The environment variable must be empty because otherwise it will be prioritized for a subnet.
-			newValidatorSet, err := getSubnetValidators(ctx, m.SubnetID, api)
+			newValidatorSet, err := getSubnetValidators(ctx, api)
 			if err != nil {
 				log.With("epoch", nextEpoch).Warnf("failed to get subnet validators: %v", err)
 				continue
@@ -130,9 +130,7 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 				log.With("epoch", nextEpoch).Warnf("failed to marshal validators: %v", err)
 				continue
 			}
-			m.SubmitRequests(ctx, []*mirproto.Request{
-				m.ReconfigurationRequest(payload.Bytes())},
-			)
+			configRequests = append(configRequests, m.ReconfigurationRequest(payload.Bytes()))
 
 		case batch := <-m.StateManager.NextBatch:
 			msgs, crossMsgs := m.GetMessages(batch)
@@ -156,7 +154,6 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 				Timestamp:        uint64(time.Now().Unix()),
 				WinningPoStProof: nil,
 				Messages:         msgs,
-				CrossMessages:    crossMsgs,
 			})
 			if err != nil {
 				log.With("epoch", nextEpoch).Errorw("creating a block failed", "error", err)
@@ -167,11 +164,11 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 				continue
 			}
 
-			err = api.SyncBlock(ctx, &types.BlockMsg{
-				Header:        bh.Header,
-				BlsMessages:   bh.BlsMessages,
-				SecpkMessages: bh.SecpkMessages,
-			})
+			// err = api.SyncBlock(ctx, &types.BlockMsg{
+			// 	Header:        bh.Header,
+			// 	BlsMessages:   bh.BlsMessages,
+			// 	SecpkMessages: bh.SecpkMessages,
+			// })
 			if err != nil {
 				log.With("epoch", nextEpoch).Errorw("unable to sync a block", "error", err)
 				continue
@@ -179,23 +176,25 @@ func Mine(ctx context.Context, addr address.Address, api v1api.FullNode) error {
 
 			log.With("epoch", nextEpoch).Infof("%s mined a block at %d", epochMiner, bh.Header.Height)
 
-		case mirMempool := <-m.CurrentMempool:
+		case toMir := <-m.ToMir:
+			var requests []*mirproto.Request
+
 			msgs, err := api.MpoolSelect(ctx, base.Key(), 1)
 			if err != nil {
 				log.With("epoch", nextEpoch).
 					Errorw("unable to select messages from mempool", "error", err)
 			}
 
-			crossMsgs, err := api.GetUnverifiedCrossMsgsPool(ctx, m.SubnetID, base.Height()+1)
-			if err != nil {
-				log.With("epoch", nextEpoch).
-					Errorw("unable to select cross-messages from mempool", "error", err)
+			transportRequests := m.TransportRequests(msgs)
+			requests = append(requests, transportRequests...)
+
+			if len(configRequests) > 0 {
+				requests = append(requests, configRequests...)
+				configRequests = nil
 			}
 
-			requests := m.TransportRequests(msgs, crossMsgs)
-
 			// We send requests via the channel instead of calling m.SubmitRequests(ctx, requests) explicitly.
-			mirMempool.SubmitChan <- requests
+			toMir <- requests
 		}
 	}
 }

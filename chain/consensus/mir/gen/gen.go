@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	if err := gen.WriteTupleEncodersToFile("./cbor_gen.go", "hierarchical",
+	if err := gen.WriteTupleEncodersToFile("./cbor_gen.go", "mir",
 		mir.Validator{},
 		mir.ValidatorSet{},
 	); err != nil {

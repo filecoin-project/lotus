@@ -1,22 +1,13 @@
-//go:generate go run ./gen/gen.go
-
 // Package mir implements Eudico consensus in Mir framework.
 package mir
 
 import (
 	"context"
 
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"go.opencensus.io/stats"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -24,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -32,7 +23,7 @@ var _ consensus.Consensus = &Mir{}
 
 var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
 	epoch abi.ChainEpoch, ts *types.TipSet, params []byte) error {
-	// No Rewards applied for now, not even the fees.
+	// TODO: No RewardFunc implemented for mir yet
 	return nil
 }
 
@@ -50,8 +41,8 @@ func NewConsensus(
 	b beacon.Schedule,
 	v storiface.Verifier,
 	g chain.Genesis,
+	netName dtypes.NetworkName,
 ) (consensus.Consensus, error) {
-	log.Info("Using Mir consensus")
 	return &Mir{
 		store:    sm.ChainStore(),
 		beacon:   b,
@@ -61,53 +52,116 @@ func NewConsensus(
 	}, nil
 }
 
-func (bft *Mir) VerifyBlockSignature(ctx context.Context, h *types.BlockHeader,
-	addr address.Address) error {
-	// return sigs.CheckBlockSignature(ctx, h, addr)
-	panic("not implemented")
-}
-
-func (bft *Mir) SignBlock(ctx context.Context, w api.Wallet,
-	addr address.Address, next *types.BlockHeader) error {
-
-	// nosigbytes, err := next.SigningBytes()
-	// if err != nil {
-	// 	return xerrors.Errorf("failed to get signing bytes for block: %w", err)
-	// }
-
-	// sig, err := w.WalletSign(ctx, addr, nosigbytes, api.MsgMeta{
-	// 	Type: api.MTBlock,
-	// })
-	// if err != nil {
-	// 	return xerrors.Errorf("failed to sign new block: %w", err)
-	// }
-	// next.BlockSig = sig
-	// return nil
-	panic("not implemented")
-}
-
 // CreateBlock creates a Filecoin block from the input block template.
 func (bft *Mir) CreateBlock(ctx context.Context, w lapi.Wallet, bt *lapi.BlockTemplate) (*types.FullBlock, error) {
-	panic("not implemented")
-}
+	/*
+		b, err := common.PrepareBlockForSignature(ctx, bft.sm, bt)
+		if err != nil {
+			return nil, err
+		}
 
-func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
-	panic("not implemented")
+		// We don't sign blocks mined by Mir validators
+	*/
+	return nil, nil
 }
 
 func (bft *Mir) ValidateBlockHeader(ctx context.Context, b *types.BlockHeader) (rejectReason string, err error) {
-	panic("not implemented")
+	return "", nil
 }
 
-func (bft *Mir) minerIsValid(maddr address.Address) error {
-	switch maddr.Protocol() {
-	case address.BLS:
-		fallthrough
-	case address.SECP256K1:
-		return nil
-	}
-	return xerrors.Errorf("miner address must be a key")
+func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
+	log.Infof("starting block validation process at @%d", b.Header.Height)
+
+	/*
+		if err := common.BlockSanityChecks(hierarchical.Mir, b.Header); err != nil {
+			return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
+		}
+
+		h := b.Header
+
+		baseTs, err := bft.store.LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
+		if err != nil {
+			return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
+		}
+
+		// fast checks first
+		if h.Height != baseTs.Height()+1 {
+			return xerrors.Errorf("block height not parent height+1: %d != %d", h.Height, baseTs.Height()+1)
+		}
+
+		now := uint64(build.Clock.Now().Unix())
+		if h.Timestamp > now+build.AllowableClockDriftSecs {
+			return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
+		}
+		if h.Timestamp > now {
+			log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
+		}
+
+		msgsChecks := common.CheckMsgsWithoutBlockSig(ctx, bft.store, bft.sm, bft.subMgr, bft.resolver, bft.netName, b, baseTs)
+
+		minerCheck := async.Err(func() error {
+			if err := bft.minerIsValid(b.Header.Miner); err != nil {
+				return xerrors.Errorf("minerIsValid failed: %w", err)
+			}
+			return nil
+		})
+
+		pweight, err := Weight(ctx, nil, baseTs)
+		if err != nil {
+			return xerrors.Errorf("getting parent weight: %w", err)
+		}
+
+		if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
+			return xerrors.Errorf("parent weight different: %s (header) != %s (computed)",
+				b.Header.ParentWeight, pweight)
+		}
+
+		stateRootCheck := common.CheckStateRoot(ctx, bft.store, bft.sm, b, baseTs)
+
+		await := []async.ErrorFuture{
+			minerCheck,
+			stateRootCheck,
+		}
+
+		await = append(await, msgsChecks...)
+
+		var merr error
+		for _, fut := range await {
+			if err := fut.AwaitContext(ctx); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+		if merr != nil {
+			mulErr := merr.(*multierror.Error)
+			mulErr.ErrorFormat = func(es []error) string {
+				if len(es) == 1 {
+					return fmt.Sprintf("1 error occurred:\n\t* %+v\n\n", es[0])
+				}
+
+				points := make([]string, len(es))
+				for i, err := range es {
+					points[i] = fmt.Sprintf("* %+v", err)
+				}
+
+				return fmt.Sprintf("%d errors occurred:\n\t%s\n\n", len(es), strings.Join(points, "\n\t"))
+			}
+			return mulErr
+		}
+
+		log.Infof("block at @%d is valid", b.Header.Height)
+	*/
+	return nil
 }
+
+// func (bft *Mir) minerIsValid(maddr address.Address) error {
+// 	switch maddr.Protocol() {
+// 	case address.BLS:
+// 		fallthrough
+// 	case address.SECP256K1:
+// 		return nil
+// 	}
+// 	return xerrors.Errorf("miner address must be a key")
+// }
 
 // IsEpochBeyondCurrMax is used in Filcns to detect delayed blocks.
 // We are currently using defaults here and not worrying about it.
@@ -124,41 +178,4 @@ func Weight(ctx context.Context, stateBs bstore.Blockstore, ts *types.TipSet) (t
 	}
 
 	return big.NewInt(int64(ts.Height() + 1)), nil
-}
-
-func validateLocalBlock(ctx context.Context, msg *pubsub.Message) (pubsub.ValidationResult, string) {
-	stats.Record(ctx, metrics.BlockPublished.M(1))
-
-	if size := msg.Size(); size > 1<<20-1<<15 {
-		log.Errorf("ignoring oversize block (%dB)", size)
-		return pubsub.ValidationIgnore, "oversize_block"
-	}
-
-	blk, what, err := decodeAndCheckBlock(msg)
-	if err != nil {
-		log.Errorf("got invalid local block: %s", err)
-		return pubsub.ValidationIgnore, what
-	}
-
-	msg.ValidatorData = blk
-	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
-	return pubsub.ValidationAccept, ""
-}
-
-func decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
-	blk, err := types.DecodeBlockMsg(msg.GetData())
-	if err != nil {
-		return nil, "invalid", xerrors.Errorf("error decoding block: %w", err)
-	}
-
-	if count := len(blk.BlsMessages) + len(blk.SecpkMessages); count > build.BlockMessageLimit {
-		return nil, "too_many_messages", xerrors.Errorf("block contains too many messages (%d)", count)
-	}
-
-	// make sure we have a signature
-	if blk.Header.BlockSig != nil {
-		return nil, "missing_signature", xerrors.Errorf("block with a signature")
-	}
-
-	return blk, "", nil
 }

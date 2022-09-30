@@ -98,6 +98,12 @@ lotus-miner: $(BUILD_DEPS)
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
+mir-validator: $(BUILD_DEPS)
+	rm -f mir-validator
+	$(GOCC) build $(GOFLAGS) -o mir-validator ./cmd/mir-validator
+.PHONY: mir-validator
+BINS+=mir-validator
+
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	$(GOCC) build $(GOFLAGS) -o lotus-worker ./cmd/lotus-worker

@@ -3,6 +3,7 @@ package mir
 import (
 	"github.com/ipfs/go-cid"
 	u "github.com/ipfs/go-ipfs-util"
+	"go.uber.org/zap/buffer"
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -24,7 +25,6 @@ func (v *Validator) ID() string {
 	return v.Addr.String()
 }
 
-/*
 func (v *Validator) Bytes() ([]byte, error) {
 	var b buffer.Buffer
 	if err := v.MarshalCBOR(&b); err != nil {
@@ -33,6 +33,7 @@ func (v *Validator) Bytes() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+/*
 // ValidatorsFromString parses comma-separated subnet:ID@OpaqueNetAddr validators string.
 // OpaqueNetAddr can contain GRPC or Libp2p addresses.
 //

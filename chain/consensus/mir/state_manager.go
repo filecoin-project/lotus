@@ -82,8 +82,8 @@ func (sm *StateManager) ApplyEvent(event *eventpb.Event) (*events.EventList, err
 		return events.EmptyList(), nil
 	case *eventpb.Event_NewEpoch:
 		return sm.applyNewEpoch(e.NewEpoch)
-	case *eventpb.Event_Deliver:
-		return sm.applyDeliverCertificate(e.Deliver)
+	case *eventpb.Event_DeliverCert:
+		return sm.applyDeliverCertificate(e.DeliverCert)
 	case *eventpb.Event_Availability:
 		switch e := e.Availability.Type.(type) {
 		case *availabilitypb.Event_ProvideTransactions:
@@ -101,7 +101,7 @@ func (sm *StateManager) ApplyEvent(event *eventpb.Event) (*events.EventList, err
 }
 
 // applyDeliver applies a delivered availability certificate.
-func (sm *StateManager) applyDeliverCertificate(deliver *eventpb.Deliver) (*events.EventList, error) {
+func (sm *StateManager) applyDeliverCertificate(deliver *eventpb.DeliverCert) (*events.EventList, error) {
 
 	// Skip padding certificates. Deliver events with nil certificates are considered noops.
 	if deliver.Cert.Type == nil {
@@ -154,7 +154,6 @@ func (sm *StateManager) applyProvideTransactions(ptx *availabilitypb.ProvideTran
 				return events.EmptyList(), err
 			}
 		}
-
 	}
 
 	// Send a batch to the Eudico node.
@@ -167,7 +166,7 @@ func (sm *StateManager) applyProvideTransactions(ptx *availabilitypb.ProvideTran
 }
 
 func (sm *StateManager) applyConfigMsg(in *requestpb.Request) error {
-	// newValSet := &hierarchical.ValidatorSet{}
+	newValSet := &ValidatorSet{}
 	if err := newValSet.UnmarshalCBOR(bytes.NewReader(in.Data)); err != nil {
 		return err
 	}
@@ -209,29 +208,29 @@ func (sm *StateManager) applyNewEpoch(newEpoch *eventpb.NewEpoch) (*events.Event
 	return events.ListOf(events.NewConfig("iss", newMembership)), nil
 }
 
-// func (sm *StateManager) UpdateNextMembership(valSet *hierarchical.ValidatorSet) error {
-// 	_, mbs, err := validatorsMembership(valSet.GetValidators())
-// 	if err != nil {
-// 		return err
-// 	}
-// 	sm.memberships[sm.currentEpoch+ConfigOffset+1] = mbs
-// 	return nil
-// }
+func (sm *StateManager) UpdateNextMembership(valSet *ValidatorSet) error {
+	_, mbs, err := validatorsMembership(valSet.GetValidators())
+	if err != nil {
+		return err
+	}
+	sm.memberships[sm.currentEpoch+ConfigOffset+1] = mbs
+	return nil
+}
 
-// // UpdateAndCheckVotes votes for the valSet and returns true if it has had enough votes for this valSet.
-// func (sm *StateManager) UpdateAndCheckVotes(valSet *hierarchical.ValidatorSet) (bool, error) {
-// 	h, err := valSet.Hash()
-// 	if err != nil {
-// 		return false, err
-// 	}
-// 	sm.reconfigurationVotes[string(h)]++
-// 	votes := sm.reconfigurationVotes[string(h)]
-// 	nodes := len(sm.memberships[sm.currentEpoch])
-// 	if votes < weakQuorum(nodes) {
-// 		return false, nil
-// 	}
-// 	return true, nil
-// }
+// UpdateAndCheckVotes votes for the valSet and returns true if it has had enough votes for this valSet.
+func (sm *StateManager) UpdateAndCheckVotes(valSet *ValidatorSet) (bool, error) {
+	h, err := valSet.Hash()
+	if err != nil {
+		return false, err
+	}
+	sm.reconfigurationVotes[string(h)]++
+	votes := sm.reconfigurationVotes[string(h)]
+	nodes := len(sm.memberships[sm.currentEpoch])
+	if votes < weakQuorum(nodes) {
+		return false, nil
+	}
+	return true, nil
+}
 
 // applySnapshotRequest produces a StateSnapshotResponse event containing the current snapshot of the state.
 // The snapshot is a binary representation of the application state that can be passed to applyRestoreState().
