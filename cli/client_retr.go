@@ -181,12 +181,14 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 				event = retrievalmarket.ClientEvents[*evt.Event]
 			}
 
-			printf("Recv %s, Paid %s, %s (%s), %s\n",
+			printf("Recv %s, Paid %s, %s (%s), %s [%d|%d]\n",
 				types.SizeStr(types.NewInt(evt.BytesReceived)),
 				types.FIL(evt.TotalPaid),
 				strings.TrimPrefix(event, "ClientEvent"),
 				strings.TrimPrefix(retrievalmarket.DealStatuses[evt.Status], "DealStatus"),
 				time.Now().Sub(start).Truncate(time.Millisecond),
+				evt.ID,
+				types.NewInt(evt.BytesReceived),
 			)
 
 			switch evt.Status {
