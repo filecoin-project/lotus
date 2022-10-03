@@ -23,12 +23,10 @@ MANAGED_FILES=(
 )
 
 # this is required on digitalocean, which does not have snap seeded correctly at this phase.
-apt-get update
-apt-get reinstall snapd
+apt-get -y update && apt-get -y reinstall snapd
 
 snap install lotus
 
-snap alias lotus.lotus-daemon lotus-daemon
 snap alias lotus.lotus-miner lotus-miner
 snap alias lotus.lotus-worker lotus-worker
 
