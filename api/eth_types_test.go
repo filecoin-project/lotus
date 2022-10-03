@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package api
 
 import (
@@ -19,26 +19,26 @@ type TestCase struct {
 func TestEthIntMarshalJSON(t *testing.T) {
 	// https://ethereum.org/en/developers/docs/apis/json-rpc/#quantities-encoding
 	testcases := []TestCase{
-		{EthInt(0), []byte("\"0x0\"")},
-		{EthInt(65), []byte("\"0x41\"")},
-		{EthInt(1024), []byte("\"0x400\"")},
+		{EthUint64(0), []byte("\"0x0\"")},
+		{EthUint64(65), []byte("\"0x41\"")},
+		{EthUint64(1024), []byte("\"0x400\"")},
 	}
 
 	for _, tc := range testcases {
-		j, err := tc.Input.(EthInt).MarshalJSON()
+		j, err := tc.Input.(EthUint64).MarshalJSON()
 		require.Nil(t, err)
 		require.Equal(t, j, tc.Output)
 	}
 }
 func TestEthIntUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
-		{[]byte("\"0x0\""), EthInt(0)},
-		{[]byte("\"0x41\""), EthInt(65)},
-		{[]byte("\"0x400\""), EthInt(1024)},
+		{[]byte("\"0x0\""), EthUint64(0)},
+		{[]byte("\"0x41\""), EthUint64(65)},
+		{[]byte("\"0x400\""), EthUint64(1024)},
 	}
 
 	for _, tc := range testcases {
-		var i EthInt
+		var i EthUint64
 		err := i.UnmarshalJSON(tc.Input.([]byte))
 		require.Nil(t, err)
 		require.Equal(t, i, tc.Output)
@@ -135,4 +135,23 @@ func TestUnmarshalEthCall(t *testing.T) {
 	var c EthCall
 	err := c.UnmarshalJSON([]byte(data))
 	require.Nil(t, err)
+}
+
+func TestUnmarshalEthBytes(t *testing.T) {
+	testcases := []string{
+		`"0x00"`,
+		strings.ToLower(`"0xd4c5fb16488Aa48081296299d54b0c648C9333dA"`),
+		strings.ToLower(`"0x2C2EC67e3e1FeA8e4A39601cB3A3Cd44f5fa830d"`),
+		strings.ToLower(`"0x01184F793982104363F9a8a5845743f452dE0586"`),
+	}
+
+	for _, tc := range testcases {
+		var s EthBytes
+		err := s.UnmarshalJSON([]byte(tc))
+		require.Nil(t, err)
+
+		data, err := s.MarshalJSON()
+		require.Nil(t, err)
+		require.Equal(t, string(data), tc)
+	}
 }

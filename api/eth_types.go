@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -15,26 +16,30 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 
 	"github.com/filecoin-project/lotus/build"
 )
 
-type EthInt int64
+type EthUint64 uint64
 
-func (e EthInt) MarshalJSON() ([]byte, error) {
+func (e EthUint64) MarshalJSON() ([]byte, error) {
+	if e == 0 {
+		return json.Marshal("0x0")
+	}
 	return json.Marshal(fmt.Sprintf("0x%x", e))
 }
 
-func (e *EthInt) UnmarshalJSON(b []byte) error {
+func (e *EthUint64) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	parsedInt, err := strconv.ParseInt(strings.Replace(s, "0x", "", -1), 16, 64)
+	parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
 	if err != nil {
 		return err
 	}
-	eint := EthInt(parsedInt)
+	eint := EthUint64(parsedInt)
 	*e = eint
 	return nil
 }
@@ -70,6 +75,39 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type EthBytes []byte
+
+func (e EthBytes) MarshalJSON() ([]byte, error) {
+	if len(e) == 0 {
+		return json.Marshal("0x00")
+	}
+	s := hex.EncodeToString(e)
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+	return json.Marshal("0x" + s)
+}
+
+func (e *EthBytes) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	s = strings.Replace(s, "0x", "", -1)
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+
+	decoded, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+
+	*e = decoded
+	return nil
+}
+
 type EthBlock struct {
 	ParentHash       EthHash    `json:"parentHash"`
 	Sha3Uncles       EthHash    `json:"sha3Uncles"`
@@ -78,16 +116,16 @@ type EthBlock struct {
 	TransactionsRoot EthHash    `json:"transactionsRoot"`
 	ReceiptsRoot     EthHash    `json:"receiptsRoot"`
 	// TODO: include LogsBloom
-	Difficulty    EthInt    `json:"difficulty"`
-	Number        EthInt    `json:"number"`
-	GasLimit      EthInt    `json:"gasLimit"`
-	GasUsed       EthInt    `json:"gasUsed"`
-	Timestamp     EthInt    `json:"timestamp"`
+	Difficulty    EthUint64 `json:"difficulty"`
+	Number        EthUint64 `json:"number"`
+	GasLimit      EthUint64 `json:"gasLimit"`
+	GasUsed       EthUint64 `json:"gasUsed"`
+	Timestamp     EthUint64 `json:"timestamp"`
 	Extradata     []byte    `json:"extraData"`
 	MixHash       EthHash   `json:"mixHash"`
 	Nonce         EthNonce  `json:"nonce"`
 	BaseFeePerGas EthBigInt `json:"baseFeePerGas"`
-	Size          EthInt    `json:"size"`
+	Size          EthUint64 `json:"size"`
 	// can be []EthTx or []string depending on query params
 	Transactions []interface{} `json:"transactions"`
 	Uncles       []EthHash     `json:"uncles"`
@@ -95,7 +133,7 @@ type EthBlock struct {
 
 var (
 	EmptyEthHash  = EthHash{}
-	EmptyEthInt   = EthInt(0)
+	EmptyEthInt   = EthUint64(0)
 	EmptyEthNonce = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 )
 
@@ -109,39 +147,19 @@ func NewEthBlock() EthBlock {
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
-		GasLimit:         EthInt(build.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
+		GasLimit:         EthUint64(build.BlockGasLimit), // TODO we map Ethereum blocks to Filecoin tipsets; this is inconsistent.
 		Uncles:           []EthHash{},
 		Transactions:     []interface{}{},
 	}
 }
 
-type EthTx struct {
-	ChainID              EthInt     `json:"chainId"`
-	Nonce                uint64     `json:"nonce"`
-	Hash                 EthHash    `json:"hash"`
-	BlockHash            EthHash    `json:"blockHash"`
-	BlockNumber          EthInt     `json:"blockNumber"`
-	TransactionIndex     EthInt     `json:"transacionIndex"`
-	From                 EthAddress `json:"from"`
-	To                   EthAddress `json:"to"`
-	Value                EthBigInt  `json:"value"`
-	Type                 EthInt     `json:"type"`
-	Input                []byte     `json:"input"`
-	Gas                  EthInt     `json:"gas"`
-	MaxFeePerGas         EthBigInt  `json:"maxFeePerGas"`
-	MaxPriorityFeePerGas EthBigInt  `json:"maxPriorityFeePerGas"`
-	V                    EthBigInt  `json:"v"`
-	R                    EthBigInt  `json:"r"`
-	S                    EthBigInt  `json:"s"`
-}
-
 type EthCall struct {
-	From     EthAddress `json:"from"`
-	To       EthAddress `json:"to"`
-	Gas      EthInt     `json:"gas"`
-	GasPrice EthBigInt  `json:"gasPrice"`
-	Value    EthBigInt  `json:"value"`
-	Data     []byte     `json:"data"`
+	From     EthAddress  `json:"from"`
+	To       *EthAddress `json:"to"`
+	Gas      EthUint64   `json:"gas"`
+	GasPrice EthBigInt   `json:"gasPrice"`
+	Value    EthBigInt   `json:"value"`
+	Data     EthBytes    `json:"data"`
 }
 
 func (c *EthCall) UnmarshalJSON(b []byte) error {
@@ -156,20 +174,73 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 }
 
 type EthTxReceipt struct {
-	TransactionHash  EthHash    `json:"transactionHash"`
-	TransactionIndex EthInt     `json:"transacionIndex"`
-	BlockHash        EthHash    `json:"blockHash"`
-	BlockNumber      EthHash    `json:"blockNumber"`
-	From             EthAddress `json:"from"`
-	To               EthAddress `json:"to"`
+	TransactionHash  EthHash     `json:"transactionHash"`
+	TransactionIndex EthUint64   `json:"transactionIndex"`
+	BlockHash        EthHash     `json:"blockHash"`
+	BlockNumber      EthUint64   `json:"blockNumber"`
+	From             EthAddress  `json:"from"`
+	To               *EthAddress `json:"to"`
 	// Logs
 	// LogsBloom
 	StateRoot         EthHash     `json:"root"`
-	Status            EthInt      `json:"status"`
+	Status            EthUint64   `json:"status"`
 	ContractAddress   *EthAddress `json:"contractAddress"`
-	CumulativeGasUsed EthBigInt   `json:"cumulativeGasUsed"`
-	GasUsed           EthBigInt   `json:"gasUsed"`
+	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
+	GasUsed           EthUint64   `json:"gasUsed"`
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
+	LogsBloom         EthBytes    `json:"logsBloom"`
+	Logs              []string    `json:"logs"`
+}
+
+func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxReceipt, error) {
+	receipt := EthTxReceipt{
+		TransactionHash:  tx.Hash,
+		TransactionIndex: tx.TransactionIndex,
+		BlockHash:        tx.BlockHash,
+		BlockNumber:      tx.BlockNumber,
+		From:             tx.From,
+		To:               tx.To,
+		StateRoot:        EmptyEthHash,
+		LogsBloom:        []byte{0},
+		Logs:             []string{},
+	}
+
+	contractAddr, err := CheckContractCreation(lookup)
+	if err == nil {
+		receipt.To = nil
+		receipt.ContractAddress = contractAddr
+	}
+
+	if lookup.Receipt.ExitCode.IsSuccess() {
+		receipt.Status = 1
+	}
+	if lookup.Receipt.ExitCode.IsError() {
+		receipt.Status = 0
+	}
+
+	receipt.GasUsed = EthUint64(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	receipt.CumulativeGasUsed = EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	receipt.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
+	return receipt, nil
+}
+
+func CheckContractCreation(lookup *MsgLookup) (*EthAddress, error) {
+	if lookup.Receipt.ExitCode.IsError() {
+		return nil, xerrors.Errorf("message execution was not successful")
+	}
+	var result init8.ExecReturn
+	ret := bytes.NewReader(lookup.Receipt.Return)
+	if err := result.UnmarshalCBOR(ret); err == nil {
+		contractAddr, err := EthAddressFromFilecoinIDAddress(result.IDAddress)
+		if err == nil {
+			return &contractAddr, nil
+		}
+	}
+	return nil, xerrors.Errorf("not a contract creation tx")
 }
 
 const (
@@ -238,6 +309,15 @@ func EthAddressFromHex(s string) (EthAddress, error) {
 	var h EthAddress
 	copy(h[ETH_ADDRESS_LENGTH-len(b):], b)
 	return h, nil
+}
+
+func EthAddressFromBytes(b []byte) (EthAddress, error) {
+	var a EthAddress
+	if len(b) != ETH_ADDRESS_LENGTH {
+		return EthAddress{}, xerrors.Errorf("cannot initiate a new EthAddress: incorrect input length")
+	}
+	copy(a[:], b[:])
+	return a, nil
 }
 
 type EthHash [ETH_HASH_LENGTH]byte

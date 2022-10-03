@@ -149,7 +149,7 @@ type FullNode interface {
 
 	// ChainGetPath returns a set of revert/apply operations needed to get from
 	// one tipset to another, for example:
-	//```
+	// ```
 	//        to
 	//         ^
 	// from   tAA
@@ -158,7 +158,7 @@ type FullNode interface {
 	//  ^---*--^
 	//      ^
 	//     tRR
-	//```
+	// ```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error) //perm:read
 
@@ -382,12 +382,12 @@ type FullNode interface {
 	ClientCancelRetrievalDeal(ctx context.Context, dealid retrievalmarket.DealID) error //perm:write
 
 	// ClientUnimport removes references to the specified file from filestore
-	//ClientUnimport(path string)
+	// ClientUnimport(path string)
 
 	// ClientListImports lists imported files and their root CIDs
 	ClientListImports(ctx context.Context) ([]Import, error) //perm:write
 
-	//ClientListAsks() []Ask
+	// ClientListAsks() []Ask
 
 	// MethodGroup: State
 	// The State methods are used to query, inspect, and interact with chain state.
@@ -619,14 +619,14 @@ type FullNode interface {
 	// It takes the following params: <multisig address>, <start epoch>, <end epoch>
 	MsigGetVested(context.Context, address.Address, types.TipSetKey, types.TipSetKey) (types.BigInt, error) //perm:read
 
-	//MsigGetPending returns pending transactions for the given multisig
-	//wallet. Once pending transactions are fully approved, they will no longer
-	//appear here.
+	// MsigGetPending returns pending transactions for the given multisig
+	// wallet. Once pending transactions are fully approved, they will no longer
+	// appear here.
 	MsigGetPending(context.Context, address.Address, types.TipSetKey) ([]*MsigTransaction, error) //perm:read
 
 	// MsigCreate creates a multisig wallet
 	// It takes the following params: <required number of senders>, <approving addresses>, <unlock duration>
-	//<initial balance>, <sender address of the create msg>, <gas price>
+	// <initial balance>, <sender address of the create msg>, <gas price>
 	MsigCreate(context.Context, uint64, []address.Address, abi.ChainEpoch, types.BigInt, address.Address, types.BigInt) (*MessagePrototype, error) //perm:sign
 
 	// MsigPropose proposes a multisig message
@@ -744,32 +744,34 @@ type FullNode interface {
 	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
 	EthAccounts(ctx context.Context) ([]EthAddress, error) //perm:read
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
-	EthBlockNumber(ctx context.Context) (EthInt, error) //perm:read
+	EthBlockNumber(ctx context.Context) (EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthInt) (EthInt, error) //perm:read
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthUint64) (EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthInt, error) //perm:read
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthUint64, error) //perm:read
 
-	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum EthInt, fullTxInfo bool) (EthBlock, error)                //perm:read
-	EthGetTransactionByHash(ctx context.Context, txHash EthHash) (EthTx, error)                               //perm:read
-	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthInt, error)             //perm:read
-	EthGetTransactionReceipt(ctx context.Context, blkHash EthHash) (EthTxReceipt, error)                      //perm:read
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthInt) (EthTx, error) //perm:read
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthInt, txIndex EthInt) (EthTx, error) //perm:read
+	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                      //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (EthBlock, error)                      //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *EthHash) (*EthTx, error)                                   //perm:read
+	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthUint64, error)                //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (*EthTxReceipt, error)                            //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthUint64) (EthTx, error)    //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthUint64, txIndex EthUint64) (EthTx, error) //perm:read
 
-	EthGetCode(ctx context.Context, address EthAddress) (string, error)                                        //perm:read
-	EthGetStorageAt(ctx context.Context, address EthAddress, position EthInt, blkParam string) (string, error) //perm:read
-	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                 //perm:read
-	EthChainId(ctx context.Context) (EthInt, error)                                                            //perm:read
-	NetVersion(ctx context.Context) (string, error)                                                            //perm:read
-	NetListening(ctx context.Context) (bool, error)                                                            //perm:read
-	EthProtocolVersion(ctx context.Context) (EthInt, error)                                                    //perm:read
-	EthGasPrice(ctx context.Context) (EthInt, error)                                                           //perm:read
+	EthGetCode(ctx context.Context, address EthAddress) (EthBytes, error)                                          //perm:read
+	EthGetStorageAt(ctx context.Context, address EthAddress, position EthBytes, blkParam string) (EthBytes, error) //perm:read
+	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                     //perm:read
+	EthChainId(ctx context.Context) (EthUint64, error)                                                             //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                //perm:read
+	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                     //perm:read
+	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                            //perm:read
 
-	EthMaxPriorityFeePerGas(ctx context.Context) (EthInt, error)                     //perm:read
-	EthEstimateGas(ctx context.Context, tx EthCall, blkParam string) (EthInt, error) //perm:read
-	EthCall(ctx context.Context, tx EthCall, blkParam string) (string, error)        //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)             //perm:read
+	EthEstimateGas(ctx context.Context, tx EthCall) (EthUint64, error)          //perm:read
+	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error) //perm:read
+
+	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
