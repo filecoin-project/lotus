@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 
@@ -312,4 +313,10 @@ func (r *publishStorageDealsReturn7) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn7) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state7) GetAllocationId(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return 0, xerrors.Errorf("unsupported before actors v9")
+
 }

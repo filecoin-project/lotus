@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -510,6 +511,24 @@ func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (m
 	}
 
 	actState, err := market.Load(sm.cs.ActorStore(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return actState, nil
+}
+
+func (sm *StateManager) GetVerifregState(ctx context.Context, ts *types.TipSet) (verifreg.State, error) {
+	st, err := sm.ParentState(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	act, err := st.GetActor(verifreg.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	actState, err := verifreg.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, err
 	}
