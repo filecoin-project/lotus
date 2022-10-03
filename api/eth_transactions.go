@@ -113,8 +113,7 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 		to = builtintypes.InitActorAddr
 
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode:  tx.Input,
-			InputData: []byte{},
+			Bytecode: tx.Input,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)
