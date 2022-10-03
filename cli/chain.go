@@ -1516,7 +1516,7 @@ var ChainPruneCmd = &cli.Command{
 var ChainExecEVMCmd = &cli.Command{
 	Name:      "create-evm-actor",
 	Usage:     "Create an new EVM actor via the init actor and return its address",
-	ArgsUsage: "contract [params]",
+	ArgsUsage: "contract",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -1533,8 +1533,8 @@ var ChainExecEVMCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if argc := cctx.Args().Len(); argc < 1 || argc > 2 {
-			return xerrors.Errorf("must pass the contract and (optionally) constructor input data")
+		if argc := cctx.Args().Len(); argc != 1 {
+			return xerrors.Errorf("must pass the contract init code")
 		}
 
 		contract, err := os.ReadFile(cctx.Args().First())
@@ -1542,17 +1542,8 @@ var ChainExecEVMCmd = &cli.Command{
 			return xerrors.Errorf("failed to read contract: %w", err)
 		}
 
-		var inputData []byte
-		if cctx.Args().Len() == 2 {
-			inputData, err = base64.StdEncoding.DecodeString(cctx.Args().Get(1))
-			if err != nil {
-				return xerrors.Errorf("decoding base64 value: %w", err)
-			}
-		}
-
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode:  contract,
-			InputData: inputData,
+			Bytecode: contract,
 		})
 		if err != nil {
 			return xerrors.Errorf("failed to serialize constructor params: %w", err)
