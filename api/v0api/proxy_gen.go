@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
@@ -276,6 +277,8 @@ type FullNodeStruct struct {
 		StateDecodeParams func(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) `perm:"read"`
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
+
+		StateGetDealAllocation func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.AllocationId, error) ``
 
 		StateGetNetworkParams func(p0 context.Context) (*api.NetworkParams, error) `perm:"read"`
 
@@ -1790,6 +1793,17 @@ func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p
 }
 
 func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetDealAllocation(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.AllocationId, error) {
+	if s.Internal.StateGetDealAllocation == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateGetDealAllocation(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateGetDealAllocation(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.AllocationId, error) {
 	return nil, ErrNotSupported
 }
 

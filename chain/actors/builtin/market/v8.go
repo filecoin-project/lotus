@@ -14,6 +14,7 @@ import (
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -329,4 +330,10 @@ func (r *publishStorageDealsReturn8) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn8) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state8) GetAllocationId(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return 0, xerrors.Errorf("unsupported before actors v9")
+
 }

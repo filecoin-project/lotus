@@ -168,6 +168,7 @@
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetDealAllocation](#StateGetDealAllocation)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
@@ -5241,6 +5242,29 @@ Response:
   "Balance": "0"
 }
 ```
+
+### StateGetDealAllocation
+StateGetDealAllocation returns the allocation ID for a given deal ID.
+
+
+Perms: 
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `0`
 
 ### StateGetNetworkParams
 StateGetNetworkParams return current network params

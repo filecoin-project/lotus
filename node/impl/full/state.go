@@ -19,6 +19,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -768,6 +769,25 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
+}
+
+func (a *StateAPI) StateGetDealAllocation(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.AllocationId, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	st, err := a.StateManager.GetMarketState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	allocationId, err := st.GetAllocationId(dealId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &allocationId, nil
 }
 
 func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {

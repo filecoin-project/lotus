@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 {{if (le .v 7)}}
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
@@ -24,6 +25,9 @@ import (
 	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+{{end}}
+{{if (ge .v 9)}}
+	"github.com/filecoin-project/go-state-types/builtin"
 {{end}}
 )
 
@@ -360,4 +364,25 @@ func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, int, 
 
 func (r *publishStorageDealsReturn{{.v}}) DealIDs() ([]abi.DealID, error) {
     return r.IDs, nil
+}
+
+func (s *state{{.v}}) GetAllocationId(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+{{if (le .v 8)}}
+    	return 0, xerrors.Errorf("unsupported before actors v9")
+{{else}}
+	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+    if err != nil {
+        return 0, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+    }
+
+	var allocationId cbg.CborInt
+	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+	}
+	if !found {
+		return 0, xerrors.Errorf("failed to find allocation id for %d", dealId)
+	}
+	return verifregtypes.AllocationId(allocationId), nil
+{{end}}
 }

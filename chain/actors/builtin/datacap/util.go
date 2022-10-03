@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v9/datacap"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -34,7 +34,7 @@ func getDataCap(store adt.Store, ver actors.Version, root rootFunc, addr address
 		return false, big.Zero(), nil
 	}
 
-	return true, big.Div(dcap, datacap.DatacapGranularity), nil
+	return true, big.Div(dcap, verifreg.DataCapGranularity), nil
 }
 
 func forEachCap(store adt.Store, ver actors.Version, root rootFunc, cb func(addr address.Address, dcap abi.StoragePower) error) error {
@@ -48,6 +48,6 @@ func forEachCap(store adt.Store, ver actors.Version, root rootFunc, cb func(addr
 		if err != nil {
 			return err
 		}
-		return cb(a, big.Div(dcap, datacap.DatacapGranularity))
+		return cb(a, big.Div(dcap, verifreg.DataCapGranularity))
 	})
 }
