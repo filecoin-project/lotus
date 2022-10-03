@@ -65,6 +65,9 @@
   * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
+* [Fil](#Fil)
+  * [FilIdAddr](#FilIdAddr)
+  * [FilIdSp](#FilIdSp)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2116,6 +2119,41 @@ Inputs:
 ```
 
 Response: `{}`
+
+## Fil
+
+
+### FilIdAddr
+This method had been kept separate from other groups as it is not required for basic lotus functions
+This method is exclusively used for Non Interactive Authentication based on provided public key
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"Ynl0ZSBhcnJheQ=="`
+
+### FilIdSp
+This method had been kept separate from other groups as it is not required for basic lotus functions
+This method is exclusively used for Non Interactive Authentication based on worker address
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"Ynl0ZSBhcnJheQ=="`
 
 ## Gas
 

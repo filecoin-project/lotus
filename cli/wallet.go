@@ -39,6 +39,8 @@ var walletCmd = &cli.Command{
 		walletVerify,
 		walletDelete,
 		walletMarket,
+		WalletIDSp,
+		WalletIDAddr,
 	},
 }
 
@@ -743,6 +745,72 @@ var walletMarketAdd = &cli.Command{
 
 		afmt.Printf("AddBalance message cid: %s\n", smsg)
 
+		return nil
+	},
+}
+
+var WalletIDSp = &cli.Command{
+	Name:      "IDsp",
+	Usage:     "Generate a non-interactive authentication token based on worker address which can be used to establish identity",
+	ArgsUsage: "<miner address>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting node API: %w", err)
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		afmt := NewAppFmt(cctx.App)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass miner id")
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("parsing miner id: %w", err)
+		}
+
+		signedBytes, err := api.FilIdSp(ctx, maddr)
+		if err != nil {
+			return err
+		}
+
+		afmt.Printf("%s\n", hex.EncodeToString(signedBytes))
+		return nil
+	},
+}
+
+var WalletIDAddr = &cli.Command{
+	Name:      "IDaddr",
+	Usage:     "Generate a non-interactive authentication token based on provided wallet address which can be used to establish identity",
+	ArgsUsage: "<public address of a wallet>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting node API: %w", err)
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		afmt := NewAppFmt(cctx.App)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass public key address of a wallet")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("parsing wallet address: %w", err)
+		}
+
+		signedBytes, err := api.FilIdAddr(ctx, addr)
+		if err != nil {
+			return err
+		}
+
+		afmt.Printf("%s\n", hex.EncodeToString(signedBytes))
 		return nil
 	},
 }

@@ -81,7 +81,6 @@ var Commands = []*cli.Command{
 	WithCategory("developer", LogCmd),
 	WithCategory("developer", WaitApiCmd),
 	WithCategory("developer", FetchParamCmd),
-	WithCategory("developer", NonInteractiveAuthCmd),
 	WithCategory("network", NetCmd),
 	WithCategory("network", SyncCmd),
 	WithCategory("status", StatusCmd),

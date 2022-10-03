@@ -6,9 +6,15 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -115,6 +121,84 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 	}
 
 	return status, nil
+}
+
+// This method had been kept separate from wallet group implementation as it is not required for basic lotus functions
+// This method is exclusively used for Non Interactive Authentication based on worker address
+func (n *FullNodeAPI) FilIdSp(ctx context.Context, maddr address.Address) ([]byte, error) {
+	head, err := n.ChainHead(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain head: %w", err)
+	}
+
+	finality := abi.ChainEpoch(uint64(head.Height()) - 900)
+	ftipset, err := n.ChainGetTipSetByHeight(ctx, finality, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get finality tipset: %w", err)
+	}
+	beacon, err := n.StateGetBeaconEntry(ctx, head.Height())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get DRAND beacon: %w", err)
+	}
+
+	var msg []byte
+
+	// Append prefix to avoid making a viable message
+	msg = append(msg, []byte("   ")...)
+	// Append beacon
+	msg = append(msg, beacon.Data...)
+
+	// Get miner info for last finality
+	minfo, err := n.StateMinerInfo(ctx, maddr, ftipset.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get miner info: %w", err)
+	}
+
+	worker := minfo.Worker
+	var sig *crypto.Signature
+
+	sig, err = n.WalletSign(ctx, worker, msg)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get sign message with worker address key: %w", err)
+	}
+
+	return append([]byte{byte(sig.Type)}, sig.Data...), nil
+}
+
+// This method had been kept separate from wallet group implementation as it is not required for basic lotus functions
+// This method is exclusively used for Non Interactive Authentication based on provided public key
+func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) ([]byte, error) {
+	head, err := n.ChainHead(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain head: %w", err)
+	}
+
+	// Check wallet exists
+	_, err = n.StateGetActor(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to lookup the provided address: %w", err)
+	}
+
+	beacon, err := n.StateGetBeaconEntry(ctx, head.Height())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get DRAND beacon: %w", err)
+	}
+
+	var msg []byte
+
+	// Append prefix to avoid making a viable message
+	msg = append(msg, []byte("   ")...)
+	// Append beacon
+	msg = append(msg, beacon.Data...)
+
+	var sig *crypto.Signature
+
+	sig, err = n.WalletSign(ctx, addr, msg)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get sign message with worker address key: %w", err)
+	}
+
+	return append([]byte{byte(sig.Type)}, sig.Data...), nil
 }
 
 var _ api.FullNode = &FullNodeAPI{}

@@ -920,6 +920,36 @@ func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockFullNode)(nil).Discover), arg0)
 }
 
+// FilIdAddr mocks base method.
+func (m *MockFullNode) FilIdAddr(arg0 context.Context, arg1 address.Address) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FilIdAddr", arg0, arg1)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FilIdAddr indicates an expected call of FilIdAddr.
+func (mr *MockFullNodeMockRecorder) FilIdAddr(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilIdAddr", reflect.TypeOf((*MockFullNode)(nil).FilIdAddr), arg0, arg1)
+}
+
+// FilIdSp mocks base method.
+func (m *MockFullNode) FilIdSp(arg0 context.Context, arg1 address.Address) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FilIdSp", arg0, arg1)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FilIdSp indicates an expected call of FilIdSp.
+func (mr *MockFullNodeMockRecorder) FilIdSp(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilIdSp", reflect.TypeOf((*MockFullNode)(nil).FilIdSp), arg0, arg1)
+}
+
 // GasEstimateFeeCap mocks base method.
 func (m *MockFullNode) GasEstimateFeeCap(arg0 context.Context, arg1 *types.Message, arg2 int64, arg3 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
