@@ -139,7 +139,9 @@ func init() {
 	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
 	addExample(build.TestNetworkVersion)
-	addExample(verifreg.AllocationId(0))
+	allocationId := verifreg.AllocationId(0)
+	addExample(allocationId)
+	addExample(&allocationId)
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{
