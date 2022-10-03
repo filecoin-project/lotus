@@ -70,7 +70,6 @@ func RunAsyncChecks(ctx context.Context, await []async.ErrorFuture) error {
 }
 
 // CommonBlkChecks performed by all consensus implementations.
-//TODO: Take stateManager and ChainStore in a common object abstracted by all consensus algorithms?
 func CommonBlkChecks(ctx context.Context, sm *stmgr.StateManager, cs *store.ChainStore,
 	b *types.FullBlock, baseTs *types.TipSet) []async.ErrorFuture {
 	h := b.Header

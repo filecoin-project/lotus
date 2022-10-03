@@ -223,7 +223,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 	})
 
 	blockSigCheck := async.Err(func() error {
-		if err := filec.VerifyBlockSignature(ctx, h, waddr); err != nil {
+		if err := verifyBlockSignature(ctx, h, waddr); err != nil {
 			return xerrors.Errorf("check block signature failed: %w", err)
 		}
 		return nil
@@ -507,12 +507,12 @@ func (filec *FilecoinEC) isChainNearSynced() bool {
 	return build.Clock.Since(timestampTime) < 6*time.Hour
 }
 
-func (filec *FilecoinEC) VerifyBlockSignature(ctx context.Context, h *types.BlockHeader,
+func verifyBlockSignature(ctx context.Context, h *types.BlockHeader,
 	addr address.Address) error {
 	return sigs.CheckBlockSignature(ctx, h, addr)
 }
 
-func (filec *FilecoinEC) SignBlock(ctx context.Context, w api.Wallet,
+func signBlock(ctx context.Context, w api.Wallet,
 	addr address.Address, next *types.BlockHeader) error {
 
 	nosigbytes, err := next.SigningBytes()
