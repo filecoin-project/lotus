@@ -298,6 +298,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 			epoch:      opts.Epoch,
 		},
 		Epoch:          opts.Epoch,
+		Timestamp:      opts.Timestamp,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,

@@ -215,6 +215,7 @@ type LegacyVM struct {
 type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Rand           Rand
 	Bstore         blockstore.Blockstore
 	Actors         *ActorRegistry
