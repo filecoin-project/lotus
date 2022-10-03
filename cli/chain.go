@@ -1534,7 +1534,7 @@ var ChainInstallCmd = &cli.Command{
 			To:     builtin.InitActorAddr,
 			From:   fromAddr,
 			Value:  big.Zero(),
-			Method: 3,
+			Method: 4,
 			Params: params,
 		}
 
