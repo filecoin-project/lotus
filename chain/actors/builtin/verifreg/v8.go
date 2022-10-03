@@ -2,12 +2,14 @@ package verifreg
 
 import (
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -86,4 +88,10 @@ func (s *state8) removeDataCapProposalIDs() (adt.Map, error) {
 
 func (s *state8) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state8) GetAllocation(addr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+
+	return nil, false, xerrors.Errorf("unsupported in actors v8")
+
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	market3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 
@@ -294,4 +295,10 @@ func (r *publishStorageDealsReturn3) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn3) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state3) GetAllocationId(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return 0, xerrors.Errorf("unsupported before actors v9")
+
 }

@@ -28,6 +28,7 @@ import (
 	big "github.com/filecoin-project/go-state-types/big"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	miner "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
@@ -2467,6 +2468,21 @@ func (mr *MockFullNodeMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockFullNode)(nil).StateGetActor), arg0, arg1, arg2)
 }
 
+// StateGetAllocation mocks base method.
+func (m *MockFullNode) StateGetAllocation(arg0 context.Context, arg1 address.Address, arg2 verifreg.AllocationId, arg3 types.TipSetKey) (*verifreg.Allocation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocation", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*verifreg.Allocation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocation indicates an expected call of StateGetAllocation.
+func (mr *MockFullNodeMockRecorder) StateGetAllocation(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocation", reflect.TypeOf((*MockFullNode)(nil).StateGetAllocation), arg0, arg1, arg2, arg3)
+}
+
 // StateGetBeaconEntry mocks base method.
 func (m *MockFullNode) StateGetBeaconEntry(arg0 context.Context, arg1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	m.ctrl.T.Helper()
@@ -2480,6 +2496,21 @@ func (m *MockFullNode) StateGetBeaconEntry(arg0 context.Context, arg1 abi.ChainE
 func (mr *MockFullNodeMockRecorder) StateGetBeaconEntry(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetBeaconEntry", reflect.TypeOf((*MockFullNode)(nil).StateGetBeaconEntry), arg0, arg1)
+}
+
+// StateGetDealAllocation mocks base method.
+func (m *MockFullNode) StateGetDealAllocation(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*verifreg.Allocation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetDealAllocation", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*verifreg.Allocation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetDealAllocation indicates an expected call of StateGetDealAllocation.
+func (mr *MockFullNodeMockRecorder) StateGetDealAllocation(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetDealAllocation", reflect.TypeOf((*MockFullNode)(nil).StateGetDealAllocation), arg0, arg1, arg2)
 }
 
 // StateGetNetworkParams mocks base method.
