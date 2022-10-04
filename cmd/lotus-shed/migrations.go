@@ -22,8 +22,8 @@ import (
 )
 
 var migrationsCmd = &cli.Command{
-	Name:        "migrate-nv16",
-	Description: "Run the nv16 migration",
+	Name:        "migrate-nv17",
+	Description: "Run the nv17 migration",
 	ArgsUsage:   "[block to look back from]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -100,7 +100,7 @@ var migrationsCmd = &cli.Command{
 
 		startTime := time.Now()
 
-		err = filcns.PreUpgradeActorsV8(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
+		err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("completed round 1, took ", time.Since(startTime))
 		startTime = time.Now()
 
-		newCid1, err := filcns.UpgradeActorsV8(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+		newCid1, err := filcns.UpgradeActorsV9(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}
@@ -116,13 +116,14 @@ var migrationsCmd = &cli.Command{
 
 		fmt.Println("new cid", newCid1)
 
-		newCid2, err := filcns.UpgradeActorsV8(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+		newCid2, err := filcns.UpgradeActorsV9(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}
 		fmt.Println("completed round actual (without cache), took ", time.Since(startTime))
 
 		fmt.Println("new cid", newCid2)
+
 		return nil
 	},
 }
