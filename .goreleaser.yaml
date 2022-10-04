@@ -8,112 +8,47 @@ universal_binaries:
   - id: lotus
     replace: true
     name_template: lotus
-    ids:
-      - lotus_darwin_amd64
-      - lotus_darwin_arm64
   - id: lotus-miner
     replace: true
     name_template: lotus-miner
-    ids:
-      - lotus-miner_darwin_amd64
-      - lotus-miner_darwin_arm64
   - id: lotus-worker
     replace: true
     name_template: lotus-worker
-    ids:
-      - lotus-worker_darwin_amd64
-      - lotus-worker_darwin_arm64
 
 builds:
-  - id: lotus_darwin_amd64
-    main: ./cmd/lotus
-    binary: lotus
+  - id: lotus
+    builder: prebuilt
     goos:
       - darwin
     goarch:
       - amd64
-    env:
-      - CGO_ENABLED=1
-      - FFI_BUILD_FROM_SOURCE=1
-    ldflags:
-      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
-  - id: lotus-miner_darwin_amd64
-    main: ./cmd/lotus-miner
-    binary: lotus-miner
+      - arm64
+    goamd64:
+      - v1
+    prebuilt:
+      path: /tmp/workspace/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus
+  - id: lotus-miner
+    builder: prebuilt
     goos:
       - darwin
     goarch:
       - amd64
-    env:
-      - CGO_ENABLED=1
-      - FFI_BUILD_FROM_SOURCE=1
-    ldflags:
-      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
-  - id: lotus-worker_darwin_amd64
-    main: ./cmd/lotus-worker
-    binary: lotus-worker
+      - arm64
+    goamd64:
+      - v1
+    prebuilt:
+      path: /tmp/workspace/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner
+  - id: lotus-worker
+    builder: prebuilt
     goos:
       - darwin
     goarch:
       - amd64
-    env:
-      - CGO_ENABLED=1
-      - FFI_BUILD_FROM_SOURCE=1
-    ldflags:
-      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
-  - id: lotus_darwin_arm64
-    main: ./cmd/lotus
-    binary: lotus
-    goos:
-      - darwin
-    goarch:
       - arm64
-    env:
-      - CGO_ENABLED=1
-      - FFI_BUILD_FROM_SOURCE=1
-      - CPATH=/opt/homebrew/include
-      - LIBRARY_PATH=/opt/homebrew/lib
-    ldflags:
-      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
-  - id: lotus-miner_darwin_arm64
-    main: ./cmd/lotus-miner
-    binary: lotus-miner
-    goos:
-      - darwin
-    goarch:
-      - arm64
-    env:
-      - CGO_ENABLED=1
-      - FFI_BUILD_FROM_SOURCE=1
-      - CPATH=/opt/homebrew/include
-      - LIBRARY_PATH=/opt/homebrew/lib
-    ldflags:
-      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
-  - id: lotus-worker_darwin_arm64
-    main: ./cmd/lotus-worker
-    binary: lotus-worker
-    goos:
-      - darwin
-    goarch:
-      - arm64
-    env:
-      - CGO_ENABLED=1
-      - FFI_BUILD_FROM_SOURCE=1
-      - CPATH=/opt/homebrew/include
-      - LIBRARY_PATH=/opt/homebrew/lib
-    ldflags:
-      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
-#  - id: linux
-#    main: ./cmd/lotus
-#    binary: lotus
-#    goos:
-#      - linux
-#    goarch:
-#      - amd64
-#    env:
-#      - CGO_ENABLED=1
-#    ldflags:
-#      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+    goamd64:
+      - v1
+    prebuilt:
+      path: /tmp/workspace/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker
 
 archives:
   - id: primary
