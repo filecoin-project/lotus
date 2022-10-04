@@ -72,7 +72,7 @@ func PreSeal(spt abi.RegisteredSealProof, maddr address.Address, sectors int) (*
 			ProviderCollateral:   big.Zero(),
 			ClientCollateral:     big.Zero(),
 		}
-		preseal.DealClientKey = k
+		preseal.DealClientKey = &k.KeyInfo
 
 		genm.Sectors[i] = preseal
 	}
