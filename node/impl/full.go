@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -11,10 +12,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -125,7 +126,7 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 
 // This method is exclusively used for Non Interactive Authentication based on SP Worker Address
 func (n *FullNodeAPI) FilIdSp(ctx context.Context, maddr address.Address) (string, error) {
-	FIL_AUTHHDR := "FIL-SPID-V0"
+	fil_authhdr := "FIL-SPID-V0"
 
 	head, err := n.ChainHead(ctx)
 	if err != nil {
@@ -143,7 +144,7 @@ func (n *FullNodeAPI) FilIdSp(ctx context.Context, maddr address.Address) (strin
 		return "", xerrors.Errorf("failed to get finality tipset: %w", err)
 	}
 
-	var msg []byte
+	msg := make([]byte, 0, 99)
 
 	// Append prefix to avoid making a viable message
 	// FIXME: this should be replaced by SPIDV1 combined with proper domain-separation when it arrives
@@ -157,20 +158,25 @@ func (n *FullNodeAPI) FilIdSp(ctx context.Context, maddr address.Address) (strin
 		return "", xerrors.Errorf("failed to get miner info: %w", err)
 	}
 
-	worker := minfo.Worker
-	var sig *crypto.Signature
-
-	sig, err = n.WalletSign(ctx, worker, msg)
+	sig, err := n.WalletSign(ctx, minfo.Worker, msg)
 	if err != nil {
 		return "", xerrors.Errorf("failed to get sign message with worker address key: %w", err)
 	}
 
-	return fmt.Sprintf("%s %d;%s;%s", FIL_AUTHHDR, head.Height(), maddr, string(append([]byte{byte(sig.Type)}, sig.Data...))), nil
+	return fmt.Sprintf("%s %d;%s;%s", fil_authhdr, head.Height(), maddr, base64.StdEncoding.EncodeToString(sig.Data)), nil
 }
 
 // This method is exclusively used for Non Interactive Authentication based on provided Wallet Address
 func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) (string, error) {
-	FIL_AUTHHDR := "FIL-SPID-V0"
+	fil_authhdr := "FIL-ADDRID-V0"
+
+	if addr.Protocol() == address.ID {
+		resolvedAddr, err := n.StateAccountKey(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return "", xerrors.Errorf("could not find public key address: %w", err)
+		}
+		addr = resolvedAddr
+	}
 
 	head, err := n.ChainHead(ctx)
 	if err != nil {
@@ -182,7 +188,7 @@ func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) (stri
 		return "", xerrors.Errorf("failed to get DRAND beacon: %w", err)
 	}
 
-	var msg []byte
+	msg := make([]byte, 0, 99)
 
 	// Append prefix to avoid making a viable message
 	// FIXME: this should be replaced by SPIDV1 combined with proper domain-separation when it arrives
@@ -190,14 +196,12 @@ func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) (stri
 	// Append beacon
 	msg = append(msg, beacon.Data...)
 
-	var sig *crypto.Signature
-
-	sig, err = n.WalletSign(ctx, addr, msg)
+	sig, err := n.WalletSign(ctx, addr, msg)
 	if err != nil {
 		return "", xerrors.Errorf("failed to get sign message with worker address key: %w", err)
 	}
 
-	return fmt.Sprintf("%s %d;%s;%s", FIL_AUTHHDR, head.Height(), addr, string(append([]byte{byte(sig.Type)}, sig.Data...))), nil
+	return fmt.Sprintf("%s %d;%s;%s", fil_authhdr, head.Height(), addr, base64.StdEncoding.EncodeToString(sig.Data)), nil
 }
 
 var _ api.FullNode = &FullNodeAPI{}
