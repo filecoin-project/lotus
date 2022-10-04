@@ -468,8 +468,7 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 	if tx.To == nil {
 		to = builtintypes.InitActorAddr
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode:  tx.Data,
-			InputData: []byte{},
+			Bytecode: tx.Data,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)

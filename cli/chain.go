@@ -1534,7 +1534,7 @@ var ChainInstallCmd = &cli.Command{
 			To:     builtin.InitActorAddr,
 			From:   fromAddr,
 			Value:  big.Zero(),
-			Method: 3,
+			Method: 4,
 			Params: params,
 		}
 
@@ -1774,11 +1774,15 @@ var ChainInvokeCmd = &cli.Command{
 var ChainExecEVMCmd = &cli.Command{
 	Name:      "create-evm-actor",
 	Usage:     "Create an new EVM actor via the init actor and return its address",
-	ArgsUsage: "contract [params]",
+	ArgsUsage: "contract",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "optionally specify the account to use for sending the exec message",
+		},
+		&cli.BoolFlag{
+			Name:  "hex",
+			Usage: "use when input contract is in hex",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1791,26 +1795,23 @@ var ChainExecEVMCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if argc := cctx.Args().Len(); argc < 1 || argc > 2 {
-			return xerrors.Errorf("must pass the contract and (optionally) constructor input data")
+		if argc := cctx.Args().Len(); argc != 1 {
+			return xerrors.Errorf("must pass the contract init code")
 		}
 
 		contract, err := os.ReadFile(cctx.Args().First())
 		if err != nil {
 			return xerrors.Errorf("failed to read contract: %w", err)
 		}
-
-		var inputData []byte
-		if cctx.Args().Len() == 2 {
-			inputData, err = base64.StdEncoding.DecodeString(cctx.Args().Get(1))
+		if cctx.Bool("hex") {
+			contract, err = hex.DecodeString(string(contract))
 			if err != nil {
-				return xerrors.Errorf("decoding base64 value: %w", err)
+				return xerrors.Errorf("failed to decode contract: %w", err)
 			}
 		}
 
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode:  contract,
-			InputData: inputData,
+			Bytecode: contract,
 		})
 		if err != nil {
 			return xerrors.Errorf("failed to serialize constructor params: %w", err)

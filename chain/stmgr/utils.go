@@ -86,6 +86,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,
+		Timestamp:      ts.MinTimestamp(),
 		Rand:           r,
 		Bstore:         sm.cs.StateBlockstore(),
 		Actors:         sm.tsExec.NewActorRegistry(),
