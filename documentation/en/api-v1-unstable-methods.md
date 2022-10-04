@@ -2124,11 +2124,10 @@ Response: `{}`
 
 
 ### FilIdAddr
-This method had been kept separate from other groups as it is not required for basic lotus functions
-This method is exclusively used for Non Interactive Authentication based on provided public key
+This method is exclusively used for Non Interactive Authentication based on provided Wallet Address
 
 
-Perms: admin
+Perms: sign
 
 Inputs:
 ```json
@@ -2137,14 +2136,13 @@ Inputs:
 ]
 ```
 
-Response: `"Ynl0ZSBhcnJheQ=="`
+Response: `"string value"`
 
 ### FilIdSp
-This method had been kept separate from other groups as it is not required for basic lotus functions
-This method is exclusively used for Non Interactive Authentication based on worker address
+This method is exclusively used for Non Interactive Authentication based on a SP Worker Address
 
 
-Perms: admin
+Perms: sign
 
 Inputs:
 ```json
@@ -2153,7 +2151,7 @@ Inputs:
 ]
 ```
 
-Response: `"Ynl0ZSBhcnJheQ=="`
+Response: `"string value"`
 
 ## Gas
 

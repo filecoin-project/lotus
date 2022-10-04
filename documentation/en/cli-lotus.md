@@ -212,8 +212,8 @@ COMMANDS:
    verify       verify the signature of a message
    delete       Soft delete an address from the wallet - hard deletion needed for permanent removal
    market       Interact with market balances
-   IDsp         Generate a non-interactive authentication token based on worker address which can be used to establish identity
-   IDaddr       Generate a non-interactive authentication token based on provided wallet address which can be used to establish identity
+   IDsp         Generate a non-interactive authentication token based on worker address which can be used to establish SP operator identity
+   IDaddr       Generate a non-interactive authentication token based on provided wallet address which can be used to establish address-holder identity
    help, h      Shows a list of commands or help for one command
 
 OPTIONS:
@@ -404,7 +404,7 @@ OPTIONS:
 ### lotus wallet IDsp
 ```
 NAME:
-   lotus wallet IDsp - Generate a non-interactive authentication token based on worker address which can be used to establish identity
+   lotus wallet IDsp - Generate a non-interactive authentication token based on worker address which can be used to establish SP operator identity
 
 USAGE:
    lotus wallet IDsp [command options] <miner address>
@@ -417,7 +417,7 @@ OPTIONS:
 ### lotus wallet IDaddr
 ```
 NAME:
-   lotus wallet IDaddr - Generate a non-interactive authentication token based on provided wallet address which can be used to establish identity
+   lotus wallet IDaddr - Generate a non-interactive authentication token based on provided wallet address which can be used to establish address-holder identity
 
 USAGE:
    lotus wallet IDaddr [command options] <public address of a wallet>

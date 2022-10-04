@@ -921,10 +921,10 @@ func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
 }
 
 // FilIdAddr mocks base method.
-func (m *MockFullNode) FilIdAddr(arg0 context.Context, arg1 address.Address) ([]byte, error) {
+func (m *MockFullNode) FilIdAddr(arg0 context.Context, arg1 address.Address) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FilIdAddr", arg0, arg1)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -936,10 +936,10 @@ func (mr *MockFullNodeMockRecorder) FilIdAddr(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // FilIdSp mocks base method.
-func (m *MockFullNode) FilIdSp(arg0 context.Context, arg1 address.Address) ([]byte, error) {
+func (m *MockFullNode) FilIdSp(arg0 context.Context, arg1 address.Address) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FilIdSp", arg0, arg1)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

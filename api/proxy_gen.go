@@ -217,9 +217,9 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		FilIdAddr func(p0 context.Context, p1 address.Address) ([]byte, error) `perm:"admin"`
+		FilIdAddr func(p0 context.Context, p1 address.Address) (string, error) `perm:"sign"`
 
-		FilIdSp func(p0 context.Context, p1 address.Address) ([]byte, error) `perm:"admin"`
+		FilIdSp func(p0 context.Context, p1 address.Address) (string, error) `perm:"sign"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -1784,26 +1784,26 @@ func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) FilIdAddr(p0 context.Context, p1 address.Address) ([]byte, error) {
+func (s *FullNodeStruct) FilIdAddr(p0 context.Context, p1 address.Address) (string, error) {
 	if s.Internal.FilIdAddr == nil {
-		return *new([]byte), ErrNotSupported
+		return "", ErrNotSupported
 	}
 	return s.Internal.FilIdAddr(p0, p1)
 }
 
-func (s *FullNodeStub) FilIdAddr(p0 context.Context, p1 address.Address) ([]byte, error) {
-	return *new([]byte), ErrNotSupported
+func (s *FullNodeStub) FilIdAddr(p0 context.Context, p1 address.Address) (string, error) {
+	return "", ErrNotSupported
 }
 
-func (s *FullNodeStruct) FilIdSp(p0 context.Context, p1 address.Address) ([]byte, error) {
+func (s *FullNodeStruct) FilIdSp(p0 context.Context, p1 address.Address) (string, error) {
 	if s.Internal.FilIdSp == nil {
-		return *new([]byte), ErrNotSupported
+		return "", ErrNotSupported
 	}
 	return s.Internal.FilIdSp(p0, p1)
 }
 
-func (s *FullNodeStub) FilIdSp(p0 context.Context, p1 address.Address) ([]byte, error) {
-	return *new([]byte), ErrNotSupported
+func (s *FullNodeStub) FilIdSp(p0 context.Context, p1 address.Address) (string, error) {
+	return "", ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {

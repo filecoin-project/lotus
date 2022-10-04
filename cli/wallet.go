@@ -751,7 +751,7 @@ var walletMarketAdd = &cli.Command{
 
 var WalletIDSp = &cli.Command{
 	Name:      "IDsp",
-	Usage:     "Generate a non-interactive authentication token based on worker address which can be used to establish identity",
+	Usage:     "Generate a non-interactive authentication token based on worker address which can be used to establish SP operator identity",
 	ArgsUsage: "<miner address>",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPIV1(cctx)
@@ -772,19 +772,19 @@ var WalletIDSp = &cli.Command{
 			return xerrors.Errorf("parsing miner id: %w", err)
 		}
 
-		signedBytes, err := api.FilIdSp(ctx, maddr)
+		result, err := api.FilIdSp(ctx, maddr)
 		if err != nil {
 			return err
 		}
 
-		afmt.Printf("%s\n", hex.EncodeToString(signedBytes))
+		afmt.Printf("%s\n", result)
 		return nil
 	},
 }
 
 var WalletIDAddr = &cli.Command{
 	Name:      "IDaddr",
-	Usage:     "Generate a non-interactive authentication token based on provided wallet address which can be used to establish identity",
+	Usage:     "Generate a non-interactive authentication token based on provided wallet address which can be used to establish address-holder identity",
 	ArgsUsage: "<public address of a wallet>",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPIV1(cctx)
@@ -805,12 +805,12 @@ var WalletIDAddr = &cli.Command{
 			return xerrors.Errorf("parsing wallet address: %w", err)
 		}
 
-		signedBytes, err := api.FilIdAddr(ctx, addr)
+		result, err := api.FilIdAddr(ctx, addr)
 		if err != nil {
 			return err
 		}
 
-		afmt.Printf("%s\n", hex.EncodeToString(signedBytes))
+		afmt.Printf("%s\n", result)
 		return nil
 	},
 }

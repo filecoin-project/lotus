@@ -752,12 +752,11 @@ type FullNode interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	// This method had been kept separate from other groups as it is not required for basic lotus functions
-	// This method is exclusively used for Non Interactive Authentication based on worker address
-	FilIdSp(ctx context.Context, maddr address.Address) ([]byte, error) //perm:admin
-	// This method had been kept separate from other groups as it is not required for basic lotus functions
-	// This method is exclusively used for Non Interactive Authentication based on provided public key
-	FilIdAddr(ctx context.Context, addr address.Address) ([]byte, error) //perm:admin
+	// This method is exclusively used for Non Interactive Authentication based on a SP Worker Address
+	FilIdSp(ctx context.Context, maddr address.Address) (string, error) //perm:sign
+
+	// This method is exclusively used for Non Interactive Authentication based on provided Wallet Address
+	FilIdAddr(ctx context.Context, addr address.Address) (string, error) //perm:sign
 }
 
 type StorageAsk struct {
