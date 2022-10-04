@@ -1522,6 +1522,10 @@ var ChainExecEVMCmd = &cli.Command{
 			Name:  "from",
 			Usage: "optionally specify the account to use for sending the exec message",
 		},
+		&cli.BoolFlag{
+			Name:  "hex",
+			Usage: "use when input contract is in hex",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
@@ -1540,6 +1544,12 @@ var ChainExecEVMCmd = &cli.Command{
 		contract, err := os.ReadFile(cctx.Args().First())
 		if err != nil {
 			return xerrors.Errorf("failed to read contract: %w", err)
+		}
+		if cctx.Bool("hex") {
+			contract, err = hex.DecodeString(string(contract))
+			if err != nil {
+				return xerrors.Errorf("failed to decode contract: %w", err)
+			}
 		}
 
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
