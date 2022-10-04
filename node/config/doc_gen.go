@@ -719,11 +719,11 @@ resulting in more total gas use (but each message will have lower gas limit)`,
 			Name: "SingleRecoveringPartitionPerPostMessage",
 			Type: "bool",
 
-			Comment: `Enable single partition per Post Message for partitions containing recovery sectors
+			Comment: `Enable single partition per PoSt Message for partitions containing recovery sectors
 
 In cases when submitting PoSt messages which contain recovering sectors, the default network limit may still be
 too high to fit in the block gas limit. In those cases, it becomes useful to only house the single partition
-with recovery sectors in the post message
+with recovering sectors in the post message
 
 Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)`,

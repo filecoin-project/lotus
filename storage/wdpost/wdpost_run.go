@@ -529,8 +529,8 @@ func (s *WindowPoStScheduler) BatchPartitions(partitions []api.Partition, nv net
 	batches := [][]api.Partition{}
 
 	currBatch := []api.Partition{}
-	for i := 0; i < len(partitions); i++ {
-		recSectors, err := partitions[i].RecoveringSectors.Count()
+	for _, partition := range partitions {
+		recSectors, err := partition.RecoveringSectors.Count()
 		if err != nil {
 			return nil, err
 		}
@@ -542,13 +542,13 @@ func (s *WindowPoStScheduler) BatchPartitions(partitions []api.Partition, nv net
 				batches = append(batches, currBatch)
 				currBatch = []api.Partition{}
 			}
-			batches = append(batches, []api.Partition{partitions[i]})
+			batches = append(batches, []api.Partition{partition})
 		} else {
 			if len(currBatch) >= partitionsPerMsg {
 				batches = append(batches, currBatch)
 				currBatch = []api.Partition{}
 			}
-			currBatch = append(currBatch, partitions[i])
+			currBatch = append(currBatch, partition)
 		}
 	}
 	if len(currBatch) > 0 {
