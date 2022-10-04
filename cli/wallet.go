@@ -39,8 +39,8 @@ var walletCmd = &cli.Command{
 		walletVerify,
 		walletDelete,
 		walletMarket,
-		WalletIDSp,
-		WalletIDAddr,
+		walletIDSp,
+		walletIDAddr,
 	},
 }
 
@@ -749,7 +749,7 @@ var walletMarketAdd = &cli.Command{
 	},
 }
 
-var WalletIDSp = &cli.Command{
+var walletIDSp = &cli.Command{
 	Name:      "IDsp",
 	Usage:     "Generate a non-interactive authentication token based on worker address which can be used to establish SP operator identity",
 	ArgsUsage: "<miner address>",
@@ -767,12 +767,12 @@ var WalletIDSp = &cli.Command{
 			return fmt.Errorf("must pass miner id")
 		}
 
-		maddr, err := address.NewFromString(cctx.Args().First())
+		addr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
 			return xerrors.Errorf("parsing miner id: %w", err)
 		}
 
-		result, err := api.FilIdSp(ctx, maddr)
+		result, err := api.FilIdSp(ctx, addr)
 		if err != nil {
 			return err
 		}
@@ -782,7 +782,7 @@ var WalletIDSp = &cli.Command{
 	},
 }
 
-var WalletIDAddr = &cli.Command{
+var walletIDAddr = &cli.Command{
 	Name:      "IDaddr",
 	Usage:     "Generate a non-interactive authentication token based on provided wallet address which can be used to establish address-holder identity",
 	ArgsUsage: "<public address of a wallet>",
