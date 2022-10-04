@@ -276,11 +276,9 @@ type ProvingConfig struct {
 	// A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
 	//
 	// The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-	// means that a single message can prove at most 10 partinions
+	// means that a single message can prove at most 10 partitions
 	//
-	// In some cases when submitting PoSt messages which are recovering sectors, the default network limit may still be
-	// too high to fit in the block gas limit; In those cases it may be necessary to set this value to something lower
-	// than 10; Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 	//
 	// Setting this value above the network limit has no effect
@@ -294,6 +292,16 @@ type ProvingConfig struct {
 	// Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
 	// resulting in more total gas use (but each message will have lower gas limit)
 	MaxPartitionsPerRecoveryMessage int
+
+	// Enable single partition per Post Message for partitions containing recovery sectors
+	//
+	// In cases when submitting PoSt messages which contain recovering sectors, the default network limit may still be
+	// too high to fit in the block gas limit. In those cases, it becomes useful to only house the single partition
+	// with recovery sectors in the post message
+	//
+	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
+	SingleRecoveringPartitionPerPostMessage bool
 }
 
 type SealingConfig struct {
