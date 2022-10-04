@@ -134,7 +134,7 @@ func (a *MpoolAPI) MpoolClear(ctx context.Context, local bool) error {
 }
 
 func (m *MpoolModule) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
-	return m.Mpool.Push(ctx, smsg)
+	return m.Mpool.Push(ctx, smsg, true)
 }
 
 func (a *MpoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
@@ -237,7 +237,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
-		smsgCid, err := a.Mpool.Push(ctx, smsg)
+		smsgCid, err := a.Mpool.Push(ctx, smsg, true)
 		if err != nil {
 			return messageCids, err
 		}

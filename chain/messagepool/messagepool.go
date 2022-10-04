@@ -667,7 +667,7 @@ func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.T
 	return publish, nil
 }
 
-func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
+func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish bool) (cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.MpoolPushDuration)
 	defer done()
 
@@ -683,14 +683,14 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 	}()
 
 	mp.curTsLk.Lock()
-	publish, err := mp.addTs(ctx, m, mp.curTs, true, false)
+	ok, err := mp.addTs(ctx, m, mp.curTs, true, false)
 	if err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
 	}
 	mp.curTsLk.Unlock()
 
-	if publish {
+	if ok && publish {
 		msgb, err := m.Serialize()
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error serializing message: %w", err)

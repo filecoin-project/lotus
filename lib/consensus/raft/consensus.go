@@ -73,7 +73,8 @@ func (c ConsensusOp) ApplyTo(state consensus.State) (consensus.State, error) {
 	s := state.(*RaftState)
 	s.NonceMap[c.Addr] = c.Nonce
 	s.MsgUuids[c.Uuid] = c.SignedMsg
-	s.Mpool.Add(context.TODO(), c.SignedMsg)
+	//s.Mpool.Add(context.TODO(), c.SignedMsg)
+	s.Mpool.Push(context.TODO(), c.SignedMsg, false)
 	return s, nil
 }
 

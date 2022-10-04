@@ -235,6 +235,11 @@ func RouteRequest() {
 
 }
 
+// Not thread safe
+func OnSingleNode(ctx context.Context) context.Context {
+	return context.WithValue(ctx, "retry node", new(*int))
+}
+
 func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	outs := api.GetInternalStructs(outstr)
 
@@ -290,7 +295,18 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 					//
 					//return fn.Call(args)
 
-					toCall := curr.Inc() % int64(total)
+					// for calls that need to be performed on the same node
+					// primarily for miner when calling create block and submit block subsequently
+					var toCall int64
+					if ctx.Value("retry node") == nil {
+						toCall = curr.Inc() % int64(total)
+					} else if (*ctx.Value("retry node").(**int64)) == nil {
+						toCall = curr.Inc() % int64(total)
+						*ctx.Value("retry node").(**int64) = &toCall
+					} else {
+						toCall = **ctx.Value("retry node").(**int64)
+					}
+					//toCall := curr.Inc() % int64(total)
 
 					result := fns[toCall].Call(args)
 					if result[len(result)-1].IsNil() {
