@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -292,6 +293,28 @@ func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types
 	}
 
 	return ts, nil
+}
+
+func ParseTipSetRefOffline(ctx context.Context, cs *store.ChainStore, tss string) (*types.TipSet, error) {
+	switch {
+
+	case tss == "" || tss == "@head":
+		return cs.GetHeaviestTipSet(), nil
+
+	case tss[0] != '@':
+		cids, err := ParseTipSetString(tss)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse tipset (%q): %w", tss, err)
+		}
+		return cs.LoadTipSet(ctx, types.NewTipSetKey(cids...))
+
+	default:
+		var h uint64
+		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
+			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
+		}
+		return cs.GetTipsetByHeight(ctx, abi.ChainEpoch(h), cs.GetHeaviestTipSet(), true)
+	}
 }
 
 var StatePowerCmd = &cli.Command{

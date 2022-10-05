@@ -32,7 +32,6 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -125,22 +124,9 @@ var exportChainCmd = &cli.Command{
 		fullstate := cctx.Bool("full-state")
 		skipoldmsgs := cctx.Bool("skip-old-msgs")
 
-		var ts *types.TipSet
-		if tss := cctx.String("tipset"); tss != "" {
-			cids, err := lcli.ParseTipSetString(tss)
-			if err != nil {
-				return xerrors.Errorf("failed to parse tipset (%q): %w", tss, err)
-			}
-
-			tsk := types.NewTipSetKey(cids...)
-
-			selts, err := cs.LoadTipSet(context.Background(), tsk)
-			if err != nil {
-				return xerrors.Errorf("loading tipset: %w", err)
-			}
-			ts = selts
-		} else {
-			ts = cs.GetHeaviestTipSet()
+		ts, err := lcli.ParseTipSetRefOffline(ctx, cs, cctx.String("tipset"))
+		if err != nil {
+			return err
 		}
 
 		if fullstate {
