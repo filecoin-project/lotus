@@ -241,6 +241,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
 					}
 
+					fmt.Println("key type ", preseal.DealClientKey.Type)
+					fmt.Printf("key bytes %x\n", preseal.DealClientKey.PrivateKey)
 					sig, err := sigs.Sign(key.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
 					if err != nil {
 						return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
