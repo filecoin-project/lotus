@@ -971,6 +971,11 @@ workflows:
           target: "./itests/paych_cli_test.go"
       
       - test:
+          name: test-itest-pending_deal_allocation_retrieval
+          suite: itest-pending_deal_allocation_retrieval
+          target: "./itests/pending_deal_allocation_retrieval_test.go"
+      
+      - test:
           name: test-itest-sdr_upgrade
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"

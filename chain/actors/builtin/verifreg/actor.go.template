@@ -73,6 +73,6 @@ type State interface {
 	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
-	GetAllocation(addr address.Address, allocationId verifregtypes.AllocationId) (*verifregtypes.Allocation, bool, error)
+	GetAllocation(clientIdAddr address.Address, allocationId verifregtypes.AllocationId) (*verifregtypes.Allocation, bool, error)
 	GetState() interface{}
 }

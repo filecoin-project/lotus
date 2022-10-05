@@ -90,7 +90,7 @@ func (s *state0) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state0) GetAllocation(addr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state0) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v0")
 

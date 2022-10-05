@@ -90,8 +90,8 @@ func (s *state9) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state9) GetAllocation(addr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state9) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
 
-	return s.FindAllocation(s.store, addr, allocationId)
+	return s.FindAllocation(s.store, clientIdAddr, allocationId)
 
 }

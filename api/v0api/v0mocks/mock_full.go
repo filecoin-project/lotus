@@ -2338,19 +2338,19 @@ func (mr *MockFullNodeMockRecorder) StateGetAllocation(arg0, arg1, arg2, arg3 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocation", reflect.TypeOf((*MockFullNode)(nil).StateGetAllocation), arg0, arg1, arg2, arg3)
 }
 
-// StateGetDealAllocation mocks base method.
-func (m *MockFullNode) StateGetDealAllocation(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*verifreg.Allocation, error) {
+// StateGetAllocationForPendingDeal mocks base method.
+func (m *MockFullNode) StateGetAllocationForPendingDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*verifreg.Allocation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateGetDealAllocation", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "StateGetAllocationForPendingDeal", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*verifreg.Allocation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// StateGetDealAllocation indicates an expected call of StateGetDealAllocation.
-func (mr *MockFullNodeMockRecorder) StateGetDealAllocation(arg0, arg1, arg2 interface{}) *gomock.Call {
+// StateGetAllocationForPendingDeal indicates an expected call of StateGetAllocationForPendingDeal.
+func (mr *MockFullNodeMockRecorder) StateGetAllocationForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetDealAllocation", reflect.TypeOf((*MockFullNode)(nil).StateGetDealAllocation), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationForPendingDeal", reflect.TypeOf((*MockFullNode)(nil).StateGetAllocationForPendingDeal), arg0, arg1, arg2)
 }
 
 // StateGetNetworkParams mocks base method.
