@@ -33,13 +33,34 @@
 </head>
 <body>
     <h3>IPLD View</h3>
-    <h4>
+    <div>
+
+    {{if .filRetrieval}}
+        <span><a href="/minersectors/{{.provider}}">{{.provider}}</a> / </span>
+        <span><a href="/view/{{.provider}}/{{.pieceCid}}/{{.dataCid}}/">{{.pieceCid}}</a> / </span>
+    {{end}}
+
+    <span><a href="/view/{{.provider}}/{{.pieceCid}}/{{.dataCid}}/">{{.dataCid}}</a> / </span>
+
+
+    {{$purl := (print "/view/" .provider "/" .pieceCid "/" .dataCid "/") }}
+    {{range .path}}
+        {{$purl = (print $purl .Name "/")}}
+        {{if .Link}}
+            <span><a href="{{$purl}}">{{.Name}}</a> / </span>
+        {{else}}
+            <span>{{.Name}} / </span>
+        {{end}}
+    {{end}}
+
+    </div>
+    <h5>
         <a href="{{.carurl}}">[CAR]</a>
         {{if .ipfs}}<a href="{{.url}}?view=ipfs">[IPFS]</a>{{end}}
         {{if .reinterpCbor}}<a href="{{.url}}?view=ipld&reinterp=dag-cbor">[AS DAG-CBOR]</a>{{end}}
         {{if .reinterpPB}}<a href="{{.url}}?view=ipld&reinterp=dag-pb&dirchecks=0">[AS DAG-PB]</a>{{end}}
         {{if .reinterpRaw}}<a href="{{.url}}?view=ipld&reinterp=raw">[AS RAW]</a>{{end}}
-    </h4>
+    </h5>
     <span>node: <i>{{ .node }}</i><a href="/find/{{ .node }}">[find]</a> (<b>{{ .desc }}</b>)</span>
     <hr>
 

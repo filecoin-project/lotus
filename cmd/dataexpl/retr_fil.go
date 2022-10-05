@@ -31,7 +31,7 @@ import (
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
-type selGetter func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, func(), error)
+type selGetter func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, map[string]struct{}, func(), error)
 
 func getCarFilRetrieval(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (io.ReadCloser, error) {
 	return func(ss builder.SelectorSpec) (io.ReadCloser, error) {
@@ -65,12 +65,12 @@ func getCarFilRetrieval(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Reques
 func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) selGetter {
 	cbs := bstore.Blockstore(bstore.NewMemorySync())
 
-	return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, func(), error) {
+	return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, map[string]struct{}, func(), error) {
 		vars := mux.Vars(r)
 
 		sel, err := pathToSel(vars["path"], false, ss)
 		if err != nil {
-			return cid.Undef, nil, nil, err
+			return cid.Undef, nil, nil, nil, err
 		}
 
 		bbs := &blockReadBs{
@@ -84,7 +84,7 @@ func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, m
 
 		eref, done, err := retrieveFil(r.Context(), api, &apistore, ma, pcid, dcid, &sel, bbs.Finalize)
 		if err != nil {
-			return cid.Undef, nil, nil, xerrors.Errorf("retrieve: %w", err)
+			return cid.Undef, nil, nil, nil, xerrors.Errorf("retrieve: %w", err)
 		}
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
@@ -97,11 +97,11 @@ func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, m
 
 		rs, err := textselector.SelectorSpecFromPath(textselector.Expression(vars["path"]), false, ss)
 		if err != nil {
-			return cid.Cid{}, nil, nil, xerrors.Errorf("failed to parse path-selector: %w", err)
+			return cid.Cid{}, nil, nil, nil, xerrors.Errorf("failed to parse path-selector: %w", err)
 		}
 
-		root, err := findRoot(r.Context(), dcid, rs, ds)
-		return root, ds, done, err
+		root, links, err := findRoot(r.Context(), dcid, rs, ds)
+		return root, ds, links, done, err
 	}
 }
 

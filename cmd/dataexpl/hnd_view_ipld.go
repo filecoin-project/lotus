@@ -23,7 +23,7 @@ import (
 	txtempl "text/template"
 )
 
-func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node format.Node, dserv format.DAGService) {
+func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node format.Node, dserv format.DAGService, tpldata map[string]interface{}) {
 	ctx := r.Context()
 
 	w.Header().Set("X-HumanSize", types.SizeStr(types.NewInt(must(node.Size))))
@@ -248,21 +248,21 @@ func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node form
 	}
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	data := map[string]interface{}{
-		"content": res,
 
-		"carurl": strings.Replace(r.URL.Path, "/view", "/car", 1),
-		"url":    r.URL.Path,
-		"ipfs":   node.Cid().Type() == cid.DagProtobuf || node.Cid().Type() == cid.Raw,
+	tpldata["content"] = res
 
-		"reinterpCbor": reinterpCbor,
-		"reinterpPB":   reinterpPB,
-		"reinterpRaw":  reinterpRaw,
+	tpldata["carurl"] = strings.Replace(r.URL.Path, "/view", "/car", 1)
+	tpldata["url"] = r.URL.Path
+	tpldata["ipfs"] = node.Cid().Type() == cid.DagProtobuf || node.Cid().Type() == cid.Raw
 
-		"desc": ni.Desc,
-		"node": node.Cid(),
-	}
-	if err := tpl.Execute(w, data); err != nil {
+	tpldata["reinterpCbor"] = reinterpCbor
+	tpldata["reinterpPB"] = reinterpPB
+	tpldata["reinterpRaw"] = reinterpRaw
+
+	tpldata["desc"] = ni.Desc
+	tpldata["node"] = node.Cid()
+
+	if err := tpl.Execute(w, tpldata); err != nil {
 		fmt.Println(err)
 		return
 	}

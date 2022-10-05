@@ -162,7 +162,7 @@ func (h *dxhnd) handleDeal(w http.ResponseWriter, r *http.Request) {
 		g := getFilRetrieval(h.apiBss, h.api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
 
 		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-		root, dserv, done, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
+		root, dserv, _, done, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
 			ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 				eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 					eb.Insert("Hash", ssb.ExploreRecursiveEdge())

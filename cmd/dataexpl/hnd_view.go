@@ -53,7 +53,13 @@ func (h *dxhnd) handleViewFil(w http.ResponseWriter, r *http.Request) {
 
 	// retr root
 	g := getFilRetrieval(h.apiBss, h.api, r, ma, pcid, dcid)
-	h.handleViewInner(w, r, g)
+	h.handleViewInner(w, r, g, map[string]interface{}{
+		"filRetrieval": true,
+		"provider":     ma,
+		"pieceCid":     pcid,
+
+		"dataCid": dcid,
+	})
 }
 
 func (h *dxhnd) handleViewIPFS(w http.ResponseWriter, r *http.Request) {
@@ -65,10 +71,10 @@ func (h *dxhnd) handleViewIPFS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sg := func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, func(), error) {
+	sg := func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, map[string]struct{}, func(), error) {
 		lbs, err := bstore.NewLocalIPFSBlockstore(r.Context(), true)
 		if err != nil {
-			return cid.Cid{}, nil, nil, err
+			return cid.Cid{}, nil, nil, nil, err
 		}
 
 		bs := bstore.NewTieredBstore(bstore.Adapt(lbs), bstore.NewMemory())
@@ -76,17 +82,22 @@ func (h *dxhnd) handleViewIPFS(w http.ResponseWriter, r *http.Request) {
 
 		rs, err := textselector.SelectorSpecFromPath(textselector.Expression(vars["path"]), false, ss)
 		if err != nil {
-			return cid.Cid{}, nil, nil, xerrors.Errorf("failed to parse path-selector: %w", err)
+			return cid.Cid{}, nil, nil, nil, xerrors.Errorf("failed to parse path-selector: %w", err)
 		}
 
-		root, err := findRoot(r.Context(), dcid, rs, ds)
-		return root, ds, func() {}, err
+		root, links, err := findRoot(r.Context(), dcid, rs, ds)
+		return root, ds, links, func() {}, err
 	}
 
-	h.handleViewInner(w, r, sg)
+	h.handleViewInner(w, r, sg, map[string]interface{}{
+		"filRetrieval": false,
+
+		"dataCid": dcid,
+	})
 }
 
-func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGetter) {
+func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGetter, tpldata map[string]interface{}) {
+	vars := mux.Vars(r)
 	ctx := r.Context()
 
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
@@ -125,7 +136,7 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 		)
 	}
 
-	root, dserv, done, err := g(sel)
+	root, dserv, links, done, err := g(sel)
 	if err != nil {
 		http.Error(w, xerrors.Errorf("inner get 0: %w", err).Error(), http.StatusInternalServerError)
 		return
@@ -133,6 +144,8 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 	defer func() {
 		done()
 	}()
+
+	tpldata["path"] = markLinkPaths(tplPathSegments(vars["path"]), links)
 
 	swapCodec := func(c cid.Cid, cd uint64) cid.Cid {
 		if c.Prefix().Version == 0 && cd == cid.DagProtobuf {
@@ -159,7 +172,7 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 	viewIPLD := root.Type() == cid.DagCBOR || r.FormValue("view") == "ipld"
 
 	if viewIPLD {
-		h.handleViewIPLD(w, r, node, dserv)
+		h.handleViewIPLD(w, r, node, dserv, tpldata)
 		return
 	}
 
@@ -205,12 +218,12 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 			}
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusOK)
-			data := map[string]interface{}{
-				"entries": links,
-				"url":     r.URL.Path,
-				"carurl":  carpath,
-			}
-			if err := tpl.Execute(w, data); err != nil {
+			tpldata["entries"] = links
+			tpldata["url"] = r.URL.Path
+			tpldata["carurl"] = carpath
+			tpldata["desc"] = fmt.Sprintf("DIR (%d entries)", len(links))
+			tpldata["node"] = node.Cid()
+			if err := tpl.Execute(w, tpldata); err != nil {
 				fmt.Println(err)
 				return
 			}
@@ -266,15 +279,14 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 			}
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusOK)
-			data := map[string]interface{}{
-				"entries": links,
-				"url":     r.URL.Path,
-				"carurl":  carpath,
 
-				"desc": fmt.Sprintf("DIR (%d entries)", len(links)),
-				"node": node.Cid(),
-			}
-			if err := tpl.Execute(w, data); err != nil {
+			tpldata["entries"] = links
+			tpldata["url"] = r.URL.Path
+			tpldata["carurl"] = carpath
+			tpldata["desc"] = fmt.Sprintf("DIR (%d entries)", len(links))
+			tpldata["node"] = node.Cid()
+
+			if err := tpl.Execute(w, tpldata); err != nil {
 				fmt.Println(err)
 				return
 			}
@@ -332,7 +344,7 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 
 				_, _ = startoff, endoff // todo use those when range selectors work
 
-				_, dserv, done, err = g(ssb.ExploreUnion(
+				_, dserv, _, done, err = g(ssb.ExploreUnion(
 					ssb.Matcher(),
 					ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge())))),
 				)
@@ -396,10 +408,9 @@ func (h *dxhnd) handleViewInner(w http.ResponseWriter, r *http.Request, g selGet
 }
 
 func getHeadReader(ctx context.Context, get selGetter, pss func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec) (io.ReadSeeker, error) {
-
 	// (.) / Links / 0 / Hash @
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-	root, dserv, _, err := get(pss(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
+	root, dserv, _, _, err := get(pss(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
 		ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 			eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 				eb.Insert("Hash", ssb.ExploreRecursiveEdge())
@@ -416,4 +427,28 @@ func getHeadReader(ctx context.Context, get selGetter, pss func(spec builder.Sel
 	}
 
 	return io2.NewDagReader(ctx, node, dserv)
+}
+
+func tplPathSegments(p string) []string {
+	return strings.Split(strings.TrimRight(p, "/"), "/")
+}
+
+type PathElem struct {
+	Name string
+	Link bool
+}
+
+func markLinkPaths(pseg []string, links map[string]struct{}) []PathElem {
+	fmt.Printf("pss %#v\n", pseg)
+
+	out := make([]PathElem, len(pseg))
+	for i, s := range pseg {
+		_, lnk := links[strings.Join(pseg[:i+1], "/")]
+
+		out[i] = PathElem{
+			Name: s,
+			Link: lnk,
+		}
+	}
+	return out
 }
