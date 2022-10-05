@@ -63,8 +63,7 @@ func TestTxArgs(t *testing.T) {
 
 func TestTransformParams(t *testing.T) {
 	constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-		Bytecode:  mustDecodeHex("0x1122334455"),
-		InputData: []byte{},
+		Bytecode: mustDecodeHex("0x1122334455"),
 	})
 	require.Nil(t, err)
 
