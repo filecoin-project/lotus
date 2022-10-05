@@ -359,6 +359,9 @@ func TestRaftStateLeaderDisconnectsMiner(t *testing.T) {
 	}
 }
 
+// Miner sends message on leader
+// Leader disconnects
+// Call StateWaitMsg on new leader
 func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 
 	kit.QuietMiningLogs()
@@ -405,6 +408,7 @@ func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
+	// Check if all active nodes update their leader
 	newLeader := leader
 	for _, n := range nodes {
 		if n != leaderNode {
@@ -423,6 +427,7 @@ func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 
 	rstate := getRaftState(ctx, t, leaderNode)
 
+	// Check if Raft state is consistent on all active nodes
 	for _, n := range nodes {
 		if n != oldLeaderNode {
 			rs := getRaftState(ctx, t, n)

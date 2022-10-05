@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"os"
 	"sync"
 	"time"
@@ -208,6 +209,8 @@ func (m *Miner) mine(ctx context.Context) {
 	var lastBase MiningBase
 minerLoop:
 	for {
+		ctx := cliutil.OnSingleNode(ctx)
+
 		select {
 		case <-m.stop:
 			stopping := m.stopping
