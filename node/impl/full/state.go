@@ -771,7 +771,7 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
-func (a *StateAPI) StateGetDealAllocation(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -782,7 +782,7 @@ func (a *StateAPI) StateGetDealAllocation(ctx context.Context, dealId abi.DealID
 		return nil, err
 	}
 
-	allocationId, err := st.GetAllocationId(dealId)
+	allocationId, err := st.GetAllocationIdForPendingDeal(dealId)
 	if err != nil {
 		return nil, err
 	}
@@ -795,8 +795,8 @@ func (a *StateAPI) StateGetDealAllocation(ctx context.Context, dealId abi.DealID
 	return a.StateGetAllocation(ctx, dealState.Proposal.Client, allocationId, tsk)
 }
 
-func (a *StateAPI) StateGetAllocation(ctx context.Context, addr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
-	idAddr, err := a.StateLookupID(ctx, addr, tsk)
+func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+	idAddr, err := a.StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
 	}

@@ -366,7 +366,7 @@ func (r *publishStorageDealsReturn{{.v}}) DealIDs() ([]abi.DealID, error) {
     return r.IDs, nil
 }
 
-func (s *state{{.v}}) GetAllocationId(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
 {{if (le .v 8)}}
     	return 0, xerrors.Errorf("unsupported before actors v9")
 {{else}}

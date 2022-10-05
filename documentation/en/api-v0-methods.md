@@ -169,7 +169,7 @@
   * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
   * [StateGetAllocation](#StateGetAllocation)
-  * [StateGetDealAllocation](#StateGetDealAllocation)
+  * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
@@ -5245,7 +5245,7 @@ Response:
 ```
 
 ### StateGetAllocation
-StateGetAllocation returns the allocation ID for a given address and allocation ID.
+StateGetAllocation returns the allocation for a given address and allocation ID.
 
 
 Perms: read
@@ -5281,8 +5281,8 @@ Response:
 }
 ```
 
-### StateGetDealAllocation
-StateGetDealAllocation returns the allocation ID for a given deal ID.
+### StateGetAllocationForPendingDeal
+StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
 
 
 Perms: 

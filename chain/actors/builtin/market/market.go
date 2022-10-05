@@ -127,7 +127,7 @@ type State interface {
 	) (weight, verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
-	GetAllocationId(dealId abi.DealID) (verifregtypes.AllocationId, error)
+	GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error)
 }
 
 type BalanceTable interface {

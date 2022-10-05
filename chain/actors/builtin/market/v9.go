@@ -328,7 +328,7 @@ func (r *publishStorageDealsReturn9) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
 }
 
-func (s *state9) GetAllocationId(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+func (s *state9) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
 
 	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
 	if err != nil {
