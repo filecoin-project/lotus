@@ -16,6 +16,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -26,10 +31,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/ipfs/go-cid"
-	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -1165,6 +1166,10 @@ var ChainExportRangeCmd = &cli.Command{
 			Usage: "specify write buffer size",
 			Value: 1 << 20,
 		},
+		&cli.BoolFlag{
+			Name:  "internal",
+			Usage: "will cause the daemon to write the file locally",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1177,17 +1182,6 @@ var ChainExportRangeCmd = &cli.Command{
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify filename to export chain to")
 		}
-
-		fi, err := createExportFile(cctx.App, cctx.Args().First())
-		if err != nil {
-			return err
-		}
-		defer func() {
-			err := fi.Close()
-			if err != nil {
-				fmt.Printf("error closing output file: %+v", err)
-			}
-		}()
 
 		head, tail := &types.TipSet{}, &types.TipSet{}
 		headstr := cctx.String("head")
@@ -1215,6 +1209,19 @@ var ChainExportRangeCmd = &cli.Command{
 			}
 		}
 
+		if cctx.Bool("internal") {
+			if err := api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), &lapi.ChainExportConfig{
+				WriteBufferSize:   cctx.Int("write-buffer"),
+				Workers:           cctx.Int64("workers"),
+				IncludeMessages:   cctx.Bool("messages"),
+				IncludeReceipts:   cctx.Bool("receipts"),
+				IncludeStateRoots: cctx.Bool("stateroots"),
+			}); err != nil {
+				return err
+			}
+			return nil
+		}
+
 		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), &lapi.ChainExportConfig{
 			WriteBufferSize:   cctx.Int("write-buffer"),
 			Workers:           cctx.Int64("workers"),
@@ -1225,6 +1232,17 @@ var ChainExportRangeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		fi, err := createExportFile(cctx.App, cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
 
 		var last bool
 		for b := range stream {

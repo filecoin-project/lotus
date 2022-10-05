@@ -173,6 +173,8 @@ type FullNode interface {
 
 	ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg *ChainExportConfig) (<-chan []byte, error) //perm:read
 
+	ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg *ChainExportConfig) error //perm:read
+
 	// ChainPrune prunes the stored chain state and garbage collects; only supported if you
 	// are using the splitstore
 	ChainPrune(ctx context.Context, opts PruneOpts) error //perm:admin

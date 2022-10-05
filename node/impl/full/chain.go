@@ -5,10 +5,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
@@ -585,6 +588,27 @@ func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.M
 	}
 
 	return cm.VMMessage(), nil
+}
+
+func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg *api.ChainExportConfig) error {
+	headTs, err := a.Chain.GetTipSetFromKey(ctx, head)
+	if err != nil {
+		return xerrors.Errorf("loading tipset %s: %w", head, err)
+	}
+	tailTs, err := a.Chain.GetTipSetFromKey(ctx, tail)
+	if err != nil {
+		return xerrors.Errorf("loading tipset %s: %w", tail, err)
+	}
+	f, err := os.Create(fmt.Sprintf("./snapshot_%d_%d_%s.car", tailTs.Height(), headTs.Height(), time.Now().String()))
+	if err != nil {
+		return err
+	}
+
+	if err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, f); err != nil {
+		return err
+	}
+
+	return f.Close()
 }
 
 func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg *api.ChainExportConfig) (<-chan []byte, error) {

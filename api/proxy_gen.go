@@ -120,6 +120,8 @@ type FullNodeStruct struct {
 
 		ChainExportRange func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey, p3 *ChainExportConfig) (<-chan []byte, error) `perm:"read"`
 
+		ChainExportRangeInternal func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey, p3 *ChainExportConfig) error `perm:"read"`
+
 		ChainGetBlock func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) `perm:"read"`
 
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) `perm:"read"`
@@ -1256,6 +1258,17 @@ func (s *FullNodeStruct) ChainExportRange(p0 context.Context, p1 types.TipSetKey
 
 func (s *FullNodeStub) ChainExportRange(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey, p3 *ChainExportConfig) (<-chan []byte, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainExportRangeInternal(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey, p3 *ChainExportConfig) error {
+	if s.Internal.ChainExportRangeInternal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ChainExportRangeInternal(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) ChainExportRangeInternal(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey, p3 *ChainExportConfig) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) {
