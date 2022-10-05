@@ -1,51 +1,80 @@
 # Lotus changelog
 
-# v1.17.2-rc2 / 2022-09-29
+# v1.17.2 / 2022-10-05
 
-This is the second release candidate of the upcoming OPTIONAL release Lotus v1.17.2
+This is an OPTIONAL release of Lotus. This feature release introduces new sector number management APIs in Lotus that enables all the Sealing-as-a-Service and Lotus interactions needed to function. The default propagation delay setting for storage providers has also been changed, as well as numerous other features and enhancements. Check out the sub-bullet points in the feature and enhancement section to get a short description about each feature and enhancements.
+
+### Highlights
+
+🦭 **SaaS** 🦭
+New sector management APIs makes it possible to import partially sealed sectors into Lotus. This release implements all SaaS<->Lotus interactions needed for such services to work. Deep dive into the new APIs here: https://github.com/filecoin-project/lotus/discussions/9079#discussioncomment-3652044
+
+⏳ **Propagation delay** ⌛️
+In v1.17.2 the default PropagationDelay has been raised from 6 seconds -> 10 seconds, and you can tune this yourself with the `PROPAGATION_DELAY_SECS` environment variable. This means you will now wait for 10 seconds for other blocks to arrive from the network before computing a winningPoSt (if eligible). In your `lotus-miner` logs that means you will see this "baseDeltaSeconds": 10 as default.
+
+⚠️ **Please note that Lotus v1.17.2 will require a Go-version of v1.18.1 or higher!**
 
 ## New features
 - feat: sealing: Partially sealed sector import ([filecoin-project/lotus#9210](https://github.com/filecoin-project/lotus/pull/9210))
-  - feat: sealing: Use bitfields to manage sector numbers ([filecoin-project/lotus#9183](https://github.com/filecoin-project/lotus/pull/9183))
+  - Implements support for importing (partially) sealed sectors which is needed for enabling external sealing services.
+- feat: sealing: Use bitfields to manage sector numbers ([filecoin-project/lotus#9183](https://github.com/filecoin-project/lotus/pull/9183))
+  - Needed for Sealing-as-a-Service. Move sector number assigning logic to use stored bitfields instead of stored counters. Makes it possible to reserve ranges of sector numbers, see the sector assigner state and view sector number reservations.
 - feat: env: propagation delay ([filecoin-project/lotus#9290](https://github.com/filecoin-project/lotus/pull/9290))
+  - The default propagation delay is raised to 10 seconds from 6 seconds. Ability to set it yourself with the `PROPAGATION_DELAY_SECS` environment variable.
 - feat: cli: lotus info cmd ([filecoin-project/lotus#9233](https://github.com/filecoin-project/lotus/pull/9233))
+  - A new `lotus info` command that prints useful node information in one place.
 - feat: proving: Introduce manual sector fault recovery (#9144) ([filecoin-project/lotus#9144](https://github.com/filecoin-project/lotus/pull/9144))
+  - Allow users to declare fault recovery messages manually with the `lotus-miner proving recover-faults` command, rather than waiting for it to happen automatically before windowPost.
+- feat: api: Reintroduce StateActorManifestCID ([filecoin-project/lotus#9201](https://github.com/filecoin-project/lotus/pull/9201))
+  - Adds ability to retrieve the Actor Manifest CID through the api.
+- feat: message: Add uuid to mpool message sent to chain node from miner ([filecoin-project/lotus#9174](https://github.com/filecoin-project/lotus/pull/9174))
+  - Adds a UUID to each message sent by the `lotus-miner` to the daemon. A requirement needed for https://github.com/filecoin-project/lotus/issues/9130
+- feat: message: Add retries to mpool push message from lotus-miner ([filecoin-project/lotus#9177](https://github.com/filecoin-project/lotus/pull/9177))
+  - Retries to mpool push message API in case of unavailability of the lotus chain node.
+
+**Network 17 related features :**
+- feat: network: add nv17 and integrate the corresponding go state type ([filecoin-project/lotus#9267](https://github.com/filecoin-project/lotus/pull/9267))
 - feat: cli: print beneficiary info in state miner-info ([filecoin-project/lotus#9308](https://github.com/filecoin-project/lotus/pull/9308))
 - feat: api/cli: change beneficiary propose and confirm for actors and multisigs. ([filecoin-project/lotus#9307](https://github.com/filecoin-project/lotus/pull/9307))
 - feat: api/cli: beneficiary withdraw api and cli ([filecoin-project/lotus#9296](https://github.com/filecoin-project/lotus/pull/9296))
-- feat: network: add nv17 and integrate the corresponding go state type ([filecoin-project/lotus#9267](https://github.com/filecoin-project/lotus/pull/9267))
-- feat: api: Reintroduce StateActorManifestCID ([filecoin-project/lotus#9201](https://github.com/filecoin-project/lotus/pull/9201))
-- feat: message: Add retries to mpool push message from lotus miner ([filecoin-project/lotus#9177](https://github.com/filecoin-project/lotus/pull/9177))
-- feat: message: Add uuid to mpool message sent to chain node from miner ([filecoin-project/lotus#9174](https://github.com/filecoin-project/lotus/pull/9174))
 
 ## Enhancements
 - feat: sectors renew --only-cc ([filecoin-project/lotus#9184](https://github.com/filecoin-project/lotus/pull/9184))
+  - Exlude extending deal-related sectors with the `--only-cc` option when using the `lotus-miner sectors renew`
 - feat: miner: display updated & update-cache for storage list ([filecoin-project/lotus#9323](https://github.com/filecoin-project/lotus/pull/9323))
+  - Show amount of `updated` & `update-cache` sectors in each storage path in the `lotus-miner storage list` output
 - feat: add descriptive errors to markets event handler ([filecoin-project/lotus#9326](https://github.com/filecoin-project/lotus/pull/9326))
+  - More descriptive market error logs
 - feat: cli: Add option to terminate sectors from worker address ([filecoin-project/lotus#9291](https://github.com/filecoin-project/lotus/pull/9291))
-- fix: sealing: Make DataCid resource env vars make more sense ([filecoin-project/lotus#9231](https://github.com/filecoin-project/lotus/pull/9231))
+  - Adds a flag to allow either owner address or worker address to send terminate sectors message.
 - fix: cli: actor-cids cli command now defaults to current network ([filecoin-project/lotus#9321](https://github.com/filecoin-project/lotus/pull/9321))
-- fix: worker: Close all storage paths on worker shutdown ([filecoin-project/lotus#9153](https://github.com/filecoin-project/lotus/pull/9153))
+  - Makes the command defaults to the current network.
 - fix: ux: Output bytes in `lotus client commP` cmd ([filecoin-project/lotus#9189](https://github.com/filecoin-project/lotus/pull/9189))
-- fix: ux: exclude negative available balance from spendable amount ([filecoin-project/lotus#9182](https://github.com/filecoin-project/lotus/pull/9182))
+  - Adds an additional line that outputs bytes in the `lotus client commP` command.
 - fix: sealing: Add information on what worker a job was assigned to in logs ([filecoin-project/lotus#9151](https://github.com/filecoin-project/lotus/pull/9151))
+  - Adds the worker hostname into the assignment logs.
 - refactor: sealing pipeline: Remove useless storage adapter code ([filecoin-project/lotus#9142](https://github.com/filecoin-project/lotus/pull/9142)
+  - Remove proxy code in `storage/miner.go` / `storage/miner_sealing.go`, call the pipeline directly instead.
 
 ## Bug fixes
 - fix: ffiwrapper: Close readers in AddPiece ([filecoin-project/lotus#9328](https://github.com/filecoin-project/lotus/pull/9328))
 - fix: sealing: Drop unused PreCommitInfo from pipeline.SectorInfo ([filecoin-project/lotus#9325](https://github.com/filecoin-project/lotus/pull/9325))
 - fix: cli: fix panic in `lotus-miner actor control list` ([filecoin-project/lotus#9241](https://github.com/filecoin-project/lotus/pull/9241))
 - fix: sealing: Abort upgrades in sectors with no deals ([filecoin-project/lotus#9310](https://github.com/filecoin-project/lotus/pull/9310))
+- fix: sealing: Make DataCid resource env vars make more sense ([filecoin-project/lotus#9231](https://github.com/filecoin-project/lotus/pull/9231))
 - fix: cli: Option to specify --from msg sender ([filecoin-project/lotus#9237](https://github.com/filecoin-project/lotus/pull/9237))
 - fix: ux: better ledger rejection error ([filecoin-project/lotus#9242](https://github.com/filecoin-project/lotus/pull/9242))
 - fix: ux: msg receipt for actor withdrawal ([filecoin-project/lotus#9155](https://github.com/filecoin-project/lotus/pull/9155))
+- fix: ux: exclude negative available balance from spendable amount ([filecoin-project/lotus#9182](https://github.com/filecoin-project/lotus/pull/9182))
 - fix: sealing: Avoid panicking in handleUpdateActivating on startup ([filecoin-project/lotus#9331](https://github.com/filecoin-project/lotus/pull/9331))
 - fix: api: DataCid - ensure reader is closed ([filecoin-project/lotus#9230](https://github.com/filecoin-project/lotus/pull/9230))
 - fix: verifreg: serialize RmDcProposalID as int, not tuple ([filecoin-project/lotus#9206](https://github.com/filecoin-project/lotus/pull/9206))
 - fix: api: Ignore uuid check for messages with uuid not set ([filecoin-project/lotus#9303](https://github.com/filecoin-project/lotus/pull/9303))
 - fix: cgroupV1: memory.memsw.usage_in_bytes: no such file or directory ([filecoin-project/lotus#9202](https://github.com/filecoin-project/lotus/pull/9202))
 - fix: miner: init miner's with 32GiB sectors by default ([filecoin-project/lotus#9364](https://github.com/filecoin-project/lotus/pull/9364))
+- fix: worker: Close all storage paths on worker shutdown ([filecoin-project/lotus#9153](https://github.com/filecoin-project/lotus/pull/9153))
 - fix: build: set PropagationDelaySecs correctly ([filecoin-project/lotus#9358](https://github.com/filecoin-project/lotus/pull/9358))
+- fix: renew --only-cc with sectorfile ([filecoin-project/lotus#9428](https://github.com/filecoin-project/lotus/pull/9428))
 
 ## Dependency updates
 - github.com/filecoin-project/go-fil-markets (v1.23.1 -> v1.24.0)
