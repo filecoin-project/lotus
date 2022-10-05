@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
@@ -19,12 +19,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const minRetryTime = 1 * time.Minute
+var MinRetryTime = 1 * time.Minute
 
 func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: Exponential backoff when we see consecutive failures
 
-	retryStart := time.Unix(int64(sector.Log[len(sector.Log)-1].Timestamp), 0).Add(minRetryTime)
+	retryStart := time.Unix(int64(sector.Log[len(sector.Log)-1].Timestamp), 0).Add(MinRetryTime)
 	if len(sector.Log) > 0 && !time.Now().After(retryStart) {
 		log.Infof("%s(%d), waiting %s before retrying", sector.State, sector.SectorNumber, time.Until(retryStart))
 		select {
@@ -179,6 +179,18 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 
 	if sector.InvalidProofs > 1 {
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("consecutive compute fails")})
+	}
+
+	return ctx.Send(SectorRetryComputeProof{})
+}
+
+func (m *Sealing) handleRemoteCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	if sector.InvalidProofs > 1 {
+		log.Errorw("consecutive remote commit fails", "sector", sector.SectorNumber, "c1url", sector.RemoteCommit1Endpoint, "c2url", sector.RemoteCommit2Endpoint)
 	}
 
 	return ctx.Send(SectorRetryComputeProof{})
@@ -389,11 +401,6 @@ func (m *Sealing) handleDealsExpired(ctx statemachine.Context, sector SectorInfo
 		// TODO: this should never happen, but in case it does, try to go back to
 		//  the proving state after running some checks
 		return xerrors.Errorf("sector is committed on-chain, but we're in DealsExpired")
-	}
-
-	if sector.PreCommitInfo == nil {
-		// TODO: Create a separate state which will remove those pieces, and go back to PC1
-		log.Errorf("non-precommitted sector with expired deals, can't recover from this yet")
 	}
 
 	// Not much to do here, we can't go back in time to commit this sector

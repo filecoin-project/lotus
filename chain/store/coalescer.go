@@ -9,12 +9,17 @@ import (
 
 // WrapHeadChangeCoalescer wraps a ReorgNotifee with a head change coalescer.
 // minDelay is the minimum coalesce delay; when a head change is first received, the coalescer will
-//  wait for that long to coalesce more head changes.
+//
+//	wait for that long to coalesce more head changes.
+//
 // maxDelay is the maximum coalesce delay; the coalescer will not delay delivery of a head change
-//  more than that.
+//
+//	more than that.
+//
 // mergeInterval is the interval that triggers additional coalesce delay; if the last head change was
-//  within the merge interval when the coalesce timer fires, then the coalesce time is extended
-//  by min delay and up to max delay total.
+//
+//	within the merge interval when the coalesce timer fires, then the coalesce time is extended
+//	by min delay and up to max delay total.
 func WrapHeadChangeCoalescer(fn ReorgNotifee, minDelay, maxDelay, mergeInterval time.Duration) ReorgNotifee {
 	c := NewHeadChangeCoalescer(fn, minDelay, maxDelay, mergeInterval)
 	return c.HeadChange

@@ -4,14 +4,17 @@
 package build
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -22,7 +25,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 const GenesisNetworkVersion = network.Version0
 
 var NetworkBundle = "calibrationnet"
-var BundleOverrides map[actors.Version]string
+var BundleOverrides map[actorstypes.Version]string
 
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car"
@@ -66,6 +69,8 @@ const UpgradeOhSnapHeight = 682006
 // 2022-06-16T17:30:00Z
 const UpgradeSkyrHeight = 1044660
 
+var UpgradeV17Height = abi.ChainEpoch(99999999999999)
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
@@ -84,13 +89,28 @@ func init() {
 
 	Devnet = true
 
+	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
+	//set this value too high may impacts your block submission; set this value too low may cause you miss
+	//parent tipsets for blocking forming and mining.
+	if len(os.Getenv("PROPAGATION_DELAY_SECS")) != 0 {
+		pds, err := strconv.ParseUint(os.Getenv("PROPAGATION_DELAY_SECS"), 10, 64)
+		if err != nil {
+			log.Warnw("Error setting PROPAGATION_DELAY_SECS, %v, proceed with default value %s", err,
+				PropagationDelaySecs)
+		} else {
+			PropagationDelaySecs = pds
+			log.Warnw(" !!WARNING!! propagation delay is set to be %s second, "+
+				"this value impacts your message republish interval and block forming - monitor with caution!!", PropagationDelaySecs)
+		}
+	}
+
 	BuildType = BuildCalibnet
 
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
-const PropagationDelaySecs = uint64(6)
+var PropagationDelaySecs = uint64(10)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4

@@ -1,4 +1,4 @@
-//stm: #chaos
+// stm: #chaos
 package chaos
 
 import (

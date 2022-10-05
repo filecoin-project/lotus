@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
@@ -30,7 +31,7 @@ type fakeConfigStub struct {
 	CCSectorLifetime time.Duration
 }
 
-func fakeConfigGetter(stub *fakeConfigStub) pipeline.GetSealingConfigFunc {
+func fakeConfigGetter(stub *fakeConfigStub) dtypes.GetSealingConfigFunc {
 	return func() (sealiface.Config, error) {
 		if stub == nil {
 			return sealiface.Config{}, nil
@@ -94,7 +95,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 2)
 	longestDealEpochEnd := abi.ChainEpoch(547300)
-	pieces := []pipeline.Piece{
+	pieces := []api.SectorPiece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -135,7 +136,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []pipeline.Piece{
+	pieces := []api.SectorPiece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -164,7 +165,7 @@ func TestMissingDealIsIgnored(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []pipeline.Piece{
+	pieces := []api.SectorPiece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),

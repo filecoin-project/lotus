@@ -13,12 +13,14 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
-//  We should implement some wait-for-api logic
+//
+//	We should implement some wait-for-api logic
 type ErrApi struct{ error }
 
 type ErrNoDeals struct{ error }
@@ -40,21 +42,28 @@ type ErrCommitWaitFailed struct{ error }
 type ErrBadRU struct{ error }
 type ErrBadPR struct{ error }
 
-func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api SealingAPI, mustHaveDeals bool) error {
+func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber, pieces []api.SectorPiece, api SealingAPI, mustHaveDeals bool) error {
 	ts, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
 
 	dealCount := 0
+	var offset abi.PaddedPieceSize
 
-	for i, p := range si.Pieces {
+	for i, p := range pieces {
+		// check that the piece is correctly aligned
+		if offset%p.Piece.Size != 0 {
+			return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d is not aligned: size=%xh offset=%xh off-by=%xh", sn, i, p.Piece.Size, offset, offset%p.Piece.Size)}
+		}
+		offset += p.Piece.Size
+
 		// if no deal is associated with the piece, ensure that we added it as
 		// filler (i.e. ensure that it has a zero PieceCID)
 		if p.DealInfo == nil {
 			exp := zerocomm.ZeroPieceCommitment(p.Piece.Size.Unpadded())
 			if !p.Piece.PieceCID.Equals(exp) {
-				return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d had non-zero PieceCID %+v", si.SectorNumber, i, p.Piece.PieceCID)}
+				return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d had non-zero PieceCID %+v", sn, i, p.Piece.PieceCID)}
 			}
 			continue
 		}
@@ -67,33 +76,34 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 		}
 
 		if deal.Proposal.Provider != maddr {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, deal.Proposal.Provider, maddr)}
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(pieces), sn, p.DealInfo.DealID, deal.Proposal.Provider, maddr)}
 		}
 
 		if deal.Proposal.PieceCID != p.Piece.PieceCID {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, deal.Proposal.PieceCID)}
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(pieces), sn, p.DealInfo.DealID, p.Piece.PieceCID, deal.Proposal.PieceCID)}
 		}
 
 		if p.Piece.Size != deal.Proposal.PieceSize {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.Size, deal.Proposal.PieceSize)}
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(pieces), sn, p.DealInfo.DealID, p.Piece.Size, deal.Proposal.PieceSize)}
 		}
 
 		if ts.Height() >= deal.Proposal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, deal.Proposal.StartEpoch, ts.Height())}
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(pieces), sn, p.DealInfo.DealID, deal.Proposal.StartEpoch, ts.Height())}
 		}
 	}
 
 	if mustHaveDeals && dealCount <= 0 {
-		return &ErrNoDeals{(xerrors.Errorf("sector %d must have deals, but does not", si.SectorNumber))}
+		return &ErrNoDeals{xerrors.Errorf("sector %d must have deals, but does not", sn)}
 	}
 
 	return nil
 }
 
 // checkPrecommit checks that data commitment generated in the sealing process
-//  matches pieces, and that the seal ticket isn't expired
+//
+//	matches pieces, and that the seal ticket isn't expired
 func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, height abi.ChainEpoch, api SealingAPI) (err error) {
-	if err := checkPieces(ctx, maddr, si, api, false); err != nil {
+	if err := checkPieces(ctx, maddr, si.SectorNumber, si.Pieces, api, false); err != nil {
 		return err
 	}
 
@@ -208,7 +218,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrInvalidProof{xerrors.New("invalid proof (compute error?)")}
 	}
 
-	if err := checkPieces(ctx, m.maddr, si, m.Api, false); err != nil {
+	if err := checkPieces(ctx, m.maddr, si.SectorNumber, si.Pieces, m.Api, false); err != nil {
 		return err
 	}
 
@@ -218,7 +228,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 // check that sector info is good after running a replica update
 func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, api SealingAPI) error {
 
-	if err := checkPieces(ctx, maddr, si, api, true); err != nil {
+	if err := checkPieces(ctx, maddr, si.SectorNumber, si.Pieces, api, true); err != nil {
 		return err
 	}
 	if !si.CCUpdate {

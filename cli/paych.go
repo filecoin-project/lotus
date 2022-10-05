@@ -50,8 +50,8 @@ var paychAddFundsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
-			return ShowHelp(cctx, fmt.Errorf("must pass three arguments: <from> <to> <available funds>"))
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		from, err := address.NewFromString(cctx.Args().Get(0))
@@ -112,8 +112,8 @@ var paychStatusByFromToCmd = &cli.Command{
 	Usage:     "Show the status of an active outbound payment channel by from/to addresses",
 	ArgsUsage: "[fromAddress toAddress]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass two arguments: <from address> <to address>"))
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 		ctx := ReqContext(cctx)
 
@@ -148,8 +148,8 @@ var paychStatusCmd = &cli.Command{
 	Usage:     "Show the status of an outbound payment channel",
 	ArgsUsage: "[channelAddress]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return ShowHelp(cctx, fmt.Errorf("must pass an argument: <channel address>"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 		ctx := ReqContext(cctx)
 
@@ -260,8 +260,8 @@ var paychSettleCmd = &cli.Command{
 	Usage:     "Settle a payment channel",
 	ArgsUsage: "[channelAddress]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return fmt.Errorf("must pass payment channel address")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -286,7 +286,7 @@ var paychSettleCmd = &cli.Command{
 		if err != nil {
 			return nil
 		}
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
@@ -300,8 +300,8 @@ var paychCloseCmd = &cli.Command{
 	Usage:     "Collect funds for a payment channel",
 	ArgsUsage: "[channelAddress]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return fmt.Errorf("must pass payment channel address")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -326,7 +326,7 @@ var paychCloseCmd = &cli.Command{
 		if err != nil {
 			return nil
 		}
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
@@ -360,8 +360,8 @@ var paychVoucherCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass two arguments: <channel> <amount>"))
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -408,8 +408,8 @@ var paychVoucherCheckCmd = &cli.Command{
 	Usage:     "Check validity of payment channel voucher",
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address and voucher to validate"))
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -444,8 +444,8 @@ var paychVoucherAddCmd = &cli.Command{
 	Usage:     "Add payment channel voucher to local datastore",
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address and voucher"))
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -486,8 +486,8 @@ var paychVoucherListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -531,8 +531,8 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -602,8 +602,8 @@ var paychVoucherSubmitCmd = &cli.Command{
 	Usage:     "Submit voucher to chain to update payment channel state",
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass payment channel address and voucher"))
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ch, err := address.NewFromString(cctx.Args().Get(0))
@@ -634,7 +634,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 

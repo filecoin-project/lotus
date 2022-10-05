@@ -370,7 +370,7 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 	}
 
 	for _, t := range storiface.PathTypes {
-		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
+		ents, err := os.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil { // nolint

@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) error {
+func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
 	si, err := m.GetSectorInfo(id)
 	if err != nil {
 		return xerrors.Errorf("getting sector info: %w", err)

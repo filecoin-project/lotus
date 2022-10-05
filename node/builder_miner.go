@@ -15,6 +15,7 @@ import (
 	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
@@ -77,6 +78,7 @@ func ConfigStorageMiner(c interface{}) Option {
 
 	return Options(
 
+		Override(new(v1api.FullNode), modules.MakeUuidWrapper),
 		// Needed to instantiate pubsub used by index provider via ConfigCommon
 		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
@@ -106,7 +108,6 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(storiface.ProverPoSt), From(new(sectorstorage.SectorManager))),
 
 			// Sealing (todo should be under EnableSealing, but storagefsm is currently bundled with storage.Miner)
-			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
 			Override(GetParamsKey, modules.GetParams),
 
 			Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
@@ -116,9 +117,11 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
-			Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
+			Override(PreflightChecksKey, modules.PreflightChecks),
+			Override(new(*sealing.Sealing), modules.SealingPipeline(cfg.Fees)),
+
 			Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees, cfg.Proving)),
-			Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
+			Override(new(sectorblocks.SectorBuilder), From(new(*sealing.Sealing))),
 		),
 
 		If(cfg.Subsystems.EnableSectorStorage,

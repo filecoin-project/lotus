@@ -261,7 +261,6 @@ func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
 // those parameters and keys. To do this, run the following command:
 //
 // go test -run=^TestDownloadParams
-//
 func TestDownloadParams(t *testing.T) {
 	// defer requireFDsClosed(t, openFDs(t)) flaky likely cause of how go-embed works with param files
 
@@ -586,7 +585,7 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 }
 
 func openFDs(t *testing.T) int {
-	dent, err := ioutil.ReadDir("/proc/self/fd")
+	dent, err := os.ReadDir("/proc/self/fd")
 	require.NoError(t, err)
 
 	var skip int
@@ -612,7 +611,7 @@ func requireFDsClosed(t *testing.T, start int) {
 	openNow := openFDs(t)
 
 	if start != openNow {
-		dent, err := ioutil.ReadDir("/proc/self/fd")
+		dent, err := os.ReadDir("/proc/self/fd")
 		require.NoError(t, err)
 
 		for _, info := range dent {
@@ -992,3 +991,87 @@ func TestPoStChallengeAssumptions(t *testing.T) {
 		require.Len(t, c1.Challenges, 3)
 	}
 }
+
+func TestDCAPCloses(t *testing.T) {
+	sz := abi.PaddedPieceSize(2 << 10).Unpadded()
+
+	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: cdir,
+	}
+	sb, err := New(sp)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	cleanup := func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", cdir)
+			return
+		}
+		if err := os.RemoveAll(cdir); err != nil {
+			t.Error(err)
+		}
+	}
+	t.Cleanup(cleanup)
+
+	t.Run("DataCid", func(t *testing.T) {
+		r := rand.New(rand.NewSource(0x7e5))
+
+		clr := &closeAssertReader{
+			Reader: io.LimitReader(r, int64(sz)),
+		}
+
+		c, err := sb.DataCid(context.TODO(), sz, clr)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		require.Equal(t, "baga6ea4seaqeje7jy4hufnybpo7ckxzujaigqbcxhdjq7ojb4b6xzgqdugkyciq", c.PieceCID.String())
+		require.True(t, clr.closed)
+	})
+
+	t.Run("AddPiece", func(t *testing.T) {
+		r := rand.New(rand.NewSource(0x7e5))
+
+		clr := &closeAssertReader{
+			Reader: io.LimitReader(r, int64(sz)),
+		}
+
+		c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{
+			ID: abi.SectorID{
+				Miner:  miner,
+				Number: 0,
+			},
+			ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1_1,
+		}, nil, sz, clr)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		require.Equal(t, "baga6ea4seaqeje7jy4hufnybpo7ckxzujaigqbcxhdjq7ojb4b6xzgqdugkyciq", c.PieceCID.String())
+		require.True(t, clr.closed)
+	})
+
+}
+
+type closeAssertReader struct {
+	io.Reader
+	closed bool
+}
+
+func (c *closeAssertReader) Close() error {
+	if c.closed {
+		panic("double close")
+	}
+
+	c.closed = true
+
+	return nil
+}
+
+var _ io.Closer = &closeAssertReader{}

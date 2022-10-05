@@ -10,10 +10,11 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
@@ -49,8 +50,9 @@ func init() {
 // on chain before returning.
 //
 // TODO: the waiting should happen in the background. Right now this
-//  is blocking/delaying the actual generation and submission of WindowPoSts in
-//  this deadline!
+//
+//	is blocking/delaying the actual generation and submission of WindowPoSts in
+//	this deadline!
 func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([][]miner.RecoveryDeclaration, []*types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.declareRecoveries")
 	defer span.End()
@@ -205,8 +207,9 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 // on chain before returning.
 //
 // TODO: the waiting should happen in the background. Right now this
-//  is blocking/delaying the actual generation and submission of WindowPoSts in
-//  this deadline!
+//
+//	is blocking/delaying the actual generation and submission of WindowPoSts in
+//	this deadline!
 func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([]miner.FaultDeclaration, *types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.declareFaults")
 	defer span.End()
@@ -342,4 +345,112 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 			}
 		}
 	}()
+}
+
+// declareRecoveries identifies sectors that were previously marked as faulty
+// for our miner, but are now recovered (i.e. are now provable again) and
+// still not reported as such.
+//
+// It then reports the recovery on chain via a `DeclareFaultsRecovered`
+// message to our miner actor.
+//
+// This is always invoked ahead of time, before the deadline for the evaluated
+// sectors arrives. That way, recoveries are declared in preparation for those
+// sectors to be proven.
+//
+// If a declaration is made, it awaits for build.MessageConfidence confirmations
+// on chain before returning.
+func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber, tsk types.TipSetKey) ([]cid.Cid, error) {
+
+	var RecoveryDecls []miner.RecoveryDeclaration
+	var RecoveryBatches [][]miner.RecoveryDeclaration
+
+	type ptx struct {
+		deadline  uint64
+		partition uint64
+	}
+
+	smap := make(map[ptx][]uint64)
+
+	var mcids []cid.Cid
+
+	for _, sector := range sectors {
+		ptxID, err := s.api.StateSectorPartition(ctx, maddr, sector, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("failed to fetch partition and deadline details for sector %d: %w", sector, err)
+		}
+		ptxinfo := ptx{
+			deadline:  ptxID.Deadline,
+			partition: ptxID.Partition,
+		}
+
+		slist := smap[ptxinfo]
+		sn := uint64(sector)
+		slist = append(slist, sn)
+		smap[ptxinfo] = slist
+	}
+
+	for i, v := range smap {
+		sectorinbit := bitfield.NewFromSet(v)
+		RecoveryDecls = append(RecoveryDecls, miner.RecoveryDeclaration{
+			Deadline:  i.deadline,
+			Partition: i.partition,
+			Sectors:   sectorinbit,
+		})
+	}
+
+	// Batch if maxPartitionsPerRecoveryMessage is set
+	if s.maxPartitionsPerRecoveryMessage > 0 {
+
+		// Create batched
+		for len(RecoveryDecls) > s.maxPartitionsPerPostMessage {
+			Batch := RecoveryDecls[len(RecoveryDecls)-s.maxPartitionsPerRecoveryMessage:]
+			RecoveryDecls = RecoveryDecls[:len(RecoveryDecls)-s.maxPartitionsPerPostMessage]
+			RecoveryBatches = append(RecoveryBatches, Batch)
+		}
+
+		// Add remaining as new batch
+		RecoveryBatches = append(RecoveryBatches, RecoveryDecls)
+	} else {
+		RecoveryBatches = append(RecoveryBatches, RecoveryDecls)
+	}
+
+	for _, Batch := range RecoveryBatches {
+		msg, err := s.manualRecoveryMsg(ctx, Batch)
+		if err != nil {
+			return nil, err
+		}
+
+		mcids = append(mcids, msg)
+	}
+
+	return mcids, nil
+}
+
+func (s *WindowPoStScheduler) manualRecoveryMsg(ctx context.Context, Recovery []miner.RecoveryDeclaration) (cid.Cid, error) {
+	params := &miner.DeclareFaultsRecoveredParams{
+		Recoveries: Recovery,
+	}
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return cid.Undef, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:     s.actor,
+		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+		Params: enc,
+		Value:  types.NewInt(0),
+	}
+	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+	if err := s.prepareMessage(ctx, msg, spec); err != nil {
+		return cid.Undef, err
+	}
+	sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
+	}
+
+	return sm.Cid(), nil
 }

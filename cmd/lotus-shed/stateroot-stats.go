@@ -174,8 +174,8 @@ var staterootStatCmd = &cli.Command{
 		}
 
 		outcap := 10
-		if cctx.Args().Len() > outcap {
-			outcap = cctx.Args().Len()
+		if cctx.NArg() > outcap {
+			outcap = cctx.NArg()
 		}
 		if len(infos) < outcap {
 			outcap = len(infos)

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	inet "github.com/libp2p/go-libp2p-core/network"
+	inet "github.com/libp2p/go-libp2p/core/network"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 

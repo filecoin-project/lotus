@@ -5,14 +5,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
-	"runtime"
-	"strings"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
@@ -25,7 +25,7 @@ import (
 )
 
 type MethodMeta struct {
-	Name string
+	Num string
 
 	Params reflect.Type
 	Ret    reflect.Type
@@ -40,9 +40,9 @@ type ActorRegistry struct {
 // An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
 type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
 
-func ActorsVersionPredicate(ver actors.Version) ActorPredicate {
+func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
 	return func(rt vmr.Runtime, v rtt.VMActor) error {
-		aver, err := actors.VersionForNetwork(rt.NetworkVersion())
+		aver, err := actorstypes.VersionForNetwork(rt.NetworkVersion())
 		if err != nil {
 			return xerrors.Errorf("unsupported network version: %w", err)
 		}
@@ -86,7 +86,7 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 
 }
 
-func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmactors ...rtt.VMActor) {
+func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, vmactors ...rtt.VMActor) {
 	if pred == nil {
 		pred = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
@@ -108,7 +108,7 @@ func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmacto
 
 		// necessary to make stuff work
 		var realCode cid.Cid
-		if av >= actors.Version8 {
+		if av >= actorstypes.Version8 {
 			name := actors.CanonicalName(builtin.ActorNameByCode(ac))
 
 			var ok bool
@@ -124,7 +124,7 @@ func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmacto
 
 		// Explicitly add send, it's special.
 		methods[builtin.MethodSend] = MethodMeta{
-			Name:   "Send",
+			Num:    "0",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
 			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
 		}
@@ -139,24 +139,8 @@ func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmacto
 			ev := reflect.ValueOf(export)
 			et := ev.Type()
 
-			// Extract the method names using reflection. These
-			// method names always match the field names in the
-			// `builtin.Method*` structs (tested in the specs-actors
-			// tests).
-			fnName := runtime.FuncForPC(ev.Pointer()).Name()
-			fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
-
-			switch abi.MethodNum(number) {
-			case builtin.MethodSend:
-				panic("method 0 is reserved for Send")
-			case builtin.MethodConstructor:
-				if fnName != "Constructor" {
-					panic("method 1 is reserved for Constructor")
-				}
-			}
-
 			methods[abi.MethodNum(number)] = MethodMeta{
-				Name:   fnName,
+				Num:    strconv.Itoa(number),
 				Params: et.In(1),
 				Ret:    et.Out(0),
 			}

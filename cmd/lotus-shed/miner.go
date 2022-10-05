@@ -135,8 +135,8 @@ var minerCreateCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if cctx.Args().Len() != 4 {
-			return xerrors.Errorf("expected 4 args (sender owner worker sectorSize)")
+		if cctx.NArg() != 4 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		sender, err := address.NewFromString(cctx.Args().First())
@@ -273,8 +273,8 @@ var minerUnpackInfoCmd = &cli.Command{
 	Usage:     "unpack miner info all dump",
 	ArgsUsage: "[allinfo.txt] [dir]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return xerrors.Errorf("expected 2 args")
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		src, err := homedir.Expand(cctx.Args().Get(0))
@@ -475,7 +475,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println(cctx.App.Writer, "Invalid PoST message failed!")
 			return err
 		}
@@ -488,9 +488,10 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 	Name:        "generate-and-send-consensus-fault",
 	Usage:       "Provided a block CID mined by the miner, will create another block at the same height, and send both block headers to generate a consensus fault.",
 	Description: `Note: This is meant for testing purposes and should NOT be used on mainnet or you will be slashed`,
+	ArgsUsage:   "blockCID",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
-			return xerrors.Errorf("expected 1 arg (blockCID)")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		blockCid, err := cid.Parse(cctx.Args().First())
@@ -574,7 +575,7 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			fmt.Println(cctx.App.Writer, "Report consensus fault failed!")
 			return err
 		}

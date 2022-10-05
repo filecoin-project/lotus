@@ -6,12 +6,15 @@ import (
 	"strconv"
 	"strings"
 
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
+
+var log = logging.Logger("resources")
 
 type Resources struct {
 	MinMemory uint64 `envname:"MIN_MEMORY"` // What Must be in RAM for decent perf
@@ -32,16 +35,14 @@ type Resources struct {
 }
 
 /*
+Percent of threads to allocate to parallel tasks
 
- Percent of threads to allocate to parallel tasks
-
- 12  * 0.92 = 11
- 16  * 0.92 = 14
- 24  * 0.92 = 22
- 32  * 0.92 = 29
- 64  * 0.92 = 58
- 128 * 0.92 = 117
-
+12  * 0.92 = 11
+16  * 0.92 = 14
+24  * 0.92 = 22
+32  * 0.92 = 29
+64  * 0.92 = 58
+128 * 0.92 = 117
 */
 var ParallelNum uint64 = 92
 var ParallelDenom uint64 = 100
@@ -572,7 +573,12 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 func init() {
 	ResourceTable[sealtasks.TTUnseal] = ResourceTable[sealtasks.TTPreCommit1] // TODO: measure accurately
 	ResourceTable[sealtasks.TTRegenSectorKey] = ResourceTable[sealtasks.TTReplicaUpdate]
-	ResourceTable[sealtasks.TTDataCid] = ResourceTable[sealtasks.TTAddPiece]
+
+	// DataCid doesn't care about sector proof type; Use 32G AddPiece resource definition
+	ResourceTable[sealtasks.TTDataCid] = map[abi.RegisteredSealProof]Resources{}
+	for proof := range ResourceTable[sealtasks.TTAddPiece] {
+		ResourceTable[sealtasks.TTDataCid][proof] = ResourceTable[sealtasks.TTAddPiece][abi.RegisteredSealProof_StackedDrg32GiBV1]
+	}
 
 	// V1_1 is the same as V1
 	for _, m := range ResourceTable {
@@ -610,20 +616,29 @@ func ParseResourceEnv(lookup func(key, def string) (string, bool)) (map[sealtask
 
 				envval, found := lookup(taskType.Short()+"_"+shortSize+"_"+envname, fmt.Sprint(rr.Elem().Field(i).Interface()))
 				if !found {
-					// special multicore SDR handling
-					if (taskType == sealtasks.TTPreCommit1 || taskType == sealtasks.TTUnseal) && envname == "MAX_PARALLELISM" {
-						v, ok := rr.Elem().Field(i).Addr().Interface().(*int)
-						if !ok {
-							// can't happen, but let's not panic
-							return nil, xerrors.Errorf("res.MAX_PARALLELISM is not int (!?): %w", err)
+					// see if a non-size-specific envvar is set
+					envval, found = lookup(taskType.Short()+"_"+envname, fmt.Sprint(rr.Elem().Field(i).Interface()))
+					if !found {
+						// special multicore SDR handling
+						if (taskType == sealtasks.TTPreCommit1 || taskType == sealtasks.TTUnseal) && envname == "MAX_PARALLELISM" {
+							v, ok := rr.Elem().Field(i).Addr().Interface().(*int)
+							if !ok {
+								// can't happen, but let's not panic
+								return nil, xerrors.Errorf("res.MAX_PARALLELISM is not int (!?): %w", err)
+							}
+							*v, err = getSDRThreads(lookup)
+							if err != nil {
+								return nil, err
+							}
 						}
-						*v, err = getSDRThreads(lookup)
-						if err != nil {
-							return nil, err
-						}
+
+						continue
 					}
 
-					continue
+				} else {
+					if !taskType.SectorSized() {
+						log.Errorw("sector-size independent task resource var specified with sector-sized envvar", "env", taskType.Short()+"_"+shortSize+"_"+envname, "use", taskType.Short()+"_"+envname)
+					}
 				}
 
 				v := rr.Elem().Field(i).Addr().Interface()

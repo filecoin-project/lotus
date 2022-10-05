@@ -13,6 +13,8 @@
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
+* [Beneficiary](#Beneficiary)
+  * [BeneficiaryWithdrawBalance](#BeneficiaryWithdrawBalance)
 * [Check](#Check)
   * [CheckProvable](#CheckProvable)
 * [Compute](#Compute)
@@ -106,9 +108,12 @@
   * [PiecesListPieces](#PiecesListPieces)
 * [Pledge](#Pledge)
   * [PledgeSector](#PledgeSector)
+* [Recover](#Recover)
+  * [RecoverFault](#RecoverFault)
 * [Return](#Return)
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnDataCid](#ReturnDataCid)
+  * [ReturnDownloadSector](#ReturnDownloadSector)
   * [ReturnFetch](#ReturnFetch)
   * [ReturnFinalizeReplicaUpdate](#ReturnFinalizeReplicaUpdate)
   * [ReturnFinalizeSector](#ReturnFinalizeSector)
@@ -139,8 +144,14 @@
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
   * [SectorMatchPendingPiecesToOpenSectors](#SectorMatchPendingPiecesToOpenSectors)
+  * [SectorNumAssignerMeta](#SectorNumAssignerMeta)
+  * [SectorNumFree](#SectorNumFree)
+  * [SectorNumReservations](#SectorNumReservations)
+  * [SectorNumReserve](#SectorNumReserve)
+  * [SectorNumReserveCount](#SectorNumReserveCount)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
+  * [SectorReceive](#SectorReceive)
   * [SectorRemove](#SectorRemove)
   * [SectorSetExpectedSealDuration](#SectorSetExpectedSealDuration)
   * [SectorSetSealDelay](#SectorSetSealDelay)
@@ -357,6 +368,31 @@ Response:
 ]
 ```
 
+## Beneficiary
+
+
+### BeneficiaryWithdrawBalance
+BeneficiaryWithdrawBalance allows the beneficiary of a miner to withdraw balance from miner actor
+Specify amount as "0" to withdraw full balance. This method returns a message CID
+and does not wait for message execution
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ## Check
 
 
@@ -435,7 +471,7 @@ Inputs:
   ],
   "Bw==",
   10101,
-  16
+  17
 ]
 ```
 
@@ -2260,6 +2296,36 @@ Response:
 }
 ```
 
+## Recover
+
+
+### RecoverFault
+RecoverFault can be used to declare recoveries manually. It sends messages
+to the miner actor with details of recovered sectors and returns the CID of messages. It honors the
+maxPartitionsPerRecoveryMessage from the config
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    123,
+    124
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
 ## Return
 
 
@@ -2314,6 +2380,30 @@ Inputs:
     "PieceCID": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     }
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnDownloadSector
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
   },
   {
     "Code": 0,
@@ -2938,6 +3028,114 @@ Inputs: `null`
 
 Response: `{}`
 
+### SectorNumAssignerMeta
+SectorNumAssignerMeta returns sector number assigner metadata - reserved/allocated
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Reserved": [
+    5,
+    1
+  ],
+  "Allocated": [
+    5,
+    1
+  ],
+  "InUse": [
+    5,
+    1
+  ],
+  "Next": 9
+}
+```
+
+### SectorNumFree
+SectorNumFree drops a sector reservation
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### SectorNumReservations
+SectorNumReservations returns a list of sector number reservations
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "": [
+    5,
+    3,
+    2,
+    1
+  ]
+}
+```
+
+### SectorNumReserve
+SectorNumReserve creates a new sector number reservation. Will fail if any other reservation has colliding
+numbers or name. Set force to true to override safety checks.
+Valid characters for name: a-z, A-Z, 0-9, _, -
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  [
+    5,
+    1
+  ],
+  true
+]
+```
+
+Response: `{}`
+
+### SectorNumReserveCount
+SectorNumReserveCount creates a new sector number reservation for `count` sector numbers.
+by default lotus will allocate lowest-available sector numbers to the reservation.
+For restrictions on `name` see SectorNumReserve
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  42
+]
+```
+
+Response:
+```json
+[
+  5,
+  1
+]
+```
+
 ### SectorPreCommitFlush
 SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
 Returns null if message wasn't sent
@@ -2978,6 +3176,134 @@ Response:
   }
 ]
 ```
+
+### SectorReceive
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "State": "Proving",
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "Type": 8,
+    "Pieces": [
+      {
+        "Piece": {
+          "Size": 1032,
+          "PieceCID": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
+        },
+        "DealInfo": {
+          "PublishCid": null,
+          "DealID": 5432,
+          "DealProposal": {
+            "PieceCID": {
+              "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+            },
+            "PieceSize": 1032,
+            "VerifiedDeal": true,
+            "Client": "f01234",
+            "Provider": "f01234",
+            "Label": "",
+            "StartEpoch": 10101,
+            "EndEpoch": 10101,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "DealSchedule": {
+            "StartEpoch": 10101,
+            "EndEpoch": 10101
+          },
+          "KeepUnsealed": true
+        }
+      }
+    ],
+    "TicketValue": "Bw==",
+    "TicketEpoch": 10101,
+    "PreCommit1Out": "Bw==",
+    "CommD": null,
+    "CommR": null,
+    "PreCommitInfo": {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "SealRandEpoch": 10101,
+      "DealIDs": [
+        5432
+      ],
+      "Expiration": 10101,
+      "UnsealedCid": null
+    },
+    "PreCommitDeposit": "0",
+    "PreCommitMessage": null,
+    "PreCommitTipSet": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      {
+        "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+      }
+    ],
+    "SeedValue": "Bw==",
+    "SeedEpoch": 10101,
+    "CommitProof": "Ynl0ZSBhcnJheQ==",
+    "CommitMessage": null,
+    "Log": [
+      {
+        "Kind": "string value",
+        "Timestamp": 42,
+        "Trace": "string value",
+        "Message": "string value"
+      }
+    ],
+    "DataUnsealed": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
+    },
+    "DataSealed": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
+    },
+    "DataCache": {
+      "Local": true,
+      "URL": "string value",
+      "Headers": [
+        {
+          "Key": "string value",
+          "Value": "string value"
+        }
+      ]
+    },
+    "RemoteCommit1Endpoint": "string value",
+    "RemoteCommit2Endpoint": "string value",
+    "RemoteSealingDoneEndpoint": "string value"
+  }
+]
+```
+
+Response: `{}`
 
 ### SectorRemove
 SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
@@ -4284,26 +4610,26 @@ Response:
           },
           "seal/v0/datacid": {
             "0": {
-              "MinMemory": 2048,
-              "MaxMemory": 2048,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 2048,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "1": {
-              "MinMemory": 8388608,
-              "MaxMemory": 8388608,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 8388608,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "2": {
-              "MinMemory": 1073741824,
-              "MaxMemory": 1073741824,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
@@ -4320,8 +4646,8 @@ Response:
               "MaxConcurrent": 0
             },
             "4": {
-              "MinMemory": 8589934592,
-              "MaxMemory": 8589934592,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
@@ -4329,26 +4655,26 @@ Response:
               "MaxConcurrent": 0
             },
             "5": {
-              "MinMemory": 2048,
-              "MaxMemory": 2048,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 2048,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "6": {
-              "MinMemory": 8388608,
-              "MaxMemory": 8388608,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
-              "BaseMinMemory": 8388608,
+              "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "7": {
-              "MinMemory": 1073741824,
-              "MaxMemory": 1073741824,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
@@ -4365,8 +4691,8 @@ Response:
               "MaxConcurrent": 0
             },
             "9": {
-              "MinMemory": 8589934592,
-              "MaxMemory": 8589934592,
+              "MinMemory": 4294967296,
+              "MaxMemory": 4294967296,
               "GPUUtilization": 0,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,

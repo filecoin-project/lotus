@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -108,33 +108,14 @@ func (a *NetAPI) NetLimit(ctx context.Context, scope string) (result api.NetLimi
 		}
 
 		limit := limiter.Limit()
-		switch l := limit.(type) {
-		case *rcmgr.StaticLimit:
-			result.Memory = l.Memory
-			result.Streams = l.BaseLimit.Streams
-			result.StreamsInbound = l.BaseLimit.StreamsInbound
-			result.StreamsOutbound = l.BaseLimit.StreamsOutbound
-			result.Conns = l.BaseLimit.Conns
-			result.ConnsInbound = l.BaseLimit.ConnsInbound
-			result.ConnsOutbound = l.BaseLimit.ConnsOutbound
-			result.FD = l.BaseLimit.FD
-
-		case *rcmgr.DynamicLimit:
-			result.Dynamic = true
-			result.MemoryFraction = l.MemoryLimit.MemoryFraction
-			result.MinMemory = l.MemoryLimit.MinMemory
-			result.MaxMemory = l.MemoryLimit.MaxMemory
-			result.Streams = l.BaseLimit.Streams
-			result.StreamsInbound = l.BaseLimit.StreamsInbound
-			result.StreamsOutbound = l.BaseLimit.StreamsOutbound
-			result.Conns = l.BaseLimit.Conns
-			result.ConnsInbound = l.BaseLimit.ConnsInbound
-			result.ConnsOutbound = l.BaseLimit.ConnsOutbound
-			result.FD = l.BaseLimit.FD
-
-		default:
-			return xerrors.Errorf("unknown limit type %T", limit)
-		}
+		result.Memory = limit.GetMemoryLimit()
+		result.Streams = limit.GetStreamTotalLimit()
+		result.StreamsInbound = limit.GetStreamLimit(network.DirInbound)
+		result.StreamsOutbound = limit.GetStreamLimit(network.DirOutbound)
+		result.Conns = limit.GetConnTotalLimit()
+		result.ConnsInbound = limit.GetConnLimit(network.DirInbound)
+		result.ConnsOutbound = limit.GetConnLimit(network.DirOutbound)
+		result.FD = limit.GetFDLimit()
 
 		return nil
 	}
@@ -189,37 +170,15 @@ func (a *NetAPI) NetSetLimit(ctx context.Context, scope string, limit api.NetLim
 			return xerrors.Errorf("resource scope doesn't implement ResourceScopeLimiter interface")
 		}
 
-		var newLimit rcmgr.Limit
-		if limit.Dynamic {
-			newLimit = &rcmgr.DynamicLimit{
-				MemoryLimit: rcmgr.MemoryLimit{
-					MemoryFraction: limit.MemoryFraction,
-					MinMemory:      limit.MinMemory,
-					MaxMemory:      limit.MaxMemory,
-				},
-				BaseLimit: rcmgr.BaseLimit{
-					Streams:         limit.Streams,
-					StreamsInbound:  limit.StreamsInbound,
-					StreamsOutbound: limit.StreamsOutbound,
-					Conns:           limit.Conns,
-					ConnsInbound:    limit.ConnsInbound,
-					ConnsOutbound:   limit.ConnsOutbound,
-					FD:              limit.FD,
-				},
-			}
-		} else {
-			newLimit = &rcmgr.StaticLimit{
-				Memory: limit.Memory,
-				BaseLimit: rcmgr.BaseLimit{
-					Streams:         limit.Streams,
-					StreamsInbound:  limit.StreamsInbound,
-					StreamsOutbound: limit.StreamsOutbound,
-					Conns:           limit.Conns,
-					ConnsInbound:    limit.ConnsInbound,
-					ConnsOutbound:   limit.ConnsOutbound,
-					FD:              limit.FD,
-				},
-			}
+		newLimit := &rcmgr.BaseLimit{
+			Memory:          limit.Memory,
+			Streams:         limit.Streams,
+			StreamsInbound:  limit.StreamsInbound,
+			StreamsOutbound: limit.StreamsOutbound,
+			Conns:           limit.Conns,
+			ConnsInbound:    limit.ConnsInbound,
+			ConnsOutbound:   limit.ConnsOutbound,
+			FD:              limit.FD,
 		}
 
 		limiter.SetLimit(newLimit)

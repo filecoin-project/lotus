@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.17.1
+   1.17.2
 
 COMMANDS:
    run         Start lotus worker
@@ -53,6 +53,7 @@ OPTIONS:
    --prove-replica-update2       enable prove replica update 2 (default: true) [$LOTUS_WORKER_PROVE_REPLICA_UPDATE2]
    --regen-sector-key            enable regen sector key (default: true) [$LOTUS_WORKER_REGEN_SECTOR_KEY]
    --replica-update              enable replica update (default: true) [$LOTUS_WORKER_REPLICA_UPDATE]
+   --sector-download             enable external sector data download (default: false) [$LOTUS_WORKER_SECTOR_DOWNLOAD]
    --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m") [$LOTUS_WORKER_TIMEOUT]
    --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true) [$LOTUS_WORKER_UNSEAL]
    --windowpost                  enable window post (default: false) [$LOTUS_WORKER_WINDOWPOST]

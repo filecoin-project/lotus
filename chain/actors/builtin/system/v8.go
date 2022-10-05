@@ -41,3 +41,10 @@ func (s *state8) GetBuiltinActors() cid.Cid {
 	return s.State.BuiltinActors
 
 }
+
+func (s *state8) SetBuiltinActors(c cid.Cid) error {
+
+	s.State.BuiltinActors = c
+	return nil
+
+}

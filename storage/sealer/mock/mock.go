@@ -439,6 +439,9 @@ func (mgr *SectorMgr) GenerateWindowPoStWithVanilla(ctx context.Context, proofTy
 func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
 	off := storiface.UnpaddedByteIndex(0)
 	var piece cid.Cid
+
+	mgr.lk.Lock()
+
 	for _, c := range mgr.sectors[sector.ID].pieces {
 		piece = c
 		if off >= offset {
@@ -450,6 +453,8 @@ func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storiface.SectorRef,
 		panic("non-aligned offset todo")
 	}
 	br := bytes.NewReader(mgr.pieces[piece][:size])
+
+	mgr.lk.Unlock()
 
 	return struct {
 		io.ReadCloser
@@ -510,6 +515,10 @@ func (mgr *SectorMgr) ReleaseReplicaUpgrade(ctx context.Context, sector storifac
 
 func (mgr *SectorMgr) ReleaseSectorKey(ctx context.Context, sector storiface.SectorRef) error {
 	return nil
+}
+
+func (mgr *SectorMgr) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) error {
+	return xerrors.Errorf("not supported")
 }
 
 func (mgr *SectorMgr) Remove(ctx context.Context, sector storiface.SectorRef) error {
@@ -605,6 +614,10 @@ func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callI
 }
 
 func (mgr *SectorMgr) ReturnFinalizeReplicaUpdate(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnDownloadSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
 	panic("not supported")
 }
 

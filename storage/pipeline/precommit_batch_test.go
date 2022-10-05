@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package sealing_test
 
 import (
@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
@@ -42,9 +42,9 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	ctx := context.Background()
 
-	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	as := asel(func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 		return t0123, big.Zero(), nil
-	}
+	})
 
 	maxBatch := miner6.PreCommitSectorBatchMaxSize
 

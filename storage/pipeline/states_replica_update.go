@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
@@ -21,7 +21,12 @@ import (
 )
 
 func (m *Sealing) handleReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api, true); err != nil { // Sanity check state
+	// if the sector ended up not having any deals, abort the upgrade
+	if !sector.hasDeals() {
+		return ctx.Send(SectorAbortUpgrade{xerrors.New("sector had no deals")})
+	}
+
+	if err := checkPieces(ctx.Context(), m.maddr, sector.SectorNumber, sector.Pieces, m.Api, true); err != nil { // Sanity check state
 		return handleErrors(ctx, err, sector)
 	}
 	out, err := m.sealer.ReplicaUpdate(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.pieceInfos())
@@ -61,7 +66,7 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 		return ctx.Send(SectorProveReplicaUpdateFailed{xerrors.Errorf("prove replica update (1) failed: %w", err)})
 	}
 
-	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api, true); err != nil { // Sanity check state
+	if err := checkPieces(ctx.Context(), m.maddr, sector.SectorNumber, sector.Pieces, m.Api, true); err != nil { // Sanity check state
 		return handleErrors(ctx, err, sector)
 	}
 
@@ -168,7 +173,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return nil
 	}
 
-	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, collateral)
+	from, _, err := m.addrSel.AddressFor(ctx.Context(), m.Api, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		log.Errorf("no good address to send replica update message from: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
@@ -235,6 +240,10 @@ func (m *Sealing) handleFinalizeReplicaUpdate(ctx statemachine.Context, sector S
 }
 
 func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.ReplicaUpdateMessage == nil {
+		return xerrors.Errorf("nil sector.ReplicaUpdateMessage!")
+	}
+
 	try := func() error {
 		mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.ReplicaUpdateMessage, build.MessageConfidence, api.LookbackNoLimit, true)
 		if err != nil {
@@ -297,6 +306,6 @@ func handleErrors(ctx statemachine.Context, err error, sector SectorInfo) error 
 	case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
 		return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 	default:
-		return xerrors.Errorf("checkPieces sanity check error: %w", err)
+		return xerrors.Errorf("checkPieces sanity check error: %w (%+v)", err, err)
 	}
 }

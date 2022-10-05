@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package stages
 
 import (
@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )

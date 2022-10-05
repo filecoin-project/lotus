@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package chain
 
 import (

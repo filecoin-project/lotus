@@ -9,13 +9,15 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type PreCommitPolicy interface {
-	Expiration(ctx context.Context, ps ...Piece) (abi.ChainEpoch, error)
+	Expiration(ctx context.Context, ps ...api.SectorPiece) (abi.ChainEpoch, error)
 }
 
 type Chain interface {
@@ -39,7 +41,7 @@ type Chain interface {
 // current epoch + the provided default duration.
 type BasicPreCommitPolicy struct {
 	api              Chain
-	getSealingConfig GetSealingConfigFunc
+	getSealingConfig dtypes.GetSealingConfigFunc
 
 	provingBuffer abi.ChainEpoch
 }
@@ -48,7 +50,7 @@ type BasicPreCommitPolicy struct {
 //
 // The provided duration is used as the default sector expiry when the sector
 // contains no deals. The proving boundary is used to adjust/align the sector's expiration.
-func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
+func NewBasicPreCommitPolicy(api Chain, cfgGetter dtypes.GetSealingConfigFunc, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
 		api:              api,
 		getSealingConfig: cfgGetter,
@@ -58,7 +60,7 @@ func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingB
 
 // Expiration produces the pre-commit sector expiration epoch for an encoded
 // replica containing the provided enumeration of pieces and deals.
-func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi.ChainEpoch, error) {
+func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...api.SectorPiece) (abi.ChainEpoch, error) {
 	ts, err := p.api.ChainHead(ctx)
 	if err != nil {
 		return 0, err

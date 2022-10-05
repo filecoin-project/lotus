@@ -494,8 +494,8 @@ var ChainInspectUsage = &cli.Command{
 
 			mm := filcns.NewActorRegistry().Methods[code][m.Message.Method] // TODO: use remote map
 
-			byMethod[mm.Name] += m.Message.GasLimit
-			byMethodC[mm.Name]++
+			byMethod[mm.Num] += m.Message.GasLimit
+			byMethodC[mm.Num]++
 		}
 
 		type keyGasPair struct {
@@ -946,8 +946,8 @@ var ChainBisectCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() < 4 {
-			return xerrors.New("need at least 4 args")
+		if cctx.NArg() < 4 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		start, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -1312,8 +1312,8 @@ var chainDecodeParamsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 3 {
-			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		to, err := address.NewFromString(cctx.Args().First())
@@ -1391,8 +1391,8 @@ var chainEncodeParamsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
 
-		if cctx.Args().Len() != 3 {
-			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		method, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)

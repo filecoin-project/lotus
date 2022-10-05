@@ -167,6 +167,7 @@
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
+  * [StateActorManifestCID](#StateActorManifestCID)
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateCall](#StateCall)
   * [StateChangedActors](#StateChangedActors)
@@ -191,6 +192,7 @@
   * [StateMarketParticipants](#StateMarketParticipants)
   * [StateMarketStorageDeal](#StateMarketStorageDeal)
   * [StateMinerActiveSectors](#StateMinerActiveSectors)
+  * [StateMinerAllocated](#StateMinerAllocated)
   * [StateMinerAvailableBalance](#StateMinerAvailableBalance)
   * [StateMinerDeadlines](#StateMinerDeadlines)
   * [StateMinerFaults](#StateMinerFaults)
@@ -2243,7 +2245,8 @@ Inputs:
     }
   },
   {
-    "MaxFee": "0"
+    "MaxFee": "0",
+    "MsgUuid": "07070707-0707-0707-0707-070707070707"
   },
   [
     {
@@ -2717,7 +2720,8 @@ Inputs:
     }
   ],
   {
-    "MaxFee": "0"
+    "MaxFee": "0",
+    "MsgUuid": "07070707-0707-0707-0707-070707070707"
   }
 ]
 ```
@@ -3106,7 +3110,8 @@ Inputs:
     }
   },
   {
-    "MaxFee": "0"
+    "MaxFee": "0",
+    "MsgUuid": "07070707-0707-0707-0707-070707070707"
   }
 ]
 ```
@@ -5080,11 +5085,31 @@ Perms: read
 Inputs:
 ```json
 [
-  16
+  17
 ]
 ```
 
 Response: `{}`
+
+### StateActorManifestCID
+StateActorManifestCID returns the CID of the builtin actors manifest for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  17
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### StateAllMinerFaults
 StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
@@ -6151,6 +6176,34 @@ Response:
 ]
 ```
 
+### StateMinerAllocated
+StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  0
+]
+```
+
 ### StateMinerAvailableBalance
 StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 
@@ -6275,7 +6328,20 @@ Response:
   "WindowPoStProofType": 8,
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
-  "ConsensusFaultElapsed": 10101
+  "ConsensusFaultElapsed": 10101,
+  "Beneficiary": "f01234",
+  "BeneficiaryTerm": {
+    "Quota": "0",
+    "UsedQuota": "0",
+    "Expiration": 10101
+  },
+  "PendingBeneficiaryTerm": {
+    "NewBeneficiary": "f01234",
+    "NewQuota": "0",
+    "NewExpiration": 10101,
+    "ApprovedByBeneficiary": true,
+    "ApprovedByNominee": true
+  }
 }
 ```
 
@@ -6300,10 +6366,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   [
     {
@@ -6425,10 +6488,7 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   [
     {
@@ -6646,7 +6706,7 @@ Inputs:
 ]
 ```
 
-Response: `16`
+Response: `17`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -7066,15 +7126,10 @@ Response:
       5432
     ],
     "Expiration": 10101,
-    "ReplaceCapacity": true,
-    "ReplaceSectorDeadline": 42,
-    "ReplaceSectorPartition": 42,
-    "ReplaceSectorNumber": 9
+    "UnsealedCid": null
   },
   "PreCommitDeposit": "0",
-  "PreCommitEpoch": 10101,
-  "DealWeight": "0",
-  "VerifiedDealWeight": "0"
+  "PreCommitEpoch": 10101
 }
 ```
 
@@ -7137,7 +7192,7 @@ Inputs:
 Response: `"0"`
 
 ### StateVerifiedRegistryRootKey
-StateVerifiedClientStatus returns the address of the Verified Registry's root key
+StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key
 
 
 Perms: read

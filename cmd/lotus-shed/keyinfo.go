@@ -13,8 +13,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-base32"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -149,7 +149,7 @@ var keyinfoImportCmd = &cli.Command{
 		flagRepo := cctx.String("repo")
 
 		var input io.Reader
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			input = os.Stdin
 		} else {
 			var err error
@@ -261,7 +261,7 @@ var keyinfoInfoCmd = &cli.Command{
 		format := cctx.String("format")
 
 		var input io.Reader
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			input = os.Stdin
 		} else {
 			var err error

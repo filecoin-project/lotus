@@ -1,4 +1,4 @@
-//stm: #unit
+// stm: #unit
 package storageadapter
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
@@ -96,7 +96,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.PreCommitSectorParams{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -114,7 +114,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.PreCommitSectorParams{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -145,7 +145,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		"error getting current deal info in check func": {
 			currentDealInfoErr:  errors.New("something went wrong"),
 			expectedCBCallCount: 0,
-			expectedError:       xerrors.Errorf("failed to set up called handler: failed to look up deal on chain: something went wrong"),
+			expectedError:       xerrors.Errorf("failed to set up called handler: failed to check deal activity: failed to look up deal on chain: something went wrong"),
 		},
 		"sector already active": {
 			currentDealInfo: pipeline.CurrentDealInfo{
@@ -162,7 +162,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 				PublishMsgTipSet: types.EmptyTSK,
 			},
 			expectedCBCallCount: 0,
-			expectedError:       xerrors.Errorf("failed to set up called handler: deal %d was slashed at epoch %d", dealID, slashedDeal.State.SlashEpoch),
+			expectedError:       xerrors.Errorf("failed to set up called handler: failed to check deal activity: deal %d was slashed at epoch %d", dealID, slashedDeal.State.SlashEpoch),
 		},
 		"error getting current deal info in called func": {
 			currentDealInfo: pipeline.CurrentDealInfo{
@@ -172,7 +172,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			currentDealInfoErr2: errors.New("something went wrong"),
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.PreCommitSectorParams{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -180,7 +180,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 				},
 			},
 			expectedCBCallCount: 1,
-			expectedCBError:     errors.New("handling applied event: something went wrong"),
+			expectedCBError:     errors.New("handling applied event: failed to get dealinfo: something went wrong"),
 		},
 		"proposed deal epoch timeout": {
 			currentDealInfo: pipeline.CurrentDealInfo{

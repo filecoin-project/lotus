@@ -12,19 +12,24 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/go-storedcounter"
 
 	"github.com/filecoin-project/lotus/api"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -63,19 +68,29 @@ type SealingAPI interface {
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	StateMinerAllocated(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)
+
+	// Address selector
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 type SectorStateNotifee func(before, after SectorInfo)
-
-type AddrSel func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error)
 
 type Events interface {
 	ChainAt(ctx context.Context, hnd events.HeightHandler, rev events.RevertHandler, confidence int, h abi.ChainEpoch) error
 }
 
+type AddressSelector interface {
+	AddressFor(ctx context.Context, a ctladdr.NodeApi, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error)
+}
+
 type Sealing struct {
 	Api      SealingAPI
 	DealInfo *CurrentDealInfoManager
+
+	ds datastore.Batching
 
 	feeCfg config.MinerFeeConfig
 	events Events
@@ -86,7 +101,6 @@ type Sealing struct {
 
 	sealer  sealer.SectorManager
 	sectors *statemachine.StateGroup
-	sc      SectorIDCounter
 	verif   storiface.Verifier
 	pcp     PreCommitPolicy
 
@@ -99,8 +113,10 @@ type Sealing struct {
 
 	available map[abi.SectorID]struct{}
 
-	notifee SectorStateNotifee
-	addrSel AddrSel
+	journal        journal.Journal
+	sealingEvtType journal.EventType
+	notifee        SectorStateNotifee
+	addrSel        AddressSelector
 
 	stats SectorStats
 
@@ -108,7 +124,10 @@ type Sealing struct {
 	precommiter *PreCommitBatcher
 	commiter    *CommitBatcher
 
-	getConfig GetSealingConfigFunc
+	sclk     sync.Mutex
+	legacySc *storedcounter.StoredCounter
+
+	getConfig dtypes.GetSealingConfigFunc
 }
 
 type openSector struct {
@@ -149,17 +168,18 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
+func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
 	s := &Sealing{
 		Api:      api,
 		DealInfo: &CurrentDealInfoManager{api},
+
+		ds: ds,
 
 		feeCfg: fc,
 		events: events,
 
 		maddr:  maddr,
 		sealer: sealer,
-		sc:     sc,
 		verif:  verif,
 		pcp:    pcp,
 
@@ -170,20 +190,37 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 
 		available: map[abi.SectorID]struct{}{},
 
-		notifee: notifee,
-		addrSel: as,
+		journal:        journal,
+		sealingEvtType: journal.RegisterEventType("storage", "sealing_states"),
 
-		terminator:  NewTerminationBatcher(mctx, maddr, api, as, fc, gc),
-		precommiter: NewPreCommitBatcher(mctx, maddr, api, as, fc, gc),
-		commiter:    NewCommitBatcher(mctx, maddr, api, as, fc, gc, prov),
+		addrSel: addrSel,
+
+		terminator:  NewTerminationBatcher(mctx, maddr, api, addrSel, fc, gc),
+		precommiter: NewPreCommitBatcher(mctx, maddr, api, addrSel, fc, gc),
+		commiter:    NewCommitBatcher(mctx, maddr, api, addrSel, fc, gc, prov),
 
 		getConfig: gc,
+
+		legacySc: storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix)),
 
 		stats: SectorStats{
 			bySector: map[abi.SectorID]SectorState{},
 			byState:  map[SectorState]int64{},
 		},
 	}
+
+	s.notifee = func(before, after SectorInfo) {
+		s.journal.RecordEvent(s.sealingEvtType, func() interface{} {
+			return SealingStateEvt{
+				SectorNumber: before.SectorNumber,
+				SectorType:   before.SectorType,
+				From:         before.State,
+				After:        after.State,
+				Error:        after.LastErr,
+			}
+		})
+	}
+
 	s.startupWait.Add(1)
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
@@ -191,13 +228,10 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 	return s
 }
 
-func (m *Sealing) Run(ctx context.Context) error {
+func (m *Sealing) Run(ctx context.Context) {
 	if err := m.restartSectors(ctx); err != nil {
-		log.Errorf("%+v", err)
-		return xerrors.Errorf("failed load sector states: %w", err)
+		log.Errorf("failed load sector states: %+v", err)
 	}
-
-	return nil
 }
 
 func (m *Sealing) Stop(ctx context.Context) error {
@@ -211,13 +245,13 @@ func (m *Sealing) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
+func (m *Sealing) RemoveSector(ctx context.Context, sid abi.SectorNumber) error {
 	m.startupWait.Wait()
 
 	return m.sectors.Send(uint64(sid), SectorRemove{})
 }
 
-func (m *Sealing) Terminate(ctx context.Context, sid abi.SectorNumber) error {
+func (m *Sealing) TerminateSector(ctx context.Context, sid abi.SectorNumber) error {
 	m.startupWait.Wait()
 
 	return m.sectors.Send(uint64(sid), SectorTerminate{})

@@ -15,8 +15,8 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
@@ -74,14 +74,14 @@ func init() {
 //
 // Create a new ensemble with:
 //
-//   ens := kit.NewEnsemble()
+//	ens := kit.NewEnsemble()
 //
 // Create full nodes and miners:
 //
-//   var full TestFullNode
-//   var miner TestMiner
-//   ens.FullNode(&full, opts...)       // populates a full node
-//   ens.Miner(&miner, &full, opts...)  // populates a miner, using the full node as its chain daemon
+//	var full TestFullNode
+//	var miner TestMiner
+//	ens.FullNode(&full, opts...)       // populates a full node
+//	ens.Miner(&miner, &full, opts...)  // populates a miner, using the full node as its chain daemon
 //
 // It is possible to pass functional options to set initial balances,
 // presealed sectors, owner keys, etc.
@@ -93,22 +93,21 @@ func init() {
 // Nodes also need to be connected with one another, either via `ens.Connect()`
 // or `ens.InterconnectAll()`. A common inchantation for simple tests is to do:
 //
-//   ens.InterconnectAll().BeginMining(blocktime)
+//	ens.InterconnectAll().BeginMining(blocktime)
 //
 // You can continue to add more nodes, but you must always follow with
 // `ens.Start()` to activate the new nodes.
 //
 // The API is chainable, so it's possible to do a lot in a very succinct way:
 //
-//   kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
+//	kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
 //
 // You can also find convenient fullnode:miner presets, such as 1:1, 1:2,
 // and 2:1, e.g.:
 //
-//   kit.EnsembleMinimal()
-//   kit.EnsembleOneTwo()
-//   kit.EnsembleTwoOne()
-//
+//	kit.EnsembleMinimal()
+//	kit.EnsembleOneTwo()
+//	kit.EnsembleTwoOne()
 type Ensemble struct {
 	t            *testing.T
 	bootstrapped bool
@@ -628,8 +627,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-
-			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
+			node.Override(new(v1api.RawFullNodeAPI), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
 			// disable resource filtering so that local worker gets assigned tasks
@@ -638,6 +636,7 @@ func (n *Ensemble) Start() *Ensemble {
 				scfg := config.DefaultStorageMiner()
 
 				if noLocal {
+					scfg.Storage.AllowSectorDownload = false
 					scfg.Storage.AllowAddPiece = false
 					scfg.Storage.AllowPreCommit1 = false
 					scfg.Storage.AllowPreCommit2 = false
@@ -964,7 +963,7 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []pipeline.Piece{
+			Pieces: []api.SectorPiece{
 				{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
@@ -993,5 +992,5 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
-	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
+	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
 }

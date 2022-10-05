@@ -28,10 +28,10 @@ func (sim *Simulation) Step(ctx context.Context) (*types.TipSet, error) {
 
 // popNextMessages generates/picks a set of messages to be included in the next block.
 //
-// - This function is destructive and should only be called once per epoch.
-// - This function does not store anything in the repo.
-// - This function handles all gas estimation. The returned messages should all fit in a single
-//   block.
+//   - This function is destructive and should only be called once per epoch.
+//   - This function does not store anything in the repo.
+//   - This function handles all gas estimation. The returned messages should all fit in a single
+//     block.
 func (sim *Simulation) popNextMessages(ctx context.Context) ([]*types.Message, error) {
 	parentTs := sim.head
 

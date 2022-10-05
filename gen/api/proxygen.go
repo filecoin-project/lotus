@@ -140,14 +140,14 @@ func generate(path, pkg, outpkg, outfile string) error {
 	ast.Walk(v, ap)
 
 	type methodInfo struct {
-		Name                                     string
+		Num                                      string
 		node                                     ast.Node
 		Tags                                     map[string][]string
 		NamedParams, ParamNames, Results, DefRes string
 	}
 
 	type strinfo struct {
-		Name    string
+		Num     string
 		Methods map[string]*methodInfo
 		Include []string
 	}
@@ -182,7 +182,7 @@ func generate(path, pkg, outpkg, outfile string) error {
 		for ifname, methods := range v.Methods {
 			if _, ok := m.Infos[ifname]; !ok {
 				m.Infos[ifname] = &strinfo{
-					Name:    ifname,
+					Num:     ifname,
 					Methods: map[string]*methodInfo{},
 					Include: v.Include[ifname],
 				}
@@ -239,7 +239,7 @@ func generate(path, pkg, outpkg, outfile string) error {
 					}
 
 					info.Methods[mname] = &methodInfo{
-						Name:        mname,
+						Num:         mname,
 						node:        node.node,
 						Tags:        map[string][]string{},
 						NamedParams: strings.Join(params, ", "),
@@ -298,18 +298,18 @@ import (
 var ErrNotSupported = xerrors.New("method not supported")
 
 {{range .Infos}}
-type {{.Name}}Struct struct {
+type {{.Num}}Struct struct {
 {{range .Include}}
 	{{.}}Struct
 {{end}}
 	Internal struct {
 {{range .Methods}}
-		{{.Name}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
+		{{.Num}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
 {{end}}
 	}
 }
 
-type {{.Name}}Stub struct {
+type {{.Num}}Stub struct {
 {{range .Include}}
 	{{.}}Stub
 {{end}}
@@ -317,22 +317,22 @@ type {{.Name}}Stub struct {
 {{end}}
 
 {{range .Infos}}
-{{$name := .Name}}
+{{$name := .Num}}
 {{range .Methods}}
-func (s *{{$name}}Struct) {{.Name}}({{.NamedParams}}) ({{.Results}}) {
-	if s.Internal.{{.Name}} == nil {
+func (s *{{$name}}Struct) {{.Num}}({{.NamedParams}}) ({{.Results}}) {
+	if s.Internal.{{.Num}} == nil {
 		return {{.DefRes}}ErrNotSupported
 	}
-	return s.Internal.{{.Name}}({{.ParamNames}})
+	return s.Internal.{{.Num}}({{.ParamNames}})
 }
 
-func (s *{{$name}}Stub) {{.Name}}({{.NamedParams}}) ({{.Results}}) {
+func (s *{{$name}}Stub) {{.Num}}({{.NamedParams}}) ({{.Results}}) {
 	return {{.DefRes}}ErrNotSupported
 }
 {{end}}
 {{end}}
 
-{{range .Infos}}var _ {{.Name}} = new({{.Name}}Struct)
+{{range .Infos}}var _ {{.Num}} = new({{.Num}}Struct)
 {{end}}
 
 `)

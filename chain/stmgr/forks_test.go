@@ -1,4 +1,4 @@
-//stm: #integration
+// stm: #integration
 package stmgr_test
 
 import (
@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -167,7 +168,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	inv := filcns.NewActorRegistry()
-	inv.Register(actors.Version0, nil, testActor{})
+	inv.Register(actorstypes.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
@@ -284,7 +285,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	}
 
 	inv := filcns.NewActorRegistry()
-	inv.Register(actors.Version0, nil, testActor{})
+	inv.Register(actorstypes.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
@@ -505,7 +506,7 @@ func TestForkPreMigration(t *testing.T) {
 	}()
 
 	inv := filcns.NewActorRegistry()
-	inv.Register(actors.Version0, nil, testActor{})
+	inv.Register(actorstypes.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)

@@ -7,7 +7,9 @@ import (
 	"github.com/ipfs/go-cid"
 
 {{range .versions}}
+    {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+	{{end}}
 {{end}}
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,7 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors"
 
-	miner{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
 )
 
@@ -50,7 +52,7 @@ type PoStProof = proof.PoStProof
 type FilterEstimate = smoothingtypes.FilterEstimate
 
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
-	return miner{{.latestVersion}}.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
 }
 
 func ActorNameByCode(c cid.Cid) string {
@@ -60,8 +62,10 @@ func ActorNameByCode(c cid.Cid) string {
 
 	switch {
 	    {{range .versions}}
+	        {{if (le . 7)}}
             case builtin{{.}}.IsBuiltinActor(c):
             return builtin{{.}}.ActorNameByCode(c)
+            {{end}}
         {{end}}
 	default:
 		return "<unknown>"

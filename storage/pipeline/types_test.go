@@ -43,7 +43,7 @@ func TestSectorInfoSerialization(t *testing.T) {
 	si := &SectorInfo{
 		State:        "stateful",
 		SectorNumber: 234,
-		Pieces: []Piece{{
+		Pieces: []api.SectorPiece{{
 			Piece: abi.PieceInfo{
 				Size:     5,
 				PieceCID: dummyCid,
