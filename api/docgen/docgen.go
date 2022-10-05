@@ -142,6 +142,11 @@ func init() {
 	allocationId := verifreg.AllocationId(0)
 	addExample(allocationId)
 	addExample(&allocationId)
+	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
+	claimId := verifreg.ClaimId(0)
+	addExample(claimId)
+	addExample(&claimId)
+	addExample(map[verifreg.ClaimId]verifreg.Claim{})
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{

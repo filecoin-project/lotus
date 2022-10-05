@@ -188,4 +188,10 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	allocation, err := api.StateGetAllocationForPendingDeal(ctx, dealIds[0], types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, dealProposal.PieceCID, allocation.Data)
+
+	allocations, err := api.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	for _, alloc := range allocations {
+		require.Equal(t, alloc, *allocation)
+	}
 }
