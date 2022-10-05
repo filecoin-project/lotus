@@ -93,6 +93,12 @@ func From(typ interface{}) interface{} {
 	}).Interface()
 }
 
+func FromVal[T any](v T) func() T {
+	return func() T {
+		return v
+	}
+}
+
 // from go-ipfs
 // as casts input constructor to a given interface (if a value is given, it
 // wraps it into a constructor).
