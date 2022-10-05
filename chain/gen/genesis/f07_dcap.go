@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -20,7 +21,6 @@ import (
 var GovernorId address.Address
 
 func init() {
-
 	idk, err := address.NewFromString("t06")
 	if err != nil {
 		panic(err)
@@ -31,19 +31,19 @@ func init() {
 
 func SetupDatacapActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
-	vst, err := datacap.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, GovernorId, 3) // TODO make into variable
+	dst, err := datacap.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av, GovernorId, builtin.DefaultTokenActorBitwidth)
 	if err != nil {
 		return nil, err
 	}
 
-	statecid, err := cst.Put(ctx, vst.GetState())
+	statecid, err := cst.Put(ctx, dst.GetState())
 	if err != nil {
 		return nil, err
 	}
 
 	actcid, ok := actors.GetActorCodeID(av, actors.DatacapKey)
 	if !ok {
-		return nil, xerrors.Errorf("failed to get verifreg actor code ID for actors version %d", av)
+		return nil, xerrors.Errorf("failed to get datacap actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

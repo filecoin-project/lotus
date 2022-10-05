@@ -280,7 +280,7 @@ type FullNodeStruct struct {
 
 		StateGetAllocation func(p0 context.Context, p1 address.Address, p2 verifregtypes.AllocationId, p3 types.TipSetKey) (*verifregtypes.Allocation, error) `perm:"read"`
 
-		StateGetDealAllocation func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) ``
+		StateGetAllocationForPendingDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) ``
 
 		StateGetNetworkParams func(p0 context.Context) (*api.NetworkParams, error) `perm:"read"`
 
@@ -1809,14 +1809,14 @@ func (s *FullNodeStub) StateGetAllocation(p0 context.Context, p1 address.Address
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateGetDealAllocation(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
-	if s.Internal.StateGetDealAllocation == nil {
+func (s *FullNodeStruct) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
+	if s.Internal.StateGetAllocationForPendingDeal == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.StateGetDealAllocation(p0, p1, p2)
+	return s.Internal.StateGetAllocationForPendingDeal(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateGetDealAllocation(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (s *FullNodeStub) StateGetAllocationForPendingDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*verifregtypes.Allocation, error) {
 	return nil, ErrNotSupported
 }
 

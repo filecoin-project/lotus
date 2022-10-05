@@ -116,10 +116,10 @@ func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state{{.v}}) GetAllocation(addr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
-    return s.FindAllocation(s.store, addr, allocationId)
+    return s.FindAllocation(s.store, clientIdAddr, allocationId)
 {{end}}
 }
