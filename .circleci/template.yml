@@ -990,10 +990,10 @@ workflows:
       - publish-dockerhub:
           name: publish-dockerhub-nightly
           tag: nightly
-  monthly:
+  biweekly:
     triggers:
       - schedule:
-          cron: "0 0 1 * *"
+          cron: "0 0 1,15 * *"
           filters:
             branches:
               only:
