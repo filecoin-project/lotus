@@ -123,3 +123,27 @@ func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId v
     return s.FindAllocation(s.store, clientIdAddr, allocationId)
 {{end}}
 }
+
+func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	return s.LoadAllocationsToMap(s.store, clientIdAddr)
+{{end}}
+}
+
+func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+{{if (le .v 8)}}
+    return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	return s.FindClaim(s.store, providerIdAddr, claimId)
+{{end}}
+}
+
+func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	return s.LoadClaimsToMap(s.store, providerIdAddr)
+{{end}}
+}

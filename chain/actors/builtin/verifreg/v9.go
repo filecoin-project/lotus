@@ -95,3 +95,21 @@ func (s *state9) GetAllocation(clientIdAddr address.Address, allocationId verifr
 	return s.FindAllocation(s.store, clientIdAddr, allocationId)
 
 }
+
+func (s *state9) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+
+	return s.LoadAllocationsToMap(s.store, clientIdAddr)
+
+}
+
+func (s *state9) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+
+	return s.FindClaim(s.store, providerIdAddr, claimId)
+
+}
+
+func (s *state9) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+
+	return s.LoadClaimsToMap(s.store, providerIdAddr)
+
+}
