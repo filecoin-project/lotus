@@ -3,8 +3,6 @@ package genesis
 import (
 	"encoding/json"
 
-	"github.com/filecoin-project/lotus/chain/types"
-
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -12,6 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type ActorType string
