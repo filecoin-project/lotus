@@ -3,12 +3,16 @@ package mir
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	lapi "github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -17,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	xerrors "golang.org/x/xerrors"
 )
 
 var _ consensus.Consensus = &Mir{}
@@ -54,114 +59,117 @@ func NewConsensus(
 
 // CreateBlock creates a Filecoin block from the input block template.
 func (bft *Mir) CreateBlock(ctx context.Context, w lapi.Wallet, bt *lapi.BlockTemplate) (*types.FullBlock, error) {
-	/*
-		b, err := common.PrepareBlockForSignature(ctx, bft.sm, bt)
-		if err != nil {
-			return nil, err
-		}
+	pts, err := bft.sm.ChainStore().LoadTipSet(ctx, bt.Parents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load parent tipset: %w", err)
+	}
 
-		// We don't sign blocks mined by Mir validators
-	*/
-	return nil, nil
+	st, recpts, err := bft.sm.TipSetState(ctx, pts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tipset state: %w", err)
+	}
+
+	next := &types.BlockHeader{
+		Miner:         builtin.SystemActorAddr, // Mir blocks are not signed, we use system addr as miner.
+		Parents:       bt.Parents.Cids(),
+		Ticket:        bt.Ticket,
+		ElectionProof: bt.Eproof,
+
+		BeaconEntries:         bt.BeaconValues,
+		Height:                bt.Epoch,
+		Timestamp:             bt.Timestamp,
+		WinPoStProof:          bt.WinningPoStProof,
+		ParentStateRoot:       st,
+		ParentMessageReceipts: recpts,
+	}
+	blsMessages, secpkMessages, err := consensus.MsgsFromBlockTemplate(ctx, bft.sm, next, pts, bt)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to process messages from block template: %w", err)
+	}
+
+	return &types.FullBlock{
+		Header:        next,
+		BlsMessages:   blsMessages,
+		SecpkMessages: secpkMessages,
+	}, nil
 }
 
 func (bft *Mir) ValidateBlockHeader(ctx context.Context, b *types.BlockHeader) (rejectReason string, err error) {
+	// TODO: This is missing.
+	log.Warn("oh oh! No specific block header validation implemented for Mir yet")
 	return "", nil
 }
 
 func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err error) {
 	log.Infof("starting block validation process at @%d", b.Header.Height)
 
-	/*
-		if err := common.BlockSanityChecks(hierarchical.Mir, b.Header); err != nil {
-			return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
-		}
+	if err := blockSanityChecks(b.Header); err != nil {
+		return xerrors.Errorf("incoming header failed basic sanity checks: %w", err)
+	}
 
-		h := b.Header
+	h := b.Header
 
-		baseTs, err := bft.store.LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
-		if err != nil {
-			return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
-		}
+	baseTs, err := bft.store.LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
+	if err != nil {
+		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
+	}
+	if h.Height <= baseTs.Height() {
+		return xerrors.Errorf("block height not greater than parent height: %d != %d", h.Height, baseTs.Height())
+	}
 
-		// fast checks first
-		if h.Height != baseTs.Height()+1 {
-			return xerrors.Errorf("block height not parent height+1: %d != %d", h.Height, baseTs.Height()+1)
-		}
+	// FIXME: Checking for BlockDrift for Mir is probably not necessary
+	now := uint64(build.Clock.Now().Unix())
+	if h.Timestamp > now+build.AllowableClockDriftSecs {
+		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
+	}
+	if h.Timestamp > now {
+		log.Warn("got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
+	}
 
-		now := uint64(build.Clock.Now().Unix())
-		if h.Timestamp > now+build.AllowableClockDriftSecs {
-			return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
-		}
-		if h.Timestamp > now {
-			log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
-		}
+	pweight, err := bft.store.Weight(ctx, baseTs)
+	if err != nil {
+		return xerrors.Errorf("getting parent weight: %w", err)
+	}
 
-		msgsChecks := common.CheckMsgsWithoutBlockSig(ctx, bft.store, bft.sm, bft.subMgr, bft.resolver, bft.netName, b, baseTs)
+	if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
+		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
+			b.Header.ParentWeight, pweight)
+	}
 
-		minerCheck := async.Err(func() error {
-			if err := bft.minerIsValid(b.Header.Miner); err != nil {
-				return xerrors.Errorf("minerIsValid failed: %w", err)
-			}
-			return nil
-		})
-
-		pweight, err := Weight(ctx, nil, baseTs)
-		if err != nil {
-			return xerrors.Errorf("getting parent weight: %w", err)
-		}
-
-		if types.BigCmp(pweight, b.Header.ParentWeight) != 0 {
-			return xerrors.Errorf("parent weight different: %s (header) != %s (computed)",
-				b.Header.ParentWeight, pweight)
-		}
-
-		stateRootCheck := common.CheckStateRoot(ctx, bft.store, bft.sm, b, baseTs)
-
-		await := []async.ErrorFuture{
-			minerCheck,
-			stateRootCheck,
-		}
-
-		await = append(await, msgsChecks...)
-
-		var merr error
-		for _, fut := range await {
-			if err := fut.AwaitContext(ctx); err != nil {
-				merr = multierror.Append(merr, err)
-			}
-		}
-		if merr != nil {
-			mulErr := merr.(*multierror.Error)
-			mulErr.ErrorFormat = func(es []error) string {
-				if len(es) == 1 {
-					return fmt.Sprintf("1 error occurred:\n\t* %+v\n\n", es[0])
-				}
-
-				points := make([]string, len(es))
-				for i, err := range es {
-					points[i] = fmt.Sprintf("* %+v", err)
-				}
-
-				return fmt.Sprintf("%d errors occurred:\n\t%s\n\n", len(es), strings.Join(points, "\n\t"))
-			}
-			return mulErr
-		}
-
-		log.Infof("block at @%d is valid", b.Header.Height)
-	*/
-	return nil
+	return consensus.RunAsyncChecks(ctx, consensus.CommonBlkChecks(ctx, bft.sm, bft.store, b, baseTs))
 }
 
-// func (bft *Mir) minerIsValid(maddr address.Address) error {
-// 	switch maddr.Protocol() {
-// 	case address.BLS:
-// 		fallthrough
-// 	case address.SECP256K1:
-// 		return nil
-// 	}
-// 	return xerrors.Errorf("miner address must be a key")
-// }
+func blockSanityChecks(h *types.BlockHeader) error {
+	if h.ElectionProof != nil {
+		return xerrors.Errorf("mir expects nil election proof")
+	}
+
+	if h.Ticket.VRFProof != nil {
+		return xerrors.Errorf("mir block have nil ticket")
+	}
+
+	if h.BlockSig != nil {
+		return xerrors.Errorf("mir blocks have no signature")
+	}
+
+	if h.BLSAggregate == nil {
+		return xerrors.Errorf("block had nil bls aggregate signature")
+	}
+
+	if len(h.Parents) != 1 {
+		return xerrors.Errorf("must have 1 parent")
+	}
+
+	if h.Miner.Protocol() != address.ID {
+		return xerrors.Errorf("block had non-ID miner address")
+	}
+
+	if h.Miner != builtin.SystemActorAddr {
+		return xerrors.Errorf("mir blocks include the systemActor as miner")
+	}
+
+	return nil
+}
 
 // IsEpochBeyondCurrMax is used in Filcns to detect delayed blocks.
 // We are currently using defaults here and not worrying about it.
@@ -170,8 +178,9 @@ func (bft *Mir) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
 	return false
 }
 
-// Weight defines weight.
-// We are just using a default weight for all subnet consensus algorithms.
+// Weight in mir uses a default approach where the height determines the weight.
+//
+// Every tipset in mir has a single block.
 func Weight(ctx context.Context, stateBs bstore.Blockstore, ts *types.TipSet) (types.BigInt, error) {
 	if ts == nil {
 		return types.NewInt(0), nil

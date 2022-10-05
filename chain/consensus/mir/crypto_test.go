@@ -61,7 +61,7 @@ func TestCryptoManager(t *testing.T) {
 	sigBytes, err := c.Sign(data)
 	require.NoError(t, err)
 
-	nodeID := mirTypes.NodeID(newMirID("/root", addr.String()))
+	nodeID := mirTypes.NodeID(newMirID(addr.String()))
 	err = c.Verify([][]byte{{1, 2, 3}}, sigBytes, nodeID)
 	require.Error(t, err)
 
@@ -75,7 +75,7 @@ func TestCryptoManager(t *testing.T) {
 	err = c.Verify(data, sigBytes, nodeID)
 	require.Error(t, err)
 
-	nodeID = mirTypes.NodeID(newMirID("/root:", addr.String()))
+	nodeID = mirTypes.NodeID(newMirID(addr.String()))
 	err = c.Verify(data, sigBytes, nodeID)
 	require.Error(t, err)
 }

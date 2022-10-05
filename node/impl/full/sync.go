@@ -51,6 +51,17 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+	err := a.SyncBlock(ctx, blk)
+	b, err := blk.Serialize()
+	if err != nil {
+		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
+	}
+
+	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
+}
+
+// SyncBlock delivers block to syncer without broadcasting it to the rest of the network.
+func (a *SyncAPI) SyncBlock(ctx context.Context, blk *types.BlockMsg) error {
 	parent, err := a.Syncer.ChainStore().GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %w", err)
@@ -92,12 +103,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		return xerrors.Errorf("sync to submitted block failed: %w", err)
 	}
 
-	b, err := blk.Serialize()
-	if err != nil {
-		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
-	}
-
-	return a.PubSub.Publish(build.BlocksTopic(a.NetName), b) //nolint:staticcheck
+	return nil
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {

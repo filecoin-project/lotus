@@ -24,6 +24,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		cfgCmd,
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")

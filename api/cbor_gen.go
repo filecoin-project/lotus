@@ -8,13 +8,12 @@ import (
 	"math"
 	"sort"
 
-	cid "github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	xerrors "golang.org/x/xerrors"
-
 	abi "github.com/filecoin-project/go-state-types/abi"
 	market "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	cid "github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	xerrors "golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf

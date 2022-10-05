@@ -207,6 +207,10 @@ type FullNode interface {
 	// network through this node
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error //perm:write
 
+	// SyncSubmitBlock can be used to deliver a block to the syncer without
+	// broadcasting it to the rest of the network.
+	SyncBlock(ctx context.Context, blk *types.BlockMsg) error //perm:write
+
 	// SyncIncomingBlocks returns a channel streaming incoming, potentially not
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) //perm:read

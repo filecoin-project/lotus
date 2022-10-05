@@ -1,27 +1,20 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	_ "net/http/pprof"
-	"os"
 	"path/filepath"
 
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/consensus/mir"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
@@ -29,7 +22,7 @@ import (
 
 var runCmd = &cli.Command{
 	Name:  "run",
-	Usage: "Start a lotus miner process",
+	Usage: "Start a mir validator process",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "default-key",
@@ -47,13 +40,6 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("enable-gpu-proving") {
-			err := os.Setenv("BELLMAN_NO_GPU", "true")
-			if err != nil {
-				return err
-			}
-		}
-
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
@@ -79,6 +65,11 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		// check if validator has been initialized.
+		if err := initCheck(cctx.String("repo")); err != nil {
+			return err
+		}
+
 		if cctx.Bool("manage-fdlimit") {
 			if _, _, err := ulimit.ManageFdLimit(); err != nil {
 				log.Errorf("setting file descriptor limit: %s", err)
@@ -97,166 +88,38 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		// var validator address.Address
-		// if cctx.Bool("default-key") {
-		// 	validator, err = nodeApi.WalletDefaultAddress(ctx)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// } else {
-		// 	validator, err = address.NewFromString(cctx.Args().First())
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
-		// if validator == address.Undef {
-		// 	return xerrors.Errorf("no validator address specified as first argument for validator")
-		// }
+		// Validator identity.
+		var validator address.Address
+		if cctx.Bool("default-key") {
+			validator, err = nodeApi.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			validator, err = address.NewFromString(cctx.Args().First())
+			if err != nil {
+				return err
+			}
+		}
+		if validator == address.Undef {
+			return xerrors.Errorf("no validator address specified as first argument for validator")
+		}
+
+		// Membership config.
+		// TODO: Make this configurable.
+		membershipCfg := filepath.Join(cctx.String("repo"), MembershipCfgPath)
 
 		h, err := newLp2pHost(cctx.String("repo"))
 		if err != nil {
 			return err
 		}
+
 		log.Info("Mir libp2p host listening in the following addresses:")
 		for _, a := range h.Addrs() {
 			log.Info(a)
 		}
 
-		// log.Infow("Starting mining with validator", "validator", validator)
-		return nil
+		log.Infow("Starting mining with validator", "validator", validator)
+		return mir.Mine(ctx, validator, h, nodeApi, membershipCfg)
 	},
-}
-
-const PRIVKEY = "mir.key"
-const MADDR = "mir.maddr"
-
-func fileExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err != nil && !os.IsNotExist(err) {
-		return false, err
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return true, nil
-}
-
-// TODO: Consider encrypting the file and adding cmds to handle mir keys.
-func lp2pID(dir string) (crypto.PrivKey, error) {
-	// See if the key exists.
-	path := filepath.Join(dir, PRIVKEY)
-	// if it doesn't exist create a new key
-	exists, err := fileExists(path)
-	if !exists {
-		pk, err := genLibp2pKey()
-		if err != nil {
-			return nil, fmt.Errorf("error generating libp2p key: %w", err)
-		}
-		file, err := os.Create(path)
-		if err != nil {
-			return nil, fmt.Errorf("error creating libp2p key: %w", err)
-		}
-		kbytes, err := crypto.MarshalPrivateKey(pk)
-		if err != nil {
-			return nil, fmt.Errorf("error marshalling libp2p key: %w", err)
-		}
-		_, err = file.Write(kbytes)
-		if err != nil {
-			return nil, fmt.Errorf("error writing libp2p key in file: %w", err)
-		}
-		return pk, nil
-	}
-	kbytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("error reading libp2p key from file: %w", err)
-	}
-
-	// if read and return the key.
-	return crypto.UnmarshalPrivateKey(kbytes)
-}
-
-func genLibp2pKey() (crypto.PrivKey, error) {
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	return pk, nil
-}
-
-// TODO: Should we make multiaddrs configurable?
-func newLp2pHost(dir string) (host.Host, error) {
-	pk, err := lp2pID(dir)
-	if err != nil {
-		return nil, err
-	}
-	// See if mutiaddr exists.
-	path := filepath.Join(dir, MADDR)
-	// if it doesn't exist create a new key
-	exists, err := fileExists(path)
-	if !exists {
-		// use any free endpoints in the host.
-		h, err := libp2p.New(
-			libp2p.Identity(pk),
-			libp2p.DefaultTransports,
-			libp2p.ListenAddrStrings(
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip6/::/tcp/0",
-				"/ip4/0.0.0.0/udp/0/quic",
-				"/ip6/::/udp/0/quic"),
-		)
-		if err != nil {
-			return nil, err
-		}
-		file, err := os.Create(path)
-		if err != nil {
-			return nil, fmt.Errorf("error creating libp2p multiaddr: %w", err)
-		}
-		b, err := marshalMultiAddrSlice(h.Addrs())
-		if err != nil {
-			return nil, err
-		}
-		_, err = file.Write(b)
-		if err != nil {
-			return nil, fmt.Errorf("error writing libp2p multiaddr in file: %w", err)
-		}
-		return h, nil
-	}
-	bMaddr, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("error reading multiaddr from file: %w", err)
-	}
-
-	addrs, err := unmarshalMultiAddrSlice(bMaddr)
-	if err != nil {
-		return nil, err
-	}
-	return libp2p.New(
-		libp2p.Identity(pk),
-		libp2p.DefaultTransports,
-		libp2p.ListenAddrs(addrs...),
-	)
-}
-
-func marshalMultiAddrSlice(ma []multiaddr.Multiaddr) ([]byte, error) {
-	out := []string{}
-	for _, a := range ma {
-		out = append(out, a.String())
-	}
-	return json.Marshal(&out)
-}
-
-func unmarshalMultiAddrSlice(b []byte) ([]multiaddr.Multiaddr, error) {
-	out := []multiaddr.Multiaddr{}
-	s := []string{}
-	if err := json.Unmarshal(b, &s); err != nil {
-		return nil, err
-	}
-	for _, mstr := range s {
-		a, err := multiaddr.NewMultiaddr(mstr)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, a)
-	}
-	return out, nil
 }

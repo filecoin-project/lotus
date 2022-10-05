@@ -11,35 +11,30 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/consensus/mir/pool"
-	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/fifo"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/mir"
-	"github.com/filecoin-project/mir/pkg/availability/batchdb/fakebatchdb"
-	"github.com/filecoin-project/mir/pkg/availability/multisigcollector"
-	mircrypto "github.com/filecoin-project/mir/pkg/crypto"
 	"github.com/filecoin-project/mir/pkg/eventlog"
 	"github.com/filecoin-project/mir/pkg/events"
-	"github.com/filecoin-project/mir/pkg/iss"
 	"github.com/filecoin-project/mir/pkg/logging"
-	"github.com/filecoin-project/mir/pkg/modules"
 	"github.com/filecoin-project/mir/pkg/net"
 	mirlibp2p "github.com/filecoin-project/mir/pkg/net/libp2p"
 	mirproto "github.com/filecoin-project/mir/pkg/pb/requestpb"
 	"github.com/filecoin-project/mir/pkg/simplewal"
+	"github.com/filecoin-project/mir/pkg/systems/smr"
 	t "github.com/filecoin-project/mir/pkg/types"
+
+	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/fifo"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 const (
-	ValidatorsEnv        = "EUDICO_MIR_VALIDATORS"
-	InterceptorOutputEnv = "EUDICO_INTERCEPTOR_OUTPUT"
+	InterceptorOutputEnv = "MIR_INTERCEPTOR_OUTPUT"
 )
 
 // Manager manages the Eudico and Mir nodes participating in ISS consensus protocol.
 type Manager struct {
-	// Eudico related types.
+	// Lotus related types.
 	NetName dtypes.NetworkName
 	Addr    address.Address
 	Pool    *fifo.Pool
@@ -49,7 +44,6 @@ type Manager struct {
 	MirID         string
 	WAL           *simplewal.WAL
 	Net           net.Transport
-	ISS           *iss.ISS
 	CryptoManager *CryptoManager
 	StateManager  *StateManager
 	interceptor   *eventlog.Recorder
@@ -60,13 +54,17 @@ type Manager struct {
 	reconfigurationNonce uint64
 }
 
-func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1api.FullNode) (*Manager, error) {
+func newMirID(addr string) string {
+	return fmt.Sprintf("%s", addr)
+}
+
+func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1api.FullNode, membershipCfg string) (*Manager, error) {
 	netName, err := api.StateNetworkName(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	initialValidatorSet, err := getSubnetValidators(ctx, api)
+	initialValidatorSet, err := GetValidatorsFromCfg(membershipCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get validator set: %w", err)
 	}
@@ -85,7 +83,10 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	}
 
 	mirID := newMirID(addr.String())
-	mirAddr := initialMembership[t.NodeID(mirID)]
+	mirAddr, ok := initialMembership[t.NodeID(mirID)]
+	if !ok {
+		return nil, fmt.Errorf("self identity not included in validator set")
+	}
 
 	log.Info("Eudico node's Mir ID: ", mirID)
 	log.Info("Eudico node's address in Mir: ", mirAddr)
@@ -96,7 +97,8 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	logger := newManagerLogger()
 
 	// Create Mir modules.
-	path := fmt.Sprintf("eudico-wal%s", strings.Replace(mirID, "/", "-", -1))
+	// TODO: Configure repo path to persist Mir WAL
+	path := fmt.Sprintf("lotus-wal%s", strings.Replace(mirID, "/", "-", -1))
 	wal, err := NewWAL(mirID, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create WAL: %w", err)
@@ -117,39 +119,17 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	}
 
 	// Instantiate an interceptor.
-
 	var interceptor *eventlog.Recorder
 
 	interceptorOutput := os.Getenv(InterceptorOutputEnv)
 	if interceptorOutput != "" {
+		// TODO: Persist in repo path?
 		path := fmt.Sprintf("eudico-recorder%s", strings.Replace(mirID, "/", "-", -1))
 		interceptor, err = eventlog.NewRecorder(t.NodeID(mirID), path, logging.Decorate(logger, "Interceptor: "))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create interceptor: %w", err)
 		}
 	}
-
-	// Instantiate the ISS protocol module with default configuration.
-
-	issConfig := iss.DefaultParams(initialMembership)
-	issConfig.ConfigOffset = ConfigOffset
-	issProtocol, err := iss.New(
-		t.NodeID(mirID),
-		iss.DefaultModuleConfig(),
-		issConfig,
-		iss.InitialStateSnapshot([]byte{}, issConfig),
-		logger,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("could not instantiate ISS protocol module: %w", err)
-	}
-
-	// Use fake batch database.
-	batchdb := fakebatchdb.NewModule(
-		&fakebatchdb.ModuleConfig{
-			Self: "batchdb",
-		},
-	)
 
 	m := Manager{
 		Addr:                addr,
@@ -160,53 +140,30 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		WAL:                 wal,
 		CryptoManager:       cryptoManager,
 		Net:                 netTransport,
-		ISS:                 issProtocol,
 		InitialValidatorSet: initialValidatorSet,
 		ToMir:               make(chan chan []*mirproto.Request),
 	}
 
 	sm := NewStateManager(initialMembership, &m)
 
-	// Use a mempool for incoming requests.
-	mpool := pool.NewModule(
-		m.ToMir,
-		&pool.ModuleConfig{
-			Self:   "mempool",
-			Hasher: "hasher",
-		},
-		&pool.ModuleParams{
-			MaxTransactionsInBatch: 10,
-		},
-	)
-
-	availability := multisigcollector.NewReconfigurableModule(
-		&multisigcollector.ModuleConfig{
-			Self:    "availability",
-			Mempool: "mempool",
-			BatchDB: "batchdb",
-			Net:     "net",
-			Crypto:  "crypto",
-		},
+	smrSystem, err := smr.New(
 		t.NodeID(mirID),
+		h,
+		initialMembership,
+		m.CryptoManager,
+		sm,
 		logger,
 	)
-
-	// Create a Mir node, using the default configuration and passing the modules initialized just above.
-	mirModules, err := iss.DefaultModules(map[t.ModuleID]modules.Module{
-		"net":          netTransport,
-		"iss":          issProtocol,
-		"app":          sm,
-		"crypto":       mircrypto.New(m.CryptoManager),
-		"mempool":      mpool,
-		"batchdb":      batchdb,
-		"availability": availability,
-	}, iss.DefaultModuleConfig())
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Mir modules: %w", err)
+		return nil, fmt.Errorf("could not create SMR system: %w", err)
+	}
+
+	if err := smrSystem.Start(ctx); err != nil {
+		return nil, fmt.Errorf("could not start SMR system: %w", err)
 	}
 
 	cfg := mir.NodeConfig{Logger: logger}
-	newMirNode, err := mir.NewNode(t.NodeID(mirID), &cfg, mirModules, wal, nil)
+	newMirNode, err := mir.NewNode(t.NodeID(mirID), &cfg, smrSystem.Modules(), wal, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
 	}
@@ -389,6 +346,5 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 
 // ID prints Manager ID.
 func (m *Manager) ID() string {
-	addr := m.Addr.String()
-	return fmt.Sprintf("%v:%v", addr[len(addr)-6:])
+	return m.Addr.String()
 }

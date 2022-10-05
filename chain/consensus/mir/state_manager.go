@@ -8,12 +8,12 @@ import (
 
 	availabilityevents "github.com/filecoin-project/mir/pkg/availability/events"
 	"github.com/filecoin-project/mir/pkg/events"
-	"github.com/filecoin-project/mir/pkg/modules"
 	"github.com/filecoin-project/mir/pkg/pb/availabilitypb"
 	"github.com/filecoin-project/mir/pkg/pb/commonpb"
 	"github.com/filecoin-project/mir/pkg/pb/contextstorepb"
 	"github.com/filecoin-project/mir/pkg/pb/eventpb"
 	"github.com/filecoin-project/mir/pkg/pb/requestpb"
+	"github.com/filecoin-project/mir/pkg/systems/smr"
 	t "github.com/filecoin-project/mir/pkg/types"
 	"github.com/filecoin-project/mir/pkg/util/maputil"
 )
@@ -21,6 +21,8 @@ import (
 const (
 	availabilityModuleID = t.ModuleID("availability")
 )
+
+var _ smr.AppLogic = &StateManager{}
 
 type Message []byte
 
@@ -45,8 +47,7 @@ type StateManager struct {
 
 	MirManager *Manager
 
-	// TODO: The vote counting is leaking memory. Resolve that in garbage collection mechanism.
-	reconfigurationVotes map[string]int
+	reconfigurationVotes map[t.EpochNr]map[string]int
 }
 
 func NewStateManager(initialMembership map[t.NodeID]t.NodeAddress, m *Manager) *StateManager {
@@ -67,37 +68,9 @@ func NewStateManager(initialMembership map[t.NodeID]t.NodeAddress, m *Manager) *
 		MirManager:           m,
 		memberships:          memberships,
 		currentEpoch:         0,
-		reconfigurationVotes: make(map[string]int),
+		reconfigurationVotes: make(map[t.EpochNr]map[string]int),
 	}
 	return &sm
-}
-
-func (sm *StateManager) ApplyEvents(eventsIn *events.EventList) (*events.EventList, error) {
-	return modules.ApplyEventsSequentially(eventsIn, sm.ApplyEvent)
-}
-
-func (sm *StateManager) ApplyEvent(event *eventpb.Event) (*events.EventList, error) {
-	switch e := event.Type.(type) {
-	case *eventpb.Event_Init:
-		return events.EmptyList(), nil
-	case *eventpb.Event_NewEpoch:
-		return sm.applyNewEpoch(e.NewEpoch)
-	case *eventpb.Event_DeliverCert:
-		return sm.applyDeliverCertificate(e.DeliverCert)
-	case *eventpb.Event_Availability:
-		switch e := e.Availability.Type.(type) {
-		case *availabilitypb.Event_ProvideTransactions:
-			return sm.applyProvideTransactions(e.ProvideTransactions)
-		default:
-			return nil, fmt.Errorf("unexpected availability event type: %T", e)
-		}
-	case *eventpb.Event_AppSnapshotRequest:
-		return sm.applySnapshotRequest(e.AppSnapshotRequest)
-	case *eventpb.Event_AppRestoreState:
-		return sm.applyRestoreState(e.AppRestoreState.Snapshot)
-	default:
-		return nil, fmt.Errorf("unexpected type of App event: %T", event.Type)
-	}
 }
 
 // applyDeliver applies a delivered availability certificate.
@@ -135,34 +108,58 @@ func (sm *StateManager) applyDeliverCertificate(deliver *eventpb.DeliverCert) (*
 	}
 }
 
+// applyRestoreState restores the application's state to the one represented by the passed argument.
+// The argument is a binary representation of the application state returned from Snapshot().
+func (sm *StateManager) RestoreState(snapshot []byte, config *commonpb.EpochConfig) error {
+	sm.currentEpoch = t.EpochNr(config.EpochNr)
+	sm.memberships = make(map[t.EpochNr]map[t.NodeID]t.NodeAddress, len(config.Memberships))
+
+	for e, membership := range config.Memberships {
+		sm.memberships[t.EpochNr(e)] = make(map[t.NodeID]t.NodeAddress)
+		for nID, nAddr := range membership.Membership {
+			var err error
+			sm.memberships[t.EpochNr(e)][t.NodeID(nID)], err = multiaddr.NewMultiaddr(nAddr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	newMembership := maputil.Copy(sm.memberships[t.EpochNr(config.EpochNr+ConfigOffset)])
+	sm.memberships[t.EpochNr(config.EpochNr+ConfigOffset+1)] = newMembership
+
+	return nil
+}
+
 // applyProvideTransactions applies transactions received from the availability layer to the app state.
 // In our case, it simply extends the message history
 // by appending the payload of each received request as a new message.
 // Each appended message is also printed to stdout.
 // Special messages starting with `Config: ` are recognized, parsed, and treated accordingly.
-func (sm *StateManager) applyProvideTransactions(ptx *availabilitypb.ProvideTransactions) (*events.EventList, error) {
+func (sm *StateManager) ApplyTXs(txs []*requestpb.Request) error {
+	fmt.Println(">>>> APPLY TXS")
 	var msgs []Message
 
 	// For each request in the batch
-	for _, req := range ptx.Txs {
+	for _, req := range txs {
 		switch req.Type {
 		case TransportType:
 			msgs = append(msgs, req.Data)
 		case ReconfigurationType:
 			err := sm.applyConfigMsg(req)
 			if err != nil {
-				return events.EmptyList(), err
+				return err
 			}
 		}
 	}
 
-	// Send a batch to the Eudico node.
+	// Send a batch to the Lotus node.
 	sm.NextBatch <- &Batch{
 		Messages:   msgs,
 		Validators: maputil.GetSortedKeys(sm.memberships[sm.currentEpoch]),
 	}
 
-	return events.EmptyList(), nil
+	return nil
 }
 
 func (sm *StateManager) applyConfigMsg(in *requestpb.Request) error {
@@ -183,29 +180,29 @@ func (sm *StateManager) applyConfigMsg(in *requestpb.Request) error {
 	return nil
 }
 
-func (sm *StateManager) applyNewEpoch(newEpoch *eventpb.NewEpoch) (*events.EventList, error) {
+func (sm *StateManager) NewEpoch(nr t.EpochNr) (map[t.NodeID]t.NodeAddress, error) {
 	// Sanity check.
-	if t.EpochNr(newEpoch.EpochNr) != sm.currentEpoch+1 {
-		return nil, fmt.Errorf("expected next epoch to be %d, got %d", sm.currentEpoch+1, newEpoch.EpochNr)
+	if nr != sm.currentEpoch+1 {
+		return nil, fmt.Errorf("expected next epoch to be %d, got %d", sm.currentEpoch+1, nr)
 	}
 
 	// The base membership is the last one membership.
-	newMembership := maputil.Copy(sm.memberships[t.EpochNr(newEpoch.EpochNr+ConfigOffset)])
+	newMembership := maputil.Copy(sm.memberships[t.EpochNr(nr+ConfigOffset)])
 
 	// Append a new membership data structure to be modified throughout the new epoch.
-	sm.memberships[t.EpochNr(newEpoch.EpochNr+ConfigOffset+1)] = newMembership
+	sm.memberships[t.EpochNr(nr+ConfigOffset+1)] = newMembership
 
 	// Update current epoch number.
 	oldEpoch := sm.currentEpoch
-	sm.currentEpoch = t.EpochNr(newEpoch.EpochNr)
+	sm.currentEpoch = t.EpochNr(nr)
 
 	// Remove old membership.
 	delete(sm.memberships, oldEpoch)
+	delete(sm.reconfigurationVotes, oldEpoch)
 
 	sm.NewMembership <- newMembership
 
-	// Notify ISS about the new membership.
-	return events.ListOf(events.NewConfig("iss", newMembership)), nil
+	return newMembership, nil
 }
 
 func (sm *StateManager) UpdateNextMembership(valSet *ValidatorSet) error {
@@ -217,15 +214,20 @@ func (sm *StateManager) UpdateNextMembership(valSet *ValidatorSet) error {
 	return nil
 }
 
-// UpdateAndCheckVotes votes for the valSet and returns true if it has had enough votes for this valSet.
+// UpdateAndCheckVotes votes for the valSet and returns true if it has enough votes for this valSet.
 func (sm *StateManager) UpdateAndCheckVotes(valSet *ValidatorSet) (bool, error) {
 	h, err := valSet.Hash()
 	if err != nil {
 		return false, err
 	}
-	sm.reconfigurationVotes[string(h)]++
-	votes := sm.reconfigurationVotes[string(h)]
+	_, ok := sm.reconfigurationVotes[sm.currentEpoch]
+	if !ok {
+		sm.reconfigurationVotes[sm.currentEpoch] = make(map[string]int)
+	}
+	sm.reconfigurationVotes[sm.currentEpoch][string(h)]++
+	votes := sm.reconfigurationVotes[sm.currentEpoch][string(h)]
 	nodes := len(sm.memberships[sm.currentEpoch])
+
 	if votes < weakQuorum(nodes) {
 		return false, nil
 	}
@@ -241,32 +243,10 @@ func (sm *StateManager) applySnapshotRequest(snapshotRequest *eventpb.AppSnapsho
 		snapshotRequest.Origin,
 	)), nil
 }
-
-// applyRestoreState restores the application's state to the one represented by the passed argument.
-// The argument is a binary representation of the application state returned from Snapshot().
-func (sm *StateManager) applyRestoreState(snapshot *commonpb.StateSnapshot) (*events.EventList, error) {
-	sm.currentEpoch = t.EpochNr(snapshot.Configuration.EpochNr)
-	sm.memberships = make(map[t.EpochNr]map[t.NodeID]t.NodeAddress, len(snapshot.Configuration.Memberships))
-
-	for e, membership := range snapshot.Configuration.Memberships {
-		sm.memberships[t.EpochNr(e)] = make(map[t.NodeID]t.NodeAddress)
-		for nID, nAddr := range membership.Membership {
-			var err error
-			sm.memberships[t.EpochNr(e)][t.NodeID(nID)], err = multiaddr.NewMultiaddr(nAddr)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	newMembership := maputil.Copy(sm.memberships[t.EpochNr(snapshot.Configuration.EpochNr+ConfigOffset)])
-	sm.memberships[t.EpochNr(snapshot.Configuration.EpochNr+ConfigOffset+1)] = newMembership
-
-	return events.EmptyList(), nil
+func (sm *StateManager) Snapshot() ([]byte, error) {
+	// TODO: No snapshot supported yet.
+	return nil, nil
 }
-
-// ImplementsModule method only serves the purpose of indicating that this is a Module and must not be called.
-func (sm *StateManager) ImplementsModule() {}
 
 func maxFaulty(n int) int {
 	// assuming n > 3f:
