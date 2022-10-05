@@ -268,7 +268,7 @@ func createDeals(m *genesis.Miner, k *key.Key, maddr address.Address, ssize abi.
 			ClientCollateral:     big.Zero(),
 		}
 
-		sector.DealClientKey = &k.KeyInfo
+		sector.DealClientKey = k.KeyInfo
 		sector.Deal = *proposal
 	}
 

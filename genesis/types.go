@@ -26,7 +26,7 @@ type PreSeal struct {
 	CommD         cid.Cid
 	SectorID      abi.SectorNumber
 	Deal          market8.DealProposal
-	DealClientKey *types.KeyInfo
+	DealClientKey types.KeyInfo
 	ProofType     abi.RegisteredSealProof
 }
 
