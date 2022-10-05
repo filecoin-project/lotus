@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -121,21 +122,14 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, *dcap, datacap)
 
-	// Create a random file and import on the client.
-	importedFile, _ := node.CreateImportFile(ctx, 1, 200)
-
-	// Get the piece size and commP
-	rootCid := importedFile.Root
-	pieceInfo, err := node.ClientDealPieceCID(ctx, rootCid)
-	require.NoError(t, err)
-	t.Log("FILE CID:", rootCid)
+	pieceCid := migration.MakeCID("1", &markettypes.PieceCIDPrefix)
 
 	label, err := markettypes.NewLabelFromString("")
 	require.NoError(t, err)
 
 	dealProposal := markettypes.DealProposal{
-		PieceCID:             pieceInfo.PieceCID,
-		PieceSize:            pieceInfo.PieceSize,
+		PieceCID:             pieceCid,
+		PieceSize:            1024,
 		Client:               verifiedClientAddr,
 		Provider:             miner.ActorAddr,
 		Label:                label,
