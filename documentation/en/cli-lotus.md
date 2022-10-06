@@ -2414,10 +2414,11 @@ NAME:
    lotus chain create-evm-actor - Create an new EVM actor via the init actor and return its address
 
 USAGE:
-   lotus chain create-evm-actor [command options] contract [params]
+   lotus chain create-evm-actor [command options] contract
 
 OPTIONS:
    --from value  optionally specify the account to use for sending the exec message
+   --hex         use when input contract is in hex (default: false)
    
 ```
 

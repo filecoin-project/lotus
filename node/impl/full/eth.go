@@ -175,11 +175,11 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *api.Eth
 func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender api.EthAddress, blkParam string) (api.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
-		return api.EthUint64(0), err
+		return api.EthUint64(0), nil
 	}
 	nonce, err := a.Mpool.GetNonce(ctx, addr, types.EmptyTSK)
 	if err != nil {
-		return api.EthUint64(0), err
+		return api.EthUint64(0), nil
 	}
 	return api.EthUint64(nonce), nil
 }
