@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/types"
 	"github.com/filecoin-project/mir/pkg/dsl"
 	mpdsl "github.com/filecoin-project/mir/pkg/mempool/dsl"
@@ -32,6 +34,7 @@ func IncludeBatchCreation(
 	})
 
 	mpdsl.UponRequestBatch(m, func(origin *mempoolpb.RequestBatchOrigin) error {
+		fmt.Println(">>> UponRequest you love mir! ")
 		inputChan := make(chan []*requestpb.Request)
 		state.ToMir <- inputChan
 		receivedRequests := <-inputChan

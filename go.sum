@@ -356,8 +356,6 @@ github.com/filecoin-project/go-storedcounter v0.1.0 h1:Mui6wSUBC+cQGHbDUBcO7rfh5
 github.com/filecoin-project/go-storedcounter v0.1.0/go.mod h1:4ceukaXi4vFURIoxYMfKzaRF5Xv/Pinh2oTnoxpv+z8=
 github.com/filecoin-project/index-provider v0.8.1 h1:ggoBWvMSWR91HZQCWfv8SZjoTGNyJBwNMLuN9bJZrbU=
 github.com/filecoin-project/index-provider v0.8.1/go.mod h1:c/Ym5HtWPp9NQgNc9dgSBMpSNsZ/DE9FEi9qVubl5RM=
-github.com/filecoin-project/mir v0.0.0-20221005113352-6f769abbc259 h1:ZypZpbg51ST9pRgVgCsrzSPJL5ib2WbY+rpW+OXSW1A=
-github.com/filecoin-project/mir v0.0.0-20221005113352-6f769abbc259/go.mod h1:ZCouqwEjt+/rts/70Ai+xNGTbcZVmYi8rR5QebCmKxA=
 github.com/filecoin-project/pubsub v1.0.0 h1:ZTmT27U07e54qV1mMiQo4HDr0buo8I1LDHBYLXlsNXM=
 github.com/filecoin-project/pubsub v1.0.0/go.mod h1:GkpB33CcUtUNrLPhJgfdy4FDx4OMNR9k+46DHx/Lqrg=
 github.com/filecoin-project/specs-actors v0.9.13/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=
@@ -1075,8 +1073,9 @@ github.com/libp2p/go-libp2p-netutil v0.0.1/go.mod h1:GdusFvujWZI9Vt0X5BKqwWWmZFx
 github.com/libp2p/go-libp2p-netutil v0.1.0/go.mod h1:3Qv/aDqtMLTUyQeundkKsA+YCThNdbQD54k3TqjpbFU=
 github.com/libp2p/go-libp2p-noise v0.1.1/go.mod h1:QDFLdKX7nluB7DEnlVPbz7xlLHdwHFA9HiohJRr3vwM=
 github.com/libp2p/go-libp2p-noise v0.2.0/go.mod h1:IEbYhBBzGyvdLBoxxULL/SGbJARhUeqlO8lVSREYu2Q=
-github.com/libp2p/go-libp2p-noise v0.3.0 h1:NCVH7evhVt9njbTQshzT7N1S3Q6fjj9M11FCgfH5+cA=
 github.com/libp2p/go-libp2p-noise v0.3.0/go.mod h1:JNjHbociDJKHD64KTkzGnzqJ0FEV5gHJa6AB00kbCNQ=
+github.com/libp2p/go-libp2p-noise v0.4.0 h1:khcMsGhHNdGqKE5LDLrnHwZvdGVMsrnD4GTkTWkwmLU=
+github.com/libp2p/go-libp2p-noise v0.4.0/go.mod h1:BzzY5pyzCYSyJbQy9oD8z5oP2idsafjt4/X42h9DjZU=
 github.com/libp2p/go-libp2p-peer v0.2.0/go.mod h1:RCffaCvUyW2CJmG2gAWVqwePwW7JMgxjsHm7+J5kjWY=
 github.com/libp2p/go-libp2p-peerstore v0.1.0/go.mod h1:2CeHkQsr8svp4fZ+Oi9ykN1HBb6u0MOvdJ7YIsmcwtY=
 github.com/libp2p/go-libp2p-peerstore v0.1.3/go.mod h1:BJ9sHlm59/80oSkpWgr1MyY1ciXAXV397W6h1GH/uKI=

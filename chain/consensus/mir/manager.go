@@ -23,6 +23,7 @@ import (
 	t "github.com/filecoin-project/mir/pkg/types"
 
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool"
 	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/fifo"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -146,6 +147,17 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 
 	sm := NewStateManager(initialMembership, &m)
 
+	mpool := pool.NewModule(
+		m.ToMir,
+		&pool.ModuleConfig{
+			Self:   "mempool",
+			Hasher: "hasher",
+		},
+		&pool.ModuleParams{
+			MaxTransactionsInBatch: 10,
+		},
+	)
+
 	smrSystem, err := smr.New(
 		t.NodeID(mirID),
 		h,
@@ -162,8 +174,11 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		return nil, fmt.Errorf("could not start SMR system: %w", err)
 	}
 
-	cfg := mir.NodeConfig{Logger: logger}
-	newMirNode, err := mir.NewNode(t.NodeID(mirID), &cfg, smrSystem.Modules(), wal, nil)
+	modules := smrSystem.Modules()
+	modules["mempool"] = mpool
+	// cfg := mir.NodeConfig{Logger: logger}
+	cfg := mir.NodeConfig{Logger: logging.ConsoleDebugLogger}
+	newMirNode, err := mir.NewNode(t.NodeID(mirID), &cfg, modules, wal, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	ltypes "github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/mir/pkg/events"
 	mirproto "github.com/filecoin-project/mir/pkg/pb/requestpb"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/zap/buffer"
@@ -147,29 +146,23 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 
 			log.With("epoch", nextEpoch).Infof("mined a block at %d", bh.Header.Height)
 
-		default:
-			time.Sleep(1 * time.Second)
-			var requests []*mirproto.Request
-
+		case toMir := <-m.ToMir:
 			msgs, err := api.MpoolSelect(ctx, base.Key(), 1)
 			if err != nil {
 				log.With("epoch", nextEpoch).
 					Errorw("unable to select messages from mempool", "error", err)
 			}
-			fmt.Println(">>>>> Proposing new batch to Mir", len(msgs))
-			transportRequests := m.TransportRequests(msgs)
-			requests = append(requests, transportRequests...)
+
+			fmt.Println(">>>> Proposing new message", len(msgs))
+			requests := m.TransportRequests(msgs)
 
 			if len(configRequests) > 0 {
 				requests = append(requests, configRequests...)
 				configRequests = nil
 			}
 
-			err = m.MirNode.InjectEvents(ctx, events.ListOf(events.NewClientRequests(
-				"mempool",
-				transportRequests)))
-			// // We send requests via the channel instead of calling m.SubmitRequests(ctx, requests) explicitly.
-			// toMir <- requests
+			// We send requests via the channel instead of calling m.SubmitRequests(ctx, requests) explicitly.
+			toMir <- requests
 		}
 	}
 }

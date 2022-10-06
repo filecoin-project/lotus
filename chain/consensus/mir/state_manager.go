@@ -137,6 +137,7 @@ func (sm *StateManager) RestoreState(snapshot []byte, config *commonpb.EpochConf
 // Each appended message is also printed to stdout.
 // Special messages starting with `Config: ` are recognized, parsed, and treated accordingly.
 func (sm *StateManager) ApplyTXs(txs []*requestpb.Request) error {
+	fmt.Println(">>>> Proposing new message")
 	fmt.Println(">>>> APPLY TXS")
 	var msgs []Message
 

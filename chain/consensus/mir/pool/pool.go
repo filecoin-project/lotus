@@ -2,10 +2,13 @@
 package pool
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/handlers"
 	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/types"
 	"github.com/filecoin-project/mir/pkg/dsl"
 	"github.com/filecoin-project/mir/pkg/modules"
+	"github.com/filecoin-project/mir/pkg/pb/eventpb"
 	"github.com/filecoin-project/mir/pkg/pb/requestpb"
 )
 
@@ -38,6 +41,13 @@ func NewModule(requestChan chan chan []*requestpb.Request, mc *ModuleConfig, par
 		ToMir: requestChan,
 	}
 
+	fmt.Println(">>>>>> Mpool module on!")
+	dsl.UponEvent[*eventpb.Event_Init](m,
+		func(ev *eventpb.Init) error {
+			fmt.Println("HORRIBLE THING!")
+			return nil
+		},
+	)
 	handlers.IncludeComputationOfTransactionAndBatchIDs(m, mc, params)
 	handlers.IncludeBatchCreation(m, mc, params, state)
 
