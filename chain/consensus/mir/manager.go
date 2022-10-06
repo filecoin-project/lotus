@@ -176,9 +176,8 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 
 	modules := smrSystem.Modules()
 	modules["mempool"] = mpool
-	// cfg := mir.NodeConfig{Logger: logger}
-	cfg := mir.NodeConfig{Logger: logging.ConsoleDebugLogger}
-	newMirNode, err := mir.NewNode(t.NodeID(mirID), &cfg, modules, wal, nil)
+	cfg := mir.DefaultNodeConfig().WithLogger(logger)
+	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
 	}

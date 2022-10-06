@@ -29,15 +29,16 @@ func IncludeBatchCreation(
 			tx := context.txs[i]
 			txs = append(txs, tx)
 		}
+		fmt.Println("New ID Response")
 		mpdsl.NewBatch(m, t.ModuleID(context.origin.Module), txIDs, txs, context.origin)
 		return nil
 	})
 
 	mpdsl.UponRequestBatch(m, func(origin *mempoolpb.RequestBatchOrigin) error {
-		fmt.Println(">>> UponRequest you love mir! ")
 		inputChan := make(chan []*requestpb.Request)
 		state.ToMir <- inputChan
 		receivedRequests := <-inputChan
+		fmt.Println("REQUESTS RECEIVED in UPON REQUEST HANDLER @MPOOL:", receivedRequests)
 		mpdsl.RequestTransactionIDs(m, mc.Self, receivedRequests, &requestTxIDsContext{receivedRequests, origin})
 		return nil
 	})
