@@ -72,9 +72,18 @@ type ConsensusOp struct {
 func (c ConsensusOp) ApplyTo(state consensus.State) (consensus.State, error) {
 	s := state.(*RaftState)
 	s.NonceMap[c.Addr] = c.Nonce
-	s.MsgUuids[c.Uuid] = c.SignedMsg
-	//s.Mpool.Add(context.TODO(), c.SignedMsg)
-	s.Mpool.Push(context.TODO(), c.SignedMsg, false)
+	if c.SignedMsg != nil {
+		tmp := *c.SignedMsg
+		s.MsgUuids[c.Uuid] = &tmp
+
+		_, err := s.Mpool.Push(context.TODO(), c.SignedMsg, false)
+		// Since this is only meant to keep messages in sync, ignore any error which
+		// shows the message already exists in the mpool
+		if err != nil && !api.ErrorIsIn(err, []error{messagepool.ErrExistingNonce}) {
+			return nil, err
+		}
+	}
+
 	return s, nil
 }
 
@@ -188,9 +197,7 @@ func (cc *Consensus) WaitForSync(ctx context.Context) error {
 	//ctx, span := trace.StartSpan(ctx, "consensus/WaitForSync")
 	//defer span.End()
 
-	leaderCtx, cancel := context.WithTimeout(
-		ctx,
-		time.Duration(cc.config.WaitForLeaderTimeout))
+	leaderCtx, cancel := context.WithTimeout(ctx, cc.config.WaitForLeaderTimeout)
 	defer cancel()
 
 	// 1 - wait for leader
@@ -323,10 +330,7 @@ func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interf
 		// No leader, wait for one
 		if err != nil {
 			logger.Warn("there seems to be no leader. Waiting for one")
-			rctx, cancel := context.WithTimeout(
-				ctx,
-				time.Duration(cc.config.WaitForLeaderTimeout),
-			)
+			rctx, cancel := context.WithTimeout(ctx, cc.config.WaitForLeaderTimeout)
 			defer cancel()
 			pidstr, err := cc.raft.WaitForLeader(rctx)
 

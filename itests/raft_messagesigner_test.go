@@ -150,6 +150,8 @@ func TestRaftState(t *testing.T) {
 	rstate1 := getRaftState(ctx, t, &node1)
 	rstate2 := getRaftState(ctx, t, &node2)
 
+	require.Equal(t, rstate0.NonceMap[miner.OwnerKey.Address], uint64(0))
+
 	require.EqualValues(t, rstate0, rstate1)
 	require.EqualValues(t, rstate0, rstate2)
 }

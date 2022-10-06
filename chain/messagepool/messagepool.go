@@ -82,6 +82,7 @@ var (
 	ErrRBFTooLowPremium       = errors.New("replace by fee has too low GasPremium")
 	ErrTooManyPendingMessages = errors.New("too many pending messages for actor")
 	ErrNonceGap               = errors.New("unfulfilled nonce gap")
+	ErrExistingNonce          = errors.New("message with nonce already exists")
 )
 
 const (
@@ -276,7 +277,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 			}
 		} else {
 			return false, xerrors.Errorf("message from %s with nonce %d already in mpool: %w",
-				m.Message.From, m.Message.Nonce, ErrSoftValidationFailure)
+				m.Message.From, m.Message.Nonce, ErrExistingNonce)
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)

@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -349,43 +348,6 @@ func (n *Ensemble) Worker(minerNode *TestMiner, worker *TestWorker, opts ...Node
 	n.inactive.workers = append(n.inactive.workers, worker)
 
 	return n
-}
-
-func proxy(ins []api.FullNode, outstr *api.FullNodeStruct) {
-	outs := api.GetInternalStructs(outstr)
-
-	var rins []reflect.Value
-	//peertoNode := make(map[peer.ID]reflect.Value)
-	for _, in := range ins {
-		rin := reflect.ValueOf(in)
-		rins = append(rins, rin)
-		//peertoNode[ins] = rin
-	}
-
-	for _, out := range outs {
-		rint := reflect.ValueOf(out).Elem()
-		//ra := reflect.ValueOf(in)
-
-		for f := 0; f < rint.NumField(); f++ {
-			field := rint.Type().Field(f)
-
-			var fns []reflect.Value
-			for _, rin := range rins {
-				fns = append(fns, rin.MethodByName(field.Name))
-			}
-			//fn := ra.MethodByName(field.Name)
-
-			rint.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
-				//ctx := args[0].Interface().(context.Context)
-				//
-				//rin := peertoNode[ins[0].Leader(ctx)]
-				//fn := rin.MethodByName(field.Name)
-				//
-				//return fn.Call(args)
-				return fns[0].Call(args)
-			}))
-		}
-	}
 }
 
 // Start starts all enrolled nodes.

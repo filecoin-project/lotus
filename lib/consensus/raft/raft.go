@@ -133,7 +133,7 @@ func (rw *raftWrapper) makeTransport() (err error) {
 	logger.Debug("creating libp2p Raft transport")
 	rw.transport, err = p2praft.NewLibp2pTransport(
 		rw.host,
-		time.Duration(rw.config.NetworkTimeout),
+		rw.config.NetworkTimeout,
 	)
 	return err
 }

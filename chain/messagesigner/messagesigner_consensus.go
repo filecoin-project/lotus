@@ -67,7 +67,12 @@ func (ms *MessageSignerConsensus) SignMessage(
 		u = spec.MsgUuid
 	}
 
-	op := &consensus.ConsensusOp{signedMsg.Message.Nonce, u, signedMsg.Message.From, signedMsg}
+	op := &consensus.ConsensusOp{
+		Nonce:     signedMsg.Message.Nonce,
+		Uuid:      u,
+		Addr:      signedMsg.Message.From,
+		SignedMsg: signedMsg,
+	}
 	err = ms.consensus.Commit(ctx, op)
 	if err != nil {
 		return nil, err
