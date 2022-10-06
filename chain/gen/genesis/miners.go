@@ -227,7 +227,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 
 			params := &markettypes.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
-				fmt.Println("presealing ", preseal.SectorID)
 				preseal.Deal.VerifiedDeal = true
 				preseal.Deal.EndEpoch = minerInfos[i].presealExp
 				p := markettypes.ClientDealProposal{
@@ -241,8 +240,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
 					}
 
-					fmt.Println("key type ", preseal.DealClientKey.Type)
-					fmt.Printf("key bytes %x\n", preseal.DealClientKey.PrivateKey)
 					sig, err := sigs.Sign(key.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
 					if err != nil {
 						return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
@@ -440,7 +437,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 
 				pledge = big.Add(pcd, pledge)
 
-				fmt.Println(types.FIL(pledge))
 				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, m.Worker, pledge, builtintypes.MethodsMiner.PreCommitSector, mustEnc(params))
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
