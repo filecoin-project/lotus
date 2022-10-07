@@ -29,7 +29,7 @@ func IncludeBatchCreation(
 			tx := context.txs[i]
 			txs = append(txs, tx)
 		}
-		fmt.Println("New ID Response")
+		fmt.Println(">>>>> New ID Response")
 		mpdsl.NewBatch(m, t.ModuleID(context.origin.Module), txIDs, txs, context.origin)
 		return nil
 	})

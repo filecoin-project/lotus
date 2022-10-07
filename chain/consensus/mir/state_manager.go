@@ -6,11 +6,8 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	availabilityevents "github.com/filecoin-project/mir/pkg/availability/events"
 	"github.com/filecoin-project/mir/pkg/events"
-	"github.com/filecoin-project/mir/pkg/pb/availabilitypb"
 	"github.com/filecoin-project/mir/pkg/pb/commonpb"
-	"github.com/filecoin-project/mir/pkg/pb/contextstorepb"
 	"github.com/filecoin-project/mir/pkg/pb/eventpb"
 	"github.com/filecoin-project/mir/pkg/pb/requestpb"
 	"github.com/filecoin-project/mir/pkg/systems/smr"
@@ -71,41 +68,6 @@ func NewStateManager(initialMembership map[t.NodeID]t.NodeAddress, m *Manager) *
 		reconfigurationVotes: make(map[t.EpochNr]map[string]int),
 	}
 	return &sm
-}
-
-// applyDeliver applies a delivered availability certificate.
-func (sm *StateManager) applyDeliverCertificate(deliver *eventpb.DeliverCert) (*events.EventList, error) {
-
-	// Skip padding certificates. Deliver events with nil certificates are considered noops.
-	if deliver.Cert.Type == nil {
-		return events.EmptyList(), nil
-	}
-
-	switch c := deliver.Cert.Type.(type) {
-	case *availabilitypb.Cert_Msc:
-		// If the certificate was produced by the multisig collector
-
-		// Ignore empty batch availability certificates.
-		if len(c.Msc.BatchId) == 0 {
-			return events.EmptyList(), nil
-		}
-
-		// Request transaction payloads that the received certificate refers to
-		// from the appropriate instance (there is one per epoch) of the availability layer,
-		// which should respond with a ProvideTransactions event.
-		return events.ListOf(availabilityevents.RequestTransactions(
-			availabilityModuleID.Then(t.ModuleID(fmt.Sprintf("%v", sm.currentEpoch))),
-			deliver.Cert,
-			&availabilitypb.RequestTransactionsOrigin{
-				Module: "app",
-				Type: &availabilitypb.RequestTransactionsOrigin_ContextStore{
-					ContextStore: &contextstorepb.Origin{ItemID: 0},
-				},
-			},
-		)), nil
-	default:
-		return nil, fmt.Errorf("unknown availability certificate type: %T", deliver.Cert.Type)
-	}
 }
 
 // applyRestoreState restores the application's state to the one represented by the passed argument.

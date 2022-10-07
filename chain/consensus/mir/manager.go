@@ -282,7 +282,7 @@ func parseTx(tx []byte) (interface{}, error) {
 }
 
 // GetMessages extracts Filecoin messages from a Mir batch.
-func (m *Manager) GetMessages(batch *Batch) (msgs []*types.SignedMessage, crossMsgs []*types.Message) {
+func (m *Manager) GetMessages(batch *Batch) (msgs []*types.SignedMessage) {
 	log.Infof("received a block with %d messages", len(msgs))
 	for _, tx := range batch.Messages {
 
