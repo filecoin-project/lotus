@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	verifregtypes8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -41,8 +43,9 @@ var filplusCmd = &cli.Command{
 }
 
 var filplusVerifyClientCmd = &cli.Command{
-	Name:  "grant-datacap",
-	Usage: "give allowance to the specified verified client address",
+	Name:      "grant-datacap",
+	Usage:     "give allowance to the specified verified client address",
+	ArgsUsage: "[clientAddress datacap]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "from",
@@ -132,6 +135,10 @@ var filplusListNotariesCmd = &cli.Command{
 	Name:  "list-notaries",
 	Usage: "list all notaries",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 0 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -162,6 +169,10 @@ var filplusListClientsCmd = &cli.Command{
 	Name:  "list-clients",
 	Usage: "list all verified clients",
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 0 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -169,15 +180,40 @@ var filplusListClientsCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		apibs := blockstore.NewAPIBlockstore(api)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		apibs := blockstore.NewAPIBlockstore(api)
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+		av, err := actorstypes.VersionForNetwork(nv)
+		if err != nil {
+			return err
+		}
 
-		st, err := verifreg.Load(store, act)
+		if av <= 8 {
+			act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			st, err := verifreg.Load(store, act)
+			if err != nil {
+				return err
+			}
+			return st.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
+				_, err := fmt.Printf("%s: %s\n", addr, dcap)
+				return err
+			})
+		}
+		act, err := api.StateGetActor(ctx, datacap.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		st, err := datacap.Load(store, act)
 		if err != nil {
 			return err
 		}
@@ -189,10 +225,11 @@ var filplusListClientsCmd = &cli.Command{
 }
 
 var filplusCheckClientCmd = &cli.Command{
-	Name:  "check-client-datacap",
-	Usage: "check verified client remaining bytes",
+	Name:      "check-client-datacap",
+	Usage:     "check verified client remaining bytes",
+	ArgsUsage: "clientAddress",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify client address to check")
 		}
 
@@ -223,10 +260,11 @@ var filplusCheckClientCmd = &cli.Command{
 }
 
 var filplusCheckNotaryCmd = &cli.Command{
-	Name:  "check-notary-datacap",
-	Usage: "check a notary's remaining bytes",
+	Name:      "check-notary-datacap",
+	Usage:     "check a notary's remaining bytes",
+	ArgsUsage: "notaryAddress",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify notary address to check")
 		}
 
@@ -279,8 +317,9 @@ func checkNotary(ctx context.Context, api v0api.FullNode, vaddr address.Address)
 }
 
 var filplusSignRemoveDataCapProposal = &cli.Command{
-	Name:  "sign-remove-data-cap-proposal",
-	Usage: "allows a notary to sign a Remove Data Cap Proposal",
+	Name:      "sign-remove-data-cap-proposal",
+	Usage:     "allows a notary to sign a Remove Data Cap Proposal",
+	ArgsUsage: "[verifierAddress clientAddress allowanceToRemove]",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:     "id",
@@ -336,7 +375,7 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			return err
 		}
 
-		_, dataCap, err := st.VerifiedClientDataCap(clientIdAddr)
+		dataCap, err := api.StateVerifiedClientStatus(ctx, clientIdAddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("failed to find verified client data cap: %w", err)
 		}

@@ -10,7 +10,6 @@ import (
 
 	datacap{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}datacap"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
-	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -47,4 +46,16 @@ func (s *state{{.v}}) Governor() (address.Address, error) {
 
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state{{.v}}) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+	return forEachClient(s.store, actors.Version{{.v}}, s.verifiedClients, cb)
+}
+
+func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.Token.Balances, int(s.Token.HamtBitWidth))
+}
+
+func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+	return getDataCap(s.store, actors.Version{{.v}}, s.verifiedClients, addr)
 }

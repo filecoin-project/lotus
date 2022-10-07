@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -250,12 +250,12 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 
 func createDeals(m *genesis.Miner, k *key.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for i, sector := range m.Sectors {
-		label, err := market8.NewLabelFromString(fmt.Sprintf("%d", i))
+		label, err := markettypes.NewLabelFromString(fmt.Sprintf("%d", i))
 		if err != nil {
 			return xerrors.Errorf("error creating deal label: %w", err)
 		}
 
-		proposal := &market8.DealProposal{
+		proposal := &markettypes.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
@@ -268,7 +268,7 @@ func createDeals(m *genesis.Miner, k *key.Key, maddr address.Address, ssize abi.
 			ClientCollateral:     big.Zero(),
 		}
 
-		sector.DealClientKey = k
+		sector.DealClientKey = k.KeyInfo
 		sector.Deal = *proposal
 	}
 
