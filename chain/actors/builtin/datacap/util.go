@@ -1,6 +1,7 @@
 package datacap
 
 import (
+	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -37,17 +38,23 @@ func getDataCap(store adt.Store, ver actors.Version, root rootFunc, addr address
 	return true, big.Div(dcap, verifreg.DataCapGranularity), nil
 }
 
-func forEachCap(store adt.Store, ver actors.Version, root rootFunc, cb func(addr address.Address, dcap abi.StoragePower) error) error {
+func forEachClient(store adt.Store, ver actors.Version, root rootFunc, cb func(addr address.Address, dcap abi.StoragePower) error) error {
 	vh, err := root()
 	if err != nil {
 		return xerrors.Errorf("loading verified clients: %w", err)
 	}
 	var dcap abi.StoragePower
 	return vh.ForEach(&dcap, func(key string) error {
-		a, err := address.NewFromBytes([]byte(key))
+		id, n, err := varint.FromUvarint([]byte(key))
+		if n != len([]byte(key)) {
+			return xerrors.Errorf("could not get varint from address string")
+		}
 		if err != nil {
 			return err
 		}
+
+		a, err := address.NewIDAddress(id)
+
 		return cb(a, big.Div(dcap, verifreg.DataCapGranularity))
 	})
 }

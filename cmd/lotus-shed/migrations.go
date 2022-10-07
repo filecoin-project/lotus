@@ -163,7 +163,7 @@ func checkStateInvariants(ctx context.Context, oldStateRoot cid.Cid, newStateRoo
 		if !ok {
 			return xerrors.Errorf("datacap for address: %s not found in datacap state", addr)
 		}
-		if dcap != oldDcap {
+		if !dcap.Equals(oldDcap) {
 			return xerrors.Errorf("datacap for address: %s do not match. verifreg: %d, datacap: %d", addr, oldDcap, dcap)
 		}
 	}
