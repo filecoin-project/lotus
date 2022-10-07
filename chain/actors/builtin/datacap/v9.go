@@ -49,7 +49,7 @@ func (s *state9) GetState() interface{} {
 }
 
 func (s *state9) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachCap(s.store, actors.Version9, s.verifiedClients, cb)
+	return forEachClient(s.store, actors.Version9, s.verifiedClients, cb)
 }
 
 func (s *state9) verifiedClients() (adt.Map, error) {
