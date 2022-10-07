@@ -125,8 +125,12 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	interceptorOutput := os.Getenv(InterceptorOutputEnv)
 	if interceptorOutput != "" {
 		// TODO: Persist in repo path?
-		path := fmt.Sprintf("eudico-recorder%s", strings.Replace(mirID, "/", "-", -1))
-		interceptor, err = eventlog.NewRecorder(t.NodeID(mirID), path, logging.Decorate(logger, "Interceptor: "))
+		interceptor, err = eventlog.NewRecorder(
+			t.NodeID(mirID),
+			interceptorOutput,
+			logging.Decorate(logger, "Interceptor: "),
+		)
+		fmt.Printf("Creating interceptor. Output: %s\n", interceptorOutput)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create interceptor: %w", err)
 		}
@@ -177,7 +181,7 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	modules := smrSystem.Modules()
 	modules["mempool"] = mpool
 	cfg := mir.DefaultNodeConfig().WithLogger(logger)
-	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, nil)
+	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, interceptor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
 	}
