@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -141,15 +142,39 @@ var migrationsCmd = &cli.Command{
 	},
 }
 
-func checkStateInvariants(ctx context.Context, oldStateRoot cid.Cid, newStateRoot cid.Cid, bs blockstore.Blockstore) error {
+func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore) error {
 	actorStore := store.ActorStore(ctx, blockstore.NewTieredBstore(bs, blockstore.NewMemorySync()))
 
-	verifregDatacaps, err := getVerifreg8Datacaps(ctx, oldStateRoot, actorStore)
+	stateTreeV8, err := state.LoadStateTree(actorStore, v8StateRoot)
 	if err != nil {
 		return err
 	}
 
-	newDatacaps, err := getDatacap9Datacaps(ctx, newStateRoot, actorStore)
+	stateTreeV9, err := state.LoadStateTree(actorStore, v9StateRoot)
+	if err != nil {
+		return err
+	}
+
+	err = checkDatacaps(*stateTreeV8, *stateTreeV9, actorStore)
+	if err != nil {
+		return err
+	}
+
+	err = checkPendingVerifiedDeals(*stateTreeV8, *stateTreeV9, actorStore)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkDatacaps(stateTreeV8 state.StateTree, stateTreeV9 state.StateTree, actorStore adt.Store) error {
+	verifregDatacaps, err := getVerifreg8Datacaps(stateTreeV8, actorStore)
+	if err != nil {
+		return err
+	}
+
+	newDatacaps, err := getDatacap9Datacaps(stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
@@ -171,24 +196,14 @@ func checkStateInvariants(ctx context.Context, oldStateRoot cid.Cid, newStateRoo
 	return nil
 }
 
-func getVerifreg8Datacaps(ctx context.Context, v8StateRoot cid.Cid, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
-	stateTreeV8, err := state.LoadStateTree(actorStore, v8StateRoot)
+func getVerifreg8Datacaps(stateTreeV8 state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
+	verifregStateV8, err := getVerifregV8State(stateTreeV8, actorStore)
 	if err != nil {
-		return nil, err
-	}
-
-	verifregV8, err := stateTreeV8.GetActor(verifreg.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	verifregV8State, err := verifreg.Load(actorStore, verifregV8)
-	if err = actorStore.Get(ctx, verifregV8.Head, &verifregV8State); err != nil {
 		return nil, xerrors.Errorf("failed to get verifreg actor state: %w", err)
 	}
 
 	var verifregDatacaps = make(map[address.Address]abi.StoragePower)
-	err = verifregV8State.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
+	err = verifregStateV8.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
 		verifregDatacaps[addr] = dcap
 		return nil
 	})
@@ -199,24 +214,14 @@ func getVerifreg8Datacaps(ctx context.Context, v8StateRoot cid.Cid, actorStore a
 	return verifregDatacaps, nil
 }
 
-func getDatacap9Datacaps(ctx context.Context, v9StateRoot cid.Cid, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
-	stateTreeV9, err := state.LoadStateTree(actorStore, v9StateRoot)
+func getDatacap9Datacaps(stateTreeV9 state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
+	datacapStateV9, err := getDatacapV9State(stateTreeV9, actorStore)
 	if err != nil {
-		return nil, err
-	}
-
-	datacapV9, err := stateTreeV9.GetActor(datacap.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	datacapV9State, err := datacap.Load(actorStore, datacapV9)
-	if err = actorStore.Get(ctx, datacapV9.Head, &datacapV9State); err != nil {
-		return nil, xerrors.Errorf("failed to get verifreg actor state: %w", err)
+		return nil, xerrors.Errorf("failed to get datacap actor state: %w", err)
 	}
 
 	var datacaps = make(map[address.Address]abi.StoragePower)
-	err = datacapV9State.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
+	err = datacapStateV9.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
 		datacaps[addr] = dcap
 		return nil
 	})
@@ -225,4 +230,136 @@ func getDatacap9Datacaps(ctx context.Context, v9StateRoot cid.Cid, actorStore ad
 	}
 
 	return datacaps, nil
+}
+
+func checkPendingVerifiedDeals(stateTreeV8 state.StateTree, stateTreeV9 state.StateTree, actorStore adt.Store) error {
+	marketStateV8, err := getMarketV8State(stateTreeV8, actorStore)
+	if err != nil {
+		return err
+	}
+
+	marketStateV9, err := getMarketV9State(stateTreeV9, actorStore)
+	if err != nil {
+		return err
+	}
+
+	verifregStateV9, err := getVerifregV9State(stateTreeV9, actorStore)
+	if err != nil {
+		return err
+	}
+
+	v8DealStates, err := marketStateV8.States()
+	if err != nil {
+		return err
+	}
+
+	v8DealProposals, err := marketStateV8.Proposals()
+	if err != nil {
+		return err
+	}
+
+	var numPendingVerifiedDeals = 0
+	err = v8DealStates.ForEach(func(id abi.DealID, ds market.DealState) error {
+		// Proposal hasn't been activated yet
+		if ds.SectorStartEpoch == -1 {
+			proposal, _, err := v8DealProposals.Get(id)
+			if err != nil {
+				return err
+			}
+
+			// Verified deal
+			if proposal.VerifiedDeal {
+				numPendingVerifiedDeals++
+				// Checks if allocation ID is in market map
+				allocationId, err := marketStateV9.GetAllocationIdForPendingDeal(id)
+				if err != nil {
+					return err
+				}
+				// Checks if allocation is in verifreg
+				_, found, err := verifregStateV9.GetAllocation(proposal.Client, allocationId)
+				if !found {
+					return xerrors.Errorf("allocation %d not found for address %s", allocationId, proposal.Client)
+				}
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	numAllocations, err := countAllocations(verifregStateV9)
+	if err != nil {
+		return err
+	}
+
+	if numAllocations != numPendingVerifiedDeals {
+		return xerrors.Errorf("number of allocations: %d did not match the number of pending verified deals: %d", numAllocations, numPendingVerifiedDeals)
+	}
+
+	return nil
+}
+
+func getMarketV8State(stateTreeV8 state.StateTree, actorStore adt.Store) (market.State, error) {
+	marketV9, err := stateTreeV8.GetActor(market.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return market.Load(actorStore, marketV9)
+}
+
+func getMarketV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (market.State, error) {
+	marketV9, err := stateTreeV9.GetActor(market.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return market.Load(actorStore, marketV9)
+}
+
+func getVerifregV8State(stateTreeV8 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
+	verifregV8, err := stateTreeV8.GetActor(verifreg.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return verifreg.Load(actorStore, verifregV8)
+}
+
+func getVerifregV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
+	verifregV9, err := stateTreeV9.GetActor(verifreg.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return verifreg.Load(actorStore, verifregV9)
+}
+
+func getDatacapV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (datacap.State, error) {
+	datacapV9, err := stateTreeV9.GetActor(datacap.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return datacap.Load(actorStore, datacapV9)
+}
+
+func countAllocations(verifregState verifreg.State) (int, error) {
+	var count int
+	err := verifregState.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
+		allocations, err := verifregState.GetAllocations(addr)
+		if err != nil {
+			return err
+		}
+		count += len(allocations)
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
