@@ -4,12 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"strings"
 
 	"github.com/filecoin-project/go-address"
 	filcrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/sigs"
 	mircrypto "github.com/filecoin-project/mir/pkg/crypto"
 	t "github.com/filecoin-project/mir/pkg/types"
 )
@@ -44,11 +42,18 @@ func (c *CryptoManager) ImplementsModule() {}
 // Note that the private key used to produce the signature cannot be set ("registered") through this interface.
 // Storing and using the private key is completely implementation-dependent.
 func (c *CryptoManager) Sign(data [][]byte) ([]byte, error) {
+	fmt.Println(">>> Signing something", c.key)
 	signature, err := c.api.WalletSign(context.Background(), c.key, hash(data))
 	if err != nil {
+		fmt.Println(">>> Signing error", err)
 		return nil, err
 	}
-	return signature.MarshalBinary()
+	sig, err := signature.MarshalBinary()
+	if err != nil {
+		fmt.Println("=== signature error, ", err)
+		return nil, err
+	}
+	return sig, nil
 }
 
 // Verify verifies a signature produced by the node with ID nodeID over data.
@@ -56,11 +61,15 @@ func (c *CryptoManager) Sign(data [][]byte) ([]byte, error) {
 // Note that RegisterNodeKey must be used to register the node's public key before calling Verify,
 // otherwise Verify will fail.
 func (c *CryptoManager) Verify(data [][]byte, sigBytes []byte, nodeID t.NodeID) error {
-	nodeAddr, err := getAddr(nodeID.Pb())
+	fmt.Println(">>> Verifying sig", nodeID.Pb())
+	nodeAddr, err := address.NewFromString(nodeID.Pb())
 	if err != nil {
+		fmt.Println(">>>>> NEW ID FROM STRING FAILS", err)
 		return err
 	}
-	return c.verifySig(data, sigBytes, nodeAddr)
+	err = c.verifySig(data, sigBytes, nodeAddr)
+	fmt.Println(">>>> sig ver err", err)
+	return err
 }
 
 func (c *CryptoManager) verifySig(data [][]byte, sigBytes []byte, addr address.Address) error {
@@ -69,7 +78,13 @@ func (c *CryptoManager) verifySig(data [][]byte, sigBytes []byte, addr address.A
 		return err
 	}
 
-	return sigs.Verify(&sig, addr, hash(data))
+	fmt.Println(">>>> Signature type", sig.Type)
+
+	ok, err := c.api.WalletVerify(context.Background(), addr, hash(data), &sig)
+	fmt.Println(ok, err)
+	return err
+	// return sigs.Verify(&sig, addr, hash(data))
+	// return nil
 }
 
 func hash(data [][]byte) []byte {
@@ -78,16 +93,4 @@ func hash(data [][]byte) []byte {
 		h.Write(d)
 	}
 	return h.Sum(nil)
-}
-
-func getAddr(nodeID string) (address.Address, error) {
-	addrParts := strings.Split(nodeID, ":")
-	if len(addrParts) != 2 {
-		return address.Undef, fmt.Errorf("invalid node ID: %s", nodeID)
-	}
-	nodeAddr, err := address.NewFromString(addrParts[1])
-	if err != nil {
-		return address.Undef, err
-	}
-	return nodeAddr, nil
 }
