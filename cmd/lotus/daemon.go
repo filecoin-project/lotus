@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus/mir"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -326,6 +327,11 @@ var DaemonCmd = &cli.Command{
 
 			genesis,
 			liteModeDeps,
+
+			// FIXME: Instantiating Mir. Hide behind a compilation or config flag.
+			node.Override(new(consensus.Consensus), mir.NewConsensus),
+			node.Override(new(store.WeightFunc), mir.Weight),
+			node.Override(new(stmgr.Executor), consensus.NewTipSetExecutor(mir.RewardFunc)),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
 				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {

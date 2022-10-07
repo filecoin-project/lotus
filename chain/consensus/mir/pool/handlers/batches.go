@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"fmt"
-
 	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/types"
 	"github.com/filecoin-project/mir/pkg/dsl"
 	mpdsl "github.com/filecoin-project/mir/pkg/mempool/dsl"
@@ -29,7 +27,6 @@ func IncludeBatchCreation(
 			tx := context.txs[i]
 			txs = append(txs, tx)
 		}
-		fmt.Println(">>>>> New ID Response")
 		mpdsl.NewBatch(m, t.ModuleID(context.origin.Module), txIDs, txs, context.origin)
 		return nil
 	})
@@ -38,7 +35,6 @@ func IncludeBatchCreation(
 		inputChan := make(chan []*requestpb.Request)
 		state.ToMir <- inputChan
 		receivedRequests := <-inputChan
-		fmt.Println("REQUESTS RECEIVED in UPON REQUEST HANDLER @MPOOL:", receivedRequests)
 		mpdsl.RequestTransactionIDs(m, mc.Self, receivedRequests, &requestTxIDsContext{receivedRequests, origin})
 		return nil
 	})

@@ -73,6 +73,10 @@ debug: build-devnets
 2k: GOFLAGS+=-tags=2k
 2k: build-devnets
 
+
+lotus-2k: GOFLAGS+=-tags=2k
+lotus-2k: lotus
+
 calibnet: GOFLAGS+=-tags=calibnet
 calibnet: build-devnets
 

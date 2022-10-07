@@ -61,15 +61,11 @@ func (c *CryptoManager) Sign(data [][]byte) ([]byte, error) {
 // Note that RegisterNodeKey must be used to register the node's public key before calling Verify,
 // otherwise Verify will fail.
 func (c *CryptoManager) Verify(data [][]byte, sigBytes []byte, nodeID t.NodeID) error {
-	fmt.Println(">>> Verifying sig", nodeID.Pb())
 	nodeAddr, err := address.NewFromString(nodeID.Pb())
 	if err != nil {
-		fmt.Println(">>>>> NEW ID FROM STRING FAILS", err)
 		return err
 	}
-	err = c.verifySig(data, sigBytes, nodeAddr)
-	fmt.Println(">>>> sig ver err", err)
-	return err
+	return c.verifySig(data, sigBytes, nodeAddr)
 }
 
 func (c *CryptoManager) verifySig(data [][]byte, sigBytes []byte, addr address.Address) error {
@@ -78,13 +74,8 @@ func (c *CryptoManager) verifySig(data [][]byte, sigBytes []byte, addr address.A
 		return err
 	}
 
-	fmt.Println(">>>> Signature type", sig.Type)
-
-	ok, err := c.api.WalletVerify(context.Background(), addr, hash(data), &sig)
-	fmt.Println(ok, err)
+	_, err := c.api.WalletVerify(context.Background(), addr, hash(data), &sig)
 	return err
-	// return sigs.Verify(&sig, addr, hash(data))
-	// return nil
 }
 
 func hash(data [][]byte) []byte {

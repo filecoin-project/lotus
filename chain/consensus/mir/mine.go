@@ -110,7 +110,7 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 			fmt.Println(">>>>> Getting batch from Mir")
 			msgs := m.GetMessages(batch)
 			log.With("epoch", nextEpoch).
-				Infof("try to create a block: msgs - %d, crossMsgs - %d", len(msgs))
+				Infof("try to create a block: msgs - %d", len(msgs))
 
 			bh, err := api.MinerCreateBlock(ctx, &lapi.BlockTemplate{
 				// mir blocks are created by all miners. We use system actor as miner of the block
