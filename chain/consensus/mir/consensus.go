@@ -2,6 +2,7 @@
 package mir
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -140,8 +141,10 @@ func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err erro
 }
 
 func blockSanityChecks(h *types.BlockHeader) error {
-	if h.ElectionProof != nil {
-		return xerrors.Errorf("mir expects nil election proof")
+	// TODO: empty for now, when checkpoints are in this may not be the case.
+	empty := types.ElectionProof{}
+	if h.ElectionProof.WinCount != empty.WinCount || !bytes.Equal(h.ElectionProof.VRFProof, empty.VRFProof) {
+		return xerrors.Errorf("mir expects empty election proof")
 	}
 
 	if h.Ticket.VRFProof != nil {

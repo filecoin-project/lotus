@@ -107,7 +107,6 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 			configRequests = append(configRequests, m.ReconfigurationRequest(payload.Bytes()))
 
 		case batch := <-m.StateManager.NextBatch:
-			fmt.Println(">>>>> Getting batch from Mir")
 			msgs := m.GetMessages(batch)
 			log.With("epoch", nextEpoch).
 				Infof("try to create a block: msgs - %d", len(msgs))
@@ -118,6 +117,7 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 				Parents:          base.Key(),
 				BeaconValues:     nil,
 				Ticket:           &ltypes.Ticket{VRFProof: nil},
+				Eproof:           &ltypes.ElectionProof{},
 				Epoch:            base.Height() + 1,
 				Timestamp:        uint64(time.Now().Unix()),
 				WinningPoStProof: nil,
