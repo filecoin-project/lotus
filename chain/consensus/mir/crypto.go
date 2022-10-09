@@ -42,18 +42,11 @@ func (c *CryptoManager) ImplementsModule() {}
 // Note that the private key used to produce the signature cannot be set ("registered") through this interface.
 // Storing and using the private key is completely implementation-dependent.
 func (c *CryptoManager) Sign(data [][]byte) ([]byte, error) {
-	fmt.Println(">>> Signing something", c.key)
 	signature, err := c.api.WalletSign(context.Background(), c.key, hash(data))
 	if err != nil {
-		fmt.Println(">>> Signing error", err)
-		return nil, err
+		return nil, fmt.Errorf("error signing data from mir: %w", err)
 	}
-	sig, err := signature.MarshalBinary()
-	if err != nil {
-		fmt.Println("=== signature error, ", err)
-		return nil, err
-	}
-	return sig, nil
+	return signature.MarshalBinary()
 }
 
 // Verify verifies a signature produced by the node with ID nodeID over data.

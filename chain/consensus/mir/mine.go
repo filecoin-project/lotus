@@ -153,7 +153,6 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 					Errorw("unable to select messages from mempool", "error", err)
 			}
 
-			fmt.Println(">>>> Proposing new message", len(msgs))
 			requests := m.TransportRequests(msgs)
 
 			if len(configRequests) > 0 {
