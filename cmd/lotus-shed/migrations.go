@@ -12,6 +12,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -197,7 +203,7 @@ func checkDatacaps(stateTreeV8 state.StateTree, stateTreeV9 state.StateTree, act
 }
 
 func getVerifreg8Datacaps(stateTreeV8 state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
-	verifregStateV8, err := getVerifregV8State(stateTreeV8, actorStore)
+	verifregStateV8, err := getVerifregActorV8(stateTreeV8, actorStore)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get verifreg actor state: %w", err)
 	}
@@ -215,7 +221,7 @@ func getVerifreg8Datacaps(stateTreeV8 state.StateTree, actorStore adt.Store) (ma
 }
 
 func getDatacap9Datacaps(stateTreeV9 state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
-	datacapStateV9, err := getDatacapV9State(stateTreeV9, actorStore)
+	datacapStateV9, err := getDatacapActorV9(stateTreeV9, actorStore)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get datacap actor state: %w", err)
 	}
@@ -233,57 +239,77 @@ func getDatacap9Datacaps(stateTreeV9 state.StateTree, actorStore adt.Store) (map
 }
 
 func checkPendingVerifiedDeals(stateTreeV8 state.StateTree, stateTreeV9 state.StateTree, actorStore adt.Store) error {
-	marketStateV8, err := getMarketV8State(stateTreeV8, actorStore)
+	marketActorV9, err := getMarketActorV9(stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
 
-	marketStateV9, err := getMarketV9State(stateTreeV9, actorStore)
+	verifregActorV9, err := getVerifregActorV9(stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
 
-	verifregStateV9, err := getVerifregV9State(stateTreeV9, actorStore)
+	verifregStateV9, err := getVerifregStateV9(stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
 
-	v8DealStates, err := marketStateV8.States()
+	marketStateV8, err := getMarketStateV8(stateTreeV8, actorStore)
 	if err != nil {
 		return err
 	}
 
-	v8DealProposals, err := marketStateV8.Proposals()
+	marketStateV9, err := getMarketStateV9(stateTreeV9, actorStore)
 	if err != nil {
 		return err
+	}
+
+	pendingProposalsV8, err := adt8.AsSet(actorStore, marketStateV8.PendingProposals, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return xerrors.Errorf("failed to load pending proposals: %w", err)
+	}
+
+	dealProposalsV8, err := market8.AsDealProposalArray(actorStore, marketStateV8.Proposals)
+	if err != nil {
+		return xerrors.Errorf("failed to get proposals: %w", err)
 	}
 
 	var numPendingVerifiedDeals = 0
-	err = v8DealStates.ForEach(func(id abi.DealID, ds market.DealState) error {
-		// Proposal hasn't been activated yet
-		if ds.SectorStartEpoch == -1 {
-			proposal, _, err := v8DealProposals.Get(id)
-			if err != nil {
-				return err
-			}
+	var proposal market8.DealProposal
+	err = dealProposalsV8.ForEach(&proposal, func(dealID int64) error {
+		// If not verified, do nothing
+		if !proposal.VerifiedDeal {
+			return nil
+		}
 
-			// Verified deal
-			if proposal.VerifiedDeal {
-				numPendingVerifiedDeals++
-				// Checks if allocation ID is in market map
-				allocationId, err := marketStateV9.GetAllocationIdForPendingDeal(id)
-				if err != nil {
-					return err
-				}
-				// Checks if allocation is in verifreg
-				_, found, err := verifregStateV9.GetAllocation(proposal.Client, allocationId)
-				if !found {
-					return xerrors.Errorf("allocation %d not found for address %s", allocationId, proposal.Client)
-				}
-				if err != nil {
-					return err
-				}
-			}
+		pcid, err := proposal.Cid()
+		if err != nil {
+			return err
+		}
+
+		isPending, err := pendingProposalsV8.Has(abi.CidKey(pcid))
+		if err != nil {
+			return xerrors.Errorf("failed to check pending: %w", err)
+		}
+
+		// Nothing to do for not-pending deals
+		if !isPending {
+			return nil
+		}
+
+		numPendingVerifiedDeals++
+		// Checks if allocation ID is in market map
+		allocationId, err := marketActorV9.GetAllocationIdForPendingDeal(abi.DealID(dealID))
+		if err != nil {
+			return err
+		}
+		// Checks if allocation is in verifreg
+		_, found, err := verifregActorV9.GetAllocation(proposal.Client, allocationId)
+		if !found {
+			return xerrors.Errorf("allocation %d not found for address %s", allocationId, proposal.Client)
+		}
+		if err != nil {
+			return err
 		}
 		return nil
 	})
@@ -291,28 +317,67 @@ func checkPendingVerifiedDeals(stateTreeV8 state.StateTree, stateTreeV9 state.St
 		return err
 	}
 
-	numAllocations, err := countAllocations(verifregStateV9)
+	fmt.Printf("Pending Verified deals in market v8: %d\n", numPendingVerifiedDeals)
+
+	numAllocationIds, err := countAllocationIds(actorStore, marketStateV9)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Allocation IDs in market v9: %d\n", numAllocationIds)
+
+	if numAllocationIds != numPendingVerifiedDeals {
+		return xerrors.Errorf("number of allocation IDsf: %d did not match the number of pending verified deals: %d", numAllocationIds, numPendingVerifiedDeals)
+	}
+
+	numAllocations, err := countAllocations(verifregActorV9)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Allocations in verifreg v9: %d\n", numAllocations)
 
 	if numAllocations != numPendingVerifiedDeals {
 		return xerrors.Errorf("number of allocations: %d did not match the number of pending verified deals: %d", numAllocations, numPendingVerifiedDeals)
 	}
 
+	nextAllocationId := int(verifregStateV9.NextAllocationId)
+	fmt.Printf("Next Allocation ID: %d\n", nextAllocationId)
+
+	if numAllocations+1 != nextAllocationId {
+		return xerrors.Errorf("number of allocations + 1: %d did not match the next allocation ID: %d", numAllocations+1, nextAllocationId)
+	}
+
 	return nil
 }
 
-func getMarketV8State(stateTreeV8 state.StateTree, actorStore adt.Store) (market.State, error) {
-	marketV9, err := stateTreeV8.GetActor(market.Address)
+func getMarketStateV8(stateTreeV8 state.StateTree, actorStore adt.Store) (market8.State, error) {
+	marketV8, err := stateTreeV8.GetActor(market.Address)
 	if err != nil {
-		return nil, err
+		return market8.State{}, err
 	}
 
-	return market.Load(actorStore, marketV9)
+	var marketStateV8 market8.State
+	if err = actorStore.Get(actorStore.Context(), marketV8.Head, &marketStateV8); err != nil {
+		return market8.State{}, xerrors.Errorf("failed to get market actor state: %w", err)
+	}
+
+	return marketStateV8, nil
 }
 
-func getMarketV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (market.State, error) {
+func getMarketStateV9(stateTreeV9 state.StateTree, actorStore adt.Store) (market9.State, error) {
+	marketV9, err := stateTreeV9.GetActor(market.Address)
+	if err != nil {
+		return market9.State{}, err
+	}
+
+	var marketStateV9 market9.State
+	if err = actorStore.Get(actorStore.Context(), marketV9.Head, &marketStateV9); err != nil {
+		return market9.State{}, xerrors.Errorf("failed to get market actor state: %w", err)
+	}
+
+	return marketStateV9, nil
+}
+
+func getMarketActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (market.State, error) {
 	marketV9, err := stateTreeV9.GetActor(market.Address)
 	if err != nil {
 		return nil, err
@@ -321,7 +386,7 @@ func getMarketV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (market
 	return market.Load(actorStore, marketV9)
 }
 
-func getVerifregV8State(stateTreeV8 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
+func getVerifregActorV8(stateTreeV8 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
 	verifregV8, err := stateTreeV8.GetActor(verifreg.Address)
 	if err != nil {
 		return nil, err
@@ -330,7 +395,7 @@ func getVerifregV8State(stateTreeV8 state.StateTree, actorStore adt.Store) (veri
 	return verifreg.Load(actorStore, verifregV8)
 }
 
-func getVerifregV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
+func getVerifregActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
 	verifregV9, err := stateTreeV9.GetActor(verifreg.Address)
 	if err != nil {
 		return nil, err
@@ -339,7 +404,21 @@ func getVerifregV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (veri
 	return verifreg.Load(actorStore, verifregV9)
 }
 
-func getDatacapV9State(stateTreeV9 state.StateTree, actorStore adt.Store) (datacap.State, error) {
+func getVerifregStateV9(stateTreeV9 state.StateTree, actorStore adt.Store) (verifreg9.State, error) {
+	verifregV9, err := stateTreeV9.GetActor(verifreg.Address)
+	if err != nil {
+		return verifreg9.State{}, err
+	}
+
+	var verifregStateV9 verifreg9.State
+	if err = actorStore.Get(actorStore.Context(), verifregV9.Head, &verifregStateV9); err != nil {
+		return verifreg9.State{}, xerrors.Errorf("failed to get verifreg actor state: %w", err)
+	}
+
+	return verifregStateV9, nil
+}
+
+func getDatacapActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (datacap.State, error) {
 	datacapV9, err := stateTreeV9.GetActor(datacap.Address)
 	if err != nil {
 		return nil, err
@@ -362,4 +441,19 @@ func countAllocations(verifregState verifreg.State) (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+func countAllocationIds(store adt.Store, marketState market9.State) (int, error) {
+	allocationIds, err := adt9.AsMap(store, marketState.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return 0, err
+	}
+
+	var numAllocationIds int
+	_ = allocationIds.ForEach(nil, func(key string) error {
+		numAllocationIds++
+		return nil
+	})
+
+	return numAllocationIds, nil
 }

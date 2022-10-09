@@ -194,4 +194,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	for _, alloc := range allocations {
 		require.Equal(t, alloc, *allocation)
 	}
+
+	marketDeal, err := api.StateMarketStorageDeal(ctx, dealIds[0], types.EmptyTSK)
+	require.Equal(t, marketDeal.State.SectorStartEpoch, abi.ChainEpoch(-1))
 }
