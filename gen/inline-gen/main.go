@@ -20,6 +20,10 @@ const (
 
 func main() {
 	db, err := ioutil.ReadFile(os.Args[2])
+	switch os.Args[1] {
+	case "build":
+	  err := buildCommand.Parse(os.Args[2:])
+	  bytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err)
 	}
