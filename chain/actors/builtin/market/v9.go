@@ -328,21 +328,23 @@ func (r *publishStorageDealsReturn9) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
 }
 
-func (s *state9) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+func (s *state9) GetAllocationIdForPendingDeal(dealId abi.DealID) (*verifregtypes.AllocationId, error) {
 
 	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+		return nil, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
 	}
 
 	var allocationId cbg.CborInt
 	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+		return nil, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
 	}
 	if !found {
-		return 0, xerrors.Errorf("failed to find allocation id for %d", dealId)
+		return nil, nil
 	}
-	return verifregtypes.AllocationId(allocationId), nil
+
+	aid := verifregtypes.AllocationId(allocationId)
+	return &aid, nil
 
 }

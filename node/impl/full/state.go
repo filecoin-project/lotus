@@ -786,13 +786,16 @@ func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId 
 	if err != nil {
 		return nil, err
 	}
+	if allocationId == nil {
+		return nil, nil
+	}
 
 	dealState, err := a.StateMarketStorageDeal(ctx, dealId, tsk)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.StateGetAllocation(ctx, dealState.Proposal.Client, allocationId, tsk)
+	return a.StateGetAllocation(ctx, dealState.Proposal.Client, *allocationId, tsk)
 }
 
 func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
