@@ -124,8 +124,9 @@ var NetPeers = &cli.Command{
 }
 
 var NetPing = &cli.Command{
-	Name:  "ping",
-	Usage: "Ping peers",
+	Name:      "ping",
+	Usage:     "Ping peers",
+	ArgsUsage: "[peerMultiaddr]",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:    "count",

@@ -2542,7 +2542,7 @@ NAME:
    lotus net ping - Ping peers
 
 USAGE:
-   lotus net ping [command options] [arguments...]
+   lotus net ping [command options] [peerMultiaddr]
 
 OPTIONS:
    --count value, -c value     specify the number of times it should ping (default: 10)
