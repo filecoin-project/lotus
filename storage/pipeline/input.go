@@ -321,7 +321,10 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 			deal.DealProposal.PieceCID, ts.Height(), deal.DealProposal.StartEpoch)
 	}
 
-	claimTerms, err := m.getClaimTerms(ctx, deal)
+	claimTerms, err := m.getClaimTerms(ctx, deal, ts.Key())
+	if err != nil {
+		return api.SectorOffset{}, err
+	}
 
 	m.inputLk.Lock()
 	if pp, exist := m.pendingPieces[proposalCID(deal)]; exist {
@@ -350,9 +353,25 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
-func (m *Sealing) getClaimTerms(ctx context.Context, deal api.PieceDealInfo) (pieceClaimBounds, error) {
-	// TODO: TODO! TODO! get the real claim bounds here
+func (m *Sealing) getClaimTerms(ctx context.Context, deal api.PieceDealInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
+	nv, err := m.Api.StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return pieceClaimBounds{}, err
+	}
 
+	if nv >= network.Version17 {
+		all, err := m.Api.StateGetAllocationForPendingDeal(ctx, deal.DealID, tsk)
+		if err != nil {
+			return pieceClaimBounds{}, err
+		}
+		if all != nil {
+			return pieceClaimBounds{
+				claimTermEnd: deal.DealProposal.StartEpoch + all.TermMax,
+			}, nil
+		}
+	}
+
+	// no allocation for this deal, so just use a really high number for "term end"
 	return pieceClaimBounds{
 		claimTermEnd: deal.DealProposal.EndEpoch + policy.GetSectorMaxLifetime(abi.RegisteredSealProof_StackedDrg32GiBV1_1, network.Version17),
 	}, nil
@@ -706,7 +725,7 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 		// todo: after nv17 "target expiration" doesn't really make that much sense
 		//  (tho to be fair it doesn't make too much sense now either)
 		//  we probably want the lowest expiration that's still above the configured
-		//  minimum, and has can fit most candidate deals
+		//  minimum, and can fit most candidate deals
 
 		if bestExpiration < targetExpirationEpoch {
 			if expirationEpoch > bestExpiration && slowChecks(s.Number) {
