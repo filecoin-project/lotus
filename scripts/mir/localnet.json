@@ -5,42 +5,42 @@
       "Type": "account",
       "Balance": "50000000000000000000000000",
       "Meta": {
-        "Owner": "t3r5yxegmskpg4ocsrv4wkp772ybd3s4ky4i566cs3vobw3qsmaeyw57jvvj7uxqzdlnjpydvkqatznzcj6svq"
+        "Owner": "t3tat272hqg2h6fuokkun4xx742flp72iwvnsao5z4ba7c5qwhjlumyuklcnudg74phfvxaqd52ncb5vhutu2a"
       }
-   },
+  }, 
       {
-       "Type": "account",
-       "Balance": "50000000000000000000000000",
-       "Meta": {
-           "Owner": "t1cp4q4lqsdhob23ysywffg2tvbmar5cshia4rweq"
-       }
-   }
+      "Type": "account",
+      "Balance": "50000000000000000000000000",
+      "Meta": {
+          "Owner": "t1cp4q4lqsdhob23ysywffg2tvbmar5cshia4rweq"
+      }
+  }
   ],
   "Miners": [
     {
       "ID": "t01000",
-      "Owner": "t3r5yxegmskpg4ocsrv4wkp772ybd3s4ky4i566cs3vobw3qsmaeyw57jvvj7uxqzdlnjpydvkqatznzcj6svq",
-      "Worker": "t3r5yxegmskpg4ocsrv4wkp772ybd3s4ky4i566cs3vobw3qsmaeyw57jvvj7uxqzdlnjpydvkqatznzcj6svq",
-      "PeerId": "12D3KooWSmJN79gTfJZyVq4DXSXPqZbmPuvuo4Z84Bi14cG39CD7",
+      "Owner": "t3tat272hqg2h6fuokkun4xx742flp72iwvnsao5z4ba7c5qwhjlumyuklcnudg74phfvxaqd52ncb5vhutu2a",
+      "Worker": "t3tat272hqg2h6fuokkun4xx742flp72iwvnsao5z4ba7c5qwhjlumyuklcnudg74phfvxaqd52ncb5vhutu2a",
+      "PeerId": "12D3KooWGnEaQeRxwJtvBQ7bNNYSP5XyFL2TZVyuswkbAJ3MakFB",
       "MarketBalance": "0",
       "PowerBalance": "0",
       "SectorSize": 2048,
       "Sectors": [
         {
           "CommR": {
-            "/": "bagboea4b5abcbapdxlhvw5zhega26qwycp4bzmnzinhidxqnzuftpiajn7pn73cw"
+            "/": "bagboea4b5abcbf33kvktdrl4vipsv5n2uwo3cuhagx4ldcfra4a3d3c26hxzy4b4"
           },
           "CommD": {
-            "/": "baga6ea4seaqh7icmmg6i5tnzthcwi25rny4lcj6pctnwtisoxwynetc2ncetaiy"
+            "/": "baga6ea4seaqlikortzuo455iu3ggem62veye2kpeenftkvn4isxmgrkmxlotcma"
           },
           "SectorID": 0,
           "Deal": {
             "PieceCID": {
-              "/": "baga6ea4seaqh7icmmg6i5tnzthcwi25rny4lcj6pctnwtisoxwynetc2ncetaiy"
+              "/": "baga6ea4seaqlikortzuo455iu3ggem62veye2kpeenftkvn4isxmgrkmxlotcma"
             },
             "PieceSize": 2048,
             "VerifiedDeal": false,
-            "Client": "t3r5yxegmskpg4ocsrv4wkp772ybd3s4ky4i566cs3vobw3qsmaeyw57jvvj7uxqzdlnjpydvkqatznzcj6svq",
+            "Client": "t3tat272hqg2h6fuokkun4xx742flp72iwvnsao5z4ba7c5qwhjlumyuklcnudg74phfvxaqd52ncb5vhutu2a",
             "Provider": "t01000",
             "Label": "0",
             "StartEpoch": 0,
@@ -51,27 +51,27 @@
           },
           "DealClientKey": {
             "Type": "bls",
-            "PrivateKey": "H8rMoJuDopF9mfHJLLwB0PEZoCOIc34loGJI9QKthAI=",
-            "PublicKey": "j3FyGZJTzccKUa8sp//6wEe5cVjiO+8KW6uDbcJMATFu/TWqf0vDI1tS/A6qgCeW",
-            "Address": "t3r5yxegmskpg4ocsrv4wkp772ybd3s4ky4i566cs3vobw3qsmaeyw57jvvj7uxqzdlnjpydvkqatznzcj6svq"
+            "PrivateKey": "oAQEUxvkaogDLfgCR69XseQjDra0KdDHjzrW8UDl5Vs=",
+            "PublicKey": "mCev6PA2j+LRylUby9/80Vb/6RarZAd3PAg+LsLHSujMUUsTaDN/jzlrcEB900Qe",
+            "Address": "t3tat272hqg2h6fuokkun4xx742flp72iwvnsao5z4ba7c5qwhjlumyuklcnudg74phfvxaqd52ncb5vhutu2a"
           },
           "ProofType": 5
         },
         {
           "CommR": {
-            "/": "bagboea4b5abcaq2pyjfx5zjenwzah2vyuqzwxmimr5lc5ie4jhtdgua2333nadqz"
+            "/": "bagboea4b5abcbckyfnyxbq2vdk4bifzsiyygi3qd6cir6fxt76gyfjmroqrdhztd"
           },
           "CommD": {
-            "/": "baga6ea4seaqbhubsw2pi2ichtil4nlhro6fnosrpuj4gr3t5d44h5g7yfmp5uli"
+            "/": "baga6ea4seaqebwwnv3ltxshq6mvub2jtpb7ujwdae37y3i5tybnzs6plvtwo2bq"
           },
           "SectorID": 1,
           "Deal": {
             "PieceCID": {
-              "/": "baga6ea4seaqbhubsw2pi2ichtil4nlhro6fnosrpuj4gr3t5d44h5g7yfmp5uli"
+              "/": "baga6ea4seaqebwwnv3ltxshq6mvub2jtpb7ujwdae37y3i5tybnzs6plvtwo2bq"
             },
             "PieceSize": 2048,
             "VerifiedDeal": false,
-            "Client": "t3r5yxegmskpg4ocsrv4wkp772ybd3s4ky4i566cs3vobw3qsmaeyw57jvvj7uxqzdlnjpydvkqatznzcj6svq",
+            "Client": "t3tat272hqg2h6fuokkun4xx742flp72iwvnsao5z4ba7c5qwhjlumyuklcnudg74phfvxaqd52ncb5vhutu2a",
             "Provider": "t01000",
             "Label": "1",
             "StartEpoch": 0,
@@ -82,16 +82,16 @@
           },
           "DealClientKey": {
             "Type": "bls",
-            "PrivateKey": "H8rMoJuDopF9mfHJLLwB0PEZoCOIc34loGJI9QKthAI=",
-            "PublicKey": "j3FyGZJTzccKUa8sp//6wEe5cVjiO+8KW6uDbcJMATFu/TWqf0vDI1tS/A6qgCeW",
-            "Address": "t3r5yxegmskpg4ocsrv4wkp772ybd3s4ky4i566cs3vobw3qsmaeyw57jvvj7uxqzdlnjpydvkqatznzcj6svq"
+            "PrivateKey": "oAQEUxvkaogDLfgCR69XseQjDra0KdDHjzrW8UDl5Vs=",
+            "PublicKey": "mCev6PA2j+LRylUby9/80Vb/6RarZAd3PAg+LsLHSujMUUsTaDN/jzlrcEB900Qe",
+            "Address": "t3tat272hqg2h6fuokkun4xx742flp72iwvnsao5z4ba7c5qwhjlumyuklcnudg74phfvxaqd52ncb5vhutu2a"
           },
           "ProofType": 5
         }
       ]
     }
   ],
-  "NetworkName": "localnet-606f27bd-2643-4993-9408-1118e4f7e3d7",
+  "NetworkName": "localnet-059bb756-cde4-41ca-a3f8-3576866c469f",
   "VerifregRootKey": {
     "Type": "multisig",
     "Balance": "0",

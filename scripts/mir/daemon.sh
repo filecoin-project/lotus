@@ -1,5 +1,5 @@
 #!/bin/bash
-rm -rf ~/.genesis-sectors
+# rm -rf ~/.genesis-sectors
 
 if [ $# -ne 1 ]
 then

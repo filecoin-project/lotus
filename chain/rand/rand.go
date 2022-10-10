@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -111,6 +112,12 @@ type stateRand struct {
 }
 
 func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule, networkVersionGetter NetworkVersionGetter) vm.Rand {
+	// FIXME: This is really error-prone. Make it a `ConsensusType` and
+	// a less error-prone check.
+	if build.ConsensusType == "mir" {
+		return &fakeRand{}
+	}
+
 	return &stateRand{
 		cs:                   cs,
 		blks:                 blks,

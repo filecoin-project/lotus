@@ -144,7 +144,12 @@ func (m *Miner) Start(_ context.Context) error {
 		return fmt.Errorf("miner already started")
 	}
 	m.stop = make(chan struct{})
-	go m.mine(context.TODO())
+
+	// FIXME: Make a less error-prone check with build flags.
+	// Only with FilecoinEC consensus we are allowed to mine.
+	if build.ConsensusType == "FilecoinEC" {
+		go m.mine(context.TODO())
+	}
 	return nil
 }
 

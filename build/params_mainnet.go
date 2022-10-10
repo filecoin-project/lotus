@@ -1,5 +1,5 @@
-//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet
-// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet
+//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet && !buildernet
+// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet,!buildernet
 
 package build
 
@@ -133,3 +133,5 @@ const Eip155ChainId = 314
 
 // we skip checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
+
+const ConsensusType = "FilecoinEC"

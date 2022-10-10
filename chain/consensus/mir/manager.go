@@ -185,7 +185,7 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	cfg := mir.DefaultNodeConfig().WithLogger(logger)
 
 	// FIXME: Passing the interceptor here instead of nil leads to a panic. Why?
-	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, m.interceptor)
+	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
 	}
@@ -246,7 +246,7 @@ func (m *Manager) ReconfigureMirNode(ctx context.Context, nodes map[t.NodeID]t.N
 	}
 
 	go m.Net.Connect(ctx, nodes)
-	go m.Net.CloseOldConnections(ctx, nodes)
+	go m.Net.CloseOldConnections(nodes)
 
 	return nil
 }
