@@ -92,10 +92,12 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	log.Info("Eudico node's Mir ID: ", mirID)
 	log.Info("Eudico node's address in Mir: ", mirAddr)
 	log.Info("Mir nodes IDs: ", nodeIDs)
+	log.Info("Mir node peerID: ", h.ID())
 	log.Info("Mir nodes addresses: ", initialMembership)
 
 	// Logger.
-	logger := newManagerLogger()
+	// logger := newManagerLogger()
+	logger := logging.ConsoleDebugLogger
 
 	// Create Mir modules.
 	// TODO: Configure repo path to persist Mir WAL
@@ -183,7 +185,7 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	cfg := mir.DefaultNodeConfig().WithLogger(logger)
 
 	// FIXME: Passing the interceptor here instead of nil leads to a panic. Why?
-	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, nil)
+	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, m.interceptor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
 	}

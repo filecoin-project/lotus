@@ -16,7 +16,7 @@ export LOTUS_SKIP_GENESIS_CHECK=_yes_
 export CGO_CFLAGS_ALLOW="-D__BLST_PORTABLE__"
 export CGO_CFLAGS="-D__BLST_PORTABLE__"
 
-rm -rf ~/$LOTUS_PATH
+rm -rf $LOTUS_PATH
 
 # Uncomment to create a genesis template
 # ./lotus-seed genesis new localnet.json

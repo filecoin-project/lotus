@@ -6,9 +6,8 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/mir/pkg/events"
+	"github.com/filecoin-project/mir/pkg/pb/checkpointpb"
 	"github.com/filecoin-project/mir/pkg/pb/commonpb"
-	"github.com/filecoin-project/mir/pkg/pb/eventpb"
 	"github.com/filecoin-project/mir/pkg/pb/requestpb"
 	"github.com/filecoin-project/mir/pkg/systems/smr"
 	t "github.com/filecoin-project/mir/pkg/types"
@@ -195,18 +194,16 @@ func (sm *StateManager) UpdateAndCheckVotes(valSet *ValidatorSet) (bool, error) 
 	return true, nil
 }
 
-// applySnapshotRequest produces a StateSnapshotResponse event containing the current snapshot of the state.
-// The snapshot is a binary representation of the application state that can be passed to applyRestoreState().
-func (sm *StateManager) applySnapshotRequest(snapshotRequest *eventpb.AppSnapshotRequest) (*events.EventList, error) {
-	return events.ListOf(events.AppSnapshotResponse(
-		t.ModuleID(snapshotRequest.Module),
-		nil,
-		snapshotRequest.Origin,
-	)), nil
-}
 func (sm *StateManager) Snapshot() ([]byte, error) {
 	// TODO: No snapshot supported yet.
-	return nil, nil
+	// applySnapshotRequest produces a StateSnapshotResponse event containing the current snapshot of the state.
+	// The snapshot is a binary representation of the application state that can be passed to applyRestoreState().
+	return []byte{0}, nil
+}
+
+func (sm *StateManager) Checkpoint(checkpoint *checkpointpb.StableCheckpoint) error {
+	// TODO: Not implemented yet.
+	return nil
 }
 
 func maxFaulty(n int) int {
