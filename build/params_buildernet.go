@@ -25,6 +25,9 @@ var NetworkBundle = "devnet-wasm"
 var BundleOverrides map[actors.Version]string
 var ActorDebugging = false
 
+// FIXME: The following will be used to address this issue:
+// https://github.com/consensus-shipyard/lotus/issues/13
+//
 // var NetworkBundle = "wallaby"
 // var BundleOverrides map[actors.Version]string
 // var ActorDebugging = true
