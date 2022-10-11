@@ -5285,7 +5285,7 @@ Response:
 StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
 
 
-Perms: 
+Perms: read
 
 Inputs:
 ```json
