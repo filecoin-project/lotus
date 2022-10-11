@@ -164,7 +164,8 @@ USAGE:
    lotus version [command options] [arguments...]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --build-info, -b  Output all build information (default: false)
+   --commit, -c      Output git commit information (default: false)
    
 ```
 

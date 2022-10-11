@@ -57,7 +57,7 @@ type BuildInfo struct {
 	GitStatus string
 }
 
-//go:embed buildinfo/*.txt
+//go:embed buildinfo/*
 var embeddedBuildInfo embed.FS
 
 func Build() (*BuildInfo, error) {
