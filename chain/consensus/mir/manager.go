@@ -70,6 +70,15 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		return nil, fmt.Errorf("failed to build node membership: %w", err)
 	}
 
+	// Create (ConfigOffset + 1) copies of the initial membership,
+	// since ConfigOffset determines the number of epochs after the current epoch
+	// for which the membership configuration is fixed.
+	// That is, if the current epoch is e,
+	// the following ConfigOffset configurations are already fixed
+	// and configuration submitted to Mir will be for e + ConfigOffset + 1.
+	// This is why the first ConfigOffset + 1 epochs have the same initial configuration.
+	// NOTE: The notion of an epoch here is NOT the same as in Filecoin consensus,
+	// but describes a whole sequence of output blocks.
 	memberships := make([]map[t.NodeID]t.NodeAddress, ConfigOffset+1)
 	for i := 0; i < ConfigOffset+1; i++ {
 		memberships[t.EpochNr(i)] = initialMembership
