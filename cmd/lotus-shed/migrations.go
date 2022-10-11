@@ -10,20 +10,25 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -167,6 +172,11 @@ func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot 
 	}
 
 	err = checkPendingVerifiedDeals(*stateTreeV8, *stateTreeV9, actorStore)
+	if err != nil {
+		return err
+	}
+
+	err = checkAllMinersUnsealedCID(*stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
@@ -425,6 +435,92 @@ func getDatacapActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (datac
 	}
 
 	return datacap.Load(actorStore, datacapV9)
+}
+
+func checkAllMinersUnsealedCID(stateTreeV9 state.StateTree, store adt.Store) error {
+	minerCodeCid, found := actors.GetActorCodeID(actorstypes.Version9, actors.MinerKey)
+	if !found {
+		return xerrors.Errorf("could not find code cid for miner actor")
+	}
+
+	return stateTreeV9.ForEach(func(_ address.Address, actor *types.Actor) error {
+		if minerCodeCid != actor.Code {
+			return nil // no need to check
+		}
+
+		err := checkMinerUnsealedCID(actor, stateTreeV9, store)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 state.StateTree, store adt.Store) error {
+	minerCodeCid, found := actors.GetActorCodeID(actorstypes.Version9, actors.MinerKey)
+	if !found {
+		return xerrors.Errorf("could not find code cid for miner actor")
+	}
+	if minerCodeCid != act.Code {
+		return nil // no need to check
+	}
+
+	marketActorV9, err := getMarketActorV9(stateTreeV9, store)
+	if err != nil {
+		return err
+	}
+	dealProposals, err := marketActorV9.Proposals()
+	if err != nil {
+		return err
+	}
+
+	m, err := miner.Load(store, act)
+	if err != nil {
+		return err
+	}
+
+	err = m.ForEachPrecommittedSector(func(info miner9.SectorPreCommitOnChainInfo) error {
+		dealIDs := info.Info.DealIDs
+
+		if len(dealIDs) == 0 {
+			return nil // Nothing to check here
+		}
+
+		if info.Info.UnsealedCid == nil {
+			return xerrors.Errorf("nil unsealed CID for sector with deals")
+		}
+
+		pieceCids := make([]abi.PieceInfo, len(dealIDs))
+		for i, dealId := range dealIDs {
+			dealProposal, found, err := dealProposals.Get(dealId)
+			if !found {
+				return xerrors.Errorf("deal in precommit sector not found in market actor. Deal ID: %d", dealId)
+			}
+			if err != nil {
+				return err
+			}
+
+			pieceCids[i] = abi.PieceInfo{
+				Size:     dealProposal.PieceSize,
+				PieceCID: dealProposal.PieceCID,
+			}
+		}
+
+		pieceCID, err := ffi.GenerateUnsealedCID(abi.RegisteredSealProof_StackedDrg64GiBV1_1, pieceCids)
+		if err != nil {
+			return err
+		}
+
+		if pieceCID != *info.Info.UnsealedCid {
+			return xerrors.Errorf("calculated piece CID %s did not match unsealed CID in precommitted sector info: %s", pieceCID, *info.Info.UnsealedCid)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func countAllocations(verifregState verifreg.State) (int, error) {
