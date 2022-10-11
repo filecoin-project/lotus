@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/zap/buffer"
+
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -12,8 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	ltypes "github.com/filecoin-project/lotus/chain/types"
 	mirproto "github.com/filecoin-project/mir/pkg/pb/requestpb"
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/zap/buffer"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 //
 // Mine implements the following main algorithm:
 // 1. Retrieve messages and cross-messages from the mempool.
-//    Note, that messages can be added into mempool via the libp2p and CLI mechanism.
+//    Note that messages can be added into mempool via the libp2p and CLI mechanism.
 // 2. Send messages and cross messages to the Mir node through the request pool implementing FIFO.
 // 3. Receive ordered messages from the Mir node and parse them.
 // 4. Create the next Filecoin block.

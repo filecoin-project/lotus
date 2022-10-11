@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -32,7 +31,7 @@ const (
 	InterceptorOutputEnv = "MIR_INTERCEPTOR_OUTPUT"
 )
 
-// Manager manages the Eudico and Mir nodes participating in ISS consensus protocol.
+// Manager manages the Lotus and Mir nodes participating in ISS consensus protocol.
 type Manager struct {
 	// Lotus related types.
 	NetName dtypes.NetworkName
@@ -88,8 +87,8 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		return nil, fmt.Errorf("self identity not included in validator set")
 	}
 
-	log.Info("Eudico node's Mir ID: ", mirID)
-	log.Info("Eudico node's address in Mir: ", mirAddr)
+	log.Info("Lotus node's Mir ID: ", mirID)
+	log.Info("Lotus node's address in Mir: ", mirAddr)
 	log.Info("Mir nodes IDs: ", nodeIDs)
 	log.Info("Mir node libp2p peerID: ", h.ID())
 	log.Info("Mir nodes addresses: ", initialMembership)
@@ -97,13 +96,6 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	logger := newManagerLogger()
 
 	// Create Mir modules.
-	// TODO: Configure repo path to persist Mir WAL
-	path := fmt.Sprintf("lotus-wal%s", strings.Replace(mirID, "/", "-", -1))
-	wal, err := NewWAL(mirID, path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create WAL: %w", err)
-	}
-
 	netTransport, err := mirlibp2p.NewTransport(h, t.NodeID(mirID), logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transport: %w", err)
@@ -127,7 +119,6 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		Pool:                fifo.New(),
 		MirID:               mirID,
 		interceptor:         interceptor,
-		WAL:                 wal,
 		CryptoManager:       cryptoManager,
 		Net:                 netTransport,
 		InitialValidatorSet: initialValidatorSet,
@@ -177,9 +168,9 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		if err != nil {
 			return nil, fmt.Errorf("failed to create interceptor: %w", err)
 		}
-		m.MirNode, err = mir.NewNode(t.NodeID(mirID), cfg, smrSystem.Modules(), wal, m.interceptor)
+		m.MirNode, err = mir.NewNode(t.NodeID(mirID), cfg, smrSystem.Modules(), nil, m.interceptor)
 	} else {
-		m.MirNode, err = mir.NewNode(t.NodeID(mirID), cfg, smrSystem.Modules(), wal, nil)
+		m.MirNode, err = mir.NewNode(t.NodeID(mirID), cfg, smrSystem.Modules(), nil, nil)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
@@ -212,11 +203,6 @@ func (m *Manager) Start(ctx context.Context) chan error {
 func (m *Manager) Stop() {
 	log.With("miner", m.MirID).Infof("Mir manager shutting down")
 	defer log.With("miner", m.MirID).Info("Mir manager stopped")
-
-	if err := m.WAL.Close(); err != nil {
-		log.Errorf("Could not close write-ahead log: %s", err)
-	}
-	log.Info("WAL closed")
 
 	if m.interceptor != nil {
 		if err := m.interceptor.Stop(); err != nil {
@@ -285,7 +271,7 @@ func (m *Manager) GetMessages(batch *Batch) (msgs []*types.SignedMessage) {
 		switch msg := input.(type) {
 		case *types.SignedMessage:
 			// batch being processed, remove from mpool
-			found := m.Pool.DeleteRequest(msg.Cid().String())
+			found := m.Pool.DeleteRequest(msg.Cid())
 			if !found {
 				log.Errorf("unable to find a request with %v hash", msg.Cid())
 				continue
@@ -342,7 +328,7 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 			Data:     data,
 		}
 
-		m.Pool.AddRequest(msg.Cid().String(), r)
+		m.Pool.AddRequest(msg.Cid(), r)
 
 		requests = append(requests, r)
 	}

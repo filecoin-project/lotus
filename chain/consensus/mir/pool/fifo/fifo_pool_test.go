@@ -16,20 +16,20 @@ func TestMirFIFOPool(t *testing.T) {
 	c1 := cid.NewCidV0(u.Hash([]byte("req1")))
 	c2 := cid.NewCidV0(u.Hash([]byte("req2")))
 
-	inProgress := p.AddRequest(c1.String(), &mirrequest.Request{
+	inProgress := p.AddRequest(c1, &mirrequest.Request{
 		ClientId: "client1", Data: []byte{},
 	})
 	require.Equal(t, false, inProgress)
 
-	inProgress = p.AddRequest(c1.String(), &mirrequest.Request{
+	inProgress = p.AddRequest(c1, &mirrequest.Request{
 		ClientId: "client1", Data: []byte{},
 	})
 	require.Equal(t, true, inProgress)
 
-	inProgress = p.DeleteRequest(c1.String())
+	inProgress = p.DeleteRequest(c1)
 	require.Equal(t, true, inProgress)
 
-	inProgress = p.DeleteRequest(c2.String())
+	inProgress = p.DeleteRequest(c2)
 	require.Equal(t, false, inProgress)
 
 }

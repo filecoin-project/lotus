@@ -35,7 +35,7 @@ type StateManager struct {
 	// For each epoch number, stores the corresponding membership.
 	memberships map[t.EpochNr]map[t.NodeID]t.NodeAddress
 
-	// Channel to send batches to Eudico.
+	// Channel to send batches to Lotus.
 	NextBatch chan *Batch
 
 	// Channel to send a membership.

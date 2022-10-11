@@ -1,4 +1,4 @@
-// Package pool maintains the request pool used to send requests from Eudico's mempool to Mir.
+// Package pool maintains the request pool used to send requests from Lotus's mempool to Mir.
 package pool
 
 import (

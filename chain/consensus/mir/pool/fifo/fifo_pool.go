@@ -1,6 +1,8 @@
 package fifo
 
 import (
+	"github.com/ipfs/go-cid"
+
 	mirrequest "github.com/filecoin-project/mir/pkg/pb/requestpb"
 )
 
@@ -9,19 +11,19 @@ import (
 // When we receive a message we find the clientID and remove it from orderingClients.
 // We don't need using sync primitives since the pool's methods are called only by one goroutine.
 type Pool struct {
-	clientByCID     map[string]string // messageCID -> clientID
-	orderingClients map[string]bool   // clientID -> bool
+	clientByCID     map[cid.Cid]string // messageCID -> clientID
+	orderingClients map[string]bool    // clientID -> bool
 }
 
 func New() *Pool {
 	return &Pool{
-		clientByCID:     make(map[string]string),
+		clientByCID:     make(map[cid.Cid]string),
 		orderingClients: make(map[string]bool),
 	}
 }
 
 // AddRequest adds the request if it satisfies to the FIFO policy.
-func (p *Pool) AddRequest(cid string, r *mirrequest.Request) (exist bool) {
+func (p *Pool) AddRequest(cid cid.Cid, r *mirrequest.Request) (exist bool) {
 	_, exist = p.orderingClients[r.ClientId]
 	if !exist {
 		p.clientByCID[cid] = r.ClientId
@@ -38,7 +40,7 @@ func (p *Pool) IsTargetRequest(clientID string) bool {
 }
 
 // DeleteRequest deletes the target request by the key h.
-func (p *Pool) DeleteRequest(cid string) (ok bool) {
+func (p *Pool) DeleteRequest(cid cid.Cid) (ok bool) {
 	clientID, ok := p.clientByCID[cid]
 	if ok {
 		delete(p.orderingClients, clientID)
