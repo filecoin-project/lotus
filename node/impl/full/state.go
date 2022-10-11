@@ -786,7 +786,7 @@ func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId 
 	if err != nil {
 		return nil, err
 	}
-	if allocationId == nil {
+	if allocationId == verifregtypes.NoAllocationID {
 		return nil, nil
 	}
 
@@ -795,7 +795,7 @@ func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId 
 		return nil, err
 	}
 
-	return a.StateGetAllocation(ctx, dealState.Proposal.Client, *allocationId, tsk)
+	return a.StateGetAllocation(ctx, dealState.Proposal.Client, allocationId, tsk)
 }
 
 func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {

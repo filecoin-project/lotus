@@ -297,8 +297,8 @@ func (r *publishStorageDealsReturn3) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
 }
 
-func (s *state3) GetAllocationIdForPendingDeal(dealId abi.DealID) (*verifregtypes.AllocationId, error) {
+func (s *state3) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
 
-	return nil, xerrors.Errorf("unsupported before actors v9")
+	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
 
 }
