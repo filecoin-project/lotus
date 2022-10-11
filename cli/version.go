@@ -25,18 +25,19 @@ var VersionCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
-			return err
-		}
-		defer closer()
+			fmt.Printf("Getting remote API: %s (daemon not running?)\n", err)
+		} else {
+			defer closer()
 
-		ctx := ReqContext(cctx)
-		// TODO: print more useful things
+			ctx := ReqContext(cctx)
+			// TODO: print more useful things
 
-		v, err := api.Version(ctx)
-		if err != nil {
-			return err
+			v, err := api.Version(ctx)
+			if err != nil {
+				return err
+			}
+			fmt.Println("Daemon: ", v)
 		}
-		fmt.Println("Daemon: ", v)
 
 		fmt.Print("Local: ")
 		cli.VersionPrinter(cctx)
