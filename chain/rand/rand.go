@@ -112,9 +112,9 @@ type stateRand struct {
 }
 
 func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule, networkVersionGetter NetworkVersionGetter) vm.Rand {
-	// FIXME: This is really error-prone. Make it a `ConsensusType` and
-	// a less error-prone check.
-	if build.ConsensusType == "mir" {
+	// we don't use winningPoSt and we use fake windowPoSt when running
+	// mir consensus (at least for now)
+	if build.IsMirConsensus() {
 		return &fakeRand{}
 	}
 

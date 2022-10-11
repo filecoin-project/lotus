@@ -40,7 +40,7 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 		return fmt.Errorf("unable to create a manager: %w", err)
 	}
 
-	log.Infof("Miner info:\n\twallet - %s\n\tsubnet - %s\n\tPeer ID - %s\n\tsubnet - %s\n\tvalidators - %v",
+	log.Infof("Miner info:\n\twallet - %s\n\tsubnet - %s\n\tMir ID - %s\n\tPeer ID - %s\n\tvalidators - %v",
 		m.Addr, m.NetName, m.MirID, h.ID(), m.InitialValidatorSet.GetValidators())
 
 	mirErrors := m.Start(ctx)

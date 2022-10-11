@@ -134,4 +134,4 @@ const Eip155ChainId = 314
 // we skip checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
 
-const ConsensusType = "FilecoinEC"
+const Consensus ConsensusType = FilecoinEC

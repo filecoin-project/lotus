@@ -328,7 +328,8 @@ var DaemonCmd = &cli.Command{
 			genesis,
 			liteModeDeps,
 
-			node.ApplyIf(isMirConsensus,
+			node.ApplyIf(
+				func(s *node.Settings) bool { return build.IsMirConsensus() },
 				node.Override(new(consensus.Consensus), mir.NewConsensus),
 				node.Override(new(store.WeightFunc), mir.Weight),
 				node.Override(new(stmgr.Executor), consensus.NewTipSetExecutor(mir.RewardFunc)),
@@ -547,8 +548,4 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	return nil
-}
-
-func isMirConsensus(s *node.Settings) bool {
-	return build.ConsensusType == "mir"
 }

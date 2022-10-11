@@ -145,10 +145,27 @@ func (m *Miner) Start(_ context.Context) error {
 	}
 	m.stop = make(chan struct{})
 
-	// FIXME: Make a less error-prone check with build flags.
-	// Only with FilecoinEC consensus we are allowed to mine.
-	if build.ConsensusType == "FilecoinEC" {
+	// block production only enabled in lotus-miner for
+	// FilecoinEC consensus.
+	if build.Consensus == build.FilecoinEC {
 		go m.mine(context.TODO())
+	} else {
+		// handle the stop of lotus-miner for the case that
+		// there is no running
+		go func() {
+			for {
+				select {
+				case <-m.stop:
+					stopping := m.stopping
+					m.stop = nil
+					m.stopping = nil
+					close(stopping)
+					return
+
+				default:
+				}
+			}
+		}()
 	}
 	return nil
 }

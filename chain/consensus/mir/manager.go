@@ -92,12 +92,10 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	log.Info("Eudico node's Mir ID: ", mirID)
 	log.Info("Eudico node's address in Mir: ", mirAddr)
 	log.Info("Mir nodes IDs: ", nodeIDs)
-	log.Info("Mir node peerID: ", h.ID())
+	log.Info("Mir node libp2p peerID: ", h.ID())
 	log.Info("Mir nodes addresses: ", initialMembership)
 
-	// Logger.
-	// logger := newManagerLogger()
-	logger := logging.ConsoleDebugLogger
+	logger := newManagerLogger()
 
 	// Create Mir modules.
 	// TODO: Configure repo path to persist Mir WAL
@@ -124,20 +122,6 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 	// Instantiate an interceptor.
 	var interceptor *eventlog.Recorder
 
-	interceptorOutput := os.Getenv(InterceptorOutputEnv)
-	if interceptorOutput != "" {
-		// TODO: Persist in repo path?
-		interceptor, err = eventlog.NewRecorder(
-			t.NodeID(mirID),
-			interceptorOutput,
-			logging.Decorate(logger, "Interceptor: "),
-		)
-		fmt.Printf("Creating interceptor. Output: %s\n", interceptorOutput)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create interceptor: %w", err)
-		}
-	}
-
 	m := Manager{
 		Addr:                addr,
 		NetName:             netName,
@@ -151,7 +135,7 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		ToMir:               make(chan chan []*mirproto.Request),
 	}
 
-	sm := NewStateManager(initialMembership, &m)
+	m.StateManager = NewStateManager(initialMembership, &m)
 
 	mpool := pool.NewModule(
 		m.ToMir,
@@ -169,29 +153,39 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		h,
 		initialMembership,
 		m.CryptoManager,
-		sm,
+		m.StateManager,
 		logger,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create SMR system: %w", err)
 	}
+	smrSystem = smrSystem.WithModule("mempool", mpool)
 
 	if err := smrSystem.Start(ctx); err != nil {
 		return nil, fmt.Errorf("could not start SMR system: %w", err)
 	}
 
-	modules := smrSystem.Modules()
-	modules["mempool"] = mpool
 	cfg := mir.DefaultNodeConfig().WithLogger(logger)
 
-	// FIXME: Passing the interceptor here instead of nil leads to a panic. Why?
-	newMirNode, err := mir.NewNode(t.NodeID(mirID), cfg, modules, wal, nil)
+	interceptorOutput := os.Getenv(InterceptorOutputEnv)
+	if interceptorOutput != "" {
+		// TODO: Persist in repo path?
+		m.interceptor, err = eventlog.NewRecorder(
+			t.NodeID(mirID),
+			interceptorOutput,
+			logging.Decorate(logger, "Interceptor: "),
+		)
+		fmt.Printf("Creating interceptor. Output: %s\n", interceptorOutput)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create interceptor: %w", err)
+		}
+		m.MirNode, err = mir.NewNode(t.NodeID(mirID), cfg, smrSystem.Modules(), wal, m.interceptor)
+	} else {
+		m.MirNode, err = mir.NewNode(t.NodeID(mirID), cfg, smrSystem.Modules(), wal, nil)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Mir node: %w", err)
 	}
-
-	m.MirNode = newMirNode
-	m.StateManager = sm
 
 	return &m, nil
 }

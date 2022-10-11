@@ -15,8 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
-// FIXME: Make ConsensusType an enum
-var ConsensusType = "mir"
+const Consensus ConsensusType = Mir
 
 // FIXME: Using devnet actors and genesis for now.
 const BootstrappersFile = ""
@@ -72,12 +71,15 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg2KiBV1,
 	abi.RegisteredSealProof_StackedDrg8MiBV1,
 }
+
 var ConsensusMinerMinPower = abi.NewStoragePower(2048)
 var MinVerifiedDealSize = abi.NewStoragePower(256)
 var PreCommitChallengeDelay = abi.ChainEpoch(10)
 
 // FIXME: For now we are using debug storage and deal sizes.
 // In the future uncomment this to support real size deals and sectors.
+// and comment the lines above.
+//
 // func init() {
 // 	policy.SetSupportedProofTypes(SupportedProofTypes...)
 // 	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
