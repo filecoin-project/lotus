@@ -19,8 +19,15 @@ type ModuleParams = types.ModuleParams
 // DefaultModuleConfig returns a valid module config with default names for all modules.
 func DefaultModuleConfig() *ModuleConfig {
 	return &ModuleConfig{
-		Self:   "availability",
+		Self:   "mempool",
 		Hasher: "hasher",
+	}
+}
+
+// DefaultModuleParams returns a valid module config with default names for all modules.
+func DefaultModuleParams() *ModuleParams {
+	return &ModuleParams{
+		MaxTransactionsInBatch: 512,
 	}
 }
 

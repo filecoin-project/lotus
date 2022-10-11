@@ -125,13 +125,8 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 
 	mpool := pool.NewModule(
 		m.ToMir,
-		&pool.ModuleConfig{
-			Self:   "mempool",
-			Hasher: "hasher",
-		},
-		&pool.ModuleParams{
-			MaxTransactionsInBatch: 10,
-		},
+		pool.DefaultModuleConfig(),
+		pool.DefaultModuleParams(),
 	)
 
 	smrSystem, err := smr.New(
@@ -269,13 +264,13 @@ func (m *Manager) GetMessages(batch *Batch) (msgs []*types.SignedMessage) {
 			// batch being processed, remove from mpool
 			found := m.Pool.DeleteRequest(msg.Cid())
 			if !found {
-				log.Errorf("unable to find a request with %v hash", msg.Cid())
+				log.Errorf("unable to find a message with %v hash", msg.Cid())
 				continue
 			}
 			msgs = append(msgs, msg)
 			log.Infof("got message: to=%s, nonce= %d", msg.Message.To, msg.Message.Nonce)
 		default:
-			log.Error("got unknown type request in a block")
+			log.Error("got unknown message type in a block")
 		}
 	}
 	return
