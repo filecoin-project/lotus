@@ -53,10 +53,6 @@ type Manager struct {
 	reconfigurationNonce uint64
 }
 
-func newMirID(addr string) string {
-	return fmt.Sprintf("%s", addr)
-}
-
 func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1api.FullNode, membershipCfg string) (*Manager, error) {
 	netName, err := api.StateNetworkName(ctx)
 	if err != nil {
@@ -81,7 +77,7 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 		memberships[t.EpochNr(i)] = initialMembership
 	}
 
-	mirID := newMirID(addr.String())
+	mirID := addr.String()
 	mirAddr, ok := initialMembership[t.NodeID(mirID)]
 	if !ok {
 		return nil, fmt.Errorf("self identity not included in validator set")
@@ -308,7 +304,7 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 	requests []*mirproto.Request,
 ) {
 	for _, msg := range msgs {
-		clientID := newMirID(msg.Message.From.String())
+		clientID := msg.Message.From.String()
 		nonce := msg.Message.Nonce
 		if !m.Pool.IsTargetRequest(clientID) {
 			continue
