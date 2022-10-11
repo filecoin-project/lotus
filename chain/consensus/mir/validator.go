@@ -2,6 +2,7 @@ package mir
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -182,10 +183,10 @@ func GetValidatorsFromCfg(config string) (*ValidatorSet, error) {
 	var validators []Validator
 
 	_, err := os.Stat(config)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, err
 	}
-	if os.IsNotExist(err) {
+	if errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("no membership config found in path: %s", config)
 	}
 	readFile, err := os.Open(config)

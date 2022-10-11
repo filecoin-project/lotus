@@ -5,8 +5,8 @@ of a pBFT consensus. This consensus can be used as an alternative consensus to F
 in Lotus.
 
 ## Requirements
-Eudico and [Mir](https://github.com/filecoin-project/mir) requirements must be satisfied.
-The most important one is Go1.17+.
+Lotus and [Mir](https://github.com/filecoin-project/mir) requirements must be satisfied.
+The most important one is Go1.18+, with that you are probably able to figure out the rest yourself.
 
 ## Install
 To use Mir in lotus, you need to compile the code with `make buildernet`. This will output
@@ -23,8 +23,6 @@ make buildernet
 
 The easiest way to run a three-nodes network is to leverage the scripts provided in `./scripts/mir`. To run the network you just need to run the following scripts in different terminals:
 ```
-Changes pushed. To replicate:
-
 # Terminal 1 (daemon for node 0)
 ./scripts/mir/daemon.sh 0
 # Terminal 2 (daemon for node 1)

@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -40,10 +40,10 @@ func initCheck(path string) error {
 
 func fileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return false, err
 	}
-	if os.IsNotExist(err) {
+	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
 	return true, nil
@@ -95,7 +95,7 @@ func lp2pID(dir string) (crypto.PrivKey, error) {
 		}
 		return pk, nil
 	}
-	kbytes, err := ioutil.ReadFile(path)
+	kbytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading libp2p key from file: %w", err)
 	}
@@ -150,7 +150,7 @@ func newLp2pHost(dir string) (host.Host, error) {
 		}
 		return h, nil
 	}
-	bMaddr, err := ioutil.ReadFile(path)
+	bMaddr, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading multiaddr from file: %w", err)
 	}
