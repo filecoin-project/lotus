@@ -3,13 +3,17 @@ package mir
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
 	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool"
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/fifo"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/mir"
 	"github.com/filecoin-project/mir/pkg/eventlog"
 	"github.com/filecoin-project/mir/pkg/logging"
@@ -19,12 +23,6 @@ import (
 	"github.com/filecoin-project/mir/pkg/simplewal"
 	"github.com/filecoin-project/mir/pkg/systems/smr"
 	t "github.com/filecoin-project/mir/pkg/types"
-
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/consensus/mir/pool"
-	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/fifo"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 const (
@@ -178,10 +176,7 @@ func (m *Manager) Start(ctx context.Context) chan error {
 
 	go func() {
 		// Run Mir node until it stops.
-		if err := m.MirNode.Run(ctx); err != nil && !errors.Is(err, mir.ErrStopped) {
-			log.Infof("Mir manager %s: Mir node stopped with error: %v", m.MirID, err)
-			errChan <- err
-		}
+		errChan <- m.MirNode.Run(ctx)
 
 		// Perform cleanup of Node's modules.
 		m.Stop()

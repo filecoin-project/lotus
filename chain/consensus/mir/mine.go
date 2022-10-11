@@ -2,6 +2,7 @@ package mir
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	ltypes "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/mir"
 	mirproto "github.com/filecoin-project/mir/pkg/pb/requestpb"
 )
 
@@ -76,7 +78,11 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 			//
 			// TODO: This is a temporary solution while we are discussing that issue
 			// https://filecoinproject.slack.com/archives/C03C77HN3AS/p1660330971306019
-			panic(fmt.Errorf("miner consensus error: %w", err))
+			if err != nil && !errors.Is(err, mir.ErrStopped) {
+				panic(fmt.Errorf("miner consensus error: %w", err))
+			}
+			log.Debug("Mir miner: Mir node stopped")
+			return nil
 
 		case membership := <-m.StateManager.NewMembership:
 			if err := m.ReconfigureMirNode(ctx, membership); err != nil {
