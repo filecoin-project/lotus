@@ -1,6 +1,9 @@
 package build
 
-import "os"
+import (
+	"embed"
+	"os"
+)
 
 var CurrentCommit string
 var BuildType int
@@ -45,4 +48,35 @@ func UserVersion() string {
 	}
 
 	return BuildVersion + BuildTypeString() + CurrentCommit
+}
+
+type BuildInfo struct {
+	GoMod string
+
+	GitHead   string
+	GitStatus string
+}
+
+//go:embed buildinfo/*.txt
+var embeddedBuildInfo embed.FS
+
+func Build() (*BuildInfo, error) {
+	head, err := embeddedBuildInfo.ReadFile("buildinfo/head.txt")
+	if err != nil {
+		return nil, err
+	}
+	status, err := embeddedBuildInfo.ReadFile("buildinfo/status.txt")
+	if err != nil {
+		return nil, err
+	}
+	gomod, err := embeddedBuildInfo.ReadFile("buildinfo/gomod.txt")
+	if err != nil {
+		return nil, err
+	}
+
+	return &BuildInfo{
+		GitHead:   string(head),
+		GitStatus: string(status),
+		GoMod:     string(gomod),
+	}, nil
 }

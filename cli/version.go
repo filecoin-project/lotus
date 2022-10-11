@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/urfave/cli/v2"
 )
@@ -9,6 +10,18 @@ import (
 var VersionCmd = &cli.Command{
 	Name:  "version",
 	Usage: "Print version",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "commit",
+			Usage:   "Output git commit information",
+			Aliases: []string{"c"},
+		},
+		&cli.BoolFlag{
+			Name:    "build-info",
+			Usage:   "Output all build information",
+			Aliases: []string{"b"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -27,6 +40,30 @@ var VersionCmd = &cli.Command{
 
 		fmt.Print("Local: ")
 		cli.VersionPrinter(cctx)
+
+		if cctx.Bool("commit") || cctx.Bool("build-info") {
+			bi, err := build.Build()
+			if err != nil {
+				return err
+			}
+
+			fmt.Println()
+			fmt.Println(bi.GitHead)
+		}
+
+		if cctx.Bool("build-info") {
+			bi, err := build.Build()
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(bi.GitStatus)
+
+			fmt.Println("-----")
+			fmt.Println("go.mod:")
+			fmt.Println(bi.GoMod)
+		}
+
 		return nil
 	},
 }

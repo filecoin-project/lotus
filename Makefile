@@ -49,6 +49,15 @@ BUILD_DEPS+=ffi-version-check
 
 .PHONY: ffi-version-check
 
+buildinfo:
+	git log -n1 > build/buildinfo/head.txt
+	git status --untracked=no > build/buildinfo/status.txt
+	cp go.mod build/buildinfo/gomod.txt
+BUILD_DEPS+=buildinfo
+
+.PHONY: buildinfo
+
+
 $(MODULES): build/.update-modules ;
 # dummy file that marks the last time modules were updated
 build/.update-modules:
