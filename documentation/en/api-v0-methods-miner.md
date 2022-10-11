@@ -167,6 +167,8 @@
   * [SectorsSummary](#SectorsSummary)
   * [SectorsUnsealPiece](#SectorsUnsealPiece)
   * [SectorsUpdate](#SectorsUpdate)
+* [Start](#Start)
+  * [StartTime](#StartTime)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageAttach](#StorageAttach)
@@ -3620,6 +3622,18 @@ Inputs:
 ```
 
 Response: `{}`
+
+## Start
+
+
+### StartTime
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"0001-01-01T00:00:00Z"`
 
 ## Storage
 

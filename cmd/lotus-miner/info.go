@@ -92,6 +92,12 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println("Enabled subsystems (from markets API):", subsystems)
 
+	start, err := fullapi.StartTime(ctx)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("StartTime: %s (started at %s)\n", time.Now().Sub(start).Truncate(time.Second), start.Truncate(time.Second))
+
 	fmt.Print("Chain: ")
 
 	err = lcli.SyncBasefeeCheck(ctx, fullapi)
