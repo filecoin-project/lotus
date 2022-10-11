@@ -71,6 +71,11 @@ func TestCryptoManager(t *testing.T) {
 	err = c.Verify(data, []byte{1, 2, 3}, nodeID)
 	require.Error(t, err)
 
+	node, err = newCryptoNode()
+	require.NoError(t, err)
+
+	// using other key
+	addr = node.key
 	nodeID = mirTypes.NodeID(addr.String())
 	err = c.Verify(data, sigBytes, nodeID)
 	require.Error(t, err)

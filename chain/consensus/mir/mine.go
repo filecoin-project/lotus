@@ -133,7 +133,7 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 			}
 
 			// TODO: At this point we only support Mir networks with validators
-			// as we are not broadcasting the nodes further.
+			// as we are not broadcasting the nodes further. This will come soon.
 			err = api.SyncBlock(ctx, &types.BlockMsg{
 				Header:        bh.Header,
 				BlsMessages:   bh.BlsMessages,

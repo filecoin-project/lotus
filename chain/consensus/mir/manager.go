@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/mir"
 	"github.com/filecoin-project/mir/pkg/eventlog"
-	"github.com/filecoin-project/mir/pkg/events"
 	"github.com/filecoin-project/mir/pkg/logging"
 	"github.com/filecoin-project/mir/pkg/net"
 	mirlibp2p "github.com/filecoin-project/mir/pkg/net/libp2p"
@@ -175,7 +174,6 @@ func NewManager(ctx context.Context, addr address.Address, h host.Host, api v1ap
 			interceptorOutput,
 			logging.Decorate(logger, "Interceptor: "),
 		)
-		fmt.Printf("Creating interceptor. Output: %s\n", interceptorOutput)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create interceptor: %w", err)
 		}
@@ -245,20 +243,10 @@ func (m *Manager) ReconfigureMirNode(ctx context.Context, nodes map[t.NodeID]t.N
 	return nil
 }
 
-func (m *Manager) SubmitRequests(ctx context.Context, requests []*mirproto.Request) {
-	if len(requests) == 0 {
-		return
-	}
-	e := events.NewClientRequests("mempool", requests)
-	if err := m.MirNode.InjectEvents(ctx, events.ListOf(e)); err != nil {
-		log.Errorf("failed to submit requests to Mir: %s", err)
-	}
-	log.Infof("submitted %d requests to Mir", len(requests))
-}
-
 func parseTx(tx []byte) (interface{}, error) {
 	ln := len(tx)
 	// This is very simple input validation to be protected against invalid messages.
+	// TODO: Make this smarter.
 	if ln <= 2 {
 		return nil, fmt.Errorf("mir tx len %d is too small", ln)
 	}
@@ -296,6 +284,7 @@ func (m *Manager) GetMessages(batch *Batch) (msgs []*types.SignedMessage) {
 
 		switch msg := input.(type) {
 		case *types.SignedMessage:
+			// batch being processed, remove from mpool
 			found := m.Pool.DeleteRequest(msg.Cid().String())
 			if !found {
 				log.Errorf("unable to find a request with %v hash", msg.Cid())

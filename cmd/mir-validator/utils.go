@@ -148,7 +148,6 @@ func newLp2pHost(dir string) (host.Host, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error writing libp2p multiaddr in file: %w", err)
 		}
-		fmt.Println(">>>>>> HOST ID", h.ID())
 		return h, nil
 	}
 	bMaddr, err := ioutil.ReadFile(path)

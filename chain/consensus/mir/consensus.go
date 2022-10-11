@@ -1,4 +1,6 @@
-// Package mir implements Eudico consensus in Mir framework.
+//go:generate go run ./gen/gen.go
+
+// Package mir implements Mir integration in Lotus as an alternative consensus.
 package mir
 
 import (
@@ -21,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	xerrors "golang.org/x/xerrors"
 )
 
@@ -34,31 +35,28 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 }
 
 type Mir struct {
-	store    *store.ChainStore
-	beacon   beacon.Schedule
-	sm       *stmgr.StateManager
-	verifier storiface.Verifier
-	genesis  *types.TipSet
+	store   *store.ChainStore
+	beacon  beacon.Schedule
+	sm      *stmgr.StateManager
+	genesis *types.TipSet
 }
 
 func NewConsensus(
 	ctx context.Context,
 	sm *stmgr.StateManager,
 	b beacon.Schedule,
-	v storiface.Verifier,
 	g chain.Genesis,
 	netName dtypes.NetworkName,
 ) (consensus.Consensus, error) {
 	return &Mir{
-		store:    sm.ChainStore(),
-		beacon:   b,
-		sm:       sm,
-		verifier: v,
-		genesis:  g,
+		store:   sm.ChainStore(),
+		beacon:  b,
+		sm:      sm,
+		genesis: g,
 	}, nil
 }
 
-// CreateBlock creates a Filecoin block from the input block template.
+// CreateBlock creates a Filecoin block from the block template provided by Mir.
 func (bft *Mir) CreateBlock(ctx context.Context, w lapi.Wallet, bt *lapi.BlockTemplate) (*types.FullBlock, error) {
 	pts, err := bft.sm.ChainStore().LoadTipSet(ctx, bt.Parents)
 	if err != nil {
@@ -118,7 +116,7 @@ func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err erro
 		return xerrors.Errorf("block height not greater than parent height: %d != %d", h.Height, baseTs.Height())
 	}
 
-	// FIXME: Checking for BlockDrift for Mir is probably not necessary
+	// Allow a small block drift
 	now := uint64(build.Clock.Now().Unix())
 	if h.Timestamp > now+build.AllowableClockDriftSecs {
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
@@ -141,7 +139,7 @@ func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err erro
 }
 
 func blockSanityChecks(h *types.BlockHeader) error {
-	// TODO: empty for now, when checkpoints are in this may not be the case.
+	// TODO: empty for now, when we include checkpoints for block validation, this may not be the case.
 	empty := types.ElectionProof{}
 	if h.ElectionProof.WinCount != empty.WinCount || !bytes.Equal(h.ElectionProof.VRFProof, empty.VRFProof) {
 		return xerrors.Errorf("mir expects empty election proof")
@@ -168,7 +166,7 @@ func blockSanityChecks(h *types.BlockHeader) error {
 	}
 
 	if h.Miner != builtin.SystemActorAddr {
-		return xerrors.Errorf("mir blocks include the systemActor as miner")
+		return xerrors.Errorf("mir blocks include the systemActor addr as miner")
 	}
 
 	return nil

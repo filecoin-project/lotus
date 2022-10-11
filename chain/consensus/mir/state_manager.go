@@ -69,7 +69,7 @@ func NewStateManager(initialMembership map[t.NodeID]t.NodeAddress, m *Manager) *
 	return &sm
 }
 
-// applyRestoreState restores the application's state to the one represented by the passed argument.
+// RestoreState restores the application's state to the one represented by the passed argument.
 // The argument is a binary representation of the application state returned from Snapshot().
 func (sm *StateManager) RestoreState(snapshot []byte, config *commonpb.EpochConfig) error {
 	sm.currentEpoch = t.EpochNr(config.EpochNr)
@@ -92,11 +92,7 @@ func (sm *StateManager) RestoreState(snapshot []byte, config *commonpb.EpochConf
 	return nil
 }
 
-// applyProvideTransactions applies transactions received from the availability layer to the app state.
-// In our case, it simply extends the message history
-// by appending the payload of each received request as a new message.
-// Each appended message is also printed to stdout.
-// Special messages starting with `Config: ` are recognized, parsed, and treated accordingly.
+// ApplyTXs applies transactions received from the availability layer to the app state.
 func (sm *StateManager) ApplyTXs(txs []*requestpb.Request) error {
 	var msgs []Message
 
