@@ -197,7 +197,7 @@ func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) (stri
 
 	sig, err := n.WalletSign(ctx, addr, msg)
 	if err != nil {
-		return "", xerrors.Errorf("failed to sign message with worker address key: %w", err)
+		return "", xerrors.Errorf("failed to sign message with wallet address key: %w", err)
 	}
 
 	return fmt.Sprintf("%s %d;%s;%s", filAuthHdr, head.Height(), addr, base64.StdEncoding.EncodeToString(sig.Data)), nil
