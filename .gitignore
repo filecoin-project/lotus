@@ -54,3 +54,5 @@ build/builtin-actors/v*
 build/builtin-actors/*.car
 
 dist/
+lotus-wal*
+mir-event-logs
