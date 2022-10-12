@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/ipfs/go-cid"
@@ -53,7 +54,7 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	err := a.SyncBlock(ctx, blk)
 	if err != nil {
-		return xerrors.Errorf("syncing block failed: %w", err)
+		return fmt.Errorf("syncing block failed: %w", err)
 	}
 	b, err := blk.Serialize()
 	if err != nil {

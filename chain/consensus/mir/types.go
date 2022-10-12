@@ -14,21 +14,13 @@ const (
 
 var log = logging.Logger("mir-consensus")
 
+type MirMsgType int
+
 const (
 	ConfigMessageType = 0 // Mir specific config message
 	SignedMessageType = 1 // Lotus signed message
 )
 
-func NewSignedMessageBytes(msg, opaque []byte) []byte {
-	var payload []byte
-	payload = append(msg, opaque...)
-	payload = append(payload, SignedMessageType)
-	return payload
-}
-
-func NewConfigMessageBytes(msg, opaque []byte) []byte {
-	var payload []byte
-	payload = append(msg, opaque...)
-	payload = append(payload, ConfigMessageType)
-	return payload
+func NewTypedMessageBytes(msg []byte, msgType MirMsgType) []byte {
+	return append(msg, byte(msgType))
 }

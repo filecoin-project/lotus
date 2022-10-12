@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -35,7 +34,6 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 }
 
 type Mir struct {
-	store   *store.ChainStore
 	beacon  beacon.Schedule
 	sm      *stmgr.StateManager
 	genesis *types.TipSet
@@ -49,7 +47,6 @@ func NewConsensus(
 	netName dtypes.NetworkName,
 ) (consensus.Consensus, error) {
 	return &Mir{
-		store:   sm.ChainStore(),
 		beacon:  b,
 		sm:      sm,
 		genesis: g,
@@ -108,7 +105,7 @@ func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err erro
 
 	h := b.Header
 
-	baseTs, err := bft.store.LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
+	baseTs, err := bft.sm.ChainStore().LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
@@ -125,7 +122,7 @@ func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err erro
 		log.Warn("got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
 	}
 
-	pweight, err := bft.store.Weight(ctx, baseTs)
+	pweight, err := bft.sm.ChainStore().Weight(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("getting parent weight: %w", err)
 	}
@@ -135,7 +132,7 @@ func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err erro
 			b.Header.ParentWeight, pweight)
 	}
 
-	return consensus.RunAsyncChecks(ctx, consensus.CommonBlkChecks(ctx, bft.sm, bft.store, b, baseTs))
+	return consensus.RunAsyncChecks(ctx, consensus.CommonBlkChecks(ctx, bft.sm, bft.sm.ChainStore(), b, baseTs))
 }
 
 func blockSanityChecks(h *types.BlockHeader) error {

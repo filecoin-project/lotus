@@ -314,7 +314,7 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 			log.Error("unable to serialize message:", err)
 			continue
 		}
-		data := NewSignedMessageBytes(msgBytes, nil)
+		data := NewTypedMessageBytes(msgBytes, SignedMessageType)
 
 		r := &mirproto.Request{
 			ClientId: clientID,
