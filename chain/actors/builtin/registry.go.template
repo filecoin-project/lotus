@@ -17,6 +17,9 @@ import (
             system{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/system"
             verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/verifreg"
         {{end}}
+        {{if (ge . 9)}}
+            datacap{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/datacap"
+        {{end}}
     {{end}}
 	"github.com/filecoin-project/go-state-types/cbor"
 	rtt "github.com/filecoin-project/go-state-types/rt"
@@ -142,6 +145,12 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
                                 methods: verifreg{{.}}.Methods,
                                 state:   new(verifreg{{.}}.State),
                             })
+                        {{if (ge . 9)}}case actors.DatacapKey:
+                            registry = append(registry, RegistryEntry{
+                                code:    codeID,
+                                methods: datacap{{.}}.Methods,
+                                state:   new(datacap{{.}}.State),
+                            }){{end}}
                         }
                     }
             {{end}}

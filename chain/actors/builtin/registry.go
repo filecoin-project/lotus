@@ -17,6 +17,7 @@ import (
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	account9 "github.com/filecoin-project/go-state-types/builtin/v9/account"
 	cron9 "github.com/filecoin-project/go-state-types/builtin/v9/cron"
+	datacap9 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	_init9 "github.com/filecoin-project/go-state-types/builtin/v9/init"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -150,6 +151,7 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: verifreg8.Methods,
 					state:   new(verifreg8.State),
 				})
+
 			}
 		}
 
@@ -221,6 +223,12 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					code:    codeID,
 					methods: verifreg9.Methods,
 					state:   new(verifreg9.State),
+				})
+			case actors.DatacapKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: datacap9.Methods,
+					state:   new(datacap9.State),
 				})
 			}
 		}
