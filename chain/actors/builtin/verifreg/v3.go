@@ -96,3 +96,21 @@ func (s *state3) GetAllocation(clientIdAddr address.Address, allocationId verifr
 	return nil, false, xerrors.Errorf("unsupported in actors v3")
 
 }
+
+func (s *state3) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v3")
+
+}
+
+func (s *state3) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+
+	return nil, false, xerrors.Errorf("unsupported in actors v3")
+
+}
+
+func (s *state3) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v3")
+
+}
