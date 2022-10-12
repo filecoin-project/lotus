@@ -33,7 +33,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	for _, piece := range sector.Pieces {
 		used += piece.Piece.Size.Unpadded()
 
-		if piece.DealInfo.DealProposal.EndEpoch > lastDealEnd {
+		if piece.DealInfo != nil && piece.DealInfo.DealProposal.EndEpoch > lastDealEnd {
 			lastDealEnd = piece.DealInfo.DealProposal.EndEpoch
 		}
 	}
