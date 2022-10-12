@@ -786,6 +786,9 @@ func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId 
 	if err != nil {
 		return nil, err
 	}
+	if allocationId == verifregtypes.NoAllocationID {
+		return nil, nil
+	}
 
 	dealState, err := a.StateMarketStorageDeal(ctx, dealId, tsk)
 	if err != nil {

@@ -332,17 +332,18 @@ func (s *state9) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes
 
 	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
 	}
 
 	var allocationId cbg.CborInt
 	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
 	}
 	if !found {
-		return 0, xerrors.Errorf("failed to find allocation id for %d", dealId)
+		return verifregtypes.NoAllocationID, nil
 	}
+
 	return verifregtypes.AllocationId(allocationId), nil
 
 }
