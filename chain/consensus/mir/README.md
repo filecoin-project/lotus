@@ -38,3 +38,5 @@ The easiest way to run a three-nodes network is to leverage the scripts provided
 ```
 If you rather deploy your own custom network, follow the steps provided in the [mir validator README](../../../cmd/mir-validator) to learn how to configure and deploy your own validators, and how to set-up the membership list.
 
+### Automated 4-node network
+If you don't even want to know what is happening under-the-hood, and you just want to run a 4-node network fast, run `./scripts/mir/4-node-net.sh`.
