@@ -1,6 +1,9 @@
 package mir
 
 import (
+	"fmt"
+
+	"github.com/filecoin-project/lotus/chain/types"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -14,6 +17,11 @@ const (
 
 var log = logging.Logger("mir-consensus")
 
+// MirMessage interface that message types to be used in Mir need to implement.
+type MirMessage interface {
+	Serialize() ([]byte, error)
+}
+
 type MirMsgType int
 
 const (
@@ -21,6 +29,24 @@ const (
 	SignedMessageType = 1 // Lotus signed message
 )
 
-func NewTypedMessageBytes(msg []byte, msgType MirMsgType) []byte {
-	return append(msg, byte(msgType))
+func MsgType(m MirMessage) (MirMsgType, error) {
+	switch m.(type) {
+	case *types.SignedMessage:
+		return SignedMessageType, nil
+	default:
+		return -1, fmt.Errorf("mir message type not implemented")
+
+	}
+}
+
+func MessageBytes(msg MirMessage) ([]byte, error) {
+	msgType, err := MsgType(msg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get msgType %w", err)
+	}
+	msgBytes, err := msg.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("unable to serialize message: %w", err)
+	}
+	return append(msgBytes, byte(msgType)), nil
 }

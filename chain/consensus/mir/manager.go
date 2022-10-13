@@ -235,6 +235,9 @@ func parseTx(tx []byte) (interface{}, error) {
 	var err error
 	var msg interface{}
 
+	// TODO: Consider taking it out to a MirMessageFromBytes function
+	// into mir/types.go so that we have all msgType functionality in
+	// the same place.
 	lastByte := tx[ln-1]
 	switch lastByte {
 	case SignedMessageType:
@@ -309,12 +312,10 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 			continue
 		}
 
-		msgBytes, err := msg.Serialize()
+		data, err := MessageBytes(msg)
 		if err != nil {
-			log.Error("unable to serialize message:", err)
 			continue
 		}
-		data := NewTypedMessageBytes(msgBytes, SignedMessageType)
 
 		r := &mirproto.Request{
 			ClientId: clientID,
