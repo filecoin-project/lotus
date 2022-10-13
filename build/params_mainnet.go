@@ -95,7 +95,7 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_V17") == "1" {
+	if os.Getenv("LOTUS_DISABLE_SHARK") == "1" {
 		UpgradeSharkHeight = math.MaxInt64
 	}
 
