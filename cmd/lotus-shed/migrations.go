@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -319,14 +320,21 @@ func checkPendingVerifiedDeals(stateTreeV8 *state.StateTree, stateTreeV9 *state.
 		if err != nil {
 			return err
 		}
+
 		// Checks if allocation is in verifreg
-		_, found, err := verifregActorV9.GetAllocation(proposal.Client, allocationId)
+		allocation, found, err := verifregActorV9.GetAllocation(proposal.Client, allocationId)
 		if !found {
 			return xerrors.Errorf("allocation %d not found for address %s", allocationId, proposal.Client)
 		}
 		if err != nil {
 			return err
 		}
+
+		err = compareProposalToAllocation(proposal, *allocation)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -360,6 +368,42 @@ func checkPendingVerifiedDeals(stateTreeV8 *state.StateTree, stateTreeV9 *state.
 
 	if numAllocations+1 != nextAllocationId {
 		return xerrors.Errorf("number of allocations + 1: %d did not match the next allocation ID: %d", numAllocations+1, nextAllocationId)
+	}
+
+	return nil
+}
+
+func compareProposalToAllocation(prop market8.DealProposal, alloc verifreg9.Allocation) error {
+	if prop.PieceCID != alloc.Data {
+		return xerrors.Errorf("piece cid mismatch between proposal and allocation: %s, %s", prop.PieceCID, alloc.Data)
+	}
+
+	proposalClientID, err := address.IDFromAddress(prop.Client)
+	if err != nil {
+		return xerrors.Errorf("couldnt get ID from address")
+	}
+	if proposalClientID != uint64(alloc.Client) {
+		return xerrors.Errorf("client id mismatch between proposal and allocation: %s, %s", proposalClientID, alloc.Client)
+	}
+
+	proposalProviderID, err := address.IDFromAddress(prop.Provider)
+	if err != nil {
+		return xerrors.Errorf("couldnt get ID from address")
+	}
+	if proposalProviderID != uint64(alloc.Provider) {
+		return xerrors.Errorf("provider id mismatch between proposal and allocation: %s, %s", proposalProviderID, alloc.Provider)
+	}
+
+	if prop.PieceSize != alloc.Size {
+		return xerrors.Errorf("piece size mismatch between proposal and allocation: %s, %s", prop.PieceSize, alloc.Size)
+	}
+
+	if alloc.TermMax != 540*builtin.EpochsInDay {
+		return xerrors.Errorf("allocation term should be 540 days. Got %d epochs", alloc.TermMax)
+	}
+
+	if prop.EndEpoch-prop.StartEpoch != alloc.TermMin {
+		return xerrors.Errorf("allocation term mismatch between proposal and allocation: %d, %d", prop.EndEpoch-prop.StartEpoch, alloc.TermMin)
 	}
 
 	return nil
@@ -444,13 +488,8 @@ func getDatacapActorV9(stateTreeV9 *state.StateTree, actorStore adt.Store) (data
 }
 
 func checkAllMinersUnsealedCID(stateTreeV9 *state.StateTree, store adt.Store) error {
-	minerCodeCid, found := actors.GetActorCodeID(actorstypes.Version9, actors.MinerKey)
-	if !found {
-		return xerrors.Errorf("could not find code cid for miner actor")
-	}
-
 	return stateTreeV9.ForEach(func(_ address.Address, actor *types.Actor) error {
-		if minerCodeCid != actor.Code {
+		if !lbuiltin.IsStorageMinerActor(actor.Code) {
 			return nil // no need to check
 		}
 
