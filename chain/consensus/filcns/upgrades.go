@@ -1462,8 +1462,6 @@ func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 		return cid.Undef, xerrors.Errorf("migrating actors v8 state: %w", err)
 	}
 
-	fmt.Print(fvmLiftoffBanner)
-
 	return newRoot, nil
 }
 
