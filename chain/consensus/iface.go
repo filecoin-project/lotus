@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -47,7 +48,7 @@ type Consensus interface {
 //
 // Each consensus implementation can set their own reward function.
 type RewardFunc func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
-	epoch abi.ChainEpoch, ts *types.TipSet, params []byte) error
+	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error
 
 // ValidateBlockPubsub implements the common checks performed by all consensus implementations
 // when a block is received through the pubsub channel.

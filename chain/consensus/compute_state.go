@@ -214,16 +214,12 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			processedMsgs[m.Cid()] = struct{}{}
 		}
 
-		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
+		params := &reward.AwardBlockRewardParams{
 			Miner:     b.Miner,
 			Penalty:   penalty,
 			GasReward: gasReward,
 			WinCount:  b.WinCount,
-		})
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
 		}
-
 		rErr := t.reward(ctx, vmi, em, epoch, ts, params)
 		if rErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", err)
