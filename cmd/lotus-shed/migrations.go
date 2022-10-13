@@ -6,6 +6,8 @@ import (
 	"io"
 	"time"
 
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -339,7 +341,7 @@ func checkPendingVerifiedDeals(stateTreeV8 state.StateTree, stateTreeV9 state.St
 		return xerrors.Errorf("number of allocation IDsf: %d did not match the number of pending verified deals: %d", numAllocationIds, numPendingVerifiedDeals)
 	}
 
-	numAllocations, err := countAllocations(verifregActorV9)
+	numAllocations, err := countAllocations(verifregStateV9, actorStore)
 	if err != nil {
 		return err
 	}
@@ -523,19 +525,36 @@ func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 state.StateTree, store 
 	return nil
 }
 
-func countAllocations(verifregState verifreg.State) (int, error) {
-	var count int
-	err := verifregState.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
-		allocations, err := verifregState.GetAllocations(addr)
+func countAllocations(verifregState verifreg9.State, store adt.Store) (int, error) {
+	var count = 0
+
+	actorToHamtMap, err := adt9.AsMap(store, verifregState.Allocations, builtin.DefaultHamtBitwidth)
+	if err != nil {
+		return 0, xerrors.Errorf("couldn't get outer map: %x", err)
+	}
+
+	var innerHamtCid cbg.CborCid
+	err = actorToHamtMap.ForEach(&innerHamtCid, func(key string) error {
+		innerMap, err := adt9.AsMap(store, cid.Cid(innerHamtCid), builtin.DefaultHamtBitwidth)
 		if err != nil {
-			return err
+			return xerrors.Errorf("couldn't get outer map: %x", err)
 		}
-		count += len(allocations)
+
+		var allocation verifreg9.Allocation
+		err = innerMap.ForEach(&allocation, func(key string) error {
+			count++
+			return nil
+		})
+		if err != nil {
+			return xerrors.Errorf("couldn't iterate over inner map: %x", err)
+		}
+
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return 0, xerrors.Errorf("couldn't iterate over outer map: %x", err)
 	}
+
 	return count, nil
 }
 
