@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	lapi "github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -71,9 +70,15 @@ func (bft *Mir) CreateBlock(ctx context.Context, w lapi.Wallet, bt *lapi.BlockTe
 		Ticket:        bt.Ticket,
 		ElectionProof: bt.Eproof,
 
-		BeaconEntries:         bt.BeaconValues,
-		Height:                bt.Epoch,
-		Timestamp:             bt.Timestamp,
+		BeaconEntries: bt.BeaconValues,
+		Height:        bt.Epoch,
+		// Each validator in Mir be assembling the block with a different
+		// timestamp. To avoid validators from pushing blocks with different
+		// timestamps that lead to different CIDs, we use the epoch as
+		// a timestamp for now.
+		// TODO: Consider exporting a batch timestamp from Mir and use it
+		// for the block timestamp.
+		Timestamp:             uint64(bt.Epoch),
 		WinPoStProof:          bt.WinningPoStProof,
 		ParentStateRoot:       st,
 		ParentMessageReceipts: recpts,
@@ -113,13 +118,18 @@ func (bft *Mir) ValidateBlock(ctx context.Context, b *types.FullBlock) (err erro
 		return xerrors.Errorf("block height not greater than parent height: %d != %d", h.Height, baseTs.Height())
 	}
 
+	// TODO: Include a block drift check when the batch timestamp is included in the block.
 	// Allow a small block drift
-	now := uint64(build.Clock.Now().Unix())
-	if h.Timestamp > now+build.AllowableClockDriftSecs {
-		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
-	}
-	if h.Timestamp > now {
-		log.Warn("got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
+	// now := uint64(build.Clock.Now().Unix())
+	// if h.Timestamp > now+build.AllowableClockDriftSecs {
+	// 	return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
+	// }
+	// if h.Timestamp > now {
+	// 	log.Warn("got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
+	// }
+
+	if h.Timestamp != uint64(h.Height) {
+		return xerrors.Errorf("Mir blocks should include the block height as timestamp (ts=%d, height=%d)", h.Timestamp, h.Height)
 	}
 
 	pweight, err := bft.sm.ChainStore().Weight(ctx, baseTs)

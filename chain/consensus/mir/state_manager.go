@@ -71,6 +71,9 @@ func NewStateManager(initialMembership map[t.NodeID]t.NodeAddress, m *Manager) *
 
 // RestoreState restores the application's state to the one represented by the passed argument.
 // The argument is a binary representation of the application state returned from Snapshot().
+
+// Restore state expects a checkpoint and only returns when it is fully sync. We can have here
+// WaitSync function. It should also recover the configuration.
 func (sm *StateManager) RestoreState(snapshot []byte, config *commonpb.EpochConfig) error {
 	sm.currentEpoch = t.EpochNr(config.EpochNr)
 	sm.memberships = make(map[t.EpochNr]map[t.NodeID]t.NodeAddress, len(config.Memberships))
@@ -190,6 +193,19 @@ func (sm *StateManager) UpdateAndCheckVotes(valSet *ValidatorSet) (bool, error) 
 	return true, nil
 }
 
+// TODO: Snapshot is called by Mir to get the content for the state
+// from the application included in a checkpoint.
+// The snapshot is assigned the height of the next coming block, or the number
+// of blocks is committing.
+// Thus, Snapshot for height n, includes blocks 0... n-1.
+// This snapshot info is what is included serialized in the checkpoint
+// This data structure should include height, cid, BlockHash, ParentHash,
+// and any other information used to validate blocks and restore the state.
+//
+// In the mir-validator syncing process, for a checkpoint period of 4 blocks, we
+// deliver without checkpoints block 0,1,2,3 and then we wait for a checkpoint
+// and include it in block 4. When block 4 is delivered with the checkpoint, we
+// can verify blocks 0,1,2,3 and execute them.
 func (sm *StateManager) Snapshot() ([]byte, error) {
 	// TODO: No snapshot supported yet.
 	// applySnapshotRequest produces a StateSnapshotResponse event containing the current snapshot of the state.
@@ -197,6 +213,18 @@ func (sm *StateManager) Snapshot() ([]byte, error) {
 	return []byte{0}, nil
 }
 
+// This is called after check_period blocks have been produced, Mir creates a new
+// checkpoint from these blocks and calls this. It will call Checkpoint immediately
+// after snapshot to provide you with the certificate before creating new blocks.
+// StableCheckpoint includes the snapshot agreed upon by all validators and the corresponding
+// certificate.
+//
+// To verify a checkpoint we need:
+// Instance of the cryptomodule and verify the signatures of the certificate.
+// This can be used for the consensus validation.
+// Verify that there are f+1 signature in the certificate.
+// From there, we iterate and verify all signatures.
+// 3f+1 number of nodes to tolerate f failures. f+1 for the signature to be correct.
 func (sm *StateManager) Checkpoint(checkpoint *checkpointpb.StableCheckpoint) error {
 	// TODO: Not implemented yet.
 	return nil
