@@ -15,6 +15,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -27,7 +28,7 @@ import (
 var _ consensus.Consensus = &Mir{}
 
 var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
-	epoch abi.ChainEpoch, ts *types.TipSet, params []byte) error {
+	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error {
 	// TODO: No RewardFunc implemented for mir yet
 	return nil
 }
