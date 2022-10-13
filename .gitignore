@@ -56,3 +56,5 @@ build/builtin-actors/*.car
 dist/
 lotus-wal*
 mir-event-logs
+
+devgen.car

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/zap/buffer"
 
 	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -102,16 +101,12 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 				continue
 			}
 
-			log.With("epoch", nextHeight).Info("found new validator set - size: %d", newValidatorSet.Size())
+			log.With("epoch", nextHeight).Info("new validator set - size: %d", newValidatorSet.Size())
 			lastValidatorSet = newValidatorSet
 
-			var payload buffer.Buffer
-			err = newValidatorSet.MarshalCBOR(&payload)
-			if err != nil {
-				log.With("epoch", nextHeight).Warnf("failed to marshal validators: %v", err)
-				continue
+			if req := m.ReconfigurationRequest(newValidatorSet); req != nil {
+				configRequests = append(configRequests, req)
 			}
-			configRequests = append(configRequests, m.ReconfigurationRequest(payload.Bytes()))
 
 		case batch := <-m.StateManager.NextBatch:
 			msgs := m.GetMessages(batch)
@@ -168,7 +163,9 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 			}
 
 			// We send requests via the channel instead of calling m.SubmitRequests(ctx, requests) explicitly.
-			toMir <- requests
+			if len(requests) > 0 {
+				toMir <- requests
+			}
 		}
 	}
 }

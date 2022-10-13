@@ -2,6 +2,7 @@
 package mir
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -290,12 +291,17 @@ func (m *Manager) TransportRequests(msgs []*types.SignedMessage) (
 	return
 }
 
-func (m *Manager) ReconfigurationRequest(payload []byte) *mirproto.Request {
+func (m *Manager) ReconfigurationRequest(valset *ValidatorSet) *mirproto.Request {
+	var payload bytes.Buffer
+	if err := valset.MarshalCBOR(&payload); err != nil {
+		log.Error("unable to marshall config valset:", err)
+		return nil
+	}
 	r := mirproto.Request{
 		ClientId: m.MirID,
 		ReqNo:    m.reconfigurationNonce,
 		Type:     ReconfigurationType,
-		Data:     payload,
+		Data:     payload.Bytes(),
 	}
 	m.reconfigurationNonce++
 	return &r
@@ -314,6 +320,7 @@ func (m *Manager) batchSignedMessages(msgs []*types.SignedMessage) (
 
 		data, err := MessageBytes(msg)
 		if err != nil {
+			log.Error(err)
 			continue
 		}
 
