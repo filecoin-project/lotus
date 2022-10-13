@@ -31,13 +31,7 @@ func DefaultModuleParams() *ModuleParams {
 	}
 }
 
-// NewModule creates a new instance of a request pool module implementation. It passively waits for
-// eventpb.NewRequests events and stores them in a local map.
-//
-// On a batch request, this implementation creates a batch that consists of as many requests received since the
-// previous batch request as possible with respect to params.MaxTransactionsInBatch.
-//
-// This implementation uses the hash function provided by the mc.Hasher module to compute transaction IDs and batch IDs.
+// NewModule creates a new instance of a request pool module implementation.
 func NewModule(requestChan chan chan []*requestpb.Request, mc *ModuleConfig, params *ModuleParams) modules.Module {
 	m := dsl.NewModule(mc.Self)
 

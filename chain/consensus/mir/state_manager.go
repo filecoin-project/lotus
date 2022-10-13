@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/multiformats/go-multiaddr"
-
 	"github.com/filecoin-project/mir/pkg/pb/checkpointpb"
 	"github.com/filecoin-project/mir/pkg/pb/commonpb"
 	"github.com/filecoin-project/mir/pkg/pb/requestpb"
@@ -71,8 +69,8 @@ func NewStateManager(initialMembership map[t.NodeID]t.NodeAddress, m *Manager) *
 
 // RestoreState restores the application's state to the one represented by the passed argument.
 // The argument is a binary representation of the application state returned from Snapshot().
-
-// Restore state expects a checkpoint and only returns when it is fully sync. We can have here
+//
+// RestoreState expects a checkpoint and only returns when it is fully sync. We can have here
 // WaitSync function. It should also recover the configuration.
 func (sm *StateManager) RestoreState(snapshot []byte, config *commonpb.EpochConfig) error {
 	sm.currentEpoch = t.EpochNr(config.EpochNr)
@@ -80,13 +78,7 @@ func (sm *StateManager) RestoreState(snapshot []byte, config *commonpb.EpochConf
 
 	for e, membership := range config.Memberships {
 		sm.memberships[t.EpochNr(e)] = make(map[t.NodeID]t.NodeAddress)
-		for nID, nAddr := range membership.Membership {
-			var err error
-			sm.memberships[t.EpochNr(e)][t.NodeID(nID)], err = multiaddr.NewMultiaddr(nAddr)
-			if err != nil {
-				return err
-			}
-		}
+		sm.memberships[t.EpochNr(e)] = t.Membership(membership)
 	}
 
 	newMembership := maputil.Copy(sm.memberships[t.EpochNr(config.EpochNr+ConfigOffset)])

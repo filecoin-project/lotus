@@ -1,5 +1,5 @@
 # Mir Validator
-Application that implements the 
+`mir-validator` is an application to manage a Mir validator.
 
 Use `make mir-validator` or `make buildernet` to compile the application. To
 run a validator you need to:

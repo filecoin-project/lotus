@@ -23,12 +23,6 @@ type Validator struct {
 	NetAddr string
 }
 
-func NewValidator(addr addr.Address, netAddr string) Validator {
-	return Validator{
-		addr, netAddr,
-	}
-}
-
 func (v *Validator) ID() string {
 	return v.Addr.String()
 }
@@ -41,21 +35,8 @@ func (v *Validator) Bytes() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// ValidatorsFromCommaSeparated parses comma-separated subnet:ID@OpaqueNetAddr validators string.
-func ValidatorsFromCommaSeparated(input string) ([]Validator, error) {
-	var validators []Validator
-	for _, idAddr := range SplitAndTrimEmpty(input, ",", " ") {
-		v, err := ValidatorFromString(idAddr)
-		if err != nil {
-			return nil, err
-		}
-		validators = append(validators, v)
-	}
-	return validators, nil
-}
-
-// ValidatorsFromString parses a validator address from a string.
-// OpaqueNetAddr can contain GRPC or Libp2p addresses.
+// ValidatorFromString parses a validator address from a string.
+// OpaqueNetAddr can contain GRPC or libp2p addresses.
 //
 // Examples of validator strings:
 // 	- t1wpixt5mihkj75lfhrnaa6v56n27epvlgwparujy@/ip4/127.0.0.1/tcp/10000/p2p/12D3KooWJhKBXvytYgPCAaiRtiNLJNSFG5jreKDu2jiVpJetzvVJ
@@ -73,46 +54,19 @@ func ValidatorFromString(input string) (Validator, error) {
 	if err != nil {
 		return Validator{}, err
 	}
-	addr, err := multiaddr.NewMultiaddr(opaqueNetAddr)
+	ma, err := multiaddr.NewMultiaddr(opaqueNetAddr)
 	if err != nil {
 		return Validator{}, err
 	}
 
 	return Validator{
 		Addr:    a,
-		NetAddr: addr.String(),
+		NetAddr: ma.String(),
 	}, nil
 }
 
 func (v *Validator) String() string {
 	return fmt.Sprintf("%s@%s", v.Addr.String(), v.NetAddr)
-}
-
-// ValidatorsToString adds a validator subnet, address and network address into a string.
-func ValidatorsToString(validators []Validator) string {
-	var s string
-	for _, v := range validators {
-		s += fmt.Sprintf("%s,", v.String())
-	}
-	return strings.TrimSuffix(s, ",")
-}
-
-func SplitAndTrimEmpty(s, sep, cutset string) []string {
-	if s == "" {
-		return []string{}
-	}
-
-	spl := strings.Split(s, sep)
-	nonEmptyStrings := make([]string, 0, len(spl))
-
-	for i := 0; i < len(spl); i++ {
-		element := strings.Trim(spl[i], cutset)
-		if element != "" {
-			nonEmptyStrings = append(nonEmptyStrings, element)
-		}
-	}
-
-	return nonEmptyStrings
 }
 
 type ValidatorSet struct {
@@ -170,7 +124,7 @@ func (set *ValidatorSet) HasValidatorWithID(id string) bool {
 	return false
 }
 
-// BlockMiner returns a miner assigned deterministically using round-robin for an epoch to assign a reward
+// BlockMiner returns a miner assigned deterministically using round-robin for a Filecoin epoch to assign a reward
 // according to the rules of original Filecoin consensus.
 func (set *ValidatorSet) BlockMiner(epoch abi.ChainEpoch) addr.Address {
 	i := int(epoch) % set.Size()
@@ -224,8 +178,8 @@ func ValidatorsToCfg(set *ValidatorSet, config string) error {
 	return nil
 }
 
-// validatorsMembership validates that validators addresses are valid multi-addresses and
-// returns all validators IDs and map between IDs and multi-addresses.
+// validatorsMembership validates that validators addresses are correct multi-addresses and
+// returns all the corresponding IDs and map between these IDs and the multi-addresses.
 func validatorsMembership(validators []Validator) ([]t.NodeID, map[t.NodeID]t.NodeAddress, error) {
 	var nodeIDs []t.NodeID
 	nodeAddrs := make(map[t.NodeID]t.NodeAddress)
