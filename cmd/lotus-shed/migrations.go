@@ -6,10 +6,9 @@ import (
 	"io"
 	"time"
 
-	cbg "github.com/whyrusleeping/cbor-gen"
-
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
