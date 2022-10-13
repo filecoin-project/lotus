@@ -103,7 +103,7 @@ func init() {
 	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
 	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
 	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
-	UpgradeSharkHeight = getUpgradeHeight("LOTUS_V17_HEIGHT", UpgradeSharkHeight)
+	UpgradeSharkHeight = getUpgradeHeight("LOTUS_SHARK_HEIGHT", UpgradeSharkHeight)
 
 	BuildType |= BuildInteropnet
 	SetAddressNetwork(address.Testnet)
