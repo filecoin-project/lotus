@@ -167,17 +167,17 @@ func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot 
 		return err
 	}
 
-	err = checkDatacaps(*stateTreeV8, *stateTreeV9, actorStore)
+	err = checkDatacaps(stateTreeV8, stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
 
-	err = checkPendingVerifiedDeals(*stateTreeV8, *stateTreeV9, actorStore)
+	err = checkPendingVerifiedDeals(stateTreeV8, stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
 
-	err = checkAllMinersUnsealedCID(*stateTreeV9, actorStore)
+	err = checkAllMinersUnsealedCID(stateTreeV9, actorStore)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot 
 	return nil
 }
 
-func checkDatacaps(stateTreeV8 state.StateTree, stateTreeV9 state.StateTree, actorStore adt.Store) error {
+func checkDatacaps(stateTreeV8 *state.StateTree, stateTreeV9 *state.StateTree, actorStore adt.Store) error {
 	verifregDatacaps, err := getVerifreg8Datacaps(stateTreeV8, actorStore)
 	if err != nil {
 		return err
@@ -213,7 +213,7 @@ func checkDatacaps(stateTreeV8 state.StateTree, stateTreeV9 state.StateTree, act
 	return nil
 }
 
-func getVerifreg8Datacaps(stateTreeV8 state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
+func getVerifreg8Datacaps(stateTreeV8 *state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
 	verifregStateV8, err := getVerifregActorV8(stateTreeV8, actorStore)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get verifreg actor state: %w", err)
@@ -231,7 +231,7 @@ func getVerifreg8Datacaps(stateTreeV8 state.StateTree, actorStore adt.Store) (ma
 	return verifregDatacaps, nil
 }
 
-func getDatacap9Datacaps(stateTreeV9 state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
+func getDatacap9Datacaps(stateTreeV9 *state.StateTree, actorStore adt.Store) (map[address.Address]abi.StoragePower, error) {
 	datacapStateV9, err := getDatacapActorV9(stateTreeV9, actorStore)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get datacap actor state: %w", err)
@@ -249,7 +249,7 @@ func getDatacap9Datacaps(stateTreeV9 state.StateTree, actorStore adt.Store) (map
 	return datacaps, nil
 }
 
-func checkPendingVerifiedDeals(stateTreeV8 state.StateTree, stateTreeV9 state.StateTree, actorStore adt.Store) error {
+func checkPendingVerifiedDeals(stateTreeV8 *state.StateTree, stateTreeV9 *state.StateTree, actorStore adt.Store) error {
 	marketActorV9, err := getMarketActorV9(stateTreeV9, actorStore)
 	if err != nil {
 		return err
@@ -360,7 +360,7 @@ func checkPendingVerifiedDeals(stateTreeV8 state.StateTree, stateTreeV9 state.St
 	return nil
 }
 
-func getMarketStateV8(stateTreeV8 state.StateTree, actorStore adt.Store) (market8.State, error) {
+func getMarketStateV8(stateTreeV8 *state.StateTree, actorStore adt.Store) (market8.State, error) {
 	marketV8, err := stateTreeV8.GetActor(market.Address)
 	if err != nil {
 		return market8.State{}, err
@@ -374,7 +374,7 @@ func getMarketStateV8(stateTreeV8 state.StateTree, actorStore adt.Store) (market
 	return marketStateV8, nil
 }
 
-func getMarketStateV9(stateTreeV9 state.StateTree, actorStore adt.Store) (market9.State, error) {
+func getMarketStateV9(stateTreeV9 *state.StateTree, actorStore adt.Store) (market9.State, error) {
 	marketV9, err := stateTreeV9.GetActor(market.Address)
 	if err != nil {
 		return market9.State{}, err
@@ -388,7 +388,7 @@ func getMarketStateV9(stateTreeV9 state.StateTree, actorStore adt.Store) (market
 	return marketStateV9, nil
 }
 
-func getMarketActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (market.State, error) {
+func getMarketActorV9(stateTreeV9 *state.StateTree, actorStore adt.Store) (market.State, error) {
 	marketV9, err := stateTreeV9.GetActor(market.Address)
 	if err != nil {
 		return nil, err
@@ -397,7 +397,7 @@ func getMarketActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (market
 	return market.Load(actorStore, marketV9)
 }
 
-func getVerifregActorV8(stateTreeV8 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
+func getVerifregActorV8(stateTreeV8 *state.StateTree, actorStore adt.Store) (verifreg.State, error) {
 	verifregV8, err := stateTreeV8.GetActor(verifreg.Address)
 	if err != nil {
 		return nil, err
@@ -406,7 +406,7 @@ func getVerifregActorV8(stateTreeV8 state.StateTree, actorStore adt.Store) (veri
 	return verifreg.Load(actorStore, verifregV8)
 }
 
-func getVerifregActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (verifreg.State, error) {
+func getVerifregActorV9(stateTreeV9 *state.StateTree, actorStore adt.Store) (verifreg.State, error) {
 	verifregV9, err := stateTreeV9.GetActor(verifreg.Address)
 	if err != nil {
 		return nil, err
@@ -415,7 +415,7 @@ func getVerifregActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (veri
 	return verifreg.Load(actorStore, verifregV9)
 }
 
-func getVerifregStateV9(stateTreeV9 state.StateTree, actorStore adt.Store) (verifreg9.State, error) {
+func getVerifregStateV9(stateTreeV9 *state.StateTree, actorStore adt.Store) (verifreg9.State, error) {
 	verifregV9, err := stateTreeV9.GetActor(verifreg.Address)
 	if err != nil {
 		return verifreg9.State{}, err
@@ -429,7 +429,7 @@ func getVerifregStateV9(stateTreeV9 state.StateTree, actorStore adt.Store) (veri
 	return verifregStateV9, nil
 }
 
-func getDatacapActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (datacap.State, error) {
+func getDatacapActorV9(stateTreeV9 *state.StateTree, actorStore adt.Store) (datacap.State, error) {
 	datacapV9, err := stateTreeV9.GetActor(datacap.Address)
 	if err != nil {
 		return nil, err
@@ -438,7 +438,7 @@ func getDatacapActorV9(stateTreeV9 state.StateTree, actorStore adt.Store) (datac
 	return datacap.Load(actorStore, datacapV9)
 }
 
-func checkAllMinersUnsealedCID(stateTreeV9 state.StateTree, store adt.Store) error {
+func checkAllMinersUnsealedCID(stateTreeV9 *state.StateTree, store adt.Store) error {
 	minerCodeCid, found := actors.GetActorCodeID(actorstypes.Version9, actors.MinerKey)
 	if !found {
 		return xerrors.Errorf("could not find code cid for miner actor")
@@ -457,7 +457,7 @@ func checkAllMinersUnsealedCID(stateTreeV9 state.StateTree, store adt.Store) err
 	})
 }
 
-func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 state.StateTree, store adt.Store) error {
+func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 *state.StateTree, store adt.Store) error {
 	minerCodeCid, found := actors.GetActorCodeID(actorstypes.Version9, actors.MinerKey)
 	if !found {
 		return xerrors.Errorf("could not find code cid for miner actor")
