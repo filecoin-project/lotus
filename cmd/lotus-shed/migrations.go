@@ -145,6 +145,11 @@ var migrationsCmd = &cli.Command{
 
 		fmt.Println("new cid", newCid2)
 
+		if newCid1 != newCid2 {
+			return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
+				newCid2)
+		}
+
 		err = checkStateInvariants(ctx, blk.ParentStateRoot, newCid2, bs)
 		if err != nil {
 			return err
