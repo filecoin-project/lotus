@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -59,7 +60,11 @@ type FilecoinEC struct {
 const MaxHeightDrift = 5
 
 var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
-	epoch abi.ChainEpoch, ts *types.TipSet, params []byte) error {
+	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error {
+	ser, err := actors.SerializeParams(params)
+	if err != nil {
+		return xerrors.Errorf("failed to serialize award params: %w", err)
+	}
 	rwMsg := &types.Message{
 		From:       builtin.SystemActorAddr,
 		To:         reward.Address,
@@ -69,7 +74,7 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 		GasPremium: types.NewInt(0),
 		GasLimit:   1 << 30,
 		Method:     reward.Methods.AwardBlockReward,
-		Params:     params,
+		Params:     ser,
 	}
 	ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
 	if actErr != nil {
