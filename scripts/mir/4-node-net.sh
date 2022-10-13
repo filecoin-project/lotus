@@ -28,3 +28,5 @@ tmux new-session -d -s "mir" \; \
   send-keys -t "mir:1.3" "
         ./scripts/mir/validator.sh 3" Enter \; \
  attach-session -t "mir:0.3"
+
+ pkill -f lotus
