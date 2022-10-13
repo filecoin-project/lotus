@@ -312,7 +312,7 @@ var filplusListAllocationsCmd = &cli.Command{
 
 var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 	Name:      "remove-expired-allocations",
-	Usage:     "remove expired allocations. specify 0 allocation IDs to remove all expired allocations",
+	Usage:     "remove expired allocations (if no allocations are specified all eligible allocations are removed)",
 	ArgsUsage: "clientAddress Optional[...allocationId]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
