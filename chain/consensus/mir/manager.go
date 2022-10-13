@@ -200,6 +200,8 @@ func (m *Manager) Stop() {
 	log.With("miner", m.MirID).Infof("Mir manager shutting down")
 	defer log.With("miner", m.MirID).Info("Mir manager stopped")
 
+	m.MirNode.Stop()
+
 	if m.interceptor != nil {
 		if err := m.interceptor.Stop(); err != nil {
 			log.Errorf("Could not close interceptor: %s", err)
