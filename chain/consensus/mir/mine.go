@@ -163,9 +163,8 @@ func Mine(ctx context.Context, addr address.Address, h host.Host, api v1api.Full
 			}
 
 			// We send requests via the channel instead of calling m.SubmitRequests(ctx, requests) explicitly.
-			if len(requests) > 0 {
-				toMir <- requests
-			}
+			toMir <- requests
+
 		}
 	}
 }
