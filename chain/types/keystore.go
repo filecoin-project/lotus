@@ -39,8 +39,6 @@ func (kt *KeyType) UnmarshalJSON(bb []byte) error {
 			*kt = KTBLS
 		case crypto.SigTypeSecp256k1:
 			*kt = KTSecp256k1
-		case crypto.SigTypeDelegated:
-			*kt = KTDelegated
 		default:
 			return fmt.Errorf("unknown sigtype: %d", bst)
 		}
@@ -53,7 +51,6 @@ const (
 	KTBLS             KeyType = "bls"
 	KTSecp256k1       KeyType = "secp256k1"
 	KTSecp256k1Ledger KeyType = "secp256k1-ledger"
-	KTDelegated       KeyType = "delegated"
 )
 
 // KeyInfo is used for storing keys in KeyStore
