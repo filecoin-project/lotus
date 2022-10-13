@@ -1,11 +1,9 @@
 package retry
 
 import (
-	"time"
-
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/filecoin-project/lotus/api"
+	logging "github.com/ipfs/go-log/v2"
+	"time"
 )
 
 var log = logging.Logger("retry")
