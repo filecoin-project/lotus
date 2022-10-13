@@ -1208,6 +1208,8 @@ COMMANDS:
    check-client-datacap           check verified client remaining bytes
    check-notary-datacap           check a notary's remaining bytes
    sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
+   list-allocations               List allocations made by client
+   remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1290,6 +1292,32 @@ USAGE:
 
 OPTIONS:
    --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
+   
+```
+
+### lotus filplus list-allocations
+```
+NAME:
+   lotus filplus list-allocations - List allocations made by client
+
+USAGE:
+   lotus filplus list-allocations [command options] clientAddress
+
+OPTIONS:
+   --expired  list only expired allocations (default: false)
+   
+```
+
+### lotus filplus remove-expired-allocations
+```
+NAME:
+   lotus filplus remove-expired-allocations - remove expired allocations (if no allocations are specified all eligible allocations are removed)
+
+USAGE:
+   lotus filplus remove-expired-allocations [command options] clientAddress Optional[...allocationId]
+
+OPTIONS:
+   --from value  optionally specify the account to send the message from
    
 ```
 

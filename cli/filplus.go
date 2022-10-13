@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"strconv"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
@@ -26,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
 var filplusCmd = &cli.Command{
@@ -39,6 +42,8 @@ var filplusCmd = &cli.Command{
 		filplusCheckClientCmd,
 		filplusCheckNotaryCmd,
 		filplusSignRemoveDataCapProposal,
+		filplusListAllocationsCmd,
+		filplusRemoveExpiredAllocationsCmd,
 	},
 }
 
@@ -221,6 +226,180 @@ var filplusListClientsCmd = &cli.Command{
 			_, err := fmt.Printf("%s: %s\n", addr, dcap)
 			return err
 		})
+	},
+}
+
+var filplusListAllocationsCmd = &cli.Command{
+	Name:      "list-allocations",
+	Usage:     "List allocations made by client",
+	ArgsUsage: "clientAddress",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "expired",
+			Usage: "list only expired allocations",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		clientAddr, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		clientIdAddr, err := api.StateLookupID(ctx, clientAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		verifregState, err := verifreg.Load(store, verifregActor)
+		if err != nil {
+			return err
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		allocationsMap, err := verifregState.GetAllocations(clientIdAddr)
+		if err != nil {
+			return err
+		}
+
+		tw := tablewriter.New(
+			tablewriter.Col("ID"),
+			tablewriter.Col("Provider"),
+			tablewriter.Col("Data"),
+			tablewriter.Col("Size"),
+			tablewriter.Col("TermMin"),
+			tablewriter.Col("TermMax"),
+			tablewriter.Col("Expiration"),
+		)
+
+		for allocationId, allocation := range allocationsMap {
+			if ts.Height() > allocation.Expiration || !cctx.IsSet("expired") {
+				tw.Write(map[string]interface{}{
+					"ID":         allocationId,
+					"Provider":   allocation.Provider,
+					"Data":       allocation.Data,
+					"Size":       allocation.Size,
+					"TermMin":    allocation.TermMin,
+					"TermMax":    allocation.TermMax,
+					"Expiration": allocation.Expiration,
+				})
+			}
+		}
+		return tw.Flush(os.Stdout)
+	},
+}
+
+var filplusRemoveExpiredAllocationsCmd = &cli.Command{
+	Name:      "remove-expired-allocations",
+	Usage:     "remove expired allocations (if no allocations are specified all eligible allocations are removed)",
+	ArgsUsage: "clientAddress Optional[...allocationId]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to send the message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		args := cctx.Args().Slice()
+
+		clientAddr, err := address.NewFromString(args[0])
+		if err != nil {
+			return err
+		}
+
+		clientIdAddr, err := api.StateLookupID(ctx, clientAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		clientId, err := address.IDFromAddress(clientIdAddr)
+		if err != nil {
+			return err
+		}
+
+		fromAddr := clientIdAddr
+		if from := cctx.String("from"); from != "" {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		allocationIDs := make([]verifregtypes9.AllocationId, len(args)-1)
+		for i, allocationString := range args[1:] {
+			id, err := strconv.ParseUint(allocationString, 10, 64)
+			if err != nil {
+				return err
+			}
+			allocationIDs[i] = verifregtypes9.AllocationId(id)
+		}
+
+		params, err := actors.SerializeParams(&verifregtypes9.RemoveExpiredAllocationsParams{
+			Client:        abi.ActorID(clientId),
+			AllocationIds: allocationIDs,
+		})
+		if err != nil {
+			return err
+		}
+
+		msg := &types.Message{
+			To:     verifreg.Address,
+			From:   fromAddr,
+			Method: verifreg.Methods.RemoveExpiredAllocations,
+			Params: params,
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
+
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if mwait.Receipt.ExitCode.IsError() {
+			return fmt.Errorf("failed to remove expired allocations: %d", mwait.Receipt.ExitCode)
+		}
+
+		return nil
 	},
 }
 
