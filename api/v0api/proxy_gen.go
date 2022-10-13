@@ -5,11 +5,6 @@ package v0api
 import (
 	"context"
 
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -30,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"golang.org/x/xerrors"
 )
 
