@@ -39,8 +39,6 @@ func (kt *KeyType) UnmarshalJSON(bb []byte) error {
 			*kt = KTBLS
 		case crypto.SigTypeSecp256k1:
 			*kt = KTSecp256k1
-		case crypto.SigTypeDelegated:
-			*kt = KTDelegated
 		default:
 			return fmt.Errorf("unknown sigtype: %d", bst)
 		}

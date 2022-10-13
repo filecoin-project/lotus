@@ -3,8 +3,9 @@ package mir
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
 )
 
 func TestValidatorsFromString(t *testing.T) {

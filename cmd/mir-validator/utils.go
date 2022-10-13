@@ -9,13 +9,14 @@ import (
 	"os"
 	"path/filepath"
 
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 func repoInitialized(ctx context.Context, cctx *cli.Context) error {

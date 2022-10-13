@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/types"
 	"github.com/filecoin-project/mir/pkg/dsl"
 	mpdsl "github.com/filecoin-project/mir/pkg/mempool/dsl"
 	"github.com/filecoin-project/mir/pkg/pb/mempoolpb"
 	"github.com/filecoin-project/mir/pkg/pb/requestpb"
 	"github.com/filecoin-project/mir/pkg/serializing"
 	t "github.com/filecoin-project/mir/pkg/types"
+
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/types"
 )
 
 // IncludeComputationOfTransactionAndBatchIDs registers event handler for processing RequestTransactionIDs and

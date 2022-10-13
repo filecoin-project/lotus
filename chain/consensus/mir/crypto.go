@@ -7,9 +7,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	filcrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/api"
 	mircrypto "github.com/filecoin-project/mir/pkg/crypto"
 	t "github.com/filecoin-project/mir/pkg/types"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 var MsgMeta = api.MsgMeta{Type: "mir-message"}

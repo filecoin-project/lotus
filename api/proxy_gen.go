@@ -7,6 +7,15 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -21,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
+
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -32,14 +42,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/metrics"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -215,48 +217,6 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		EthAccounts func(p0 context.Context) ([]EthAddress, error) `perm:"read"`
-
-		EthBlockNumber func(p0 context.Context) (EthUint64, error) `perm:"read"`
-
-		EthCall func(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) `perm:"read"`
-
-		EthChainId func(p0 context.Context) (EthUint64, error) `perm:"read"`
-
-		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthUint64, error) `perm:"read"`
-
-		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
-
-		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
-
-		EthGetBlockByHash func(p0 context.Context, p1 EthHash, p2 bool) (EthBlock, error) `perm:"read"`
-
-		EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (EthBlock, error) `perm:"read"`
-
-		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 EthHash) (EthUint64, error) `perm:"read"`
-
-		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 EthUint64) (EthUint64, error) `perm:"read"`
-
-		EthGetCode func(p0 context.Context, p1 EthAddress) (EthBytes, error) `perm:"read"`
-
-		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) `perm:"read"`
-
-		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) `perm:"read"`
-
-		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 EthUint64, p2 EthUint64) (EthTx, error) `perm:"read"`
-
-		EthGetTransactionByHash func(p0 context.Context, p1 *EthHash) (*EthTx, error) `perm:"read"`
-
-		EthGetTransactionCount func(p0 context.Context, p1 EthAddress, p2 string) (EthUint64, error) `perm:"read"`
-
-		EthGetTransactionReceipt func(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) `perm:"read"`
-
-		EthMaxPriorityFeePerGas func(p0 context.Context) (EthBigInt, error) `perm:"read"`
-
-		EthProtocolVersion func(p0 context.Context) (EthUint64, error) `perm:"read"`
-
-		EthSendRawTransaction func(p0 context.Context, p1 EthBytes) (EthHash, error) `perm:"read"`
-
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		GasEstimateGasLimit func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) `perm:"read"`
@@ -344,10 +304,6 @@ type FullNodeStruct struct {
 		MsigSwapCancel func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*MessagePrototype, error) `perm:"sign"`
 
 		MsigSwapPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) `perm:"sign"`
-
-		NetListening func(p0 context.Context) (bool, error) `perm:"read"`
-
-		NetVersion func(p0 context.Context) (string, error) `perm:"read"`
 
 		NodeStatus func(p0 context.Context, p1 bool) (NodeStatus, error) `perm:"read"`
 
@@ -1826,237 +1782,6 @@ func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]EthAddress, error) {
-	if s.Internal.EthAccounts == nil {
-		return *new([]EthAddress), ErrNotSupported
-	}
-	return s.Internal.EthAccounts(p0)
-}
-
-func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]EthAddress, error) {
-	return *new([]EthAddress), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (EthUint64, error) {
-	if s.Internal.EthBlockNumber == nil {
-		return *new(EthUint64), ErrNotSupported
-	}
-	return s.Internal.EthBlockNumber(p0)
-}
-
-func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
-	if s.Internal.EthCall == nil {
-		return *new(EthBytes), ErrNotSupported
-	}
-	return s.Internal.EthCall(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
-	return *new(EthBytes), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthChainId(p0 context.Context) (EthUint64, error) {
-	if s.Internal.EthChainId == nil {
-		return *new(EthUint64), ErrNotSupported
-	}
-	return s.Internal.EthChainId(p0)
-}
-
-func (s *FullNodeStub) EthChainId(p0 context.Context) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64, error) {
-	if s.Internal.EthEstimateGas == nil {
-		return *new(EthUint64), ErrNotSupported
-	}
-	return s.Internal.EthEstimateGas(p0, p1)
-}
-
-func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthBigInt, error) {
-	if s.Internal.EthGasPrice == nil {
-		return *new(EthBigInt), ErrNotSupported
-	}
-	return s.Internal.EthGasPrice(p0)
-}
-
-func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthBigInt, error) {
-	return *new(EthBigInt), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) {
-	if s.Internal.EthGetBalance == nil {
-		return *new(EthBigInt), ErrNotSupported
-	}
-	return s.Internal.EthGetBalance(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) {
-	return *new(EthBigInt), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 EthHash, p2 bool) (EthBlock, error) {
-	if s.Internal.EthGetBlockByHash == nil {
-		return *new(EthBlock), ErrNotSupported
-	}
-	return s.Internal.EthGetBlockByHash(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 EthHash, p2 bool) (EthBlock, error) {
-	return *new(EthBlock), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
-	if s.Internal.EthGetBlockByNumber == nil {
-		return *new(EthBlock), ErrNotSupported
-	}
-	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
-	return *new(EthBlock), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 EthHash) (EthUint64, error) {
-	if s.Internal.EthGetBlockTransactionCountByHash == nil {
-		return *new(EthUint64), ErrNotSupported
-	}
-	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
-}
-
-func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 EthHash) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 EthUint64) (EthUint64, error) {
-	if s.Internal.EthGetBlockTransactionCountByNumber == nil {
-		return *new(EthUint64), ErrNotSupported
-	}
-	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
-}
-
-func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 EthUint64) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
-	if s.Internal.EthGetCode == nil {
-		return *new(EthBytes), ErrNotSupported
-	}
-	return s.Internal.EthGetCode(p0, p1)
-}
-
-func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
-	return *new(EthBytes), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) {
-	if s.Internal.EthGetStorageAt == nil {
-		return *new(EthBytes), ErrNotSupported
-	}
-	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
-}
-
-func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) {
-	return *new(EthBytes), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) {
-	if s.Internal.EthGetTransactionByBlockHashAndIndex == nil {
-		return *new(EthTx), ErrNotSupported
-	}
-	return s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) {
-	return *new(EthTx), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 EthUint64, p2 EthUint64) (EthTx, error) {
-	if s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {
-		return *new(EthTx), ErrNotSupported
-	}
-	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 EthUint64, p2 EthUint64) (EthTx, error) {
-	return *new(EthTx), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 *EthHash) (*EthTx, error) {
-	if s.Internal.EthGetTransactionByHash == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.EthGetTransactionByHash(p0, p1)
-}
-
-func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 *EthHash) (*EthTx, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 EthAddress, p2 string) (EthUint64, error) {
-	if s.Internal.EthGetTransactionCount == nil {
-		return *new(EthUint64), ErrNotSupported
-	}
-	return s.Internal.EthGetTransactionCount(p0, p1, p2)
-}
-
-func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 EthAddress, p2 string) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) {
-	if s.Internal.EthGetTransactionReceipt == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.EthGetTransactionReceipt(p0, p1)
-}
-
-func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) {
-	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
-	if s.Internal.EthMaxPriorityFeePerGas == nil {
-		return *new(EthBigInt), ErrNotSupported
-	}
-	return s.Internal.EthMaxPriorityFeePerGas(p0)
-}
-
-func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
-	return *new(EthBigInt), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthUint64, error) {
-	if s.Internal.EthProtocolVersion == nil {
-		return *new(EthUint64), ErrNotSupported
-	}
-	return s.Internal.EthProtocolVersion(p0)
-}
-
-func (s *FullNodeStub) EthProtocolVersion(p0 context.Context) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
-}
-
-func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
-	if s.Internal.EthSendRawTransaction == nil {
-		return *new(EthHash), ErrNotSupported
-	}
-	return s.Internal.EthSendRawTransaction(p0, p1)
-}
-
-func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
-	return *new(EthHash), ErrNotSupported
-}
-
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
 	if s.Internal.GasEstimateFeeCap == nil {
 		return *new(types.BigInt), ErrNotSupported
@@ -2539,28 +2264,6 @@ func (s *FullNodeStruct) MsigSwapPropose(p0 context.Context, p1 address.Address,
 
 func (s *FullNodeStub) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) NetListening(p0 context.Context) (bool, error) {
-	if s.Internal.NetListening == nil {
-		return false, ErrNotSupported
-	}
-	return s.Internal.NetListening(p0)
-}
-
-func (s *FullNodeStub) NetListening(p0 context.Context) (bool, error) {
-	return false, ErrNotSupported
-}
-
-func (s *FullNodeStruct) NetVersion(p0 context.Context) (string, error) {
-	if s.Internal.NetVersion == nil {
-		return "", ErrNotSupported
-	}
-	return s.Internal.NetVersion(p0)
-}
-
-func (s *FullNodeStub) NetVersion(p0 context.Context) (string, error) {
-	return "", ErrNotSupported
 }
 
 func (s *FullNodeStruct) NodeStatus(p0 context.Context, p1 bool) (NodeStatus, error) {

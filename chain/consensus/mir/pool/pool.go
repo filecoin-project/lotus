@@ -2,11 +2,12 @@
 package pool
 
 import (
-	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/handlers"
-	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/types"
 	"github.com/filecoin-project/mir/pkg/dsl"
 	"github.com/filecoin-project/mir/pkg/modules"
 	"github.com/filecoin-project/mir/pkg/pb/requestpb"
+
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/handlers"
+	"github.com/filecoin-project/lotus/chain/consensus/mir/pool/types"
 )
 
 // ModuleConfig sets the module ids. All replicas are expected to use identical module configurations.

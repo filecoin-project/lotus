@@ -1145,7 +1145,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 		}
 	}
 	for _, m := range bst.Secpk {
-		if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
+		if m.Signature.Type != crypto.SigTypeSecp256k1 {
 			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())

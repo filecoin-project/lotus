@@ -8,10 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -21,8 +21,8 @@ const Consensus ConsensusType = Mir
 const BootstrappersFile = ""
 const GenesisFile = ""
 
-var NetworkBundle = "devnet-wasm"
-var BundleOverrides map[actors.Version]string
+var NetworkBundle = "devnet"
+var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = false
 
 // FIXME: The following will be used to address this issue:
@@ -65,6 +65,7 @@ var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 var UpgradeSkyrHeight = abi.ChainEpoch(-19)
+var UpgradeV17Height = abi.ChainEpoch(-20)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,

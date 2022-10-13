@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/filecoin-project/lotus/chain/consensus/mir"
 	gen "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/lotus/chain/consensus/mir"
 )
 
 func main() {

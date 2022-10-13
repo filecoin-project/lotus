@@ -68,8 +68,6 @@ func ActSigType(typ types.KeyType) crypto.SigType {
 		return crypto.SigTypeBLS
 	case types.KTSecp256k1:
 		return crypto.SigTypeSecp256k1
-	case types.KTDelegated:
-		return crypto.SigTypeDelegated
 	default:
 		return crypto.SigTypeUnknown
 	}

@@ -9,10 +9,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	filcrypto "github.com/filecoin-project/go-state-types/crypto"
+	mirTypes "github.com/filecoin-project/mir/pkg/types"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	mirTypes "github.com/filecoin-project/mir/pkg/types"
 )
 
 type cryptoNode struct {
