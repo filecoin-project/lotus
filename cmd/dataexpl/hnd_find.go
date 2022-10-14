@@ -4,16 +4,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/index-provider/metadata"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/gorilla/mux"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"net/http"
 	"sync"
 	txtempl "text/template"
+
+	"github.com/gorilla/mux"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/index-provider/metadata"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (h *dxhnd) handleFind(w http.ResponseWriter, r *http.Request) {

@@ -5,14 +5,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
+	"net/http"
+	"time"
+
 	"github.com/gorilla/mux"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
-	"net/http"
-	"time"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (h *dxhnd) handlePingMiner(w http.ResponseWriter, r *http.Request) {

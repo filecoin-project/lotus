@@ -1571,7 +1571,23 @@ func (t *RemoteStore) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{161}); err != nil {
+	if _, err := cw.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.GetURL (api.URLTemplate) (struct)
+	if len("GetURL") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"GetURL\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("GetURL"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("GetURL")); err != nil {
+		return err
+	}
+
+	if err := t.GetURL.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
@@ -1631,7 +1647,17 @@ func (t *RemoteStore) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		switch name {
-		// t.PutURL (api.URLTemplate) (struct)
+		// t.GetURL (api.URLTemplate) (struct)
+		case "GetURL":
+
+			{
+
+				if err := t.GetURL.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.GetURL: %w", err)
+				}
+
+			}
+			// t.PutURL (api.URLTemplate) (struct)
 		case "PutURL":
 
 			{

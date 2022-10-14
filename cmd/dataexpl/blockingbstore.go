@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	bstore "github.com/filecoin-project/lotus/blockstore"
+	"sync"
+
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
-	"sync"
+
+	bstore "github.com/filecoin-project/lotus/blockstore"
 )
 
 type blockReadBs struct {

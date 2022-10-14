@@ -1987,6 +1987,15 @@ Inputs:
       "PieceCID": null
     },
     "RemoteStore": {
+      "GetURL": {
+        "UrlTemplate": "string value",
+        "Headers": [
+          {
+            "Key": "string value",
+            "Value": "string value"
+          }
+        ]
+      },
       "PutURL": {
         "UrlTemplate": "string value",
         "Headers": [

@@ -3,7 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
+	"html/template"
+	"io"
+	"net/http"
+	gopath "path"
+	"strings"
+	txtempl "text/template"
+
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
@@ -15,12 +21,8 @@ import (
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"html/template"
-	"io"
-	"net/http"
-	gopath "path"
-	"strings"
-	txtempl "text/template"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (h *dxhnd) handleViewIPLD(w http.ResponseWriter, r *http.Request, node format.Node, dserv format.DAGService, tpldata map[string]interface{}) {

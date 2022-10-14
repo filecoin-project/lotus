@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	ipld "github.com/ipfs/go-ipld-format"
 	"io"
 	"net/http"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"

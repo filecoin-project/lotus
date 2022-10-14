@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/markets/utils"
+
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
@@ -11,6 +11,8 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/markets/utils"
 )
 
 func findRoot(ctx context.Context, root cid.Cid, selspec builder.SelectorSpec, ds format.DAGService) (cid.Cid, map[string]struct{}, error) {

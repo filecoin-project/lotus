@@ -4,9 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-address"
-	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/types"
+	"html/template"
+	"io"
+	"mime"
+	"net/http"
+	gopath "path"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-blockservice"
@@ -21,14 +27,11 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"golang.org/x/xerrors"
-	"html/template"
-	"io"
-	"mime"
-	"net/http"
-	gopath "path"
-	"strconv"
-	"strings"
-	"time"
+
+	"github.com/filecoin-project/go-address"
+
+	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (h *dxhnd) handleViewFil(w http.ResponseWriter, r *http.Request) {
