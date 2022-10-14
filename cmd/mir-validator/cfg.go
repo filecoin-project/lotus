@@ -67,6 +67,9 @@ func cleanConfig(repo string) {
 	log.Infow("Cleaning mir config files from repo")
 	for _, s := range configFiles {
 		p := filepath.Join(repo, s)
-		os.Remove(p)
+		err := os.Remove(p)
+		if err != nil {
+			log.Warnf("error cleaning config file %s: %s", s, err)
+		}
 	}
 }

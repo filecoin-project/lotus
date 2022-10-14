@@ -12,10 +12,6 @@ import (
 	"github.com/filecoin-project/mir/pkg/util/maputil"
 )
 
-const (
-	availabilityModuleID = t.ModuleID("availability")
-)
-
 var _ smr.AppLogic = &StateManager{}
 
 type Message []byte
@@ -138,14 +134,14 @@ func (sm *StateManager) NewEpoch(nr t.EpochNr) (map[t.NodeID]t.NodeAddress, erro
 	}
 
 	// The base membership is the last one membership.
-	newMembership := maputil.Copy(sm.memberships[t.EpochNr(nr+ConfigOffset)])
+	newMembership := maputil.Copy(sm.memberships[nr+ConfigOffset])
 
 	// Append a new membership data structure to be modified throughout the new epoch.
-	sm.memberships[t.EpochNr(nr+ConfigOffset+1)] = newMembership
+	sm.memberships[nr+ConfigOffset+1] = newMembership
 
 	// Update current epoch number.
 	oldEpoch := sm.currentEpoch
-	sm.currentEpoch = t.EpochNr(nr)
+	sm.currentEpoch = nr
 
 	// Remove old membership.
 	delete(sm.memberships, oldEpoch)

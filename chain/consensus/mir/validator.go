@@ -147,7 +147,14 @@ func GetValidatorsFromCfg(config string) (*ValidatorSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer readFile.Close()
+
+	defer func() {
+		err := readFile.Close()
+		if err != nil {
+			log.Warnf("error closing membership config file: %w", err)
+		}
+	}()
+
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)
 
@@ -168,7 +175,12 @@ func ValidatorsToCfg(set *ValidatorSet, config string) error {
 		panic(err)
 	}
 
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			log.Warnf("error closing membership config file: %w", err)
+		}
+	}()
 
 	for _, v := range set.Validators {
 		if _, err = f.WriteString(v.String() + "\n"); err != nil {
