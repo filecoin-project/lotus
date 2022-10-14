@@ -60,4 +60,6 @@ func init() {
 	// We need to _run_ this upgrade because genesis doesn't support v2, so
 	// we run it at height 0.
 	build.UpgradeAssemblyHeight = 0
+
+	build.Consensus = build.Mir
 }
