@@ -65,28 +65,6 @@
   * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
-* [Eth](#Eth)
-  * [EthAccounts](#EthAccounts)
-  * [EthBlockNumber](#EthBlockNumber)
-  * [EthCall](#EthCall)
-  * [EthChainId](#EthChainId)
-  * [EthEstimateGas](#EthEstimateGas)
-  * [EthGasPrice](#EthGasPrice)
-  * [EthGetBalance](#EthGetBalance)
-  * [EthGetBlockByHash](#EthGetBlockByHash)
-  * [EthGetBlockByNumber](#EthGetBlockByNumber)
-  * [EthGetBlockTransactionCountByHash](#EthGetBlockTransactionCountByHash)
-  * [EthGetBlockTransactionCountByNumber](#EthGetBlockTransactionCountByNumber)
-  * [EthGetCode](#EthGetCode)
-  * [EthGetStorageAt](#EthGetStorageAt)
-  * [EthGetTransactionByBlockHashAndIndex](#EthGetTransactionByBlockHashAndIndex)
-  * [EthGetTransactionByBlockNumberAndIndex](#EthGetTransactionByBlockNumberAndIndex)
-  * [EthGetTransactionByHash](#EthGetTransactionByHash)
-  * [EthGetTransactionCount](#EthGetTransactionCount)
-  * [EthGetTransactionReceipt](#EthGetTransactionReceipt)
-  * [EthMaxPriorityFeePerGas](#EthMaxPriorityFeePerGas)
-  * [EthProtocolVersion](#EthProtocolVersion)
-  * [EthSendRawTransaction](#EthSendRawTransaction)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -157,7 +135,6 @@
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
   * [NetLimit](#NetLimit)
-  * [NetListening](#NetListening)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPing](#NetPing)
@@ -167,7 +144,6 @@
   * [NetPubsubScores](#NetPubsubScores)
   * [NetSetLimit](#NetSetLimit)
   * [NetStat](#NetStat)
-  * [NetVersion](#NetVersion)
 * [Node](#Node)
   * [NodeStatus](#NodeStatus)
 * [Paych](#Paych)
@@ -247,6 +223,7 @@
   * [StateVerifierStatus](#StateVerifierStatus)
   * [StateWaitMsg](#StateWaitMsg)
 * [Sync](#Sync)
+  * [SyncBlock](#SyncBlock)
   * [SyncCheckBad](#SyncCheckBad)
   * [SyncCheckpoint](#SyncCheckpoint)
   * [SyncIncomingBlocks](#SyncIncomingBlocks)
@@ -2140,445 +2117,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-## Eth
-These methods are used for Ethereum-compatible JSON-RPC calls
-
-EthAccounts will always return [] since we don't expect Lotus to manage private keys
-
-
-### EthAccounts
-There are not yet any comments for this method.
-
-Perms: read
-
-Inputs: `null`
-
-Response:
-```json
-[
-  "0x0707070707070707070707070707070707070707"
-]
-```
-
-### EthBlockNumber
-EthBlockNumber returns the height of the latest (heaviest) TipSet
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `"0x5"`
-
-### EthCall
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "from": "0x0707070707070707070707070707070707070707",
-    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-    "gas": "0x5",
-    "gasPrice": "0x0",
-    "value": "0x0",
-    "data": "0x07"
-  },
-  "string value"
-]
-```
-
-Response: `"0x07"`
-
-### EthChainId
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `"0x5"`
-
-### EthEstimateGas
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  {
-    "from": "0x0707070707070707070707070707070707070707",
-    "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-    "gas": "0x5",
-    "gasPrice": "0x0",
-    "value": "0x0",
-    "data": "0x07"
-  }
-]
-```
-
-Response: `"0x5"`
-
-### EthGasPrice
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `"0x0"`
-
-### EthGetBalance
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707",
-  "string value"
-]
-```
-
-Response: `"0x0"`
-
-### EthGetBlockByHash
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707070707070707070707070707",
-  true
-]
-```
-
-Response:
-```json
-{
-  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "miner": "0x0707070707070707070707070707070707070707",
-  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "difficulty": "0x5",
-  "number": "0x5",
-  "gasLimit": "0x5",
-  "gasUsed": "0x5",
-  "timestamp": "0x5",
-  "extraData": "Ynl0ZSBhcnJheQ==",
-  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "nonce": "0x0707070707070707",
-  "baseFeePerGas": "0x0",
-  "size": "0x5",
-  "transactions": [
-    {}
-  ],
-  "uncles": [
-    "0x0707070707070707070707070707070707070707070707070707070707070707"
-  ]
-}
-```
-
-### EthGetBlockByNumber
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "string value",
-  true
-]
-```
-
-Response:
-```json
-{
-  "parentHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "sha3Uncles": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "miner": "0x0707070707070707070707070707070707070707",
-  "stateRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "transactionsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "receiptsRoot": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "difficulty": "0x5",
-  "number": "0x5",
-  "gasLimit": "0x5",
-  "gasUsed": "0x5",
-  "timestamp": "0x5",
-  "extraData": "Ynl0ZSBhcnJheQ==",
-  "mixHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "nonce": "0x0707070707070707",
-  "baseFeePerGas": "0x0",
-  "size": "0x5",
-  "transactions": [
-    {}
-  ],
-  "uncles": [
-    "0x0707070707070707070707070707070707070707070707070707070707070707"
-  ]
-}
-```
-
-### EthGetBlockTransactionCountByHash
-EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707070707070707070707070707"
-]
-```
-
-Response: `"0x5"`
-
-### EthGetBlockTransactionCountByNumber
-EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x5"
-]
-```
-
-Response: `"0x5"`
-
-### EthGetCode
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707"
-]
-```
-
-Response: `"0x07"`
-
-### EthGetStorageAt
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707",
-  "0x07",
-  "string value"
-]
-```
-
-Response: `"0x07"`
-
-### EthGetTransactionByBlockHashAndIndex
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "0x5"
-]
-```
-
-Response:
-```json
-{
-  "chainId": "0x5",
-  "nonce": "0x5",
-  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockNumber": "0x5",
-  "transacionIndex": "0x5",
-  "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "value": "0x0",
-  "type": "0x5",
-  "input": "0x07",
-  "gas": "0x5",
-  "gasLimit": "0x5",
-  "maxFeePerGas": "0x0",
-  "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
-}
-```
-
-### EthGetTransactionByBlockNumberAndIndex
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x5",
-  "0x5"
-]
-```
-
-Response:
-```json
-{
-  "chainId": "0x5",
-  "nonce": "0x5",
-  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockNumber": "0x5",
-  "transacionIndex": "0x5",
-  "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "value": "0x0",
-  "type": "0x5",
-  "input": "0x07",
-  "gas": "0x5",
-  "gasLimit": "0x5",
-  "maxFeePerGas": "0x0",
-  "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
-}
-```
-
-### EthGetTransactionByHash
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
-]
-```
-
-Response:
-```json
-{
-  "chainId": "0x5",
-  "nonce": "0x5",
-  "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockNumber": "0x5",
-  "transacionIndex": "0x5",
-  "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "value": "0x0",
-  "type": "0x5",
-  "input": "0x07",
-  "gas": "0x5",
-  "gasLimit": "0x5",
-  "maxFeePerGas": "0x0",
-  "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
-}
-```
-
-### EthGetTransactionCount
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707",
-  "string value"
-]
-```
-
-Response: `"0x5"`
-
-### EthGetTransactionReceipt
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x0707070707070707070707070707070707070707070707070707070707070707"
-]
-```
-
-Response:
-```json
-{
-  "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "transactionIndex": "0x5",
-  "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockNumber": "0x5",
-  "from": "0x0707070707070707070707070707070707070707",
-  "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "root": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "status": "0x5",
-  "contractAddress": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "cumulativeGasUsed": "0x5",
-  "gasUsed": "0x5",
-  "effectiveGasPrice": "0x0",
-  "logsBloom": "0x07",
-  "logs": [
-    "string value"
-  ]
-}
-```
-
-### EthMaxPriorityFeePerGas
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `"0x0"`
-
-### EthProtocolVersion
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `"0x5"`
-
-### EthSendRawTransaction
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "0x07"
-]
-```
-
-Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
 
 ## Gas
 
@@ -4703,15 +4241,6 @@ Response:
 }
 ```
 
-### NetListening
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `true`
-
 ### NetPeerInfo
 
 
@@ -4944,15 +4473,6 @@ Response:
   }
 }
 ```
-
-### NetVersion
-
-
-Perms: read
-
-Inputs: `null`
-
-Response: `"string value"`
 
 ## Node
 These methods are general node management and status commands
@@ -7796,6 +7316,82 @@ Response:
 The Sync method group contains methods for interacting with and
 observing the lotus sync service.
 
+
+### SyncBlock
+SyncBlock can be used to deliver a block to the syncer without
+broadcasting it to the rest of the network.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "Header": {
+      "Miner": "f01234",
+      "Ticket": {
+        "VRFProof": "Ynl0ZSBhcnJheQ=="
+      },
+      "ElectionProof": {
+        "WinCount": 9,
+        "VRFProof": "Ynl0ZSBhcnJheQ=="
+      },
+      "BeaconEntries": [
+        {
+          "Round": 42,
+          "Data": "Ynl0ZSBhcnJheQ=="
+        }
+      ],
+      "WinPoStProof": [
+        {
+          "PoStProof": 8,
+          "ProofBytes": "Ynl0ZSBhcnJheQ=="
+        }
+      ],
+      "Parents": [
+        {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        }
+      ],
+      "ParentWeight": "0",
+      "Height": 10101,
+      "ParentStateRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "ParentMessageReceipts": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Messages": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "BLSAggregate": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "Timestamp": 42,
+      "BlockSig": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      },
+      "ForkSignaling": 42,
+      "ParentBaseFee": "0"
+    },
+    "BlsMessages": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ],
+    "SecpkMessages": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ]
+  }
+]
+```
+
+Response: `{}`
 
 ### SyncCheckBad
 SyncCheckBad checks if a block was marked as bad, and if it was, returns
