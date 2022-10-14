@@ -427,6 +427,7 @@ jobs:
       - run:
           name: Update Go
           command: |
+            sudo rm -rf /usr/local/go && \
             curl -L https://golang.org/dl/go1.18.1.linux-amd64.tar.gz -o /tmp/go.tar.gz && \
             sudo tar -C /usr/local -xvf /tmp/go.tar.gz
       - run: go version
