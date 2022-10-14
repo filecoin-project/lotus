@@ -2059,6 +2059,7 @@ COMMANDS:
    decode                            decode various types
    encode                            encode various types
    disputer                          interact with the window post disputer
+   prune                             prune the stored chain state and perform garbage collection
    help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2378,6 +2379,22 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus chain prune
+```
+NAME:
+   lotus chain prune - prune the stored chain state and perform garbage collection
+
+USAGE:
+   lotus chain prune [command options] [arguments...]
+
+OPTIONS:
+   --move-to value    specify new path for coldstore during moving gc
+   --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
+   --online-gc        use online gc for garbage collecting the coldstore (default: false)
+   --retention value  specify state retention policy (default: -1)
    
 ```
 
