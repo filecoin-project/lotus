@@ -1,7 +1,7 @@
 # Mir Validator
 `mir-validator` is an application to manage a Mir validator.
 
-Use `make mir-validator` or `make buildernet` to compile the application. To
+Use `make mir-validator` or `make spacenet` to compile the application. To
 run a validator you need to:
 - First spawn a lotus-daemon.
 - Initialize the configuration of mir-validator in $LOTUS_PATH. 

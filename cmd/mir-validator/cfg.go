@@ -7,8 +7,9 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/filecoin-project/lotus/chain/consensus/mir"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/lotus/chain/consensus/mir"
 )
 
 // TODO: Make these config files configurable.

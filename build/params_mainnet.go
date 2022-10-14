@@ -1,5 +1,5 @@
-//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet && !buildernet
-// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet,!buildernet
+//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet && !spacenet
+// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet,!spacenet
 
 package build
 
@@ -24,9 +24,6 @@ var NetworkBundle = "mainnet"
 
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
 var BundleOverrides map[actorstypes.Version]string
-
-// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-const ActorDebugging = false
 
 const GenesisNetworkVersion = network.Version0
 
@@ -126,10 +123,6 @@ const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4
-
-// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
-// As per https://github.com/ethereum-lists/chains
-const Eip155ChainId = 314
 
 // we skip checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")

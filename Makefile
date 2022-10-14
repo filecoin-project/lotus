@@ -74,10 +74,10 @@ debug: build-devnets
 2k: build-devnets
 
 
-buildernet: GOFLAGS+=-tags=buildernet
-buildernet: lotus lotus-miner mir-validator
+spacenet: GOFLAGS+=-tags=spacenet
+spacenet: lotus lotus-miner mir-validator
 # FIXME: Uncomment to build everything.
-# buildernet: build lotus lotus-miner mir-validator lotus-seed lotus-shed lotus-wallet lotus-gateway lotus-fountain lotus-stats
+# spacenet: build lotus lotus-miner mir-validator lotus-seed lotus-shed lotus-wallet lotus-gateway lotus-fountain lotus-stats
 
 calibnet: GOFLAGS+=-tags=calibnet
 calibnet: build-devnets

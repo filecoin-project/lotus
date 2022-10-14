@@ -130,8 +130,6 @@ const InteractivePoRepConfidence = 6
 
 const BootstrapPeerThreshold = 1
 
-// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
-// As per https://github.com/ethereum-lists/chains
-const Eip155ChainId = 31415926
-
 var WhitelistedBlock = cid.Undef
+
+const Consensus ConsensusType = FilecoinEC

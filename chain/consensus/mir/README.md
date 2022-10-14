@@ -9,14 +9,14 @@ Lotus and [Mir](https://github.com/filecoin-project/mir) requirements must be sa
 The most important one is Go1.18+, with that you are probably able to figure out the rest yourself.
 
 ## Install
-To use Mir in lotus, you need to compile the code with `make buildernet`. This will output
+To use Mir in lotus, you need to compile the code with `make spacenet`. This will output
 `lotus`, `lotus-miner` for their use with Mir and a `mir-validator` process. This last process
 is the one that needs to be run by validators to produce new blocks in the network.
 ```
 git clone git@github.com:filecoin-project/lotus.git
 cd lotus
 git submodule update --init --recursive
-make buildernet
+make spacenet
 ```
 
 ## Run

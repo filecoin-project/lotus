@@ -1,5 +1,5 @@
-//go:build buildernet
-// +build buildernet
+//go:build spacenet
+// +build spacenet
 
 package build
 
@@ -105,7 +105,7 @@ func init() {
 	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
 	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
 
-	BuildType = BuildBuildernet
+	BuildType = BuildSpacenet
 	SetAddressNetwork(address.Testnet)
 	Devnet = true
 
@@ -117,9 +117,5 @@ const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2
-
-// Eip155ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
-// As per https://github.com/ethereum-lists/chains
-const Eip155ChainId = 31415
 
 var WhitelistedBlock = cid.Undef
