@@ -38,6 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -62,8 +63,7 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
-// const MaxMessageSize = 64 << 10 // 64KiB
-const MaxMessageSize = 1<<20 - 128 // 1MiB minus some change for pb stuff
+const MaxMessageSize = 64 << 10 // 64KiB
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -785,6 +785,10 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	if ok {
 		// already validated, great
 		return nil
+	}
+
+	if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
+		return err
 	}
 
 	mp.sigValCache.Add(sck, struct{}{})
