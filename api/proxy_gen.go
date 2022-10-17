@@ -7,15 +7,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -30,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -43,6 +33,14 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -238,6 +236,12 @@ type FullNodeStruct struct {
 
 		EthGetCode func(p0 context.Context, p1 EthAddress) (EthBytes, error) `perm:"read"`
 
+		EthGetFilterChanges func(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) `perm:"write"`
+
+		EthGetFilterLogs func(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) `perm:"write"`
+
+		EthGetLogs func(p0 context.Context, p1 *EthFilterSpec) (*EthFilterResult, error) `perm:"read"`
+
 		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) `perm:"read"`
 
 		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) `perm:"read"`
@@ -252,9 +256,21 @@ type FullNodeStruct struct {
 
 		EthMaxPriorityFeePerGas func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
+		EthNewBlockFilter func(p0 context.Context) (EthFilterID, error) `perm:"write"`
+
+		EthNewFilter func(p0 context.Context, p1 *EthFilterSpec) (EthFilterID, error) `perm:"write"`
+
+		EthNewPendingTransactionFilter func(p0 context.Context) (EthFilterID, error) `perm:"write"`
+
 		EthProtocolVersion func(p0 context.Context) (EthUint64, error) `perm:"read"`
 
 		EthSendRawTransaction func(p0 context.Context, p1 EthBytes) (EthHash, error) `perm:"read"`
+
+		EthSubscribe func(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (EthSubscriptionResponse, error) `perm:"write"`
+
+		EthUninstallFilter func(p0 context.Context, p1 EthFilterID) (bool, error) `perm:"write"`
+
+		EthUnsubscribe func(p0 context.Context, p1 EthSubscriptionID) (bool, error) `perm:"write"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -1893,6 +1909,39 @@ func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, 
 	return *new(EthBytes), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthGetFilterChanges(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+	if s.Internal.EthGetFilterChanges == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetFilterChanges(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetFilterChanges(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetFilterLogs(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+	if s.Internal.EthGetFilterLogs == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetFilterLogs(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetFilterLogs(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetLogs(p0 context.Context, p1 *EthFilterSpec) (*EthFilterResult, error) {
+	if s.Internal.EthGetLogs == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetLogs(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetLogs(p0 context.Context, p1 *EthFilterSpec) (*EthFilterResult, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) {
 	if s.Internal.EthGetStorageAt == nil {
 		return *new(EthBytes), ErrNotSupported
@@ -1970,6 +2019,39 @@ func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, e
 	return *new(EthBigInt), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthNewBlockFilter(p0 context.Context) (EthFilterID, error) {
+	if s.Internal.EthNewBlockFilter == nil {
+		return *new(EthFilterID), ErrNotSupported
+	}
+	return s.Internal.EthNewBlockFilter(p0)
+}
+
+func (s *FullNodeStub) EthNewBlockFilter(p0 context.Context) (EthFilterID, error) {
+	return *new(EthFilterID), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthNewFilter(p0 context.Context, p1 *EthFilterSpec) (EthFilterID, error) {
+	if s.Internal.EthNewFilter == nil {
+		return *new(EthFilterID), ErrNotSupported
+	}
+	return s.Internal.EthNewFilter(p0, p1)
+}
+
+func (s *FullNodeStub) EthNewFilter(p0 context.Context, p1 *EthFilterSpec) (EthFilterID, error) {
+	return *new(EthFilterID), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthNewPendingTransactionFilter(p0 context.Context) (EthFilterID, error) {
+	if s.Internal.EthNewPendingTransactionFilter == nil {
+		return *new(EthFilterID), ErrNotSupported
+	}
+	return s.Internal.EthNewPendingTransactionFilter(p0)
+}
+
+func (s *FullNodeStub) EthNewPendingTransactionFilter(p0 context.Context) (EthFilterID, error) {
+	return *new(EthFilterID), ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthUint64, error) {
 	if s.Internal.EthProtocolVersion == nil {
 		return *new(EthUint64), ErrNotSupported
@@ -1990,6 +2072,39 @@ func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 EthBytes) 
 
 func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
 	return *new(EthHash), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (EthSubscriptionResponse, error) {
+	if s.Internal.EthSubscribe == nil {
+		return *new(EthSubscriptionResponse), ErrNotSupported
+	}
+	return s.Internal.EthSubscribe(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (EthSubscriptionResponse, error) {
+	return *new(EthSubscriptionResponse), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthUninstallFilter(p0 context.Context, p1 EthFilterID) (bool, error) {
+	if s.Internal.EthUninstallFilter == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.EthUninstallFilter(p0, p1)
+}
+
+func (s *FullNodeStub) EthUninstallFilter(p0 context.Context, p1 EthFilterID) (bool, error) {
+	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthUnsubscribe(p0 context.Context, p1 EthSubscriptionID) (bool, error) {
+	if s.Internal.EthUnsubscribe == nil {
+		return false, ErrNotSupported
+	}
+	return s.Internal.EthUnsubscribe(p0, p1)
+}
+
+func (s *FullNodeStub) EthUnsubscribe(p0 context.Context, p1 EthSubscriptionID) (bool, error) {
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {

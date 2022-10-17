@@ -54,6 +54,16 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
+
+	EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*api.EthFilterResult, error)
+	EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error)
+	EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error)
+	EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error)
+	EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error)
+	EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error)
+	EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error)
+	EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (api.EthSubscriptionResponse, error)
+	EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error)
 }
 
 var _ EthModuleAPI = *new(api.FullNode)
@@ -672,4 +682,49 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		Input:                msg.Params,
 	}
 	return tx, nil
+}
+
+func (a *EthModule) EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*api.EthFilterResult, error) {
+	// TODO: implement EthGetLogs
+	return nil, api.ErrNotSupported
+}
+
+func (a *EthModule) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
+	// TODO: implement EthGetFilterChanges
+	return nil, api.ErrNotSupported
+}
+
+func (a *EthModule) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
+	// TODO: implement EthGetFilterLogs
+	return nil, api.ErrNotSupported
+}
+
+func (a *EthModule) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error) {
+	// TODO: implement EthNewFilter
+	return "", api.ErrNotSupported
+}
+
+func (a *EthModule) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error) {
+	// TODO: implement EthNewBlockFilter
+	return "", api.ErrNotSupported
+}
+
+func (a *EthModule) EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error) {
+	// TODO: implement EthNewPendingTransactionFilter
+	return "", api.ErrNotSupported
+}
+
+func (a *EthModule) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error) {
+	// TODO: implement EthUninstallFilter
+	return false, api.ErrNotSupported
+}
+
+func (a *EthModule) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (api.EthSubscriptionResponse, error) {
+	// TODO: implement EthSubscribe
+	return api.EthSubscriptionResponse{}, api.ErrNotSupported
+}
+
+func (a *EthModule) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
+	// TODO: implement EthUnsubscribe
+	return false, api.ErrNotSupported
 }
