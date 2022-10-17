@@ -398,10 +398,9 @@ func compareProposalToAllocation(prop market8.DealProposal, alloc verifreg9.Allo
 		return xerrors.Errorf("piece size mismatch between proposal and allocation: %s, %s", prop.PieceSize, alloc.Size)
 	}
 
-	// TODO: fix
-	//if alloc.TermMax != 540*builtin.EpochsInDay {
-	//	return xerrors.Errorf("allocation term should be 540 days. Got %d epochs", alloc.TermMax)
-	//}
+	if alloc.TermMax != 540*builtin.EpochsInDay {
+		return xerrors.Errorf("allocation term should be 540 days. Got %d epochs", alloc.TermMax)
+	}
 
 	if prop.EndEpoch-prop.StartEpoch != alloc.TermMin {
 		return xerrors.Errorf("allocation term mismatch between proposal and allocation: %d, %d", prop.EndEpoch-prop.StartEpoch, alloc.TermMin)
