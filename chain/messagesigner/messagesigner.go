@@ -32,10 +32,6 @@ type MsgSigner interface {
 	NextNonce(ctx context.Context, addr address.Address) (uint64, error)
 	SaveNonce(ctx context.Context, addr address.Address, nonce uint64) error
 	dstoreKey(addr address.Address) datastore.Key
-	//IsLeader(ctx context.Context) bool
-	//Leader(ctx context.Context) (peer.ID, error)
-	//RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error)
-	//GetRaftState(ctx context.Context) (consensus.State, error)
 }
 
 // MessageSigner keeps track of nonces per address, and increments the nonce
@@ -46,8 +42,6 @@ type MessageSigner struct {
 	mpool  messagepool.MpoolNonceAPI
 	ds     datastore.Batching
 }
-
-//var _ full.MsgSigner = &MessageSigner{}
 
 func NewMessageSigner(wallet api.Wallet, mpool messagepool.MpoolNonceAPI, ds dtypes.MetadataDS) *MessageSigner {
 	ds = namespace.Wrap(ds, datastore.NewKey("/message-signer/"))
@@ -91,6 +85,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, sp
 		Message:   *msg,
 		Signature: *sig,
 	}
+
 	err = cb(smsg)
 	if err != nil {
 		return nil, err
@@ -193,19 +188,3 @@ func (ms *MessageSigner) SaveNonce(ctx context.Context, addr address.Address, no
 func (ms *MessageSigner) dstoreKey(addr address.Address) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
 }
-
-//func (ms *MessageSigner) IsLeader(ctx context.Context) bool {
-//	return true
-//}
-//
-//func (ms *MessageSigner) RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error) {
-//	return false, xerrors.Errorf("single node shouldn't have any redirects")
-//}
-//
-//func (ms *MessageSigner) GetRaftState(ctx context.Context) (consensus.State, error) {
-//	return nil, xerrors.Errorf("this is a non raft consensus message signer")
-//}
-//
-//func (ms *MessageSigner) Leader(ctx context.Context) (peer.ID, error) {
-//	return "", xerrors.Errorf("no leaders in non raft message signer")
-//}

@@ -3,10 +3,10 @@
 package consensus
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/lib/addrutil"
 	"sort"
 	"time"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/addrutil"
 	"github.com/filecoin-project/lotus/node/repo"
 
 	//ds "github.com/ipfs/go-datastore"
@@ -73,10 +74,17 @@ func (c ConsensusOp) ApplyTo(state consensus.State) (consensus.State, error) {
 	s := state.(*RaftState)
 	s.NonceMap[c.Addr] = c.Nonce
 	if c.SignedMsg != nil {
-		tmp := *c.SignedMsg
-		s.MsgUuids[c.Uuid] = &tmp
 
-		_, err := s.Mpool.Push(context.TODO(), c.SignedMsg, false)
+		// Deep copy to tmp
+		var buffer bytes.Buffer
+		c.SignedMsg.MarshalCBOR(&buffer)
+		tmp, err := types.DecodeSignedMessage(buffer.Bytes())
+		if err != nil {
+			return nil, err
+		}
+		s.MsgUuids[c.Uuid] = tmp
+
+		_, err = s.Mpool.Push(context.TODO(), tmp, false)
 		// Since this is only meant to keep messages in sync, ignore any error which
 		// shows the message already exists in the mpool
 		if err != nil && !api.ErrorIsIn(err, []error{messagepool.ErrExistingNonce}) {

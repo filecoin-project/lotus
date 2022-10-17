@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"os"
 	"sync"
 	"time"
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal"
 )
 

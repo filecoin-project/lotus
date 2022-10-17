@@ -46,8 +46,6 @@ func ParseApiInfoMulti(s string) []APIInfo {
 
 		for _, addr := range allAddrs {
 			sp := strings.SplitN(addr, ":", 2)
-			//tok = []byte(sp[0])
-			//s = sp[1]
 			apiInfos = append(apiInfos, APIInfo{
 				Addr:  sp[1],
 				Token: []byte(sp[0]),
@@ -55,10 +53,6 @@ func ParseApiInfoMulti(s string) []APIInfo {
 		}
 	}
 
-	//return APIInfo{
-	//	Addr:  s,
-	//	Token: tok,
-	//}
 	return apiInfos
 }
 

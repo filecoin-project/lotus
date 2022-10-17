@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/retry"
+	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,17 +17,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/lib/retry"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -124,7 +123,7 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	ainfos, err := GetAPIInfoMulti(ctx, t)
-	if err != nil {
+	if err != nil || len(ainfos) == 0 {
 		return APIInfo{}, err
 	}
 
@@ -145,7 +144,7 @@ func GetRawAPIMulti(ctx *cli.Context, t repo.RepoType, version string) ([]HttpHe
 
 	var httpHeads []HttpHead
 	ainfos, err := GetAPIInfoMulti(ctx, t)
-	if err != nil {
+	if err != nil || len(ainfos) == 0 {
 		return httpHeads, xerrors.Errorf("could not get API info for %s: %w", t.Type(), err)
 	}
 
@@ -156,11 +155,6 @@ func GetRawAPIMulti(ctx *cli.Context, t repo.RepoType, version string) ([]HttpHe
 		}
 		httpHeads = append(httpHeads, HttpHead{addr: addr, header: ainfo.AuthHeader()})
 	}
-
-	//addr, err := ainfo.DialArgs(version)
-	//if err != nil {
-	//	return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
-	//}
 
 	if IsVeryVerbose {
 		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, httpHeads[0].addr)
@@ -239,11 +233,8 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	outs := api.GetInternalStructs(outstr)
 
 	var rins []reflect.Value
-	//peertoNode := make(map[peer.ID]reflect.Value)
 	for _, in := range ins {
-		rin := reflect.ValueOf(in)
-		rins = append(rins, rin)
-		//peertoNode[ins] = rin
+		rins = append(rins, reflect.ValueOf(in))
 	}
 
 	for _, out := range outs {
@@ -280,12 +271,6 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 				total := len(rins)
 				result, err := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() (results []reflect.Value, err2 error) {
-					//ctx := args[0].Interface().(context.Context)
-					//
-					//rin := peertoNode[ins[0].Leader(ctx)]
-					//fn := rin.MethodByName(field.Name)
-					//
-					//return fn.Call(args)
 					curr = (curr + 1) % total
 
 					result := fns[curr].Call(args)
@@ -350,10 +335,17 @@ func GetFullNodeAPIV1New(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser
 	for _, head := range heads {
 		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header)
 		if err != nil {
-			return nil, nil, err
+			log.Warnf("Not able to establish connection to node with addr: ", head.addr)
+			continue
 		}
 		fullNodes = append(fullNodes, v1api)
 		closers = append(closers, closer)
+	}
+
+	// When running in cluster mode and trying to establish connections to multiple nodes, fail
+	// if less than 2 lotus nodes are actually running
+	if len(heads) > 1 && len(fullNodes) < 2 {
+		return nil, nil, xerrors.Errorf("Not able to establish connection to more than a single node")
 	}
 
 	finalCloser := func() {
