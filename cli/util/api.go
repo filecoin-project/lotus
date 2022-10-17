@@ -238,17 +238,17 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 	}
 
 	for _, out := range outs {
-		rint := reflect.ValueOf(out).Elem()
+		rProxyInternal := reflect.ValueOf(out).Elem()
 
-		for f := 0; f < rint.NumField(); f++ {
-			field := rint.Type().Field(f)
+		for f := 0; f < rProxyInternal.NumField(); f++ {
+			field := rProxyInternal.Type().Field(f)
 
 			var fns []reflect.Value
 			for _, rin := range rins {
 				fns = append(fns, rin.MethodByName(field.Name))
 			}
 
-			rint.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
+			rProxyInternal.Field(f).Set(reflect.MakeFunc(field.Type, func(args []reflect.Value) (results []reflect.Value) {
 				errorsToRetry := []error{&jsonrpc.RPCConnectionError{}, &jsonrpc.ErrClient{}}
 				initialBackoff, err := time.ParseDuration("1s")
 				if err != nil {

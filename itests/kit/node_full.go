@@ -47,11 +47,6 @@ type TestFullNode struct {
 
 func MergeFullNodes(fullNodes []*TestFullNode) *TestFullNode {
 	var wrappedFullNode TestFullNode
-	//var fnapis []api.FullNode
-	//for _, fullNode := range fullNodes {
-	//	fnapis = append(fnapis, fullNode)
-	//}
-
 	var fns api.FullNodeStruct
 	wrappedFullNode.FullNode = &fns
 

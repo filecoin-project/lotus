@@ -81,7 +81,7 @@ func init() {
 //
 //	var full TestFullNode
 //	var miner TestMiner
-//	ens.FullNodes(&full, opts...)       // populates a full node
+//	ens.FullNode(&full, opts...)       // populates a full node
 //	ens.Miner(&miner, &full, opts...)  // populates a miner, using the full node as its chain daemon
 //
 // It is possible to pass functional options to set initial balances,
@@ -101,7 +101,7 @@ func init() {
 //
 // The API is chainable, so it's possible to do a lot in a very succinct way:
 //
-//	kit.NewEnsemble().FullNodes(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
+//	kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
 //
 // You can also find convenient fullnode:miner presets, such as 1:1, 1:2,
 // and 2:1, e.g.:
@@ -303,8 +303,6 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 	minerNode.Libp2p.PeerID = peerId
 	minerNode.Libp2p.PrivKey = privkey
 
-	//n.inactive.miners = append(n.inactive.miners, minerNode)
-
 	return n
 }
 
@@ -317,12 +315,6 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	n.AddInactiveMiner(minerNode)
 	return n
 }
-
-//func (n *Ensemble) MinerWithMultipleNodes(minerNode *TestMiner, full []*TestFullNode, opts ...NodeOpt) *Ensemble {
-//	n.MinerEnroll(minerNode, full, opts...)
-//	n.AddInactiveMiner(minerNode)
-//	return n
-//}
 
 // Worker enrolls a new worker, using the provided full node for chain
 // interactions.
@@ -576,7 +568,7 @@ func (n *Ensemble) Start() *Ensemble {
 		}
 
 		// // Set it as the default address.
-		// err = m.FullNodes.WalletSetDefault(ctx, m.OwnerAddr.Address)
+		// err = m.FullNode.WalletSetDefault(ctx, m.OwnerAddr.Address)
 		// require.NoError(n.t, err)
 
 		r := repo.NewMemory(nil)
@@ -675,13 +667,6 @@ func (n *Ensemble) Start() *Ensemble {
 		noLocal := m.options.minerNoLocalSealing
 		assigner := m.options.minerAssigner
 		disallowRemoteFinalize := m.options.disallowRemoteFinalize
-
-		//var wrappedFullNode api.FullNodeStruct
-		//var fullNodes []api.FullNode
-		//for _, fn := range m.FullNodes {
-		//	fullNodes = append(fullNodes, fn.FullNode)
-		//}
-		//proxy(fullNodes, &wrappedFullNode)
 
 		var mineBlock = make(chan lotusminer.MineReq)
 

@@ -137,6 +137,7 @@ func TestRaftState(t *testing.T) {
 		To:    node0.DefaultKey.Address,
 		Value: big.Div(bal, big.NewInt(2)),
 	}
+
 	mu := uuid.New()
 	smHalfBal, err := node0.MpoolPushMessage(ctx, msgHalfBal, &api.MessageSendSpec{
 		MsgUuid: mu,
@@ -149,8 +150,6 @@ func TestRaftState(t *testing.T) {
 	rstate0 := getRaftState(ctx, t, &node0)
 	rstate1 := getRaftState(ctx, t, &node1)
 	rstate2 := getRaftState(ctx, t, &node2)
-
-	require.Equal(t, rstate0.NonceMap[miner.OwnerKey.Address], uint64(0))
 
 	require.EqualValues(t, rstate0, rstate1)
 	require.EqualValues(t, rstate0, rstate2)

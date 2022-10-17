@@ -47,7 +47,6 @@ type MpoolAPI struct {
 	RaftAPI
 
 	MessageSigner messagesigner.MsgSigner
-	//	MessageSigner *messagesigner.MessageSigner
 
 	PushLocks *dtypes.MpoolLocker
 }

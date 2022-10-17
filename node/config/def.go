@@ -287,28 +287,6 @@ var (
 	DefaultDatastoreNamespace   = "/raft"
 )
 
-//func DefaultClusterRaftConfig() *ClusterRaftConfig {
-//	var cfg ClusterRaftConfig
-//	cfg.DataFolder = "" // empty so it gets omitted
-//	cfg.InitPeerset = []peer.ID{}
-//	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
-//	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
-//	cfg.CommitRetries = DefaultCommitRetries
-//	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
-//	cfg.BackupsRotate = DefaultBackupsRotate
-//	cfg.DatastoreNamespace = DefaultDatastoreNamespace
-//	cfg.RaftConfig = hraft.DefaultConfig()
-//
-//	// These options are imposed over any Default Raft Config.
-//	cfg.RaftConfig.ShutdownOnRemove = false
-//	cfg.RaftConfig.LocalID = "will_be_set_automatically"
-//
-//	// Set up logging
-//	cfg.RaftConfig.LogOutput = ioutil.Discard
-//	//cfg.RaftConfig.Logger = &hcLogToLogger{}
-//	return &cfg
-//}
-
 func DefaultUserRaftConfig() *UserRaftConfig {
 	var cfg UserRaftConfig
 	cfg.DataFolder = "" // empty so it gets omitted

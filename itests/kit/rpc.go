@@ -27,11 +27,6 @@ func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) 
 	}
 	testServ.Start()
 
-	//t.Cleanup(func() {
-	//	waitUpTo(testServ.Close, time.Second, "Gave up waiting for RPC server to close after 1s")
-	//})
-	//t.Cleanup(testServ.CloseClientConnections)
-
 	addr := testServ.Listener.Addr()
 	maddr, err := manet.FromNetAddr(addr)
 	require.NoError(t, err)
@@ -71,7 +66,6 @@ func fullRpc(t *testing.T, f *TestFullNode) (*TestFullNode, Closer) {
 
 	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
-	//t.Cleanup(stop)
 	f.ListenAddr, f.FullNode = maddr, cl
 
 	return f, func() { stop(); rpcCloser() }
