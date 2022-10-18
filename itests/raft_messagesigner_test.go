@@ -4,10 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/filecoin-project/lotus/node/impl"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/lotus/node/impl"
 
 	"github.com/google/uuid"
 	gorpc "github.com/libp2p/go-libp2p-gorpc"
@@ -489,6 +490,8 @@ func TestChainStoreSync(t *testing.T) {
 }
 
 func TestGoRPCAuth(t *testing.T) {
+
+	blockTime := 1 * time.Second
 
 	kit.QuietMiningLogs()
 	ctx := context.Background()
