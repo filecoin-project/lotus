@@ -5,6 +5,7 @@ orbs:
 executors:
   golang:
     docker:
+      # Must match GO_VERSION_MIN in project root
       - image: cimg/go:1.18.1
     resource_class: 2xlarge
   ubuntu:
@@ -44,6 +45,15 @@ commands:
       - when:
           condition: << parameters.linux >>
           steps:
+            - run:
+                name: Check Go Version
+                command: |
+                  v=`go version | { read _ _ v _; echo ${v#go}; }`
+                  if [[ $v != `cat GO_VERSION_MIN` ]]; then
+                    echo "GO_VERSION_MIN file does not match the go version being used."
+                    echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
+                    exit 1
+                  fi
             - run: sudo apt-get update
             - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
       - when:
@@ -52,7 +62,7 @@ commands:
             - run:
                 name: Install Go
                 command: |
-                  curl https://dl.google.com/go/go1.18.1.darwin-amd64.pkg -o /tmp/go.pkg && \
+                  curl https://dl.google.com/go/go`cat GO_VERSION_MIN`.darwin-amd64.pkg -o /tmp/go.pkg && \
                   sudo installer -pkg /tmp/go.pkg -target /
             - run:
                 name: Export Go
@@ -427,7 +437,8 @@ jobs:
       - run:
           name: Update Go
           command: |
-            curl -L https://golang.org/dl/go1.18.1.linux-amd64.tar.gz -o /tmp/go.tar.gz && \
+            sudo rm -rf /usr/local/go && \
+            curl -L https://golang.org/dl/go`cat GO_VERSION_MIN`.linux-amd64.tar.gz -o /tmp/go.tar.gz && \
             sudo tar -C /usr/local -xvf /tmp/go.tar.gz
       - run: go version
       - run:
