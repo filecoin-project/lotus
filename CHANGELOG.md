@@ -1,13 +1,15 @@
 # Lotus changelog
 
-# 1.18.0-rc1 / 2022-10-13
+# 1.18.0-rc3 / 2022-10-18
 
-This is a MANDATORY release of Lotus that introduces [Filecoin network v17,
+> ⚠️ **Please note that from Lotus v1.17.2&^ will require a Go-version of v1.18.1&^**
+
+This is the third release canadiate of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
 codenamed the Shark upgrade](https://github.com/filecoin-project/community/discussions/74?sort=top#discussioncomment-3825422). Shark upgrade delivers a wave of protocol refinements that will allow for useful smart contracts to be written using the FVM (eg. programmable markets, lending contracts, etc.).
 
 A full changelog will be published upon final release.
 
-The Shark upgrade introduces the following FIPs, delivered in [actors v9](https://github.com/filecoin-project/specs-actors/releases/tag/v9.0.0):
+The Shark upgrade introduces the following FIPs, delivered in [actors v9](https://github.com/filecoin-project/specs-actors/releases/tag/v9.0.1):
 - [FIP0029 Beneficiary Address for Storage Providers](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0029.md): step towards better lending market for SP
 - [FIP0034 Fix PreCommit Deposit Independent of Sector Content](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0034.md): resolves a significant weakening of Filecoin PoRep’s security guarantees
   - ❗Pre-commit deposit will be calculated as the 20-day projection of expected reward earned by a sector with a sector quality of 10 (i.e. full of verified deals), regardless of sector content. Leave the initial pledge value, due when the sector is proven, unchanged.
@@ -16,10 +18,16 @@ The Shark upgrade introduces the following FIPs, delivered in [actors v9](https:
 - [FIP0045 Decoupling Fil+ from Marketplace](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0045.md): DataCap and the QAP it brings is now associated with DATA. DataCap for the data many have terms where anyone who cares about that piece of data may extend the term, which incentives SPs to store the data longer on the network
   - HUGE step towards user programmable storage market
   - ⭐️ First Fungible Token Contract - Datacap Actor, on Filecoin!  ([fungible token standard](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0046.md), [token contract library](https://github.com/helix-onchain/filecoin/tree/5455f4f831e0f3f20005a9a789623d7ad6dada15/frc46_token))
+
   
 ## Calibration-net Upgrade
 
-This release candidate sets the calibration-net upgrade at epoch 1407374, 2022-10-20T16:00:07Z. The bundle the network will be using is [v9.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.0)(located at `build/actors/v9.tar.zst` ) upon/post migration, manifest CID `bafy2bzacedi7nu7c47hd3qr3kglvyvxn4fgomjbbajhlnzxwmr6kofn7srzx6`.
+This release candidate sets the calibration-net upgrade at epoch 1407374, 2022-10-20T16:00:07Z. The bundle the network will be using is [v9.0.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.1)(located at `build/actors/v9.tar.zst` ). Upon the migration, the manifest CID should be `bafy2bzacec6w6i72o5tuhyrx4yy3o75vcgzhz7y3ht3lpw6xn43lv2jirxiww`.
+
+## Snapshots
+
+The [#fil-infra](https://filecoinproject.slack.com/archives/C039RBG3RPC) team at PL has launched a brand new Lightweight Filecoin Chain Snapshots Service to support chain management needs for the node operators, check [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024) for the full detail. 
+We are planning to switch [the snapshot service listed in lotus docs](https://lotus.filecoin.io/lotus/manage/chain-management/#lightweight-snapshot) to the new Lightweight Filecoin Chain Snapshots Service by EOY, and deprecate public support of the current snapshots production. We recommend all users to test and switch the new service ASAP, and if you run into any issue, please report them [here](https://github.com/filecoin-project/filecoin-chain-archiver/discussions/new?category=feedback) and the team would be happy to support you! For the main differences between the old & the new service, checkout the FAQ section [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024)
 
 ## Migration 
 
@@ -77,6 +85,7 @@ This release candidate sets the calibration-net upgrade at epoch 1407374, 2022-1
 | Rod Vagg | 1 | +3/-2 | 2 |
 | Peter Rabbitson | 1 | +3/-0 | 1 |
 | ZenGround0 | 1 | +2/-0 | 1 |
+
 
 # v1.17.2 / 2022-10-05
 
