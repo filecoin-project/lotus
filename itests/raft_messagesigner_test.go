@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/filecoin-project/lotus/node/impl"
 	"reflect"
 	"testing"
 	"time"
@@ -485,4 +486,90 @@ func TestChainStoreSync(t *testing.T) {
 			//break
 		}
 	}
+}
+
+func TestGoRPCAuth(t *testing.T) {
+
+	kit.QuietMiningLogs()
+	ctx := context.Background()
+
+	var (
+		node0 kit.TestFullNode
+		node1 kit.TestFullNode
+		node2 kit.TestFullNode
+		node3 kit.TestFullNode
+		miner kit.TestMiner
+	)
+
+	pkey0, _ := generatePrivKey()
+	pkey1, _ := generatePrivKey()
+	pkey2, _ := generatePrivKey()
+
+	pkeys := []*kit.Libp2p{pkey0, pkey1, pkey2}
+	initPeerSet := []string{}
+	for _, pkey := range pkeys {
+		initPeerSet = append(initPeerSet, "/p2p/"+pkey.PeerID.String())
+	}
+
+	raftOps := kit.ConstructorOpts(
+		node.Override(new(*gorpc.Client), modules.NewRPCClient),
+		node.Override(new(*consensus.ClusterRaftConfig), func() *consensus.ClusterRaftConfig {
+			cfg := consensus.DefaultClusterRaftConfig()
+			cfg.InitPeerset = initPeerSet
+			return cfg
+		}),
+		node.Override(new(*consensus.Consensus), consensus.NewConsensusWithRPCClient(false)),
+		node.Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
+		node.Override(new(messagesigner.MsgSigner), func(ms *messagesigner.MessageSignerConsensus) *messagesigner.MessageSignerConsensus { return ms }),
+		node.Override(new(*modules.RPCHandler), modules.NewRPCHandler),
+		node.Override(node.GoRPCServer, modules.NewRPCServer),
+	)
+	//raftOps := kit.ConstructorOpts()
+	kit.ThroughRPC()
+
+	ens := kit.NewEnsemble(t).FullNode(&node0, raftOps, kit.ThroughRPC()).FullNode(&node1, raftOps, kit.ThroughRPC()).FullNode(&node2, raftOps, kit.ThroughRPC()).FullNode(&node3, raftOps)
+	node0.AssignPrivKey(pkey0)
+	node1.AssignPrivKey(pkey1)
+	node2.AssignPrivKey(pkey2)
+
+	nodes := []*kit.TestFullNode{&node0, &node1, &node2}
+	wrappedFullNode := kit.MergeFullNodes(nodes)
+
+	ens.MinerEnroll(&miner, wrappedFullNode, kit.WithAllSubsystems(), kit.ThroughRPC())
+	ens.Start()
+
+	// Import miner wallet to all nodes
+	addr0, err := node0.WalletImport(ctx, &miner.OwnerKey.KeyInfo)
+	require.NoError(t, err)
+	addr1, err := node1.WalletImport(ctx, &miner.OwnerKey.KeyInfo)
+	require.NoError(t, err)
+	addr2, err := node2.WalletImport(ctx, &miner.OwnerKey.KeyInfo)
+	require.NoError(t, err)
+
+	fmt.Println(addr0, addr1, addr2)
+
+	ens.InterconnectAll()
+
+	ens.AddInactiveMiner(&miner)
+	ens.Start()
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	leader, err := node0.RaftLeader(ctx)
+	require.NoError(t, err)
+
+	client := node3.FullNode.(*impl.FullNodeAPI).RaftAPI.MessageSigner.Consensus.RpcClient
+	method := "MpoolPushMessage"
+
+	msg := &types.Message{
+		From:  miner.OwnerKey.Address,
+		To:    node0.DefaultKey.Address,
+		Value: big.NewInt(100000),
+	}
+	msgWhole := &api.MpoolMessageWhole{Msg: msg}
+	var ret types.SignedMessage
+
+	err = client.CallContext(ctx, leader, "Consensus", method, msgWhole, &ret)
+	require.True(t, gorpc.IsAuthorizationError(err))
+
 }

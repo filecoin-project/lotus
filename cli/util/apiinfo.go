@@ -40,11 +40,10 @@ func ParseApiInfo(s string) APIInfo {
 func ParseApiInfoMulti(s string) []APIInfo {
 	var apiInfos []APIInfo
 
-	if infoWithToken.Match([]byte(s)) {
+	allAddrs := strings.SplitN(s, ",", -1)
 
-		allAddrs := strings.SplitN(s, ",", -1)
-
-		for _, addr := range allAddrs {
+	for _, addr := range allAddrs {
+		if infoWithToken.Match([]byte(addr)) {
 			sp := strings.SplitN(addr, ":", 2)
 			apiInfos = append(apiInfos, APIInfo{
 				Addr:  sp[1],

@@ -18,7 +18,7 @@ import (
 
 type MessageSignerConsensus struct {
 	MsgSigner
-	consensus *consensus.Consensus
+	Consensus *consensus.Consensus
 }
 
 func NewMessageSignerConsensus(
@@ -34,16 +34,16 @@ func NewMessageSignerConsensus(
 			mpool:  mpool,
 			ds:     ds,
 		},
-		consensus: consensus,
+		Consensus: consensus,
 	}
 }
 
 func (ms *MessageSignerConsensus) IsLeader(ctx context.Context) bool {
-	return ms.consensus.IsLeader(ctx)
+	return ms.Consensus.IsLeader(ctx)
 }
 
 func (ms *MessageSignerConsensus) RedirectToLeader(ctx context.Context, method string, arg interface{}, ret interface{}) (bool, error) {
-	ok, err := ms.consensus.RedirectToLeader(method, arg, ret.(*types.SignedMessage))
+	ok, err := ms.Consensus.RedirectToLeader(method, arg, ret.(*types.SignedMessage))
 	if err != nil {
 		return ok, err
 	}
@@ -61,19 +61,13 @@ func (ms *MessageSignerConsensus) SignMessage(
 		return nil, err
 	}
 
-	// We can't have an empty/default uuid as part of the consensus state so generate a new uuid if spec is empty
-	u := uuid.New()
-	if spec != nil {
-		u = spec.MsgUuid
-	}
-
 	op := &consensus.ConsensusOp{
 		Nonce:     signedMsg.Message.Nonce,
-		Uuid:      u,
+		Uuid:      spec.MsgUuid,
 		Addr:      signedMsg.Message.From,
 		SignedMsg: signedMsg,
 	}
-	err = ms.consensus.Commit(ctx, op)
+	err = ms.Consensus.Commit(ctx, op)
 	if err != nil {
 		return nil, err
 	}
@@ -82,12 +76,12 @@ func (ms *MessageSignerConsensus) SignMessage(
 }
 
 func (ms *MessageSignerConsensus) GetSignedMessage(ctx context.Context, uuid uuid.UUID) (*types.SignedMessage, error) {
-	cstate, err := ms.consensus.State(ctx)
+	cstate, err := ms.Consensus.State(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	//cstate := state.(consensus.RaftState)
+	//cstate := state.(Consensus.RaftState)
 	msg, ok := cstate.MsgUuids[uuid]
 	if !ok {
 		return nil, xerrors.Errorf("Msg with Uuid %s not available", uuid)
@@ -96,9 +90,9 @@ func (ms *MessageSignerConsensus) GetSignedMessage(ctx context.Context, uuid uui
 }
 
 func (ms *MessageSignerConsensus) GetRaftState(ctx context.Context) (*consensus.RaftState, error) {
-	return ms.consensus.State(ctx)
+	return ms.Consensus.State(ctx)
 }
 
 func (ms *MessageSignerConsensus) Leader(ctx context.Context) (peer.ID, error) {
-	return ms.consensus.Leader(ctx)
+	return ms.Consensus.Leader(ctx)
 }

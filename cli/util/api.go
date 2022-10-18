@@ -49,7 +49,7 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 		strma := ctx.String(f)
 		strma = strings.TrimSpace(strma)
 
-		return []APIInfo{APIInfo{Addr: strma}}, nil
+		return []APIInfo{{Addr: strma}}, nil
 	}
 
 	//
@@ -106,7 +106,7 @@ func GetAPIInfoMulti(ctx *cli.Context, t repo.RepoType) ([]APIInfo, error) {
 			log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
 		}
 
-		return []APIInfo{APIInfo{
+		return []APIInfo{{
 			Addr:  ma.String(),
 			Token: token,
 		}}, nil
@@ -225,9 +225,11 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
 }
 
+type contextKey string
+
 // Not thread safe
 func OnSingleNode(ctx context.Context) context.Context {
-	return context.WithValue(ctx, "retry-node", new(*int))
+	return context.WithValue(ctx, contextKey("retry-node"), new(*int))
 }
 
 func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
@@ -262,11 +264,12 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 
 				// for calls that need to be performed on the same node
 				// primarily for miner when calling create block and submit block subsequently
-				if ctx.Value("retry-node") != nil {
-					if (*ctx.Value("retry-node").(**int)) == nil {
-						*ctx.Value("retry-node").(**int) = &curr
+				key := contextKey("retry-node")
+				if ctx.Value(key) != nil {
+					if (*ctx.Value(key).(**int)) == nil {
+						*ctx.Value(key).(**int) = &curr
 					} else {
-						curr = **ctx.Value("retry-node").(**int) - 1
+						curr = **ctx.Value(key).(**int) - 1
 					}
 				}
 

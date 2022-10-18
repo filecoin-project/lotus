@@ -115,7 +115,7 @@ type Consensus struct {
 	raft      *raftWrapper
 	state     *RaftState
 
-	rpcClient *rpc.Client
+	RpcClient *rpc.Client
 	rpcReady  chan struct{}
 	readyCh   chan struct{}
 
@@ -197,7 +197,7 @@ func NewConsensusWithRPCClient(staging bool) func(host host.Host,
 		if err != nil {
 			return nil, err
 		}
-		cc.rpcClient = rpcClient
+		cc.RpcClient = rpcClient
 		cc.rpcReady <- struct{}{}
 		return cc, nil
 	}
@@ -367,7 +367,7 @@ func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interf
 		}
 
 		logger.Debugf("redirecting %s to leader: %s", method, leader.Pretty())
-		finalErr = cc.rpcClient.CallContext(
+		finalErr = cc.RpcClient.CallContext(
 			ctx,
 			leader,
 			"Consensus",
@@ -488,7 +488,7 @@ func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 		finalErr = cc.raft.RemovePeer(ctx, peer.Encode(pid))
 		//cc.shutdownLock.RUnlock()
 		if finalErr != nil {
-			time.Sleep(time.Duration(cc.config.CommitRetryDelay))
+			time.Sleep(cc.config.CommitRetryDelay)
 			continue
 		}
 		logger.Infof("peer removed from Raft: %s", pid.Pretty())

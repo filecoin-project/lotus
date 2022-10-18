@@ -159,8 +159,15 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 		}
 	}
 
-	// Check if this uuid has already been processed. Ignore if uuid is not populated
-	if (spec != nil) && (spec.MsgUuid != uuid.UUID{}) {
+	// Generate spec and uuid if not available in the message
+	if spec == nil {
+		spec = &api.MessageSendSpec{
+			MsgUuid: uuid.New(),
+		}
+	} else if (spec.MsgUuid == uuid.UUID{}) {
+		spec.MsgUuid = uuid.New()
+	} else {
+		// Check if this uuid has already been processed. Ignore if uuid is not populated
 		signedMessage, err := a.MessageSigner.GetSignedMessage(ctx, spec.MsgUuid)
 		if err == nil {
 			log.Warnf("Message already processed. cid=%s", signedMessage.Cid())
@@ -223,11 +230,9 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	}
 
 	// Store uuid->signed message in datastore
-	if (spec != nil) && (spec.MsgUuid != uuid.UUID{}) {
-		err = a.MessageSigner.StoreSignedMessage(ctx, spec.MsgUuid, signedMsg)
-		if err != nil {
-			return nil, err
-		}
+	err = a.MessageSigner.StoreSignedMessage(ctx, spec.MsgUuid, signedMsg)
+	if err != nil {
+		return nil, err
 	}
 
 	return signedMsg, nil
