@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/impl"
-
 	"github.com/google/uuid"
 	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
@@ -27,6 +25,7 @@ import (
 	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 )
 
