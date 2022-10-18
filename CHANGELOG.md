@@ -22,7 +22,7 @@ The Shark upgrade introduces the following FIPs, delivered in [actors v9](https:
   
 ## Calibration-net Upgrade
 
-This release candidate sets the calibration-net upgrade at epoch 1407374, 2022-10-20T16:00:07Z. The bundle the network will be using is [v9.0.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.1)(located at `build/actors/v9.tar.zst` ) upon/post migration, manifest CID `bafy2bzacec6w6i72o5tuhyrx4yy3o75vcgzhz7y3ht3lpw6xn43lv2jirxiww`.
+This release candidate sets the calibration-net upgrade at epoch 1407374, 2022-10-20T16:00:07Z. The bundle the network will be using is [v9.0.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.1)(located at `build/actors/v9.tar.zst` ). Upon the migration, the manifest CID should be `bafy2bzacec6w6i72o5tuhyrx4yy3o75vcgzhz7y3ht3lpw6xn43lv2jirxiww`.
 
 ## Snapshots
 
