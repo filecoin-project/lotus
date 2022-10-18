@@ -77,7 +77,10 @@ func (c ConsensusOp) ApplyTo(state consensus.State) (consensus.State, error) {
 
 		// Deep copy to tmp
 		var buffer bytes.Buffer
-		c.SignedMsg.MarshalCBOR(&buffer)
+		err := c.SignedMsg.MarshalCBOR(&buffer)
+		if err != nil {
+			return nil, err
+		}
 		tmp, err := types.DecodeSignedMessage(buffer.Bytes())
 		if err != nil {
 			return nil, err
@@ -159,7 +162,7 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 		peers = append(peers, addrInfo.ID)
 
 		// Add peer to address book
-		host.Peerstore().AddAddrs(addrInfo.ID, addrInfo.Addrs, time.Duration(time.Hour*100))
+		host.Peerstore().AddAddrs(addrInfo.ID, addrInfo.Addrs, time.Hour*100)
 	}
 
 	cc := &Consensus{
@@ -291,7 +294,10 @@ func (cc *Consensus) Shutdown(ctx context.Context) error {
 	}
 
 	if cc.config.HostShutdown {
-		cc.host.Close()
+		err = cc.host.Close()
+		if err != nil {
+			logger.Error(err)
+		}
 	}
 
 	//cc.shutdown = true
@@ -425,7 +431,7 @@ func (cc *Consensus) Commit(ctx context.Context, op *ConsensusOp) error {
 		}
 
 	RETRY:
-		time.Sleep(time.Duration(cc.config.CommitRetryDelay))
+		time.Sleep(cc.config.CommitRetryDelay)
 	}
 	return finalErr
 }
@@ -448,12 +454,11 @@ func (cc *Consensus) AddPeer(ctx context.Context, pid peer.ID) error {
 		}
 		// Being here means we are the leader and can commit
 		//cc.shutdownLock.RLock() // do not shutdown while committing
-		//finalErr = cc.raft.AddPeer(ctx, peer.Encode(pid))
 		finalErr = cc.raft.AddPeer(ctx, pid)
 
 		//cc.shutdownLock.RUnlock()
 		if finalErr != nil {
-			time.Sleep(time.Duration(cc.config.CommitRetryDelay))
+			time.Sleep(cc.config.CommitRetryDelay)
 			continue
 		}
 		logger.Infof("peer added to Raft: %s", pid.Pretty())

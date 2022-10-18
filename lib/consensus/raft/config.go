@@ -12,11 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-// ConfigKey is the default configuration key for holding this component's
-// configuration section.
-var configKey = "raft"
-var envConfigKey = "cluster_raft"
-
 // Configuration defaults
 var (
 	DefaultDataSubFolder        = "raft-cluster"

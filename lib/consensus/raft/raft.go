@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -103,7 +102,7 @@ func newRaftWrapper(
 		return nil, err
 	}
 
-	logger.Debug("creating Raft")
+	raftLogger.Debug("creating Raft")
 	raftW.raft, err = hraft.NewRaft(
 		cfg.RaftConfig,
 		fsm,
@@ -113,12 +112,11 @@ func newRaftWrapper(
 		raftW.transport,
 	)
 	if err != nil {
-		logger.Error("initializing raft: ", err)
+		raftLogger.Error("initializing raft: ", err)
 		return nil, err
 	}
 
 	raftW.ctx, raftW.cancel = context.WithCancel(context.Background())
-	//go raftW.observePeers()
 
 	return raftW, nil
 }
@@ -130,7 +128,7 @@ func makeDataFolder(folder string) error {
 }
 
 func (rw *raftWrapper) makeTransport() (err error) {
-	logger.Debug("creating libp2p Raft transport")
+	raftLogger.Debug("creating libp2p Raft transport")
 	rw.transport, err = p2praft.NewLibp2pTransport(
 		rw.host,
 		rw.config.NetworkTimeout,
@@ -139,13 +137,13 @@ func (rw *raftWrapper) makeTransport() (err error) {
 }
 
 func (rw *raftWrapper) makeStores() error {
-	logger.Debug("creating BoltDB store")
+	raftLogger.Debug("creating BoltDB store")
 	df := rw.config.GetDataFolder(rw.repo)
 	store, err := raftboltdb.NewBoltStore(filepath.Join(df, "raft.db"))
 	if err != nil {
 		return err
 	}
-	//store := hraft.NewInmemStore()
+
 	// wraps the store in a LogCache to improve performance.
 	// See consul/agent/consul/server.go
 	cacheStore, err := hraft.NewLogCache(RaftLogCacheSize, store)
@@ -153,7 +151,7 @@ func (rw *raftWrapper) makeStores() error {
 		return err
 	}
 
-	logger.Debug("creating raft snapshot store")
+	raftLogger.Debug("creating raft snapshot store")
 	snapstore, err := hraft.NewFileSnapshotStoreWithLogger(
 		df,
 		RaftMaxSnapshots,
@@ -162,8 +160,6 @@ func (rw *raftWrapper) makeStores() error {
 	if err != nil {
 		return err
 	}
-
-	//snapstore := hraft.NewInmemSnapshotStore()
 
 	rw.logStore = cacheStore
 	rw.stableStore = store
@@ -554,24 +550,24 @@ func (rw *raftWrapper) Peers(ctx context.Context) ([]string, error) {
 // latestSnapshot looks for the most recent raft snapshot stored at the
 // provided basedir.  It returns the snapshot's metadata, and a reader
 // to the snapshot's bytes
-func latestSnapshot(raftDataFolder string) (*hraft.SnapshotMeta, io.ReadCloser, error) {
-	store, err := hraft.NewFileSnapshotStore(raftDataFolder, RaftMaxSnapshots, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	snapMetas, err := store.List()
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(snapMetas) == 0 { // no error if snapshot isn't found
-		return nil, nil, nil
-	}
-	meta, r, err := store.Open(snapMetas[0].ID)
-	if err != nil {
-		return nil, nil, err
-	}
-	return meta, r, nil
-}
+//func latestSnapshot(raftDataFolder string) (*hraft.SnapshotMeta, io.ReadCloser, error) {
+//	store, err := hraft.NewFileSnapshotStore(raftDataFolder, RaftMaxSnapshots, nil)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	snapMetas, err := store.List()
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	if len(snapMetas) == 0 { // no error if snapshot isn't found
+//		return nil, nil, nil
+//	}
+//	meta, r, err := store.Open(snapMetas[0].ID)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	return meta, r, nil
+//}
 
 // LastStateRaw returns the bytes of the last snapshot stored, its metadata,
 // and a flag indicating whether any snapshot was found.
