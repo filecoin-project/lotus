@@ -103,24 +103,31 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func GetParams(spt abi.RegisteredSealProof) error {
-	ssize, err := spt.SectorSize()
-	if err != nil {
-		return err
-	}
+func GetParams(prover bool) func(spt abi.RegisteredSealProof) error {
+	return func(spt abi.RegisteredSealProof) error {
+		ssize, err := spt.SectorSize()
+		if err != nil {
+			return err
+		}
 
-	// If built-in assets are disabled, we expect the user to have placed the right
-	// parameters in the right location on the filesystem (/var/tmp/filecoin-proof-parameters).
-	if build.DisableBuiltinAssets {
+		// If built-in assets are disabled, we expect the user to have placed the right
+		// parameters in the right location on the filesystem (/var/tmp/filecoin-proof-parameters).
+		if build.DisableBuiltinAssets {
+			return nil
+		}
+
+		var provingSize uint64
+		if prover {
+			provingSize = uint64(ssize)
+		}
+
+		// TODO: We should fetch the params for the actual proof type, not just based on the size.
+		if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), provingSize); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+
 		return nil
 	}
-
-	// TODO: We should fetch the params for the actual proof type, not just based on the size.
-	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
-		return xerrors.Errorf("fetching proof parameters: %w", err)
-	}
-
-	return nil
 }
 
 func MinerAddress(ds dtypes.MetadataDS) (dtypes.MinerAddress, error) {

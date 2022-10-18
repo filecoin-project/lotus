@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -48,6 +49,9 @@ type Common interface {
 
 	// trigger graceful shutdown
 	Shutdown(context.Context) error //perm:admin
+
+	// StartTime returns node start time
+	StartTime(context.Context) (time.Time, error) //perm:read
 
 	// Session returns a random UUID of api provider session
 	Session(context.Context) (uuid.UUID, error) //perm:read

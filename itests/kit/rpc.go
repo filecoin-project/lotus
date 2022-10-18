@@ -3,13 +3,14 @@ package kit
 import (
 	"context"
 	"fmt"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/stretchr/testify/require"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"

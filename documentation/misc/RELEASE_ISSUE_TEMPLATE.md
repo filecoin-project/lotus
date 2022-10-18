@@ -26,6 +26,7 @@ First steps:
 Prepping an RC:
 
 - [ ] version string in `build/version.go` has been updated (in the `release/vX.Y.Z` branch).
+- [ ] run `make gen && make docsgen-cli`
 - [ ] tag commit with `vX.Y.Z-rcN`
 - [ ] cut a pre-release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true)
 
@@ -66,14 +67,14 @@ Testing an RC:
   - [ ] Update the [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) to the state that can be used as release note.
   - [ ] Invite the wider community through (link to the release issue)
     
-- [ ] **Stage 4 - Release**
+- [ ] **Stage 4 - Stable Release**
   - [ ] Final preparation
-    - [ ] Verify that version string in [`version.go`](https://github.com/ipfs/go-ipfs/tree/master/version.go) has been updated.
-    - [ ] Prep the changelog using `scripts/mkreleaselog`, and add it to `CHANGELOG.md`. Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
+    - [ ] Verify that version string in [`version.go`](https://github.com/filecoin-project/lotus/blob/master/build/version.go) has been updated.
+    - [ ] Verify that codegen is up to date (`make gen && make docsgen-cli`)
+    - [ ] Ensure that [CHANGELOG.md](https://github.com/filecoin-project/lotus/blob/master/CHANGELOG.md) is up to date
     - [ ] Merge `release-vX.Y.Z` into the `releases` branch.
     - [ ] Tag this merge commit (on the `releases` branch) with `vX.Y.Z`
-    - [ ] Cut the release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true&target=releases).
-      - [ ] Check `Create a discussion for this release`
+    - [ ] Cut the release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=false&target=releases).
 
 
 - [ ] **Post-Release**

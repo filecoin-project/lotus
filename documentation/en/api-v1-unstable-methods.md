@@ -167,6 +167,8 @@
 * [Raft](#Raft)
   * [RaftLeader](#RaftLeader)
   * [RaftState](#RaftState)
+* [Start](#Start)
+  * [StartTime](#StartTime)
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
@@ -5076,6 +5078,18 @@ Response:
   "MsgUuids": {}
 }
 ```
+
+## Start
+
+
+### StartTime
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"0001-01-01T00:00:00Z"`
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.

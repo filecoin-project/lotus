@@ -1241,7 +1241,7 @@ NAME:
    lotus-miner net ping - Ping peers
 
 USAGE:
-   lotus-miner net ping [command options] [arguments...]
+   lotus-miner net ping [command options] [peerMultiaddr]
 
 OPTIONS:
    --count value, -c value     specify the number of times it should ping (default: 10)

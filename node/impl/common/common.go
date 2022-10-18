@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/google/uuid"
@@ -26,6 +27,8 @@ type CommonAPI struct {
 	Alerting     *alerting.Alerting
 	APISecret    *dtypes.APIAlg
 	ShutdownChan dtypes.ShutdownChan
+
+	Start dtypes.NodeStartTime
 }
 
 type jwtPayload struct {
@@ -90,4 +93,8 @@ func (a *CommonAPI) Session(ctx context.Context) (uuid.UUID, error) {
 
 func (a *CommonAPI) Closing(ctx context.Context) (<-chan struct{}, error) {
 	return make(chan struct{}), nil // relies on jsonrpc closing
+}
+
+func (a *CommonAPI) StartTime(context.Context) (time.Time, error) {
+	return time.Time(a.Start), nil
 }

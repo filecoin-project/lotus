@@ -79,6 +79,8 @@ type CommonStruct struct {
 
 		Shutdown func(p0 context.Context) error `perm:"admin"`
 
+		StartTime func(p0 context.Context) (time.Time, error) `perm:"read"`
+
 		Version func(p0 context.Context) (APIVersion, error) `perm:"read"`
 	}
 }
@@ -1164,6 +1166,17 @@ func (s *CommonStruct) Shutdown(p0 context.Context) error {
 
 func (s *CommonStub) Shutdown(p0 context.Context) error {
 	return ErrNotSupported
+}
+
+func (s *CommonStruct) StartTime(p0 context.Context) (time.Time, error) {
+	if s.Internal.StartTime == nil {
+		return *new(time.Time), ErrNotSupported
+	}
+	return s.Internal.StartTime(p0)
+}
+
+func (s *CommonStub) StartTime(p0 context.Context) (time.Time, error) {
+	return *new(time.Time), ErrNotSupported
 }
 
 func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
