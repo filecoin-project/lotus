@@ -494,8 +494,8 @@ var ChainInspectUsage = &cli.Command{
 
 			mm := filcns.NewActorRegistry().Methods[code][m.Message.Method] // TODO: use remote map
 
-			byMethod[mm.Num] += m.Message.GasLimit
-			byMethodC[mm.Num]++
+			byMethod[mm.Name] += m.Message.GasLimit
+			byMethodC[mm.Name]++
 		}
 
 		type keyGasPair struct {

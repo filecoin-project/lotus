@@ -1,9 +1,14 @@
 package builtin
 
 import (
+	"reflect"
+	"runtime"
+	"strings"
+
 	"github.com/ipfs/go-cid"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin"
 	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
 	_init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
@@ -36,14 +41,14 @@ import (
 type RegistryEntry struct {
 	state   cbor.Er
 	code    cid.Cid
-	methods map[uint64]interface{}
+	methods map[uint64]builtin.MethodMeta
 }
 
 func (r RegistryEntry) State() cbor.Er {
 	return r.state
 }
 
-func (r RegistryEntry) Exports() map[uint64]interface{} {
+func (r RegistryEntry) Exports() map[uint64]builtin.MethodMeta {
 	return r.methods
 }
 
@@ -55,9 +60,11 @@ func MakeRegistryLegacy(actors []rtt.VMActor) []RegistryEntry {
 	registry := make([]RegistryEntry, 0)
 
 	for _, actor := range actors {
-		methodMap := make(map[uint64]interface{})
+		methodMap := make(map[uint64]builtin.MethodMeta)
 		for methodNum, method := range actor.Exports() {
-			methodMap[uint64(methodNum)] = method
+			if method != nil {
+				methodMap[uint64(methodNum)] = makeMethodMeta(method)
+			}
 		}
 		registry = append(registry, RegistryEntry{
 			code:    actor.Code(),
@@ -67,6 +74,20 @@ func MakeRegistryLegacy(actors []rtt.VMActor) []RegistryEntry {
 	}
 
 	return registry
+}
+
+func makeMethodMeta(method interface{}) builtin.MethodMeta {
+	ev := reflect.ValueOf(method)
+	// Extract the method names using reflection. These
+	// method names always match the field names in the
+	// `builtin.Method*` structs (tested in the specs-actors
+	// tests).
+	fnName := runtime.FuncForPC(ev.Pointer()).Name()
+	fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
+	return builtin.MethodMeta{
+		Name:   fnName,
+		Method: method,
+	}
 }
 
 func MakeRegistry(av actorstypes.Version) []RegistryEntry {
