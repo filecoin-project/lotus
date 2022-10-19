@@ -88,9 +88,6 @@ butterflynet: build-devnets
 interopnet: GOFLAGS+=-tags=interopnet
 interopnet: build-devnets
 
-wallabynet: GOFLAGS+=-tags=wallabynet
-wallabynet: build-devnets
-
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	$(GOCC) build $(GOFLAGS) -o lotus ./cmd/lotus

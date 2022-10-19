@@ -51,7 +51,6 @@ const (
 	KTBLS             KeyType = "bls"
 	KTSecp256k1       KeyType = "secp256k1"
 	KTSecp256k1Ledger KeyType = "secp256k1-ledger"
-	KTDelegated       KeyType = "delegated"
 )
 
 // KeyInfo is used for storing keys in KeyStore
