@@ -215,8 +215,8 @@ func (s *walkScheduler) enqueueIfNew(task *walkTask) {
 	}
 	//log.Infow("enqueue", "type", task.taskType.String(), "cid", task.c.String())
 	s.taskWg.Add(1)
-	s.in <- task
 	s.seen.Store(task.c, struct{}{})
+	s.in <- task
 }
 
 func (s *walkScheduler) startScheduler(ctx context.Context) {
