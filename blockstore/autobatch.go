@@ -192,7 +192,7 @@ func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block,
 		return v, nil
 	}
 
-	return bs.Get(ctx, c)
+	return nil, ipld.ErrNotFound{Cid: c}
 }
 
 func (bs *AutobatchBlockstore) DeleteBlock(context.Context, cid.Cid) error {
