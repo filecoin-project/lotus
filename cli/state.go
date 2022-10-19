@@ -1384,7 +1384,7 @@ func codeStr(c cid.Cid) string {
 }
 
 func getMethod(code cid.Cid, method abi.MethodNum) string {
-	return filcns.NewActorRegistry().Methods[code][method].Num // todo: use remote
+	return filcns.NewActorRegistry().Methods[code][method].Name // todo: use remote
 }
 
 func toFil(f types.BigInt) types.FIL {
