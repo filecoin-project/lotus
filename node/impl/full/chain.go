@@ -604,7 +604,7 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 		return err
 	}
 
-	if err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, f); err != nil {
+	if err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, f); err != nil {
 		return err
 	}
 
@@ -625,7 +625,7 @@ func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetK
 	go func() {
 		bw := bufio.NewWriterSize(w, cfg.WriteBufferSize)
 
-		err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, bw)
+		err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, bw)
 		bw.Flush()            //nolint:errcheck // it is a write to a pipe
 		w.CloseWithError(err) //nolint:errcheck // it is a pipe
 	}()

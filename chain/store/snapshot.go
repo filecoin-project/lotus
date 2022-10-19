@@ -30,7 +30,7 @@ func (cs *ChainStore) UnionStore() bstore.Blockstore {
 	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
 }
 
-func (cs *ChainStore) ExportRange(ctx context.Context, head, tail *types.TipSet, messages, receipts, stateroots bool, workers int64, w io.Writer) error {
+func (cs *ChainStore) ExportRange(ctx context.Context, head, tail *types.TipSet, messages, receipts, stateroots bool, workers int64, cacheSize int, w io.Writer) error {
 	h := &car.CarHeader{
 		Roots:   head.Cids(),
 		Version: 1,
@@ -40,9 +40,12 @@ func (cs *ChainStore) ExportRange(ctx context.Context, head, tail *types.TipSet,
 		return xerrors.Errorf("failed to write car header: %s", err)
 	}
 
-	unionBs := cs.UnionStore()
-	return cs.WalkSnapshotRange(ctx, head, tail, messages, receipts, stateroots, workers, func(c cid.Cid) error {
-		blk, err := unionBs.Get(ctx, c)
+	cacheStore, err := NewCachingBlockstore(cs.UnionStore(), cacheSize)
+	if err != nil {
+		return err
+	}
+	return cs.WalkSnapshotRange(ctx, cacheStore, head, tail, messages, receipts, stateroots, workers, func(c cid.Cid) error {
+		blk, err := cacheStore.Get(ctx, c)
 		if err != nil {
 			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
 		}
@@ -392,7 +395,7 @@ func (s *walkScheduler) work(ctx context.Context, todo *walkTask, results chan *
 	})
 }
 
-func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, head, tail *types.TipSet, messages, receipts, stateroots bool, workers int64, cb func(cid.Cid) error) error {
+func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, store bstore.Blockstore, head, tail *types.TipSet, messages, receipts, stateroots bool, workers int64, cb func(cid.Cid) error) error {
 	start := time.Now()
 	log.Infow("walking snapshot range", "head", head.Key(), "tail", tail.Key(), "messages", messages, "receipts", receipts, "stateroots", stateroots, "workers", workers, "start", start)
 	tasks := []*walkTask{}
@@ -411,7 +414,7 @@ func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, head, tail *types.T
 		includeReceipts: receipts,
 	}
 
-	pw, ctx := newWalkScheduler(ctx, cs.chainBlockstore, cfg, tasks...)
+	pw, ctx := newWalkScheduler(ctx, store, cfg, tasks...)
 	results := make(chan *walkResult)
 	pw.startScheduler(ctx)
 	pw.startWorkers(ctx, results)
