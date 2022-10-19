@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -213,7 +214,7 @@ func (s *walkScheduler) enqueueIfNew(task *walkTask) {
 	if _, ok := s.seen.Load(task.c); ok {
 		return
 	}
-	//log.Infow("enqueue", "type", task.taskType.String(), "cid", task.c.String())
+	log.Debugw("enqueue", "type", task.taskType.String(), "cid", task.c.String())
 	s.taskWg.Add(1)
 	s.seen.Store(task.c, struct{}{})
 	s.in <- task
@@ -222,6 +223,7 @@ func (s *walkScheduler) enqueueIfNew(task *walkTask) {
 func (s *walkScheduler) startScheduler(ctx context.Context) {
 	s.grp.Go(func() error {
 		defer func() {
+			log.Infow("walkScheduler shutting down")
 			close(s.out)
 			// Because the workers may have exited early (due to the context being canceled).
 			for range s.out {
@@ -232,6 +234,7 @@ func (s *walkScheduler) startScheduler(ctx context.Context) {
 				s.taskWg.Done()
 			}
 			// now, the waitgroup should be at 0, and the goroutine that was _waiting_ on it should have exited.
+			log.Infow("walkScheduler stopped")
 		}()
 		go func() {
 			s.taskWg.Wait()
@@ -346,7 +349,7 @@ func (s *walkScheduler) work(ctx context.Context, todo *walkTask, results chan *
 			})
 		}
 		if s.cfg.tail.Height() >= b.Height {
-			//log.Infow("tail reached", "cid", blk.String())
+			log.Debugw("tail reached", "cid", blk.String())
 			return nil
 		}
 
@@ -390,6 +393,8 @@ func (s *walkScheduler) work(ctx context.Context, todo *walkTask, results chan *
 }
 
 func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, head, tail *types.TipSet, messages, receipts, stateroots bool, workers int64, cb func(cid.Cid) error) error {
+	start := time.Now()
+	log.Infow("walking snapshot range", "head", head.Key(), "tail", tail.Key(), "messages", messages, "receipts", receipts, "stateroots", stateroots, "workers", workers, "start", start)
 	tasks := []*walkTask{}
 	for i := range head.Blocks() {
 		tasks = append(tasks, &walkTask{
@@ -431,6 +436,7 @@ func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, head, tail *types.T
 		return cbErr
 	}
 	close(results)
+	log.Infow("walking snapshot range complete", "duration", time.Since(start))
 	return err
 }
 
