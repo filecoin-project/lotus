@@ -105,8 +105,18 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 		return nil, xerrors.Errorf("cannot decode first block header: %w", decodeErr)
 	}
 
+	// A _valid_ block must use an ID address, but that's not what we're checking here. We're
+	// just making sure that adding additional address protocols won't lead to consensus issues.
+	if !abi.AddressValidForNetworkVersion(blockA.Miner, ss.networkVersion) {
+		return nil, xerrors.Errorf("address protocol unsupported in current network version: %d", blockA.Miner.Protocol())
+	}
+
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
 		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
+	}
+
+	if !abi.AddressValidForNetworkVersion(blockB.Miner, ss.networkVersion) {
+		return nil, xerrors.Errorf("address protocol unsupported in current network version: %d", blockB.Miner.Protocol())
 	}
 
 	// workaround chain halt
@@ -168,6 +178,10 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
 			return nil, xerrors.Errorf("cannot decode extra: %w", decodeErr)
+		}
+
+		if !abi.AddressValidForNetworkVersion(blockC.Miner, ss.networkVersion) {
+			return nil, xerrors.Errorf("address protocol unsupported in current network version: %d", blockC.Miner.Protocol())
 		}
 
 		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
