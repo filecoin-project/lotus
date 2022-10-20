@@ -52,6 +52,9 @@ var migrationsCmd = &cli.Command{
 			Name:  "repo",
 			Value: "~/.lotus",
 		},
+		&cli.BoolFlag{
+			Name: "check-invariants",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
@@ -115,7 +118,7 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-180, migrationTs, false)
+		ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
 		if err != nil {
 			return err
 		}
@@ -127,41 +130,65 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("completed round 1, took ", time.Since(startTime))
+		preMigration1Time := time.Since(startTime)
+
+		ts2, err := cs.GetTipsetByHeight(ctx, blk.Height-15, migrationTs, false)
+		if err != nil {
+			return err
+		}
+
+		startTime = time.Now()
+
+		err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts2.ParentState(), ts2.Height()-1, ts2)
+		if err != nil {
+			return err
+		}
+
+		preMigration2Time := time.Since(startTime)
+
 		startTime = time.Now()
 
 		newCid1, err := filcns.UpgradeActorsV9(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}
-		fmt.Println("completed round actual (with cache), took ", time.Since(startTime))
 
-		fmt.Println("new cid", newCid1)
+		cachedMigrationTime := time.Since(startTime)
+
+		startTime = time.Now()
 
 		newCid2, err := filcns.UpgradeActorsV9(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}
-		fmt.Println("completed round actual (without cache), took ", time.Since(startTime))
 
-		fmt.Println("new cid", newCid2)
+		uncachedMigrationTime := time.Since(startTime)
 
 		if newCid1 != newCid2 {
 			return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
 				newCid2)
 		}
 
-		err = checkStateInvariants(ctx, blk.ParentStateRoot, newCid1, bs)
-		if err != nil {
-			return err
+		fmt.Println("new cid", newCid2)
+		fmt.Println("completed premigration 1, took ", preMigration1Time)
+		fmt.Println("completed premigration 2, took ", preMigration2Time)
+		fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
+		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
+
+		if cctx.Bool("check-invariants") {
+			err = checkMigrationInvariants(ctx, blk.ParentStateRoot, newCid1, bs, blk.Height-1)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
 	},
 }
 
-func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore) error {
-	actorStore := store.ActorStore(ctx, blockstore.NewTieredBstore(bs, blockstore.NewMemorySync()))
+func checkMigrationInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
 
 	stateTreeV8, err := state.LoadStateTree(actorStore, v8StateRoot)
 	if err != nil {
@@ -187,6 +214,29 @@ func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot 
 	if err != nil {
 		return err
 	}
+
+	// Load the state root.
+	//var stateRoot types.StateRoot
+	//if err := actorStore.Get(ctx, v9StateRoot, &stateRoot); err != nil {
+	//	return xerrors.Errorf("failed to decode state root: %w", err)
+	//}
+	//
+	//actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version9)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//actorTree, err := builtin.LoadTree(actorStore, stateRoot.Actors)
+	//messages, err := v9.CheckStateInvariants(actorTree, epoch, actorCodeCids)
+	//if err != nil {
+	//	return xerrors.Errorf("checking state invariants: %w", err)
+	//}
+	//
+	//for _, message := range messages.Messages() {
+	//	fmt.Println("got the following error: ", message)
+	//}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
 
 	return nil
 }

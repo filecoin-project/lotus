@@ -197,8 +197,13 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Migration: UpgradeActorsV9,
 		PreMigrations: []stmgr.PreMigration{{
 			PreMigration:    PreUpgradeActorsV9,
-			StartWithin:     180,
+			StartWithin:     240,
 			DontStartWithin: 60,
+			StopWithin:      20,
+		}, {
+			PreMigration:    PreUpgradeActorsV9,
+			StartWithin:     15,
+			DontStartWithin: 10,
 			StopWithin:      5,
 		}},
 		Expensive: true,
