@@ -176,7 +176,7 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
 
 		if cctx.Bool("check-invariants") {
-			err = checkStateInvariants(ctx, blk.ParentStateRoot, newCid1, bs, blk.Height-1)
+			err = checkMigrationInvariants(ctx, blk.ParentStateRoot, newCid1, bs, blk.Height-1)
 			if err != nil {
 				return err
 			}
@@ -186,7 +186,7 @@ var migrationsCmd = &cli.Command{
 	},
 }
 
-func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+func checkMigrationInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 	actorStore := store.ActorStore(ctx, bs)
 	startTime := time.Now()
 

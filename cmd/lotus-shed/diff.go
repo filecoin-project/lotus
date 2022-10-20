@@ -91,28 +91,6 @@ var diffMinerStates = &cli.Command{
 			return err
 		}
 
-		//minerCode, err := cid.Decode("bafk2bzacedxmikgiz7du7e36vzsbmmhhozdtsucjkdo4uzkhj7nacajm33rx4")
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//minerStIntA, err := miner.Load(actorStore, &types.Actor{Head: stCidA, Code: minerCode})
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//minerStIntB, err := miner.Load(actorStore, &types.Actor{Head: stCidB, Code: minerCode})
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//dlDiff, err := miner.DiffDeadlines(minerStIntA, minerStIntB)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//fmt.Println(dlDiff)
-
 		fmt.Println(minerStA.Deadlines)
 		fmt.Println(minerStB.Deadlines)
 
@@ -165,18 +143,6 @@ var diffMinerStates = &cli.Command{
 
 						if !ok {
 							fmt.Println(i, "isn't found in infoB!!")
-						}
-
-						if infoA.SimpleQAPower != infoB.SimpleQAPower {
-							fmt.Println("gfreak1")
-						}
-
-						if infoA.SectorKeyCID != infoB.SectorKeyCID {
-							fmt.Println("gfreak2")
-						}
-
-						if infoA.SealedCID != infoB.SealedCID {
-							fmt.Println("gfreak3")
 						}
 
 						if !infoA.DealWeight.Equals(infoB.DealWeight) {
