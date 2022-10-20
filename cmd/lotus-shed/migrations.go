@@ -52,6 +52,9 @@ var migrationsCmd = &cli.Command{
 			Name:  "repo",
 			Value: "~/.lotus",
 		},
+		&cli.BoolFlag{
+			Name: "check-invariants",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
@@ -172,17 +175,20 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
 
-		err = checkStateInvariants(ctx, blk.ParentStateRoot, newCid1, bs)
-		if err != nil {
-			return err
+		if cctx.Bool("check-invariants") {
+			err = checkStateInvariants(ctx, blk.ParentStateRoot, newCid1, bs, blk.Height-1)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
 	},
 }
 
-func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore) error {
-	actorStore := store.ActorStore(ctx, blockstore.NewTieredBstore(bs, blockstore.NewMemorySync()))
+func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
 
 	stateTreeV8, err := state.LoadStateTree(actorStore, v8StateRoot)
 	if err != nil {
@@ -208,6 +214,29 @@ func checkStateInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot 
 	if err != nil {
 		return err
 	}
+
+	// Load the state root.
+	//var stateRoot types.StateRoot
+	//if err := actorStore.Get(ctx, v9StateRoot, &stateRoot); err != nil {
+	//	return xerrors.Errorf("failed to decode state root: %w", err)
+	//}
+	//
+	//actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version9)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//actorTree, err := builtin.LoadTree(actorStore, stateRoot.Actors)
+	//messages, err := v9.CheckStateInvariants(actorTree, epoch, actorCodeCids)
+	//if err != nil {
+	//	return xerrors.Errorf("checking state invariants: %w", err)
+	//}
+	//
+	//for _, message := range messages.Messages() {
+	//	fmt.Println("got the following error: ", message)
+	//}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
 
 	return nil
 }
