@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-address"
 )
 
 var ErrActorNotFound = errors.New("actor not found")
@@ -14,4 +16,6 @@ type Actor struct {
 	Head    cid.Cid
 	Nonce   uint64
 	Balance BigInt
+	// Address is the predictable address of this actor.
+	Address *address.Address
 }

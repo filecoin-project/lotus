@@ -512,6 +512,8 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		return cid.Undef, err
 	}
 
+	fmt.Println("****aaaa")
+
 	// Note: This is brittle, if the methodNum / param changes, it could break things
 	_, err = doExecValue(ctx, vm, verifreg.Address, verifregRoot, types.NewInt(0), builtin0.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg0.AddVerifierParams{
 
@@ -533,6 +535,8 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 			return cid.Undef, xerrors.Errorf("failed to add verified client: %w", err)
 		}
 	}
+
+	fmt.Println("****bbb")
 
 	st, err := vm.Flush(ctx)
 	if err != nil {
@@ -564,6 +568,8 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	if err != nil {
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
+
+	fmt.Println("****1")
 
 	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
@@ -604,6 +610,8 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	if !expectedCid().Equals(filecoinGenesisCid) {
 		return nil, xerrors.Errorf("expectedCid != filecoinGenesisCid")
 	}
+
+	fmt.Println("****2")
 
 	gblk, err := getGenesisBlock()
 	if err != nil {

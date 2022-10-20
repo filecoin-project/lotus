@@ -86,6 +86,7 @@ func loadManifests(netw string) error {
 	actors.ClearManifests()
 
 	for _, meta := range newMetadata {
+		fmt.Printf("registering manifest: %d, %v, %v\n", meta.Version, meta.ManifestCid, meta.Actors)
 		actors.RegisterManifest(meta.Version, meta.ManifestCid, meta.Actors)
 	}
 
@@ -147,10 +148,10 @@ func readEmbeddedBuiltinActorsMetadata(bundle string) ([]*BuiltinActorsMetadata,
 	if err != nil {
 		return nil, err
 	}
-	defer fi.Close() //nolint
+	defer fi.Close() // nolint
 
 	uncompressed := zstd.NewReader(fi)
-	defer uncompressed.Close() //nolint
+	defer uncompressed.Close() // nolint
 
 	var bundles []*BuiltinActorsMetadata
 
@@ -194,7 +195,7 @@ func readBundleManifestFromFile(path string) (cid.Cid, map[string]cid.Cid, error
 	if err != nil {
 		return cid.Undef, nil, err
 	}
-	defer fi.Close() //nolint
+	defer fi.Close() // nolint
 
 	return readBundleManifest(fi)
 }
@@ -234,10 +235,10 @@ func GetEmbeddedBuiltinActorsBundle(version actors.Version) ([]byte, bool) {
 	if err != nil {
 		return nil, false
 	}
-	defer fi.Close() //nolint
+	defer fi.Close() // nolint
 
 	uncompressed := zstd.NewReader(fi)
-	defer uncompressed.Close() //nolint
+	defer uncompressed.Close() // nolint
 
 	tarReader := tar.NewReader(uncompressed)
 	targetFileName := fmt.Sprintf("builtin-actors-%s.car", NetworkBundle)
