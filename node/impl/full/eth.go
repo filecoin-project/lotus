@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -433,39 +432,20 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthByte
 }
 
 func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.InvocResult, error) {
-	// FIXME: this is a workaround, remove this when f4 address is ready
-	var from address.Address
-	var err error
-	if tx.From[0] == 0xff && tx.From[1] == 0 && tx.From[2] == 0 {
-		addr, err := tx.From.ToFilecoinAddress()
-		if err != nil {
-			return nil, err
-		}
-		from = addr
-	} else {
-		id := uint64(100)
-		for ; id < 300; id++ {
-			idAddr, err := address.NewIDAddress(id)
-			if err != nil {
-				return nil, err
-			}
-			from = idAddr
-			act, err := a.StateGetActor(ctx, idAddr, types.EmptyTSK)
-			if err != nil {
-				return nil, err
-			}
-			if builtinactors.IsAccountActor(act.Code) {
-				break
-			}
-		}
-		if id == 300 {
-			return nil, fmt.Errorf("cannot find a dummy account")
-		}
+	// The from address must be translatable to an f4 address.
+	from, err := tx.From.ToFilecoinAddress()
+	if err != nil {
+		return nil, fmt.Errorf("failed to translate sender address (%s): %w", tx.From.String(), err)
+	}
+	if p := from.Protocol(); p != address.Delegated {
+		return nil, fmt.Errorf("expected a class 4 address, got: %d: %w", p, err)
 	}
 
 	var params []byte
 	var to address.Address
 	if tx.To == nil {
+		// TODO need to construct the actor through the EAM so that it acquires an f4 address.
+		//  https://github.com/filecoin-project/ref-fvm/issues/992
 		to = builtintypes.InitActorAddr
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
 			Bytecode: tx.Data,
@@ -543,7 +523,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string
 		return nil, err
 	}
 	if len(invokeResult.MsgRct.Return) > 0 {
-		return api.EthBytes(invokeResult.MsgRct.Return), nil
+		return invokeResult.MsgRct.Return, nil
 	}
 	return api.EthBytes{}, nil
 }
