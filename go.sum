@@ -288,6 +288,8 @@ github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+
 github.com/filecoin-project/go-address v0.0.6/go.mod h1:7B0/5DA13n6nHkB8bbGx1gWzG/dbTsZ0fgOJVGsM3TE=
 github.com/filecoin-project/go-address v1.1.0 h1:ofdtUtEsNxkIxkDw67ecSmvtzaVSdcea4boAmLbnHfE=
 github.com/filecoin-project/go-address v1.1.0/go.mod h1:5t3z6qPmIADZBtuE9EIzi0EwzcRy2nVhpo0I/c1r0OA=
+github.com/filecoin-project/go-address v1.0.1-0.20221019124855-ac317c37debb h1:UvHJms0aGDItERFnspu5FgKYHU7DEiLo67H2C/asrNs=
+github.com/filecoin-project/go-address v1.0.1-0.20221019124855-ac317c37debb/go.mod h1:5t3z6qPmIADZBtuE9EIzi0EwzcRy2nVhpo0I/c1r0OA=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.0 h1:t6qDiuGYYngDqaLc2ZUvdtAg4UNxPeOYaXhBWSNsVaM=
 github.com/filecoin-project/go-amt-ipld/v2 v2.1.0/go.mod h1:nfFPoGyX0CU9SkXX8EoCcSuHN1XcbN0c6KBh7yvP5fs=
 github.com/filecoin-project/go-amt-ipld/v3 v3.0.0/go.mod h1:Qa95YNAbtoVCTSVtX38aAC1ptBnJfPma1R/zZsKmx4o=

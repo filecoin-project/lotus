@@ -23,6 +23,9 @@ import (
 
 type EthUint64 uint64
 
+// EthAddressManagerActorID is the actor ID of the Ethereum Address Manager singleton.
+const EthAddressManagerActorID = 10
+
 func (e EthUint64) MarshalJSON() ([]byte, error) {
 	if e == 0 {
 		return json.Marshal("0x0")
@@ -244,8 +247,8 @@ func CheckContractCreation(lookup *MsgLookup) (*EthAddress, error) {
 }
 
 const (
-	ETH_ADDRESS_LENGTH = 20
-	ETH_HASH_LENGTH    = 32
+	EthAddressLength = 20
+	EthHashLength    = 32
 )
 
 type EthNonce [8]byte
@@ -255,20 +258,20 @@ func (n EthNonce) String() string {
 }
 
 func (n EthNonce) MarshalJSON() ([]byte, error) {
-	return json.Marshal((n.String()))
+	return json.Marshal(n.String())
 }
 
-type EthAddress [ETH_ADDRESS_LENGTH]byte
+type EthAddress [EthAddressLength]byte
 
-func (a EthAddress) String() string {
-	return "0x" + hex.EncodeToString(a[:])
+func (ea EthAddress) String() string {
+	return "0x" + hex.EncodeToString(ea[:])
 }
 
-func (a EthAddress) MarshalJSON() ([]byte, error) {
-	return json.Marshal((a.String()))
+func (ea EthAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ea.String())
 }
 
-func (a *EthAddress) UnmarshalJSON(b []byte) error {
+func (ea *EthAddress) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
@@ -277,18 +280,26 @@ func (a *EthAddress) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	copy(a[:], addr[:])
+	copy(ea[:], addr[:])
 	return nil
 }
 
-func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
-	expectedPrefix := [12]byte{0xff}
-	if !bytes.Equal(a[:12], expectedPrefix[:]) {
-		// TODO: handle f4 once we've added support to go-address.
-		return address.Address{}, xerrors.Errorf("not a valid id-in-eth address: %s", a)
+func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
+	idmask := [12]byte{0xff}
+	if bytes.Equal(ea[:12], idmask[:]) {
+		// This is a masked ID address.
+		id := binary.BigEndian.Uint64(ea[12:])
+		return address.NewIDAddress(id)
 	}
-	id := binary.BigEndian.Uint64(a[12:])
-	return address.NewIDAddress(id)
+
+	// Otherwise, translate the address into an address controlled by the
+	// Ethereum Address Manager.
+	addr, err := address.NewDelegatedAddress(EthAddressManagerActorID, ea[:])
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to translate supplied address (%s) into a "+
+			"Filecoin f4 address: %w", hex.EncodeToString(ea[:]), err)
+	}
+	return addr, nil
 }
 
 func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
@@ -304,25 +315,25 @@ func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
 
 func EthAddressFromHex(s string) (EthAddress, error) {
 	handlePrefix(&s)
-	b, err := decodeHexString(s, ETH_ADDRESS_LENGTH)
+	b, err := decodeHexString(s, EthAddressLength)
 	if err != nil {
 		return EthAddress{}, err
 	}
 	var h EthAddress
-	copy(h[ETH_ADDRESS_LENGTH-len(b):], b)
+	copy(h[EthAddressLength-len(b):], b)
 	return h, nil
 }
 
 func EthAddressFromBytes(b []byte) (EthAddress, error) {
 	var a EthAddress
-	if len(b) != ETH_ADDRESS_LENGTH {
-		return EthAddress{}, xerrors.Errorf("cannot initiate a new EthAddress: incorrect input length")
+	if len(b) != EthAddressLength {
+		return EthAddress{}, xerrors.Errorf("cannot parse bytes into anœ EthAddress: incorrect input length")
 	}
 	copy(a[:], b[:])
 	return a, nil
 }
 
-type EthHash [ETH_HASH_LENGTH]byte
+type EthHash [EthHashLength]byte
 
 func (h EthHash) MarshalJSON() ([]byte, error) {
 	return json.Marshal(h.String())
@@ -370,12 +381,12 @@ func EthHashFromCid(c cid.Cid) (EthHash, error) {
 
 func EthHashFromHex(s string) (EthHash, error) {
 	handlePrefix(&s)
-	b, err := decodeHexString(s, ETH_HASH_LENGTH)
+	b, err := decodeHexString(s, EthHashLength)
 	if err != nil {
 		return EthHash{}, err
 	}
 	var h EthHash
-	copy(h[ETH_HASH_LENGTH-len(b):], b)
+	copy(h[EthHashLength-len(b):], b)
 	return h, nil
 }
 
