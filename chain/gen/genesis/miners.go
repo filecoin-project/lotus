@@ -107,8 +107,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		return vm.NewVM(ctx, vmopt)
 	}
 
-	fmt.Println("*******nnnn")
-
 	genesisVm, err := newVM(sroot)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("creating vm: %w", err)
@@ -146,7 +144,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			}
 
 			params := mustEnc(constructorParams)
-			fmt.Println("*******p")
 			rval, err := doExecValue(ctx, genesisVm, power.Address, m.Owner, m.PowerBalance, power.Methods.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
@@ -206,8 +203,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		{
 			publish := func(params *markettypes.PublishStorageDealsParams) error {
 				fmt.Printf("publishing %d storage deals on miner %s with worker %s\n", len(params.Deals), params.Deals[0].Proposal.Provider, m.Worker)
-
-				fmt.Println("*******ooooo")
 
 				ret, err := doExecValue(ctx, genesisVm, market.Address, m.Worker, big.Zero(), builtin0.MethodsMarket.PublishStorageDeals, mustEnc(params))
 				if err != nil {
@@ -384,8 +379,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 
 				// we've added fake power for this sector above, remove it now
 
-				fmt.Println("*******dddddd")
-
 				nh, err := genesisVm.Flush(ctx)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
@@ -465,7 +458,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 
 				fmt.Println(types.FIL(pledge))
 
-				fmt.Println("*******__________")
 				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, m.Worker, pledge, builtintypes.MethodsMiner.PreCommitSector, mustEnc(params))
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
@@ -488,8 +480,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 
 					paramBytes = mustEnc(confirmParams)
 				}
-
-				fmt.Println("*******/////")
 				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
@@ -501,8 +491,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						RawByteDelta:         types.NewInt(uint64(m.SectorSize)),
 						QualityAdjustedDelta: sectorWeight,
 					}
-
-					fmt.Println("*******yyyyy")
 					_, err = doExecValue(ctx, genesisVm, power.Address, minerInfos[i].maddr, big.Zero(), power.Methods.UpdateClaimedPower, mustEnc(claimParams))
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -512,8 +513,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		return cid.Undef, err
 	}
 
-	fmt.Println("****aaaa")
-
 	// Note: This is brittle, if the methodNum / param changes, it could break things
 	_, err = doExecValue(ctx, vm, verifreg.Address, verifregRoot, types.NewInt(0), builtin0.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg0.AddVerifierParams{
 
@@ -536,8 +535,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		}
 	}
 
-	fmt.Println("****bbb")
-
 	st, err := vm.Flush(ctx)
 	if err != nil {
 		return cid.Cid{}, xerrors.Errorf("vm flush: %w", err)
@@ -555,6 +552,11 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
+	// Set up the Ethereum Address Manager.
+	if err = SetupEAM(ctx, st); err != nil {
+		return nil, xerrors.Errorf("failed to setup EAM: %w", err)
+	}
+
 	stateroot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("flush state tree failed: %w", err)
@@ -568,8 +570,6 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	if err != nil {
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
-
-	fmt.Println("****1")
 
 	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
@@ -610,8 +610,6 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	if !expectedCid().Equals(filecoinGenesisCid) {
 		return nil, xerrors.Errorf("expectedCid != filecoinGenesisCid")
 	}
-
-	fmt.Println("****2")
 
 	gblk, err := getGenesisBlock()
 	if err != nil {
@@ -660,4 +658,19 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
+}
+
+func SetupEAM(_ context.Context, nst *state.StateTree) error {
+	// TODO Version10
+	codecid, ok := actors.GetActorCodeID(actors.Version8, actors.EamKey)
+	if !ok {
+		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
+	}
+
+	header := &types.Actor{
+		Code:    codecid,
+		Head:    vm.EmptyObjectCid,
+		Balance: big.Zero(),
+	}
+	return nst.SetActor(builtintypes.EthereumAddressManagerActorAddr, header)
 }
