@@ -23,7 +23,8 @@ MANAGED_FILES=(
 )
 
 # this is required on digitalocean, which does not have snap seeded correctly at this phase.
-apt-get -y update && apt-get -y reinstall snapd
+apt-get -y -o DPkg::Lock::Timeout=3 update \
+  && apt-get -y -o DPkg::Lock::Timeout=3 reinstall snapd
 
 snap install lotus
 
