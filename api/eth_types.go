@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
@@ -22,9 +23,6 @@ import (
 )
 
 type EthUint64 uint64
-
-// EthAddressManagerActorID is the actor ID of the Ethereum Address Manager singleton.
-const EthAddressManagerActorID = 10
 
 func (e EthUint64) MarshalJSON() ([]byte, error) {
 	if e == 0 {
@@ -294,7 +292,7 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 
 	// Otherwise, translate the address into an address controlled by the
 	// Ethereum Address Manager.
-	addr, err := address.NewDelegatedAddress(EthAddressManagerActorID, ea[:])
+	addr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, ea[:])
 	if err != nil {
 		return address.Undef, fmt.Errorf("failed to translate supplied address (%s) into a "+
 			"Filecoin f4 address: %w", hex.EncodeToString(ea[:]), err)

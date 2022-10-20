@@ -3,6 +3,7 @@ package delegated
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/builtin"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
@@ -40,7 +41,11 @@ func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 		return err
 	}
 
-	maybeaddr, err := address.NewSecp256k1Address(pubk)
+	hasher.Reset()
+	hasher.Write(pubk)
+	addrHash := hasher.Sum(nil)
+
+	maybeaddr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[len(addrHash)-20:])
 	if err != nil {
 		return err
 	}

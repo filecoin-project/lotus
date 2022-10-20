@@ -109,6 +109,9 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 	}
 
 	if tx.To == nil {
+		// TODO https://github.com/filecoin-project/ref-fvm/issues/992
+		// TODO unify with applyEvmMsg
+
 		// this is a contract creation
 		to = builtintypes.InitActorAddr
 
@@ -263,7 +266,12 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	return address.NewSecp256k1Address(pubk)
+	// Calculate the f4 address based on the keccak hash of the pubkey.
+	hasher.Reset()
+	hasher.Write(pubk)
+	addrHash := hasher.Sum(nil)
+
+	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[len(addrHash)-20:])
 }
 
 func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
