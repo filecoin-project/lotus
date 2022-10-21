@@ -119,7 +119,7 @@ func TestParseEthAddr(t *testing.T) {
 		addr, err := address.NewIDAddress(id)
 		require.Nil(t, err)
 
-		eaddr, err := EthAddressFromFilecoinIDAddress(addr)
+		eaddr, err := EthAddressFromFilecoinAddress(addr)
 		require.Nil(t, err)
 
 		faddr, err := eaddr.ToFilecoinAddress()

@@ -81,7 +81,7 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 		}
 	}
 	if isCreate {
-		addr, err := EthAddressFromFilecoinIDAddress(msg.To)
+		addr, err := EthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, nil
 		}
