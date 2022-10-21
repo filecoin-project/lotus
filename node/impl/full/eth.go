@@ -472,7 +472,11 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 			return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 		}
 		to = addr
-		params = tx.Data
+		var buf bytes.Buffer
+		if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
+			return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+		}
+		params = buf.Bytes()
 	}
 
 	msg := &types.Message{
@@ -523,7 +527,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string
 		return nil, err
 	}
 	if len(invokeResult.MsgRct.Return) > 0 {
-		return invokeResult.MsgRct.Return, nil
+		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
 	return api.EthBytes{}, nil
 }
@@ -649,7 +653,9 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		V:                    api.EthBytes{},
 		R:                    api.EthBytes{},
 		S:                    api.EthBytes{},
-		Input:                msg.Params,
+		// TODO: this will be wrong (both for contract creation, and for normal messages).
+		// Do we fix?
+		Input: msg.Params,
 	}
 	return tx, nil
 }

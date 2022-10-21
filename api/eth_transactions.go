@@ -6,6 +6,7 @@ import (
 	"fmt"
 	mathbig "math/big"
 
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
@@ -57,23 +58,29 @@ type EthTxArgs struct {
 
 func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 	var to *EthAddress
-	params := msg.Params
+
+	paramsReader := bytes.NewReader(msg.Params)
+	var decodedParams []byte
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		to = nil
 
 		var create2 eam.Create2Params
-		reader := bytes.NewReader(msg.Params)
-		if err := create2.UnmarshalCBOR(reader); err != nil {
+		if err := create2.UnmarshalCBOR(paramsReader); err != nil {
 			return EthTxArgs{}, err
 		}
 
-		params = create2.Initcode
+		decodedParams = create2.Initcode
 	} else {
 		addr, err := EthAddressFromFilecoinIDAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, nil
 		}
 		to = &addr
+		params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+		if err != nil {
+			return EthTxArgs{}, err
+		}
+		decodedParams = params
 	}
 
 	return EthTxArgs{
@@ -81,7 +88,7 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 		Nonce:                int(msg.Nonce),
 		To:                   to,
 		Value:                msg.Value,
-		Input:                params,
+		Input:                decodedParams,
 		MaxFeePerGas:         msg.GasFeeCap,
 		MaxPriorityFeePerGas: msg.GasPremium,
 		GasLimit:             int(msg.GasLimit),
@@ -125,7 +132,11 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 			return nil, err
 		}
 		to = addr
-		params = tx.Input
+		var buf bytes.Buffer
+		if err := cbg.WriteByteArray(&buf, tx.Input); err != nil {
+			return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+		}
+		params = buf.Bytes()
 	}
 
 	msg := &types.Message{
