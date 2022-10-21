@@ -6,10 +6,12 @@ import (
 	"fmt"
 	mathbig "math/big"
 
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
@@ -57,23 +59,38 @@ type EthTxArgs struct {
 
 func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 	var to *EthAddress
-	params := msg.Params
+	var decodedParams []byte
+	var isCreate bool
+	paramsReader := bytes.NewReader(msg.Params)
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		to = nil
-
-		var create2 eam.Create2Params
-		reader := bytes.NewReader(msg.Params)
-		if err := create2.UnmarshalCBOR(reader); err != nil {
-			return EthTxArgs{}, err
+		switch msg.Method {
+		case builtintypes.MethodsEAM.Create:
+			var create eam.CreateParams
+			if err := create.UnmarshalCBOR(paramsReader); err != nil {
+				return EthTxArgs{}, err
+			}
+			decodedParams = create.Initcode
+			isCreate = true
+		case builtintypes.MethodsEAM.Create2:
+			var create2 eam.Create2Params
+			if err := create2.UnmarshalCBOR(paramsReader); err != nil {
+				return EthTxArgs{}, err
+			}
+			decodedParams = create2.Initcode
+			isCreate = true
 		}
-
-		params = create2.Initcode
-	} else {
+	}
+	if isCreate {
 		addr, err := EthAddressFromFilecoinIDAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, nil
 		}
 		to = &addr
+		params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+		if err != nil {
+			return EthTxArgs{}, err
+		}
+		decodedParams = params
 	}
 
 	return EthTxArgs{
@@ -81,7 +98,7 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 		Nonce:                int(msg.Nonce),
 		To:                   to,
 		Value:                msg.Value,
-		Input:                params,
+		Input:                decodedParams,
 		MaxFeePerGas:         msg.GasFeeCap,
 		MaxPriorityFeePerGas: msg.GasPremium,
 		GasLimit:             int(msg.GasLimit),
@@ -101,6 +118,7 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 		return nil, fmt.Errorf("to and input cannot both be empty")
 	}
 
+	var method abi.MethodNum
 	if tx.To == nil {
 		// TODO https://github.com/filecoin-project/ref-fvm/issues/992
 		// TODO unify with applyEvmMsg
@@ -119,13 +137,19 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 			return nil, fmt.Errorf("failed to serialize Create2 params: %w", err)
 		}
 		params = params2
+		method = builtintypes.MethodsEAM.Create2
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {
 			return nil, err
 		}
 		to = addr
-		params = tx.Input
+		var buf bytes.Buffer
+		if err := cbg.WriteByteArray(&buf, tx.Input); err != nil {
+			return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+		}
+		params = buf.Bytes()
+		method = builtintypes.MethodsEVM.InvokeContract
 	}
 
 	msg := &types.Message{
@@ -133,7 +157,7 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 		From:       from,
 		To:         to,
 		Value:      tx.Value,
-		Method:     2,
+		Method:     method,
 		Params:     params,
 		GasLimit:   int64(tx.GasLimit),
 		GasFeeCap:  tx.MaxFeePerGas,

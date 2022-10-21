@@ -1811,7 +1811,7 @@ var ChainExecEVMCmd = &cli.Command{
 		}
 
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode: contract,
+			Initcode: contract,
 		})
 		if err != nil {
 			return xerrors.Errorf("failed to serialize constructor params: %w", err)
