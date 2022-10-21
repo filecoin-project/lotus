@@ -1072,18 +1072,18 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByNumber(arg0, ar
 }
 
 // EthGetCode mocks base method.
-func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 api.EthAddress) (api.EthBytes, error) {
+func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthBytes, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EthGetCode", arg0, arg1)
+	ret := m.ctrl.Call(m, "EthGetCode", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // EthGetCode indicates an expected call of EthGetCode.
-func (mr *MockFullNodeMockRecorder) EthGetCode(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) EthGetCode(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetCode", reflect.TypeOf((*MockFullNode)(nil).EthGetCode), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetCode", reflect.TypeOf((*MockFullNode)(nil).EthGetCode), arg0, arg1, arg2)
 }
 
 // EthGetStorageAt mocks base method.

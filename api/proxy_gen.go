@@ -236,7 +236,7 @@ type FullNodeStruct struct {
 
 		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 EthUint64) (EthUint64, error) `perm:"read"`
 
-		EthGetCode func(p0 context.Context, p1 EthAddress) (EthBytes, error) `perm:"read"`
+		EthGetCode func(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) `perm:"read"`
 
 		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) `perm:"read"`
 
@@ -1882,14 +1882,14 @@ func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p
 	return *new(EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
+func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) {
 	if s.Internal.EthGetCode == nil {
 		return *new(EthBytes), ErrNotSupported
 	}
-	return s.Internal.EthGetCode(p0, p1)
+	return s.Internal.EthGetCode(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
+func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) {
 	return *new(EthBytes), ErrNotSupported
 }
 
