@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -292,15 +293,41 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 	return addr, nil
 }
 
-func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
-	id, err := address.IDFromAddress(addr)
-	if err != nil {
-		return EthAddress{}, err
+func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
+	switch addr.Protocol() {
+	case address.ID:
+		if !allowId {
+			return EthAddress{}, false, nil
+		}
+		id, err := address.IDFromAddress(addr)
+		if err != nil {
+			return EthAddress{}, false, err
+		}
+		var ethaddr EthAddress
+		ethaddr[0] = 0xff
+		binary.BigEndian.PutUint64(ethaddr[12:], id)
+		return ethaddr, true, nil
+	case address.Delegated:
+		payload := addr.Payload()
+		namespace, n, err := varint.FromUvarint(payload)
+		if err != nil {
+			return EthAddress{}, false, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
+		}
+		payload = payload[n:]
+		if namespace == builtin.EthereumAddressManagerActorID {
+			addr, err := EthAddressFromBytes(payload)
+			return addr, err == nil, err
+		}
 	}
-	var ethaddr EthAddress
-	ethaddr[0] = 0xff
-	binary.BigEndian.PutUint64(ethaddr[12:], id)
-	return ethaddr, nil
+	return EthAddress{}, false, nil
+}
+
+func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
+	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
+	if !ok && err == nil {
+		err = xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	}
+	return ethAddr, err
 }
 
 func EthAddressFromHex(s string) (EthAddress, error) {
