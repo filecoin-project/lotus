@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
 	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -232,7 +233,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api
 		From:       from,
 		To:         to,
 		Value:      big.Zero(),
-		Method:     abi.MethodNum(3), // GetBytecode
+		Method:     builtintypes.MethodsEVM.GetBytecode,
 		Params:     nil,
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
@@ -320,7 +321,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress,
 		From:       from,
 		To:         to,
 		Value:      big.Zero(),
-		Method:     abi.MethodNum(4), // GetStorageAt
+		Method:     builtintypes.MethodsEVM.GetStorageAt,
 		Params:     params,
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
@@ -448,7 +449,7 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 		//  https://github.com/filecoin-project/ref-fvm/issues/992
 		to = builtintypes.InitActorAddr
 		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode: tx.Data,
+			Initcode: tx.Data,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)
@@ -472,14 +473,18 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 			return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 		}
 		to = addr
-		params = tx.Data
+		var buf bytes.Buffer
+		if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
+			return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+		}
+		params = buf.Bytes()
 	}
 
 	msg := &types.Message{
 		From:       from,
 		To:         to,
 		Value:      big.Int(tx.Value),
-		Method:     abi.MethodNum(2),
+		Method:     builtintypes.MethodsEVM.InvokeContract,
 		Params:     params,
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
@@ -523,7 +528,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string
 		return nil, err
 	}
 	if len(invokeResult.MsgRct.Return) > 0 {
-		return invokeResult.MsgRct.Return, nil
+		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
 	return api.EthBytes{}, nil
 }
@@ -629,9 +634,31 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 	}
 
 	toAddr := &toEthAddr
-	_, err = api.CheckContractCreation(msgLookup)
-	if err == nil {
-		toAddr = nil
+	input := msg.Params
+	// Check to see if we need to decode as contract deployment.
+	if toFilAddr == builtintypes.EthereumAddressManagerActorAddr {
+		switch msg.Method {
+		case builtintypes.MethodsEAM.Create:
+			toAddr = nil
+			var params eam.CreateParams
+			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			input = params.Initcode
+		case builtintypes.MethodsEAM.Create2:
+			toAddr = nil
+			var params eam.Create2Params
+			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			input = params.Initcode
+		}
+		if err != nil {
+			return api.EthTx{}, err
+		}
+	}
+	// Otherwise, try to decode as a cbor byte array.
+	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
+	if toAddr != nil {
+		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(msg.Params), uint64(len(msg.Params))); err == nil {
+			input = decodedParams
+		}
 	}
 
 	tx := api.EthTx{
@@ -649,7 +676,7 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		V:                    api.EthBytes{},
 		R:                    api.EthBytes{},
 		S:                    api.EthBytes{},
-		Input:                msg.Params,
+		Input:                input,
 	}
 	return tx, nil
 }

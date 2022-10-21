@@ -17,6 +17,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 
 	"github.com/filecoin-project/lotus/build"
@@ -206,10 +209,14 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 		Logs:             []string{},
 	}
 
-	contractAddr, err := CheckContractCreation(lookup)
-	if err == nil {
-		receipt.To = nil
-		receipt.ContractAddress = contractAddr
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+		// Create and Create2 return the same things.
+		var ret eam.CreateReturn
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+			return EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
+		}
+		addr := EthAddress(ret.EthAddress)
+		receipt.ContractAddress = &addr
 	}
 
 	if lookup.Receipt.ExitCode.IsSuccess() {
@@ -227,21 +234,6 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
 	receipt.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
 	return receipt, nil
-}
-
-func CheckContractCreation(lookup *MsgLookup) (*EthAddress, error) {
-	if lookup.Receipt.ExitCode.IsError() {
-		return nil, xerrors.Errorf("message execution was not successful")
-	}
-	var result init8.ExecReturn
-	ret := bytes.NewReader(lookup.Receipt.Return)
-	if err := result.UnmarshalCBOR(ret); err == nil {
-		contractAddr, err := EthAddressFromFilecoinIDAddress(result.IDAddress)
-		if err == nil {
-			return &contractAddr, nil
-		}
-	}
-	return nil, xerrors.Errorf("not a contract creation tx")
 }
 
 const (
