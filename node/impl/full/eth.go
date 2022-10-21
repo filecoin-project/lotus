@@ -588,6 +588,42 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 	return block, nil
 }
 
+func (a *EthModule) lookupEthAddress(ctx context.Context, addr address.Address) (api.EthAddress, error) {
+	// Attempt to convert directly.
+	if ethAddr, ok, err := api.TryEthAddressFromFilecoinAddress(addr, false); err != nil {
+		return api.EthAddress{}, err
+	} else if ok {
+		return ethAddr, nil
+	}
+
+	// Lookup on the target actor.
+	actor, err := a.StateAPI.StateGetActor(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return api.EthAddress{}, err
+	}
+	if actor.Address != nil {
+		if ethAddr, ok, err := api.TryEthAddressFromFilecoinAddress(*actor.Address, false); err != nil {
+			return api.EthAddress{}, err
+		} else if ok {
+			return ethAddr, nil
+		}
+	}
+
+	// Check if we already have an ID addr, and use it if possible.
+	if ethAddr, ok, err := api.TryEthAddressFromFilecoinAddress(addr, true); err != nil {
+		return api.EthAddress{}, err
+	} else if ok {
+		return ethAddr, nil
+	}
+
+	// Otherwise, resolve the ID addr.
+	idAddr, err := a.StateAPI.StateLookupID(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return api.EthAddress{}, err
+	}
+	return api.EthAddressFromFilecoinAddress(idAddr)
+}
+
 func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (api.EthTx, error) {
 	if msgLookup == nil {
 		return api.EthTx{}, fmt.Errorf("msg does not exist")
@@ -613,22 +649,12 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return api.EthTx{}, err
 	}
 
-	fromFilIdAddr, err := a.StateAPI.StateLookupID(ctx, msg.From, types.EmptyTSK)
+	fromEthAddr, err := a.lookupEthAddress(ctx, msg.From)
 	if err != nil {
 		return api.EthTx{}, err
 	}
 
-	fromEthAddr, err := api.EthAddressFromFilecoinIDAddress(fromFilIdAddr)
-	if err != nil {
-		return api.EthTx{}, err
-	}
-
-	toFilAddr, err := a.StateAPI.StateLookupID(ctx, msg.To, types.EmptyTSK)
-	if err != nil {
-		return api.EthTx{}, err
-	}
-
-	toEthAddr, err := api.EthAddressFromFilecoinIDAddress(toFilAddr)
+	toEthAddr, err := a.lookupEthAddress(ctx, msg.To)
 	if err != nil {
 		return api.EthTx{}, err
 	}
@@ -636,7 +662,8 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 	toAddr := &toEthAddr
 	input := msg.Params
 	// Check to see if we need to decode as contract deployment.
-	if toFilAddr == builtintypes.EthereumAddressManagerActorAddr {
+	// We don't need to resolve the to address, because there's only one form (an ID).
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
 		case builtintypes.MethodsEAM.Create:
 			toAddr = nil
