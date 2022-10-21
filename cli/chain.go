@@ -1934,6 +1934,12 @@ var ChainInvokeEVMCmd = &cli.Command{
 
 		params := append(entryPoint, inputData...)
 
+		var buffer bytes.Buffer
+		if err := cbg.WriteByteArray(&buffer, params); err != nil {
+			return xerrors.Errorf("failed to encode evm params as cbor: %w", err)
+		}
+		params = buffer.Bytes()
+
 		var fromAddr address.Address
 		if from := cctx.String("from"); from == "" {
 			defaddr, err := api.WalletDefaultAddress(ctx)
@@ -1977,9 +1983,13 @@ var ChainInvokeEVMCmd = &cli.Command{
 		}
 
 		afmt.Println("Gas used: ", wait.Receipt.GasUsed)
-		if len(wait.Receipt.Return) > 0 {
-			result := hex.EncodeToString(wait.Receipt.Return)
-			afmt.Println(result)
+		result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
+		if err != nil {
+			return xerrors.Errorf("evm result not correctly encoded: %w", err)
+		}
+
+		if len(result) > 0 {
+			afmt.Println(hex.EncodeToString(result))
 		} else {
 			afmt.Println("OK")
 		}
