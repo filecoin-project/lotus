@@ -429,27 +429,51 @@ type EthFilterSpec struct {
 	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
-	FromBlock string
+	FromBlock string `json:"fromBlock,omitempty"`
 
 	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
-	ToBlock string
+	ToBlock string `json:"toBlock,omitempty"`
 
 	// Actor address or a list of addresses from which event logs should originate.
 	// Optional, default nil.
 	// The JSON decoding must treat a string as equivalent to an array with one value, for example
 	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
-	Address []EthAddress
+	Address EthAddressList `json:"address"`
 
 	// List of topics to be matched.
 	// Optional, default: empty list
-	Topics EthTopicSpec
+	Topics EthTopicSpec `json:"topics"`
 
 	// Restricts event logs returned to those in receipts contained in the tipset this block is part of.
 	// If BlockHash is present in in the filter criteria, then neither FromBlock nor ToBlock are allowed.
 	// Added in EIP-234
-	BlockHash EthHash
+	BlockHash EthHash `json:"blockHash,omitempty"`
+}
+
+// EthAddressSpec represents a list of addresses.
+// The JSON decoding must treat a string as equivalent to an array with one value, for example
+// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
+type EthAddressList []EthAddress
+
+func (e *EthAddressList) UnmarshalJSON(b []byte) error {
+	if len(b) > 0 && b[0] == '[' {
+		var addrs []EthAddress
+		err := json.Unmarshal(b, &addrs)
+		if err != nil {
+			return err
+		}
+		*e = addrs
+		return nil
+	}
+	var addr EthAddress
+	err := json.Unmarshal(b, &addr)
+	if err != nil {
+		return err
+	}
+	*e = []EthAddress{addr}
+	return nil
 }
 
 // TopicSpec represents a specification for matching by topic. An empty spec means all topics
@@ -465,8 +489,30 @@ type EthFilterSpec struct {
 //
 // The JSON decoding must treat string values as equivalent to arrays with one value, for example
 // { "A", [ "B", "C" ] } must be decoded as [ [ A ], [ B, C ] ]
-type EthTopicSpec struct {
-	Topics [][]EthHash
+type EthTopicSpec []EthHashList
+
+type EthHashList []EthHash
+
+func (e *EthHashList) UnmarshalJSON(b []byte) error {
+	if bytes.Equal(b, []byte{'n', 'u', 'l', 'l'}) {
+		return nil
+	}
+	if len(b) > 0 && b[0] == '[' {
+		var hashes []EthHash
+		err := json.Unmarshal(b, &hashes)
+		if err != nil {
+			return err
+		}
+		*e = hashes
+		return nil
+	}
+	var hash EthHash
+	err := json.Unmarshal(b, &hash)
+	if err != nil {
+		return err
+	}
+	*e = []EthHash{hash}
+	return nil
 }
 
 // FilterResult represents the response from executing a filter: a list of bloack hashes, a list of transaction hashes
@@ -484,56 +530,69 @@ type EthFilterResult struct {
 	NewLogs []EthLog
 }
 
+func (h EthFilterResult) MarshalJSON() ([]byte, error) {
+	if h.NewBlockHashes != nil {
+		return json.Marshal(h.NewBlockHashes)
+	}
+	if h.NewTransactionHashes != nil {
+		return json.Marshal(h.NewTransactionHashes)
+	}
+	if h.NewLogs != nil {
+		return json.Marshal(h.NewLogs)
+	}
+	return []byte{'[', ']'}, nil
+}
+
 type EthLog struct {
 	// Address is the address of the actor that produced the event log.
-	Address EthAddress
+	Address EthAddress `json:"address"`
 
 	// Data is the values of the event log, excluding topics
-	Data []byte
+	Data []EthHash `json:"data"`
 
 	// List of topics associated with the event log.
-	Topics []EthHash
+	Topics []EthHash `json:"topics"`
 
 	// Following fields are derived from the transaction containing the log
 
 	// Indicates whether the log was removed due to a chain reorganization.
-	Removed bool
+	Removed bool `json:"removed"`
 
 	// LogIndex is the index of the event log in the sequence of events produced by the message execution.
 	// (this is the index in the events AMT on the message receipt)
-	LogIndex EthUint64
+	LogIndex EthUint64 `json:"logIndex"`
 
 	// TransactionIndex is the index in the tipset of the transaction that produced the event log.
 	// The index corresponds to the sequence of messages produced by ChainGetParentMessages
-	TransactionIndex EthUint64
+	TransactionIndex EthUint64 `json:"transactionIndex"`
 
 	// TransactionHash is the cid of the transaction that produced the event log.
-	TransactionHash EthHash
+	TransactionHash EthHash `json:"transactionHash"`
 
 	// BlockHash is the hash of a block in the tipset containing the message receipt of the message execution.
 	// This may be passed to ChainGetParentReceipts to obtain a list of receipts. The receipt
 	// containing the events will be at TransactionIndex in the receipt list.
-	BlockHash EthUint64
+	BlockHash EthHash `json:"blockHash"`
 
 	// BlockNumber is the epoch at which the message was executed. This is the epoch containing
 	// the message receipt.
-	BlockNumber EthUint64
+	BlockNumber EthUint64 `json:"blockNumber"`
 }
 
 type EthSubscriptionParams struct {
 	// Actor address or a list of addresses from which event logs should originate.
 	// Optional, default nil.
-	Address *address.Address
+	Address *address.Address `json:"address,omitempty"`
 
 	// List of topics to be matched.
 	// Optional, default: empty list
-	Topics EthTopicSpec
+	Topics EthTopicSpec `json:"topics,omitempty"`
 }
 
 type EthSubscriptionResponse struct {
 	// The persistent identifier for the subscription which can be used to unsubscribe.
-	SubscriptionID EthSubscriptionID
+	SubscriptionID EthSubscriptionID `json:"subscription"`
 
 	// The object matching the subscription. This may be a Block, a Transaction or an EventLog
-	Result interface{}
+	Result interface{} `json:"result"`
 }

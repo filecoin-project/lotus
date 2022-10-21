@@ -2,6 +2,7 @@
 package api
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -30,6 +31,7 @@ func TestEthIntMarshalJSON(t *testing.T) {
 		require.Equal(t, j, tc.Output)
 	}
 }
+
 func TestEthIntUnmarshalJSON(t *testing.T) {
 	testcases := []TestCase{
 		{[]byte("\"0x0\""), EthUint64(0)},
@@ -153,5 +155,214 @@ func TestUnmarshalEthBytes(t *testing.T) {
 		data, err := s.MarshalJSON()
 		require.Nil(t, err)
 		require.Equal(t, string(data), tc)
+	}
+}
+
+func TestEthFilterResultMarshalJSON(t *testing.T) {
+	hash1, err := EthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	require.NoError(t, err, "eth hash")
+
+	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	require.NoError(t, err, "eth hash")
+
+	addr, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	require.NoError(t, err, "eth address")
+
+	log := EthLog{
+		Removed:          true,
+		LogIndex:         5,
+		TransactionIndex: 45,
+		TransactionHash:  hash1,
+		BlockHash:        hash2,
+		BlockNumber:      53,
+		Topics:           []EthHash{hash1},
+		Data:             []EthHash{hash1},
+		Address:          addr,
+	}
+	logjson, err := json.Marshal(log)
+	require.NoError(t, err, "log json")
+
+	testcases := []struct {
+		res  EthFilterResult
+		want string
+	}{
+		{
+			res:  EthFilterResult{},
+			want: "[]",
+		},
+
+		{
+			res: EthFilterResult{
+				NewBlockHashes: []EthHash{hash1, hash2},
+			},
+			want: `["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184","0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"]`,
+		},
+
+		{
+			res: EthFilterResult{
+				NewTransactionHashes: []EthHash{hash1, hash2},
+			},
+			want: `["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184","0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"]`,
+		},
+
+		{
+			res: EthFilterResult{
+				NewLogs: []EthLog{log},
+			},
+			want: `[` + string(logjson) + `]`,
+		},
+	}
+
+	for _, tc := range testcases {
+		data, err := json.Marshal(tc.res)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, string(data))
+	}
+}
+
+func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
+	hash1, err := EthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	require.NoError(t, err, "eth hash")
+
+	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	require.NoError(t, err, "eth hash")
+
+	addr, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	require.NoError(t, err, "eth address")
+
+	testcases := []struct {
+		input string
+		want  EthFilterSpec
+	}{
+		{
+			input: `{"fromBlock":"latest"}`,
+			want:  EthFilterSpec{FromBlock: "latest"},
+		},
+		{
+			input: `{"toBlock":"pending"}`,
+			want:  EthFilterSpec{ToBlock: "pending"},
+		},
+		{
+			input: `{"address":["0xd4c5fb16488Aa48081296299d54b0c648C9333dA"]}`,
+			want:  EthFilterSpec{Address: EthAddressList{addr}},
+		},
+		{
+			input: `{"address":"0xd4c5fb16488Aa48081296299d54b0c648C9333dA"}`,
+			want:  EthFilterSpec{Address: EthAddressList{addr}},
+		},
+		{
+			input: `{"blockHash":"0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"}`,
+			want:  EthFilterSpec{BlockHash: hash1},
+		},
+		{
+			input: `{"topics":["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"]}`,
+			want: EthFilterSpec{
+				Topics: EthTopicSpec{
+					{hash1},
+				},
+			},
+		},
+		{
+			input: `{"topics":["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184","0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"]}`,
+			want: EthFilterSpec{
+				Topics: EthTopicSpec{
+					{hash1},
+					{hash2},
+				},
+			},
+		},
+		{
+			input: `{"topics":[null, ["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184","0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"]]}`,
+			want: EthFilterSpec{
+				Topics: EthTopicSpec{
+					nil,
+					{hash1, hash2},
+				},
+			},
+		},
+		{
+			input: `{"topics":[null, "0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"]}`,
+			want: EthFilterSpec{
+				Topics: EthTopicSpec{
+					nil,
+					{hash1},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		var got EthFilterSpec
+		err := json.Unmarshal([]byte(tc.input), &got)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, got)
+	}
+}
+
+func TestEthAddressListUnmarshalJSON(t *testing.T) {
+	addr1, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	require.NoError(t, err, "eth address")
+
+	addr2, err := EthAddressFromHex("abbbfb16488Aa48081296299d54b0c648C9333dA")
+	require.NoError(t, err, "eth address")
+
+	testcases := []struct {
+		input string
+		want  EthAddressList
+	}{
+		{
+			input: `["0xd4c5fb16488Aa48081296299d54b0c648C9333dA"]`,
+			want:  EthAddressList{addr1},
+		},
+		{
+			input: `["0xd4c5fb16488Aa48081296299d54b0c648C9333dA","abbbfb16488Aa48081296299d54b0c648C9333dA"]`,
+			want:  EthAddressList{addr1, addr2},
+		},
+		{
+			input: `"0xd4c5fb16488Aa48081296299d54b0c648C9333dA"`,
+			want:  EthAddressList{addr1},
+		},
+	}
+	for _, tc := range testcases {
+		var got EthAddressList
+		err := json.Unmarshal([]byte(tc.input), &got)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, got)
+	}
+}
+
+func TestEthHashListUnmarshalJSON(t *testing.T) {
+	hash1, err := EthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	require.NoError(t, err, "eth hash")
+
+	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	require.NoError(t, err, "eth hash")
+
+	testcases := []struct {
+		input string
+		want  *EthHashList
+	}{
+		{
+			input: `["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"]`,
+			want:  &EthHashList{hash1},
+		},
+		{
+			input: `["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184","0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"]`,
+			want:  &EthHashList{hash1, hash2},
+		},
+		{
+			input: `"0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"`,
+			want:  &EthHashList{hash1},
+		},
+		{
+			input: `null`,
+			want:  nil,
+		},
+	}
+	for _, tc := range testcases {
+		var got *EthHashList
+		err := json.Unmarshal([]byte(tc.input), &got)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, got)
 	}
 }
