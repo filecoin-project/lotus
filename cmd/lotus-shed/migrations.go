@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
@@ -216,25 +217,25 @@ func checkMigrationInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateR
 	}
 
 	// Load the state root.
-	//var stateRoot types.StateRoot
-	//if err := actorStore.Get(ctx, v9StateRoot, &stateRoot); err != nil {
-	//	return xerrors.Errorf("failed to decode state root: %w", err)
-	//}
-	//
-	//actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version9)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//actorTree, err := builtin.LoadTree(actorStore, stateRoot.Actors)
-	//messages, err := v9.CheckStateInvariants(actorTree, epoch, actorCodeCids)
-	//if err != nil {
-	//	return xerrors.Errorf("checking state invariants: %w", err)
-	//}
-	//
-	//for _, message := range messages.Messages() {
-	//	fmt.Println("got the following error: ", message)
-	//}
+	var stateRoot types.StateRoot
+	if err := actorStore.Get(ctx, v9StateRoot, &stateRoot); err != nil {
+		return xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version9)
+	if err != nil {
+		return err
+	}
+
+	actorTree, err := builtin.LoadTree(actorStore, stateRoot.Actors)
+	messages, err := v9.CheckStateInvariants(actorTree, epoch, actorCodeCids)
+	if err != nil {
+		return xerrors.Errorf("checking state invariants: %w", err)
+	}
+
+	for _, message := range messages.Messages() {
+		fmt.Println("got the following error: ", message)
+	}
 
 	fmt.Println("completed invariant checks, took ", time.Since(startTime))
 
