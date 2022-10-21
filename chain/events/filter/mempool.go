@@ -39,28 +39,11 @@ func (f *MemPoolFilter) TakeCollectedMessages(context.Context) []cid.Cid {
 	return collected
 }
 
+// TODO: implement MemPoolFilterManager reading from mempool
+
 type MemPoolFilterManager struct {
 	mu      sync.Mutex // guards mutations to filters
 	filters map[string]*MemPoolFilter
-}
-
-func (m MemPoolFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if len(m.filters) == 0 {
-		return nil
-	}
-
-	// TODO: could run this loop in parallel with errgroup
-	// for _, f := range m.filters {
-	// 	// f.CollectTipSet(ctx, to)
-	// }
-
-	return nil
-}
-
-func (m *MemPoolFilterManager) Revert(ctx context.Context, from, to *types.TipSet) error {
-	return nil
 }
 
 func (m *MemPoolFilterManager) Install(ctx context.Context) (*MemPoolFilter, error) {

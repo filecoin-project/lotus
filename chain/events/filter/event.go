@@ -207,6 +207,8 @@ func (e *executedMessage) Events() []*types.Event {
 	return e.evs
 }
 
+// TODO: implement EventFilterManager hooking into events as observer
+
 type EventFilterManager struct {
 	ChainStore cstore.ChainStore
 
@@ -247,7 +249,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 		load:  m.loadExecutedMessages,
 	}
 
-	// TODO: could run this loop in parallel with errgroup
+	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
 		f.CollectEvents(ctx, tse, true)
 	}

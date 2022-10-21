@@ -38,6 +38,8 @@ func (f *TipSetFilter) TakeCollectedTipSets(context.Context) []types.TipSetKey {
 	return collected
 }
 
+// TODO: implement TipSetFilterManager hooking into events as observer
+
 type TipSetFilterManager struct {
 	mu      sync.Mutex // guards mutations to filters
 	filters map[string]*TipSetFilter

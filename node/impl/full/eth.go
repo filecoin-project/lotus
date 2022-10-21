@@ -866,13 +866,35 @@ func (e *EthEvent) EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*
 }
 
 func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
-	// TODO: implement EthGetFilterChanges
-	return nil, api.ErrNotSupported
+	f, err := e.FilterStore.Get(ctx, string(id))
+	if err != nil {
+		return nil, err
+	}
+
+	switch fc := f.(type) {
+	case filterEventCollector:
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx))
+	case filterTipSetCollector:
+		return ethFilterResultFromTipSets(fc.TakeCollectedTipSets(ctx))
+	case filterMessageCollector:
+		return ethFilterResultFromMessages(fc.TakeCollectedMessages(ctx))
+	}
+
+	return nil, xerrors.Errorf("unknown filter type")
 }
 
 func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
-	// TODO: implement EthGetFilterLogs
-	return nil, api.ErrNotSupported
+	f, err := e.FilterStore.Get(ctx, string(id))
+	if err != nil {
+		return nil, err
+	}
+
+	switch fc := f.(type) {
+	case filterEventCollector:
+		return ethFilterResultFromEvents(fc.TakeCollectedEvents(ctx))
+	}
+
+	return nil, xerrors.Errorf("wrong filter type")
 }
 
 func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error) {
@@ -887,10 +909,10 @@ func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, erro
 	}
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {
-		// Could not record in store, attempt to delete filter
+		// Could not record in store, attempt to delete filter to clean up
 		err2 := e.TipSetFilterManager.Remove(ctx, f.ID())
 		if err2 != nil {
-			return "", xerrors.Errorf("encoutered error %v while removing new filter due to %v", err2, err)
+			return "", xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
 		}
 
 		return "", err
@@ -906,7 +928,7 @@ func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (api.EthF
 	}
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {
-		// Could not record in store, attempt to delete filter
+		// Could not record in store, attempt to delete filter to clean up
 		err2 := e.MemPoolFilterManager.Remove(ctx, f.ID())
 		if err2 != nil {
 			return "", xerrors.Errorf("encoutered error %v while removing new filter due to %v", err2, err)
@@ -943,6 +965,14 @@ func (e *EthEvent) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (
 				return false, err
 			}
 		}
+	case *filter.MemPoolFilter:
+		err := e.MemPoolFilterManager.Remove(ctx, f.ID())
+		if err != nil {
+			// if filter not found then we may have deleted it on a prior attempt
+			if !errors.Is(err, filter.ErrFilterNotFound) {
+				return false, err
+			}
+		}
 	default:
 		return false, xerrors.Errorf("unknown filter type")
 	}
@@ -961,4 +991,55 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params
 func (a *EthEvent) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
 	// TODO: implement EthUnsubscribe
 	return false, api.ErrNotSupported
+}
+
+type filterEventCollector interface {
+	TakeCollectedEvents(context.Context) []*filter.CollectedEvent
+}
+
+type filterMessageCollector interface {
+	TakeCollectedMessages(context.Context) []cid.Cid
+}
+
+type filterTipSetCollector interface {
+	TakeCollectedTipSets(context.Context) []types.TipSetKey
+}
+
+func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResult, error) {
+	// TODO: implement ethFilterResultFromEvents
+	return nil, nil
+}
+
+func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*api.EthFilterResult, error) {
+	res := &api.EthFilterResult{}
+
+	for _, tsk := range tsks {
+		c, err := tsk.Cid()
+		if err != nil {
+			return nil, err
+		}
+		hash, err := api.EthHashFromCid(c)
+		if err != nil {
+			return nil, err
+		}
+
+		res.NewBlockHashes = append(res.NewBlockHashes, hash)
+	}
+
+	return res, nil
+}
+
+func ethFilterResultFromMessages(cs []cid.Cid) (*api.EthFilterResult, error) {
+	res := &api.EthFilterResult{}
+
+	for _, c := range cs {
+		hash, err := api.EthHashFromCid(c)
+		if err != nil {
+			return nil, err
+		}
+
+		res.NewTransactionHashes = append(res.NewTransactionHashes, hash)
+	}
+
+	return res, nil
 }
