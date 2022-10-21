@@ -86,7 +86,6 @@ func loadManifests(netw string) error {
 	actors.ClearManifests()
 
 	for _, meta := range newMetadata {
-		fmt.Printf("registering manifest: %d, %v, %v\n", meta.Version, meta.ManifestCid, meta.Actors)
 		actors.RegisterManifest(meta.Version, meta.ManifestCid, meta.Actors)
 	}
 
