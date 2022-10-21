@@ -377,6 +377,7 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 		Code:    actcid,
 		Head:    statecid,
 		Balance: bal,
+		Address: &addr,
 	}
 
 	return act, nil
