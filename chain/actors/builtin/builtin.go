@@ -129,6 +129,15 @@ func IsBuiltinActor(c cid.Cid) bool {
 	return false
 }
 
+func IsEmbryo(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == "embryo"
+	}
+
+	return false
+}
+
 func IsAccountActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {

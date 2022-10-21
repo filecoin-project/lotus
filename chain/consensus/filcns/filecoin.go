@@ -14,6 +14,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/multiformats/go-varint"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -434,6 +436,19 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 	return nil
 }
 
+func isValidForSending(act *types.Actor) bool {
+	if builtin.IsAccountActor(act.Code) {
+		return true
+	}
+
+	// HACK: Allow Eth embryos to send messages
+	if !builtin.IsEmbryo(act.Code) || act.Address == nil || act.Address.Protocol() != address.Delegated {
+		return false
+	}
+	id, _, err := varint.FromUvarint(act.Address.Payload())
+	return err == nil && id == builtintypes.EthereumAddressManagerActorID
+}
+
 // TODO: We should extract this somewhere else and make the message pool and miner use the same logic
 func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
@@ -506,7 +521,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 
-			if !builtin.IsAccountActor(act.Code) {
+			if !isValidForSending(act) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
