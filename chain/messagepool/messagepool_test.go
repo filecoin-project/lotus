@@ -162,7 +162,7 @@ func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (
 }
 
 func (tma *testMpoolAPI) StateAccountKeyAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
+	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 && addr.Protocol() != address.Delegated {
 		return address.Undef, fmt.Errorf("given address was not a key addr")
 	}
 	return addr, nil

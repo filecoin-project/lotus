@@ -278,7 +278,14 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 				Data: make([]byte, 65),
 			},
 		}
-
+	case address.Delegated:
+		msgApply = &types.SignedMessage{
+			Message: *msg,
+			Signature: crypto.Signature{
+				Type: crypto.SigTypeDelegated,
+				Data: make([]byte, 65),
+			},
+		}
 	}
 
 	// If the fee cap is set to zero, make gas free.
