@@ -613,12 +613,23 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return api.EthTx{}, err
 	}
 
-	tsCid, err := msgLookup.TipSet.Cid()
+	ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
 	if err != nil {
 		return api.EthTx{}, err
 	}
 
-	blkHash, err := api.EthHashFromCid(tsCid)
+	// This tx is located in the parent tipset
+	parentTs, err := a.Chain.LoadTipSet(ctx, ts.Parents())
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	parentTsCid, err := parentTs.Key().Cid()
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	blkHash, err := api.EthHashFromCid(parentTsCid)
 	if err != nil {
 		return api.EthTx{}, err
 	}
@@ -658,7 +669,7 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		ChainID:              api.EthUint64(build.Eip155ChainId),
 		Hash:                 txHash,
 		BlockHash:            blkHash,
-		BlockNumber:          api.EthUint64(msgLookup.Height),
+		BlockNumber:          api.EthUint64(parentTs.Height()),
 		From:                 fromEthAddr,
 		To:                   toAddr,
 		Value:                api.EthBigInt(msg.Value),
