@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -55,6 +58,9 @@ type EthModuleAPI interface {
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
 	// EthFeeHistory(ctx context.Context, blkCount string)
+}
+
+type EthEventAPI interface {
 	EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*api.EthFilterResult, error)
 	EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error)
 	EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error)
@@ -66,7 +72,10 @@ type EthModuleAPI interface {
 	EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error)
 }
 
-var _ EthModuleAPI = *new(api.FullNode)
+var (
+	_ EthModuleAPI = *new(api.FullNode)
+	_ EthEventAPI  = *new(api.FullNode)
+)
 
 // EthModule provides a default implementation of EthModuleAPI.
 // It can be swapped out with another implementation through Dependency
@@ -85,12 +94,27 @@ type EthModule struct {
 
 var _ EthModuleAPI = (*EthModule)(nil)
 
+type EthEvent struct {
+	fx.In
+
+	Chain                *store.ChainStore
+	Mpool                *messagepool.MessagePool
+	StateManager         *stmgr.StateManager
+	EventFilterManager   *filter.EventFilterManager
+	TipSetFilterManager  *filter.TipSetFilterManager
+	MemPoolFilterManager *filter.MemPoolFilterManager
+	FilterStore          filter.FilterStore
+}
+
+var _ EthEventAPI = (*EthEvent)(nil)
+
 type EthAPI struct {
 	fx.In
 
 	Chain *store.ChainStore
 
 	EthModuleAPI
+	EthEventAPI
 }
 
 func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
@@ -836,47 +860,105 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 	return tx, nil
 }
 
-func (a *EthModule) EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*api.EthFilterResult, error) {
+func (e *EthEvent) EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*api.EthFilterResult, error) {
 	// TODO: implement EthGetLogs
 	return nil, api.ErrNotSupported
 }
 
-func (a *EthModule) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
+func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
 	// TODO: implement EthGetFilterChanges
 	return nil, api.ErrNotSupported
 }
 
-func (a *EthModule) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
+func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
 	// TODO: implement EthGetFilterLogs
 	return nil, api.ErrNotSupported
 }
 
-func (a *EthModule) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error) {
+func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error) {
 	// TODO: implement EthNewFilter
 	return "", api.ErrNotSupported
 }
 
-func (a *EthModule) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error) {
-	// TODO: implement EthNewBlockFilter
-	return "", api.ErrNotSupported
+func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error) {
+	f, err := e.TipSetFilterManager.Install(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if err := e.FilterStore.Add(ctx, f); err != nil {
+		// Could not record in store, attempt to delete filter
+		err2 := e.TipSetFilterManager.Remove(ctx, f.ID())
+		if err2 != nil {
+			return "", xerrors.Errorf("encoutered error %v while removing new filter due to %v", err2, err)
+		}
+
+		return "", err
+	}
+
+	return api.EthFilterID(f.ID()), nil
 }
 
-func (a *EthModule) EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error) {
-	// TODO: implement EthNewPendingTransactionFilter
-	return "", api.ErrNotSupported
+func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error) {
+	f, err := e.MemPoolFilterManager.Install(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if err := e.FilterStore.Add(ctx, f); err != nil {
+		// Could not record in store, attempt to delete filter
+		err2 := e.MemPoolFilterManager.Remove(ctx, f.ID())
+		if err2 != nil {
+			return "", xerrors.Errorf("encoutered error %v while removing new filter due to %v", err2, err)
+		}
+
+		return "", err
+	}
+
+	return api.EthFilterID(f.ID()), nil
 }
 
-func (a *EthModule) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error) {
-	// TODO: implement EthUninstallFilter
-	return false, api.ErrNotSupported
+func (e *EthEvent) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error) {
+	f, err := e.FilterStore.Get(ctx, string(id))
+	if err != nil {
+		if errors.Is(err, filter.ErrFilterNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	switch f.(type) {
+	case *filter.EventFilter:
+		err := e.EventFilterManager.Remove(ctx, f.ID())
+		if err != nil {
+			// if filter not found then we may have deleted it on a prior attempt
+			if !errors.Is(err, filter.ErrFilterNotFound) {
+				return false, err
+			}
+		}
+	case *filter.TipSetFilter:
+		err := e.TipSetFilterManager.Remove(ctx, f.ID())
+		if err != nil {
+			// if filter not found then we may have deleted it on a prior attempt
+			if !errors.Is(err, filter.ErrFilterNotFound) {
+				return false, err
+			}
+		}
+	default:
+		return false, xerrors.Errorf("unknown filter type")
+	}
+
+	if err := e.FilterStore.Remove(ctx, string(id)); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-func (a *EthModule) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (api.EthSubscriptionResponse, error) {
+func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (api.EthSubscriptionResponse, error) {
 	// TODO: implement EthSubscribe
 	return api.EthSubscriptionResponse{}, api.ErrNotSupported
 }
 
-func (a *EthModule) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
+func (a *EthEvent) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
 	// TODO: implement EthUnsubscribe
 	return false, api.ErrNotSupported
 }
