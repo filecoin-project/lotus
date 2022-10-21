@@ -6,14 +6,15 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	cstore "github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	"github.com/ipfs/go-cid"
 )
 
 const indexed uint8 = 0x01

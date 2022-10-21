@@ -78,6 +78,9 @@
   * [EthGetBlockTransactionCountByHash](#EthGetBlockTransactionCountByHash)
   * [EthGetBlockTransactionCountByNumber](#EthGetBlockTransactionCountByNumber)
   * [EthGetCode](#EthGetCode)
+  * [EthGetFilterChanges](#EthGetFilterChanges)
+  * [EthGetFilterLogs](#EthGetFilterLogs)
+  * [EthGetLogs](#EthGetLogs)
   * [EthGetStorageAt](#EthGetStorageAt)
   * [EthGetTransactionByBlockHashAndIndex](#EthGetTransactionByBlockHashAndIndex)
   * [EthGetTransactionByBlockNumberAndIndex](#EthGetTransactionByBlockNumberAndIndex)
@@ -85,8 +88,14 @@
   * [EthGetTransactionCount](#EthGetTransactionCount)
   * [EthGetTransactionReceipt](#EthGetTransactionReceipt)
   * [EthMaxPriorityFeePerGas](#EthMaxPriorityFeePerGas)
+  * [EthNewBlockFilter](#EthNewBlockFilter)
+  * [EthNewFilter](#EthNewFilter)
+  * [EthNewPendingTransactionFilter](#EthNewPendingTransactionFilter)
   * [EthProtocolVersion](#EthProtocolVersion)
   * [EthSendRawTransaction](#EthSendRawTransaction)
+  * [EthSubscribe](#EthSubscribe)
+  * [EthUninstallFilter](#EthUninstallFilter)
+  * [EthUnsubscribe](#EthUnsubscribe)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2384,6 +2393,75 @@ Inputs:
 
 Response: `"0x07"`
 
+### EthGetFilterChanges
+Polling method for a filter, returns event logs which occurred since last poll.
+(requires write perm since timestamp of last filter execution will be written)
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "c5564560217c43e4bc0484df655e9019"
+]
+```
+
+Response:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+### EthGetFilterLogs
+Returns event logs matching filter with given id.
+(requires write perm since timestamp of last filter execution will be written)
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "c5564560217c43e4bc0484df655e9019"
+]
+```
+
+Response:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
+### EthGetLogs
+Returns event logs matching given filter spec.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "2301220",
+    "address": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "topics": null,
+    "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  }
+]
+```
+
+Response:
+```json
+[
+  "0x0707070707070707070707070707070707070707070707070707070707070707"
+]
+```
+
 ### EthGetStorageAt
 
 
@@ -2568,6 +2646,48 @@ Inputs: `null`
 
 Response: `"0x0"`
 
+### EthNewBlockFilter
+Installs a persistent filter to notify when a new block arrives.
+
+
+Perms: write
+
+Inputs: `null`
+
+Response: `"c5564560217c43e4bc0484df655e9019"`
+
+### EthNewFilter
+Installs a persistent filter based on given filter spec.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "fromBlock": "2301220",
+    "address": [
+      "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+    ],
+    "topics": null,
+    "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  }
+]
+```
+
+Response: `"c5564560217c43e4bc0484df655e9019"`
+
+### EthNewPendingTransactionFilter
+Installs a persistent filter to notify when new messages arrive in the message pool.
+
+
+Perms: write
+
+Inputs: `null`
+
+Response: `"c5564560217c43e4bc0484df655e9019"`
+
 ### EthProtocolVersion
 
 
@@ -2590,6 +2710,73 @@ Inputs:
 ```
 
 Response: `"0x0707070707070707070707070707070707070707070707070707070707070707"`
+
+### EthSubscribe
+Subscribe to different event types using websockets
+eventTypes is one or more of:
+ - newHeads: notify when new blocks arrive.
+ - pendingTransactions: notify when new messages arrive in the message pool.
+ - logs: notify new event logs that match a criteria
+params contains additional parameters used with the log event type
+The client will receive a stream of SubscriptionResponse values until EthUnsubscribe is called.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    "string value"
+  ],
+  {
+    "address": "\u003cempty\u003e",
+    "topics": [
+      [
+        "0x0707070707070707070707070707070707070707070707070707070707070707"
+      ]
+    ]
+  }
+]
+```
+
+Response:
+```json
+{
+  "subscription": "b62df77831484129adf6682332ad0725",
+  "result": {}
+}
+```
+
+### EthUninstallFilter
+Uninstalls a filter with given id.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "c5564560217c43e4bc0484df655e9019"
+]
+```
+
+Response: `true`
+
+### EthUnsubscribe
+Unsubscribe from a websocket subscription
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "b62df77831484129adf6682332ad0725"
+]
+```
+
+Response: `true`
 
 ## Gas
 

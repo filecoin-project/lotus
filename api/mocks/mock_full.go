@@ -1101,6 +1101,51 @@ func (mr *MockFullNodeMockRecorder) EthGetCode(arg0, arg1, arg2 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetCode", reflect.TypeOf((*MockFullNode)(nil).EthGetCode), arg0, arg1, arg2)
 }
 
+// EthGetFilterChanges mocks base method.
+func (m *MockFullNode) EthGetFilterChanges(arg0 context.Context, arg1 api.EthFilterID) (*api.EthFilterResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetFilterChanges", arg0, arg1)
+	ret0, _ := ret[0].(*api.EthFilterResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetFilterChanges indicates an expected call of EthGetFilterChanges.
+func (mr *MockFullNodeMockRecorder) EthGetFilterChanges(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetFilterChanges", reflect.TypeOf((*MockFullNode)(nil).EthGetFilterChanges), arg0, arg1)
+}
+
+// EthGetFilterLogs mocks base method.
+func (m *MockFullNode) EthGetFilterLogs(arg0 context.Context, arg1 api.EthFilterID) (*api.EthFilterResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetFilterLogs", arg0, arg1)
+	ret0, _ := ret[0].(*api.EthFilterResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetFilterLogs indicates an expected call of EthGetFilterLogs.
+func (mr *MockFullNodeMockRecorder) EthGetFilterLogs(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetFilterLogs", reflect.TypeOf((*MockFullNode)(nil).EthGetFilterLogs), arg0, arg1)
+}
+
+// EthGetLogs mocks base method.
+func (m *MockFullNode) EthGetLogs(arg0 context.Context, arg1 *api.EthFilterSpec) (*api.EthFilterResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetLogs", arg0, arg1)
+	ret0, _ := ret[0].(*api.EthFilterResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetLogs indicates an expected call of EthGetLogs.
+func (mr *MockFullNodeMockRecorder) EthGetLogs(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetLogs", reflect.TypeOf((*MockFullNode)(nil).EthGetLogs), arg0, arg1)
+}
+
 // EthGetStorageAt mocks base method.
 func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 api.EthAddress, arg2 api.EthBytes, arg3 string) (api.EthBytes, error) {
 	m.ctrl.T.Helper()
@@ -1206,6 +1251,51 @@ func (mr *MockFullNodeMockRecorder) EthMaxPriorityFeePerGas(arg0 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthMaxPriorityFeePerGas", reflect.TypeOf((*MockFullNode)(nil).EthMaxPriorityFeePerGas), arg0)
 }
 
+// EthNewBlockFilter mocks base method.
+func (m *MockFullNode) EthNewBlockFilter(arg0 context.Context) (api.EthFilterID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthNewBlockFilter", arg0)
+	ret0, _ := ret[0].(api.EthFilterID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthNewBlockFilter indicates an expected call of EthNewBlockFilter.
+func (mr *MockFullNodeMockRecorder) EthNewBlockFilter(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthNewBlockFilter", reflect.TypeOf((*MockFullNode)(nil).EthNewBlockFilter), arg0)
+}
+
+// EthNewFilter mocks base method.
+func (m *MockFullNode) EthNewFilter(arg0 context.Context, arg1 *api.EthFilterSpec) (api.EthFilterID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthNewFilter", arg0, arg1)
+	ret0, _ := ret[0].(api.EthFilterID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthNewFilter indicates an expected call of EthNewFilter.
+func (mr *MockFullNodeMockRecorder) EthNewFilter(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthNewFilter", reflect.TypeOf((*MockFullNode)(nil).EthNewFilter), arg0, arg1)
+}
+
+// EthNewPendingTransactionFilter mocks base method.
+func (m *MockFullNode) EthNewPendingTransactionFilter(arg0 context.Context) (api.EthFilterID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthNewPendingTransactionFilter", arg0)
+	ret0, _ := ret[0].(api.EthFilterID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthNewPendingTransactionFilter indicates an expected call of EthNewPendingTransactionFilter.
+func (mr *MockFullNodeMockRecorder) EthNewPendingTransactionFilter(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthNewPendingTransactionFilter", reflect.TypeOf((*MockFullNode)(nil).EthNewPendingTransactionFilter), arg0)
+}
+
 // EthProtocolVersion mocks base method.
 func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (api.EthUint64, error) {
 	m.ctrl.T.Helper()
@@ -1234,6 +1324,51 @@ func (m *MockFullNode) EthSendRawTransaction(arg0 context.Context, arg1 api.EthB
 func (mr *MockFullNodeMockRecorder) EthSendRawTransaction(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSendRawTransaction", reflect.TypeOf((*MockFullNode)(nil).EthSendRawTransaction), arg0, arg1)
+}
+
+// EthSubscribe mocks base method.
+func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 []string, arg2 api.EthSubscriptionParams) (api.EthSubscriptionResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthSubscribe", arg0, arg1, arg2)
+	ret0, _ := ret[0].(api.EthSubscriptionResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthSubscribe indicates an expected call of EthSubscribe.
+func (mr *MockFullNodeMockRecorder) EthSubscribe(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSubscribe", reflect.TypeOf((*MockFullNode)(nil).EthSubscribe), arg0, arg1, arg2)
+}
+
+// EthUninstallFilter mocks base method.
+func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 api.EthFilterID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthUninstallFilter", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthUninstallFilter indicates an expected call of EthUninstallFilter.
+func (mr *MockFullNodeMockRecorder) EthUninstallFilter(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthUninstallFilter", reflect.TypeOf((*MockFullNode)(nil).EthUninstallFilter), arg0, arg1)
+}
+
+// EthUnsubscribe mocks base method.
+func (m *MockFullNode) EthUnsubscribe(arg0 context.Context, arg1 api.EthSubscriptionID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthUnsubscribe", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthUnsubscribe indicates an expected call of EthUnsubscribe.
+func (mr *MockFullNodeMockRecorder) EthUnsubscribe(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthUnsubscribe", reflect.TypeOf((*MockFullNode)(nil).EthUnsubscribe), arg0, arg1)
 }
 
 // GasEstimateFeeCap mocks base method.

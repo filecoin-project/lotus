@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
 )
 
 type MemPoolFilter struct {
