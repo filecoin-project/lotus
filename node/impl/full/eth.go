@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"strconv"
 
@@ -17,7 +18,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
@@ -54,6 +54,7 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
+	// EthFeeHistory(ctx context.Context, blkCount string)
 }
 
 var _ EthModuleAPI = *new(api.FullNode)
@@ -361,7 +362,9 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, b
 	}
 
 	actor, err := a.StateGetActor(ctx, filAddr, types.EmptyTSK)
-	if err != nil {
+	if xerrors.Is(err, types.ErrActorNotFound) {
+		return api.EthBigIntZero, nil
+	} else if err != nil {
 		return api.EthBigInt{}, err
 	}
 
@@ -444,47 +447,54 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 
 	var params []byte
 	var to address.Address
+	var method abi.MethodNum
 	if tx.To == nil {
-		// TODO need to construct the actor through the EAM so that it acquires an f4 address.
-		//  https://github.com/filecoin-project/ref-fvm/issues/992
-		to = builtintypes.InitActorAddr
-		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
+		// this is a contract creation
+		to = builtintypes.EthereumAddressManagerActorAddr
+
+		nonce, err := a.Mpool.GetNonce(ctx, from, types.EmptyTSK)
+		if err != nil {
+			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
+		}
+
+		var salt [32]byte
+		binary.BigEndian.PutUint64(salt[:], nonce)
+
+		// TODO this probably needs to be Create instead of Create2, but Create
+		//  is not callable externally.
+		params2, err := actors.SerializeParams(&eam.Create2Params{
 			Initcode: tx.Data,
+			Salt:     salt,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)
+			return nil, fmt.Errorf("failed to serialize Create2 params: %w", err)
 		}
-
-		evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "evm")
-		if !ok {
-			return nil, fmt.Errorf("failed to lookup evm actor code CID")
-		}
-
-		params, err = actors.SerializeParams(&init8.ExecParams{
-			CodeCID:           evmActorCid,
-			ConstructorParams: constructorParams,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize init actor exec params: %w", err)
-		}
+		params = params2
+		method = builtintypes.MethodsEAM.Create2
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 		}
 		to = addr
-		var buf bytes.Buffer
-		if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
-			return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+
+		if len(tx.Data) > 0 {
+			var buf bytes.Buffer
+			if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
+				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+			}
+			params = buf.Bytes()
+			method = builtintypes.MethodsEVM.InvokeContract
+		} else {
+			method = builtintypes.MethodSend
 		}
-		params = buf.Bytes()
 	}
 
 	msg := &types.Message{
 		From:       from,
 		To:         to,
 		Value:      big.Int(tx.Value),
-		Method:     builtintypes.MethodsEVM.InvokeContract,
+		Method:     method,
 		Params:     params,
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
