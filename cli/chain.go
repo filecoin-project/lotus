@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -25,7 +28,10 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
 	evm "github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -152,7 +158,7 @@ var ChainGetBlock = &cli.Command{
 		recpts, err := api.ChainGetParentReceipts(ctx, bcid)
 		if err != nil {
 			log.Warn(err)
-			//return xerrors.Errorf("failed to get receipts: %w", err)
+			// return xerrors.Errorf("failed to get receipts: %w", err)
 		}
 
 		cblock := struct {
@@ -1481,6 +1487,106 @@ var ChainPruneCmd = &cli.Command{
 			Value: false,
 			Usage: "use moving gc for garbage collecting the coldstore",
 		},
+	},
+	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass the filename containing actor code")
+		}
+
+		filename := cctx.Args().First()
+		file, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close() // nolint
+
+		code, err := io.ReadAll(file)
+		if err != nil {
+			return err
+		}
+
+		params, err := actors.SerializeParams(&init8.InstallParams{
+			Code: code,
+		})
+		if err != nil {
+			return xerrors.Errorf("failed to serialize params: %w", err)
+		}
+
+		var fromAddr address.Address
+		if from := cctx.String("from"); from == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		msg := &types.Message{
+			To:     builtin.InitActorAddr,
+			From:   fromAddr,
+			Value:  big.Zero(),
+			Method: 4,
+			Params: params,
+		}
+
+		afmt.Println("sending message...")
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return xerrors.Errorf("failed to push message: %w", err)
+		}
+
+		afmt.Printf("gas limit: %d\n", smsg.Message.GasLimit)
+
+		afmt.Println("waiting for message to execute...")
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		if err != nil {
+			return xerrors.Errorf("error waiting for message: %w", err)
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			return xerrors.Errorf("actor installation failed")
+		}
+
+		var result init8.InstallReturn
+		r := bytes.NewReader(wait.Receipt.Return)
+		if err := result.UnmarshalCBOR(r); err != nil {
+			return xerrors.Errorf("error unmarshaling return value: %w", err)
+		}
+
+		afmt.Printf("Actor Code CID: %s\n", result.CodeCid)
+		afmt.Printf("Installed: %t\n", result.Installed)
+
+		return nil
+	},
+}
+
+var ChainExecCmd = &cli.Command{
+	Name:      "create-actor",
+	Usage:     "Create an new actor via the init actor and return its address",
+	ArgsUsage: "code-cid [params]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to use for sending the exec message",
+		},
 		&cli.StringFlag{
 			Name:  "move-to",
 			Value: "",
@@ -1552,48 +1658,39 @@ var ChainExecEVMCmd = &cli.Command{
 			}
 		}
 
-		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Initcode: contract,
-		})
-		if err != nil {
-			return xerrors.Errorf("failed to serialize constructor params: %w", err)
-		}
-
-		evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "evm")
-		if !ok {
-			return xerrors.Errorf("failed to lookup evm actor code CID")
-		}
-
-		params, err := actors.SerializeParams(&init8.ExecParams{
-			CodeCID:           evmActorCid,
-			ConstructorParams: constructorParams,
-		})
-		if err != nil {
-			return xerrors.Errorf("failed to serialize init actor exec params: %w", err)
-		}
-
 		var fromAddr address.Address
 		if from := cctx.String("from"); from == "" {
-			defaddr, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = defaddr
+			fromAddr, err = api.WalletDefaultAddress(ctx)
 		} else {
-			addr, err := address.NewFromString(from)
-			if err != nil {
-				return err
-			}
+			fromAddr, err = address.NewFromString(from)
+		}
+		if err != nil {
+			return err
+		}
 
-			fromAddr = addr
+		nonce, err := api.MpoolGetNonce(ctx, fromAddr)
+		if err != nil {
+			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
+		}
+
+		var salt [32]byte
+		binary.BigEndian.PutUint64(salt[:], nonce)
+
+		// TODO this probably needs to be Create instead of Create2, but Create
+		//  is not callable by any caller
+		params, err := actors.SerializeParams(&eam.Create2Params{
+			Initcode: contract,
+			Salt:     salt,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to serialize Create2 params: %w", err)
 		}
 
 		msg := &types.Message{
-			To:     builtin.InitActorAddr,
+			To:     builtintypes.EthereumAddressManagerActorAddr,
 			From:   fromAddr,
 			Value:  big.Zero(),
-			Method: 2,
+			Method: builtintypes.MethodsEAM.Create2,
 			Params: params,
 		}
 
@@ -1614,14 +1711,27 @@ var ChainExecEVMCmd = &cli.Command{
 			return xerrors.Errorf("actor execution failed")
 		}
 
-		var result init8.ExecReturn
+		var result eam.Create2Return
 		r := bytes.NewReader(wait.Receipt.Return)
 		if err := result.UnmarshalCBOR(r); err != nil {
 			return xerrors.Errorf("error unmarshaling return value: %w", err)
 		}
 
-		afmt.Printf("ID Address: %s\n", result.IDAddress)
+		addr, err := address.NewIDAddress(result.ActorID)
+		if err != nil {
+			return err
+		}
+		afmt.Printf("Actor ID: %d\n", result.ActorID)
+		afmt.Printf("ID Address: %s\n", addr)
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
+		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
+
+		delegated, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, result.EthAddress[:])
+		if err != nil {
+			return fmt.Errorf("failed to calculate f4 address: %w", err)
+		}
+
+		afmt.Printf("f4 Address: %s\n", delegated)
 
 		if len(wait.Receipt.Return) > 0 {
 			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
@@ -1674,12 +1784,8 @@ var ChainInvokeEVMCmd = &cli.Command{
 			}
 		}
 
-		params, err := actors.SerializeParams(&evm.InvokeParams{
-			InputData: append(entryPoint, inputData...),
-		})
-		if err != nil {
-			return xerrors.Errorf("failed to serialize evm actor invoke params: %w", err)
-		}
+		// TODO need to encode as CBOR bytes now
+		params := append(entryPoint, inputData...)
 
 		var buffer bytes.Buffer
 		if err := cbg.WriteByteArray(&buffer, params); err != nil {
