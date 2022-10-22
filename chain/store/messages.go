@@ -2,8 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/hex"
-	"fmt"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -57,7 +55,6 @@ func (cs *ChainStore) GetCMessage(ctx context.Context, c cid.Cid) (types.ChainMs
 func (cs *ChainStore) GetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) {
 	var msg *types.Message
 	err := cs.chainLocalBlockstore.View(ctx, c, func(b []byte) (err error) {
-		fmt.Println("message", hex.EncodeToString(b))
 		msg, err = types.DecodeMessage(b)
 		return err
 	})
