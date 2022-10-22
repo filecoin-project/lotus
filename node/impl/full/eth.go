@@ -505,7 +505,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthByte
 	return api.EthHashFromCid(cid)
 }
 
-func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.InvocResult, error) {
+func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx api.EthCall) (*types.Message, error) {
 	// The from address must be translatable to an f4 address.
 	from, err := tx.From.ToFilecoinAddress()
 	if err != nil {
@@ -560,7 +560,7 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 		}
 	}
 
-	msg := &types.Message{
+	return &types.Message{
 		From:       from,
 		To:         to,
 		Value:      big.Int(tx.Value),
@@ -569,11 +569,13 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
-	}
+	}, nil
+}
+
+func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message) (res *api.InvocResult, err error) {
 	ts := a.Chain.GetHeaviestTipSet()
 
 	// Try calling until we find a height with no migration.
-	var res *api.InvocResult
 	for {
 		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts)
 		if err != stmgr.ErrExpensiveFork {
@@ -594,16 +596,26 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 }
 
 func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall) (api.EthUint64, error) {
-	invokeResult, err := a.applyEvmMsg(ctx, tx)
+	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
 		return api.EthUint64(0), err
 	}
-	ret := invokeResult.MsgRct.GasUsed
-	return api.EthUint64(ret), nil
+
+	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+	if err != nil {
+		return api.EthUint64(0), err
+	}
+
+	return api.EthUint64(msg.GasLimit), nil
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error) {
-	invokeResult, err := a.applyEvmMsg(ctx, tx)
+	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	invokeResult, err := a.applyMessage(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
