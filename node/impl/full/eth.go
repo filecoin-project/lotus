@@ -45,6 +45,7 @@ type EthModuleAPI interface {
 	EthGetCode(ctx context.Context, address api.EthAddress) (api.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthBytes, blkParam string) (api.EthBytes, error)
 	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
+	EthFeeHistory(ctx context.Context, blkCount uint64, newestBlk string) (api.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (api.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
@@ -370,6 +371,65 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, b
 
 func (a *EthModule) EthChainId(ctx context.Context) (api.EthUint64, error) {
 	return api.EthUint64(build.Eip155ChainId), nil
+}
+
+func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount uint64, newestBlkNum string) (api.EthFeeHistory, error) {
+	if blkCount > 1024 {
+		return api.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
+	}
+
+	newestBlkHeight := uint64(a.Chain.GetHeaviestTipSet().Height())
+
+	var blkNum api.EthUint64
+	err := blkNum.UnmarshalJSON([]byte(`"` + newestBlkNum + `"`))
+	if err == nil && uint64(blkNum) < newestBlkHeight {
+		newestBlkHeight = uint64(blkNum)
+	}
+
+	oldestBlkHeight := uint64(1)
+	if blkCount <= newestBlkHeight {
+		oldestBlkHeight = newestBlkHeight - blkCount + 1
+	}
+
+	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(newestBlkHeight), nil, false)
+	if err != nil {
+		return api.EthFeeHistory{}, fmt.Errorf("cannot load find block height: %v", newestBlkHeight)
+	}
+
+	// FIXME: baseFeePerGas should include the next block after the newest of the returned range, because this
+	// can be inferred from the newest block. we use the newest block's baseFeePerGas for now but need to fix it
+	baseFeeArray := []api.EthBigInt{api.EthBigInt(ts.Blocks()[0].ParentBaseFee)}
+	gasUsedRatioArray := []float64{}
+
+	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
+		block, err := a.ethBlockFromFilecoinTipSet(ctx, ts, false)
+		if err != nil {
+			return api.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
+		}
+
+		// both arrays should be reversed at the end
+		baseFeeArray = append(baseFeeArray, api.EthBigInt(ts.Blocks()[0].ParentBaseFee))
+		gasUsedRatioArray = append(gasUsedRatioArray, float64(block.GasUsed)/build.BlockGasLimit)
+
+		parentTsKey := ts.Parents()
+		ts, err = a.Chain.LoadTipSet(ctx, parentTsKey)
+		if err != nil {
+			return api.EthFeeHistory{}, fmt.Errorf("cannot load tipset key: %v", parentTsKey)
+		}
+	}
+
+	for i, j := 0, len(baseFeeArray)-1; i < j; i, j = i+1, j-1 {
+		baseFeeArray[i], baseFeeArray[j] = baseFeeArray[j], baseFeeArray[i]
+	}
+	for i, j := 0, len(gasUsedRatioArray)-1; i < j; i, j = i+1, j-1 {
+		gasUsedRatioArray[i], gasUsedRatioArray[j] = gasUsedRatioArray[j], gasUsedRatioArray[i]
+	}
+
+	return api.EthFeeHistory{
+		OldestBlock:   oldestBlkHeight,
+		BaseFeePerGas: baseFeeArray,
+		GasUsedRatio:  gasUsedRatioArray,
+	}, nil
 }
 
 func (a *EthModule) NetVersion(ctx context.Context) (string, error) {

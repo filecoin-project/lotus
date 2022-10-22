@@ -766,6 +766,7 @@ type FullNode interface {
 	NetListening(ctx context.Context) (bool, error)                                                                //perm:read
 	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                     //perm:read
 	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                            //perm:read
+	EthFeeHistory(ctx context.Context, blkCount uint64, newestBlk string) (EthFeeHistory, error)                   //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)             //perm:read
 	EthEstimateGas(ctx context.Context, tx EthCall) (EthUint64, error)          //perm:read

@@ -389,3 +389,10 @@ func (h EthHash) ToCid() cid.Cid {
 
 	return cid.NewCidV1(cid.DagCBOR, mh)
 }
+
+type EthFeeHistory struct {
+	OldestBlock   uint64         `json:"oldestBlock"`
+	BaseFeePerGas []EthBigInt    `json:"baseFeePerGas"`
+	GasUsedRatio  []float64      `json:"gasUsedRatio"`
+	Reward        *[][]EthBigInt `json:"reward,omitempty"`
+}
