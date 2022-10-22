@@ -997,7 +997,7 @@ func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1 interface{}) *gomo
 }
 
 // EthFeeHistory mocks base method.
-func (m *MockFullNode) EthFeeHistory(arg0 context.Context, arg1 uint64, arg2 string, arg3 [][]int64) (api.EthFeeHistory, error) {
+func (m *MockFullNode) EthFeeHistory(arg0 context.Context, arg1 api.EthUint64, arg2 string, arg3 []int64) (api.EthFeeHistory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthFeeHistory", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(api.EthFeeHistory)
