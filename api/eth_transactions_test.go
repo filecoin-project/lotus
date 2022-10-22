@@ -63,7 +63,7 @@ func TestTxArgs(t *testing.T) {
 
 func TestTransformParams(t *testing.T) {
 	constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-		Bytecode: mustDecodeHex("0x1122334455"),
+		Initcode: mustDecodeHex("0x1122334455"),
 	})
 	require.Nil(t, err)
 
@@ -86,7 +86,7 @@ func TestTransformParams(t *testing.T) {
 	err1 = evmParams.UnmarshalCBOR(reader1)
 	require.Nil(t, err1)
 
-	require.Equal(t, mustDecodeHex("0x1122334455"), evmParams.Bytecode)
+	require.Equal(t, mustDecodeHex("0x1122334455"), evmParams.Initcode)
 }
 func TestEcRecover(t *testing.T) {
 	rHex := "0x479ff7fa64cf8bf641eb81635d1e8a698530d2f219951d234539e6d074819529"

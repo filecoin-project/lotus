@@ -12,6 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
+	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
@@ -1040,7 +1041,7 @@ func (t *MsgMeta) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufActor = []byte{132}
+var lengthBufActor = []byte{133}
 
 func (t *Actor) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -1076,6 +1077,11 @@ func (t *Actor) MarshalCBOR(w io.Writer) error {
 	if err := t.Balance.MarshalCBOR(cw); err != nil {
 		return err
 	}
+
+	// t.Address (address.Address) (struct)
+	if err := t.Address.MarshalCBOR(cw); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1098,7 +1104,7 @@ func (t *Actor) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -1146,6 +1152,25 @@ func (t *Actor) UnmarshalCBOR(r io.Reader) (err error) {
 
 		if err := t.Balance.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Balance: %w", err)
+		}
+
+	}
+	// t.Address (address.Address) (struct)
+
+	{
+
+		b, err := cr.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
+			t.Address = new(address.Address)
+			if err := t.Address.UnmarshalCBOR(cr); err != nil {
+				return xerrors.Errorf("unmarshaling t.Address pointer: %w", err)
+			}
 		}
 
 	}

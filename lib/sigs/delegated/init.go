@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/builtin"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -40,7 +41,11 @@ func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 		return err
 	}
 
-	maybeaddr, err := address.NewSecp256k1Address(pubk)
+	hasher.Reset()
+	hasher.Write(pubk)
+	addrHash := hasher.Sum(nil)
+
+	maybeaddr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[len(addrHash)-20:])
 	if err != nil {
 		return err
 	}

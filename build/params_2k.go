@@ -24,7 +24,7 @@ var NetworkBundle = "devnet-wasm"
 var BundleOverrides map[actors.Version]string
 var ActorDebugging = false
 
-const GenesisNetworkVersion = network.Version16
+const GenesisNetworkVersion = network.Version(18)
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
