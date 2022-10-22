@@ -91,6 +91,7 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		rpcServer.AliasMethod("eth_getStorageAt", "Filecoin.EthGetStorageAt")
 		rpcServer.AliasMethod("eth_getBalance", "Filecoin.EthGetBalance")
 		rpcServer.AliasMethod("eth_chainId", "Filecoin.EthChainId")
+		rpcServer.AliasMethod("eth_feeHistory", "Filecoin.EthFeeHistory")
 		rpcServer.AliasMethod("eth_protocolVersion", "Filecoin.EthProtocolVersion")
 		rpcServer.AliasMethod("eth_maxPriorityFeePerGas", "Filecoin.EthMaxPriorityFeePerGas")
 		rpcServer.AliasMethod("eth_gasPrice", "Filecoin.EthGasPrice")

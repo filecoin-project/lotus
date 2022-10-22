@@ -224,6 +224,8 @@ type FullNodeStruct struct {
 
 		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthUint64, error) `perm:"read"`
 
+		EthFeeHistory func(p0 context.Context, p1 uint64, p2 string) (EthFeeHistory, error) `perm:"read"`
+
 		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
 		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
@@ -1814,6 +1816,17 @@ func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint
 
 func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64, error) {
 	return *new(EthUint64), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 uint64, p2 string) (EthFeeHistory, error) {
+	if s.Internal.EthFeeHistory == nil {
+		return *new(EthFeeHistory), ErrNotSupported
+	}
+	return s.Internal.EthFeeHistory(p0, p1, p2)
+}
+
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 uint64, p2 string) (EthFeeHistory, error) {
+	return *new(EthFeeHistory), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthBigInt, error) {
