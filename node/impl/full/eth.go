@@ -258,7 +258,9 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress, blkO
 	}
 
 	if err != nil {
-		return nil, xerrors.Errorf("Call failed: %w", err)
+		// if the call resulted in error, this is not an EVM smart contract;
+		// return no bytecode.
+		return nil, nil
 	}
 
 	if res.MsgRct == nil {
