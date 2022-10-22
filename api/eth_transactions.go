@@ -22,6 +22,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+const Eip1559TxType = 2
+
 type EthTx struct {
 	ChainID              EthUint64   `json:"chainId"`
 	Nonce                EthUint64   `json:"nonce"`
@@ -279,12 +281,18 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
+	// if we get an uncompressed public key (that's what we get from the library,
+	// but putting this check here for defensiveness), strip the prefix
+	if pubk[0] == 0x04 {
+		pubk = pubk[1:]
+	}
+
 	// Calculate the f4 address based on the keccak hash of the pubkey.
 	hasher.Reset()
 	hasher.Write(pubk)
-	addrHash := hasher.Sum(nil)
+	ethAddr := hasher.Sum(nil)[12:]
 
-	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[len(addrHash)-20:])
+	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
 }
 
 func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
@@ -392,7 +400,7 @@ func ParseEthTxArgs(data []byte) (*EthTxArgs, error) {
 	} else if data[0] == 1 {
 		// EIP-2930
 		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
-	} else if data[0] == 2 {
+	} else if data[0] == Eip1559TxType {
 		// EIP-1559
 		return parseEip1559Tx(data)
 	}
