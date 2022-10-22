@@ -253,7 +253,8 @@ func checkDatacaps(stateTreeV8 *state.StateTree, stateTreeV9 *state.StateTree, a
 		return err
 	}
 
-	if len(verifregDatacaps) != len(newDatacaps) {
+	// Should have all the v8 datacaps, plus the verifreg actor itself
+	if len(verifregDatacaps)+1 != len(newDatacaps) {
 		return xerrors.Errorf("size of datacap maps do not match. verifreg: %d, datacap: %d", len(verifregDatacaps), len(newDatacaps))
 	}
 
