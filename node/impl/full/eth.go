@@ -380,12 +380,15 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount uint64, newestBl
 
 	newestBlkHeight := uint64(a.Chain.GetHeaviestTipSet().Height())
 
+	// TODO https://github.com/filecoin-project/ref-fvm/issues/1016
 	var blkNum api.EthUint64
 	err := blkNum.UnmarshalJSON([]byte(`"` + newestBlkNum + `"`))
 	if err == nil && uint64(blkNum) < newestBlkHeight {
 		newestBlkHeight = uint64(blkNum)
 	}
 
+	// Deal with the case that the chain is shorter than the number of
+	// requested blocks.
 	oldestBlkHeight := uint64(1)
 	if blkCount <= newestBlkHeight {
 		oldestBlkHeight = newestBlkHeight - blkCount + 1
@@ -398,10 +401,13 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount uint64, newestBl
 
 	// FIXME: baseFeePerGas should include the next block after the newest of the returned range, because this
 	// can be inferred from the newest block. we use the newest block's baseFeePerGas for now but need to fix it
+	// In other words, due to deferred execution, we might not be returning the most useful value here for the client.
 	baseFeeArray := []api.EthBigInt{api.EthBigInt(ts.Blocks()[0].ParentBaseFee)}
 	gasUsedRatioArray := []float64{}
 
 	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
+		// Unfortunately we need to rebuild the full message view so we can
+		// totalize gas used in the tipset.
 		block, err := a.ethBlockFromFilecoinTipSet(ctx, ts, false)
 		if err != nil {
 			return api.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
@@ -409,7 +415,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount uint64, newestBl
 
 		// both arrays should be reversed at the end
 		baseFeeArray = append(baseFeeArray, api.EthBigInt(ts.Blocks()[0].ParentBaseFee))
-		gasUsedRatioArray = append(gasUsedRatioArray, float64(block.GasUsed)/build.BlockGasLimit)
+		gasUsedRatioArray = append(gasUsedRatioArray, float64(block.GasUsed)/float64(build.BlockGasLimit))
 
 		parentTsKey := ts.Parents()
 		ts, err = a.Chain.LoadTipSet(ctx, parentTsKey)
@@ -417,6 +423,8 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount uint64, newestBl
 			return api.EthFeeHistory{}, fmt.Errorf("cannot load tipset key: %v", parentTsKey)
 		}
 	}
+
+	// Reverse the arrays; we collected them newest to oldest; the client expects oldest to newest.
 
 	for i, j := 0, len(baseFeeArray)-1; i < j; i, j = i+1, j-1 {
 		baseFeeArray[i], baseFeeArray[j] = baseFeeArray[j], baseFeeArray[i]
