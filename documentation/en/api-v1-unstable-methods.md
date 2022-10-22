@@ -71,6 +71,7 @@
   * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
   * [EthEstimateGas](#EthEstimateGas)
+  * [EthFeeHistory](#EthFeeHistory)
   * [EthGasPrice](#EthGasPrice)
   * [EthGetBalance](#EthGetBalance)
   * [EthGetBlockByHash](#EthGetBlockByHash)
@@ -2227,6 +2228,33 @@ Inputs:
 ```
 
 Response: `"0x5"`
+
+### EthFeeHistory
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  42,
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "oldestBlock": 42,
+  "baseFeePerGas": [
+    "0x0"
+  ],
+  "gasUsedRatio": [
+    12.3
+  ],
+  "reward": []
+}
+```
 
 ### EthGasPrice
 

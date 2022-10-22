@@ -372,6 +372,8 @@ func init() {
 	ethhash, _ := api.EthHashFromCid(c)
 	addExample(&ethhash)
 
+	ethFeeHistoryReward := [][]api.EthBigInt{}
+	addExample(&ethFeeHistoryReward)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

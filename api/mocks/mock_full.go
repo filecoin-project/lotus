@@ -996,6 +996,21 @@ func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthEstimateGas", reflect.TypeOf((*MockFullNode)(nil).EthEstimateGas), arg0, arg1)
 }
 
+// EthFeeHistory mocks base method.
+func (m *MockFullNode) EthFeeHistory(arg0 context.Context, arg1 uint64, arg2 string) (api.EthFeeHistory, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthFeeHistory", arg0, arg1, arg2)
+	ret0, _ := ret[0].(api.EthFeeHistory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthFeeHistory indicates an expected call of EthFeeHistory.
+func (mr *MockFullNodeMockRecorder) EthFeeHistory(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthFeeHistory", reflect.TypeOf((*MockFullNode)(nil).EthFeeHistory), arg0, arg1, arg2)
+}
+
 // EthGasPrice mocks base method.
 func (m *MockFullNode) EthGasPrice(arg0 context.Context) (api.EthBigInt, error) {
 	m.ctrl.T.Helper()
