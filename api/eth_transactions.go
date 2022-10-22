@@ -58,10 +58,12 @@ type EthTxArgs struct {
 }
 
 func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
-	var to *EthAddress
-	var decodedParams []byte
-	var isCreate bool
-	paramsReader := bytes.NewReader(msg.Params)
+	var (
+		to            *EthAddress
+		decodedParams []byte
+		paramsReader  = bytes.NewReader(msg.Params)
+	)
+
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
 		case builtintypes.MethodsEAM.Create:
@@ -70,27 +72,29 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 				return EthTxArgs{}, err
 			}
 			decodedParams = create.Initcode
-			isCreate = true
 		case builtintypes.MethodsEAM.Create2:
 			var create2 eam.Create2Params
 			if err := create2.UnmarshalCBOR(paramsReader); err != nil {
 				return EthTxArgs{}, err
 			}
 			decodedParams = create2.Initcode
-			isCreate = true
+		default:
+			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
-	}
-	if isCreate {
+	} else {
 		addr, err := EthAddressFromFilecoinAddress(msg.To)
-		if err != nil {
-			return EthTxArgs{}, nil
-		}
-		to = &addr
-		params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
 		if err != nil {
 			return EthTxArgs{}, err
 		}
-		decodedParams = params
+		to = &addr
+
+		if len(msg.Params) > 0 {
+			params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+			if err != nil {
+				return EthTxArgs{}, err
+			}
+			decodedParams = params
+		}
 	}
 
 	return EthTxArgs{
