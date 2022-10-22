@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -16,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
