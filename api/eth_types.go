@@ -12,11 +12,13 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -205,10 +207,14 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 		Logs:             []string{},
 	}
 
-	contractAddr, err := CheckContractCreation(lookup)
-	if err == nil {
-		receipt.To = nil
-		receipt.ContractAddress = contractAddr
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+		// Create and Create2 return the same things.
+		var ret eam.CreateReturn
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+			return EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
+		}
+		addr := EthAddress(ret.EthAddress)
+		receipt.ContractAddress = &addr
 	}
 
 	if lookup.Receipt.ExitCode.IsSuccess() {
@@ -228,24 +234,9 @@ func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxRec
 	return receipt, nil
 }
 
-func CheckContractCreation(lookup *MsgLookup) (*EthAddress, error) {
-	if lookup.Receipt.ExitCode.IsError() {
-		return nil, xerrors.Errorf("message execution was not successful")
-	}
-	var result init8.ExecReturn
-	ret := bytes.NewReader(lookup.Receipt.Return)
-	if err := result.UnmarshalCBOR(ret); err == nil {
-		contractAddr, err := EthAddressFromFilecoinIDAddress(result.IDAddress)
-		if err == nil {
-			return &contractAddr, nil
-		}
-	}
-	return nil, xerrors.Errorf("not a contract creation tx")
-}
-
 const (
-	ETH_ADDRESS_LENGTH = 20
-	ETH_HASH_LENGTH    = 32
+	EthAddressLength = 20
+	EthHashLength    = 32
 )
 
 type EthNonce [8]byte
@@ -255,20 +246,20 @@ func (n EthNonce) String() string {
 }
 
 func (n EthNonce) MarshalJSON() ([]byte, error) {
-	return json.Marshal((n.String()))
+	return json.Marshal(n.String())
 }
 
-type EthAddress [ETH_ADDRESS_LENGTH]byte
+type EthAddress [EthAddressLength]byte
 
-func (a EthAddress) String() string {
-	return "0x" + hex.EncodeToString(a[:])
+func (ea EthAddress) String() string {
+	return "0x" + hex.EncodeToString(ea[:])
 }
 
-func (a EthAddress) MarshalJSON() ([]byte, error) {
-	return json.Marshal((a.String()))
+func (ea EthAddress) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ea.String())
 }
 
-func (a *EthAddress) UnmarshalJSON(b []byte) error {
+func (ea *EthAddress) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
@@ -277,52 +268,86 @@ func (a *EthAddress) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	copy(a[:], addr[:])
+	copy(ea[:], addr[:])
 	return nil
 }
 
-func (a EthAddress) ToFilecoinAddress() (address.Address, error) {
-	expectedPrefix := [12]byte{0xff}
-	if !bytes.Equal(a[:12], expectedPrefix[:]) {
-		// TODO: handle f4 once we've added support to go-address.
-		return address.Address{}, xerrors.Errorf("not a valid id-in-eth address: %s", a)
+func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
+	idmask := [12]byte{0xff}
+	if bytes.Equal(ea[:12], idmask[:]) {
+		// This is a masked ID address.
+		id := binary.BigEndian.Uint64(ea[12:])
+		return address.NewIDAddress(id)
 	}
-	id := binary.BigEndian.Uint64(a[12:])
-	return address.NewIDAddress(id)
+
+	// Otherwise, translate the address into an address controlled by the
+	// Ethereum Address Manager.
+	addr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, ea[:])
+	if err != nil {
+		return address.Undef, fmt.Errorf("failed to translate supplied address (%s) into a "+
+			"Filecoin f4 address: %w", hex.EncodeToString(ea[:]), err)
+	}
+	return addr, nil
 }
 
-func EthAddressFromFilecoinIDAddress(addr address.Address) (EthAddress, error) {
-	id, err := address.IDFromAddress(addr)
-	if err != nil {
-		return EthAddress{}, err
+func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
+	switch addr.Protocol() {
+	case address.ID:
+		if !allowId {
+			return EthAddress{}, false, nil
+		}
+		id, err := address.IDFromAddress(addr)
+		if err != nil {
+			return EthAddress{}, false, err
+		}
+		var ethaddr EthAddress
+		ethaddr[0] = 0xff
+		binary.BigEndian.PutUint64(ethaddr[12:], id)
+		return ethaddr, true, nil
+	case address.Delegated:
+		payload := addr.Payload()
+		namespace, n, err := varint.FromUvarint(payload)
+		if err != nil {
+			return EthAddress{}, false, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
+		}
+		payload = payload[n:]
+		if namespace == builtin.EthereumAddressManagerActorID {
+			addr, err := EthAddressFromBytes(payload)
+			return addr, err == nil, err
+		}
 	}
-	var ethaddr EthAddress
-	ethaddr[0] = 0xff
-	binary.BigEndian.PutUint64(ethaddr[12:], id)
-	return ethaddr, nil
+	return EthAddress{}, false, nil
+}
+
+func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
+	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
+	if !ok && err == nil {
+		err = xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	}
+	return ethAddr, err
 }
 
 func EthAddressFromHex(s string) (EthAddress, error) {
 	handlePrefix(&s)
-	b, err := decodeHexString(s, ETH_ADDRESS_LENGTH)
+	b, err := decodeHexString(s, EthAddressLength)
 	if err != nil {
 		return EthAddress{}, err
 	}
 	var h EthAddress
-	copy(h[ETH_ADDRESS_LENGTH-len(b):], b)
+	copy(h[EthAddressLength-len(b):], b)
 	return h, nil
 }
 
 func EthAddressFromBytes(b []byte) (EthAddress, error) {
 	var a EthAddress
-	if len(b) != ETH_ADDRESS_LENGTH {
-		return EthAddress{}, xerrors.Errorf("cannot initiate a new EthAddress: incorrect input length")
+	if len(b) != EthAddressLength {
+		return EthAddress{}, xerrors.Errorf("cannot parse bytes into anœ EthAddress: incorrect input length")
 	}
 	copy(a[:], b[:])
 	return a, nil
 }
 
-type EthHash [ETH_HASH_LENGTH]byte
+type EthHash [EthHashLength]byte
 
 func (h EthHash) MarshalJSON() ([]byte, error) {
 	return json.Marshal(h.String())
@@ -370,12 +395,12 @@ func EthHashFromCid(c cid.Cid) (EthHash, error) {
 
 func EthHashFromHex(s string) (EthHash, error) {
 	handlePrefix(&s)
-	b, err := decodeHexString(s, ETH_HASH_LENGTH)
+	b, err := decodeHexString(s, EthHashLength)
 	if err != nil {
 		return EthHash{}, err
 	}
 	var h EthHash
-	copy(h[ETH_HASH_LENGTH-len(b):], b)
+	copy(h[EthHashLength-len(b):], b)
 	return h, nil
 }
 
@@ -388,4 +413,11 @@ func (h EthHash) ToCid() cid.Cid {
 	mh, _ := multihash.EncodeName(h[:], "blake2b-256")
 
 	return cid.NewCidV1(cid.DagCBOR, mh)
+}
+
+type EthFeeHistory struct {
+	OldestBlock   uint64         `json:"oldestBlock"`
+	BaseFeePerGas []EthBigInt    `json:"baseFeePerGas"`
+	GasUsedRatio  []float64      `json:"gasUsedRatio"`
+	Reward        *[][]EthBigInt `json:"reward,omitempty"`
 }

@@ -70,6 +70,7 @@
   * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
   * [EthEstimateGas](#EthEstimateGas)
+  * [EthFeeHistory](#EthFeeHistory)
   * [EthGasPrice](#EthGasPrice)
   * [EthGetBalance](#EthGetBalance)
   * [EthGetBlockByHash](#EthGetBlockByHash)
@@ -2199,6 +2200,36 @@ Inputs:
 
 Response: `"0x5"`
 
+### EthFeeHistory
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5",
+  "string value",
+  [
+    9
+  ]
+]
+```
+
+Response:
+```json
+{
+  "oldestBlock": 42,
+  "baseFeePerGas": [
+    "0x0"
+  ],
+  "gasUsedRatio": [
+    12.3
+  ],
+  "reward": []
+}
+```
+
 ### EthGasPrice
 
 
@@ -2343,7 +2374,8 @@ Perms: read
 Inputs:
 ```json
 [
-  "0x0707070707070707070707070707070707070707"
+  "0x0707070707070707070707070707070707070707",
+  "string value"
 ]
 ```
 
@@ -5781,7 +5813,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Nonce": 42,
-    "Balance": "0"
+    "Balance": "0",
+    "Address": "\u003cempty\u003e"
   }
 }
 ```
@@ -6157,7 +6190,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Nonce": 42,
-  "Balance": "0"
+  "Balance": "0",
+  "Address": "\u003cempty\u003e"
 }
 ```
 

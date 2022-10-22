@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -376,6 +377,7 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 		Code:    actcid,
 		Head:    statecid,
 		Balance: bal,
+		Address: &addr,
 	}
 
 	return act, nil
@@ -551,6 +553,11 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
+	// Set up the Ethereum Address Manager.
+	if err = SetupEAM(ctx, st); err != nil {
+		return nil, xerrors.Errorf("failed to setup EAM: %w", err)
+	}
+
 	stateroot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("flush state tree failed: %w", err)
@@ -652,4 +659,19 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
+}
+
+func SetupEAM(_ context.Context, nst *state.StateTree) error {
+	// TODO Version10
+	codecid, ok := actors.GetActorCodeID(actors.Version8, actors.EamKey)
+	if !ok {
+		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
+	}
+
+	header := &types.Actor{
+		Code:    codecid,
+		Head:    vm.EmptyObjectCid,
+		Balance: big.Zero(),
+	}
+	return nst.SetActor(builtintypes.EthereumAddressManagerActorAddr, header)
 }

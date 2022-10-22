@@ -31,6 +31,8 @@ const (
 	SystemKey   = "system"
 	VerifregKey = "verifiedregistry"
 	EvmKey      = "evm"
+	EamKey      = "eam"
+	EmbrioKey   = "embryo"
 )
 
 func GetBuiltinActorsKeys() []string {
@@ -47,6 +49,8 @@ func GetBuiltinActorsKeys() []string {
 		SystemKey,
 		VerifregKey,
 		EvmKey,
+		EamKey,
+		EmbrioKey,
 	}
 }
 

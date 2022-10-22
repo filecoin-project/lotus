@@ -6,21 +6,23 @@ import (
 	"fmt"
 	mathbig "math/big"
 
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+const Eip1559TxType = 2
 
 type EthTx struct {
 	ChainID              EthUint64   `json:"chainId"`
@@ -58,29 +60,43 @@ type EthTxArgs struct {
 }
 
 func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
-	var to *EthAddress
-	params := msg.Params
-	if msg.To == builtintypes.InitActorAddr {
-		to = nil
+	var (
+		to            *EthAddress
+		decodedParams []byte
+		paramsReader  = bytes.NewReader(msg.Params)
+	)
 
-		var exec init8.ExecParams
-		reader := bytes.NewReader(msg.Params)
-		if err := exec.UnmarshalCBOR(reader); err != nil {
-			return EthTxArgs{}, err
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		switch msg.Method {
+		case builtintypes.MethodsEAM.Create:
+			var create eam.CreateParams
+			if err := create.UnmarshalCBOR(paramsReader); err != nil {
+				return EthTxArgs{}, err
+			}
+			decodedParams = create.Initcode
+		case builtintypes.MethodsEAM.Create2:
+			var create2 eam.Create2Params
+			if err := create2.UnmarshalCBOR(paramsReader); err != nil {
+				return EthTxArgs{}, err
+			}
+			decodedParams = create2.Initcode
+		default:
+			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
-
-		var evmParams evm.ConstructorParams
-		reader1 := bytes.NewReader(exec.ConstructorParams)
-		if err := evmParams.UnmarshalCBOR(reader1); err != nil {
-			return EthTxArgs{}, err
-		}
-		params = evmParams.Bytecode
 	} else {
-		addr, err := EthAddressFromFilecoinIDAddress(msg.To)
+		addr, err := EthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
-			return EthTxArgs{}, nil
+			return EthTxArgs{}, err
 		}
 		to = &addr
+
+		if len(msg.Params) > 0 {
+			params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+			if err != nil {
+				return EthTxArgs{}, err
+			}
+			decodedParams = params
+		}
 	}
 
 	return EthTxArgs{
@@ -88,7 +104,7 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 		Nonce:                int(msg.Nonce),
 		To:                   to,
 		Value:                msg.Value,
-		Input:                params,
+		Input:                decodedParams,
 		MaxFeePerGas:         msg.GasFeeCap,
 		MaxPriorityFeePerGas: msg.GasPremium,
 		GasLimit:             int(msg.GasLimit),
@@ -108,36 +124,43 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 		return nil, fmt.Errorf("to and input cannot both be empty")
 	}
 
+	var method abi.MethodNum
 	if tx.To == nil {
+		// TODO https://github.com/filecoin-project/ref-fvm/issues/992
+		// TODO unify with applyEvmMsg
+
 		// this is a contract creation
-		to = builtintypes.InitActorAddr
+		to = builtintypes.EthereumAddressManagerActorAddr
 
-		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode: tx.Input,
+		var salt [32]byte
+		binary.BigEndian.PutUint64(salt[:], uint64(tx.Nonce))
+
+		params2, err := actors.SerializeParams(&eam.Create2Params{
+			Initcode: tx.Input,
+			Salt:     salt,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)
+			return nil, fmt.Errorf("failed to serialize Create2 params: %w", err)
 		}
-
-		evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "evm")
-		if !ok {
-			return nil, fmt.Errorf("failed to lookup evm actor code CID")
-		}
-
-		params, err = actors.SerializeParams(&init8.ExecParams{
-			CodeCID:           evmActorCid,
-			ConstructorParams: constructorParams,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize init actor exec params: %w", err)
-		}
+		params = params2
+		method = builtintypes.MethodsEAM.Create2
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {
 			return nil, err
 		}
 		to = addr
-		params = tx.Input
+
+		if len(tx.Input) > 0 {
+			var buf bytes.Buffer
+			if err := cbg.WriteByteArray(&buf, tx.Input); err != nil {
+				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+			}
+			params = buf.Bytes()
+			method = builtintypes.MethodsEVM.InvokeContract
+		} else {
+			method = builtintypes.MethodSend
+		}
 	}
 
 	msg := &types.Message{
@@ -145,7 +168,7 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 		From:       from,
 		To:         to,
 		Value:      tx.Value,
-		Method:     2,
+		Method:     method,
 		Params:     params,
 		GasLimit:   int64(tx.GasLimit),
 		GasFeeCap:  tx.MaxFeePerGas,
@@ -263,12 +286,23 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	return address.NewSecp256k1Address(pubk)
+	// if we get an uncompressed public key (that's what we get from the library,
+	// but putting this check here for defensiveness), strip the prefix
+	if pubk[0] == 0x04 {
+		pubk = pubk[1:]
+	}
+
+	// Calculate the f4 address based on the keccak hash of the pubkey.
+	hasher.Reset()
+	hasher.Write(pubk)
+	ethAddr := hasher.Sum(nil)[12:]
+
+	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
 }
 
 func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 	if data[0] != 2 {
-		return nil, xerrors.Errorf("not an EIP-1559 transaction: first byte is not 2")
+		return nil, fmt.Errorf("not an EIP-1559 transaction: first byte is not 2")
 	}
 
 	d, err := DecodeRLP(data[1:])
@@ -277,11 +311,11 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 	}
 	decoded, ok := d.([]interface{})
 	if !ok {
-		return nil, xerrors.Errorf("not an EIP-1559 transaction: decoded data is not a list")
+		return nil, fmt.Errorf("not an EIP-1559 transaction: decoded data is not a list")
 	}
 
 	if len(decoded) != 9 && len(decoded) != 12 {
-		return nil, xerrors.Errorf("not an EIP-1559 transaction: should have 6 or 9 elements in the list")
+		return nil, fmt.Errorf("not an EIP-1559 transaction: should have 6 or 9 elements in the list")
 	}
 
 	chainId, err := parseInt(decoded[0])
@@ -367,15 +401,15 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 func ParseEthTxArgs(data []byte) (*EthTxArgs, error) {
 	if data[0] > 0x7f {
 		// legacy transaction
-		return nil, xerrors.Errorf("legacy transaction is not supported")
+		return nil, fmt.Errorf("legacy transaction is not supported")
 	} else if data[0] == 1 {
 		// EIP-2930
-		return nil, xerrors.Errorf("EIP-2930 transaction is not supported")
-	} else if data[0] == 2 {
+		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
+	} else if data[0] == Eip1559TxType {
 		// EIP-1559
 		return parseEip1559Tx(data)
 	}
-	return nil, xerrors.Errorf("unsupported transaction type")
+	return nil, fmt.Errorf("unsupported transaction type")
 }
 
 func padLeadingZeros(data []byte, length int) []byte {
@@ -424,18 +458,18 @@ func formatBigInt(val big.Int) ([]byte, error) {
 func parseInt(v interface{}) (int, error) {
 	data, ok := v.([]byte)
 	if !ok {
-		return 0, xerrors.Errorf("cannot parse interface to int: input is not a byte array")
+		return 0, fmt.Errorf("cannot parse interface to int: input is not a byte array")
 	}
 	if len(data) == 0 {
 		return 0, nil
 	}
 	if len(data) > 8 {
-		return 0, xerrors.Errorf("cannot parse interface to int: length is more than 8 bytes")
+		return 0, fmt.Errorf("cannot parse interface to int: length is more than 8 bytes")
 	}
 	var value int64
 	r := bytes.NewReader(append(make([]byte, 8-len(data)), data...))
 	if err := binary.Read(r, binary.BigEndian, &value); err != nil {
-		return 0, xerrors.Errorf("cannot parse interface to EthUint64: %w", err)
+		return 0, fmt.Errorf("cannot parse interface to EthUint64: %w", err)
 	}
 	return int(value), nil
 }
@@ -443,7 +477,7 @@ func parseInt(v interface{}) (int, error) {
 func parseBigInt(v interface{}) (big.Int, error) {
 	data, ok := v.([]byte)
 	if !ok {
-		return big.Zero(), xerrors.Errorf("cannot parse interface to big.Int: input is not a byte array")
+		return big.Zero(), fmt.Errorf("cannot parse interface to big.Int: input is not a byte array")
 	}
 	if len(data) == 0 {
 		return big.Zero(), nil
@@ -456,7 +490,7 @@ func parseBigInt(v interface{}) (big.Int, error) {
 func parseBytes(v interface{}) ([]byte, error) {
 	val, ok := v.([]byte)
 	if !ok {
-		return nil, xerrors.Errorf("cannot parse interface into bytes: input is not a byte array")
+		return nil, fmt.Errorf("cannot parse interface into bytes: input is not a byte array")
 	}
 	return val, nil
 }

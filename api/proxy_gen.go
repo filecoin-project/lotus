@@ -224,6 +224,8 @@ type FullNodeStruct struct {
 
 		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthUint64, error) `perm:"read"`
 
+		EthFeeHistory func(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) `perm:"read"`
+
 		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
 		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
@@ -236,7 +238,7 @@ type FullNodeStruct struct {
 
 		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 EthUint64) (EthUint64, error) `perm:"read"`
 
-		EthGetCode func(p0 context.Context, p1 EthAddress) (EthBytes, error) `perm:"read"`
+		EthGetCode func(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) `perm:"read"`
 
 		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) `perm:"read"`
 
@@ -1816,6 +1818,17 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64
 	return *new(EthUint64), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) {
+	if s.Internal.EthFeeHistory == nil {
+		return *new(EthFeeHistory), ErrNotSupported
+	}
+	return s.Internal.EthFeeHistory(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) {
+	return *new(EthFeeHistory), ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthBigInt, error) {
 	if s.Internal.EthGasPrice == nil {
 		return *new(EthBigInt), ErrNotSupported
@@ -1882,14 +1895,14 @@ func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p
 	return *new(EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
+func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) {
 	if s.Internal.EthGetCode == nil {
 		return *new(EthBytes), ErrNotSupported
 	}
-	return s.Internal.EthGetCode(p0, p1)
+	return s.Internal.EthGetCode(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress) (EthBytes, error) {
+func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) {
 	return *new(EthBytes), ErrNotSupported
 }
 

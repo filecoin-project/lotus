@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"strconv"
 
@@ -15,14 +16,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -42,9 +42,10 @@ type EthModuleAPI interface {
 	EthGetTransactionReceipt(ctx context.Context, txHash api.EthHash) (*api.EthTxReceipt, error)
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash api.EthHash, txIndex api.EthUint64) (api.EthTx, error)
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum api.EthUint64, txIndex api.EthUint64) (api.EthTx, error)
-	EthGetCode(ctx context.Context, address api.EthAddress) (api.EthBytes, error)
+	EthGetCode(ctx context.Context, address api.EthAddress, blkOpt string) (api.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthBytes, blkParam string) (api.EthBytes, error)
 	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
+	EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlk string, rewardPercentiles []int64) (api.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (api.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
@@ -54,6 +55,7 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
+	// EthFeeHistory(ctx context.Context, blkCount string)
 }
 
 var _ EthModuleAPI = *new(api.FullNode)
@@ -189,22 +191,22 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.Eth
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	replay, err := a.StateAPI.StateReplay(ctx, types.EmptyTSK, cid)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	receipt, err := api.NewEthTxReceipt(tx, msgLookup, replay)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 	return &receipt, nil
 }
@@ -218,7 +220,7 @@ func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, 
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api.EthBytes, error) {
+func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress, blkOpt string) (api.EthBytes, error) {
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
@@ -233,7 +235,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api
 		From:       from,
 		To:         to,
 		Value:      big.Zero(),
-		Method:     abi.MethodNum(3), // GetBytecode
+		Method:     builtintypes.MethodsEVM.GetBytecode,
 		Params:     nil,
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
@@ -256,7 +258,9 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress) (api
 	}
 
 	if err != nil {
-		return nil, xerrors.Errorf("Call failed: %w", err)
+		// if the call resulted in error, this is not an EVM smart contract;
+		// return no bytecode.
+		return nil, nil
 	}
 
 	if res.MsgRct == nil {
@@ -321,7 +325,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress,
 		From:       from,
 		To:         to,
 		Value:      big.Zero(),
-		Method:     abi.MethodNum(4), // GetStorageAt
+		Method:     builtintypes.MethodsEVM.GetStorageAt,
 		Params:     params,
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
@@ -361,7 +365,9 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, b
 	}
 
 	actor, err := a.StateGetActor(ctx, filAddr, types.EmptyTSK)
-	if err != nil {
+	if xerrors.Is(err, types.ErrActorNotFound) {
+		return api.EthBigIntZero, nil
+	} else if err != nil {
 		return api.EthBigInt{}, err
 	}
 
@@ -370,6 +376,73 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address api.EthAddress, b
 
 func (a *EthModule) EthChainId(ctx context.Context) (api.EthUint64, error) {
 	return api.EthUint64(build.Eip155ChainId), nil
+}
+
+func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlkNum string, rewardPercentiles []int64) (api.EthFeeHistory, error) {
+	if blkCount > 1024 {
+		return api.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
+	}
+
+	newestBlkHeight := uint64(a.Chain.GetHeaviestTipSet().Height())
+
+	// TODO https://github.com/filecoin-project/ref-fvm/issues/1016
+	var blkNum api.EthUint64
+	err := blkNum.UnmarshalJSON([]byte(`"` + newestBlkNum + `"`))
+	if err == nil && uint64(blkNum) < newestBlkHeight {
+		newestBlkHeight = uint64(blkNum)
+	}
+
+	// Deal with the case that the chain is shorter than the number of
+	// requested blocks.
+	oldestBlkHeight := uint64(1)
+	if uint64(blkCount) <= newestBlkHeight {
+		oldestBlkHeight = newestBlkHeight - uint64(blkCount) + 1
+	}
+
+	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(newestBlkHeight), nil, false)
+	if err != nil {
+		return api.EthFeeHistory{}, fmt.Errorf("cannot load find block height: %v", newestBlkHeight)
+	}
+
+	// FIXME: baseFeePerGas should include the next block after the newest of the returned range, because this
+	// can be inferred from the newest block. we use the newest block's baseFeePerGas for now but need to fix it
+	// In other words, due to deferred execution, we might not be returning the most useful value here for the client.
+	baseFeeArray := []api.EthBigInt{api.EthBigInt(ts.Blocks()[0].ParentBaseFee)}
+	gasUsedRatioArray := []float64{}
+
+	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
+		// Unfortunately we need to rebuild the full message view so we can
+		// totalize gas used in the tipset.
+		block, err := a.ethBlockFromFilecoinTipSet(ctx, ts, false)
+		if err != nil {
+			return api.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
+		}
+
+		// both arrays should be reversed at the end
+		baseFeeArray = append(baseFeeArray, api.EthBigInt(ts.Blocks()[0].ParentBaseFee))
+		gasUsedRatioArray = append(gasUsedRatioArray, float64(block.GasUsed)/float64(build.BlockGasLimit))
+
+		parentTsKey := ts.Parents()
+		ts, err = a.Chain.LoadTipSet(ctx, parentTsKey)
+		if err != nil {
+			return api.EthFeeHistory{}, fmt.Errorf("cannot load tipset key: %v", parentTsKey)
+		}
+	}
+
+	// Reverse the arrays; we collected them newest to oldest; the client expects oldest to newest.
+
+	for i, j := 0, len(baseFeeArray)-1; i < j; i, j = i+1, j-1 {
+		baseFeeArray[i], baseFeeArray[j] = baseFeeArray[j], baseFeeArray[i]
+	}
+	for i, j := 0, len(gasUsedRatioArray)-1; i < j; i, j = i+1, j-1 {
+		gasUsedRatioArray[i], gasUsedRatioArray[j] = gasUsedRatioArray[j], gasUsedRatioArray[i]
+	}
+
+	return api.EthFeeHistory{
+		OldestBlock:   oldestBlkHeight,
+		BaseFeePerGas: baseFeeArray,
+		GasUsedRatio:  gasUsedRatioArray,
+	}, nil
 }
 
 func (a *EthModule) NetVersion(ctx context.Context) (string, error) {
@@ -432,83 +505,77 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthByte
 	return api.EthHashFromCid(cid)
 }
 
-func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.InvocResult, error) {
-	// FIXME: this is a workaround, remove this when f4 address is ready
-	var from address.Address
-	var err error
-	if tx.From[0] == 0xff && tx.From[1] == 0 && tx.From[2] == 0 {
-		addr, err := tx.From.ToFilecoinAddress()
-		if err != nil {
-			return nil, err
-		}
-		from = addr
-	} else {
-		id := uint64(100)
-		for ; id < 300; id++ {
-			idAddr, err := address.NewIDAddress(id)
-			if err != nil {
-				return nil, err
-			}
-			from = idAddr
-			act, err := a.StateGetActor(ctx, idAddr, types.EmptyTSK)
-			if err != nil {
-				return nil, err
-			}
-			if builtinactors.IsAccountActor(act.Code) {
-				break
-			}
-		}
-		if id == 300 {
-			return nil, fmt.Errorf("cannot find a dummy account")
-		}
+func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx api.EthCall) (*types.Message, error) {
+	// The from address must be translatable to an f4 address.
+	from, err := tx.From.ToFilecoinAddress()
+	if err != nil {
+		return nil, fmt.Errorf("failed to translate sender address (%s): %w", tx.From.String(), err)
+	}
+	if p := from.Protocol(); p != address.Delegated {
+		return nil, fmt.Errorf("expected a class 4 address, got: %d: %w", p, err)
 	}
 
 	var params []byte
 	var to address.Address
+	var method abi.MethodNum
 	if tx.To == nil {
-		to = builtintypes.InitActorAddr
-		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
-			Bytecode: tx.Data,
-		})
+		// this is a contract creation
+		to = builtintypes.EthereumAddressManagerActorAddr
+
+		nonce, err := a.Mpool.GetNonce(ctx, from, types.EmptyTSK)
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize constructor params: %w", err)
+			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
 		}
 
-		evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "evm")
-		if !ok {
-			return nil, fmt.Errorf("failed to lookup evm actor code CID")
-		}
+		var salt [32]byte
+		binary.BigEndian.PutUint64(salt[:], nonce)
 
-		params, err = actors.SerializeParams(&init8.ExecParams{
-			CodeCID:           evmActorCid,
-			ConstructorParams: constructorParams,
+		// TODO this probably needs to be Create instead of Create2, but Create
+		//  is not callable externally.
+		params2, err := actors.SerializeParams(&eam.Create2Params{
+			Initcode: tx.Data,
+			Salt:     salt,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize init actor exec params: %w", err)
+			return nil, fmt.Errorf("failed to serialize Create2 params: %w", err)
 		}
+		params = params2
+		method = builtintypes.MethodsEAM.Create2
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {
 			return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 		}
 		to = addr
-		params = tx.Data
+
+		if len(tx.Data) > 0 {
+			var buf bytes.Buffer
+			if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
+				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+			}
+			params = buf.Bytes()
+			method = builtintypes.MethodsEVM.InvokeContract
+		} else {
+			method = builtintypes.MethodSend
+		}
 	}
 
-	msg := &types.Message{
+	return &types.Message{
 		From:       from,
 		To:         to,
 		Value:      big.Int(tx.Value),
-		Method:     abi.MethodNum(2),
+		Method:     method,
 		Params:     params,
 		GasLimit:   build.BlockGasLimit,
 		GasFeeCap:  big.Zero(),
 		GasPremium: big.Zero(),
-	}
+	}, nil
+}
+
+func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message) (res *api.InvocResult, err error) {
 	ts := a.Chain.GetHeaviestTipSet()
 
 	// Try calling until we find a height with no migration.
-	var res *api.InvocResult
 	for {
 		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts)
 		if err != stmgr.ErrExpensiveFork {
@@ -529,21 +596,31 @@ func (a *EthModule) applyEvmMsg(ctx context.Context, tx api.EthCall) (*api.Invoc
 }
 
 func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall) (api.EthUint64, error) {
-	invokeResult, err := a.applyEvmMsg(ctx, tx)
+	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
 		return api.EthUint64(0), err
 	}
-	ret := invokeResult.MsgRct.GasUsed
-	return api.EthUint64(ret), nil
+
+	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+	if err != nil {
+		return api.EthUint64(0), err
+	}
+
+	return api.EthUint64(msg.GasLimit), nil
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error) {
-	invokeResult, err := a.applyEvmMsg(ctx, tx)
+	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	invokeResult, err := a.applyMessage(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
 	if len(invokeResult.MsgRct.Return) > 0 {
-		return api.EthBytes(invokeResult.MsgRct.Return), nil
+		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
 	return api.EthBytes{}, nil
 }
@@ -603,6 +680,50 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 	return block, nil
 }
 
+// lookupEthAddress makes its best effort at finding the Ethereum address for a
+// Filecoin address. It does the following:
+//
+// 1. If the supplied address is an f410 address, we return its payload as the EthAddress.
+// 2. Otherwise (f0, f1, f2, f3), we look up the actor on the state tree. If it has a predictable address, we return it if it's f410 address.
+// 3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
+//    use that ID to form the masked ID address.
+// 4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
+func (a *EthModule) lookupEthAddress(ctx context.Context, addr address.Address) (api.EthAddress, error) {
+	// Attempt to convert directly.
+	if ethAddr, ok, err := api.TryEthAddressFromFilecoinAddress(addr, false); err != nil {
+		return api.EthAddress{}, err
+	} else if ok {
+		return ethAddr, nil
+	}
+
+	// Lookup on the target actor.
+	actor, err := a.StateAPI.StateGetActor(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return api.EthAddress{}, err
+	}
+	if actor.Address != nil {
+		if ethAddr, ok, err := api.TryEthAddressFromFilecoinAddress(*actor.Address, false); err != nil {
+			return api.EthAddress{}, err
+		} else if ok {
+			return ethAddr, nil
+		}
+	}
+
+	// Check if we already have an ID addr, and use it if possible.
+	if ethAddr, ok, err := api.TryEthAddressFromFilecoinAddress(addr, true); err != nil {
+		return api.EthAddress{}, err
+	} else if ok {
+		return ethAddr, nil
+	}
+
+	// Otherwise, resolve the ID addr.
+	idAddr, err := a.StateAPI.StateLookupID(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return api.EthAddress{}, err
+	}
+	return api.EthAddressFromFilecoinAddress(idAddr)
+}
+
 func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (api.EthTx, error) {
 	if msgLookup == nil {
 		return api.EthTx{}, fmt.Errorf("msg does not exist")
@@ -613,12 +734,23 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return api.EthTx{}, err
 	}
 
-	tsCid, err := msgLookup.TipSet.Cid()
+	ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
 	if err != nil {
 		return api.EthTx{}, err
 	}
 
-	blkHash, err := api.EthHashFromCid(tsCid)
+	// This tx is located in the parent tipset
+	parentTs, err := a.Chain.LoadTipSet(ctx, ts.Parents())
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	parentTsCid, err := parentTs.Key().Cid()
+	if err != nil {
+		return api.EthTx{}, err
+	}
+
+	blkHash, err := api.EthHashFromCid(parentTsCid)
 	if err != nil {
 		return api.EthTx{}, err
 	}
@@ -628,37 +760,50 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return api.EthTx{}, err
 	}
 
-	fromFilIdAddr, err := a.StateAPI.StateLookupID(ctx, msg.From, types.EmptyTSK)
+	fromEthAddr, err := a.lookupEthAddress(ctx, msg.From)
 	if err != nil {
 		return api.EthTx{}, err
 	}
 
-	fromEthAddr, err := api.EthAddressFromFilecoinIDAddress(fromFilIdAddr)
-	if err != nil {
-		return api.EthTx{}, err
-	}
-
-	toFilAddr, err := a.StateAPI.StateLookupID(ctx, msg.To, types.EmptyTSK)
-	if err != nil {
-		return api.EthTx{}, err
-	}
-
-	toEthAddr, err := api.EthAddressFromFilecoinIDAddress(toFilAddr)
+	toEthAddr, err := a.lookupEthAddress(ctx, msg.To)
 	if err != nil {
 		return api.EthTx{}, err
 	}
 
 	toAddr := &toEthAddr
-	_, err = api.CheckContractCreation(msgLookup)
-	if err == nil {
-		toAddr = nil
+	input := msg.Params
+	// Check to see if we need to decode as contract deployment.
+	// We don't need to resolve the to address, because there's only one form (an ID).
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		switch msg.Method {
+		case builtintypes.MethodsEAM.Create:
+			toAddr = nil
+			var params eam.CreateParams
+			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			input = params.Initcode
+		case builtintypes.MethodsEAM.Create2:
+			toAddr = nil
+			var params eam.Create2Params
+			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			input = params.Initcode
+		}
+		if err != nil {
+			return api.EthTx{}, err
+		}
+	}
+	// Otherwise, try to decode as a cbor byte array.
+	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
+	if toAddr != nil {
+		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(msg.Params), uint64(len(msg.Params))); err == nil {
+			input = decodedParams
+		}
 	}
 
 	tx := api.EthTx{
 		ChainID:              api.EthUint64(build.Eip155ChainId),
 		Hash:                 txHash,
 		BlockHash:            blkHash,
-		BlockNumber:          api.EthUint64(msgLookup.Height),
+		BlockNumber:          api.EthUint64(parentTs.Height()),
 		From:                 fromEthAddr,
 		To:                   toAddr,
 		Value:                api.EthBigInt(msg.Value),
@@ -669,7 +814,7 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		V:                    api.EthBytes{},
 		R:                    api.EthBytes{},
 		S:                    api.EthBytes{},
-		Input:                msg.Params,
+		Input:                input,
 	}
 	return tx, nil
 }
