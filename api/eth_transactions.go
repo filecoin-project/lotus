@@ -150,12 +150,17 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 			return nil, err
 		}
 		to = addr
-		var buf bytes.Buffer
-		if err := cbg.WriteByteArray(&buf, tx.Input); err != nil {
-			return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+
+		if len(tx.Input) > 0 {
+			var buf bytes.Buffer
+			if err := cbg.WriteByteArray(&buf, tx.Input); err != nil {
+				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+			}
+			params = buf.Bytes()
+			method = builtintypes.MethodsEVM.InvokeContract
+		} else {
+			method = builtintypes.MethodSend
 		}
-		params = buf.Bytes()
-		method = builtintypes.MethodsEVM.InvokeContract
 	}
 
 	msg := &types.Message{
