@@ -45,7 +45,7 @@ type EthModuleAPI interface {
 	EthGetCode(ctx context.Context, address api.EthAddress, blkOpt string) (api.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthBytes, blkParam string) (api.EthBytes, error)
 	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
-	EthFeeHistory(ctx context.Context, blkCount uint64, newestBlk string) (api.EthFeeHistory, error)
+	EthFeeHistory(ctx context.Context, blkCount uint64, newestBlk string, rewardPercentiles [][]int64) (api.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (api.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
@@ -378,7 +378,7 @@ func (a *EthModule) EthChainId(ctx context.Context) (api.EthUint64, error) {
 	return api.EthUint64(build.Eip155ChainId), nil
 }
 
-func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount uint64, newestBlkNum string) (api.EthFeeHistory, error) {
+func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount uint64, newestBlkNum string, rewardPercentiles [][]int64) (api.EthFeeHistory, error) {
 	if blkCount > 1024 {
 		return api.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}

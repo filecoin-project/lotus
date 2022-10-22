@@ -34,7 +34,7 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	abuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -230,7 +230,7 @@ type FullNodeStruct struct {
 
 		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthUint64, error) `perm:"read"`
 
-		EthFeeHistory func(p0 context.Context, p1 uint64, p2 string) (EthFeeHistory, error) `perm:"read"`
+		EthFeeHistory func(p0 context.Context, p1 uint64, p2 string, p3 [][]int64) (EthFeeHistory, error) `perm:"read"`
 
 		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
@@ -733,7 +733,7 @@ type StorageMinerStruct struct {
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
 
-		ComputeProof func(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) `perm:"read"`
+		ComputeProof func(p0 context.Context, p1 []abuiltin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]abuiltin.PoStProof, error) `perm:"read"`
 
 		ComputeWindowPoSt func(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) `perm:"admin"`
 
@@ -1896,14 +1896,14 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64
 	return *new(EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 uint64, p2 string) (EthFeeHistory, error) {
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 uint64, p2 string, p3 [][]int64) (EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
 		return *new(EthFeeHistory), ErrNotSupported
 	}
-	return s.Internal.EthFeeHistory(p0, p1, p2)
+	return s.Internal.EthFeeHistory(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 uint64, p2 string) (EthFeeHistory, error) {
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 uint64, p2 string, p3 [][]int64) (EthFeeHistory, error) {
 	return *new(EthFeeHistory), ErrNotSupported
 }
 
@@ -4470,15 +4470,15 @@ func (s *StorageMinerStub) ComputeDataCid(p0 context.Context, p1 abi.UnpaddedPie
 	return *new(abi.PieceInfo), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) {
+func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []abuiltin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]abuiltin.PoStProof, error) {
 	if s.Internal.ComputeProof == nil {
-		return *new([]builtin.PoStProof), ErrNotSupported
+		return *new([]abuiltin.PoStProof), ErrNotSupported
 	}
 	return s.Internal.ComputeProof(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) ComputeProof(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) {
-	return *new([]builtin.PoStProof), ErrNotSupported
+func (s *StorageMinerStub) ComputeProof(p0 context.Context, p1 []abuiltin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]abuiltin.PoStProof, error) {
+	return *new([]abuiltin.PoStProof), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ComputeWindowPoSt(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) {

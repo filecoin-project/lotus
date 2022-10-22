@@ -17,8 +17,6 @@ import (
 	"strings"
 	"time"
 
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -29,7 +27,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	evm "github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
