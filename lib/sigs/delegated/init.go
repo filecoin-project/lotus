@@ -41,11 +41,17 @@ func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 		return err
 	}
 
+	// if we get an uncompressed public key (that's what we get from the library,
+	// but putting this check here for defensiveness), strip the prefix
+	if pubk[0] == 0x04 {
+		pubk = pubk[1:]
+	}
+
 	hasher.Reset()
 	hasher.Write(pubk)
 	addrHash := hasher.Sum(nil)
 
-	maybeaddr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[len(addrHash)-20:])
+	maybeaddr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[12:])
 	if err != nil {
 		return err
 	}
