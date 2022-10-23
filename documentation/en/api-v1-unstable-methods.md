@@ -1986,26 +1986,7 @@ Inputs:
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
     },
-    "RemoteStore": {
-      "GetURL": {
-        "UrlTemplate": "string value",
-        "Headers": [
-          {
-            "Key": "string value",
-            "Value": "string value"
-          }
-        ]
-      },
-      "PutURL": {
-        "UrlTemplate": "string value",
-        "Headers": [
-          {
-            "Key": "string value",
-            "Value": "string value"
-          }
-        ]
-      }
-    }
+    "RemoteStore": "1399aa04-2625-44b1-bad4-bd07b59b22c5"
   }
 ]
 ```

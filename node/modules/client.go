@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -88,10 +87,6 @@ func ClientImportMgr(ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ClientImpo
 
 	ns := namespace.Wrap(ds, datastore.NewKey("/client"))
 	return imports.NewManager(ns, dir), nil
-}
-
-func NewAPIStoreStates(ds dtypes.ClientApiStoresDatastore) dtypes.ApiBstoreStates {
-	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/")))
 }
 
 // TODO this should be removed.

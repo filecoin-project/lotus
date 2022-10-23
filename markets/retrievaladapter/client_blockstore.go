@@ -11,10 +11,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 // ProxyBlockstoreAccessor is an accessor that returns a fixed blockstore.
@@ -37,10 +35,11 @@ func (p *ProxyBlockstoreAccessor) Done(_ retrievalmarket.DealID) error {
 	return nil
 }
 
-func NewAPIBlockstoreAdapter(sub retrievalmarket.BlockstoreAccessor, apiStoreStates dtypes.ApiBstoreStates) *APIBlockstoreAccessor {
+func NewAPIBlockstoreAdapter(sub retrievalmarket.BlockstoreAccessor) *APIBlockstoreAccessor {
 	return &APIBlockstoreAccessor{
-		sub:       sub,
-		apiStores: apiStoreStates,
+		sub:          sub,
+		retrStores:   map[retrievalmarket.DealID]bstore.Blockstore{},
+		remoteStores: map[api.RemoteStoreID]bstore.Blockstore{},
 	}
 }
 
@@ -48,39 +47,45 @@ func NewAPIBlockstoreAdapter(sub retrievalmarket.BlockstoreAccessor, apiStoreSta
 type APIBlockstoreAccessor struct {
 	sub retrievalmarket.BlockstoreAccessor
 
-	apiStores *statestore.StateStore
+	retrStores   map[retrievalmarket.DealID]bstore.Blockstore
+	remoteStores map[api.RemoteStoreID]bstore.Blockstore
 }
 
 func (a *APIBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCID retrievalmarket.PayloadCID) (bstore.Blockstore, error) {
-	has, err := a.apiStores.Has(uint64(id))
-	if err != nil {
-		return nil, xerrors.Errorf("check apiStore exists: %w", err)
-	}
+	as, has := a.retrStores[id]
 	if !has {
 		return a.sub.Get(id, payloadCID)
 	}
-
-	var ar api.RemoteStore
-	if err := a.apiStores.Get(uint64(id)).Get(&ar); err != nil {
-		return nil, xerrors.Errorf("getting api store: %w", err)
-	}
-
-	return &ar, nil
+	return as, nil
 }
 
 func (a *APIBlockstoreAccessor) Done(id retrievalmarket.DealID) error {
-	h, err := a.apiStores.Has(uint64(id))
-	if err != nil {
-		return err
+	if _, has := a.retrStores[id]; has {
+		delete(a.retrStores, id)
+		return nil
 	}
-	if h {
-		return a.apiStores.Get(uint64(id)).End()
+	return a.sub.Done(id)
+}
+
+func (a *APIBlockstoreAccessor) UseRetrievalStore(id retrievalmarket.DealID, sid api.RemoteStoreID) error {
+	if _, has := a.retrStores[id]; has {
+		return xerrors.Errorf("apistore for deal %d already registered", id)
 	}
+	if _, has := a.remoteStores[sid]; !has {
+		return xerrors.Errorf("remote store not found")
+	}
+
+	a.retrStores[id] = a.remoteStores[sid]
 	return nil
 }
 
-func (a *APIBlockstoreAccessor) Register(id retrievalmarket.DealID, as *api.RemoteStore) error {
-	return a.apiStores.Begin(uint64(id), as)
+func (a *APIBlockstoreAccessor) RegisterApiStore(sid api.RemoteStoreID, st bstore.Blockstore) error {
+	if _, has := a.remoteStores[sid]; has {
+		return xerrors.Errorf("remote store already registered with this uuid")
+	}
+
+	a.remoteStores[sid] = st
+	return nil
 }
 
 var _ retrievalmarket.BlockstoreAccessor = &APIBlockstoreAccessor{}

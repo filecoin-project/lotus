@@ -200,9 +200,14 @@ var dataexplCmd = &cli.Command{
 			return big.Cmp(abi.TokenAmount(mminers[i].Locked), abi.TokenAmount(mminers[j].Locked)) > 0
 		})
 
+		aurl, err := lcli.ApiAddrToUrl(ainfo.Addr)
+		if err != nil {
+			return err
+		}
+
 		apiBss := &apiBstoreServer{
-			urlPrefix: "http://127.0.0.1:5658/stores/",
-			stores:    map[uuid.UUID]bstore.Blockstore{},
+			remoteAddr: aurl,
+			stores:     map[uuid.UUID]bstore.Blockstore{},
 		}
 
 		dh := &dxhnd{
@@ -243,9 +248,6 @@ var dataexplCmd = &cli.Command{
 		m.HandleFunc("/matchdeal/{mid}/{piece}", dh.handleMatchPiece).Methods("GET")
 
 		m.HandleFunc("/find/{cid}", dh.handleFind).Methods("GET")
-
-		m.HandleFunc("/stores/put", apiBss.ServePut)
-		m.HandleFunc("/stores/get", apiBss.ServeGet)
 
 		server := &http.Server{Addr: ":5658", Handler: m, BaseContext: func(_ net.Listener) context.Context {
 			return cctx.Context

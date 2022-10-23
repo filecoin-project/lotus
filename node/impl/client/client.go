@@ -849,7 +849,7 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 	id := a.Retrieval.NextID()
 
 	if order.RemoteStore != nil {
-		if err := a.ApiBlockstoreAccessor.Register(id, order.RemoteStore); err != nil {
+		if err := a.ApiBlockstoreAccessor.UseRetrievalStore(id, *order.RemoteStore); err != nil {
 			return 0, xerrors.Errorf("registering api store: %w", err)
 		}
 	}

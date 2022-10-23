@@ -1,22 +1,15 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
-	"io"
-	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multicodec"
-	"github.com/multiformats/go-multihash"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -1009,143 +1002,10 @@ type RetrievalOrder struct {
 	Miner                   address.Address
 	MinerPeer               *retrievalmarket.RetrievalPeer
 
-	RemoteStore *RemoteStore `json:"RemoteStore,omitempty"`
+	RemoteStore *RemoteStoreID `json:"RemoteStore,omitempty"`
 }
 
-type RemoteStore struct {
-	GetURL URLTemplate
-	PutURL URLTemplate
-}
-
-func (a *RemoteStore) DeleteBlock(ctx context.Context, c cid.Cid) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a *RemoteStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a *RemoteStore) Get(ctx context.Context, blkCid cid.Cid) (blocks.Block, error) {
-	t, err := template.New("url").Parse(a.GetURL.UrlTemplate)
-	if err != nil {
-		return nil, xerrors.Errorf("parsing get url template: %w", err)
-	}
-
-	mhName, ok := multihash.Codes[blkCid.Prefix().MhType]
-	if !ok {
-		return nil, fmt.Errorf("unrecognized multihash function: %d", blkCid.Prefix().MhType)
-	}
-
-	var urlbuf bytes.Buffer
-	err = t.Execute(&urlbuf, map[string]interface{}{
-		"codecName": multicodec.Code(blkCid.Prefix().Codec).String(),
-		"hashName":  mhName,
-		"hashLen":   blkCid.Prefix().MhLength,
-		"cid":       blkCid,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("executing put url template: %w", err)
-	}
-
-	req, err := http.NewRequest("GET", urlbuf.String(), nil)
-	if err != nil {
-		return nil, xerrors.Errorf("making put request: %w", err)
-	}
-
-	req = req.WithContext(ctx)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, xerrors.Errorf("requesting remote blockstore put put: %w", err)
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, ipld.ErrNotFound{Cid: blkCid}
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, xerrors.Errorf("put http response wasn't ok: was %d", resp.StatusCode)
-	}
-
-	blkb, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, xerrors.Errorf("reading block data: %w", err)
-	}
-	b, err := blocks.NewBlockWithCid(blkb, blkCid)
-	if err != nil {
-		return nil, xerrors.Errorf("create block: %w", err)
-	}
-
-	return b, nil
-}
-
-func (a *RemoteStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a *RemoteStore) Put(ctx context.Context, block blocks.Block) error {
-	t, err := template.New("url").Parse(a.PutURL.UrlTemplate)
-	if err != nil {
-		return xerrors.Errorf("parsing put url template: %w", err)
-	}
-
-	blkCid := block.Cid()
-
-	mhName, ok := multihash.Codes[blkCid.Prefix().MhType]
-	if !ok {
-		return fmt.Errorf("unrecognized multihash function: %d", blkCid.Prefix().MhType)
-	}
-
-	var urlbuf bytes.Buffer
-	err = t.Execute(&urlbuf, map[string]interface{}{
-		"codecName": multicodec.Code(blkCid.Prefix().Codec).String(),
-		"hashName":  mhName,
-		"hashLen":   blkCid.Prefix().MhLength,
-		"cid":       blkCid,
-	})
-	if err != nil {
-		return xerrors.Errorf("executing put url template: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", urlbuf.String(), bytes.NewReader(block.RawData()))
-	if err != nil {
-		return xerrors.Errorf("making put request: %w", err)
-	}
-
-	req = req.WithContext(ctx)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return xerrors.Errorf("requesting remote blockstore put put: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		rb, _ := io.ReadAll(resp.Body)
-
-		return xerrors.Errorf("put http response wasn't ok: was %d (%s)", resp.StatusCode, string(rb))
-	}
-
-	return nil
-}
-
-func (a *RemoteStore) PutMany(ctx context.Context, i []blocks.Block) error {
-	// todo make parallel
-	for _, block := range i {
-		if err := a.Put(ctx, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (a *RemoteStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a *RemoteStore) HashOnRead(enabled bool) {
-	//TODO implement me
-	panic("implement me")
-}
+type RemoteStoreID = uuid.UUID
 
 type URLTemplate struct {
 	// UrlTemplate specifies a template for building the request URL.

@@ -352,6 +352,9 @@ func init() {
 			Headers: nil,
 		},
 	})
+
+	rsi := api.RemoteStoreID(uuid.MustParse("1399aa04-2625-44b1-bad4-bd07b59b22c5"))
+	addExample(&rsi)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

@@ -80,9 +80,12 @@ func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, m
 		}
 		cbs = bbs
 
-		apistore := abs.MakeRemoteBstore(cbs)
+		storeid, err := abs.MakeRemoteBstore(context.TODO(), cbs)
+		if err != nil {
+			return cid.Cid{}, nil, nil, nil, err
+		}
 
-		eref, done, err := retrieveFil(r.Context(), api, &apistore, ma, pcid, dcid, &sel, bbs.Finalize)
+		eref, done, err := retrieveFil(r.Context(), api, &storeid, ma, pcid, dcid, &sel, bbs.Finalize)
 		if err != nil {
 			return cid.Undef, nil, nil, nil, xerrors.Errorf("retrieve: %w", err)
 		}
@@ -105,7 +108,7 @@ func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, m
 	}
 }
 
-func retrieveFil(ctx context.Context, fapi lapi.FullNode, apiStore *lapi.RemoteStore, minerAddr address.Address, pieceCid, file cid.Cid, sel *lapi.Selector, retrDone func()) (*lapi.ExportRef, func(), error) {
+func retrieveFil(ctx context.Context, fapi lapi.FullNode, apiStore *lapi.RemoteStoreID, minerAddr address.Address, pieceCid, file cid.Cid, sel *lapi.Selector, retrDone func()) (*lapi.ExportRef, func(), error) {
 	payer, err := fapi.WalletDefaultAddress(ctx)
 	if err != nil {
 		return nil, nil, err

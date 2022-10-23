@@ -125,7 +125,6 @@ var ChainNode = Options(
 	Override(new(retrievalmarket.BlockstoreAccessor), modules.RetrievalBlockstoreAccessor),
 	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(false)),
 	Override(new(dtypes.ClientApiStoresDatastore), modules.NewClientApiStoresDatastore),
-	Override(new(dtypes.ApiBstoreStates), modules.NewAPIStoreStates),
 	Override(new(*retrievaladapter.APIBlockstoreAccessor), retrievaladapter.NewAPIBlockstoreAdapter),
 	Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
 

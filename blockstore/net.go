@@ -5,15 +5,15 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	ipld "github.com/ipfs/go-ipld-format"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 	"sync"
 	"sync/atomic"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-msgio"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 )
 
 type NetRPCReqType byte
@@ -92,6 +92,9 @@ func NewNetworkStore(mss msgio.ReadWriteCloser) *NetworkStore {
 		msgStream: mss,
 
 		respMap: map[uint64]chan<- NetRpcResp{},
+
+		closing: make(chan struct{}),
+		closed:  make(chan struct{}),
 	}
 
 	go ns.receive()
@@ -332,28 +335,15 @@ func (n *NetworkStore) Put(ctx context.Context, block blocks.Block) error {
 }
 
 func (n *NetworkStore) PutMany(ctx context.Context, blocks []blocks.Block) error {
-	headLen := 4 + 4*len(blocks)
-	buflen := headLen // u32 blk count + u32*blks
-	var cids []cid.Cid
-
-	for _, block := range blocks {
-		buflen += len(block.RawData())
-	}
-
 	// todo pool
-	buf := make([]byte, buflen)
-
-	var blkData int
-
-	binary.LittleEndian.PutUint32(buf[0:], uint32(len(blocks)))
+	cids := make([]cid.Cid, len(blocks))
+	blkDatas := make([][]byte, len(blocks))
 	for i, block := range blocks {
-		binary.LittleEndian.PutUint32(buf[i*4+4:], uint32(len(block.RawData())))
-
-		copy(buf[headLen+blkData:], block.RawData())
-		blkData += len(block.RawData())
+		cids[i] = block.Cid()
+		blkDatas[i] = block.RawData()
 	}
 
-	req, rch, err := n.sendRpc(NRpcPut, cids, nil)
+	req, rch, err := n.sendRpc(NRpcPut, cids, blkDatas)
 	if err != nil {
 		return err
 	}

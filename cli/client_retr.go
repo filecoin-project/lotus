@@ -335,12 +335,7 @@ Examples:
 	},
 }
 
-func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef, car bool) (io.ReadCloser, error) {
-	rj, err := json.Marshal(eref)
-	if err != nil {
-		return nil, xerrors.Errorf("marshaling export ref: %w", err)
-	}
-
+func ApiAddrToUrl(apiAddr string) (*url.URL, error) {
 	ma, err := multiaddr.NewMultiaddr(apiAddr)
 	if err == nil {
 		_, addr, err := manet.DialArgs(ma)
@@ -361,6 +356,20 @@ func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef
 		aa.Scheme = "http"
 	case "wss":
 		aa.Scheme = "https"
+	}
+
+	return aa, nil
+}
+
+func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef, car bool) (io.ReadCloser, error) {
+	rj, err := json.Marshal(eref)
+	if err != nil {
+		return nil, xerrors.Errorf("marshaling export ref: %w", err)
+	}
+
+	aa, err := ApiAddrToUrl(apiAddr)
+	if err != nil {
+		return nil, err
 	}
 
 	aa.Path = path.Join(aa.Path, "rest/v0/export")

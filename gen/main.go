@@ -70,7 +70,6 @@ func main() {
 		api.DealSchedule{},
 		api.HttpHeader{},
 		api.URLTemplate{},
-		api.RemoteStore{},
 	)
 	if err != nil {
 		fmt.Println(err)

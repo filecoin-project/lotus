@@ -75,8 +75,6 @@ type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
 type ClientDatastore datastore.Batching
 type ClientApiStoresDatastore datastore.Batching
 
-type ApiBstoreStates *statestore.StateStore
-
 type Graphsync graphsync.GraphExchange
 
 // ClientDataTransfer is a data transfer manager for the client
