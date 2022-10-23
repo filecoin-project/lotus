@@ -22,7 +22,8 @@ var ActorDebugging = true
 const BootstrappersFile = "wallabynet.pi"
 const GenesisFile = "wallabynet.car"
 
-const GenesisNetworkVersion = network.Version16
+// TODO will be replaced by a constant in an upcoming patch. (@vyzo)
+const GenesisNetworkVersion = network.Version(18)
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
