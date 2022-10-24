@@ -292,7 +292,7 @@ func handleRemoteStore(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.
 		}
 
 		nstore := bstore.NewNetworkStoreWS(c)
-		if err := a.ApiBlockstoreAccessor.RegisterApiStore(api.RemoteStoreID(id), nstore); err != nil {
+		if err := a.ApiBlockstoreAccessor.RegisterApiStore(id, nstore); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

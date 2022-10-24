@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -30,14 +31,22 @@ func (a *apiBstoreServer) MakeRemoteBstore(ctx context.Context, bs blockstore.Bl
 	a.stores[id] = bs
 
 	au := *a.remoteAddr
+
+	switch au.Scheme {
+	case "http":
+		au.Scheme = "ws"
+	case "https":
+		au.Scheme = "wss"
+	}
+
 	au.Path = path.Join(au.Path, "/rest/v0/store/"+id.String())
 
 	conn, _, err := websocket.DefaultDialer.Dial(au.String(), nil)
 	if err != nil {
-		return api.RemoteStoreID{}, err
+		return api.RemoteStoreID{}, xerrors.Errorf("dial ws (%s): %w", au.String(), err)
 	}
 
 	_ = blockstore.HandleNetBstoreWS(ctx, bs, conn)
 
-	return api.RemoteStoreID(id), nil
+	return id, nil
 }
