@@ -343,6 +343,12 @@ func checkPendingVerifiedDeals(stateTreeV8 *state.StateTree, stateTreeV9 *state.
 		return xerrors.Errorf("failed to get proposals: %w", err)
 	}
 
+	// We only want those pending deals that haven't been activated -- an activated deal has an entry in dealStates8
+	dealStates8, err := adt9.AsArray(actorStore, marketStateV8.States, market8.StatesAmtBitwidth)
+	if err != nil {
+		return xerrors.Errorf("failed to load v8 states array: %w", err)
+	}
+
 	var numPendingVerifiedDeals = 0
 	var proposal market8.DealProposal
 	err = dealProposalsV8.ForEach(&proposal, func(dealID int64) error {
@@ -363,6 +369,17 @@ func checkPendingVerifiedDeals(stateTreeV8 *state.StateTree, stateTreeV9 *state.
 
 		// Nothing to do for not-pending deals
 		if !isPending {
+			return nil
+		}
+
+		var _dealState8 market8.DealState
+		found, err := dealStates8.Get(uint64(dealID), &_dealState8)
+		if err != nil {
+			return xerrors.Errorf("failed to lookup deal state: %w", err)
+		}
+
+		// the deal has an entry in deal states, which means it's already been allocated, nothing to do
+		if found {
 			return nil
 		}
 
