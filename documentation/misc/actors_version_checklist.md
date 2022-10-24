@@ -11,3 +11,4 @@
   - [ ] Schedule
   - [ ] Migration
 - [ ] Update upgrade schedule in `chain/sync_test.go`
+- [ ] Add upgrade field to `api/types.go/ForkUpgradeParams` and update the implementation of StateGetNetworkParams

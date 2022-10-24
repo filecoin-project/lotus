@@ -1093,7 +1093,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 		_, err := a.StateLookupID(ctx, match.To, tsk)
 
 		// if the recipient doesn't exist at the start point, we're not gonna find any matches
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if xerrors.Is(err, &api.ErrActorNotFound{}) {
 			return nil, nil
 		}
 
@@ -1104,7 +1104,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 		_, err := a.StateLookupID(ctx, match.From, tsk)
 
 		// if the sender doesn't exist at the start point, we're not gonna find any matches
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if xerrors.Is(err, &api.ErrActorNotFound{}) {
 			return nil, nil
 		}
 
@@ -1797,6 +1797,8 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeHyperdriveHeight:  build.UpgradeHyperdriveHeight,
 			UpgradeChocolateHeight:   build.UpgradeChocolateHeight,
 			UpgradeOhSnapHeight:      build.UpgradeOhSnapHeight,
+			UpgradeSkyrHeight:        build.UpgradeSkyrHeight,
+			UpgradeSharkHeight:       build.UpgradeSharkHeight,
 		},
 	}, nil
 }
