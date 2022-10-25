@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -1827,14 +1826,9 @@ var ChainExecEVMCmd = &cli.Command{
 			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
 		}
 
-		var salt [32]byte
-		binary.BigEndian.PutUint64(salt[:], nonce)
-
-		// TODO this probably needs to be Create instead of Create2, but Create
-		//  is not callable by any caller
-		params, err := actors.SerializeParams(&eam.Create2Params{
+		params, err := actors.SerializeParams(&eam.CreateParams{
 			Initcode: contract,
-			Salt:     salt,
+			Nonce:    nonce,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to serialize Create2 params: %w", err)
@@ -1844,10 +1838,11 @@ var ChainExecEVMCmd = &cli.Command{
 			To:     builtintypes.EthereumAddressManagerActorAddr,
 			From:   fromAddr,
 			Value:  big.Zero(),
-			Method: builtintypes.MethodsEAM.Create2,
+			Method: builtintypes.MethodsEAM.Create,
 			Params: params,
 		}
 
+		// TODO: this is very racy. It may assign a _different_ nonce than the expected one.
 		afmt.Println("sending message...")
 		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
@@ -1865,7 +1860,7 @@ var ChainExecEVMCmd = &cli.Command{
 			return xerrors.Errorf("actor execution failed")
 		}
 
-		var result eam.Create2Return
+		var result eam.CreateReturn
 		r := bytes.NewReader(wait.Receipt.Return)
 		if err := result.UnmarshalCBOR(r); err != nil {
 			return xerrors.Errorf("error unmarshaling return value: %w", err)

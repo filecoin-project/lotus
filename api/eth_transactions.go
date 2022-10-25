@@ -132,18 +132,15 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 		// this is a contract creation
 		to = builtintypes.EthereumAddressManagerActorAddr
 
-		var salt [32]byte
-		binary.BigEndian.PutUint64(salt[:], uint64(tx.Nonce))
-
-		params2, err := actors.SerializeParams(&eam.Create2Params{
+		params2, err := actors.SerializeParams(&eam.CreateParams{
 			Initcode: tx.Input,
-			Salt:     salt,
+			Nonce:    uint64(tx.Nonce),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize Create2 params: %w", err)
+			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}
 		params = params2
-		method = builtintypes.MethodsEAM.Create2
+		method = builtintypes.MethodsEAM.Create
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {
