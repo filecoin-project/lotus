@@ -78,12 +78,12 @@ func getFilRetrieval(abs *apiBstoreServer, api lapi.FullNode, r *http.Request, m
 			waiting:   map[string]chan struct{}{},
 			sub:       bstore.Adapt(cbs),
 		}
+		cbs = bbs
 
-		storeid, err := abs.MakeRemoteBstore(context.TODO(), cbs)
+		storeid, err := abs.MakeRemoteBstore(context.TODO(), bstore.NewCtxWrap(cbs, WithNoBlock))
 		if err != nil {
 			return cid.Cid{}, nil, nil, nil, err
 		}
-		cbs = bbs
 
 		eref, done, err := retrieveFil(r.Context(), api, &storeid, ma, pcid, dcid, &sel, bbs.Finalize)
 		if err != nil {

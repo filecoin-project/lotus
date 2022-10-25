@@ -23,11 +23,19 @@ type blockReadBs struct {
 	sub bstore.Blockstore
 }
 
+func WithNoBlock(ctx context.Context) context.Context {
+	return context.WithValue(ctx, "bbs-noblock", true)
+}
+
 func (b *blockReadBs) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	return b.sub.DeleteBlock(ctx, cid)
 }
 
 func (b *blockReadBs) waitForMh(ctx context.Context, mh multihash.Multihash) error {
+	if ctx.Value("bbs-noblock") != nil && ctx.Value("bbs-noblock").(bool) {
+		return nil
+	}
+
 	b.lk.Lock()
 	var ok bool
 	var wch chan struct{}
@@ -132,7 +140,7 @@ func (b *blockReadBs) Put(ctx context.Context, block blocks.Block) error {
 }
 
 func (b *blockReadBs) PutMany(ctx context.Context, blocks []blocks.Block) error {
-	if err := b.PutMany(ctx, blocks); err != nil {
+	if err := b.sub.PutMany(ctx, blocks); err != nil {
 		return err
 	}
 
