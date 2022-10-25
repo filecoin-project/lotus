@@ -25,16 +25,17 @@
     {{ $deals := .deals }}
     {{range .sectors}}
         {{if (gt (len .DealIDs) 0)}}
-            <div>
-                <div style="font-weight: bold; display: inline-block">Sector {{.SectorNumber}}
-                    {{range .DealIDs}}
-                        <div style="display: inline-block">
-                            <div><a href="/deal/{{.}}">Deal {{.}}</a></div>
-                            <div><span style="font-size: 4px">{{ index $deals . }}</span></div>
-                        </div>
-                    {{end}}
+                <div class="snum-sector">
+                    <span>{{.SectorNumber}}</span>
+                    <div>
+                        {{range .DealIDs}}
+                            <div class="snum-deal">
+                                <div><a href="/deal/{{.}}">{{.}}</a> ({{ (index $deals .).Size }})</div>
+                                <div><span class="snum-dealcid">{{ (index $deals .).DealCID }}</span></div>
+                            </div>
+                        {{end}}
+                    </div>
                 </div>
-            </div>
         {{end}}
     {{end}}
 </div>

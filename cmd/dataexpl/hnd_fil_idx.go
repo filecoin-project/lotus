@@ -66,6 +66,11 @@ func (h *dxhnd) handleDeals(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type DealInfo struct {
+	DealCID cid.Cid
+	Size    string
+}
+
 func (h *dxhnd) handleMinerSectors(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -89,7 +94,7 @@ func (h *dxhnd) handleMinerSectors(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	commps := map[abi.DealID]cid.Cid{}
+	commps := map[abi.DealID]DealInfo{}
 	var wg sync.WaitGroup
 	wg.Add(len(deals))
 	var lk sync.Mutex
@@ -104,7 +109,11 @@ func (h *dxhnd) handleMinerSectors(w http.ResponseWriter, r *http.Request) {
 			}
 
 			lk.Lock()
-			commps[deal] = md.Proposal.PieceCID
+			commps[deal] = DealInfo{
+				DealCID: md.Proposal.PieceCID,
+				Size:    types.SizeStr(types.NewInt(uint64(md.Proposal.PieceSize))),
+			}
+
 			lk.Unlock()
 		}(deal)
 	}

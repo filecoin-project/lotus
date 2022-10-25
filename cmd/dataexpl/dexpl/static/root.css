@@ -158,3 +158,26 @@ a:hover {
 .find-provider-entry {
     margin-left: 1em;
 }
+
+/* minersectors */
+
+.snum-sector {
+    font-weight: bold;
+    display: block;
+
+    padding: 4px;
+    margin: 7px;
+    background: #454545;
+}
+
+.snum-deal {
+    display: inline-block;
+}
+
+.snum-dealcid {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    font-size: 4px;
+    width: 50ex;
+    display: block;
+}
