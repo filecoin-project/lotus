@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -19,7 +17,9 @@ import (
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
