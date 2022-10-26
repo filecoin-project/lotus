@@ -156,7 +156,7 @@ func NewEthBlock() EthBlock {
 }
 
 type EthCall struct {
-	From     EthAddress  `json:"from"`
+	From     *EthAddress `json:"from"`
 	To       *EthAddress `json:"to"`
 	Gas      EthUint64   `json:"gas"`
 	GasPrice EthBigInt   `json:"gasPrice"`

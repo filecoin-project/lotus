@@ -505,13 +505,23 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthByte
 }
 
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx api.EthCall) (*types.Message, error) {
-	// The from address must be translatable to an f4 address.
-	from, err := tx.From.ToFilecoinAddress()
-	if err != nil {
-		return nil, fmt.Errorf("failed to translate sender address (%s): %w", tx.From.String(), err)
-	}
-	if p := from.Protocol(); p != address.Delegated {
-		return nil, fmt.Errorf("expected a class 4 address, got: %d: %w", p, err)
+	var err error
+	var from address.Address
+	if tx.From == nil {
+		// Send from the filecoin "system" address.
+		from, err = (api.EthAddress{}).ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
+		}
+	} else {
+		// The from address must be translatable to an f4 address.
+		from, err = tx.From.ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to translate sender address (%s): %w", tx.From.String(), err)
+		}
+		if p := from.Protocol(); p != address.Delegated {
+			return nil, fmt.Errorf("expected a class 4 address, got: %d: %w", p, err)
+		}
 	}
 
 	var params []byte
