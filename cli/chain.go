@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-varint"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -1772,6 +1774,12 @@ var ChainInvokeCmd = &cli.Command{
 	},
 }
 
+// TODO: Find a home for this.
+func isNativeEthereumAddress(addr address.Address) bool {
+	id, _, err := varint.FromUvarint(addr.Payload())
+	return err == nil && id == builtin.EthereumAddressManagerActorID
+}
+
 var ChainExecEVMCmd = &cli.Command{
 	Name:      "create-evm-actor",
 	Usage:     "Create an new EVM actor via the init actor and return its address",
@@ -1826,19 +1834,38 @@ var ChainExecEVMCmd = &cli.Command{
 			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
 		}
 
-		params, err := actors.SerializeParams(&eam.CreateParams{
-			Initcode: contract,
-			Nonce:    nonce,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to serialize Create2 params: %w", err)
+		var (
+			params []byte
+			method abi.MethodNum
+		)
+		if isNativeEthereumAddress(fromAddr) {
+			params, err = actors.SerializeParams(&eam.CreateParams{
+				Initcode: contract,
+				Nonce:    nonce,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to serialize Create params: %w", err)
+			}
+			method = builtintypes.MethodsEAM.Create
+		} else {
+			var salt [32]byte
+			binary.BigEndian.PutUint64(salt[:], nonce)
+
+			params, err = actors.SerializeParams(&eam.Create2Params{
+				Initcode: contract,
+				Salt:     salt,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to serialize Create2 params: %w", err)
+			}
+			method = builtintypes.MethodsEAM.Create2
 		}
 
 		msg := &types.Message{
 			To:     builtintypes.EthereumAddressManagerActorAddr,
 			From:   fromAddr,
 			Value:  big.Zero(),
-			Method: builtintypes.MethodsEAM.Create,
+			Method: method,
 			Params: params,
 		}
 
