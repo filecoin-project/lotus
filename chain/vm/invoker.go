@@ -288,7 +288,8 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, error) {
-	if builtin.IsAccountActor(act.Code) { // Account code special case
+	// Account & Embryo code special case
+	if builtin.IsAccountActor(act.Code) || builtin.IsEmbryo(act.Code) {
 		return nil, nil
 	}
 
