@@ -241,6 +241,7 @@ func TestMigrationNV17(t *testing.T) {
 	if currNV >= network.Version17 {
 		// if we moved too slowly and are already at v17, abort the test here with "success"
 		// it's not actually gonna test what we want, but the alternative is flakiness...
+		fmt.Println("early termination -- test reached the migration too quickly!")
 		return
 	}
 
@@ -364,10 +365,10 @@ func TestMigrationNV17(t *testing.T) {
 	claim, ok := claims[1]
 	require.True(t, ok)
 
-	claimerId, err := address.NewIDAddress(uint64(claim.Client))
+	claimerIdAddr, err := address.NewIDAddress(uint64(claim.Client))
 	require.NoError(t, err)
 
-	require.Equal(t, verifiedClientIDAddr, claimerId)
+	require.Equal(t, verifiedClientIDAddr, claimerIdAddr)
 
 	// And that the deal no longer has a pending allocation
 
