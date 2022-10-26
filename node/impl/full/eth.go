@@ -3,7 +3,6 @@ package full
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"strconv"
 
@@ -527,20 +526,15 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx api.EthCall
 			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
 		}
 
-		var salt [32]byte
-		binary.BigEndian.PutUint64(salt[:], nonce)
-
-		// TODO this probably needs to be Create instead of Create2, but Create
-		//  is not callable externally.
-		params2, err := actors.SerializeParams(&eam.Create2Params{
+		params2, err := actors.SerializeParams(&eam.CreateParams{
 			Initcode: tx.Data,
-			Salt:     salt,
+			Nonce:    nonce,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to serialize Create2 params: %w", err)
+			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}
 		params = params2
-		method = builtintypes.MethodsEAM.Create2
+		method = builtintypes.MethodsEAM.Create
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {
@@ -683,11 +677,11 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 // lookupEthAddress makes its best effort at finding the Ethereum address for a
 // Filecoin address. It does the following:
 //
-// 1. If the supplied address is an f410 address, we return its payload as the EthAddress.
-// 2. Otherwise (f0, f1, f2, f3), we look up the actor on the state tree. If it has a predictable address, we return it if it's f410 address.
-// 3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
-//    use that ID to form the masked ID address.
-// 4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
+//  1. If the supplied address is an f410 address, we return its payload as the EthAddress.
+//  2. Otherwise (f0, f1, f2, f3), we look up the actor on the state tree. If it has a predictable address, we return it if it's f410 address.
+//  3. Otherwise, we fall back to returning a masked ID Ethereum address. If the supplied address is an f0 address, we
+//     use that ID to form the masked ID address.
+//  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
 func (a *EthModule) lookupEthAddress(ctx context.Context, addr address.Address) (api.EthAddress, error) {
 	// Attempt to convert directly.
 	if ethAddr, ok, err := api.TryEthAddressFromFilecoinAddress(addr, false); err != nil {
