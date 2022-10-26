@@ -1777,7 +1777,7 @@ var ChainInvokeCmd = &cli.Command{
 // TODO: Find a home for this.
 func isNativeEthereumAddress(addr address.Address) bool {
 	id, _, err := varint.FromUvarint(addr.Payload())
-	return err == nil && id == builtin.EthereumAddressManagerActorID
+	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
 
 var ChainExecEVMCmd = &cli.Command{
