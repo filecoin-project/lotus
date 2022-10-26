@@ -162,6 +162,8 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, *dc, datacapToAssign)
 
+	// END OF VERIFIED CLIENT BOILERPLATE
+
 	label, err := markettypes.NewLabelFromString("")
 	require.NoError(t, err)
 
@@ -219,8 +221,6 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	require.True(t, valid)
 	dealIds, err := ret.DealIDs()
 	require.NoError(t, err)
-
-	// END OF VERIFIED CLIENT BOILERPLATE
 
 	verifiedClientDcap, err := clientApi.StateVerifiedClientStatus(ctx, verifiedClientIDAddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -280,15 +280,11 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 		Params: params,
 		Value:  big.Zero(),
 	}, nil)
-	require.NoError(t, err) // This should actually fail
-
-	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.True(t, r.Receipt.ExitCode.IsSuccess())
+	require.Error(t, err)
 
 	verifregDatacapAfter, err := clientApi.StateVerifiedClientStatus(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
 	require.NoError(t, err)
-	require.Nil(t, verifregDatacapAfter) // Verifreg datacap will be removed from datacap actor
+	require.Equal(t, *verifregDcapBefore, *verifregDatacapAfter) // Verifreg should not have lost datacap
 
 	minerInfo, err := testClient.StateMinerInfo(ctx, testMiner.ActorAddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -343,4 +339,9 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, r.Receipt.ExitCode.IsSuccess())
+
+	// Deal should be activated
+	deal, err := clientApi.StateMarketStorageDeal(ctx, dealIds[0], types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotEqual(t, -1, deal.State.SectorStartEpoch)
 }
