@@ -170,14 +170,15 @@ var migrationsCmd = &cli.Command{
 				newCid2)
 		}
 
-		fmt.Println("new cid", newCid2)
+		fmt.Println("migration height ", blk.Height-1)
+		fmt.Println("new cid ", newCid2)
 		fmt.Println("completed premigration 1, took ", preMigration1Time)
 		fmt.Println("completed premigration 2, took ", preMigration2Time)
 		fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
 
 		if cctx.Bool("check-invariants") {
-			err = checkMigrationInvariants(ctx, blk.ParentStateRoot, newCid1, bs, blk.Height-1)
+			err = checkMigrationInvariants(ctx, blk.ParentStateRoot, newCid2, bs, blk.Height-1)
 			if err != nil {
 				return err
 			}
@@ -187,16 +188,16 @@ var migrationsCmd = &cli.Command{
 	},
 }
 
-func checkMigrationInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateRoot cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+func checkMigrationInvariants(ctx context.Context, v8StateRootCid cid.Cid, v9StateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 	actorStore := store.ActorStore(ctx, bs)
 	startTime := time.Now()
 
-	stateTreeV8, err := state.LoadStateTree(actorStore, v8StateRoot)
+	stateTreeV8, err := state.LoadStateTree(actorStore, v8StateRootCid)
 	if err != nil {
 		return err
 	}
 
-	stateTreeV9, err := state.LoadStateTree(actorStore, v9StateRoot)
+	stateTreeV9, err := state.LoadStateTree(actorStore, v9StateRootCid)
 	if err != nil {
 		return err
 	}
@@ -217,8 +218,8 @@ func checkMigrationInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateR
 	}
 
 	// Load the state root.
-	var stateRoot types.StateRoot
-	if err := actorStore.Get(ctx, v9StateRoot, &stateRoot); err != nil {
+	var v9stateRoot types.StateRoot
+	if err := actorStore.Get(ctx, v9StateRootCid, &v9stateRoot); err != nil {
 		return xerrors.Errorf("failed to decode state root: %w", err)
 	}
 
@@ -227,8 +228,8 @@ func checkMigrationInvariants(ctx context.Context, v8StateRoot cid.Cid, v9StateR
 		return err
 	}
 
-	actorTree, err := builtin.LoadTree(actorStore, stateRoot.Actors)
-	messages, err := v9.CheckStateInvariants(actorTree, epoch, actorCodeCids)
+	v9actorTree, err := builtin.LoadTree(actorStore, v9stateRoot.Actors)
+	messages, err := v9.CheckStateInvariants(v9actorTree, epoch, actorCodeCids)
 	if err != nil {
 		return xerrors.Errorf("checking state invariants: %w", err)
 	}

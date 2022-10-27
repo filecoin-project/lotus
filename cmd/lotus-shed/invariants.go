@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -30,7 +33,7 @@ import (
 var invariantsCmd = &cli.Command{
 	Name:        "check-invariants",
 	Description: "Check state invariants",
-	ArgsUsage:   "[block to look back from]",
+	ArgsUsage:   "[StateRootCid, height]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
@@ -40,13 +43,18 @@ var invariantsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
 
-		if cctx.NArg() != 1 {
+		if cctx.NArg() != 2 {
 			return lcli.IncorrectNumArgs(cctx)
 		}
 
-		blkCid, err := cid.Decode(cctx.Args().First())
+		stateRootCid, err := cid.Decode(cctx.Args().Get(0))
 		if err != nil {
-			return fmt.Errorf("failed to parse input: %w", err)
+			return fmt.Errorf("failed to parse state root cid: %w", err)
+		}
+
+		epoch, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return fmt.Errorf("failed to parse epoch: %w", err)
 		}
 
 		fsrepo, err := repo.NewFS(cctx.String("repo"))
@@ -87,17 +95,7 @@ var invariantsCmd = &cli.Command{
 			return err
 		}
 
-		blk, err := cs.GetBlock(ctx, blkCid)
-		if err != nil {
-			return err
-		}
-
-		ts, err := cs.LoadTipSet(ctx, types.NewTipSetKey(blk.Parents...))
-		if err != nil {
-			return err
-		}
-
-		nv := sm.GetNetworkVersion(ctx, ts.Height())
+		nv := sm.GetNetworkVersion(ctx, abi.ChainEpoch(epoch))
 		fmt.Println("Network Version ", nv)
 
 		av, err := actorstypes.VersionForNetwork(nv)
@@ -112,7 +110,7 @@ var invariantsCmd = &cli.Command{
 
 		// Load the state root.
 		var stateRoot types.StateRoot
-		if err := actorStore.Get(ctx, ts.ParentState(), &stateRoot); err != nil {
+		if err := actorStore.Get(ctx, stateRootCid, &stateRoot); err != nil {
 			return xerrors.Errorf("failed to decode state root: %w", err)
 		}
 
@@ -123,12 +121,12 @@ var invariantsCmd = &cli.Command{
 		var messages *builtin.MessageAccumulator
 		switch av {
 		case actorstypes.Version8:
-			messages, err = v8.CheckStateInvariants(actorTree, ts.Height()-1, actorCodeCids)
+			messages, err = v8.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
 			if err != nil {
 				return xerrors.Errorf("checking state invariants: %w", err)
 			}
 		case actorstypes.Version9:
-			messages, err = v9.CheckStateInvariants(actorTree, ts.Height()-1, actorCodeCids)
+			messages, err = v9.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
 			if err != nil {
 				return xerrors.Errorf("checking state invariants: %w", err)
 			}
