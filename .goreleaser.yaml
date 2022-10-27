@@ -152,9 +152,6 @@ brews:
     description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
     license: MIT
     dependencies:
-      - name: pkg-config
-      - name: jq
-      - name: bzr
       - name: hwloc
 
 # produced manually so we can include cid checksums
