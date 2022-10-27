@@ -603,12 +603,23 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 	if err != nil {
 		return err
 	}
+	// buffer writes to the chain export file.
+	bw := bufio.NewWriterSize(f, cfg.WriteBufferSize)
 
-	if err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, f); err != nil {
-		return err
+	defer func() {
+		if err := bw.Flush(); err != nil {
+			log.Errorw("failed to flush buffer", "error", err)
+		}
+		if err := f.Close(); err != nil {
+			log.Errorw("failed to close file", "error", err)
+		}
+	}()
+
+	if err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, bw); err != nil {
+		return fmt.Errorf("exporting chain range: %w", err)
 	}
 
-	return f.Close()
+	return nil
 }
 
 func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg *api.ChainExportConfig) (<-chan []byte, error) {

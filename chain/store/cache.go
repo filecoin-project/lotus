@@ -62,7 +62,7 @@ func (cs *CachingBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) err
 
 func (cs *CachingBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 	reads := atomic.AddInt64(&cs.reads, 1)
-	if reads%1000000 == 0 {
+	if reads%100000 == 0 {
 		hits := atomic.LoadInt64(&cs.hits)
 		by := atomic.LoadInt64(&cs.bytes)
 		log.Infow("CachingBlockstore stats", "reads", reads, "cache_len", cs.cache.Len(), "hit_rate", float64(hits)/float64(reads), "bytes_read", by)

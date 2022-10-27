@@ -205,6 +205,10 @@ type walkScheduler struct {
 	cfg  *walkSchedulerConfig
 }
 
+func (s *walkScheduler) Wait() error {
+	return s.grp.Wait()
+}
+
 func (s *walkScheduler) enqueueIfNew(task *walkTask) {
 	if task.c.Prefix().MhType == mh.IDENTITY {
 		//log.Infow("ignored", "cid", todo.c.String())
@@ -228,20 +232,26 @@ func (s *walkScheduler) startScheduler(ctx context.Context) {
 		defer func() {
 			log.Infow("walkScheduler shutting down")
 			close(s.out)
+
 			// Because the workers may have exited early (due to the context being canceled).
 			for range s.out {
 				s.taskWg.Done()
 			}
+			log.Info("closed scheduler out wait group")
+
 			// Because the workers may have enqueued additional tasks.
 			for range s.in {
 				s.taskWg.Done()
 			}
+			log.Info("closed scheduler in wait group")
+
 			// now, the waitgroup should be at 0, and the goroutine that was _waiting_ on it should have exited.
 			log.Infow("walkScheduler stopped")
 		}()
 		go func() {
 			s.taskWg.Wait()
 			close(s.in)
+			log.Info("closed scheduler in channel")
 		}()
 		for {
 			if n := len(s.stack) - 1; n >= 0 {
@@ -317,7 +327,7 @@ func (s *walkScheduler) work(ctx context.Context, todo *walkTask, results chan *
 	results <- &walkResult{c: todo.c}
 
 	// extract relevant dags to walk from the block
-	if todo.taskType == 0 {
+	if todo.taskType == Block {
 		blk := todo.c
 		data, err := s.store.Get(ctx, blk)
 		if err != nil {
@@ -325,13 +335,13 @@ func (s *walkScheduler) work(ctx context.Context, todo *walkTask, results chan *
 		}
 		var b types.BlockHeader
 		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
-			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
+			return xerrors.Errorf("unmarshalling block header (cid=%s): %w", blk, err)
 		}
-		if b.Height%1000 == 0 {
+		if b.Height%1_000 == 0 {
 			log.Infow("block export", "height", b.Height)
 		}
 		if b.Height == 0 {
-			log.Infow("GENESIS")
+			log.Info("exporting genesis block")
 			for i := range b.Parents {
 				s.enqueueIfNew(&walkTask{
 					c:        b.Parents[i],
@@ -398,7 +408,7 @@ func (s *walkScheduler) work(ctx context.Context, todo *walkTask, results chan *
 func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, store bstore.Blockstore, head, tail *types.TipSet, messages, receipts, stateroots bool, workers int64, cb func(cid.Cid) error) error {
 	start := time.Now()
 	log.Infow("walking snapshot range", "head", head.Key(), "tail", tail.Key(), "messages", messages, "receipts", receipts, "stateroots", stateroots, "workers", workers, "start", start)
-	tasks := []*walkTask{}
+	var tasks []*walkTask
 	for i := range head.Blocks() {
 		tasks = append(tasks, &walkTask{
 			c:        head.Blocks()[i].Cid(),
@@ -415,31 +425,45 @@ func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, store bstore.Blocks
 	}
 
 	pw, ctx := newWalkScheduler(ctx, store, cfg, tasks...)
-	results := make(chan *walkResult)
+	// create a buffered channel for exported CID's scaled on the number of workers.
+	results := make(chan *walkResult, workers*64)
+
 	pw.startScheduler(ctx)
+	// workers accept channel and write results to it.
 	pw.startWorkers(ctx, results)
 
-	done := make(chan struct{})
+	// used to wait until result channel has been drained.
+	resultsDone := make(chan struct{})
 	var cbErr error
 	go func() {
-		defer close(done)
+		// signal we are done draining results when this method exits.
+		defer close(resultsDone)
+		// drain the results channel until is closes.
 		for res := range results {
 			if err := cb(res.c); err != nil {
-				log.Errorw("export callback error", "error", err)
+				log.Errorw("export range callback error", "error", err)
 				cbErr = err
 				return
 			}
 		}
 	}()
-	err := pw.grp.Wait()
+	// wait until all workers are done.
+	err := pw.Wait()
 	if err != nil {
 		log.Errorw("walker scheduler", "error", err)
 	}
+	// workers are done, close the results channel.
+	close(results)
+	// wait until all results have been consumed before exiting (its buffered).
+	<-resultsDone
+
+	// if there was a callback error return it.
 	if cbErr != nil {
 		return cbErr
 	}
-	close(results)
-	log.Infow("walking snapshot range complete", "duration", time.Since(start))
+	log.Infow("walking snapshot range complete", "duration", time.Since(start), "success", err == nil)
+
+	// return any error encountered by the walker.
 	return err
 }
 
