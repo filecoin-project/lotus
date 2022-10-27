@@ -67,7 +67,7 @@ commands:
             - run: go version
             - run:
                 name: Install dependencies with Homebrew
-                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config goreleaser/tap/goreleaser-pro coreutils hwloc jq
+                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config goreleaser/tap/goreleaser-pro coreutils jq hwloc
             - run:
                 name: Install Rust
                 command: |
@@ -372,7 +372,10 @@ jobs:
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-      - run: make lotus lotus-miner lotus-worker
+      - run: |
+          export CPATH=$(brew --prefix)/include
+          export LIBRARY_PATH=$(brew --prefix)/lib
+          make lotus lotus-miner lotus-worker
       - run: |
           mkdir -p /tmp/workspace/darwin_arm64 && \
           mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_arm64/
@@ -389,15 +392,33 @@ jobs:
       - run:
           command: make clean
           when: always
+      - run:
+          name: cleanup homebrew
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall pkg-config goreleaser/tap/goreleaser-pro coreutils jq hwloc
+          when: always
 
   release:
     executor: golang
+    parameters:
+      dry-run:
+        default: false
+        description: should this release actually publish it's artifacts?
+        type: boolean
     steps:
       - attach_workspace:
           at: /tmp/workspace
-      - run: goreleaser release --rm-dist --snapshot
-      - run: ./scripts/generate-checksums.sh
-      - run: ./scripts/publish-checksums.sh
+      - when:
+          condition: << parameters.dry-run >>
+          steps:
+            - run: goreleaser release --rm-dist --snapshot
+            - run: ./scripts/generate-checksums.sh
+      - when:
+          condition:
+            not: << parameters.dry-run >>
+          steps:
+            - run: goreleaser release --rm-dist
+            - run: ./scripts/generate-checksums.sh
+            - run: ./scripts/publish-checksums.sh
 
   build-appimage:
     machine:
@@ -1137,7 +1158,8 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - release:
-          name: "Release"
+          name: "Release (dry-run)"
+          dry-run: true
           requires:
             - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
