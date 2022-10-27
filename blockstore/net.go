@@ -85,6 +85,9 @@ type NetworkStore struct {
 
 	closing chan struct{}
 	closed  chan struct{}
+
+	closeLk sync.Mutex
+	onClose func()
 }
 
 func NewNetworkStore(mss msgio.ReadWriteCloser) *NetworkStore {
@@ -132,8 +135,28 @@ func (n *NetworkStore) shutdown(msg string) {
 	n.respLk.Unlock()
 }
 
+func (n *NetworkStore) OnClose(cb func()) {
+	n.closeLk.Lock()
+	defer n.closeLk.Unlock()
+
+	select {
+	case <-n.closed:
+		cb()
+	default:
+		n.onClose = cb
+	}
+}
+
 func (n *NetworkStore) receive() {
-	defer close(n.closed)
+	defer func() {
+		n.closeLk.Lock()
+		defer n.closeLk.Unlock()
+
+		close(n.closed)
+		if n.onClose != nil {
+			n.onClose()
+		}
+	}()
 
 	for {
 		select {

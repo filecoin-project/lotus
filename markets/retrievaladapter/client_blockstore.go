@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 
 	"github.com/filecoin-project/lotus/api"
+	blockstore2 "github.com/filecoin-project/lotus/blockstore"
 )
 
 // ProxyBlockstoreAccessor is an accessor that returns a fixed blockstore.
@@ -38,7 +39,7 @@ func (p *ProxyBlockstoreAccessor) Done(_ retrievalmarket.DealID) error {
 func NewAPIBlockstoreAdapter(sub retrievalmarket.BlockstoreAccessor) *APIBlockstoreAccessor {
 	return &APIBlockstoreAccessor{
 		sub:          sub,
-		retrStores:   map[retrievalmarket.DealID]bstore.Blockstore{},
+		retrStores:   map[retrievalmarket.DealID]api.RemoteStoreID{},
 		remoteStores: map[api.RemoteStoreID]bstore.Blockstore{},
 	}
 }
@@ -47,7 +48,7 @@ func NewAPIBlockstoreAdapter(sub retrievalmarket.BlockstoreAccessor) *APIBlockst
 type APIBlockstoreAccessor struct {
 	sub retrievalmarket.BlockstoreAccessor
 
-	retrStores   map[retrievalmarket.DealID]bstore.Blockstore
+	retrStores   map[retrievalmarket.DealID]api.RemoteStoreID
 	remoteStores map[api.RemoteStoreID]bstore.Blockstore
 }
 
@@ -56,7 +57,8 @@ func (a *APIBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCID retrie
 	if !has {
 		return a.sub.Get(id, payloadCID)
 	}
-	return as, nil
+
+	return a.remoteStores[as], nil
 }
 
 func (a *APIBlockstoreAccessor) Done(id retrievalmarket.DealID) error {
@@ -75,16 +77,22 @@ func (a *APIBlockstoreAccessor) UseRetrievalStore(id retrievalmarket.DealID, sid
 		return xerrors.Errorf("remote store not found")
 	}
 
-	a.retrStores[id] = a.remoteStores[sid]
+	a.retrStores[id] = sid
 	return nil
 }
 
-func (a *APIBlockstoreAccessor) RegisterApiStore(sid api.RemoteStoreID, st bstore.Blockstore) error {
+func (a *APIBlockstoreAccessor) RegisterApiStore(sid api.RemoteStoreID, st *blockstore2.NetworkStore) error {
 	if _, has := a.remoteStores[sid]; has {
 		return xerrors.Errorf("remote store already registered with this uuid")
 	}
 
 	a.remoteStores[sid] = st
+
+	st.OnClose(func() {
+		if _, has := a.remoteStores[sid]; has {
+			delete(a.remoteStores, sid)
+		}
+	})
 	return nil
 }
 
