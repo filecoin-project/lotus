@@ -605,6 +605,10 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx api.EthCall) (api.Eth
 		return api.EthUint64(0), err
 	}
 
+	// Set the gas limit to the zero sentinel value, which makes
+	// gas estimation actually run.
+	msg.GasLimit = 0
+
 	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
 	if err != nil {
 		return api.EthUint64(0), err
