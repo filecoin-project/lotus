@@ -337,23 +337,16 @@ Examples:
 	},
 }
 
-func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef, car bool) (io.ReadCloser, error) {
-	rj, err := json.Marshal(eref)
-	if err != nil {
-		return nil, xerrors.Errorf("marshaling export ref: %w", err)
-	}
-
+func ApiAddrToUrl(apiAddr string) (*url.URL, error) {
 	ma, err := multiaddr.NewMultiaddr(apiAddr)
 	if err == nil {
 		_, addr, err := manet.DialArgs(ma)
 		if err != nil {
 			return nil, err
 		}
-
 		// todo: make cliutil helpers for this
 		apiAddr = "http://" + addr
 	}
-
 	aa, err := url.Parse(apiAddr)
 	if err != nil {
 		return nil, xerrors.Errorf("parsing api address: %w", err)
@@ -363,6 +356,20 @@ func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef
 		aa.Scheme = "http"
 	case "wss":
 		aa.Scheme = "https"
+	}
+
+	return aa, nil
+}
+
+func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef, car bool) (io.ReadCloser, error) {
+	rj, err := json.Marshal(eref)
+	if err != nil {
+		return nil, xerrors.Errorf("marshaling export ref: %w", err)
+	}
+
+	aa, err := ApiAddrToUrl(apiAddr)
+	if err != nil {
+		return nil, err
 	}
 
 	aa.Path = path.Join(aa.Path, "rest/v0/export")
@@ -583,6 +590,7 @@ var clientRetrieveLsCmd = &cli.Command{
 				dserv,
 				roots[0],
 				sel,
+				nil,
 				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 					if r == traversal.VisitReason_SelectionMatch {
 						fmt.Println(p.Path)

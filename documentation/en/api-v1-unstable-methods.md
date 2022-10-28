@@ -1992,7 +1992,8 @@ Inputs:
       "Address": "f01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
-    }
+    },
+    "RemoteStore": "00000000-0000-0000-0000-000000000000"
   }
 ]
 ```

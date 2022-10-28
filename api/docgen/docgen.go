@@ -361,6 +361,7 @@ func init() {
 			Headers: nil,
 		},
 	})
+	addExample(&uuid.UUID{})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
