@@ -141,7 +141,7 @@ var dataexplCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		idx, err := finderhttpclient.New("https://cid.contact")
+		idx, err := finderhttpclient.New("https://prod.cid.contact")
 		if err != nil {
 			return err
 		}
