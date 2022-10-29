@@ -1022,6 +1022,8 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 		cs := cid.NewSet()
 
 		for _, dagSpec := range dags {
+			dagSpec := dagSpec
+
 			if err := utils.TraverseDag(
 				ctx,
 				ds,

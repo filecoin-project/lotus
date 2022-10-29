@@ -51,7 +51,7 @@ type APIBlockstoreAccessor struct {
 	retrStores   map[retrievalmarket.DealID]api.RemoteStoreID
 	remoteStores map[api.RemoteStoreID]bstore.Blockstore
 
-	accessLk sync.Locker
+	accessLk sync.Mutex
 }
 
 func (a *APIBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCID retrievalmarket.PayloadCID) (bstore.Blockstore, error) {
