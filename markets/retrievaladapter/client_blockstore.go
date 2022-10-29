@@ -50,9 +50,14 @@ type APIBlockstoreAccessor struct {
 
 	retrStores   map[retrievalmarket.DealID]api.RemoteStoreID
 	remoteStores map[api.RemoteStoreID]bstore.Blockstore
+
+	accessLk sync.Locker
 }
 
 func (a *APIBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCID retrievalmarket.PayloadCID) (bstore.Blockstore, error) {
+	a.accessLk.Lock()
+	defer a.accessLk.Unlock()
+
 	as, has := a.retrStores[id]
 	if !has {
 		return a.sub.Get(id, payloadCID)
@@ -62,6 +67,9 @@ func (a *APIBlockstoreAccessor) Get(id retrievalmarket.DealID, payloadCID retrie
 }
 
 func (a *APIBlockstoreAccessor) Done(id retrievalmarket.DealID) error {
+	a.accessLk.Lock()
+	defer a.accessLk.Unlock()
+
 	if _, has := a.retrStores[id]; has {
 		delete(a.retrStores, id)
 		return nil
@@ -70,6 +78,9 @@ func (a *APIBlockstoreAccessor) Done(id retrievalmarket.DealID) error {
 }
 
 func (a *APIBlockstoreAccessor) UseRetrievalStore(id retrievalmarket.DealID, sid api.RemoteStoreID) error {
+	a.accessLk.Lock()
+	defer a.accessLk.Unlock()
+
 	if _, has := a.retrStores[id]; has {
 		return xerrors.Errorf("apistore for deal %d already registered", id)
 	}
@@ -82,6 +93,9 @@ func (a *APIBlockstoreAccessor) UseRetrievalStore(id retrievalmarket.DealID, sid
 }
 
 func (a *APIBlockstoreAccessor) RegisterApiStore(sid api.RemoteStoreID, st *lbstore.NetworkStore) error {
+	a.accessLk.Lock()
+	defer a.accessLk.Unlock()
+
 	if _, has := a.remoteStores[sid]; has {
 		return xerrors.Errorf("remote store already registered with this uuid")
 	}
