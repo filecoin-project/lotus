@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -22,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -219,8 +217,6 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	valid, _, err := ret.IsDealValid(0)
 	require.NoError(t, err)
 	require.True(t, valid)
-	dealIds, err := ret.DealIDs()
-	require.NoError(t, err)
 
 	verifiedClientDcap, err := clientApi.StateVerifiedClientStatus(ctx, verifiedClientIDAddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -273,75 +269,16 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	params, aerr := actors.SerializeParams(&removeDataCapParams)
 	require.NoError(t, aerr)
 
-	m, err = clientApi.MpoolPushMessage(ctx, &types.Message{
+	callResult, err := clientApi.StateCall(ctx, &types.Message{
 		From:   rootAddr,
 		To:     verifreg.Address,
 		Method: verifreg.Methods.RemoveVerifiedClientDataCap,
 		Params: params,
 		Value:  big.Zero(),
-	}, nil)
-	require.Error(t, err)
+	}, types.EmptyTSK)
+	require.False(t, callResult.MsgRct.ExitCode.IsSuccess())
 
 	verifregDatacapAfter, err := clientApi.StateVerifiedClientStatus(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, *verifregDcapBefore, *verifregDatacapAfter) // Verifreg should not have lost datacap
-
-	minerInfo, err := testClient.StateMinerInfo(ctx, testMiner.ActorAddr, types.EmptyTSK)
-	require.NoError(t, err)
-
-	spt, err := miner.SealProofTypeFromSectorSize(minerInfo.SectorSize, build.TestNetworkVersion)
-	require.NoError(t, err)
-
-	preCommitParams := miner9.PreCommitSectorParams{
-		SealProof:     spt,
-		SectorNumber:  1000,
-		SealedCID:     migration.MakeCID("sector", &miner9.SealedCIDPrefix),
-		SealRandEpoch: dealStartEpoch - 5,
-		DealIDs:       dealIds,
-		Expiration:    dealProposal.EndEpoch,
-	}
-
-	serializedParams = new(bytes.Buffer)
-	require.NoError(t, preCommitParams.MarshalCBOR(serializedParams))
-
-	m, err = clientApi.MpoolPushMessage(ctx, &types.Message{
-		To:     testMiner.ActorAddr,
-		From:   testMiner.OwnerKey.Address,
-		Value:  types.FromFil(0),
-		Method: builtin.MethodsMiner.PreCommitSector,
-		Params: serializedParams.Bytes(),
-	}, nil)
-	require.NoError(t, err)
-
-	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.True(t, r.Receipt.ExitCode.IsSuccess())
-
-	testClient.WaitTillChain(ctx, kit.HeightAtLeast(r.Height+miner9.PreCommitChallengeDelay+5))
-
-	proveCommitParams := miner9.ProveCommitSectorParams{
-		SectorNumber: preCommitParams.SectorNumber,
-		Proof:        []byte{0xde, 0xad, 0xbe, 0xef},
-	}
-
-	serializedParams = new(bytes.Buffer)
-	require.NoError(t, proveCommitParams.MarshalCBOR(serializedParams))
-
-	m, err = clientApi.MpoolPushMessage(ctx, &types.Message{
-		To:     testMiner.ActorAddr,
-		From:   testMiner.OwnerKey.Address,
-		Value:  types.FromFil(0),
-		Method: builtin.MethodsMiner.ProveCommitSector,
-		Params: serializedParams.Bytes(),
-	}, nil)
-	require.NoError(t, err)
-
-	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.True(t, r.Receipt.ExitCode.IsSuccess())
-
-	// Deal should be activated
-	deal, err := clientApi.StateMarketStorageDeal(ctx, dealIds[0], types.EmptyTSK)
-	require.NoError(t, err)
-	require.NotEqual(t, -1, deal.State.SectorStartEpoch)
 }
