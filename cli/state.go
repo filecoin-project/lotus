@@ -46,6 +46,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var StateCmd = &cli.Command{
@@ -230,7 +231,7 @@ var StateMinerInfo = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		fmt.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart))
+		fmt.Printf("Proving Period Start:\t%s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.PeriodStart))
 
 		return nil
 	},
@@ -1816,8 +1817,8 @@ var StateSectorCmd = &cli.Command{
 		}
 		fmt.Println("DealIDs: ", si.DealIDs)
 		fmt.Println()
-		fmt.Println("Activation: ", EpochTimeTs(ts.Height(), si.Activation, ts))
-		fmt.Println("Expiration: ", EpochTimeTs(ts.Height(), si.Expiration, ts))
+		fmt.Println("Activation: ", cliutil.EpochTimeTs(ts.Height(), si.Activation, ts))
+		fmt.Println("Expiration: ", cliutil.EpochTimeTs(ts.Height(), si.Expiration, ts))
 		fmt.Println()
 		fmt.Println("DealWeight: ", si.DealWeight)
 		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
