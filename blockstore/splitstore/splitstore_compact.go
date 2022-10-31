@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -134,39 +133,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 			log.Infow("compaction done", "took", time.Since(start))
 		}()
 		// only prune if auto prune is enabled and after at least one compaction
-	} else if s.cfg.EnableColdStoreAutoPrune && epoch-s.pruneEpoch > PruneThreshold && s.compactionIndex > 0 {
-		s.beginTxnProtect()
-		s.compactType = cold
-		go func() {
-			defer atomic.StoreInt32(&s.compacting, 0)
-			defer s.endTxnProtect()
-
-			log.Info("pruning splitstore")
-			start := time.Now()
-
-			var retainP func(int64) bool
-			switch {
-			case s.cfg.ColdStoreRetention > int64(0):
-				retainP = func(depth int64) bool {
-					return depth <= int64(CompactionBoundary)+s.cfg.ColdStoreRetention*int64(build.Finality)
-				}
-			case s.cfg.ColdStoreRetention < 0:
-				retainP = func(_ int64) bool { return true }
-			default:
-				retainP = func(depth int64) bool {
-					return depth <= int64(CompactionBoundary)
-				}
-			}
-			movingGC := s.cfg.ColdStoreFullGCFrequency > 0 && s.pruneIndex%int64(s.cfg.ColdStoreFullGCFrequency) == 0
-			var gcOpts []bstore.BlockstoreGCOption
-			if movingGC {
-				gcOpts = append(gcOpts, bstore.WithFullGC(true))
-			}
-			doGC := func() error { return s.gcBlockstore(s.cold, gcOpts) }
-
-			s.prune(curTs, retainP, doGC)
-			log.Infow("prune done", "took", time.Since(start))
-		}()
 	} else {
 		// no compaction necessary
 		atomic.StoreInt32(&s.compacting, 0)
@@ -589,7 +555,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	coldCount := new(int64)
 	fCold := func(c cid.Cid) error {
-		// Nothing gets written to cold store during discard
+		// Nothing gets written to cold store in discard mode
+		// Short circuit cold set tracking in universal mode -- all blocks not marked hot are implicitly marked cold
 		if s.cfg.DiscardColdBlocks || s.cfg.UniversalColdBlocks {
 			return nil
 		}
@@ -662,7 +629,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 	defer coldw.Close() //nolint:errcheck
 
-	purgew, err := NewColdSetWriter(s.deadSetPath())
+	purgew, err := NewColdSetWriter(s.discardSetPath())
 	if err != nil {
 		return xerrors.Errorf("error creating deadset: %w", err)
 	}
@@ -759,7 +726,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		}
 	}
 
-	purger, err := NewColdSetReader(s.deadSetPath())
+	purger, err := NewColdSetReader(s.discardSetPath())
 	if err != nil {
 		return xerrors.Errorf("error opening coldset: %w", err)
 	}
@@ -982,14 +949,12 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			}
 		}
 
-		// messages outside if inclMsgs may be included in the cold store
+		// messages outside of inclMsgs are included in the cold store
 		if hdr.Height < inclMsgs && hdr.Height > 0 {
 			if err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk); err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 			}
 		}
-
-		// TODO maybe also fCold states depending on a filtering function?  Maybe this comes later
 
 		// state is only retained if within the inclState boundary, with the exception of genesis
 		if hdr.Height >= inclState || hdr.Height == 0 {
@@ -1365,8 +1330,8 @@ func (s *SplitStore) coldSetPath() string {
 	return filepath.Join(s.path, "coldset")
 }
 
-func (s *SplitStore) deadSetPath() string {
-	return filepath.Join(s.path, "deadset")
+func (s *SplitStore) discardSetPath() string {
+	return filepath.Join(s.path, "discard")
 }
 
 func (s *SplitStore) checkpointPath() string {
