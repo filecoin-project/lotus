@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 func StorageFromFile(path string, def *paths.StorageConfig) (*paths.StorageConfig, error) {
@@ -49,29 +48,4 @@ func WriteStorageFile(path string, config paths.StorageConfig) error {
 	}
 
 	return nil
-}
-
-func (c *StorageMiner) StorageManager() sealer.Config {
-	return sealer.Config{
-		ParallelFetchLimit:       c.Storage.ParallelFetchLimit,
-		AllowSectorDownload:      c.Storage.AllowSectorDownload,
-		AllowAddPiece:            c.Storage.AllowAddPiece,
-		AllowPreCommit1:          c.Storage.AllowPreCommit1,
-		AllowPreCommit2:          c.Storage.AllowPreCommit2,
-		AllowCommit:              c.Storage.AllowCommit,
-		AllowUnseal:              c.Storage.AllowUnseal,
-		AllowReplicaUpdate:       c.Storage.AllowReplicaUpdate,
-		AllowProveReplicaUpdate2: c.Storage.AllowProveReplicaUpdate2,
-		AllowRegenSectorKey:      c.Storage.AllowRegenSectorKey,
-		ResourceFiltering:        c.Storage.ResourceFiltering,
-		DisallowRemoteFinalize:   c.Storage.DisallowRemoteFinalize,
-
-		LocalWorkerName: c.Storage.LocalWorkerName,
-
-		Assigner: c.Storage.Assigner,
-
-		ParallelCheckLimit:        c.Proving.ParallelCheckLimit,
-		DisableBuiltinWindowPoSt:  c.Proving.DisableBuiltinWindowPoSt,
-		DisableBuiltinWinningPoSt: c.Proving.DisableBuiltinWinningPoSt,
-	}
 }
