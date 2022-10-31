@@ -992,6 +992,11 @@ workflows:
           target: "./itests/pending_deal_allocation_test.go"
       
       - test:
+          name: test-itest-remove_verifreg_datacap
+          suite: itest-remove_verifreg_datacap
+          target: "./itests/remove_verifreg_datacap_test.go"
+      
+      - test:
           name: test-itest-sdr_upgrade
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"
