@@ -208,10 +208,9 @@ func (e *executedMessage) Events() []*types.Event {
 	return e.evs
 }
 
-// TODO: implement EventFilterManager hooking into events as observer
 
 type EventFilterManager struct {
-	ChainStore cstore.ChainStore
+	ChainStore *cstore.ChainStore
 
 	mu      sync.Mutex // guards mutations to filters
 	filters map[string]*EventFilter

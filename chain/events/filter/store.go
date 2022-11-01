@@ -8,7 +8,6 @@ import (
 
 type Filter interface {
 	ID() string
-	// TakeCollected(context.Context) []*CollectedEvent
 }
 
 type FilterStore interface {
