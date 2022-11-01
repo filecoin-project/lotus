@@ -61,16 +61,13 @@ const UpgradeTurboHeight = 390
 
 const UpgradeHyperdriveHeight = 420
 
-const UpgradeChocolateHeight = 312746
+const UpgradeChocolateHeight = 450
 
-// 2022-02-10T19:23:00Z
-const UpgradeOhSnapHeight = 682006
+const UpgradeOhSnapHeight = 480
 
-// 2022-06-16T17:30:00Z
-const UpgradeSkyrHeight = 1044660
+const UpgradeSkyrHeight = 510
 
-// 2022-10-20T16:00:07Z
-const UpgradeSharkHeight = 1407374
+const UpgradeSharkHeight = 16800 // 6 days after genesis
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
