@@ -21,67 +21,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-// LocalStorageMeta [path]/sectorstore.json
-type LocalStorageMeta struct {
-	ID storiface.ID
-
-	// A high weight means data is more likely to be stored in this path
-	Weight uint64 // 0 = readonly
-
-	// Intermediate data for the sealing process will be stored here
-	CanSeal bool
-
-	// Finalized sectors that will be proved over time will be stored here
-	CanStore bool
-
-	// MaxStorage specifies the maximum number of bytes to use for sector storage
-	// (0 = unlimited)
-	MaxStorage uint64
-
-	// List of storage groups this path belongs to
-	Groups []string
-
-	// List of storage groups to which data from this path can be moved. If none
-	// are specified, allow to all
-	AllowTo []string
-
-	// AllowTypes lists sector file types which are allowed to be put into this
-	// path. If empty, all file types are allowed.
-	//
-	// Valid values:
-	// - "unsealed"
-	// - "sealed"
-	// - "cache"
-	// - "update"
-	// - "update-cache"
-	// Any other value will generate a warning and be ignored.
-	AllowTypes []string
-
-	// DenyTypes lists sector file types which aren't allowed to be put into this
-	// path.
-	//
-	// Valid values:
-	// - "unsealed"
-	// - "sealed"
-	// - "cache"
-	// - "update"
-	// - "update-cache"
-	// Any other value will generate a warning and be ignored.
-	DenyTypes []string
-}
-
-// StorageConfig .lotusstorage/storage.json
-type StorageConfig struct {
-	StoragePaths []LocalPath
-}
-
-type LocalPath struct {
-	Path string
-}
-
 type LocalStorage interface {
-	GetStorage() (StorageConfig, error)
-	SetStorage(func(*StorageConfig)) error
+	GetStorage() (storiface.StorageConfig, error)
+	SetStorage(func(*storiface.StorageConfig)) error
 
 	Stat(path string) (fsutil.FsStat, error)
 
@@ -213,7 +155,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
 	}
 
-	var meta LocalStorageMeta
+	var meta storiface.LocalStorageMeta
 	if err := json.Unmarshal(mb, &meta); err != nil {
 		return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
 	}
@@ -309,7 +251,7 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 			return xerrors.Errorf("reading storage metadata for %s: %w", p.local, err)
 		}
 
-		var meta LocalStorageMeta
+		var meta storiface.LocalStorageMeta
 		if err := json.Unmarshal(mb, &meta); err != nil {
 			return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p.local, err)
 		}

@@ -8,10 +8,10 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-func StorageFromFile(path string, def *paths.StorageConfig) (*paths.StorageConfig, error) {
+func StorageFromFile(path string, def *storiface.StorageConfig) (*storiface.StorageConfig, error) {
 	file, err := os.Open(path)
 	switch {
 	case os.IsNotExist(err):
@@ -27,8 +27,8 @@ func StorageFromFile(path string, def *paths.StorageConfig) (*paths.StorageConfi
 	return StorageFromReader(file)
 }
 
-func StorageFromReader(reader io.Reader) (*paths.StorageConfig, error) {
-	var cfg paths.StorageConfig
+func StorageFromReader(reader io.Reader) (*storiface.StorageConfig, error) {
+	var cfg storiface.StorageConfig
 	err := json.NewDecoder(reader).Decode(&cfg)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func StorageFromReader(reader io.Reader) (*paths.StorageConfig, error) {
 	return &cfg, nil
 }
 
-func WriteStorageFile(path string, config paths.StorageConfig) error {
+func WriteStorageFile(path string, config storiface.StorageConfig) error {
 	b, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return xerrors.Errorf("marshaling storage config: %w", err)

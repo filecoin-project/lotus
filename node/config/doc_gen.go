@@ -894,7 +894,7 @@ If you see stuck Finalize tasks after enabling this setting, check
 		},
 		{
 			Name: "ResourceFiltering",
-			Type: "sealer.ResourceFilteringStrategy",
+			Type: "ResourceFilteringStrategy",
 
 			Comment: `ResourceFiltering instructs the system which resource filtering strategy
 to use when evaluating tasks against this worker. An empty value defaults

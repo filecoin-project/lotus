@@ -3,7 +3,6 @@ package sealer
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/node/config"
 	"io"
 	"net/http"
 	"sort"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -191,8 +191,8 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	if err := m.ls.SetStorage(func(sc *paths.StorageConfig) {
-		sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: path})
+	if err := m.ls.SetStorage(func(sc *storiface.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, storiface.LocalPath{Path: path})
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}
@@ -225,8 +225,8 @@ func (m *Manager) DetachLocalStorage(ctx context.Context, path string) error {
 
 	// drop from the persisted storage.json
 	var found bool
-	if err := m.ls.SetStorage(func(sc *paths.StorageConfig) {
-		out := make([]paths.LocalPath, 0, len(sc.StoragePaths))
+	if err := m.ls.SetStorage(func(sc *storiface.StorageConfig) {
+		out := make([]storiface.LocalPath, 0, len(sc.StoragePaths))
 		for _, storagePath := range sc.StoragePaths {
 			if storagePath.Path != path {
 				out = append(out, storagePath)
