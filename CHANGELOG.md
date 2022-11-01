@@ -1,10 +1,10 @@
 # Lotus changelog
 
-# 1.18.0-rc4 / 2022-10-20
+# 1.18.0-rc5 / 2022-11-1
 
 > ⚠️ **Please note that from Lotus v1.17.2&^ will require a Go-version of v1.18.1&^**
 
-This is the fourth release canadiate of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
+This is the fifth release canadiate of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
 codenamed the Shark upgrade](https://github.com/filecoin-project/community/discussions/74?sort=top#discussioncomment-3825422). Shark upgrade delivers a wave of protocol refinements that will allow for useful smart contracts to be written using the FVM (eg. programmable markets, lending contracts, etc.).
 
 A full changelog will be published upon final release.
@@ -22,7 +22,7 @@ The Shark upgrade introduces the following FIPs, delivered in [actors v9](https:
   
 ## Calibration-net Upgrade
 
-This release candidate sets the calibration-net upgrade at epoch 1407374, 2022-10-20T16:00:07Z. The bundle the network will be using is [v9.0.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.1)(located at `build/actors/v9.tar.zst` ). Upon the migration, the manifest CID should be `bafy2bzacec6w6i72o5tuhyrx4yy3o75vcgzhz7y3ht3lpw6xn43lv2jirxiww`.
+This release candidate sets the calibration-net upgrade at epoch 16800. The bundle the network will be using is [v9.0.3](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.3)(located at `build/actors/v9.tar.zst` ). Upon the migration, the manifest CID should be `bafy2bzacedbedgynklc4dgpyxippkxmba2mgtw7ecntoneclsvvl4klqwuyyy`.
 
 ## Snapshots
 
