@@ -122,8 +122,16 @@ func TestColdStorePrune(t *testing.T) {
 
 	// create garbage
 	g := NewGarbager(ctx, t, full)
-	garbage, e := g.Drop(ctx)
-	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
+	// state
+	garbageS, eS := g.Drop(ctx)
+	// message
+	garbageM, eM := g.Message(ctx)
+	e := eM
+	if eS > eM {
+		e = eS
+	}
+	assert.True(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 
 	// calculate next compaction where we should actually see cleanup
 
@@ -158,7 +166,8 @@ func TestColdStorePrune(t *testing.T) {
 	// This data should now be moved to the coldstore.
 	// Access it without hotview to keep it there while checking that it still exists
 	// Only state compute uses hot view so garbager Exists backed by ChainReadObj is all good
-	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 	bm.Restart()
 
 	// wait for compaction to finsih and pause to make sure it doesn't start to avoid racing
@@ -175,11 +184,69 @@ func TestColdStorePrune(t *testing.T) {
 	require.NoError(t, full.ChainPrune(ctx, pruneOpts))
 	bm.Restart()
 	waitForPrune(ctx, t, 1, full)
-	assert.False(g.t, g.Exists(ctx, garbage), "Garbage should be removed from cold store after prune but it's still there")
+	assert.False(g.t, g.Exists(ctx, garbageS), "Garbage state should be removed from cold store after prune but it's still there")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message should be on the cold store after prune")
 }
 
-func TestPruned(t *testing.T) {
+func TestMessagesMode(t *testing.T) {
+	ctx := context.Background()
+	// disable sync checking because efficient itests require that the node is out of sync : /
+	splitstore.CheckSyncGap = false
+	opts := []interface{}{kit.MockProofs(), kit.SplitstoreMessges(), kit.FsRepo()}
+	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
+	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	_ = full
+	_ = genesisMiner
 
+	// create garbage
+	g := NewGarbager(ctx, t, full)
+	// state
+	garbageS, eS := g.Drop(ctx)
+	// message
+	garbageM, eM := g.Message(ctx)
+	e := eM
+	if eS > eM {
+		e = eS
+	}
+	assert.True(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
+
+	// calculate next compaction where we should actually see cleanup
+
+	// pause, check for compacting and get compaction info
+	// we do this to remove the (very unlikely) race where compaction index
+	// and compaction epoch are in the middle of update, or a whole compaction
+	// runs between the two
+	for {
+		bm.Pause()
+		if splitStoreCompacting(ctx, t, full) {
+			bm.Restart()
+			time.Sleep(3 * time.Second)
+		} else {
+			break
+		}
+	}
+	lastCompactionEpoch := splitStoreBaseEpoch(ctx, t, full)
+	garbageCompactionIndex := splitStoreCompactionIndex(ctx, t, full) + 1
+	boundary := lastCompactionEpoch + splitstore.CompactionThreshold - splitstore.CompactionBoundary
+
+	for e > boundary {
+		boundary += splitstore.CompactionThreshold - splitstore.CompactionBoundary
+		garbageCompactionIndex++
+	}
+	bm.Restart()
+
+	// wait for compaction to occur
+	waitForCompaction(ctx, t, garbageCompactionIndex, full)
+
+	bm.Pause()
+
+	// Messages should be moved to the coldstore
+	// State should be gced
+	// Access it without hotview to keep it there while checking that it still exists
+	// Only state compute uses hot view so garbager Exists backed by ChainReadObj is all good
+	assert.False(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 }
 
 // func TestAutoPrune(t *testing.T) {

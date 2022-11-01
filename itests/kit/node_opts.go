@@ -285,7 +285,7 @@ func SplitstoreMessges() NodeOpt {
 		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
-		cfg.Chainstore.Splitstore.ColdStoreType = "pruned"    // universal bs is coldstore, and it accepts messages
+		cfg.Chainstore.Splitstore.ColdStoreType = "messages"  // universal bs is coldstore, and it accepts messages
 		return nil
 	})
 }
