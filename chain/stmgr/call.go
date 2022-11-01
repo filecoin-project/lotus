@@ -133,7 +133,9 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 	// TODO: maybe just use the invoker directly?
 	ret, err := vmi.ApplyImplicitMessage(ctx, msg)
-	// Don't check for error here, we want to bubble it up, but also return ret as an InvocResult
+	if err != nil && ret == nil {
+		return nil, xerrors.Errorf("apply message failed: %w", err)
+	}
 
 	var errs string
 	if ret.ActorErr != nil {
