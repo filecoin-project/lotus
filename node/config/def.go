@@ -105,6 +105,7 @@ func DefaultFullNode() *FullNode {
 			FilterTTL:               Duration(time.Hour * 24),
 			MaxFilters:              100,
 			MaxFilterResults:        10000,
+			MaxFilterHeightRange:    2880, // conservative limit of one day
 		},
 	}
 }

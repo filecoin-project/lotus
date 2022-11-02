@@ -590,8 +590,11 @@ type ActorEventConfig struct {
 	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
 	MaxFilterResults int
 
+	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+	// the entire chain)
+	MaxFilterHeightRange uint64
+
 	// Others, not implemented yet:
-	// Set a maximum range of heights that can feature in a filter
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
 	// Set upper bound on index size

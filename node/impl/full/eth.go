@@ -101,6 +101,7 @@ type EthEvent struct {
 	TipSetFilterManager  *filter.TipSetFilterManager
 	MemPoolFilterManager *filter.MemPoolFilterManager
 	FilterStore          filter.FilterStore
+	MaxFilterHeightRange abi.ChainEpoch
 }
 
 var _ EthEventAPI = (*EthEvent)(nil)
@@ -922,39 +923,56 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 
 		// TODO: derive a tipset hash from eth hash - might need to push this down into the EventFilterManager
 	} else {
-		if filter.FromBlock != nil {
-			if *filter.FromBlock == "latest" {
-				ts := e.Chain.GetHeaviestTipSet()
-				minHeight = ts.Height()
-			} else if *filter.FromBlock == "earliest" {
-				minHeight = 0
-			} else if *filter.FromBlock == "pending" {
-				return "", api.ErrNotSupported
-			} else {
-				epoch, err := strconv.ParseUint(*filter.FromBlock, 10, 64)
-				if err != nil {
-					return "", xerrors.Errorf("invalid epoch")
-				}
-				minHeight = abi.ChainEpoch(epoch)
+		if filter.FromBlock == nil || *filter.FromBlock == "latest" {
+			ts := e.Chain.GetHeaviestTipSet()
+			minHeight = ts.Height()
+		} else if *filter.FromBlock == "earliest" {
+			minHeight = 0
+		} else if *filter.FromBlock == "pending" {
+			return "", api.ErrNotSupported
+		} else {
+			epoch, err := strconv.ParseUint(*filter.FromBlock, 10, 64)
+			if err != nil {
+				return "", xerrors.Errorf("invalid epoch")
+			}
+			minHeight = abi.ChainEpoch(epoch)
+		}
+
+		if filter.ToBlock == nil || *filter.ToBlock == "latest" {
+			// here latest means the latest at the time
+			maxHeight = -1
+		} else if *filter.ToBlock == "earliest" {
+			maxHeight = 0
+		} else if *filter.ToBlock == "pending" {
+			return "", api.ErrNotSupported
+		} else {
+			epoch, err := strconv.ParseUint(*filter.ToBlock, 10, 64)
+			if err != nil {
+				return "", xerrors.Errorf("invalid epoch")
+			}
+			maxHeight = abi.ChainEpoch(epoch)
+		}
+
+		// Validate height ranges are within limits set by node operator
+		if minHeight == -1 && maxHeight > 0 {
+			// Here the client is looking for events between the head and some future height
+			ts := e.Chain.GetHeaviestTipSet()
+			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
+				return "", xerrors.Errorf("invalid epoch range")
+			}
+		} else if minHeight >= 0 && maxHeight == -1 {
+			// Here the client is looking for events between some time in the past and the current head
+			ts := e.Chain.GetHeaviestTipSet()
+			if ts.Height()-minHeight > e.MaxFilterHeightRange {
+				return "", xerrors.Errorf("invalid epoch range")
+			}
+
+		} else if minHeight >= 0 && maxHeight >= 0 {
+			if minHeight > maxHeight || maxHeight-minHeight > e.MaxFilterHeightRange {
+				return "", xerrors.Errorf("invalid epoch range")
 			}
 		}
 
-		if filter.ToBlock != nil {
-			if *filter.ToBlock == "latest" {
-				ts := e.Chain.GetHeaviestTipSet()
-				maxHeight = ts.Height()
-			} else if *filter.ToBlock == "earliest" {
-				maxHeight = 0
-			} else if *filter.ToBlock == "pending" {
-				return "", api.ErrNotSupported
-			} else {
-				epoch, err := strconv.ParseUint(*filter.ToBlock, 10, 64)
-				if err != nil {
-					return "", xerrors.Errorf("invalid epoch")
-				}
-				maxHeight = abi.ChainEpoch(epoch)
-			}
-		}
 	}
 	for _, ea := range filter.Address {
 		a, err := ea.ToFilecoinAddress()

@@ -6,6 +6,7 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -27,7 +28,8 @@ var _ events.EventAPI = &EventAPI{}
 func EthEvent(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
 		ee := &full.EthEvent{
-			Chain: cs,
+			Chain:                cs,
+			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
 		}
 
 		if !cfg.EnableRealTimeFilterAPI && !cfg.EnableHistoricFilterAPI {
