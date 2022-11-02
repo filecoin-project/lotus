@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -95,11 +96,6 @@ type EthModule struct {
 var _ EthModuleAPI = (*EthModule)(nil)
 
 type EthEvent struct {
-	fx.In
-
-	Chain                *store.ChainStore
-	Mpool                *messagepool.MessagePool
-	StateManager         *stmgr.StateManager
 	EventFilterManager   *filter.EventFilterManager
 	TipSetFilterManager  *filter.TipSetFilterManager
 	MemPoolFilterManager *filter.MemPoolFilterManager
@@ -866,6 +862,10 @@ func (e *EthEvent) EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*
 }
 
 func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
+	if e.FilterStore == nil {
+		return nil, api.ErrNotSupported
+	}
+
 	f, err := e.FilterStore.Get(ctx, string(id))
 	if err != nil {
 		return nil, err
@@ -884,6 +884,10 @@ func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) 
 }
 
 func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
+	if e.FilterStore == nil {
+		return nil, api.ErrNotSupported
+	}
+
 	f, err := e.FilterStore.Get(ctx, string(id))
 	if err != nil {
 		return nil, err
@@ -903,6 +907,10 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 }
 
 func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error) {
+	if e.FilterStore == nil || e.TipSetFilterManager == nil {
+		return "", api.ErrNotSupported
+	}
+
 	f, err := e.TipSetFilterManager.Install(ctx)
 	if err != nil {
 		return "", err
@@ -922,6 +930,10 @@ func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, erro
 }
 
 func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error) {
+	if e.FilterStore == nil || e.MemPoolFilterManager == nil {
+		return "", api.ErrNotSupported
+	}
+
 	f, err := e.MemPoolFilterManager.Install(ctx)
 	if err != nil {
 		return "", err
@@ -931,7 +943,7 @@ func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (api.EthF
 		// Could not record in store, attempt to delete filter to clean up
 		err2 := e.MemPoolFilterManager.Remove(ctx, f.ID())
 		if err2 != nil {
-			return "", xerrors.Errorf("encoutered error %v while removing new filter due to %v", err2, err)
+			return "", xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
 		}
 
 		return "", err
@@ -941,6 +953,10 @@ func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (api.EthF
 }
 
 func (e *EthEvent) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error) {
+	if e.FilterStore == nil {
+		return false, api.ErrNotSupported
+	}
+
 	f, err := e.FilterStore.Get(ctx, string(id))
 	if err != nil {
 		if errors.Is(err, filter.ErrFilterNotFound) {
@@ -948,39 +964,36 @@ func (e *EthEvent) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (
 		}
 		return false, err
 	}
+
+	if err := e.uninstallFilter(ctx, f); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (e *EthEvent) uninstallFilter(ctx context.Context, f filter.Filter) error {
 	switch f.(type) {
 	case *filter.EventFilter:
 		err := e.EventFilterManager.Remove(ctx, f.ID())
-		if err != nil {
-			// if filter not found then we may have deleted it on a prior attempt
-			if !errors.Is(err, filter.ErrFilterNotFound) {
-				return false, err
-			}
+		if err != nil && !errors.Is(err, filter.ErrFilterNotFound) {
+			return err
 		}
 	case *filter.TipSetFilter:
 		err := e.TipSetFilterManager.Remove(ctx, f.ID())
-		if err != nil {
-			// if filter not found then we may have deleted it on a prior attempt
-			if !errors.Is(err, filter.ErrFilterNotFound) {
-				return false, err
-			}
+		if err != nil && !errors.Is(err, filter.ErrFilterNotFound) {
+			return err
 		}
 	case *filter.MemPoolFilter:
 		err := e.MemPoolFilterManager.Remove(ctx, f.ID())
-		if err != nil {
-			// if filter not found then we may have deleted it on a prior attempt
-			if !errors.Is(err, filter.ErrFilterNotFound) {
-				return false, err
-			}
+		if err != nil && !errors.Is(err, filter.ErrFilterNotFound) {
+			return err
 		}
 	default:
-		return false, xerrors.Errorf("unknown filter type")
+		return xerrors.Errorf("unknown filter type")
 	}
 
-	if err := e.FilterStore.Remove(ctx, string(id)); err != nil {
-		return false, err
-	}
-	return true, nil
+	return e.FilterStore.Remove(ctx, f.ID())
 }
 
 func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (api.EthSubscriptionResponse, error) {
@@ -988,9 +1001,33 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params
 	return api.EthSubscriptionResponse{}, api.ErrNotSupported
 }
 
-func (a *EthEvent) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
+func (e *EthEvent) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
 	// TODO: implement EthUnsubscribe
 	return false, api.ErrNotSupported
+}
+
+// GC runs a garbage collection loop, deleting filters that have not been used within the ttl window
+func (e *EthEvent) GC(ctx context.Context, ttl time.Duration) {
+	if e.FilterStore == nil {
+		return
+	}
+
+	tt := time.NewTicker(time.Minute * 30)
+	defer tt.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tt.C:
+			fs := e.FilterStore.NotTakenSince(time.Now().Add(-ttl))
+			for _, f := range fs {
+				if err := e.uninstallFilter(ctx, f); err != nil {
+					log.Warnf("Failed to remove actor event filter during garbage collection: %v", err)
+				}
+			}
+		}
+	}
 }
 
 type filterEventCollector interface {

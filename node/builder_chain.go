@@ -139,13 +139,6 @@ var ChainNode = Options(
 
 	Override(RelayIndexerMessagesKey, modules.RelayIndexerMessages),
 
-	// Actor Events
-	Override(new(events.EventAPI), From(new(modules.EventAPI))),
-	Override(new(*filter.EventFilterManager), modules.EventFilterManager),
-	Override(new(*filter.TipSetFilterManager), modules.TipSetFilterManager),
-	Override(new(*filter.MemPoolFilterManager), modules.MemPoolFilterManager),
-	Override(new(filter.FilterStore), modules.FilterStore),
-
 	// Lite node API
 	ApplyIf(isLiteNode,
 		Override(new(messagepool.Provider), messagepool.NewProviderLite),
@@ -247,6 +240,10 @@ func ConfigFullNode(c interface{}) Option {
 			Unset(new(*wallet.LocalWallet)),
 			Override(new(wallet.Default), wallet.NilDefault),
 		),
+
+		// Actor event filtering support
+		Override(new(events.EventAPI), From(new(modules.EventAPI))),
+		Override(new(full.EthEventAPI), modules.EthEvent(cfg.ActorEvent)),
 	)
 }
 

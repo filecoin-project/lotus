@@ -3,6 +3,7 @@ package filter
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -13,10 +14,12 @@ import (
 )
 
 type MemPoolFilter struct {
-	id string
+	id         string
+	maxResults int // maximum number of results to collect, 0 is unlimited
 
 	mu        sync.Mutex
 	collected []cid.Cid
+	lastTaken time.Time
 }
 
 var _ Filter = (*MemPoolFilter)(nil)
@@ -28,6 +31,10 @@ func (f *MemPoolFilter) ID() string {
 func (f *MemPoolFilter) CollectMessage(ctx context.Context, msg *types.SignedMessage) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.maxResults > 0 && len(f.collected) == f.maxResults {
+		copy(f.collected, f.collected[1:])
+		f.collected = f.collected[:len(f.collected)-1]
+	}
 	f.collected = append(f.collected, msg.Cid())
 }
 
@@ -35,12 +42,21 @@ func (f *MemPoolFilter) TakeCollectedMessages(context.Context) []cid.Cid {
 	f.mu.Lock()
 	collected := f.collected
 	f.collected = nil
+	f.lastTaken = time.Now().UTC()
 	f.mu.Unlock()
 
 	return collected
 }
 
+func (f *MemPoolFilter) LastTaken() time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.lastTaken
+}
+
 type MemPoolFilterManager struct {
+	MaxFilterResults int
+
 	mu      sync.Mutex // guards mutations to filters
 	filters map[string]*MemPoolFilter
 }
@@ -82,7 +98,8 @@ func (m *MemPoolFilterManager) Install(ctx context.Context) (*MemPoolFilter, err
 	}
 
 	f := &MemPoolFilter{
-		id: id.String(),
+		id:         id.String(),
+		maxResults: m.MaxFilterResults,
 	}
 
 	m.mu.Lock()

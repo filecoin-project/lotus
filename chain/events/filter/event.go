@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -20,15 +21,17 @@ import (
 const indexed uint8 = 0x01
 
 type EventFilter struct {
-	id        string
-	minHeight abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
-	maxHeight abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
-	tipsetCid cid.Cid
-	addresses []address.Address   // list of actor ids that originated the event
-	keys      map[string][][]byte // map of key names to a list of alternate values that may match
+	id         string
+	minHeight  abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
+	maxHeight  abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
+	tipsetCid  cid.Cid
+	addresses  []address.Address   // list of actor ids that originated the event
+	keys       map[string][][]byte // map of key names to a list of alternate values that may match
+	maxResults int                 // maximum number of results to collect, 0 is unlimited
 
 	mu        sync.Mutex
 	collected []*CollectedEvent
+	lastTaken time.Time
 }
 
 var _ Filter = (*EventFilter)(nil)
@@ -64,6 +67,10 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				Event: ev,
 			}
 			f.mu.Lock()
+			if f.maxResults > 0 && len(f.collected) == f.maxResults {
+				copy(f.collected, f.collected[1:])
+				f.collected = f.collected[:len(f.collected)-1]
+			}
 			f.collected = append(f.collected, cev)
 			f.mu.Unlock()
 		}
@@ -76,9 +83,16 @@ func (f *EventFilter) TakeCollectedEvents(ctx context.Context) []*CollectedEvent
 	f.mu.Lock()
 	collected := f.collected
 	f.collected = nil
+	f.lastTaken = time.Now().UTC()
 	f.mu.Unlock()
 
 	return collected
+}
+
+func (f *EventFilter) LastTaken() time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.lastTaken
 }
 
 // matchTipset reports whether this filter matches the given tipset
@@ -208,9 +222,9 @@ func (e *executedMessage) Events() []*types.Event {
 	return e.evs
 }
 
-
 type EventFilterManager struct {
-	ChainStore *cstore.ChainStore
+	ChainStore       *cstore.ChainStore
+	MaxFilterResults int
 
 	mu      sync.Mutex // guards mutations to filters
 	filters map[string]*EventFilter
@@ -264,12 +278,13 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	}
 
 	f := &EventFilter{
-		id:        id.String(),
-		minHeight: minHeight,
-		maxHeight: maxHeight,
-		tipsetCid: tipsetCid,
-		addresses: addresses,
-		keys:      keys,
+		id:         id.String(),
+		minHeight:  minHeight,
+		maxHeight:  maxHeight,
+		tipsetCid:  tipsetCid,
+		addresses:  addresses,
+		keys:       keys,
+		maxResults: m.MaxFilterResults,
 	}
 
 	m.mu.Lock()

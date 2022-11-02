@@ -27,6 +27,7 @@ type FullNode struct {
 	Wallet     Wallet
 	Fees       FeeConfig
 	Chainstore Chainstore
+	ActorEvent ActorEventConfig
 }
 
 // // Common
@@ -168,7 +169,6 @@ type DealmakingConfig struct {
 }
 
 type IndexProviderConfig struct {
-
 	// Enable set whether to enable indexing announcement to the network and expose endpoints that
 	// allow indexer nodes to process announcements. Enabled by default.
 	Enable bool
@@ -570,4 +570,29 @@ type Wallet struct {
 
 type FeeConfig struct {
 	DefaultMaxFee types.FIL
+}
+
+type ActorEventConfig struct {
+	// EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.
+	EnableRealTimeFilterAPI bool
+
+	// EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
+	// A queryable index of events will be maintained.
+	EnableHistoricFilterAPI bool
+
+	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+	// this time become eligible for automatic deletion.
+	FilterTTL Duration
+
+	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	MaxFilters int
+
+	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+	MaxFilterResults int
+
+	// Others, not implemented yet:
+	// Set a maximum range of heights that can feature in a filter
+	// Set a limit on the number of active websocket subscriptions (may be zero)
+	// Set a timeout for subscription clients
+	// Set upper bound on index size
 }
