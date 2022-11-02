@@ -91,7 +91,7 @@ func DefaultFullNode() *FullNode {
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
 			Splitstore: Splitstore{
-				ColdStoreType: "pruned",
+				ColdStoreType: "messages",
 				HotStoreType:  "badger",
 				MarkSetType:   "badger",
 
