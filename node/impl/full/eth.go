@@ -96,6 +96,7 @@ type EthModule struct {
 var _ EthModuleAPI = (*EthModule)(nil)
 
 type EthEvent struct {
+	Chain                *store.ChainStore
 	EventFilterManager   *filter.EventFilterManager
 	TipSetFilterManager  *filter.TipSetFilterManager
 	MemPoolFilterManager *filter.MemPoolFilterManager
@@ -902,8 +903,93 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*a
 }
 
 func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error) {
-	// TODO: implement EthNewFilter
-	return "", api.ErrNotSupported
+	if e.FilterStore == nil || e.EventFilterManager == nil {
+		return "", api.ErrNotSupported
+	}
+
+	var (
+		minHeight abi.ChainEpoch
+		maxHeight abi.ChainEpoch
+		tipsetCid cid.Cid
+		addresses []address.Address
+		keys      = map[string][][]byte{}
+	)
+
+	if filter.BlockHash != nil {
+		if filter.FromBlock != nil || filter.ToBlock != nil {
+			return "", xerrors.Errorf("must not specify block hash and from/to block")
+		}
+
+		// TODO: derive a tipset hash from eth hash - might need to push this down into the EventFilterManager
+	} else {
+		if filter.FromBlock != nil {
+			if *filter.FromBlock == "latest" {
+				ts := e.Chain.GetHeaviestTipSet()
+				minHeight = ts.Height()
+			} else if *filter.FromBlock == "earliest" {
+				minHeight = 0
+			} else if *filter.FromBlock == "pending" {
+				return "", api.ErrNotSupported
+			} else {
+				epoch, err := strconv.ParseUint(*filter.FromBlock, 10, 64)
+				if err != nil {
+					return "", xerrors.Errorf("invalid epoch")
+				}
+				minHeight = abi.ChainEpoch(epoch)
+			}
+		}
+
+		if filter.ToBlock != nil {
+			if *filter.ToBlock == "latest" {
+				ts := e.Chain.GetHeaviestTipSet()
+				maxHeight = ts.Height()
+			} else if *filter.ToBlock == "earliest" {
+				maxHeight = 0
+			} else if *filter.ToBlock == "pending" {
+				return "", api.ErrNotSupported
+			} else {
+				epoch, err := strconv.ParseUint(*filter.ToBlock, 10, 64)
+				if err != nil {
+					return "", xerrors.Errorf("invalid epoch")
+				}
+				maxHeight = abi.ChainEpoch(epoch)
+			}
+		}
+	}
+	for _, ea := range filter.Address {
+		a, err := ea.ToFilecoinAddress()
+		if err != nil {
+			return "", xerrors.Errorf("invalid address %x", ea)
+		}
+		addresses = append(addresses, a)
+	}
+
+	for idx, vals := range filter.Topics {
+		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
+		key := fmt.Sprintf("topic%d", idx+1)
+		keyvals := make([][]byte, len(vals))
+		for i, v := range vals {
+			keyvals[i] = v[:]
+		}
+		keys[key] = keyvals
+	}
+
+	f, err := e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
+	if err != nil {
+		return "", err
+	}
+
+	if err := e.FilterStore.Add(ctx, f); err != nil {
+		// Could not record in store, attempt to delete filter to clean up
+		err2 := e.TipSetFilterManager.Remove(ctx, f.ID())
+		if err2 != nil {
+			return "", xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
+		}
+
+		return "", err
+	}
+
+	return api.EthFilterID(f.ID()), nil
 }
 
 func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error) {

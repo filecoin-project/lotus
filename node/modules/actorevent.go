@@ -26,7 +26,9 @@ var _ events.EventAPI = &EventAPI{}
 
 func EthEvent(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
-		ee := &full.EthEvent{}
+		ee := &full.EthEvent{
+			Chain: cs,
+		}
 
 		if !cfg.EnableRealTimeFilterAPI && !cfg.EnableHistoricFilterAPI {
 			// all event functionality is disabled

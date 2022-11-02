@@ -429,12 +429,12 @@ type EthFilterSpec struct {
 	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
-	FromBlock string `json:"fromBlock,omitempty"`
+	FromBlock *string `json:"fromBlock,omitempty"`
 
 	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
-	ToBlock string `json:"toBlock,omitempty"`
+	ToBlock *string `json:"toBlock,omitempty"`
 
 	// Actor address or a list of addresses from which event logs should originate.
 	// Optional, default nil.
@@ -449,7 +449,7 @@ type EthFilterSpec struct {
 	// Restricts event logs returned to those in receipts contained in the tipset this block is part of.
 	// If BlockHash is present in in the filter criteria, then neither FromBlock nor ToBlock are allowed.
 	// Added in EIP-234
-	BlockHash EthHash `json:"blockHash,omitempty"`
+	BlockHash *EthHash `json:"blockHash,omitempty"`
 }
 
 // EthAddressSpec represents a list of addresses.
