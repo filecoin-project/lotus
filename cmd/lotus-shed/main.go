@@ -73,6 +73,7 @@ func main() {
 		migrationsCmd,
 		diffCmd,
 		itestdCmd,
+		invariantsCmd,
 	}
 
 	app := &cli.App{
