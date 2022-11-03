@@ -1,8 +1,4 @@
 project_name: lotus
-before:
-  hooks:
-    - go mod tidy
-    - make deps
 
 universal_binaries:
   - id: lotus
