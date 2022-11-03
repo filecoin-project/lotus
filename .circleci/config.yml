@@ -67,7 +67,7 @@ commands:
             - run: go version
             - run:
                 name: Install dependencies with Homebrew
-                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config goreleaser/tap/goreleaser-pro coreutils jq hwloc
+                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config coreutils jq hwloc
             - run:
                 name: Install Rust
                 command: |
@@ -91,28 +91,12 @@ commands:
   install_ipfs:
     steps:
       - run: |
-          apt update
-          apt install -y wget
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512
-          if [ "$(sha512sum go-ipfs_v0.12.2_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512)" ]
-          then
-            echo "ipfs failed checksum check"
-            exit 1
-          fi
-          tar -xf go-ipfs_v0.12.2_linux-amd64.tar.gz
-          mv go-ipfs/ipfs /usr/local/bin/ipfs
-          chmod +x /usr/local/bin/ipfs
-  install_ipfs_macos:
-    steps:
-      - run: |
-          curl -O https://dist.ipfs.io/kubo/v0.14.0/kubo_v0.14.0_darwin-amd64.tar.gz
-          tar -xvzf kubo_v0.14.0_darwin-amd64.tar.gz
+          curl -O https://dist.ipfs.tech/kubo/v0.16.0/kubo_v0.16.0_linux-amd64.tar.gz
+          tar -xvzf kubo_v0.16.0_linux-amd64.tar.gz
           pushd kubo
           sudo bash install.sh
           popd
-          rm -rf kubo/
-          rm kubo_v0.14.0_darwin-amd64.tar.gz
+          rm -rf kubo
   git_fetch_all_tags:
     steps:
       - run:
@@ -339,7 +323,6 @@ jobs:
       - prepare:
           linux: false
           darwin: true
-      - install_ipfs_macos
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
@@ -368,7 +351,6 @@ jobs:
       - prepare:
           linux: false
           darwin: true
-      - install_ipfs_macos
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
@@ -394,7 +376,7 @@ jobs:
           when: always
       - run:
           name: cleanup homebrew
-          command: HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall pkg-config goreleaser/tap/goreleaser-pro coreutils jq hwloc
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall pkg-config coreutils jq hwloc
           when: always
 
   release:
@@ -405,6 +387,12 @@ jobs:
         description: should this release actually publish it's artifacts?
         type: boolean
     steps:
+      - checkout
+      - run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt update
+          sudo apt install goreleaser-pro
+      - install_ipfs
       - attach_workspace:
           at: /tmp/workspace
       - when:
