@@ -62,6 +62,13 @@ this time become eligible for automatic deletion.`,
 
 			Comment: `MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.`,
 		},
+		{
+			Name: "MaxFilterHeightRange",
+			Type: "uint64",
+
+			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+the entire chain)`,
+		},
 	},
 	"Backup": []DocField{
 		{
