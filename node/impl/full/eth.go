@@ -19,8 +19,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
 	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -494,7 +492,7 @@ func (a *EthModule) EthProtocolVersion(ctx context.Context) (api.EthUint64, erro
 }
 
 func (a *EthModule) EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error) {
-	gasPremium, err := a.GasAPI.GasEstimateGasPremium(ctx, 0, builtin.SystemActorAddr, 10000, types.EmptyTSK)
+	gasPremium, err := a.GasAPI.GasEstimateGasPremium(ctx, 0, builtinactors.SystemActorAddr, 10000, types.EmptyTSK)
 	if err != nil {
 		return api.EthBigInt(big.Zero()), err
 	}
