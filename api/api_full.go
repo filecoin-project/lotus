@@ -25,7 +25,7 @@ import (
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -1199,7 +1199,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower        types.BigInt
 	NetworkPower      types.BigInt
-	Sectors           []builtin.ExtendedSectorInfo
+	Sectors           []builtinactors.ExtendedSectorInfo
 	WorkerKey         address.Address
 	SectorSize        abi.SectorSize
 	PrevBeaconEntry   types.BeaconEntry
@@ -1216,7 +1216,7 @@ type BlockTemplate struct {
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []builtin.PoStProof
+	WinningPoStProof []builtinactors.PoStProof
 }
 
 type DataSize struct {

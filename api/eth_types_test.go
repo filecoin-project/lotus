@@ -230,17 +230,20 @@ func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
 	addr, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
+	pstring := func(s string) *string { return &s }
+	phash := func(h EthHash) *EthHash { return &h }
+
 	testcases := []struct {
 		input string
 		want  EthFilterSpec
 	}{
 		{
 			input: `{"fromBlock":"latest"}`,
-			want:  EthFilterSpec{FromBlock: "latest"},
+			want:  EthFilterSpec{FromBlock: pstring("latest")},
 		},
 		{
 			input: `{"toBlock":"pending"}`,
-			want:  EthFilterSpec{ToBlock: "pending"},
+			want:  EthFilterSpec{ToBlock: pstring("pending")},
 		},
 		{
 			input: `{"address":["0xd4c5fb16488Aa48081296299d54b0c648C9333dA"]}`,
@@ -252,7 +255,7 @@ func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
 		},
 		{
 			input: `{"blockHash":"0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"}`,
-			want:  EthFilterSpec{BlockHash: hash1},
+			want:  EthFilterSpec{BlockHash: phash(hash1)},
 		},
 		{
 			input: `{"topics":["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"]}`,

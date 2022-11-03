@@ -347,8 +347,10 @@ func init() {
 	addExample(&ethFeeHistoryReward)
 	addExample(api.EthFilterID("c5564560217c43e4bc0484df655e9019"))
 	addExample(api.EthSubscriptionID("b62df77831484129adf6682332ad0725"))
+
+	pstring := func(s string) *string { return &s }
 	addExample(&api.EthFilterSpec{
-		FromBlock: "2301220",
+		FromBlock: pstring("2301220"),
 		Address:   []api.EthAddress{ethaddr},
 	})
 }
