@@ -103,6 +103,9 @@ func (a *APIBlockstoreAccessor) RegisterApiStore(sid api.RemoteStoreID, st *lbst
 	a.remoteStores[sid] = st
 
 	st.OnClose(func() {
+		a.accessLk.Lock()
+		defer a.accessLk.Unlock()
+
 		if _, has := a.remoteStores[sid]; has {
 			delete(a.remoteStores, sid)
 		}
