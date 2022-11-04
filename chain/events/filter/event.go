@@ -32,16 +32,36 @@ type EventFilter struct {
 	mu        sync.Mutex
 	collected []*CollectedEvent
 	lastTaken time.Time
+	ch        chan<- interface{}
 }
 
 var _ Filter = (*EventFilter)(nil)
 
 type CollectedEvent struct {
-	Event *types.Event
+	Event     *types.Event
+	EventIdx  int // index of the event within the list of emitted events
+	Reverted  bool
+	Height    abi.ChainEpoch
+	TipSetKey types.TipSetKey // tipset that contained the message
+	MsgIdx    int             // index of the message in the tipset
+	MsgCid    cid.Cid         // cid of message that produced event
 }
 
 func (f *EventFilter) ID() string {
 	return f.id
+}
+
+func (f *EventFilter) SetSubChannel(ch chan<- interface{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ch = ch
+	f.collected = nil
+}
+
+func (f *EventFilter) ClearSubChannel() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ch = nil
 }
 
 func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool) error {
@@ -53,8 +73,8 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	if err != nil {
 		return xerrors.Errorf("load executed messages: %w", err)
 	}
-	for _, em := range ems {
-		for _, ev := range em.Events() {
+	for msgIdx, em := range ems {
+		for evIdx, ev := range em.Events() {
 			if !f.matchAddress(ev.Emitter) {
 				continue
 			}
@@ -64,9 +84,23 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Event: ev,
+				Event:     ev,
+				EventIdx:  evIdx,
+				Reverted:  revert,
+				Height:    te.msgTs.Height(),
+				TipSetKey: te.msgTs.Key(),
+				MsgCid:    em.Message().Cid(),
+				MsgIdx:    msgIdx,
 			}
+
 			f.mu.Lock()
+			// if we have a subscription channel then push event to it
+			if f.ch != nil {
+				f.ch <- cev
+				f.mu.Unlock()
+				continue
+			}
+
 			if f.maxResults > 0 && len(f.collected) == f.maxResults {
 				copy(f.collected, f.collected[1:])
 				f.collected = f.collected[:len(f.collected)-1]
@@ -243,6 +277,7 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 		load:  m.loadExecutedMessages,
 	}
 
+	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
 		f.CollectEvents(ctx, tse, false)
 	}

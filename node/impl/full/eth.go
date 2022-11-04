@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
@@ -99,6 +101,7 @@ type EthEvent struct {
 	TipSetFilterManager  *filter.TipSetFilterManager
 	MemPoolFilterManager *filter.MemPoolFilterManager
 	FilterStore          filter.FilterStore
+	SubManager           ethSubscriptionManager
 	MaxFilterHeightRange abi.ChainEpoch
 }
 
@@ -1098,14 +1101,81 @@ func (e *EthEvent) uninstallFilter(ctx context.Context, f filter.Filter) error {
 	return e.FilterStore.Remove(ctx, f.ID())
 }
 
-func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (api.EthSubscriptionResponse, error) {
-	// TODO: implement EthSubscribe
-	return api.EthSubscriptionResponse{}, api.ErrNotSupported
+const (
+	EthSubscribeEventTypeHeads = "newHeads"
+	EthSubscribeEventTypeLogs  = "logs"
+)
+
+func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error) {
+	// Note that go-jsonrpc will set the method field of the response to "xrpc.ch.val" but the ethereum api expects the name of the
+	// method to be "eth_subscription". This probably doesn't matter in practice.
+
+	// Validate event types and parameters first
+	for _, et := range eventTypes {
+		switch et {
+		case EthSubscribeEventTypeHeads:
+		case EthSubscribeEventTypeLogs:
+		default:
+			return nil, xerrors.Errorf("unsupported event type: %s", et)
+
+		}
+	}
+
+	sub, err := e.SubManager.StartSubscription(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, et := range eventTypes {
+		switch et {
+		case EthSubscribeEventTypeHeads:
+			f, err := e.TipSetFilterManager.Install(ctx)
+			if err != nil {
+				// clean up any previous filters added and stop the sub
+				e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+				return nil, err
+			}
+			sub.addFilter(ctx, f)
+
+		case EthSubscribeEventTypeLogs:
+			keys := map[string][][]byte{}
+			for idx, vals := range params.Topics {
+				// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
+				key := fmt.Sprintf("topic%d", idx+1)
+				keyvals := make([][]byte, len(vals))
+				for i, v := range vals {
+					keyvals[i] = v[:]
+				}
+				keys[key] = keyvals
+			}
+
+			f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
+			if err != nil {
+				// clean up any previous filters added and stop the sub
+				e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+				return nil, err
+			}
+			sub.addFilter(ctx, f)
+		}
+	}
+
+	return sub.out, nil
 }
 
 func (e *EthEvent) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
-	// TODO: implement EthUnsubscribe
-	return false, api.ErrNotSupported
+	filters, err := e.SubManager.StopSubscription(ctx, string(id))
+	if err != nil {
+		return false, nil
+	}
+
+	for _, f := range filters {
+		if err := e.uninstallFilter(ctx, f); err != nil {
+			// this will leave the filter a zombie, collecting events up to the maximum allowed
+			log.Warnf("failed to remove filter when unsubscribing: %v", err)
+		}
+	}
+
+	return true, nil
 }
 
 // GC runs a garbage collection loop, deleting filters that have not been used within the ttl window
@@ -1144,9 +1214,58 @@ type filterTipSetCollector interface {
 	TakeCollectedTipSets(context.Context) []types.TipSetKey
 }
 
+var (
+	ethTopic1 = []byte("topic1")
+	ethTopic2 = []byte("topic2")
+	ethTopic3 = []byte("topic3")
+	ethTopic4 = []byte("topic4")
+)
+
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResult, error) {
-	// TODO: implement ethFilterResultFromEvents
-	return nil, nil
+	res := &api.EthFilterResult{}
+
+	for _, ev := range evs {
+		log := api.EthLog{
+			Removed:          ev.Reverted,
+			LogIndex:         api.EthUint64(ev.EventIdx),
+			TransactionIndex: api.EthUint64(ev.MsgIdx),
+			BlockNumber:      api.EthUint64(ev.Height),
+		}
+
+		var err error
+
+		for _, entry := range ev.Event.Entries {
+			hash := api.EthHashData(entry.Value)
+			if bytes.Equal(entry.Key, ethTopic1) || bytes.Equal(entry.Key, ethTopic2) || bytes.Equal(entry.Key, ethTopic3) || bytes.Equal(entry.Key, ethTopic4) {
+				log.Topics = append(log.Topics, hash)
+			} else {
+				log.Data = append(log.Data, hash)
+			}
+		}
+
+		log.Address, err = api.EthAddressFromFilecoinAddress(ev.Event.Emitter)
+		if err != nil {
+			return nil, err
+		}
+
+		log.TransactionHash, err = api.EthHashFromCid(ev.MsgCid)
+		if err != nil {
+			return nil, err
+		}
+
+		c, err := ev.TipSetKey.Cid()
+		if err != nil {
+			return nil, err
+		}
+		log.BlockHash, err = api.EthHashFromCid(c)
+		if err != nil {
+			return nil, err
+		}
+
+		res.NewLogs = append(res.NewLogs, log)
+	}
+
+	return res, nil
 }
 
 func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*api.EthFilterResult, error) {
@@ -1181,4 +1300,112 @@ func ethFilterResultFromMessages(cs []cid.Cid) (*api.EthFilterResult, error) {
 	}
 
 	return res, nil
+}
+
+type ethSubscriptionManager struct {
+	mu   sync.Mutex
+	subs map[string]*ethSubscription
+}
+
+func (e *ethSubscriptionManager) StartSubscription(ctx context.Context) (*ethSubscription, error) {
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, xerrors.Errorf("new uuid: %w", err)
+	}
+
+	ctx, quit := context.WithCancel(ctx)
+
+	sub := &ethSubscription{
+		id:   id.String(),
+		in:   make(chan interface{}, 200),
+		out:  make(chan api.EthSubscriptionResponse),
+		quit: quit,
+	}
+
+	e.mu.Lock()
+	if e.subs == nil {
+		e.subs = make(map[string]*ethSubscription)
+	}
+	e.subs[sub.id] = sub
+	e.mu.Unlock()
+
+	go sub.start(ctx)
+
+	return sub, nil
+}
+
+func (e *ethSubscriptionManager) StopSubscription(ctx context.Context, id string) ([]filter.Filter, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	sub, ok := e.subs[id]
+	if !ok {
+		return nil, xerrors.Errorf("subscription not found")
+	}
+	sub.stop()
+	delete(e.subs, id)
+
+	return sub.filters, nil
+}
+
+type ethSubscription struct {
+	id  string
+	in  chan interface{}
+	out chan api.EthSubscriptionResponse
+
+	mu      sync.Mutex
+	filters []filter.Filter
+	quit    func()
+}
+
+func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	f.SetSubChannel(e.in)
+	e.filters = append(e.filters, f)
+}
+
+func (e *ethSubscription) start(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case v := <-e.in:
+			resp := api.EthSubscriptionResponse{
+				SubscriptionID: api.EthSubscriptionID(e.id),
+			}
+
+			var err error
+			switch vt := v.(type) {
+			case *filter.CollectedEvent:
+				resp.Result, err = ethFilterResultFromEvents([]*filter.CollectedEvent{vt})
+			case *types.TipSet:
+				resp.Result = vt
+			default:
+				log.Warnf("unexpected subscription value type: %T", vt)
+			}
+
+			if err != nil {
+				continue
+			}
+
+			select {
+			case e.out <- resp:
+			default:
+				// Skip if client is not reading responses
+			}
+		}
+	}
+}
+
+func (e *ethSubscription) stop() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.quit != nil {
+		e.quit()
+		close(e.out)
+		e.quit = nil
+	}
 }

@@ -16,6 +16,7 @@ import (
 type MemPoolFilter struct {
 	id         string
 	maxResults int // maximum number of results to collect, 0 is unlimited
+	ch         chan<- interface{}
 
 	mu        sync.Mutex
 	collected []cid.Cid
@@ -28,9 +29,29 @@ func (f *MemPoolFilter) ID() string {
 	return f.id
 }
 
+func (f *MemPoolFilter) SetSubChannel(ch chan<- interface{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ch = ch
+	f.collected = nil
+}
+
+func (f *MemPoolFilter) ClearSubChannel() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ch = nil
+}
+
 func (f *MemPoolFilter) CollectMessage(ctx context.Context, msg *types.SignedMessage) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	// if we have a subscription channel then push message to it
+	if f.ch != nil {
+		f.ch <- msg
+		return
+	}
+
 	if f.maxResults > 0 && len(f.collected) == f.maxResults {
 		copy(f.collected, f.collected[1:])
 		f.collected = f.collected[:len(f.collected)-1]

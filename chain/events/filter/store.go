@@ -10,6 +10,8 @@ import (
 type Filter interface {
 	ID() string
 	LastTaken() time.Time
+	SetSubChannel(chan<- interface{})
+	ClearSubChannel()
 }
 
 type FilterStore interface {

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
+	"github.com/minio/blake2b-simd"
 	"github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
@@ -401,6 +402,10 @@ func EthHashFromHex(s string) (EthHash, error) {
 	return h, nil
 }
 
+func EthHashData(b []byte) EthHash {
+	return EthHash(blake2b.Sum256(b))
+}
+
 func (h EthHash) String() string {
 	return "0x" + hex.EncodeToString(h[:])
 }
@@ -580,10 +585,6 @@ type EthLog struct {
 }
 
 type EthSubscriptionParams struct {
-	// Actor address or a list of addresses from which event logs should originate.
-	// Optional, default nil.
-	Address *address.Address `json:"address,omitempty"`
-
 	// List of topics to be matched.
 	// Optional, default: empty list
 	Topics EthTopicSpec `json:"topics,omitempty"`
@@ -593,6 +594,6 @@ type EthSubscriptionResponse struct {
 	// The persistent identifier for the subscription which can be used to unsubscribe.
 	SubscriptionID EthSubscriptionID `json:"subscription"`
 
-	// The object matching the subscription. This may be a Block, a Transaction or an EventLog
+	// The object matching the subscription. This may be a Block (tipset), a Transaction (message) or an EthLog
 	Result interface{} `json:"result"`
 }

@@ -14,6 +14,7 @@ import (
 type TipSetFilter struct {
 	id         string
 	maxResults int // maximum number of results to collect, 0 is unlimited
+	ch         chan<- interface{}
 
 	mu        sync.Mutex
 	collected []types.TipSetKey
@@ -26,9 +27,29 @@ func (f *TipSetFilter) ID() string {
 	return f.id
 }
 
+func (f *TipSetFilter) SetSubChannel(ch chan<- interface{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ch = ch
+	f.collected = nil
+}
+
+func (f *TipSetFilter) ClearSubChannel() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ch = nil
+}
+
 func (f *TipSetFilter) CollectTipSet(ctx context.Context, ts *types.TipSet) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	// if we have a subscription channel then push tipset to it
+	if f.ch != nil {
+		f.ch <- ts
+		return
+	}
+
 	if f.maxResults > 0 && len(f.collected) == f.maxResults {
 		copy(f.collected, f.collected[1:])
 		f.collected = f.collected[:len(f.collected)-1]
