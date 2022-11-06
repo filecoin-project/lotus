@@ -34,10 +34,10 @@ func TestWindowPostNoBuiltinWindow(t *testing.T) {
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ConstructorOpts(
-			node.Override(new(*config.ProvingConfig), func() *config.ProvingConfig {
+			node.Override(new(config.ProvingConfig), func() config.ProvingConfig {
 				c := config.DefaultStorageMiner()
 				c.Proving.DisableBuiltinWindowPoSt = true
-				return &c.Proving
+				return c.Proving
 			}),
 			node.Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(
 				config.DefaultStorageMiner().Fees,
@@ -91,10 +91,10 @@ func TestWindowPostNoBuiltinWindowWithWorker(t *testing.T) {
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ConstructorOpts(
-			node.Override(new(*config.ProvingConfig), func() *config.ProvingConfig {
+			node.Override(new(config.ProvingConfig), func() config.ProvingConfig {
 				c := config.DefaultStorageMiner()
 				c.Proving.DisableBuiltinWindowPoSt = true
-				return &c.Proving
+				return c.Proving
 			}),
 			node.Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(
 				config.DefaultStorageMiner().Fees,
