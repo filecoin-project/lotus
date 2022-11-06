@@ -31,10 +31,11 @@ const (
 	RewardKey   = "reward"
 	SystemKey   = "system"
 	VerifregKey = "verifiedregistry"
+	DatacapKey  = "datacap"
 )
 
-func GetBuiltinActorsKeys() []string {
-	return []string{
+func GetBuiltinActorsKeys(av actorstypes.Version) []string {
+	keys := []string{
 		AccountKey,
 		CronKey,
 		InitKey,
@@ -47,6 +48,10 @@ func GetBuiltinActorsKeys() []string {
 		SystemKey,
 		VerifregKey,
 	}
+	if av >= 9 {
+		keys = append(keys, DatacapKey)
+	}
+	return keys
 }
 
 var (
@@ -58,7 +63,7 @@ type actorEntry struct {
 	version actorstypes.Version
 }
 
-// ClearManifest clears all known manifests. This is usually used in tests that need to switch networks.
+// ClearManifests clears all known manifests. This is usually used in tests that need to switch networks.
 func ClearManifests() {
 	manifestMx.Lock()
 	defer manifestMx.Unlock()
@@ -103,12 +108,14 @@ func ReadManifest(ctx context.Context, store cbor.IpldStore, mfCid cid.Cid) (map
 		return nil, xerrors.Errorf("error loading manifest (cid: %s): %w", mfCid, err)
 	}
 
-	actorKeys := GetBuiltinActorsKeys() // TODO: we should be able to enumerate manifests directly.
-	metadata := make(map[string]cid.Cid, len(actorKeys))
-	for _, name := range actorKeys {
-		if c, ok := mf.Get(name); ok {
-			metadata[name] = c
-		}
+	var manifestData manifest.ManifestData
+	if err := store.Get(ctx, mf.Data, &manifestData); err != nil {
+		return nil, xerrors.Errorf("error loading manifest data: %w", err)
+	}
+
+	metadata := make(map[string]cid.Cid)
+	for _, entry := range manifestData.Entries {
+		metadata[entry.Name] = entry.Code
 	}
 
 	return metadata, nil

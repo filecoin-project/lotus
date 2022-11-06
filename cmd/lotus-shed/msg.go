@@ -141,7 +141,7 @@ func printMessage(cctx *cli.Context, msg *types.Message) error {
 		return nil
 	}
 
-	fmt.Println("Method:", filcns.NewActorRegistry().Methods[toact.Code][msg.Method].Num) // todo use remote
+	fmt.Println("Method:", filcns.NewActorRegistry().Methods[toact.Code][msg.Method].Name) // todo use remote
 	p, err := lcli.JsonParams(toact.Code, msg.Method, msg.Params)
 	if err != nil {
 		return err

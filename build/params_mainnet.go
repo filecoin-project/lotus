@@ -79,7 +79,7 @@ const UpgradeOhSnapHeight = 1594680
 // 2022-07-06T14:00:00Z
 const UpgradeSkyrHeight = 1960320
 
-var UpgradeV17Height = abi.ChainEpoch(99999999999999)
+var UpgradeSharkHeight = abi.ChainEpoch(99999999999999)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -95,8 +95,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_V17") == "1" {
-		UpgradeV17Height = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SHARK") == "1" {
+		UpgradeSharkHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

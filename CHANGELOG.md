@@ -1,5 +1,92 @@
 # Lotus changelog
 
+# 1.18.0-rc5 / 2022-11-1
+
+> ⚠️ **Please note that from Lotus v1.17.2&^ will require a Go-version of v1.18.1&^**
+
+This is the fifth release canadiate of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
+codenamed the Shark upgrade](https://github.com/filecoin-project/community/discussions/74?sort=top#discussioncomment-3825422). Shark upgrade delivers a wave of protocol refinements that will allow for useful smart contracts to be written using the FVM (eg. programmable markets, lending contracts, etc.).
+
+A full changelog will be published upon final release.
+
+The Shark upgrade introduces the following FIPs, delivered in [actors v9](https://github.com/filecoin-project/specs-actors/releases/tag/v9.0.1):
+- [FIP0029 Beneficiary Address for Storage Providers](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0029.md): step towards better lending market for SP
+- [FIP0034 Fix PreCommit Deposit Independent of Sector Content](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0034.md): resolves a significant weakening of Filecoin PoRep’s security guarantees
+  - ❗Pre-commit deposit will be calculated as the 20-day projection of expected reward earned by a sector with a sector quality of 10 (i.e. full of verified deals), regardless of sector content. Leave the initial pledge value, due when the sector is proven, unchanged.
+- [FIP0041 Forward Compatibility for PreCommit](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0041.md): enables a cleaner and easier transition to Programmable Storage Markets
+- [FIP0044 Standard Message Authentication](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0044.md): enable metadata authentication for user defined actor
+- [FIP0045 Decoupling Fil+ from Marketplace](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0045.md): DataCap and the QAP it brings is now associated with DATA. DataCap for the data many have terms where anyone who cares about that piece of data may extend the term, which incentives SPs to store the data longer on the network
+  - HUGE step towards user programmable storage market
+  - ⭐️ First Fungible Token Contract - Datacap Actor, on Filecoin!  ([fungible token standard](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0046.md), [token contract library](https://github.com/helix-onchain/filecoin/tree/5455f4f831e0f3f20005a9a789623d7ad6dada15/frc46_token))
+
+  
+## Calibration-net Upgrade
+
+This release candidate sets the calibration-net upgrade at epoch 16800. The bundle the network will be using is [v9.0.3](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.3)(located at `build/actors/v9.tar.zst` ). Upon the migration, the manifest CID should be `bafy2bzacedbedgynklc4dgpyxippkxmba2mgtw7ecntoneclsvvl4klqwuyyy`.
+
+## Snapshots
+
+The [#fil-infra](https://filecoinproject.slack.com/archives/C039RBG3RPC) team at PL has launched a brand new Lightweight Filecoin Chain Snapshots Service to support chain management needs for the node operators, check [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024) for the full detail. 
+We are planning to switch [the snapshot service listed in lotus docs](https://lotus.filecoin.io/lotus/manage/chain-management/#lightweight-snapshot) to the new Lightweight Filecoin Chain Snapshots Service by EOY, and deprecate public support of the current snapshots production. We recommend all users to test and switch the new service ASAP, and if you run into any issue, please report them [here](https://github.com/filecoin-project/filecoin-chain-archiver/discussions/new?category=feedback) and the team would be happy to support you! For the main differences between the old & the new service, checkout the FAQ section [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024)
+
+## Migration 
+
+(TBC)
+
+## New Features
+- Integrate actor v9:
+  - test: Add invariance checks to v17 migration test ([filecoin-project/lotus#9454](https://github.com/filecoin-project/lotus/pull/9454))
+- Implement and support [FIP0045 Decoupling Fil+ from Marketplace](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0045.md):
+  - fix: state: add datacap actor to actors registry ([filecoin-project/lotus#9476](https://github.com/filecoin-project/lotus/pull/9476))
+  - feat: actors: Integrate builtin-actors changes for FIP-0045 ([filecoin-project/lotus#9355](https://github.com/filecoin-project/lotus/pull/9355))
+  - feat: actors: Integrate datacap actor into lotus (#9348) ([filecoin-project/lotus#9348](https://github.com/filecoin-project/lotus/pull/9348))
+  - feat: cli: Add commands for listing allocations and removing expired allocations ([filecoin-project/lotus#9468](https://github.com/filecoin-project/lotus/pull/9468))
+  - feat: sealing pipeline: Prepare deal assigning logic for FIP-45 ([filecoin-project/lotus#9412](https://github.com/filecoin-project/lotus/pull/9412))
+  - feat: add API methods to get allocations and claims ([filecoin-project/lotus#9437](https://github.com/filecoin-project/lotus/pull/9437))
+- Implement and support [FIP0029 Beneficiary Address for Storage Providers](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0029.md)
+  - feat: api/cli: beneficiary withdraw api and cli #9296
+  - feat: api/cli: change beneficiary propose and confirm for actors and multisigs. #9307
+  
+## Improvements
+- feat: wdpost: Add ability to only have single partition per msg for partitions with recovery sectors ([filecoin-project/lotus#9427](https://github.com/filecoin-project/lotus/pull/9427))
+- feat: API:  support typed errors over RPC ([filecoin-project/lotus#9061](https://github.com/filecoin-project/lotus/pull/9061))
+- feat: refactor: remove NewestNetworkVersion ([filecoin-project/lotus#9351](https://github.com/filecoin-project/lotus/pull/9351))
+- chore: actors: Allow builtin-actors to return a map of methods (#9342) ([filecoin-project/lotus#9342](https://github.com/filecoin-project/lotus/pull/9342))
+
+## Dependencies
+- Update FFI ([filecoin-project/lotus#9484](https://github.com/filecoin-project/lotus/pull/9484))
+- chore: deps: update go-state-types and builtin-actors for v9 release ([filecoin-project/lotus#9485](https://github.com/filecoin-project/lotus/pull/9485))
+- deps: backport: #9455 ([filecoin-project/lotus#9463](https://github.com/filecoin-project/lotus/pull/9463))
+- Deps: Update go-fil-markets to 1.24.0-v17 ([filecoin-project/lotus#9450](https://github.com/filecoin-project/lotus/pull/9450))
+- github.com/filecoin-project/go-jsonrpc (v0.1.7 -> v0.1.8)
+- github.com/filecoin-project/go-state-types (v0.1.12-beta -> v0.9.0):
+
+
+## Others
+- fix: upgrade: no splash banner for nv17 :( ([filecoin-project/lotus#9486](https://github.com/filecoin-project/lotus/pull/9486))
+- chore: build: add calib upgrade param for shark ([filecoin-project/lotus#9483](https://github.com/filecoin-project/lotus/pull/9483))
+- chore: update butterfly artifacts ([filecoin-project/lotus#9467](https://github.com/filecoin-project/lotus/pull/9467))
+- chore: butterfly: update assets ([filecoin-project/lotus#9462](https://github.com/filecoin-project/lotus/pull/9462))
+- Delete lotus-pond (#9352) ([filecoin-project/lotus#9352](https://github.com/filecoin-project/lotus/pull/9352))
+- build: set version to v1.18.0-dev
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Geoff Stuart | 51 | +8677/-19320 | 401 |
+| Aayush Rajasekaran | 5 | +1452/-166 | 34 |
+| Łukasz Magiera | 5 | +429/-135 | 45 |
+| Aayush | 19 | +281/-157 | 72 |
+| Shrenuj Bansal | 3 | +176/-61 | 10 |
+| Jennifer Wang | 7 | +19/-18 | 15 |
+| simlecode | 1 | +5/-5 | 4 |
+| Kevin Li | 1 | +7/-0 | 1 |
+| Rod Vagg | 1 | +3/-2 | 2 |
+| Peter Rabbitson | 1 | +3/-0 | 1 |
+| ZenGround0 | 1 | +2/-0 | 1 |
+
+
 # v1.17.2 / 2022-10-05
 
 This is an OPTIONAL release of Lotus. This feature release introduces new sector number management APIs in Lotus that enables all the Sealing-as-a-Service and Lotus interactions needed to function. The default propagation delay setting for storage providers has also been changed, as well as numerous other features and enhancements. Check out the sub-bullet points in the feature and enhancement section to get a short description about each feature and enhancements.
