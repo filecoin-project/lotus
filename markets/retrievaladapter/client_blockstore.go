@@ -77,7 +77,7 @@ func (a *APIBlockstoreAccessor) Done(id retrievalmarket.DealID) error {
 	return a.sub.Done(id)
 }
 
-func (a *APIBlockstoreAccessor) UseRetrievalStore(id retrievalmarket.DealID, sid api.RemoteStoreID) error {
+func (a *APIBlockstoreAccessor) RegisterDealToRetrievalStore(id retrievalmarket.DealID, sid api.RemoteStoreID) error {
 	a.accessLk.Lock()
 	defer a.accessLk.Unlock()
 

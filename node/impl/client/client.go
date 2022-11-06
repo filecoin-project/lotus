@@ -849,7 +849,7 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 	id := a.Retrieval.NextID()
 
 	if order.RemoteStore != nil {
-		if err := a.ApiBlockstoreAccessor.UseRetrievalStore(id, *order.RemoteStore); err != nil {
+		if err := a.ApiBlockstoreAccessor.RegisterDealToRetrievalStore(id, *order.RemoteStore); err != nil {
 			return 0, xerrors.Errorf("registering api store: %w", err)
 		}
 	}
@@ -1030,6 +1030,7 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 				root,
 				dagSpec.selector,
 				func(node format.Node) error {
+					// if we're exporting merkle proofs for this dag, export all nodes read by the traversal
 					if dagSpec.exportAll {
 						lk.Lock()
 						defer lk.Unlock()

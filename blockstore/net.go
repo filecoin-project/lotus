@@ -19,12 +19,12 @@ import (
 type NetRPCReqType byte
 
 const (
-	NRpcHas     NetRPCReqType = iota
-	NRpcGet     NetRPCReqType = iota
-	NRpcGetSize NetRPCReqType = iota
-	NRpcPut     NetRPCReqType = iota
-	NRpcDelete  NetRPCReqType = iota
-	NRpcList    NetRPCReqType = iota
+	NRpcHas NetRPCReqType = iota
+	NRpcGet
+	NRpcGetSize
+	NRpcPut
+	NRpcDelete
+	NRpcList
 
 	// todo cancel req
 )
@@ -32,16 +32,16 @@ const (
 type NetRPCRespType byte
 
 const (
-	NRpcOK   NetRPCRespType = iota
-	NRpcErr  NetRPCRespType = iota
-	NRpcMore NetRPCRespType = iota
+	NRpcOK NetRPCRespType = iota
+	NRpcErr
+	NRpcMore
 )
 
 type NetRPCErrType byte
 
 const (
-	NRpcErrGeneric  NetRPCErrType = iota
-	NRpcErrNotFound NetRPCErrType = iota
+	NRpcErrGeneric NetRPCErrType = iota
+	NRpcErrNotFound
 )
 
 type NetRpcReq struct {
@@ -87,7 +87,7 @@ type NetworkStore struct {
 	closed  chan struct{}
 
 	closeLk sync.Mutex
-	onClose func()
+	onClose []func()
 }
 
 func NewNetworkStore(mss msgio.ReadWriteCloser) *NetworkStore {
@@ -143,7 +143,7 @@ func (n *NetworkStore) OnClose(cb func()) {
 	case <-n.closed:
 		cb()
 	default:
-		n.onClose = cb
+		n.onClose = append(n.onClose, cb)
 	}
 }
 
@@ -154,7 +154,9 @@ func (n *NetworkStore) receive() {
 
 		close(n.closed)
 		if n.onClose != nil {
-			n.onClose()
+			for _, f := range n.onClose {
+				f()
+			}
 		}
 	}()
 
@@ -203,6 +205,7 @@ func (n *NetworkStore) sendRpc(rt NetRPCReqType, cids []cid.Cid, data [][]byte) 
 
 	n.respLk.Lock()
 	if n.respMap == nil {
+		n.respLk.Unlock()
 		return 0, nil, xerrors.Errorf("netstore closed")
 	}
 	n.respMap[rid] = respCh
@@ -218,22 +221,24 @@ func (n *NetworkStore) sendRpc(rt NetRPCReqType, cids []cid.Cid, data [][]byte) 
 	var rbuf bytes.Buffer // todo buffer pool
 	if err := req.MarshalCBOR(&rbuf); err != nil {
 		n.respLk.Lock()
+		defer n.respLk.Unlock()
+
 		if n.respMap == nil {
 			return 0, nil, xerrors.Errorf("netstore closed")
 		}
 		delete(n.respMap, rid)
-		n.respLk.Unlock()
 
 		return 0, nil, err
 	}
 
 	if err := n.msgStream.WriteMsg(rbuf.Bytes()); err != nil {
 		n.respLk.Lock()
+		defer n.respLk.Unlock()
+
 		if n.respMap == nil {
 			return 0, nil, xerrors.Errorf("netstore closed")
 		}
 		delete(n.respMap, rid)
-		n.respLk.Unlock()
 
 		return 0, nil, err
 	}
@@ -260,10 +265,10 @@ func (n *NetworkStore) waitResp(ctx context.Context, rch <-chan NetRpcResp, rid 
 				} else {
 					err = xerrors.Errorf("block not found, but cid was null")
 				}
-			default:
-				err = xerrors.Errorf("unknown error type")
 			case NRpcErrGeneric:
 				err = xerrors.Errorf("generic error")
+			default:
+				err = xerrors.Errorf("unknown error type")
 			}
 
 			return NetRpcResp{}, xerrors.Errorf("netstore error response: %s (%w)", e.Msg, err)
