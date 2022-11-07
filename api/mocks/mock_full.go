@@ -1327,10 +1327,10 @@ func (mr *MockFullNodeMockRecorder) EthSendRawTransaction(arg0, arg1 interface{}
 }
 
 // EthSubscribe mocks base method.
-func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 []string, arg2 api.EthSubscriptionParams) (api.EthSubscriptionResponse, error) {
+func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 []string, arg2 api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthSubscribe", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthSubscriptionResponse)
+	ret0, _ := ret[0].(<-chan api.EthSubscriptionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

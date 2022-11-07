@@ -69,7 +69,7 @@ type EthEventAPI interface {
 	EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (api.EthSubscriptionResponse, error)
+	EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error)
 	EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error)
 }
 
