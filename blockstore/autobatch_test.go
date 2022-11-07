@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAutobatchBlockstore(t *testing.T) {
