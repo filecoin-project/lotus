@@ -5,8 +5,6 @@ import (
 	"log"
 	"sync"
 
-	"golang.org/x/xerrors"
-
 	"github.com/fatih/color"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
@@ -18,6 +16,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"

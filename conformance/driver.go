@@ -256,11 +256,21 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		lvm.SetInvoker(invoker)
 		vmi = lvm
 	} else {
-		fvm, err := vm.NewVM(context.TODO(), vmOpts)
-		if err != nil {
-			return nil, cid.Undef, err
+		if vmOpts.NetworkVersion >= network.Version16 {
+			fvm, err := vm.NewFVM(context.TODO(), vmOpts)
+			if err != nil {
+				return nil, cid.Undef, err
+			}
+			vmi = fvm
+		} else {
+			lvm, err := vm.NewLegacyVM(context.TODO(), vmOpts)
+			if err != nil {
+				return nil, cid.Undef, err
+			}
+			invoker := filcns.NewActorRegistry()
+			lvm.SetInvoker(invoker)
+			vmi = lvm
 		}
-		vmi = fvm
 	}
 
 	ret, err := vmi.ApplyMessage(d.ctx, toChainMsg(params.Message))
@@ -269,7 +279,13 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	}
 
 	var root cid.Cid
-	root, err = vmi.Flush(d.ctx)
+	if d.vmFlush {
+		// flush the VM, committing the state tree changes and forcing a
+		// recursive copy from the temporary blockstore to the real blockstore.
+		root, err = vmi.Flush(d.ctx)
+	} else {
+		root, err = vmi.(*vm.LegacyVM).StateTree().(*state.StateTree).Flush(d.ctx)
+	}
 
 	return ret, root, err
 }
