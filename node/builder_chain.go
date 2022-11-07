@@ -181,7 +181,7 @@ func ConfigFullNode(c interface{}) Option {
 		Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
 		If(cfg.Chainstore.EnableSplitstore,
-			If(cfg.Chainstore.Splitstore.ColdStoreType == "universal",
+			If(cfg.Chainstore.Splitstore.ColdStoreType == "universal" || cfg.Chainstore.Splitstore.ColdStoreType == "messages",
 				Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
 			If(cfg.Chainstore.Splitstore.ColdStoreType == "discard",
 				Override(new(dtypes.ColdBlockstore), modules.DiscardColdBlockstore)),

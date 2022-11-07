@@ -91,12 +91,11 @@ func DefaultFullNode() *FullNode {
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
 			Splitstore: Splitstore{
-				ColdStoreType: "universal",
+				ColdStoreType: "messages",
 				HotStoreType:  "badger",
 				MarkSetType:   "badger",
 
-				HotStoreFullGCFrequency:  20,
-				ColdStoreFullGCFrequency: 7,
+				HotStoreFullGCFrequency: 20,
 			},
 		},
 	}
