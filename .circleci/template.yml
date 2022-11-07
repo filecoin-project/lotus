@@ -547,7 +547,7 @@ jobs:
     steps:
       - run:
           name: Install git jq curl
-          command: apt update && apt install -y git jq curl
+          command: apt update && apt install -y git jq curl sudo
       - checkout
       - git_fetch_all_tags
       - checkout
@@ -825,12 +825,13 @@ workflows:
       - build-debug
       - build-lotus-soup
 
+  release:
+    jobs:
       - build-linux-amd64:
           name: "Build ( linux / amd64 )"
           filters:
             branches:
               only:
-                - goreleaser-prebuilt-m1
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
@@ -840,7 +841,6 @@ workflows:
           filters:
             branches:
               only:
-                - goreleaser-prebuilt-m1
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
@@ -850,8 +850,20 @@ workflows:
           filters:
             branches:
               only:
-                - goreleaser-prebuilt-m1
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - release:
+          name: "Release"
+          requires:
+            - "Build ( darwin / amd64 )"
+            - "Build ( linux / amd64 )"
+            - "Build ( darwin / arm64 )"
+          filters:
+            branches:
+              ignore:
+                - /.*/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -865,11 +877,7 @@ workflows:
           filters:
             branches:
               only:
-                - goreleaser-prebuilt-m1
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-appimage:
           name: "Build AppImage"
           filters:

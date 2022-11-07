@@ -62,7 +62,6 @@ release:
   prerelease: auto
   name_template: "Release v{{.Version}}"
 
-
 brews:
   - tap:
       owner: filecoin-project
@@ -82,6 +81,7 @@ brews:
     homepage: "https://filecoin.io"
     description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
     license: MIT
+    skip_upload: auto
     dependencies:
       - name: pkg-config
       - name: jq
