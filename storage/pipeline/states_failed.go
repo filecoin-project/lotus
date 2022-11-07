@@ -421,6 +421,8 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 		return xerrors.Errorf("should never reach AbortUpgrade as a non-CCUpdate sector")
 	}
 
+	m.cleanupAssignedDeals(sector)
+
 	// Remove snap deals replica if any
 	if err := m.sealer.ReleaseReplicaUpgrade(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return xerrors.Errorf("removing CC update files from sector storage")
