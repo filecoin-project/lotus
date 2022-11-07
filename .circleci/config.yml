@@ -300,8 +300,6 @@ jobs:
     executor: golang
     steps:
       - prepare
-      - run: sudo apt-get update
-      - run: sudo apt-get install npm
       - run: make lotus lotus-miner lotus-worker
       - run:
           name: check tag and version output match
@@ -323,10 +321,10 @@ jobs:
       - prepare:
           linux: false
           darwin: true
-      - restore_cache:
-          name: restore cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
       - run: make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
       - run: |
           mkdir -p /tmp/workspace/darwin_amd64_v1 && \
           mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_amd64_v1/
@@ -334,12 +332,6 @@ jobs:
           root: /tmp/workspace
           paths:
             - darwin_amd64_v1
-      - save_cache:
-          name: save cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-          paths:
-            - "~/.rustup"
-            - "~/.cargo"
 
   build-darwin-arm64:
     description: self-hosted m1 runner
@@ -351,13 +343,13 @@ jobs:
       - prepare:
           linux: false
           darwin: true
-      - restore_cache:
-          name: restore cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
       - run: |
           export CPATH=$(brew --prefix)/include
           export LIBRARY_PATH=$(brew --prefix)/lib
           make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
       - run: |
           mkdir -p /tmp/workspace/darwin_arm64 && \
           mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_arm64/
@@ -365,12 +357,6 @@ jobs:
           root: /tmp/workspace
           paths:
             - darwin_arm64
-      - save_cache:
-          name: save cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-          paths:
-            - "~/.rustup"
-            - "~/.cargo"
       - run:
           command: make clean
           when: always
