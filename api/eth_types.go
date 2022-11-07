@@ -252,6 +252,25 @@ func (n EthNonce) MarshalJSON() ([]byte, error) {
 	return json.Marshal(n.String())
 }
 
+func (n *EthNonce) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	s = strings.Replace(s, "0x", "", -1)
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+
+	decoded, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	copy(n[:], decoded[:8])
+	return nil
+}
+
 type EthAddress [EthAddressLength]byte
 
 func (ea EthAddress) String() string {
