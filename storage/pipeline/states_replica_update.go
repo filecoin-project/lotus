@@ -97,6 +97,17 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
+
+	dlinfo, err := m.Api.StateMinerProvingDeadline(ctx.Context(), m.maddr, ts.Key())
+	if err != nil {
+		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %w", err)
+	}
+	// if sector's deadline is immutable wait in a non error state
+	// sector's deadline is immutable if it is the current deadline or the next deadline
+	if sl.Deadline == dlinfo.Index || (dlinfo.Index+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline {
+		return ctx.Send(SectorDeadlineImmutable{})
+	}
+
 	updateProof, err := sector.SectorType.RegisteredUpdateProof()
 	if err != nil {
 		log.Errorf("failed to get update proof type from seal proof: %+v", err)
@@ -185,6 +196,46 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 	}
 
 	return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
+}
+
+func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo) error {
+	immutable := true
+	for immutable {
+		ts, err := m.Api.ChainHead(ctx.Context())
+		if err != nil {
+			log.Errorf("handleWaitMutable: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		sl, err := m.Api.StateSectorPartition(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
+		if err != nil {
+			log.Errorf("handleWaitMutable: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		dlinfo, err := m.Api.StateMinerProvingDeadline(ctx.Context(), m.maddr, ts.Key())
+		if err != nil {
+			log.Errorf("handleWaitMutable: api error, not proceeding: %w", err)
+			return nil
+		}
+
+		sectorDeadlineOpen := sl.Deadline == dlinfo.Index
+		sectorDeadlineNext := (dlinfo.Index+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline
+		immutable := sectorDeadlineOpen || sectorDeadlineNext
+
+		// Sleep for immutable epochs
+		if immutable {
+			dlineEpochsRemaining := dlinfo.NextOpen() - ts.Height()
+			if sectorDeadlineOpen {
+				// sleep for remainder of deadline
+				time.Sleep(time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining))
+			} else {
+				// sleep for remainder of deadline and next one
+				time.Sleep(time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining+dlinfo.WPoStChallengeWindow))
+			}
+		}
+	}
+	return ctx.Send(SectorDeadlineMutable{})
 }
 
 func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector SectorInfo) error {

@@ -534,6 +534,7 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.ProveReplicaUpdate},
 	{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
 	{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
+	{col: color.FgYellow, state: sealing.WaitMutable},
 	{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
 	{col: color.FgYellow, state: sealing.ReleaseSectorKey},
 

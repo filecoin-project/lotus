@@ -472,6 +472,14 @@ type SectorSubmitReplicaUpdateFailed struct{}
 
 func (evt SectorSubmitReplicaUpdateFailed) apply(state *SectorInfo) {}
 
+type SectorDeadlineImmutable struct{}
+
+func (evt SectorDeadlineImmutable) apply(state *SectorInfo) {}
+
+type SectorDeadlineMutable struct{}
+
+func (evt SectorDeadlineMutable) apply(state *SectorInfo) {}
+
 type SectorReleaseKeyFailed struct{ error }
 
 func (evt SectorReleaseKeyFailed) FormatError(xerrors.Printer) (next error) {
