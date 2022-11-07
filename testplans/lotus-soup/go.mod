@@ -9,9 +9,9 @@ require (
 	github.com/drand/drand v1.3.0
 	github.com/filecoin-project/go-address v1.0.0
 	github.com/filecoin-project/go-data-transfer v1.15.2
-	github.com/filecoin-project/go-fil-markets v1.24.0
-	github.com/filecoin-project/go-jsonrpc v0.1.7
-	github.com/filecoin-project/go-state-types v0.1.11
+	github.com/filecoin-project/go-fil-markets v1.24.0-v17
+	github.com/filecoin-project/go-jsonrpc v0.1.8
+	github.com/filecoin-project/go-state-types v0.9.8
 	github.com/filecoin-project/go-storedcounter v0.1.0
 	github.com/filecoin-project/lotus v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/specs-actors v0.9.15
@@ -23,7 +23,7 @@ require (
 	github.com/ipfs/go-ipfs-files v0.1.1
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log/v2 v2.5.1
-	github.com/ipfs/go-merkledag v0.6.0
+	github.com/ipfs/go-merkledag v0.8.0
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.4.0
 	github.com/kpacha/opencensus-influxdb v0.0.0-20181102202715-663e2683a27c
@@ -86,6 +86,7 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4 // indirect
 	github.com/filecoin-project/go-cbor-util v0.0.1 // indirect
 	github.com/filecoin-project/go-commp-utils v0.1.3 // indirect
+	github.com/filecoin-project/go-commp-utils/nonffi v0.0.0-20220905160352-62059082a837 // indirect
 	github.com/filecoin-project/go-crypto v0.0.1 // indirect
 	github.com/filecoin-project/go-ds-versioning v0.1.1 // indirect
 	github.com/filecoin-project/go-fil-commcid v0.1.0 // indirect
@@ -147,7 +148,7 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.0.0 // indirect
-	github.com/ipfs/go-bitswap v0.8.0 // indirect
+	github.com/ipfs/go-bitswap v0.10.2 // indirect
 	github.com/ipfs/go-block-format v0.0.3 // indirect
 	github.com/ipfs/go-blockservice v0.4.0 // indirect
 	github.com/ipfs/go-cidutil v0.1.0 // indirect
@@ -171,7 +172,7 @@ require (
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-cbor v0.0.6 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
-	github.com/ipfs/go-ipns v0.1.3-0.20220819140646-0d8e99ba180a // indirect
+	github.com/ipfs/go-ipns v0.2.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-path v0.3.0 // indirect
@@ -198,19 +199,17 @@ require (
 	github.com/koron/go-ssdp v0.0.3 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
-	github.com/libp2p/go-eventbus v0.3.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-connmgr v0.4.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.20.0 // indirect
 	github.com/libp2p/go-libp2p-gostream v0.4.0 // indirect
-	github.com/libp2p/go-libp2p-kad-dht v0.17.0 // indirect
-	github.com/libp2p/go-libp2p-kbucket v0.4.7 // indirect
-	github.com/libp2p/go-libp2p-loggables v0.1.0 // indirect
+	github.com/libp2p/go-libp2p-kad-dht v0.18.0 // indirect
+	github.com/libp2p/go-libp2p-kbucket v0.5.0 // indirect
 	github.com/libp2p/go-libp2p-noise v0.5.0 // indirect
-	github.com/libp2p/go-libp2p-peerstore v0.7.1 // indirect
+	github.com/libp2p/go-libp2p-peerstore v0.8.0 // indirect
 	github.com/libp2p/go-libp2p-pubsub v0.8.0 // indirect
-	github.com/libp2p/go-libp2p-record v0.1.3 // indirect
+	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3 // indirect
 	github.com/libp2p/go-libp2p-tls v0.5.0 // indirect
 	github.com/libp2p/go-maddr-filter v0.1.0 // indirect
@@ -289,7 +288,7 @@ require (
 	github.com/weaveworks/promrus v1.2.0 // indirect
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
-	github.com/whyrusleeping/cbor-gen v0.0.0-20220323183124-98fa8256a799 // indirect
+	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c // indirect
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4 // indirect
@@ -336,5 +335,3 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ../../extern/filecoin-ffi
 
 replace github.com/filecoin-project/lotus => ../..
-
-replace github.com/filecoin-project/go-fil-markets => github.com/marcopolo/go-fil-markets v1.23.1-0.20220811180806-b8e84162b48e

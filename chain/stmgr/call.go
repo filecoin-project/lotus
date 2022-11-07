@@ -133,7 +133,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 	// TODO: maybe just use the invoker directly?
 	ret, err := vmi.ApplyImplicitMessage(ctx, msg)
-	if err != nil {
+	if err != nil && ret == nil {
 		return nil, xerrors.Errorf("apply message failed: %w", err)
 	}
 
@@ -150,8 +150,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		ExecutionTrace: ret.ExecutionTrace,
 		Error:          errs,
 		Duration:       ret.Duration,
-	}, nil
-
+	}, err
 }
 
 func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {

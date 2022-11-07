@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 

@@ -34,7 +34,6 @@ var verifRegCmd = &cli.Command{
 		verifRegAddVerifierFromAccountCmd,
 		verifRegVerifyClientCmd,
 		verifRegListVerifiersCmd,
-		verifRegListClientsCmd,
 		verifRegCheckClientCmd,
 		verifRegCheckVerifierCmd,
 		verifRegRemoveVerifiedClientDataCapCmd,
@@ -280,38 +279,6 @@ var verifRegListVerifiersCmd = &cli.Command{
 			return err
 		}
 		return st.ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error {
-			_, err := fmt.Printf("%s: %s\n", addr, dcap)
-			return err
-		})
-	},
-}
-
-var verifRegListClientsCmd = &cli.Command{
-	Name:   "list-clients",
-	Usage:  "list all verified clients",
-	Hidden: true,
-	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
-
-		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		apibs := blockstore.NewAPIBlockstore(api)
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
-
-		st, err := verifreg.Load(store, act)
-		if err != nil {
-			return err
-		}
-		return st.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
 			_, err := fmt.Printf("%s: %s\n", addr, dcap)
 			return err
 		})

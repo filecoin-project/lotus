@@ -38,7 +38,6 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 		return nil, fmt.Errorf("unknown method %d for actor %s", method, act.Code)
 	}
 
-	fmt.Println("found ", m.Ret, " and ", m.Params, " for ", m.Num)
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 

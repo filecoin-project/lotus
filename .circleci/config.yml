@@ -942,6 +942,11 @@ workflows:
           target: "./itests/mempool_test.go"
       
       - test:
+          name: test-itest-migration_nv17
+          suite: itest-migration_nv17
+          target: "./itests/migration_nv17_test.go"
+      
+      - test:
           name: test-itest-mpool_msg_uuid
           suite: itest-mpool_msg_uuid
           target: "./itests/mpool_msg_uuid_test.go"
@@ -980,6 +985,16 @@ workflows:
           name: test-itest-paych_cli
           suite: itest-paych_cli
           target: "./itests/paych_cli_test.go"
+      
+      - test:
+          name: test-itest-pending_deal_allocation
+          suite: itest-pending_deal_allocation
+          target: "./itests/pending_deal_allocation_test.go"
+      
+      - test:
+          name: test-itest-remove_verifreg_datacap
+          suite: itest-remove_verifreg_datacap
+          target: "./itests/remove_verifreg_datacap_test.go"
       
       - test:
           name: test-itest-sdr_upgrade

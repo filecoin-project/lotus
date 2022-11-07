@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
@@ -531,6 +532,16 @@ type FullNode interface {
 	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*api.MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error) //perm:read
+	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocation returns the allocation for a given address and allocation ID.
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocations returns the all the allocations for a given client.
+	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
+	// StateGetClaim returns the claim for a given address and claim ID.
+	StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) //perm:read
+	// StateGetClaims returns the all the claims for a given provider.
+	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
 	// StateAccountKey returns the public key address of the given ID address

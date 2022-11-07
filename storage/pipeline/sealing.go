@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -69,6 +70,7 @@ type SealingAPI interface {
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	StateMinerAllocated(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)
+	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
 
 	// Address selector
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -131,22 +133,35 @@ type Sealing struct {
 }
 
 type openSector struct {
-	used     abi.UnpaddedPieceSize // change to bitfield/rle when AddPiece gains offset support to better fill sectors
-	number   abi.SectorNumber
-	ccUpdate bool
+	used        abi.UnpaddedPieceSize // change to bitfield/rle when AddPiece gains offset support to better fill sectors
+	lastDealEnd abi.ChainEpoch
+	number      abi.SectorNumber
+	ccUpdate    bool
 
 	maybeAccept func(cid.Cid) error // called with inputLk
 }
 
-func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF expFn) (bool, error) {
+func (o *openSector) checkDealAssignable(piece *pendingPiece, expF expFn) (bool, error) {
+	// if there are deals assigned, check that no assigned deal expires after termMax
+	if o.lastDealEnd > piece.claimTerms.claimTermEnd {
+		return false, nil
+	}
+
+	// check that in case of upgrade sectors, sector expiration is at least deal expiration
 	if !o.ccUpdate {
 		return true, nil
 	}
-	expiration, _, err := expF(o.number)
+	sectorExpiration, _, err := expF(o.number)
 	if err != nil {
 		return false, err
 	}
-	return expiration >= dealEnd, nil
+
+	// check that in case of upgrade sector, it's expiration isn't above deals claim TermMax
+	if sectorExpiration > piece.claimTerms.claimTermEnd {
+		return false, nil
+	}
+
+	return sectorExpiration >= piece.deal.DealProposal.EndEpoch, nil
 }
 
 type pieceAcceptResp struct {
@@ -155,12 +170,19 @@ type pieceAcceptResp struct {
 	err    error
 }
 
+type pieceClaimBounds struct {
+	// dealStart + termMax
+	claimTermEnd abi.ChainEpoch
+}
+
 type pendingPiece struct {
 	doneCh chan struct{}
 	resp   *pieceAcceptResp
 
 	size abi.UnpaddedPieceSize
 	deal api.PieceDealInfo
+
+	claimTerms pieceClaimBounds
 
 	data storiface.Data
 

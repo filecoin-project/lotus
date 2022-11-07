@@ -1,9 +1,14 @@
 package builtin
 
 import (
+	"reflect"
+	"runtime"
+	"strings"
+
 	"github.com/ipfs/go-cid"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin"
 	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
 	_init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
@@ -17,6 +22,7 @@ import (
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	account9 "github.com/filecoin-project/go-state-types/builtin/v9/account"
 	cron9 "github.com/filecoin-project/go-state-types/builtin/v9/cron"
+	datacap9 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	_init9 "github.com/filecoin-project/go-state-types/builtin/v9/init"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -32,19 +38,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
-var _ rtt.VMActor = (*RegistryEntry)(nil)
-
 type RegistryEntry struct {
 	state   cbor.Er
 	code    cid.Cid
-	methods []interface{}
+	methods map[uint64]builtin.MethodMeta
 }
 
 func (r RegistryEntry) State() cbor.Er {
 	return r.state
 }
 
-func (r RegistryEntry) Exports() []interface{} {
+func (r RegistryEntry) Exports() map[uint64]builtin.MethodMeta {
 	return r.methods
 }
 
@@ -52,11 +56,45 @@ func (r RegistryEntry) Code() cid.Cid {
 	return r.code
 }
 
-func MakeRegistry(av actorstypes.Version) []rtt.VMActor {
+func MakeRegistryLegacy(actors []rtt.VMActor) []RegistryEntry {
+	registry := make([]RegistryEntry, 0)
+
+	for _, actor := range actors {
+		methodMap := make(map[uint64]builtin.MethodMeta)
+		for methodNum, method := range actor.Exports() {
+			if method != nil {
+				methodMap[uint64(methodNum)] = makeMethodMeta(method)
+			}
+		}
+		registry = append(registry, RegistryEntry{
+			code:    actor.Code(),
+			methods: methodMap,
+			state:   actor.State(),
+		})
+	}
+
+	return registry
+}
+
+func makeMethodMeta(method interface{}) builtin.MethodMeta {
+	ev := reflect.ValueOf(method)
+	// Extract the method names using reflection. These
+	// method names always match the field names in the
+	// `builtin.Method*` structs (tested in the specs-actors
+	// tests).
+	fnName := runtime.FuncForPC(ev.Pointer()).Name()
+	fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
+	return builtin.MethodMeta{
+		Name:   fnName,
+		Method: method,
+	}
+}
+
+func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 	if av < actorstypes.Version8 {
 		panic("expected version v8 and up only, use specs-actors for v0-7")
 	}
-	registry := make([]rtt.VMActor, 0)
+	registry := make([]RegistryEntry, 0)
 
 	codeIDs, err := actors.GetActorCodeIDs(av)
 	if err != nil {
@@ -134,6 +172,7 @@ func MakeRegistry(av actorstypes.Version) []rtt.VMActor {
 					methods: verifreg8.Methods,
 					state:   new(verifreg8.State),
 				})
+
 			}
 		}
 
@@ -205,6 +244,12 @@ func MakeRegistry(av actorstypes.Version) []rtt.VMActor {
 					code:    codeID,
 					methods: verifreg9.Methods,
 					state:   new(verifreg9.State),
+				})
+			case actors.DatacapKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: datacap9.Methods,
+					state:   new(datacap9.State),
 				})
 			}
 		}
