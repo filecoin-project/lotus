@@ -555,8 +555,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	coldCount := new(int64)
 	fCold := func(c cid.Cid) error {
-		// Nothing gets written to cold store in discard mode
-		// Short circuit cold set tracking in universal mode -- all blocks not marked hot are implicitly marked cold
+		// Writes to cold set optimized away in universal and discard mode
+		//
+		// Nothing gets written to cold store in discard mode so no cold objects to write
+		// Everything not marked hot gets written to cold store in universal mode so no need to track cold objects separately
 		if s.cfg.DiscardColdBlocks || s.cfg.UniversalColdBlocks {
 			return nil
 		}
@@ -660,6 +662,9 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return xerrors.Errorf("error checking cold mark set for %s: %w", c, err)
 		}
 
+		// Discard mode: coldMark == false, s.cfg.UniversalColdBlocks == false, always return here, no writes to cold store
+		// Universal mode: coldMark == false, s.cfg.UniversalColdBlocks == true, never stop here, all writes to cold store
+		// Otherwise: s.cfg.UniversalColdBlocks == false, if !coldMark stop here and don't write to cold store, if coldMark continue and write to cold store
 		if !coldMark && !s.cfg.UniversalColdBlocks { // universal mode means mark everything as cold
 			return nil
 		}
@@ -949,10 +954,13 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			}
 		}
 
-		// messages outside of inclMsgs are included in the cold store
+		// messages and receipts outside of inclMsgs are included in the cold store
 		if hdr.Height < inclMsgs && hdr.Height > 0 {
 			if err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk); err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+			}
+			if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk); err != nil {
+				return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 			}
 		}
 
@@ -1331,7 +1339,7 @@ func (s *SplitStore) coldSetPath() string {
 }
 
 func (s *SplitStore) discardSetPath() string {
-	return filepath.Join(s.path, "discard")
+	return filepath.Join(s.path, "deadset")
 }
 
 func (s *SplitStore) checkpointPath() string {
