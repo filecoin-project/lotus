@@ -414,7 +414,7 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: "."
+          at: /tmp/workspace
       - run:
           name: Update Go
           command: |
@@ -449,13 +449,11 @@ jobs:
           command: |
             sed -i "s/version: latest/version: ${CIRCLE_TAG:-latest}/" AppImageBuilder.yml
             make appimage
-      - run:
-          name: prepare workspace
-          command: |
-            mkdir appimage
-            mv Lotus-*.AppImage appimage
+      - run: |
+            mkdir -p /tmp/workspace/appimage && \
+            mv Lotus-*.AppImage /tmp/workspace/appimage/
       - persist_to_workspace:
-          root: "."
+          root: /tmp/workspace
           paths:
             - appimage
 
@@ -553,7 +551,7 @@ jobs:
       - checkout
       - install_ipfs
       - attach_workspace:
-          at: "."
+          at: /tmp/workspace
       - when:
           condition: << parameters.linux >>
           steps:
@@ -728,8 +726,6 @@ jobs:
       name: packer
     steps:
       - checkout
-      - attach_workspace:
-          at: "."
       - packer_build:
           template: tools/packer/lotus-snap.pkr.hcl
   publish-dockerhub:
