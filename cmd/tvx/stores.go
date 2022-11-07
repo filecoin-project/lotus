@@ -5,6 +5,8 @@ import (
 	"log"
 	"sync"
 
+	"golang.org/x/xerrors"
+
 	"github.com/fatih/color"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
@@ -157,4 +159,13 @@ func (pb *proxyingBlockstore) PutMany(ctx context.Context, blocks []blocks.Block
 	}
 	pb.lk.Unlock()
 	return pb.Blockstore.PutMany(ctx, blocks)
+}
+
+func (pb *proxyingBlockstore) View(ctx context.Context, c cid.Cid, callback func([]byte) error) error {
+	blk, err := pb.Get(ctx, c)
+	if err != nil {
+		return xerrors.Errorf("failed to Get cid %s: %w", c, err)
+	}
+
+	return callback(blk.RawData())
 }
