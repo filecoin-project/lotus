@@ -226,12 +226,19 @@ func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo)
 		// Sleep for immutable epochs
 		if immutable {
 			dlineEpochsRemaining := dlinfo.NextOpen() - ts.Height()
+			waitTime := time.Duration(0)
 			if sectorDeadlineOpen {
 				// sleep for remainder of deadline
-				time.Sleep(time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining))
+				waitTime = time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining)
 			} else {
 				// sleep for remainder of deadline and next one
-				time.Sleep(time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining+dlinfo.WPoStChallengeWindow))
+				waitTime = time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining+dlinfo.WPoStChallengeWindow)
+			}
+
+			select {
+			case <-time.After(waitTime):
+			case <-ctx.Context().Done():
+				return ctx.Context().Err()
 			}
 		}
 	}
