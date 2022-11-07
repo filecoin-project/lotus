@@ -659,7 +659,7 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 	for _, blkMsg := range blkMsgs {
 		for _, msg := range append(blkMsg.BlsMessages, blkMsg.SecpkMessages...) {
 			msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), api.LookbackNoLimit, true)
-			if err != nil {
+			if err != nil || msgLookup == nil {
 				return api.EthBlock{}, nil
 			}
 			gasUsed += msgLookup.Receipt.GasUsed
