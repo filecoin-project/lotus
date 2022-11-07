@@ -175,8 +175,8 @@ func (h *NetworkStoreHandler) handle(ctx context.Context) {
 				log.Warnw("writing response", "error", err)
 				return
 			}
-		case NRpcList:
-			if err := h.respondError(req.ID, xerrors.New("list todo"), cid.Undef); err != nil {
+		default:
+			if err := h.respondError(req.ID, xerrors.New("unsupported request type"), cid.Undef); err != nil {
 				log.Warnw("writing error response", "error", err)
 				return
 			}

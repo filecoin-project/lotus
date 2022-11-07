@@ -24,7 +24,6 @@ const (
 	NRpcGetSize
 	NRpcPut
 	NRpcDelete
-	NRpcList
 
 	// todo cancel req
 )
@@ -403,49 +402,7 @@ func (n *NetworkStore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 }
 
 func (n *NetworkStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	req, rch, err := n.sendRpc(NRpcList, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	outCh := make(chan cid.Cid, 16)
-
-	go func() {
-		defer close(outCh)
-		// todo defer cancel request
-
-		for {
-			if rch == nil {
-				return
-			}
-
-			resp, err := n.waitResp(ctx, rch, req)
-			if err != nil {
-				return
-			}
-
-			switch resp.Type {
-			case NRpcOK, NRpcMore:
-				c, err := cid.Cast(resp.Data)
-				if err != nil {
-					return
-				}
-
-				// todo propagate backpressure
-				select {
-				case outCh <- c:
-				case <-ctx.Done():
-					return
-				}
-
-				rch = resp.next
-			default:
-				return
-			}
-		}
-	}()
-
-	return outCh, err
+	return nil, xerrors.Errorf("not supported")
 }
 
 func (n *NetworkStore) HashOnRead(enabled bool) {
