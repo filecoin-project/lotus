@@ -29,6 +29,7 @@ import (
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -129,6 +130,7 @@ var ChainNode = Options(
 	Override(new(*market.FundManager), market.NewFundManager),
 	Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
 	Override(new(storagemarket.BlockstoreAccessor), modules.StorageBlockstoreAccessor),
+	Override(new(*retrievaladapter.APIBlockstoreAccessor), retrievaladapter.NewAPIBlockstoreAdapter),
 	Override(new(storagemarket.StorageClient), modules.StorageClient),
 	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),

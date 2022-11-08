@@ -65,7 +65,7 @@ func fullRpc(t *testing.T, f *TestFullNode) *TestFullNode {
 	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
 	t.Cleanup(stop)
-	f.ListenAddr, f.FullNode = maddr, cl
+	f.ListenAddr, f.ListenURL, f.FullNode = maddr, srv.URL, cl
 
 	return f
 }

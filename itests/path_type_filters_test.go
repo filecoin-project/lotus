@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -45,7 +44,7 @@ func TestPathTypeFilters(t *testing.T) {
 	}
 
 	runTest(t, "invalid-type-alert", func(t *testing.T, ctx context.Context, miner *kit.TestMiner, run func()) {
-		slU := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		slU := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanSeal = true
 			meta.AllowTypes = []string{"unsealed", "seeled"}
 		})
@@ -79,18 +78,18 @@ func TestPathTypeFilters(t *testing.T) {
 
 	runTest(t, "seal-to-stor-unseal-allowdeny", func(t *testing.T, ctx context.Context, miner *kit.TestMiner, run func()) {
 		// allow all types in the sealing path
-		sealScratch := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		sealScratch := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanSeal = true
 		})
 
 		// unsealed storage
-		unsStor := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		unsStor := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanStore = true
 			meta.AllowTypes = []string{"unsealed"}
 		})
 
 		// other storage
-		sealStor := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		sealStor := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanStore = true
 			meta.DenyTypes = []string{"unsealed"}
 		})
@@ -115,14 +114,14 @@ func TestPathTypeFilters(t *testing.T) {
 
 	runTest(t, "sealstor-unseal-allowdeny", func(t *testing.T, ctx context.Context, miner *kit.TestMiner, run func()) {
 		// unsealed storage
-		unsStor := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		unsStor := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanStore = true
 			meta.CanSeal = true
 			meta.AllowTypes = []string{"unsealed"}
 		})
 
 		// other storage
-		sealStor := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		sealStor := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanStore = true
 			meta.CanSeal = true
 			meta.DenyTypes = []string{"unsealed"}
@@ -147,29 +146,29 @@ func TestPathTypeFilters(t *testing.T) {
 
 	runTest(t, "seal-store-allseparate", func(t *testing.T, ctx context.Context, miner *kit.TestMiner, run func()) {
 		// sealing stores
-		slU := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		slU := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanSeal = true
 			meta.AllowTypes = []string{"unsealed"}
 		})
-		slS := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		slS := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanSeal = true
 			meta.AllowTypes = []string{"sealed"}
 		})
-		slC := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		slC := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanSeal = true
 			meta.AllowTypes = []string{"cache"}
 		})
 
 		// storage stores
-		stU := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		stU := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanStore = true
 			meta.AllowTypes = []string{"unsealed"}
 		})
-		stS := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		stS := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanStore = true
 			meta.AllowTypes = []string{"sealed"}
 		})
-		stC := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+		stC := miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 			meta.CanStore = true
 			meta.AllowTypes = []string{"cache"}
 		})

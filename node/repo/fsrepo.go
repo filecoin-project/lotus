@@ -25,8 +25,8 @@ import (
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const (
@@ -572,26 +572,26 @@ func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	return nil
 }
 
-func (fsr *fsLockedRepo) GetStorage() (paths.StorageConfig, error) {
+func (fsr *fsLockedRepo) GetStorage() (storiface.StorageConfig, error) {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
 	return fsr.getStorage(nil)
 }
 
-func (fsr *fsLockedRepo) getStorage(def *paths.StorageConfig) (paths.StorageConfig, error) {
+func (fsr *fsLockedRepo) getStorage(def *storiface.StorageConfig) (storiface.StorageConfig, error) {
 	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), def)
 	if err != nil {
-		return paths.StorageConfig{}, err
+		return storiface.StorageConfig{}, err
 	}
 	return *c, nil
 }
 
-func (fsr *fsLockedRepo) SetStorage(c func(*paths.StorageConfig)) error {
+func (fsr *fsLockedRepo) SetStorage(c func(*storiface.StorageConfig)) error {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
-	sc, err := fsr.getStorage(&paths.StorageConfig{})
+	sc, err := fsr.getStorage(&storiface.StorageConfig{})
 	if err != nil {
 		return xerrors.Errorf("get storage: %w", err)
 	}

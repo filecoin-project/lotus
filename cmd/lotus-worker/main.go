@@ -447,10 +447,10 @@ var runCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []paths.LocalPath
+			var localPaths []storiface.LocalPath
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&paths.LocalStorageMeta{
+				b, err := json.MarshalIndent(&storiface.LocalStorageMeta{
 					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -464,12 +464,12 @@ var runCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, paths.LocalPath{
+				localPaths = append(localPaths, storiface.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *paths.StorageConfig) {
+			if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)

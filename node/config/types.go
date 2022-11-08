@@ -4,7 +4,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
@@ -452,7 +451,7 @@ type SealerConfig struct {
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
 	// to "hardware".
-	ResourceFiltering sealer.ResourceFilteringStrategy
+	ResourceFiltering ResourceFilteringStrategy
 }
 
 type BatchFeeConfig struct {

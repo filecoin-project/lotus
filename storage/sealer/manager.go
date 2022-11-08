@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -90,57 +91,12 @@ type result struct {
 	err error
 }
 
-// ResourceFilteringStrategy is an enum indicating the kinds of resource
-// filtering strategies that can be configured for workers.
-type ResourceFilteringStrategy string
-
-const (
-	// ResourceFilteringHardware specifies that available hardware resources
-	// should be evaluated when scheduling a task against the worker.
-	ResourceFilteringHardware = ResourceFilteringStrategy("hardware")
-
-	// ResourceFilteringDisabled disables resource filtering against this
-	// worker. The scheduler may assign any task to this worker.
-	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
-)
-
-type Config struct {
-	ParallelFetchLimit int
-
-	// Local worker config
-	AllowSectorDownload      bool
-	AllowAddPiece            bool
-	AllowPreCommit1          bool
-	AllowPreCommit2          bool
-	AllowCommit              bool
-	AllowUnseal              bool
-	AllowReplicaUpdate       bool
-	AllowProveReplicaUpdate2 bool
-	AllowRegenSectorKey      bool
-
-	LocalWorkerName string
-
-	// ResourceFiltering instructs the system which resource filtering strategy
-	// to use when evaluating tasks against this worker. An empty value defaults
-	// to "hardware".
-	ResourceFiltering ResourceFilteringStrategy
-
-	// PoSt config
-	ParallelCheckLimit        int
-	DisableBuiltinWindowPoSt  bool
-	DisableBuiltinWinningPoSt bool
-
-	DisallowRemoteFinalize bool
-
-	Assigner string
-}
-
 type StorageAuth http.Header
 
 type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
-func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc Config, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
+func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc config.SealerConfig, pc config.ProvingConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
@@ -164,9 +120,9 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 
 		localProver: prover,
 
-		parallelCheckLimit:        sc.ParallelCheckLimit,
-		disableBuiltinWindowPoSt:  sc.DisableBuiltinWindowPoSt,
-		disableBuiltinWinningPoSt: sc.DisableBuiltinWinningPoSt,
+		parallelCheckLimit:        pc.ParallelCheckLimit,
+		disableBuiltinWindowPoSt:  pc.DisableBuiltinWindowPoSt,
+		disableBuiltinWinningPoSt: pc.DisableBuiltinWinningPoSt,
 		disallowRemoteFinalize:    sc.DisallowRemoteFinalize,
 
 		work:       mss,
@@ -212,7 +168,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 	}
 
 	wcfg := WorkerConfig{
-		IgnoreResourceFiltering: sc.ResourceFiltering == ResourceFilteringDisabled,
+		IgnoreResourceFiltering: sc.ResourceFiltering == config.ResourceFilteringDisabled,
 		TaskTypes:               localTasks,
 		Name:                    sc.LocalWorkerName,
 	}
@@ -235,8 +191,8 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	if err := m.ls.SetStorage(func(sc *paths.StorageConfig) {
-		sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: path})
+	if err := m.ls.SetStorage(func(sc *storiface.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, storiface.LocalPath{Path: path})
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}
@@ -269,8 +225,8 @@ func (m *Manager) DetachLocalStorage(ctx context.Context, path string) error {
 
 	// drop from the persisted storage.json
 	var found bool
-	if err := m.ls.SetStorage(func(sc *paths.StorageConfig) {
-		out := make([]paths.LocalPath, 0, len(sc.StoragePaths))
+	if err := m.ls.SetStorage(func(sc *storiface.StorageConfig) {
+		out := make([]storiface.LocalPath, 0, len(sc.StoragePaths))
 		for _, storagePath := range sc.StoragePaths {
 			if storagePath.Path != path {
 				out = append(out, storagePath)

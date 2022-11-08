@@ -27,6 +27,7 @@ type TestFullNode struct {
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node.
 	ListenAddr multiaddr.Multiaddr
+	ListenURL  string
 	DefaultKey *key.Key
 
 	options nodeOpts
