@@ -221,7 +221,7 @@ func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo)
 
 		sectorDeadlineOpen := sl.Deadline == dlinfo.Index
 		sectorDeadlineNext := (dlinfo.Index+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline
-		immutable := sectorDeadlineOpen || sectorDeadlineNext
+		immutable = sectorDeadlineOpen || sectorDeadlineNext
 
 		// Sleep for immutable epochs
 		if immutable {
