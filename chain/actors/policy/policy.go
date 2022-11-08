@@ -1,56 +1,79 @@
 package policy
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
+	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/filecoin-project/go-state-types/big"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
-	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	paych9 "github.com/filecoin-project/go-state-types/builtin/v9/paych"
-	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
+
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
+
+	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	market3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 	verifreg3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/verifreg"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	verifreg5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/verifreg"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	market6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/market"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	verifreg6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/verifreg"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
+
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+
+	builtin9 "github.com/filecoin-project/go-state-types/builtin"
+	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
+	market10 "github.com/filecoin-project/go-state-types/builtin/v10/market"
+	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
+	verifreg10 "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
+
+	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
 )
 
 const (
-	ChainFinality                  = miner9.ChainFinality
+	ChainFinality                  = miner10.ChainFinality
 	SealRandomnessLookback         = ChainFinality
-	PaychSettleDelay               = paych9.SettleDelay
-	MaxPreCommitRandomnessLookback = builtin9.EpochsInDay + SealRandomnessLookback
+	PaychSettleDelay               = paych10.SettleDelay
+	MaxPreCommitRandomnessLookback = builtin10.EpochsInDay + SealRandomnessLookback
 )
 
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
@@ -159,11 +182,13 @@ func SetPreCommitChallengeDelay(delay abi.ChainEpoch) {
 
 	miner9.PreCommitChallengeDelay = delay
 
+	miner10.PreCommitChallengeDelay = delay
+
 }
 
 // TODO: this function shouldn't really exist. Instead, the API should expose the precommit delay.
 func GetPreCommitChallengeDelay() abi.ChainEpoch {
-	return miner9.PreCommitChallengeDelay
+	return miner10.PreCommitChallengeDelay
 }
 
 // SetConsensusMinerMinPower sets the minimum power of an individual miner must
@@ -205,6 +230,10 @@ func SetConsensusMinerMinPower(p abi.StoragePower) {
 		policy.ConsensusMinerMinPower = p
 	}
 
+	for _, policy := range builtin10.PoStProofPolicies {
+		policy.ConsensusMinerMinPower = p
+	}
+
 }
 
 // SetMinVerifiedDealSize sets the minimum size of a verified deal. This should
@@ -228,6 +257,8 @@ func SetMinVerifiedDealSize(size abi.StoragePower) {
 	verifreg8.MinVerifiedDealSize = size
 
 	verifreg9.MinVerifiedDealSize = size
+
+	verifreg10.MinVerifiedDealSize = size
 
 }
 
@@ -269,6 +300,10 @@ func GetMaxProveCommitDuration(ver actorstypes.Version, t abi.RegisteredSealProo
 	case actorstypes.Version9:
 
 		return miner9.MaxProveCommitDuration[t], nil
+
+	case actorstypes.Version10:
+
+		return miner10.MaxProveCommitDuration[t], nil
 
 	default:
 		return 0, xerrors.Errorf("unsupported actors version")
@@ -316,6 +351,11 @@ func SetProviderCollateralSupplyTarget(num, denom big.Int) {
 	}
 
 	market9.ProviderCollateralSupplyTarget = builtin9.BigFrac{
+		Numerator:   num,
+		Denominator: denom,
+	}
+
+	market10.ProviderCollateralSupplyTarget = builtin10.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
 	}
@@ -378,13 +418,18 @@ func DealProviderCollateralBounds(
 		min, max := market9.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
 		return min, max, nil
 
+	case actorstypes.Version10:
+
+		min, max := market10.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
+		return min, max, nil
+
 	default:
 		return big.Zero(), big.Zero(), xerrors.Errorf("unsupported actors version")
 	}
 }
 
 func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch) {
-	return market9.DealDurationBounds(pieceSize)
+	return market10.DealDurationBounds(pieceSize)
 }
 
 // Sets the challenge window and scales the proving period to match (such that
@@ -446,6 +491,13 @@ func SetWPoStChallengeWindow(period abi.ChainEpoch) {
 	// scale it if we're scaling the challenge period.
 	miner9.WPoStDisputeWindow = period * 30
 
+	miner10.WPoStChallengeWindow = period
+	miner10.WPoStProvingPeriod = period * abi.ChainEpoch(miner10.WPoStPeriodDeadlines)
+
+	// by default, this is 2x finality which is 30 periods.
+	// scale it if we're scaling the challenge period.
+	miner10.WPoStDisputeWindow = period * 30
+
 }
 
 func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
@@ -458,15 +510,15 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 }
 
 func GetMaxSectorExpirationExtension() abi.ChainEpoch {
-	return miner9.MaxSectorExpirationExtension
+	return miner10.MaxSectorExpirationExtension
 }
 
 func GetMinSectorExpiration() abi.ChainEpoch {
-	return miner9.MinSectorExpiration
+	return miner10.MinSectorExpiration
 }
 
 func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
-	sectorsPerPart, err := builtin9.PoStProofWindowPoStPartitionSectors(p)
+	sectorsPerPart, err := builtin10.PoStProofWindowPoStPartitionSectors(p)
 	if err != nil {
 		return 0, err
 	}
@@ -486,7 +538,7 @@ func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) 
 		return builtin4.SealProofPoliciesV0[proof].SectorMaxLifetime
 	}
 
-	return builtin9.SealProofPoliciesV11[proof].SectorMaxLifetime
+	return builtin10.SealProofPoliciesV11[proof].SectorMaxLifetime
 }
 
 func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
@@ -522,6 +574,9 @@ func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
 
 	case actorstypes.Version9:
 		return miner9.AddressedSectorsMax, nil
+
+	case actorstypes.Version10:
+		return miner10.AddressedSectorsMax, nil
 
 	default:
 		return 0, xerrors.Errorf("unsupported network version")
@@ -572,6 +627,10 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 
 		return miner9.DeclarationsMax, nil
 
+	case actorstypes.Version10:
+
+		return miner10.DeclarationsMax, nil
+
 	default:
 		return 0, xerrors.Errorf("unsupported network version")
 	}
@@ -620,6 +679,10 @@ func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, ba
 
 		return miner9.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
 
+	case actorstypes.Version10:
+
+		return miner10.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
+
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
@@ -667,6 +730,10 @@ func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, base
 	case actorstypes.Version9:
 
 		return miner9.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
+
+	case actorstypes.Version10:
+
+		return miner10.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
 
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")

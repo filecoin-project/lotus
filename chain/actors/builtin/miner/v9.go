@@ -4,20 +4,20 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/filecoin-project/go-bitfield"
+	rle "github.com/filecoin-project/go-bitfield/rle"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-bitfield"
-	rle "github.com/filecoin-project/go-bitfield/rle"
-	"github.com/filecoin-project/go-state-types/abi"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v10/miner"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
-	"github.com/filecoin-project/go-state-types/dline"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state9)(nil)

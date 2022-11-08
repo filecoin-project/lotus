@@ -1,31 +1,39 @@
 package init
 
 import (
-	"github.com/ipfs/go-cid"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
-	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var (
-	Address = builtin9.InitActorAddr
-	Methods = builtin9.MethodsInit
+	Address = builtin10.InitActorAddr
+	Methods = builtin10.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -41,6 +49,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -102,6 +113,9 @@ func MakeState(store adt.Store, av actorstypes.Version, networkName string) (Sta
 
 	case actorstypes.Version9:
 		return make9(store, networkName)
+
+	case actorstypes.Version10:
+		return make10(store, networkName)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)

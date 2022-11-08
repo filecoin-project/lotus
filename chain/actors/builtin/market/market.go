@@ -1,27 +1,36 @@
 package market
 
 import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"unicode/utf8"
 
-	cbg "github.com/whyrusleeping/cbor-gen"
+	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
-	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/filecoin-project/go-state-types/network"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -46,6 +55,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -107,6 +119,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 
 	case actorstypes.Version9:
 		return make9(store)
+
+	case actorstypes.Version10:
+		return make10(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -191,6 +206,9 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 
 	case actorstypes.Version9:
 		return decodePublishStorageDealsReturn9(b)
+
+	case actorstypes.Version10:
+		return decodePublishStorageDealsReturn10(b)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)

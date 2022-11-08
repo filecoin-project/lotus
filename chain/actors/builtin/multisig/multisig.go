@@ -2,6 +2,7 @@ package multisig
 
 import (
 	"fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -9,17 +10,25 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	msig9 "github.com/filecoin-project/go-state-types/builtin/v9/multisig"
 	"github.com/filecoin-project/go-state-types/cbor"
+
+	msig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -39,6 +48,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -101,6 +113,9 @@ func MakeState(store adt.Store, av actorstypes.Version, signers []address.Addres
 	case actorstypes.Version9:
 		return make9(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
+	case actorstypes.Version10:
+		return make10(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -123,7 +138,7 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig9.Transaction
+type Transaction = msig10.Transaction
 
 var Methods = builtintypes.MethodsMultisig
 
@@ -156,6 +171,9 @@ func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 
 	case actorstypes.Version9:
 		return message9{message0{from}}
+
+	case actorstypes.Version10:
+		return message10{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -179,13 +197,13 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig9.ProposalHashData
-type ProposeReturn = msig9.ProposeReturn
-type ProposeParams = msig9.ProposeParams
-type ApproveReturn = msig9.ApproveReturn
+type ProposalHashData = msig10.ProposalHashData
+type ProposeReturn = msig10.ProposeReturn
+type ProposeParams = msig10.ProposeParams
+type ApproveReturn = msig10.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig9.TxnIDParams{ID: msig9.TxnID(id)}
+	params := msig10.TxnIDParams{ID: msig10.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)

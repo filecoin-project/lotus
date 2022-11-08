@@ -1,30 +1,38 @@
 package reward
 
 import (
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/cbor"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/cbor"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var (
-	Address = builtin9.RewardActorAddr
-	Methods = builtin9.MethodsReward
+	Address = builtin10.RewardActorAddr
+	Methods = builtin10.MethodsReward
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -40,6 +48,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -101,6 +112,9 @@ func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.St
 
 	case actorstypes.Version9:
 		return make9(store, currRealizedPower)
+
+	case actorstypes.Version10:
+		return make10(store, currRealizedPower)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)

@@ -1,26 +1,33 @@
 package system
 
 import (
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
-
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
-	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
-	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
+
+	"golang.org/x/xerrors"
+
+	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 )
 
 var (
-	Address = builtin9.SystemActorAddr
+	Address = builtin10.SystemActorAddr
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -36,6 +43,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -97,6 +107,9 @@ func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (
 
 	case actorstypes.Version9:
 		return make9(store, builtinActors)
+
+	case actorstypes.Version10:
+		return make10(store, builtinActors)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)

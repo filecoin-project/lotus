@@ -1,15 +1,15 @@
 package datacap
 
 import (
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	datacap9 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
-	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	datacap9 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
+	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 )
 
 var _ State = (*state9)(nil)

@@ -1,18 +1,20 @@
 package verifreg
 
 import (
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
-	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
-	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
-	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"golang.org/x/xerrors"
+
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
+	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
+	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
+
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 )
 
 var _ State = (*state4)(nil)

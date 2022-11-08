@@ -3,20 +3,21 @@ package market
 import (
 	"bytes"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
-	"github.com/filecoin-project/go-state-types/abi"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 )
 
 var _ State = (*state7)(nil)
