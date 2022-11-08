@@ -257,8 +257,9 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 		return nil
 	}
 	if !active {
-		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
-		return ctx.Send(SectorAbortUpgrade{})
+		err := xerrors.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
+		log.Errorf(err.Error())
+		return ctx.Send(SectorAbortUpgrade{err})
 	}
 
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
