@@ -1,15 +1,15 @@
 package reward
 
 import (
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
+	"github.com/filecoin-project/go-state-types/abi"
 	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	reward10 "github.com/filecoin-project/go-state-types/builtin/v10/reward"
 	smoothing10 "github.com/filecoin-project/go-state-types/builtin/v10/util/smoothing"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 var _ State = (*state10)(nil)
