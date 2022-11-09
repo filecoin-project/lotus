@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
@@ -20,8 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/lotus/build"
 )

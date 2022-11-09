@@ -29,9 +29,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	evm "github.com/filecoin-project/go-state-types/builtin/v10/evm"
-	"github.com/filecoin-project/go-state-types/builtin/v8/eam"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
@@ -1487,106 +1485,6 @@ var ChainPruneCmd = &cli.Command{
 			Name:  "moving-gc",
 			Value: false,
 			Usage: "use moving gc for garbage collecting the coldstore",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		afmt := NewAppFmt(cctx.App)
-
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass the filename containing actor code")
-		}
-
-		filename := cctx.Args().First()
-		file, err := os.Open(filename)
-		if err != nil {
-			return err
-		}
-		defer file.Close() // nolint
-
-		code, err := io.ReadAll(file)
-		if err != nil {
-			return err
-		}
-
-		params, err := actors.SerializeParams(&init8.InstallParams{
-			Code: code,
-		})
-		if err != nil {
-			return xerrors.Errorf("failed to serialize params: %w", err)
-		}
-
-		var fromAddr address.Address
-		if from := cctx.String("from"); from == "" {
-			defaddr, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = defaddr
-		} else {
-			addr, err := address.NewFromString(from)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = addr
-		}
-
-		msg := &types.Message{
-			To:     builtin.InitActorAddr,
-			From:   fromAddr,
-			Value:  big.Zero(),
-			Method: 4,
-			Params: params,
-		}
-
-		afmt.Println("sending message...")
-		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
-		if err != nil {
-			return xerrors.Errorf("failed to push message: %w", err)
-		}
-
-		afmt.Printf("gas limit: %d\n", smsg.Message.GasLimit)
-
-		afmt.Println("waiting for message to execute...")
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
-		if err != nil {
-			return xerrors.Errorf("error waiting for message: %w", err)
-		}
-
-		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("actor installation failed")
-		}
-
-		var result init8.InstallReturn
-		r := bytes.NewReader(wait.Receipt.Return)
-		if err := result.UnmarshalCBOR(r); err != nil {
-			return xerrors.Errorf("error unmarshaling return value: %w", err)
-		}
-
-		afmt.Printf("Actor Code CID: %s\n", result.CodeCid)
-		afmt.Printf("Installed: %t\n", result.Installed)
-
-		return nil
-	},
-}
-
-var ChainExecCmd = &cli.Command{
-	Name:      "create-actor",
-	Usage:     "Create an new actor via the init actor and return its address",
-	ArgsUsage: "code-cid [params]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "optionally specify the account to use for sending the exec message",
 		},
 		&cli.StringFlag{
 			Name:  "move-to",

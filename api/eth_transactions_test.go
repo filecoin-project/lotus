@@ -12,8 +12,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
-	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
-	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -67,16 +68,16 @@ func TestTransformParams(t *testing.T) {
 	})
 	require.Nil(t, err)
 
-	evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "reward")
+	evmActorCid, ok := actors.GetActorCodeID(actorstypes.Version10, "reward")
 	require.True(t, ok)
 
-	params, err := actors.SerializeParams(&init8.ExecParams{
+	params, err := actors.SerializeParams(&init10.ExecParams{
 		CodeCID:           evmActorCid,
 		ConstructorParams: constructorParams,
 	})
 	require.Nil(t, err)
 
-	var exec init8.ExecParams
+	var exec init10.ExecParams
 	reader := bytes.NewReader(params)
 	err1 := exec.UnmarshalCBOR(reader)
 	require.Nil(t, err1)

@@ -676,7 +676,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 
 func SetupEAM(_ context.Context, nst *state.StateTree) error {
 	// TODO Version10
-	codecid, ok := actors.GetActorCodeID(actors.Version8, actors.EamKey)
+	codecid, ok := actors.GetActorCodeID(actorstypes.Version10, actors.EamKey)
 	if !ok {
 		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
 	}
