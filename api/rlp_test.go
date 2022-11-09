@@ -175,6 +175,7 @@ func TestDecodeError(t *testing.T) {
 }
 
 func TestDecode1(t *testing.T) {
+	t.Skip("doesn't really test anything, it just prints stuff...")
 	b := mustDecodeHex("0x02f8758401df5e7680832c8411832c8411830767f89452963ef50e27e06d72d59fcb4f3c2a687be3cfef880de0b6b3a764000080c080a094b11866f453ad85a980e0e8a2fc98cbaeb4409618c7734a7e12ae2f66fd405da042dbfb1b37af102023830ceeee0e703ffba0b8b3afeb8fe59f405eca9ed61072")
 	decoded, err := ParseEthTxArgs(b)
 	require.NoError(t, err)
@@ -185,5 +186,5 @@ func TestDecode1(t *testing.T) {
 
 	fmt.Println(decoded.Sender())
 
-	fmt.Printf("%+v", decoded)
+	fmt.Printf("%+v\n", decoded)
 }
