@@ -577,24 +577,24 @@ func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error 
 
 			return f(addr, types.AsActorV5(&act))
 		})
-	} else {
-		var act types.Actor
-		return st.root.ForEach(&act, func(k string) error {
-			act := act // copy
-			addr, err := address.NewFromBytes([]byte(k))
-			if err != nil {
-				return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
-			}
-
-			// no need to record anything here, there are no duplicates in the actors HAMT
-			// iself.
-			if _, ok := seen[addr]; ok {
-				return nil
-			}
-
-			return f(addr, &act)
-		})
 	}
+
+	var act types.Actor
+	return st.root.ForEach(&act, func(k string) error {
+		act := act // copy
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
+		}
+
+		// no need to record anything here, there are no duplicates in the actors HAMT
+		// iself.
+		if _, ok := seen[addr]; ok {
+			return nil
+		}
+
+		return f(addr, &act)
+	})
 }
 
 // Version returns the version of the StateTree data structure in use.
