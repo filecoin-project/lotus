@@ -152,16 +152,12 @@ func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
 	case network.Version12:
 		return types.StateTreeVersion3, nil
 
-		/* inline-gen template
-		{{$lastNv := .latestNetworkVersion}}
-			case{{range .networkVersions}} {{if (ge . 13.)}} network.Version{{.}}{{if (lt . $lastNv)}},{{end}}{{end}}{{end}}:
-
-		/* inline-gen start */
-
-	case network.Version13, network.Version14, network.Version15, network.Version16, network.Version17, network.Version18:
-
-		/* inline-gen end */
+	case network.Version13, network.Version14, network.Version15, network.Version16, network.Version17:
 		return types.StateTreeVersion4, nil
+
+	case network.Version18:
+		return types.StateTreeVersion5, nil
+
 	default:
 		panic(fmt.Sprintf("unsupported network version %d", ver))
 	}
