@@ -740,11 +740,6 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	move := func(types storiface.SectorFileType) error {
 		// get a selector for moving stuff into long-term storage
 		fetchSel := newMoveSelector(m.index, sector.ID, types, storiface.PathStorage, !m.disallowRemoteFinalize)
-		{
-			if len(keepUnsealed) == 0 {
-				moveUnsealed = storiface.FTNone
-			}
-		}
 
 		err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 			m.schedFetch(sector, types, storiface.PathStorage, storiface.AcquireMove),
@@ -760,7 +755,8 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 
 	err = multierr.Append(move(storiface.FTUpdate|storiface.FTUpdateCache), move(storiface.FTCache))
 	err = multierr.Append(err, move(storiface.FTSealed)) // Sealed separate from cache just in case ReleaseSectorKey was already called
-	if moveUnsealed != storiface.FTNone {
+	// if we found unsealed files, AND have been asked to keep at least one, move unsealed
+	if moveUnsealed != storiface.FTNone && len(keepUnsealed) != 0 {
 		err = multierr.Append(err, move(moveUnsealed))
 	}
 
