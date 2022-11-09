@@ -288,7 +288,7 @@ type ProvingConfig struct {
 	// 'lotus-miner proving compute window-post 0'
 	DisableWDPoStPreChecks bool
 
-	// Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+	// Maximum number of partitions to prove in a single SubmitWindowPoSt message. 0 = network limit (10 in nv16)
 	//
 	// A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
 	//
@@ -302,7 +302,7 @@ type ProvingConfig struct {
 	MaxPartitionsPerPoStMessage int
 
 	// Maximum number of partitions to declare in a single DeclareFaultsRecovered message. 0 = no limit.
-
+	//
 	// In some cases when submitting DeclareFaultsRecovered messages,
 	// there may be too many recoveries to fit in a BlockGasLimit.
 	// In those cases it may be necessary to set this value to something low (eg 1);
@@ -319,6 +319,15 @@ type ProvingConfig struct {
 	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 	SingleRecoveringPartitionPerPostMessage bool
+
+	// Maximum number of partition batches to process in parellel. 0 = no limit.
+	//
+	// A partition batch after being processed ends up as a PoSt message, so this limit can also be thought of as "how
+	// many WindowPoSt messages to create in parallel".
+	//
+	// Note that this is only really useful when multiple PoSt workers are connected and available. If there are no or
+	// only one PoSt workers the effect will be limited, and performance may even degrade.
+	MaxBatchParallelism int
 }
 
 type SealingConfig struct {

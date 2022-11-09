@@ -299,6 +299,11 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 		}
 	}()
 
+	var throttle chan struct{}
+	if s.maxBatchParallelism > 0 {
+		throttle = make(chan struct{}, s.maxBatchParallelism)
+	}
+
 	// Generate proofs in batches
 	postsResults := make([]chan result.Result[*miner.SubmitWindowedPoStParams], len(partitionBatches))
 	for batchIdx, batch := range partitionBatches {
@@ -306,13 +311,26 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 
 		// run batches in parallel
 		go func(batchIdx int, batch []api.Partition) {
-			// todo throttle config
+			// throttle
+			if throttle != nil {
+				select {
+				case throttle <- struct{}{}:
+				case <-ctx.Done():
+					postsResults[batchIdx] <- result.Err[*miner.SubmitWindowedPoStParams](xerrors.Errorf("batch throttle: %w", ctx.Err()))
+					return
+				}
+				defer func() {
+					<-throttle
+				}()
+			}
 
+			// find first partition index of this batch
 			firstBatchPartition := 0
 			for _, batch := range partitionBatches[:batchIdx] {
 				firstBatchPartition += len(batch)
 			}
 
+			// process the batch!
 			postsResults[batchIdx] <- result.Wrap(s.processBatch(ctx, manual, di, ts, headTs, batchIdx, batch, firstBatchPartition))
 		}(batchIdx, batch)
 	}

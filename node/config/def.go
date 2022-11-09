@@ -141,7 +141,9 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Proving: ProvingConfig{
-			ParallelCheckLimit:    128,
+			ParallelCheckLimit:  128,
+			MaxBatchParallelism: 1,
+
 			PartitionCheckTimeout: Duration(20 * time.Minute),
 			SingleCheckTimeout:    Duration(10 * time.Minute),
 		},

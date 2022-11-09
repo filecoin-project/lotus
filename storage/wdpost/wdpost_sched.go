@@ -76,6 +76,7 @@ type WindowPoStScheduler struct {
 	maxPartitionsPerPostMessage             int
 	maxPartitionsPerRecoveryMessage         int
 	singleRecoveringPartitionPerPostMessage bool
+	maxBatchParallelism                     int
 	ch                                      *changeHandler
 
 	actor address.Address
@@ -115,6 +116,7 @@ func NewWindowedPoStScheduler(api NodeAPI,
 		maxPartitionsPerPostMessage:             pcfg.MaxPartitionsPerPoStMessage,
 		maxPartitionsPerRecoveryMessage:         pcfg.MaxPartitionsPerRecoveryMessage,
 		singleRecoveringPartitionPerPostMessage: pcfg.SingleRecoveringPartitionPerPostMessage,
+		maxBatchParallelism:                     pcfg.MaxBatchParallelism,
 		actor:                                   actor,
 		evtTypes: [...]journal.EventType{
 			evtTypeWdPoStScheduler:  j.RegisterEventType("wdpost", "scheduler"),

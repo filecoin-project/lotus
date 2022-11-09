@@ -722,7 +722,7 @@ After changing this option, confirm that the new value works in your setup by in
 			Name: "MaxPartitionsPerPoStMessage",
 			Type: "int",
 
-			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+			Comment: `Maximum number of partitions to prove in a single SubmitWindowPoSt message. 0 = network limit (10 in nv16)
 
 A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
 
@@ -738,7 +738,9 @@ Setting this value above the network limit has no effect`,
 			Name: "MaxPartitionsPerRecoveryMessage",
 			Type: "int",
 
-			Comment: `In some cases when submitting DeclareFaultsRecovered messages,
+			Comment: `Maximum number of partitions to declare in a single DeclareFaultsRecovered message. 0 = no limit.
+
+In some cases when submitting DeclareFaultsRecovered messages,
 there may be too many recoveries to fit in a BlockGasLimit.
 In those cases it may be necessary to set this value to something low (eg 1);
 Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
@@ -756,6 +758,18 @@ with recovering sectors in the post message
 
 Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)`,
+		},
+		{
+			Name: "MaxBatchParallelism",
+			Type: "int",
+
+			Comment: `Maximum number of partition batches to process in parellel. 0 = no limit.
+
+A partition batch after being processed ends up as a PoSt message, so this limit can also be thought of as "how
+many WindowPoSt messages to create in parallel".
+
+Note that this is only really useful when multiple PoSt workers are connected and available. If there are no or
+only one PoSt workers the effect will be limited, and performance may even degrade.`,
 		},
 	},
 	"Pubsub": []DocField{
