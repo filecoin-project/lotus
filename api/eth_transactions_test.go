@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/evm"
 	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
@@ -132,10 +133,20 @@ func TestDelegatedSigner(t *testing.T) {
 	pubKeyHex := "0x04cfecc0520d906cbfea387759246e89d85e2998843e56ad1c41de247ce10b3e4c453aa73c8de13c178d94461b6fa3f8b6f74406ce43d2fbab6992d0b283394242"
 
 	msg := mustDecodeHex(msgHex)
-	pubKey := mustDecodeHex(pubKeyHex)
+	pubk := mustDecodeHex(pubKeyHex)
 	r := mustDecodeHex(rHex)
 	s := mustDecodeHex(sHex)
-	from, err := address.NewSecp256k1Address(pubKey)
+
+	if pubk[0] == 0x04 {
+		pubk = pubk[1:]
+	}
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Reset()
+	hasher.Write(pubk)
+	addrHash := hasher.Sum(nil)
+
+	from, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[12:])
 	require.Nil(t, err)
 
 	sig := append(r, s...)
