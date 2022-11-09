@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -789,7 +790,18 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		SealedSectorPath: sealed,
 	}
 
-	return ffi.GenerateSingleVanillaProof(psi, si.Challenge)
+	resCh := make(chan result.Result[[]byte], 1)
+	go func() {
+		resCh <- result.Wrap(ffi.GenerateSingleVanillaProof(psi, si.Challenge))
+	}()
+
+	select {
+	case r := <-resCh:
+		return r.Unwrap()
+	case <-ctx.Done():
+		// this will leave the GenerateSingleVanillaProof goroutine hanging, but that's still less bad than failing PoSt
+		return nil, xerrors.Errorf("failed to generate valilla proof before context cancellation: %w", ctx.Err())
+	}
 }
 
 var _ Store = &Local{}
