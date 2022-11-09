@@ -2088,6 +2088,8 @@ COMMANDS:
    encode                            encode various types
    disputer                          interact with the window post disputer
    prune                             prune the stored chain state and perform garbage collection
+   create-evm-actor                  Create an new EVM actor via the init actor and return its address
+   invoke-evm-actor                  Invoke a contract entry point in an EVM actor
    help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2423,6 +2425,33 @@ OPTIONS:
    --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
    --online-gc        use online gc for garbage collecting the coldstore (default: false)
    --retention value  specify state retention policy (default: -1)
+   
+```
+
+### lotus chain create-evm-actor
+```
+NAME:
+   lotus chain create-evm-actor - Create an new EVM actor via the init actor and return its address
+
+USAGE:
+   lotus chain create-evm-actor [command options] contract
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the exec message
+   --hex         use when input contract is in hex (default: false)
+   
+```
+
+### lotus chain invoke-evm-actor
+```
+NAME:
+   lotus chain invoke-evm-actor - Invoke a contract entry point in an EVM actor
+
+USAGE:
+   lotus chain invoke-evm-actor [command options] address contract-entry-point [input-data]
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the exec message
    
 ```
 
