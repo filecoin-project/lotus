@@ -81,6 +81,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
 		Epoch:          vmHeight,
+		Timestamp:      ts.MinTimestamp(),
 		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion),
 		Bstore:         sm.cs.StateBlockstore(),
 		Actors:         sm.tsExec.NewActorRegistry(),
@@ -218,6 +219,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
 		Epoch:          vmHeight,
+		Timestamp:      ts.MinTimestamp(),
 		Rand:           r,
 		Bstore:         buffStore,
 		Actors:         sm.tsExec.NewActorRegistry(),
@@ -276,7 +278,14 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 				Data: make([]byte, 65),
 			},
 		}
-
+	case address.Delegated:
+		msgApply = &types.SignedMessage{
+			Message: *msg,
+			Signature: crypto.Signature{
+				Type: crypto.SigTypeDelegated,
+				Data: make([]byte, 65),
+			},
+		}
 	}
 
 	// If the fee cap is set to zero, make gas free.

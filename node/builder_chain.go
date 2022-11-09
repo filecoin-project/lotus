@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -153,6 +154,8 @@ var ChainNode = Options(
 		Override(new(messagepool.Provider), messagepool.NewProvider),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
+		Override(new(full.EthModuleAPI), From(new(full.EthModule))),
+		Override(new(full.EthEventAPI), From(new(full.EthEvent))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
 		Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
 		Override(new(full.StateModuleAPI), From(new(full.StateModule))),
@@ -236,6 +239,10 @@ func ConfigFullNode(c interface{}) Option {
 			Unset(new(*wallet.LocalWallet)),
 			Override(new(wallet.Default), wallet.NilDefault),
 		),
+
+		// Actor event filtering support
+		Override(new(events.EventAPI), From(new(modules.EventAPI))),
+		Override(new(full.EthEventAPI), modules.EthEvent(cfg.ActorEvent)),
 	)
 }
 

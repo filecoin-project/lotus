@@ -3,6 +3,7 @@ package messagepool
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -47,23 +48,30 @@ var log = logging.Logger("messagepool")
 
 var futureDebug = false
 
-var rbfNumBig = types.NewInt(uint64((ReplaceByFeeRatioDefault - 1) * RbfDenom))
-var rbfDenomBig = types.NewInt(RbfDenom)
+var (
+	rbfNumBig   = types.NewInt(uint64((ReplaceByFeeRatioDefault - 1) * RbfDenom))
+	rbfDenomBig = types.NewInt(RbfDenom)
+)
 
 const RbfDenom = 256
 
 var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
 
-var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
-var baseFeeLowerBoundFactor = types.NewInt(10)
-var baseFeeLowerBoundFactorConservative = types.NewInt(100)
+var (
+	minimumBaseFee                      = types.NewInt(uint64(build.MinimumBaseFee))
+	baseFeeLowerBoundFactor             = types.NewInt(10)
+	baseFeeLowerBoundFactorConservative = types.NewInt(100)
+)
 
-var MaxActorPendingMessages = 1000
-var MaxUntrustedActorPendingMessages = 10
+var (
+	MaxActorPendingMessages          = 1000
+	MaxUntrustedActorPendingMessages = 10
+)
 
 var MaxNonceGap = uint64(4)
 
-const MaxMessageSize = 64 << 10 // 64KiB
+// const MaxMessageSize = 64 << 10 // 64KiB
+const MaxMessageSize = 1<<20 - 128 // 1MiB minus some change for pb stuff
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -280,7 +288,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
-		//ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
+		// ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
 
 	if !has && strict && len(ms.msgs) >= maxActorPendingMessages {
@@ -296,7 +304,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	ms.nextNonce = nextNonce
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
 
 	return !has, nil
 }
@@ -316,7 +324,7 @@ func (ms *msgSet) rm(nonce uint64, applied bool) {
 	}
 
 	ms.requiredFunds.Sub(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
 	delete(ms.msgs, nonce)
 
 	// adjust next nonce
@@ -342,7 +350,7 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
 	m, has := ms.msgs[nonce]
 	if has {
 		requiredFunds.Sub(requiredFunds, m.Message.RequiredFunds().Int)
-		//requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
+		// requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
 	}
 
 	return types.BigInt{Int: requiredFunds}
@@ -770,6 +778,16 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
+	case crypto.SigTypeDelegated:
+		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		if err != nil {
+			return "", err
+		}
+		msg, err := txArgs.HashedOriginalRlpMsg()
+		if err != nil {
+			return "", err
+		}
+		return hex.EncodeToString(msg), nil
 	default:
 		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
 	}
@@ -787,7 +805,19 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
+	if m.Signature.Type == crypto.SigTypeDelegated {
+		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		if err != nil {
+			return err
+		}
+		msg, err := txArgs.OriginalRlpMsg()
+		if err != nil {
+			return err
+		}
+		if err := sigs.Verify(&m.Signature, m.Message.From, msg); err != nil {
+			return err
+		}
+	} else if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
 		return err
 	}
 
@@ -808,7 +838,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 	}
 
 	// add Value for soft failure check
-	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
+	// requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
 	mset, ok, err := mp.getPendingMset(ctx, m.Message.From)
 	if err != nil {
@@ -1121,7 +1151,8 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
-				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}
+				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}},
+			}
 		})
 
 		mp.currentSize--
@@ -1375,7 +1406,6 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 			delete(s, nonce)
 			return
 		}
-
 	}
 
 	revert, apply, err := store.ReorgOps(ctx, mp.api.LoadTipSet, from, to)

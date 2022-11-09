@@ -71,11 +71,12 @@ func defCommon() Common {
 			DirectPeers:  nil,
 		},
 	}
-
 }
 
-var DefaultDefaultMaxFee = types.MustParseFIL("0.07")
-var DefaultSimultaneousTransfers = uint64(20)
+var (
+	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
+	DefaultSimultaneousTransfers = uint64(20)
+)
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
@@ -97,6 +98,14 @@ func DefaultFullNode() *FullNode {
 
 				HotStoreFullGCFrequency: 20,
 			},
+		},
+		ActorEvent: ActorEventConfig{
+			EnableRealTimeFilterAPI: false,
+			EnableHistoricFilterAPI: false,
+			FilterTTL:               Duration(time.Hour * 24),
+			MaxFilters:              100,
+			MaxFilterResults:        10000,
+			MaxFilterHeightRange:    2880, // conservative limit of one day
 		},
 	}
 }
@@ -253,8 +262,10 @@ func DefaultStorageMiner() *StorageMiner {
 	return cfg
 }
 
-var _ encoding.TextMarshaler = (*Duration)(nil)
-var _ encoding.TextUnmarshaler = (*Duration)(nil)
+var (
+	_ encoding.TextMarshaler   = (*Duration)(nil)
+	_ encoding.TextUnmarshaler = (*Duration)(nil)
+)
 
 // Duration is a wrapper type for time.Duration
 // for decoding and encoding from/to TOML

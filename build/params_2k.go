@@ -16,11 +16,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
-const BootstrappersFile = ""
-const GenesisFile = ""
+const (
+	BootstrappersFile = ""
+	GenesisFile       = ""
+)
 
-var NetworkBundle = "devnet"
-var BundleOverrides map[actorstypes.Version]string
+var (
+	NetworkBundle   = "devnet"
+	BundleOverrides map[actorstypes.Version]string
+)
 
 const GenesisNetworkVersion = network.Version16
 
@@ -28,19 +32,25 @@ var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
 const BreezeGasTampingDuration = 0
 
-var UpgradeSmokeHeight = abi.ChainEpoch(-1)
-var UpgradeIgnitionHeight = abi.ChainEpoch(-2)
-var UpgradeRefuelHeight = abi.ChainEpoch(-3)
-var UpgradeTapeHeight = abi.ChainEpoch(-4)
+var (
+	UpgradeSmokeHeight    = abi.ChainEpoch(-1)
+	UpgradeIgnitionHeight = abi.ChainEpoch(-2)
+	UpgradeRefuelHeight   = abi.ChainEpoch(-3)
+	UpgradeTapeHeight     = abi.ChainEpoch(-4)
+)
 
-var UpgradeAssemblyHeight = abi.ChainEpoch(-5)
-var UpgradeLiftoffHeight = abi.ChainEpoch(-6)
+var (
+	UpgradeAssemblyHeight = abi.ChainEpoch(-5)
+	UpgradeLiftoffHeight  = abi.ChainEpoch(-6)
+)
 
-var UpgradeKumquatHeight = abi.ChainEpoch(-7)
-var UpgradeCalicoHeight = abi.ChainEpoch(-9)
-var UpgradePersianHeight = abi.ChainEpoch(-10)
-var UpgradeOrangeHeight = abi.ChainEpoch(-11)
-var UpgradeClausHeight = abi.ChainEpoch(-12)
+var (
+	UpgradeKumquatHeight = abi.ChainEpoch(-7)
+	UpgradeCalicoHeight  = abi.ChainEpoch(-9)
+	UpgradePersianHeight = abi.ChainEpoch(-10)
+	UpgradeOrangeHeight  = abi.ChainEpoch(-11)
+	UpgradeClausHeight   = abi.ChainEpoch(-12)
+)
 
 var UpgradeTrustHeight = abi.ChainEpoch(-13)
 
@@ -66,9 +76,12 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg2KiBV1,
 	abi.RegisteredSealProof_StackedDrg8MiBV1,
 }
-var ConsensusMinerMinPower = abi.NewStoragePower(2048)
-var MinVerifiedDealSize = abi.NewStoragePower(256)
-var PreCommitChallengeDelay = abi.ChainEpoch(10)
+
+var (
+	ConsensusMinerMinPower  = abi.NewStoragePower(2048)
+	MinVerifiedDealSize     = abi.NewStoragePower(256)
+	PreCommitChallengeDelay = abi.ChainEpoch(10)
+)
 
 func init() {
 	policy.SetSupportedProofTypes(SupportedProofTypes...)
@@ -112,7 +125,6 @@ func init() {
 	UpgradeSharkHeight = getUpgradeHeight("LOTUS_SHARK_HEIGHT", UpgradeSharkHeight)
 
 	BuildType |= Build2k
-
 }
 
 const BlockDelaySecs = uint64(4)
@@ -129,5 +141,9 @@ const SlashablePowerDelay = 20
 const InteractivePoRepConfidence = 6
 
 const BootstrapPeerThreshold = 1
+
+// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
+// As per https://github.com/ethereum-lists/chains
+const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef

@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -48,9 +49,11 @@ import (
 	"github.com/filecoin-project/lotus/node/bundle"
 )
 
-const AccountStart = 100
-const MinerStart = 1000
-const MaxAccounts = MinerStart - AccountStart
+const (
+	AccountStart = 100
+	MinerStart   = 1000
+	MaxAccounts  = MinerStart - AccountStart
+)
 
 var log = logging.Logger("genesis")
 
@@ -237,7 +240,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create accounts
 	for _, info := range template.Accounts {
-
 		switch info.Type {
 		case genesis.TAccount:
 			if err := CreateAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
@@ -258,7 +260,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		default:
 			return nil, nil, xerrors.New("unsupported account type")
 		}
-
 	}
 
 	switch template.VerifregRootKey.Type {
@@ -528,7 +529,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 
 	// Note: This is brittle, if the methodNum / param changes, it could break things
 	_, err = doExecValue(ctx, vm, verifreg.Address, verifregRoot, types.NewInt(0), builtin0.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg0.AddVerifierParams{
-
 		Address:   verifier,
 		Allowance: abi.NewStoragePower(int64(sum)), // eh, close enough
 
@@ -563,6 +563,11 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	st, keyIDs, err := MakeInitialStateTree(ctx, bs, template)
 	if err != nil {
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
+	}
+
+	// Set up the Ethereum Address Manager.
+	if err = SetupEAM(ctx, st); err != nil {
+		return nil, xerrors.Errorf("failed to setup EAM: %w", err)
 	}
 
 	stateroot, err := st.Flush(ctx)
@@ -666,4 +671,19 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
+}
+
+func SetupEAM(_ context.Context, nst *state.StateTree) error {
+	// TODO Version10
+	codecid, ok := actors.GetActorCodeID(actors.Version8, actors.EamKey)
+	if !ok {
+		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
+	}
+
+	header := &types.Actor{
+		Code:    codecid,
+		Head:    vm.EmptyObjectCid,
+		Balance: big.Zero(),
+	}
+	return nst.SetActor(builtintypes.EthereumAddressManagerActorAddr, header)
 }

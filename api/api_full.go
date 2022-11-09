@@ -26,7 +26,7 @@ import (
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -758,6 +758,77 @@ type FullNode interface {
 
 	NodeStatus(ctx context.Context, inclChainStatus bool) (NodeStatus, error) //perm:read
 
+	// MethodGroup: Eth
+	// These methods are used for Ethereum-compatible JSON-RPC calls
+	//
+	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
+	EthAccounts(ctx context.Context) ([]EthAddress, error) //perm:read
+	// EthBlockNumber returns the height of the latest (heaviest) TipSet
+	EthBlockNumber(ctx context.Context) (EthUint64, error) //perm:read
+	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthUint64) (EthUint64, error) //perm:read
+	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthUint64, error) //perm:read
+
+	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                      //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (EthBlock, error)                      //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *EthHash) (*EthTx, error)                                   //perm:read
+	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthUint64, error)                //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (*EthTxReceipt, error)                            //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthUint64) (EthTx, error)    //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthUint64, txIndex EthUint64) (EthTx, error) //perm:read
+
+	EthGetCode(ctx context.Context, address EthAddress, blkOpt string) (EthBytes, error)                                       //perm:read
+	EthGetStorageAt(ctx context.Context, address EthAddress, position EthBytes, blkParam string) (EthBytes, error)             //perm:read
+	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                                 //perm:read
+	EthChainId(ctx context.Context) (EthUint64, error)                                                                         //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                            //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                            //perm:read
+	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                                 //perm:read
+	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                                        //perm:read
+	EthFeeHistory(ctx context.Context, blkCount EthUint64, newestBlk string, rewardPercentiles []int64) (EthFeeHistory, error) //perm:read
+
+	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)             //perm:read
+	EthEstimateGas(ctx context.Context, tx EthCall) (EthUint64, error)          //perm:read
+	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error) //perm:read
+
+	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read
+
+	// Returns event logs matching given filter spec.
+	EthGetLogs(ctx context.Context, filter *EthFilterSpec) (*EthFilterResult, error) //perm:read
+
+	// Polling method for a filter, returns event logs which occurred since last poll.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterChanges(ctx context.Context, id EthFilterID) (*EthFilterResult, error) //perm:write
+
+	// Returns event logs matching filter with given id.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterLogs(ctx context.Context, id EthFilterID) (*EthFilterResult, error) //perm:write
+
+	// Installs a persistent filter based on given filter spec.
+	EthNewFilter(ctx context.Context, filter *EthFilterSpec) (EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when a new block arrives.
+	EthNewBlockFilter(ctx context.Context) (EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when new messages arrive in the message pool.
+	EthNewPendingTransactionFilter(ctx context.Context) (EthFilterID, error) //perm:write
+
+	// Uninstalls a filter with given id.
+	EthUninstallFilter(ctx context.Context, id EthFilterID) (bool, error) //perm:write
+
+	// Subscribe to different event types using websockets
+	// eventTypes is one or more of:
+	//  - newHeads: notify when new blocks arrive.
+	//  - pendingTransactions: notify when new messages arrive in the message pool.
+	//  - logs: notify new event logs that match a criteria
+	// params contains additional parameters used with the log event type
+	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
+	EthSubscribe(ctx context.Context, eventTypes []string, params EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) //perm:write
+
+	// Unsubscribe from a websocket subscription
+	EthUnsubscribe(ctx context.Context, id EthSubscriptionID) (bool, error) //perm:write
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
@@ -1148,7 +1219,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower        types.BigInt
 	NetworkPower      types.BigInt
-	Sectors           []builtin.ExtendedSectorInfo
+	Sectors           []builtinactors.ExtendedSectorInfo
 	WorkerKey         address.Address
 	SectorSize        abi.SectorSize
 	PrevBeaconEntry   types.BeaconEntry
@@ -1165,7 +1236,7 @@ type BlockTemplate struct {
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []builtin.PoStProof
+	WinningPoStProof []builtinactors.PoStProof
 }
 
 type DataSize struct {

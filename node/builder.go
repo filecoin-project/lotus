@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
@@ -235,6 +236,7 @@ func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool {
 	return s.nodeType == repo.FullNode && !s.Lite
 }
+
 func isLiteNode(s *Settings) bool {
 	return s.nodeType == repo.FullNode && s.Lite
 }

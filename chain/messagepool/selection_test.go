@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
@@ -72,8 +73,8 @@ func makeTestMpool() (*MessagePool, *testMpoolAPI) {
 }
 
 func TestMessageChains(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001
+	// stm: @TOKEN_WALLET_NEW_001
+	// stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -306,11 +307,10 @@ func TestMessageChains(t *testing.T) {
 			t.Fatalf("expected nonce %d but got %d", i, m.Message.Nonce)
 		}
 	}
-
 }
 
 func TestMessageChainSkipping(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001
 
 	// regression test for chain skip bug
 
@@ -380,11 +380,10 @@ func TestMessageChainSkipping(t *testing.T) {
 			nextNonce++
 		}
 	}
-
 }
 
 func TestBasicMessageSelection(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	oldMaxNonceGap := MaxNonceGap
 	MaxNonceGap = 1000
 	defer func() {
@@ -535,7 +534,7 @@ func TestBasicMessageSelection(t *testing.T) {
 }
 
 func TestMessageSelectionTrimmingGas(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -595,11 +594,10 @@ func TestMessageSelectionTrimmingGas(t *testing.T) {
 	if mGasLimit > build.BlockGasLimit {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
 	}
-
 }
 
 func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -642,11 +640,10 @@ func TestMessageSelectionTrimmingMsgsBasic(t *testing.T) {
 	if mGasLimit > build.BlockGasLimit {
 		t.Fatal("selected messages gas limit exceeds block gas limit!")
 	}
-
 }
 
 func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -713,7 +710,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
 }
 
 func TestMessageSelectionTrimmingMsgsTwoSendersAdvanced(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -795,7 +792,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersAdvanced(t *testing.T) {
 }
 
 func TestPriorityMessageSelection(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -875,7 +872,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 }
 
 func TestPriorityMessageSelection2(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -943,7 +940,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 }
 
 func TestPriorityMessageSelection3(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -1034,11 +1031,10 @@ func TestPriorityMessageSelection3(t *testing.T) {
 		}
 		nextNonce++
 	}
-
 }
 
 func TestOptimalMessageSelection1(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 
 	// this test uses just a single actor sending messages with a low tq
 	// the chain depenent merging algorithm should pick messages from the actor
@@ -1106,7 +1102,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 }
 
 func TestOptimalMessageSelection2(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 
 	// this test uses two actors sending messages to each other, with the first
 	// actor paying (much) higher gas premium than the second.
@@ -1187,7 +1183,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 }
 
 func TestOptimalMessageSelection3(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 
 	// this test uses 10 actors sending a block of messages to each other, with the the first
 	// actors paying higher gas premium than the subsequent actors.
@@ -1432,7 +1428,7 @@ func makeZipfPremiumDistribution(rng *rand.Rand) func() uint64 {
 }
 
 func TestCompetitiveMessageSelectionExp(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 
 	if testing.Short() {
 		t.Skip("skipping in short mode")
@@ -1457,7 +1453,7 @@ func TestCompetitiveMessageSelectionExp(t *testing.T) {
 }
 
 func TestCompetitiveMessageSelectionZipf(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 
 	if testing.Short() {
 		t.Skip("skipping in short mode")
@@ -1482,7 +1478,7 @@ func TestCompetitiveMessageSelectionZipf(t *testing.T) {
 }
 
 func TestGasReward(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_GET_GAS_REWARD_001
+	// stm: @CHAIN_MEMPOOL_GET_GAS_REWARD_001
 	tests := []struct {
 		Premium   uint64
 		FeeCap    uint64
@@ -1515,7 +1511,7 @@ func TestGasReward(t *testing.T) {
 }
 
 func TestRealWorldSelection(t *testing.T) {
-	//stm: @TOKEN_WALLET_NEW_001, @TOKEN_WALLET_SIGN_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @TOKEN_WALLET_NEW_001, @TOKEN_WALLET_SIGN_001, @CHAIN_MEMPOOL_SELECT_001
 
 	// load test-messages.json.gz and rewrite the messages so that
 	// 1) we map each real actor to a test actor so that we can sign the messages
@@ -1687,5 +1683,4 @@ readLoop:
 	if gasLimit < minGasLimit {
 		t.Fatalf("failed to pack with tq=0.01; packed %d, minimum packing: %d", gasLimit, minGasLimit)
 	}
-
 }

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -44,8 +45,10 @@ var (
 	blockValidationCacheKeyPrefix = dstore.NewKey("blockValidation")
 )
 
-var DefaultTipSetCacheSize = 8192
-var DefaultMsgMetaCacheSize = 2048
+var (
+	DefaultTipSetCacheSize  = 8192
+	DefaultMsgMetaCacheSize = 2048
+)
 
 var ErrNotifeeDone = errors.New("notifee is done and should be removed")
 
@@ -213,6 +216,7 @@ func (cs *ChainStore) Load(ctx context.Context) error {
 	}
 	return nil
 }
+
 func (cs *ChainStore) loadHead(ctx context.Context) error {
 	head, err := cs.metadataDs.Get(ctx, chainHeadKey)
 	if err == dstore.ErrNotFound {
@@ -649,6 +653,12 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 		return nil
 	}
 
+	tskBlk, err := ts.Key().ToStorageBlock()
+	if err != nil {
+		log.Errorf("failed to create a block from tsk: %s", ts.Key())
+	}
+	_ = cs.chainLocalBlockstore.Put(ctx, tskBlk)
+
 	return nil
 }
 
@@ -908,7 +918,6 @@ func ReorgOps(ctx context.Context, lts func(ctx context.Context, _ types.TipSetK
 	}
 
 	return leftChain, rightChain, nil
-
 }
 
 // GetHeaviestTipSet returns the current heaviest tipset known (i.e. our head).
@@ -1163,6 +1172,24 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	}
 
 	return cs.LoadTipSet(ctx, lbts.Parents())
+}
+
+func (cs *ChainStore) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) {
+	blk, err := cs.chainBlockstore.Get(ctx, c)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot find tipset with cid %s: %w", c, err)
+	}
+
+	tsk := new(types.TipSetKey)
+	if err := tsk.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+		return nil, xerrors.Errorf("cannot unmarshal block into tipset key: %w", err)
+	}
+
+	ts, err := cs.GetTipSetFromKey(ctx, *tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get tipset from key: %w", err)
+	}
+	return ts, nil
 }
 
 func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove

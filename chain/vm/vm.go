@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -47,7 +46,7 @@ var (
 
 // ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
+	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
 		return addr, nil
 	}
 
@@ -56,12 +55,11 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
-	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
+	if act.Address == nil {
+		return address.Undef, xerrors.Errorf("actor doesn't have expected address: %s", addr)
 	}
 
-	return aast.PubkeyAddress()
+	return *act.Address, nil
 }
 
 var (
@@ -215,6 +213,7 @@ type LegacyVM struct {
 type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Rand           Rand
 	Bstore         blockstore.Blockstore
 	Actors         *ActorRegistry
@@ -269,7 +268,8 @@ type ApplyRet struct {
 }
 
 func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtime,
-	gasCharge *GasCharge, start time.Time) ([]byte, aerrors.ActorError, *Runtime) {
+	gasCharge *GasCharge, start time.Time,
+) ([]byte, aerrors.ActorError, *Runtime) {
 	defer atomic.AddUint64(&StatSends, 1)
 
 	st := vm.cstate

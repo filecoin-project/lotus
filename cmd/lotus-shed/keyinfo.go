@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
@@ -418,7 +419,7 @@ var keyinfoNewCmd = &cli.Command{
 		filename = strings.ReplaceAll(filename, "<addr>", keyAddr)
 		filename = strings.ReplaceAll(filename, "<type>", string(keyType))
 
-		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+		file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 		if err != nil {
 			return err
 		}
