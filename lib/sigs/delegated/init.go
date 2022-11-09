@@ -3,11 +3,11 @@ package delegated
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/builtin"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/builtin"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/lib/sigs"
