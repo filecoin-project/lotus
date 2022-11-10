@@ -754,7 +754,10 @@ Response:
   {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   }
 ]
 ```
@@ -4792,7 +4795,10 @@ Response:
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "GasCost": {
     "Message": {
@@ -4825,7 +4831,10 @@ Response:
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -4869,7 +4878,10 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -5059,7 +5071,10 @@ Response:
       "MsgRct": {
         "ExitCode": 0,
         "Return": "Ynl0ZSBhcnJheQ==",
-        "GasUsed": 9
+        "GasUsed": 9,
+        "EventsRoot": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        }
       },
       "GasCost": {
         "Message": {
@@ -5092,7 +5107,10 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -5136,7 +5154,10 @@ Response:
             "MsgRct": {
               "ExitCode": 0,
               "Return": "Ynl0ZSBhcnJheQ==",
-              "GasUsed": 9
+              "GasUsed": 9,
+              "EventsRoot": {
+                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+              }
             },
             "Error": "string value",
             "Duration": 60000000000,
@@ -5551,7 +5572,10 @@ Response:
 {
   "ExitCode": 0,
   "Return": "Ynl0ZSBhcnJheQ==",
-  "GasUsed": 9
+  "GasUsed": 9,
+  "EventsRoot": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 
@@ -6470,7 +6494,10 @@ Response:
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "GasCost": {
     "Message": {
@@ -6503,7 +6530,10 @@ Response:
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -6547,7 +6577,10 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -6618,7 +6651,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -6672,7 +6708,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -6984,7 +7023,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -7041,7 +7083,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
