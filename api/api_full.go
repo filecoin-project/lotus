@@ -26,7 +26,7 @@ import (
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -794,6 +794,41 @@ type FullNode interface {
 
 	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read
 
+	// Returns event logs matching given filter spec.
+	EthGetLogs(ctx context.Context, filter *EthFilterSpec) (*EthFilterResult, error) //perm:read
+
+	// Polling method for a filter, returns event logs which occurred since last poll.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterChanges(ctx context.Context, id EthFilterID) (*EthFilterResult, error) //perm:write
+
+	// Returns event logs matching filter with given id.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterLogs(ctx context.Context, id EthFilterID) (*EthFilterResult, error) //perm:write
+
+	// Installs a persistent filter based on given filter spec.
+	EthNewFilter(ctx context.Context, filter *EthFilterSpec) (EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when a new block arrives.
+	EthNewBlockFilter(ctx context.Context) (EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when new messages arrive in the message pool.
+	EthNewPendingTransactionFilter(ctx context.Context) (EthFilterID, error) //perm:write
+
+	// Uninstalls a filter with given id.
+	EthUninstallFilter(ctx context.Context, id EthFilterID) (bool, error) //perm:write
+
+	// Subscribe to different event types using websockets
+	// eventTypes is one or more of:
+	//  - newHeads: notify when new blocks arrive.
+	//  - pendingTransactions: notify when new messages arrive in the message pool.
+	//  - logs: notify new event logs that match a criteria
+	// params contains additional parameters used with the log event type
+	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
+	EthSubscribe(ctx context.Context, eventTypes []string, params EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) //perm:write
+
+	// Unsubscribe from a websocket subscription
+	EthUnsubscribe(ctx context.Context, id EthSubscriptionID) (bool, error) //perm:write
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
@@ -1184,7 +1219,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower        types.BigInt
 	NetworkPower      types.BigInt
-	Sectors           []builtin.ExtendedSectorInfo
+	Sectors           []builtinactors.ExtendedSectorInfo
 	WorkerKey         address.Address
 	SectorSize        abi.SectorSize
 	PrevBeaconEntry   types.BeaconEntry
@@ -1201,7 +1236,7 @@ type BlockTemplate struct {
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []builtin.PoStProof
+	WinningPoStProof []builtinactors.PoStProof
 }
 
 type DataSize struct {
