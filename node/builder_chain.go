@@ -146,6 +146,8 @@ var ChainNode = Options(
 		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
+		// this to make tests pass, but we should consider actually implementing it in the gateway
+		Override(new(full.EthModuleAPI), new(full.EthModuleDummy)),
 	),
 
 	// Full node API / service startup
