@@ -196,8 +196,19 @@ func (ts *TipSet) MinTicket() *Ticket {
 }
 
 func (ts *TipSet) MinTimestamp() uint64 {
-	minTs := ts.Blocks()[0].Timestamp
-	for _, bh := range ts.Blocks()[1:] {
+	if ts == nil {
+		return 0
+	}
+
+	blks := ts.Blocks()
+
+	if len(blks) == 0 {
+		// null rounds make things crash -- it is threaded in every fvm instantiation
+		return 0
+	}
+
+	minTs := blks[0].Timestamp
+	for _, bh := range blks[1:] {
 		if bh.Timestamp < minTs {
 			minTs = bh.Timestamp
 		}
