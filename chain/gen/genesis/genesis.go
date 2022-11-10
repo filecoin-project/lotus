@@ -566,8 +566,8 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
-	// Set up the Ethereum Address Manager.
-	if err = SetupEAM(ctx, st); err != nil {
+	// Set up the Ethereum Address Manager
+	if err = SetupEAM(ctx, st, template.NetworkVersion); err != nil {
 		return nil, xerrors.Errorf("failed to setup EAM: %w", err)
 	}
 
@@ -674,9 +674,18 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	}, nil
 }
 
-func SetupEAM(_ context.Context, nst *state.StateTree) error {
-	// TODO Version10
-	codecid, ok := actors.GetActorCodeID(actorstypes.Version10, actors.EamKey)
+func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error {
+	av, err := actorstypes.VersionForNetwork(nv)
+	if err != nil {
+		return fmt.Errorf("failed to get actors version for network version %d: %w", nv, err)
+	}
+
+	if av < actorstypes.Version10 {
+		// Not defined before version 10; migration has to create.
+		return nil
+	}
+
+	codecid, ok := actors.GetActorCodeID(av, actors.EamKey)
 	if !ok {
 		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
 	}
