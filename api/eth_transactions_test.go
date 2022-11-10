@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	"github.com/filecoin-project/go-state-types/builtin"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
@@ -147,7 +147,7 @@ func TestDelegatedSigner(t *testing.T) {
 	hasher.Write(pubk)
 	addrHash := hasher.Sum(nil)
 
-	from, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[12:])
+	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[12:])
 	require.NoError(t, err)
 
 	sig := append(r, s...)

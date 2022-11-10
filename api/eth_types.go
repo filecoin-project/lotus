@@ -17,7 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/lotus/build"
@@ -301,7 +301,7 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 
 	// Otherwise, translate the address into an address controlled by the
 	// Ethereum Address Manager.
-	addr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, ea[:])
+	addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ea[:])
 	if err != nil {
 		return address.Undef, fmt.Errorf("failed to translate supplied address (%s) into a "+
 			"Filecoin f4 address: %w", hex.EncodeToString(ea[:]), err)
@@ -330,7 +330,7 @@ func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAd
 			return EthAddress{}, false, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
 		}
 		payload = payload[n:]
-		if namespace == builtin.EthereumAddressManagerActorID {
+		if namespace == builtintypes.EthereumAddressManagerActorID {
 			addr, err := EthAddressFromBytes(payload)
 			return addr, err == nil, err
 		}
