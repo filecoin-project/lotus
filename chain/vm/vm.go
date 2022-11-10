@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -54,10 +55,19 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
-	if act.Address == nil {
-		return address.Undef, xerrors.Errorf("actor doesn't have expected address: %s", addr)
+
+	if state.Version() >= types.StateTreeVersion5 {
+		if act.Address == nil {
+			return address.Undef, xerrors.Errorf("actor doesn't have expected address: %s", addr)
+		}
+		return *act.Address, nil
+	} else {
+		aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
+		if err != nil {
+			return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
+		}
+		return aast.PubkeyAddress()
 	}
-	return *act.Address, nil
 }
 
 var (
