@@ -1557,8 +1557,8 @@ func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 
 	// TODO migration
-	// - the init actor state to include the (empty) installed actors field
-	// - state tree migration to v5
+	// - state tree migration to v5; must set predictable addresses for all account actors
+	// - create EAM actor
 	return cid.Undef, fmt.Errorf("IMPLEMENTME: v10 migration")
 }
 
