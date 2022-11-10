@@ -61,13 +61,14 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 			return address.Undef, xerrors.Errorf("actor doesn't have expected address: %s", addr)
 		}
 		return *act.Address, nil
-	} else {
-		aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
-		if err != nil {
-			return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
-		}
-		return aast.PubkeyAddress()
 	}
+
+	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
+	}
+	return aast.PubkeyAddress()
+
 }
 
 var (
