@@ -8,6 +8,9 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// set a limit to make sure it doesn't loop infinitely
+const maxListElements = 500
+
 func EncodeRLP(val interface{}) ([]byte, error) {
 	return encodeRLP(val)
 }
@@ -48,7 +51,8 @@ func encodeLength(length int) (lenInBytes []byte, err error) {
 }
 
 func encodeRLP(val interface{}) ([]byte, error) {
-	if data, ok := val.([]byte); ok {
+	switch data := val.(type) {
+	case []byte:
 		if len(data) == 1 && data[0] <= 0x7f {
 			return data, nil
 		} else if len(data) <= 55 {
@@ -65,7 +69,7 @@ func encodeRLP(val interface{}) ([]byte, error) {
 				append(lenInBytes, data...)...,
 			), nil
 		}
-	} else if data, ok := val.([]interface{}); ok {
+	case []interface{}:
 		encodedList, err := encodeRLPListItems(data)
 		if err != nil {
 			return nil, err
@@ -86,8 +90,9 @@ func encodeRLP(val interface{}) ([]byte, error) {
 			[]byte{prefix},
 			append(lenInBytes, encodedList...)...,
 		), nil
+	default:
+		return nil, fmt.Errorf("input data should either be a list or a byte array")
 	}
-	return nil, fmt.Errorf("input data should either be a list or a byte array")
 }
 
 func DecodeRLP(data []byte) (interface{}, error) {
@@ -160,8 +165,7 @@ func decodeListElems(data []byte, length int) (res []interface{}, err error) {
 	totalConsumed := 0
 	result := []interface{}{}
 
-	// set a limit to make sure it doesn't loop infinitely
-	for i := 0; totalConsumed < length && i < 5000; i++ {
+	for i := 0; totalConsumed < length && i < maxListElements; i++ {
 		elem, consumed, err := decodeRLP(data[totalConsumed:])
 		if err != nil {
 			return nil, xerrors.Errorf("invalid rlp data: cannot decode list element: %w", err)
