@@ -40,21 +40,21 @@ func TestTxArgs(t *testing.T) {
 
 		// parse txargs
 		txArgs, err := ParseEthTxArgs(tc.Input)
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		msgRecovered, err := txArgs.OriginalRlpMsg()
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 		require.Equal(t, tc.NosigTx, "0x"+hex.EncodeToString(msgRecovered), comment)
 
 		// verify signatures
 		from, err := txArgs.Sender()
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		smsg, err := txArgs.ToSignedMessage()
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		err = sigs.Verify(&smsg.Signature, from, msgRecovered)
-		require.Nil(t, err, comment)
+		require.NoError(t, err)
 
 		// verify data
 		require.Equal(t, tc.Output.ChainID, txArgs.ChainID)

@@ -120,7 +120,7 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 	var to address.Address
 	var params []byte
 
-	if tx.To == nil && len(tx.Input) == 0 {
+	if len(tx.To) == 0 && len(tx.Input) == 0 {
 		return nil, fmt.Errorf("to and input cannot both be empty")
 	}
 
