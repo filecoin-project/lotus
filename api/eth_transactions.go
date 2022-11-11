@@ -126,7 +126,6 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 
 	var method abi.MethodNum
 	if tx.To == nil {
-		// TODO https://github.com/filecoin-project/ref-fvm/issues/992
 		// TODO unify with applyEvmMsg
 
 		// this is a contract creation
