@@ -120,7 +120,7 @@ func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
 	var to address.Address
 	var params []byte
 
-	if tx.To == nil && tx.Input == nil {
+	if tx.To == nil && len(tx.Input) == 0 {
 		return nil, fmt.Errorf("to and input cannot both be empty")
 	}
 
@@ -248,9 +248,6 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 }
 
 func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
-	if tx.V == nil || tx.R == nil || tx.S == nil {
-		return nil, fmt.Errorf("one of V, R, or S is nil")
-	}
 	sig := append([]byte{}, tx.R...)
 	sig = append(sig, tx.S...)
 	sig = append(sig, tx.V...)
@@ -396,16 +393,25 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 }
 
 func ParseEthTxArgs(data []byte) (*EthTxArgs, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("empty data")
+	}
+
 	if data[0] > 0x7f {
 		// legacy transaction
 		return nil, fmt.Errorf("legacy transaction is not supported")
-	} else if data[0] == 1 {
+	}
+
+	if data[0] == 1 {
 		// EIP-2930
 		return nil, fmt.Errorf("EIP-2930 transaction is not supported")
-	} else if data[0] == Eip1559TxType {
+	}
+
+	if data[0] == Eip1559TxType {
 		// EIP-1559
 		return parseEip1559Tx(data)
 	}
+
 	return nil, fmt.Errorf("unsupported transaction type")
 }
 
@@ -497,7 +503,7 @@ func parseEthAddr(v interface{}) (*EthAddress, error) {
 	if err != nil {
 		return nil, err
 	}
-	if b == nil || len(b) == 0 {
+	if len(b) == 0 {
 		return nil, nil
 	}
 	addr, err := EthAddressFromBytes(b)
