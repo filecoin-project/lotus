@@ -375,7 +375,7 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 		{
-			Name: "Raft",
+			Name: "Cluster",
 			Type: "UserRaftConfig",
 
 			Comment: ``,

@@ -242,9 +242,9 @@ func ConfigFullNode(c interface{}) Option {
 			Override(new(wallet.Default), wallet.NilDefault),
 		),
 		// Chain node cluster enabled
-		If(cfg.Raft.ClusterModeEnabled,
+		If(cfg.Cluster.ClusterModeEnabled,
 			Override(new(*gorpc.Client), modules.NewRPCClient),
-			Override(new(*consensus2.ClusterRaftConfig), consensus2.NewClusterRaftConfig(&cfg.Raft)),
+			Override(new(*consensus2.ClusterRaftConfig), consensus2.NewClusterRaftConfig(&cfg.Cluster)),
 			Override(new(*consensus2.Consensus), consensus2.NewConsensusWithRPCClient(false)),
 			Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
 			Override(new(messagesigner.MsgSigner), From(new(*messagesigner.MessageSignerConsensus))),

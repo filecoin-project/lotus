@@ -26,7 +26,7 @@ type FullNode struct {
 	Wallet     Wallet
 	Fees       FeeConfig
 	Chainstore Chainstore
-	Raft       UserRaftConfig
+	Cluster    UserRaftConfig
 }
 
 // // Common

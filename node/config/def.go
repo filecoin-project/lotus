@@ -97,7 +97,7 @@ func DefaultFullNode() *FullNode {
 				HotStoreFullGCFrequency: 20,
 			},
 		},
-		Raft: *DefaultUserRaftConfig(),
+		Cluster: *DefaultUserRaftConfig(),
 	}
 }
 

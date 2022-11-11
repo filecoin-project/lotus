@@ -202,23 +202,23 @@
     #HotStoreFullGCFrequency = 20
 
 
-[Raft]
+[Cluster]
   # config to enabled node cluster with raft consensus
   #
   # type: bool
-  # env var: LOTUS_RAFT_CLUSTERMODEENABLED
+  # env var: LOTUS_CLUSTER_CLUSTERMODEENABLED
   #ClusterModeEnabled = false
 
   # will shutdown libp2p host on shutdown. Useful for testing
   #
   # type: bool
-  # env var: LOTUS_RAFT_HOSTSHUTDOWN
+  # env var: LOTUS_CLUSTER_HOSTSHUTDOWN
   #HostShutdown = false
 
   # A folder to store Raft's data.
   #
   # type: string
-  # env var: LOTUS_RAFT_DATAFOLDER
+  # env var: LOTUS_CLUSTER_DATAFOLDER
   #DataFolder = ""
 
   # InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
@@ -226,53 +226,53 @@
   # initialized or when starting in staging mode.
   #
   # type: []string
-  # env var: LOTUS_RAFT_INITPEERSETMULTIADDR
+  # env var: LOTUS_CLUSTER_INITPEERSETMULTIADDR
   #InitPeersetMultiAddr = []
 
   # LeaderTimeout specifies how long to wait for a leader before
   # failing an operation.
   #
   # type: Duration
-  # env var: LOTUS_RAFT_WAITFORLEADERTIMEOUT
+  # env var: LOTUS_CLUSTER_WAITFORLEADERTIMEOUT
   #WaitForLeaderTimeout = "15s"
 
   # NetworkTimeout specifies how long before a Raft network
   # operation is timed out
   #
   # type: Duration
-  # env var: LOTUS_RAFT_NETWORKTIMEOUT
+  # env var: LOTUS_CLUSTER_NETWORKTIMEOUT
   #NetworkTimeout = "1m40s"
 
   # CommitRetries specifies how many times we retry a failed commit until
   # we give up.
   #
   # type: int
-  # env var: LOTUS_RAFT_COMMITRETRIES
+  # env var: LOTUS_CLUSTER_COMMITRETRIES
   #CommitRetries = 1
 
   # How long to wait between retries
   #
   # type: Duration
-  # env var: LOTUS_RAFT_COMMITRETRYDELAY
+  # env var: LOTUS_CLUSTER_COMMITRETRYDELAY
   #CommitRetryDelay = "200ms"
 
   # BackupsRotate specifies the maximum number of Raft's DataFolder
   # copies that we keep as backups (renaming) after cleanup.
   #
   # type: int
-  # env var: LOTUS_RAFT_BACKUPSROTATE
+  # env var: LOTUS_CLUSTER_BACKUPSROTATE
   #BackupsRotate = 6
 
   # Namespace to use when writing keys to the datastore
   #
   # type: string
-  # env var: LOTUS_RAFT_DATASTORENAMESPACE
+  # env var: LOTUS_CLUSTER_DATASTORENAMESPACE
   #DatastoreNamespace = "/raft"
 
   # Tracing enables propagation of contexts across binary boundaries.
   #
   # type: bool
-  # env var: LOTUS_RAFT_TRACING
+  # env var: LOTUS_CLUSTER_TRACING
   #Tracing = false
 
 
