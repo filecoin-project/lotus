@@ -635,7 +635,7 @@ func TestRestartWorker(t *testing.T) {
 	wds := datastore.NewMapDatastore()
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := newLocalWorker(func(_ ExecutorFunc) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -672,7 +672,7 @@ func TestRestartWorker(t *testing.T) {
 	}
 
 	// restart the worker
-	w = newLocalWorker(func() (storiface.Storage, error) {
+	w = newLocalWorker(func(_ ExecutorFunc) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -708,7 +708,7 @@ func TestReenableWorker(t *testing.T) {
 	wds := datastore.NewMapDatastore()
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := newLocalWorker(func(_ ExecutorFunc) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -781,7 +781,7 @@ func TestResUse(t *testing.T) {
 	wds := datastore.NewMapDatastore()
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := newLocalWorker(func(_ ExecutorFunc) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
@@ -839,7 +839,7 @@ func TestResOverride(t *testing.T) {
 	wds := datastore.NewMapDatastore()
 
 	arch := make(chan chan apres)
-	w := newLocalWorker(func() (storiface.Storage, error) {
+	w := newLocalWorker(func(_ ExecutorFunc) (storiface.Storage, error) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,

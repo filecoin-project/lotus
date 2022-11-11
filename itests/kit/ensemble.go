@@ -829,7 +829,7 @@ func (n *Ensemble) Start() *Ensemble {
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
 
 		workerApi := &sealworker.Worker{
-			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
+			LocalWorker: sectorstorage.NewLocalWorkerWithExec(m.options.workerExecutor, sectorstorage.WorkerConfig{
 				TaskTypes: m.options.workerTasks,
 				NoSwap:    false,
 				Name:      m.options.workerName,

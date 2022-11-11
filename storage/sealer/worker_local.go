@@ -47,7 +47,7 @@ type WorkerConfig struct {
 }
 
 // used do provide custom proofs impl (mostly used in testing)
-type ExecutorFunc func() (storiface.Storage, error)
+type ExecutorFunc func(ffiExec ExecutorFunc) (storiface.Storage, error)
 type EnvFunc func(string) (string, bool)
 
 type LocalWorker struct {
@@ -146,6 +146,10 @@ func NewLocalWorker(wcfg WorkerConfig, store paths.Store, local *paths.Local, si
 	return newLocalWorker(nil, wcfg, os.LookupEnv, store, local, sindex, ret, cst)
 }
 
+func NewLocalWorkerWithExec(executor ExecutorFunc, wcfg WorkerConfig, store paths.Store, local *paths.Local, sindex paths.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+	return newLocalWorker(executor, wcfg, os.LookupEnv, store, local, sindex, ret, cst)
+}
+
 type localWorkerPathProvider struct {
 	w  *LocalWorker
 	op storiface.AcquireMode
@@ -180,7 +184,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 	}, nil
 }
 
-func (l *LocalWorker) ffiExec() (storiface.Storage, error) {
+func (l *LocalWorker) ffiExec(_ ExecutorFunc) (storiface.Storage, error) {
 	return ffiwrapper.New(&localWorkerPathProvider{w: l})
 }
 
@@ -339,7 +343,7 @@ func doReturn(ctx context.Context, rt ReturnType, ci storiface.CallID, ret stori
 }
 
 func (l *LocalWorker) NewSector(ctx context.Context, sector storiface.SectorRef) error {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return err
 	}
@@ -348,7 +352,7 @@ func (l *LocalWorker) NewSector(ctx context.Context, sector storiface.SectorRef)
 }
 
 func (l *LocalWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -359,7 +363,7 @@ func (l *LocalWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSi
 }
 
 func (l *LocalWorker) AddPiece(ctx context.Context, sector storiface.SectorRef, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -394,7 +398,7 @@ func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storiface.Secto
 			}
 		}
 
-		sb, err := l.executor()
+		sb, err := l.executor(l.ffiExec)
 		if err != nil {
 			return nil, err
 		}
@@ -404,7 +408,7 @@ func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storiface.Secto
 }
 
 func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.PreCommit1Out) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -415,7 +419,7 @@ func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector storiface.Secto
 }
 
 func (l *LocalWorker) SealCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storiface.SectorCids) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -426,7 +430,7 @@ func (l *LocalWorker) SealCommit1(ctx context.Context, sector storiface.SectorRe
 }
 
 func (l *LocalWorker) SealCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -437,7 +441,7 @@ func (l *LocalWorker) SealCommit2(ctx context.Context, sector storiface.SectorRe
 }
 
 func (l *LocalWorker) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, pieces []abi.PieceInfo) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -449,7 +453,7 @@ func (l *LocalWorker) ReplicaUpdate(ctx context.Context, sector storiface.Sector
 }
 
 func (l *LocalWorker) ProveReplicaUpdate1(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -460,7 +464,7 @@ func (l *LocalWorker) ProveReplicaUpdate1(ctx context.Context, sector storiface.
 }
 
 func (l *LocalWorker) ProveReplicaUpdate2(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storiface.ReplicaVanillaProofs) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -471,7 +475,7 @@ func (l *LocalWorker) ProveReplicaUpdate2(ctx context.Context, sector storiface.
 }
 
 func (l *LocalWorker) GenerateSectorKeyFromData(ctx context.Context, sector storiface.SectorRef, commD cid.Cid) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -482,7 +486,7 @@ func (l *LocalWorker) GenerateSectorKeyFromData(ctx context.Context, sector stor
 }
 
 func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -503,7 +507,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storiface.Secto
 }
 
 func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -563,7 +567,7 @@ func (l *LocalWorker) MoveStorage(ctx context.Context, sector storiface.SectorRe
 }
 
 func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storiface.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -589,7 +593,7 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storiface.SectorRe
 }
 
 func (l *LocalWorker) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.UndefCall, err
 	}
@@ -600,7 +604,7 @@ func (l *LocalWorker) DownloadSectorData(ctx context.Context, sector storiface.S
 }
 
 func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return nil, err
 	}
@@ -645,7 +649,7 @@ func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.Registere
 }
 
 func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness) (storiface.WindowPoStResult, error) {
-	sb, err := l.executor()
+	sb, err := l.executor(l.ffiExec)
 	if err != nil {
 		return storiface.WindowPoStResult{}, err
 	}

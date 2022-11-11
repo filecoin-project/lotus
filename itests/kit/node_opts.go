@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
@@ -50,6 +51,7 @@ type nodeOpts struct {
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(paths.Store) paths.Store
 	workerName       string
+	workerExecutor   sealer.ExecutorFunc
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -234,6 +236,13 @@ var WithSealWorkerTasks = WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, 
 func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.workerStorageOpt = transform
+		return nil
+	}
+}
+
+func WithWorkerExecutor(exec sealer.ExecutorFunc) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.workerExecutor = exec
 		return nil
 	}
 }

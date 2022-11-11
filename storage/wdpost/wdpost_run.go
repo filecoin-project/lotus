@@ -291,7 +291,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 		return nil, err
 	}
 
-	log.Infow("starting PoSt cycle", "manual", manual, "ts", ts, "deadline", di.Index, "batches", len(partitionBatches))
+	log.Infow("starting PoSt cycle", "manual", manual, "ts", ts, "deadline", di.Index, "batches", len(partitionBatches), "partitions", len(partitions))
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -355,6 +355,8 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 }
 
 func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di dline.Info, ts, headTs *types.TipSet, batchIdx int, batch []api.Partition, firstBatchPartition int) (*miner.SubmitWindowedPoStParams, error) {
+	log := log.WithOptions(zap.Fields(zap.Int("batch", batchIdx)))
+
 	// postSkipped is a set of sectors skipped during PoSt computation. Those sectors will be
 	// skipped in retries
 	postSkipped := bitfield.New()
@@ -446,7 +448,8 @@ func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di 
 			"chain-random", rand,
 			"deadline", di,
 			"height", ts.Height(),
-			"skipped", skipCount)
+			"skipped", skipCount,
+			"partitions", len(batch))
 
 		tsStart := build.Clock.Now()
 
@@ -457,7 +460,7 @@ func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di 
 
 		postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), xsinfos, append(abi.PoStRandomness{}, rand...))
 		elapsed := time.Since(tsStart)
-		log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed, "skip", len(ps), "err", err)
+		log.Infow("computing window post", "elapsed", elapsed, "skip", len(ps), "err", err)
 		if err != nil {
 			log.Errorf("error generating window post: %s", err)
 		}
