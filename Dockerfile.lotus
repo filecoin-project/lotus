@@ -45,7 +45,7 @@ ENV FFI_BUILD_FROM_SOURCE=${FFI_BUILD_FROM_SOURCE}
 RUN make clean deps
 
 
-FROM builder-local AS builder-debug
+FROM builder-local AS builder-test
 MAINTAINER Lotus Development Team
 
 WORKDIR /opt/filecoin
@@ -61,7 +61,7 @@ WORKDIR /opt/filecoin
 ARG RUSTFLAGS=""
 ARG GOFLAGS=""
 
-RUN make build-devnets
+RUN make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
 
 
 FROM ubuntu:20.04 AS base
@@ -194,13 +194,14 @@ CMD ["-help"]
 
 
 ###
-FROM base as lotus-all-in-one
+from base as lotus-all-in-one
 
 ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
 ENV LOTUS_MINER_PATH /var/lib/lotus-miner
 ENV LOTUS_PATH /var/lib/lotus
 ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
 ENV WALLET_PATH /var/lib/lotus-wallet
+ENV DOCKER_LOTUS_IMPORT_SNAPSHOT https://fil-chain-snapshots-fallback.s3.amazonaws.com/mainnet/minimal_finality_stateroots_latest.car
 
 COPY --from=builder /opt/filecoin/lotus      /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-shed /usr/local/bin/
@@ -234,7 +235,7 @@ EXPOSE 3456
 EXPOSE 1777
 
 ###
-FROM base as lotus-test
+from base as lotus-test
 
 ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
 ENV LOTUS_MINER_PATH /var/lib/lotus-miner
