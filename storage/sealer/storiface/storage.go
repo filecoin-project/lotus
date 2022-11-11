@@ -153,3 +153,61 @@ type SecDataHttpHeader struct {
 	Key   string
 	Value string
 }
+
+// StorageConfig .lotusstorage/storage.json
+type StorageConfig struct {
+	StoragePaths []LocalPath
+}
+
+type LocalPath struct {
+	Path string
+}
+
+// LocalStorageMeta [path]/sectorstore.json
+type LocalStorageMeta struct {
+	ID ID
+
+	// A high weight means data is more likely to be stored in this path
+	Weight uint64 // 0 = readonly
+
+	// Intermediate data for the sealing process will be stored here
+	CanSeal bool
+
+	// Finalized sectors that will be proved over time will be stored here
+	CanStore bool
+
+	// MaxStorage specifies the maximum number of bytes to use for sector storage
+	// (0 = unlimited)
+	MaxStorage uint64
+
+	// List of storage groups this path belongs to
+	Groups []string
+
+	// List of storage groups to which data from this path can be moved. If none
+	// are specified, allow to all
+	AllowTo []string
+
+	// AllowTypes lists sector file types which are allowed to be put into this
+	// path. If empty, all file types are allowed.
+	//
+	// Valid values:
+	// - "unsealed"
+	// - "sealed"
+	// - "cache"
+	// - "update"
+	// - "update-cache"
+	// Any other value will generate a warning and be ignored.
+	AllowTypes []string
+
+	// DenyTypes lists sector file types which aren't allowed to be put into this
+	// path.
+	//
+	// Valid values:
+	// - "unsealed"
+	// - "sealed"
+	// - "cache"
+	// - "update"
+	// - "update-cache"
+	// Any other value will generate a warning and be ignored.
+	DenyTypes []string
+}

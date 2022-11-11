@@ -382,6 +382,10 @@ func (s *state9) Info() (MinerInfo, error) {
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
+
+		Beneficiary:            info.Beneficiary,
+		BeneficiaryTerm:        info.BeneficiaryTerm,
+		PendingBeneficiaryTerm: info.PendingBeneficiaryTerm,
 	}
 
 	return mi, nil
@@ -542,19 +546,7 @@ func fromV9SectorOnChainInfo(v9 miner9.SectorOnChainInfo) SectorOnChainInfo {
 }
 
 func fromV9SectorPreCommitOnChainInfo(v9 miner9.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	return minertypes.SectorPreCommitOnChainInfo{
-		Info: minertypes.SectorPreCommitInfo{
-			SealProof:     v9.Info.SealProof,
-			SectorNumber:  v9.Info.SectorNumber,
-			SealedCID:     v9.Info.SealedCID,
-			SealRandEpoch: v9.Info.SealRandEpoch,
-			DealIDs:       v9.Info.DealIDs,
-			Expiration:    v9.Info.Expiration,
-			UnsealedCid:   nil,
-		},
-		PreCommitDeposit: v9.PreCommitDeposit,
-		PreCommitEpoch:   v9.PreCommitEpoch,
-	}
+	return v9
 }
 
 func (s *state9) GetState() interface{} {

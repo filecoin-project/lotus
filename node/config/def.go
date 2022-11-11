@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 const (
@@ -91,12 +90,11 @@ func DefaultFullNode() *FullNode {
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
 			Splitstore: Splitstore{
-				ColdStoreType: "universal",
+				ColdStoreType: "messages",
 				HotStoreType:  "badger",
 				MarkSetType:   "badger",
 
-				HotStoreFullGCFrequency:  20,
-				ColdStoreFullGCFrequency: 7,
+				HotStoreFullGCFrequency: 20,
 			},
 		},
 		Raft: *DefaultUserRaftConfig(),
@@ -164,7 +162,7 @@ func DefaultStorageMiner() *StorageMiner {
 			Assigner: "utilization",
 
 			// By default use the hardware resource filtering strategy.
-			ResourceFiltering: sealer.ResourceFilteringHardware,
+			ResourceFiltering: ResourceFilteringHardware,
 		},
 
 		Dealmaking: DealmakingConfig{
@@ -276,6 +274,20 @@ func (dur Duration) MarshalText() ([]byte, error) {
 	d := time.Duration(dur)
 	return []byte(d.String()), nil
 }
+
+// ResourceFilteringStrategy is an enum indicating the kinds of resource
+// filtering strategies that can be configured for workers.
+type ResourceFilteringStrategy string
+
+const (
+	// ResourceFilteringHardware specifies that available hardware resources
+	// should be evaluated when scheduling a task against the worker.
+	ResourceFilteringHardware = ResourceFilteringStrategy("hardware")
+
+	// ResourceFilteringDisabled disables resource filtering against this
+	// worker. The scheduler may assign any task to this worker.
+	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
+)
 
 var (
 	DefaultDataSubFolder        = "raft"

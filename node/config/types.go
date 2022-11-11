@@ -4,7 +4,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
@@ -453,7 +452,7 @@ type SealerConfig struct {
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
 	// to "hardware".
-	ResourceFiltering sealer.ResourceFilteringStrategy
+	ResourceFiltering ResourceFilteringStrategy
 }
 
 type BatchFeeConfig struct {
@@ -556,7 +555,7 @@ type Chainstore struct {
 
 type Splitstore struct {
 	// ColdStoreType specifies the type of the coldstore.
-	// It can be "universal" (default) or "discard" for discarding cold blocks.
+	// It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
 	ColdStoreType string
 	// HotStoreType specifies the type of the hotstore.
 	// Only currently supported value is "badger".
@@ -572,21 +571,6 @@ type Splitstore struct {
 	// A value of 0 disables, while a value 1 will do full GC in every compaction.
 	// Default is 20 (about once a week).
 	HotStoreFullGCFrequency uint64
-
-	// EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
-	// where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
-	// Default is false
-	EnableColdStoreAutoPrune bool
-
-	// ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
-	// Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
-	// full GC in every prune.
-	// Default is 7 (about once every a week)
-	ColdStoreFullGCFrequency uint64
-
-	// ColdStoreRetention specifies the retention policy for data reachable from the chain, in
-	// finalities beyond the compaction boundary, default is 0, -1 retains everything
-	ColdStoreRetention int64
 }
 
 // // Full Node

@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
 	consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -132,6 +133,7 @@ var ChainNode = Options(
 	Override(new(*market.FundManager), market.NewFundManager),
 	Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
 	Override(new(storagemarket.BlockstoreAccessor), modules.StorageBlockstoreAccessor),
+	Override(new(*retrievaladapter.APIBlockstoreAccessor), retrievaladapter.NewAPIBlockstoreAdapter),
 	Override(new(storagemarket.StorageClient), modules.StorageClient),
 	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
@@ -184,7 +186,7 @@ func ConfigFullNode(c interface{}) Option {
 		Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
 		If(cfg.Chainstore.EnableSplitstore,
-			If(cfg.Chainstore.Splitstore.ColdStoreType == "universal",
+			If(cfg.Chainstore.Splitstore.ColdStoreType == "universal" || cfg.Chainstore.Splitstore.ColdStoreType == "messages",
 				Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
 			If(cfg.Chainstore.Splitstore.ColdStoreType == "discard",
 				Override(new(dtypes.ColdBlockstore), modules.DiscardColdBlockstore)),

@@ -633,11 +633,11 @@ func (n *Ensemble) Start() *Ensemble {
 			psd := m.PresealDir
 			noPaths := m.options.noStorage
 
-			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+			err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 				if noPaths {
-					sc.StoragePaths = []paths.LocalPath{}
+					sc.StoragePaths = []storiface.LocalPath{}
 				}
-				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
+				sc.StoragePaths = append(sc.StoragePaths, storiface.LocalPath{Path: psd})
 			})
 
 			require.NoError(n.t, err)
@@ -690,7 +690,7 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// disable resource filtering so that local worker gets assigned tasks
 			// regardless of system pressure.
-			node.Override(new(sectorstorage.Config), func() sectorstorage.Config {
+			node.Override(new(config.SealerConfig), func() config.SealerConfig {
 				scfg := config.DefaultStorageMiner()
 
 				if noLocal {
@@ -703,8 +703,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 				scfg.Storage.Assigner = assigner
 				scfg.Storage.DisallowRemoteFinalize = disallowRemoteFinalize
-				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
-				return scfg.StorageManager()
+				scfg.Storage.ResourceFiltering = config.ResourceFilteringDisabled
+				return scfg.Storage
 			}),
 
 			// upgrades
@@ -795,8 +795,8 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		if m.options.noStorage {
-			err := lr.SetStorage(func(sc *paths.StorageConfig) {
-				sc.StoragePaths = []paths.LocalPath{}
+			err := lr.SetStorage(func(sc *storiface.StorageConfig) {
+				sc.StoragePaths = []storiface.LocalPath{}
 			})
 			require.NoError(n.t, err)
 		}

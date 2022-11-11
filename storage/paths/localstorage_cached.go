@@ -7,6 +7,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var StatTimeout = 5 * time.Second
@@ -47,11 +48,11 @@ type diskUsageResult struct {
 	time  time.Time
 }
 
-func (c *cachedLocalStorage) GetStorage() (StorageConfig, error) {
+func (c *cachedLocalStorage) GetStorage() (storiface.StorageConfig, error) {
 	return c.base.GetStorage()
 }
 
-func (c *cachedLocalStorage) SetStorage(f func(*StorageConfig)) error {
+func (c *cachedLocalStorage) SetStorage(f func(*storiface.StorageConfig)) error {
 	return c.base.SetStorage(f)
 }
 

@@ -539,7 +539,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 		}
 
 		nv := network.Version(cctx.Int("network-version"))
-		if nv > build.NewestNetworkVersion {
+		if nv > build.TestNetworkVersion {
 			return xerrors.Errorf("invalid network version: %d", nv)
 		}
 

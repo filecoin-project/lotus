@@ -110,7 +110,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 			mx.Unlock()
 
 			return nil
-		})
+		}, func(cid.Cid) error { return nil })
 
 	if err != nil {
 		return err

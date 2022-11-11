@@ -7,6 +7,7 @@ import (
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -122,6 +123,15 @@ func main() {
 	}
 	err = gen.WriteMapEncodersToFile("./cmd/lotus-shed/shedgen/cbor_gen.go", "shedgen",
 		shedgen.CarbNode{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	err = gen.WriteTupleEncodersToFile("./blockstore/cbor_gen.go", "blockstore",
+		blockstore.NetRpcReq{},
+		blockstore.NetRpcResp{},
+		blockstore.NetRpcErr{},
 	)
 	if err != nil {
 		fmt.Println(err)

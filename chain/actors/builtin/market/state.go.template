@@ -16,14 +16,18 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 {{if (le .v 7)}}
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 {{else}}
 	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+{{end}}
+{{if (ge .v 9)}}
+	"github.com/filecoin-project/go-state-types/builtin"
 {{end}}
 )
 
@@ -201,7 +205,16 @@ func (s *dealStates{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-        return (DealState)(v{{.v}})
+    {{if (le .v 8)}}
+    return DealState{
+        SectorStartEpoch: v{{.v}}.SectorStartEpoch,
+        LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
+        SlashEpoch: v{{.v}}.SlashEpoch,
+        VerifiedClaim: 0,
+    }
+    {{else}}
+    return (DealState)(v{{.v}})
+    {{end}}
 }
 
 type dealProposals{{.v}} struct {
@@ -351,4 +364,26 @@ func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, int, 
 
 func (r *publishStorageDealsReturn{{.v}}) DealIDs() ([]abi.DealID, error) {
     return r.IDs, nil
+}
+
+func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+{{if (le .v 8)}}
+    	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
+{{else}}
+	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+    if err != nil {
+        return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+    }
+
+	var allocationId cbg.CborInt
+	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
+	if err != nil {
+		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+	}
+	if !found {
+		return verifregtypes.NoAllocationID, nil
+	}
+
+	return verifregtypes.AllocationId(allocationId), nil
+{{end}}
 }

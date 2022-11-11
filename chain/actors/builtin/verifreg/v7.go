@@ -2,9 +2,11 @@ package verifreg
 
 import (
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
@@ -47,7 +49,9 @@ func (s *state7) RootKey() (address.Address, error) {
 }
 
 func (s *state7) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+
 	return getDataCap(s.store, actors.Version7, s.verifiedClients, addr)
+
 }
 
 func (s *state7) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -63,11 +67,15 @@ func (s *state7) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state7) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+
 	return forEachCap(s.store, actors.Version7, s.verifiedClients, cb)
+
 }
 
 func (s *state7) verifiedClients() (adt.Map, error) {
+
 	return adt7.AsMap(s.store, s.VerifiedClients, builtin7.DefaultHamtBitwidth)
+
 }
 
 func (s *state7) verifiers() (adt.Map, error) {
@@ -80,4 +88,28 @@ func (s *state7) removeDataCapProposalIDs() (adt.Map, error) {
 
 func (s *state7) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state7) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+
+	return nil, false, xerrors.Errorf("unsupported in actors v7")
+
+}
+
+func (s *state7) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v7")
+
+}
+
+func (s *state7) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+
+	return nil, false, xerrors.Errorf("unsupported in actors v7")
+
+}
+
+func (s *state7) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v7")
+
 }

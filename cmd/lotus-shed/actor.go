@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"os"
 
@@ -421,17 +422,17 @@ var actorControlSet = &cli.Command{
 			Usage: "specify the address of miner actor",
 		},
 		&cli.BoolFlag{
+			Name:  "dump-bytes",
+			Usage: "Dumps the bytes of the message that would propose this change",
+			Value: false,
+		},
+		&cli.BoolFlag{
 			Name:  "really-do-it",
 			Usage: "Actually send transaction performing the action",
 			Value: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
-			return nil
-		}
-
 		var maddr address.Address
 		if act := cctx.String("actor"); act != "" {
 			var err error
@@ -521,14 +522,36 @@ var actorControlSet = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
+		msg := &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
 			Method: builtin.MethodsMiner.ChangeWorkerAddress,
-
 			Value:  big.Zero(),
 			Params: sp,
-		}, nil)
+		}
+
+		if cctx.Bool("dump-bytes") {
+
+			msg, err = nodeAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			msgBytes, err := msg.Serialize()
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(cctx.App.Writer, hex.EncodeToString(msgBytes))
+			return nil
+		}
+
+		if !cctx.Bool("really-do-it") {
+			fmt.Fprintln(cctx.App.Writer, "Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		smsg, err := nodeAPI.MpoolPushMessage(ctx, msg, nil)
 		if err != nil {
 			return xerrors.Errorf("mpool push: %w", err)
 		}
