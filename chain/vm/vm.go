@@ -58,7 +58,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 
 	if state.Version() >= types.StateTreeVersion5 {
 		if act.Address == nil {
-			return address.Undef, xerrors.Errorf("actor doesn't have expected address: %s", addr)
+			return address.Undef, xerrors.Errorf("actor at %s doesn't have a predictable address", addr)
 		}
 		return *act.Address, nil
 	}
