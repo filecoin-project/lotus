@@ -1340,8 +1340,14 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 
 	// t.EventsRoot (cid.Cid) (struct)
 
-	if err := cbg.WriteCid(cw, t.EventsRoot); err != nil {
-		return xerrors.Errorf("failed to write cid field t.EventsRoot: %w", err)
+	if t.EventsRoot == nil {
+		if _, err := cw.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(cw, *t.EventsRoot); err != nil {
+			return xerrors.Errorf("failed to write cid field t.EventsRoot: %w", err)
+		}
 	}
 
 	return nil
@@ -1445,12 +1451,22 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) (err error) {
 
 	{
 
-		c, err := cbg.ReadCid(cr)
+		b, err := cr.ReadByte()
 		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.EventsRoot: %w", err)
+			return err
 		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
 
-		t.EventsRoot = c
+			c, err := cbg.ReadCid(cr)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.EventsRoot: %w", err)
+			}
+
+			t.EventsRoot = &c
+		}
 
 	}
 	return nil
