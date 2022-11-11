@@ -459,6 +459,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 
 					paramBytes = mustEnc(confirmParams)
 				}
+
 				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
@@ -470,6 +471,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						RawByteDelta:         types.NewInt(uint64(m.SectorSize)),
 						QualityAdjustedDelta: sectorWeight,
 					}
+
 					_, err = doExecValue(ctx, genesisVm, power.Address, minerInfos[i].maddr, big.Zero(), power.Methods.UpdateClaimedPower, mustEnc(claimParams))
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
