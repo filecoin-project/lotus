@@ -34,6 +34,8 @@ func main() {
 		types.BeaconEntry{},
 		types.StateRoot{},
 		types.StateInfo0{},
+		types.Event{},
+		types.EventEntry{},
 	)
 	if err != nil {
 		fmt.Println(err)
