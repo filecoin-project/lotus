@@ -12,9 +12,10 @@ type MessageReceipt struct {
 	ExitCode   exitcode.ExitCode
 	Return     []byte
 	GasUsed    int64
-	EventsRoot cid.Cid // Root of Event AMT
+	EventsRoot *cid.Cid // Root of Event AMT
 }
 
 func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
-	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed && mr.EventsRoot == o.EventsRoot
+	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed &&
+		(mr.EventsRoot == o.EventsRoot || (mr.EventsRoot != nil && o.EventsRoot != nil && *mr.EventsRoot == *o.EventsRoot))
 }
