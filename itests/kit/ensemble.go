@@ -467,11 +467,10 @@ func (n *Ensemble) Start() *Ensemble {
 			withRPC, rpcCloser := fullRpc(n.t, full)
 			n.inactive.fullnodes[i] = withRPC
 			full.Stop = func(ctx2 context.Context) error {
-				//rpcCloser()
 				rpcShutdownOnce.Do(rpcCloser)
 				return stop(ctx)
 			}
-			n.t.Cleanup(func() { rpcShutdownOnce.Do(rpcCloser) })
+			//n.t.Cleanup(func() { rpcShutdownOnce.Do(rpcCloser) })
 		}
 
 		n.t.Cleanup(func() {
