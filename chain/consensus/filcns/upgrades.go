@@ -1559,6 +1559,7 @@ func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.M
 	// TODO migration
 	// - state tree migration to v5; must set predictable addresses for all account actors
 	// - create EAM actor
+	// - create ETH address 0x00..., defined by spec.
 	return cid.Undef, fmt.Errorf("IMPLEMENTME: v10 migration")
 }
 
