@@ -37,7 +37,6 @@ type EthTx struct {
 	Type                 EthUint64   `json:"type"`
 	Input                EthBytes    `json:"input"`
 	Gas                  EthUint64   `json:"gas"`
-	GasLimit             *EthUint64  `json:"gasLimit,omitempty"`
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
 	V                    EthBytes    `json:"v"`
