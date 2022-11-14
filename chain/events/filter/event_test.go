@@ -52,13 +52,14 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	noCollectedEvents := []*CollectedEvent{}
 	oneCollectedEvent := []*CollectedEvent{
 		{
-			Event:     ev1,
-			EventIdx:  0,
-			Reverted:  false,
-			Height:    14000,
-			TipSetKey: events14000.msgTs.Key(),
-			MsgIdx:    0,
-			MsgCid:    em.msg.Cid(),
+			Event:       ev1,
+			EmitterAddr: a1,
+			EventIdx:    0,
+			Reverted:    false,
+			Height:      14000,
+			TipSetKey:   events14000.msgTs.Key(),
+			MsgIdx:      0,
+			MsgCid:      em.msg.Cid(),
 		},
 	}
 

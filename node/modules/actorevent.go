@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -26,8 +27,8 @@ type EventAPI struct {
 
 var _ events.EventAPI = &EventAPI{}
 
-func EthEvent(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
+func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
 		ee := &full.EthEvent{
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
@@ -51,6 +52,7 @@ func EthEvent(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle
 		if cfg.EnableRealTimeFilterAPI {
 			ee.EventFilterManager = &filter.EventFilterManager{
 				ChainStore:       cs,
+				RobustAddresser:  sm,
 				MaxFilterResults: cfg.MaxFilterResults,
 			}
 			ee.TipSetFilterManager = &filter.TipSetFilterManager{

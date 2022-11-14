@@ -18,6 +18,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+type RobustAddresser interface {
+	LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error)
+}
+
 const indexed uint8 = 0x01
 
 type EventFilter struct {
@@ -25,7 +29,7 @@ type EventFilter struct {
 	minHeight  abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	maxHeight  abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
 	tipsetCid  cid.Cid
-	addresses  []address.Address   // list of actor ids that originated the event
+	addresses  []address.Address   // list of f4 actor addresses that are extpected to emit the event
 	keys       map[string][][]byte // map of key names to a list of alternate values that may match
 	maxResults int                 // maximum number of results to collect, 0 is unlimited
 
@@ -38,13 +42,14 @@ type EventFilter struct {
 var _ Filter = (*EventFilter)(nil)
 
 type CollectedEvent struct {
-	Event     *types.Event
-	EventIdx  int // index of the event within the list of emitted events
-	Reverted  bool
-	Height    abi.ChainEpoch
-	TipSetKey types.TipSetKey // tipset that contained the message
-	MsgIdx    int             // index of the message in the tipset
-	MsgCid    cid.Cid         // cid of message that produced event
+	Event       *types.Event
+	EmitterAddr address.Address // f4 address of emitter
+	EventIdx    int             // index of the event within the list of emitted events
+	Reverted    bool
+	Height      abi.ChainEpoch
+	TipSetKey   types.TipSetKey // tipset that contained the message
+	MsgIdx      int             // index of the message in the tipset
+	MsgCid      cid.Cid         // cid of message that produced event
 }
 
 func (f *EventFilter) ID() string {
@@ -64,10 +69,13 @@ func (f *EventFilter) ClearSubChannel() {
 	f.ch = nil
 }
 
-func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool) error {
+func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, ra RobustAddresser) error {
 	if !f.matchTipset(te) {
 		return nil
 	}
+
+	// cache of lookups between actor id and f4 address
+	addressLookups := make(map[abi.ActorID]address.Address)
 
 	ems, err := te.messages(ctx)
 	if err != nil {
@@ -75,7 +83,27 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
-			if !f.matchAddress(ev.Emitter) {
+			// lookup f4 address corresponding to the actor id
+			addr, ok := addressLookups[ev.Emitter]
+			if !ok {
+				idAddr, err := address.NewIDAddress(uint64(ev.Emitter))
+				if err != nil {
+					return xerrors.Errorf("convert emitter to id address: %w", err)
+				}
+				addr, err = ra.LookupRobustAddress(ctx, idAddr, te.rctTs)
+				if err != nil {
+					return xerrors.Errorf("lookup robust address: %w", err)
+				}
+
+				// if robust address is not f4 then we won't match against it so bail early
+				if addr.Protocol() != address.Delegated {
+					continue
+				}
+
+				addressLookups[ev.Emitter] = addr
+			}
+
+			if !f.matchAddress(addr) {
 				continue
 			}
 			if !f.matchKeys(ev.Entries) {
@@ -84,13 +112,14 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Event:     ev,
-				EventIdx:  evIdx,
-				Reverted:  revert,
-				Height:    te.msgTs.Height(),
-				TipSetKey: te.msgTs.Key(),
-				MsgCid:    em.Message().Cid(),
-				MsgIdx:    msgIdx,
+				Event:       ev,
+				EmitterAddr: addr,
+				EventIdx:    evIdx,
+				Reverted:    revert,
+				Height:      te.msgTs.Height(),
+				TipSetKey:   te.msgTs.Key(),
+				MsgCid:      em.Message().Cid(),
+				MsgIdx:      msgIdx,
 			}
 
 			f.mu.Lock()
@@ -152,8 +181,9 @@ func (f *EventFilter) matchAddress(o address.Address) bool {
 	if len(f.addresses) == 0 {
 		return true
 	}
+
 	// Assume short lists of addresses
-	// TODO: binary search for longer lists
+	// TODO: binary search for longer lists or restrict list length
 	for _, a := range f.addresses {
 		if a == o {
 			return true
@@ -258,6 +288,7 @@ func (e *executedMessage) Events() []*types.Event {
 
 type EventFilterManager struct {
 	ChainStore       *cstore.ChainStore
+	RobustAddresser  RobustAddresser
 	MaxFilterResults int
 
 	mu      sync.Mutex // guards mutations to filters
@@ -279,7 +310,7 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 
 	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
-		if err := f.CollectEvents(ctx, tse, false); err != nil {
+		if err := f.CollectEvents(ctx, tse, false, m.RobustAddresser); err != nil {
 			return err
 		}
 	}
@@ -302,7 +333,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 
 	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
-		if err := f.CollectEvents(ctx, tse, true); err != nil {
+		if err := f.CollectEvents(ctx, tse, true, m.RobustAddresser); err != nil {
 			return err
 		}
 	}
