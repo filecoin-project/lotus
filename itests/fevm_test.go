@@ -25,7 +25,8 @@ import (
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
 func TestFEVMBasic(t *testing.T) {
-	_ = os.Setenv("BELLMAN_NO_GPU", "1")
+	// TODO the contract installation and invocation can be lifted into utility methods
+	// He who writes the second test, shall do that.
 	kit.QuietMiningLogs()
 
 	blockTime := 100 * time.Millisecond
@@ -76,7 +77,7 @@ func TestFEVMBasic(t *testing.T) {
 	wait, err := client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
 	require.NoError(t, err)
 
-	require.Equal(t, int(wait.Receipt.ExitCode), 0, "contract installation failed")
+	require.True(t, wait.Receipt.ExitCode.IsSuccess(), "contract installation failed")
 
 	var result eam.CreateReturn
 	r := bytes.NewReader(wait.Receipt.Return)
@@ -117,7 +118,7 @@ func TestFEVMBasic(t *testing.T) {
 		wait, err := client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
 		require.NoError(t, err)
 
-		require.Equal(t, int(wait.Receipt.ExitCode), 0, "contract execution failed")
+		require.True(t, wait.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 
 		result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 		require.NoError(t, err)
@@ -157,7 +158,7 @@ func TestFEVMBasic(t *testing.T) {
 		wait, err := client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
 		require.NoError(t, err)
 
-		require.Equal(t, int(wait.Receipt.ExitCode), 0, "contract execution failed")
+		require.True(t, wait.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 
 		result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 		require.NoError(t, err)
