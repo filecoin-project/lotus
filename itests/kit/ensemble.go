@@ -462,6 +462,17 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		var rpcShutdownOnce sync.Once
+		var stopOnce sync.Once
+		var stopErr error
+
+		stopFunc := stop
+		stop = func(ctx context.Context) error {
+			stopOnce.Do(func() {
+				stopErr = stopFunc(ctx)
+			})
+			return stopErr
+		}
+
 		// Are we hitting this node through its RPC?
 		if full.options.rpc {
 			withRPC, rpcCloser := fullRpc(n.t, full)
@@ -470,12 +481,11 @@ func (n *Ensemble) Start() *Ensemble {
 				rpcShutdownOnce.Do(rpcCloser)
 				return stop(ctx)
 			}
-			//n.t.Cleanup(func() { rpcShutdownOnce.Do(rpcCloser) })
+			n.t.Cleanup(func() { rpcShutdownOnce.Do(rpcCloser) })
 		}
 
 		n.t.Cleanup(func() {
 			_ = stop(context.Background())
-
 		})
 
 		n.active.fullnodes = append(n.active.fullnodes, full)
