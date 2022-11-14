@@ -679,7 +679,7 @@ type StorageMinerStruct struct {
 
 		BeneficiaryWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
 
-		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
 
@@ -4134,14 +4134,14 @@ func (s *StorageMinerStub) BeneficiaryWithdrawBalance(p0 context.Context, p1 abi
 	return *new(cid.Cid), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
 	}
-	return s.Internal.CheckProvable(p0, p1, p2, p3)
+	return s.Internal.CheckProvable(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) {
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 
