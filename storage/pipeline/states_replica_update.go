@@ -237,13 +237,17 @@ func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo)
 			}
 
 			atHeight := make(chan struct{})
-			m.events.ChainAt(ctx.Context(), func(context.Context, *types.TipSet, abi.ChainEpoch) error {
+			err := m.events.ChainAt(ctx.Context(), func(context.Context, *types.TipSet, abi.ChainEpoch) error {
 				close(atHeight)
 				return nil
 			}, func(ctx context.Context, ts *types.TipSet) error {
 				log.Warn("revert in handleWaitMutable")
 				return nil
 			}, 5, targetEpoch)
+			if err != nil {
+				log.Errorf("handleWaitMutalbe: events error: api error, not proceeding: %w", err)
+				return nil
+			}
 
 			select {
 			case <-atHeight:
