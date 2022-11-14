@@ -28,7 +28,7 @@ func main() {
 		types.MsgMeta{},
 		types.ActorV4{},
 		types.ActorV5{},
-		types.MessageReceipt{},
+		// types.MessageReceipt{}, // Custom serde to deal with versioning.
 		types.BlockMsg{},
 		types.ExpTipSet{},
 		types.BeaconEntry{},
