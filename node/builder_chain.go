@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	consensus2 "github.com/filecoin-project/lotus/lib/consensus/raft"
+	raftcns "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -244,8 +244,8 @@ func ConfigFullNode(c interface{}) Option {
 		// Chain node cluster enabled
 		If(cfg.Cluster.ClusterModeEnabled,
 			Override(new(*gorpc.Client), modules.NewRPCClient),
-			Override(new(*consensus2.ClusterRaftConfig), consensus2.NewClusterRaftConfig(&cfg.Cluster)),
-			Override(new(*consensus2.Consensus), consensus2.NewConsensusWithRPCClient(false)),
+			Override(new(*raftcns.ClusterRaftConfig), raftcns.NewClusterRaftConfig(&cfg.Cluster)),
+			Override(new(*raftcns.Consensus), raftcns.NewConsensusWithRPCClient(false)),
 			Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
 			Override(new(messagesigner.MsgSigner), From(new(*messagesigner.MessageSignerConsensus))),
 			Override(new(*modules.RPCHandler), modules.NewRPCHandler),

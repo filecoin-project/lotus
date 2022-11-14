@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.uber.org/multierr"
 	"os"
 	"path/filepath"
 	"time"
@@ -264,9 +265,6 @@ func makeServerConf(peers []peer.ID) hraft.Configuration {
 // WaitForLeader holds until Raft says we have a leader.
 // Returns if ctx is canceled.
 func (rw *raftWrapper) WaitForLeader(ctx context.Context) (string, error) {
-	//ctx, span := trace.StartSpan(ctx, "consensus/raft/WaitForLeader")
-	//defer span.End()
-
 	ticker := time.NewTicker(time.Second / 2)
 	for {
 		select {
@@ -284,9 +282,6 @@ func (rw *raftWrapper) WaitForLeader(ctx context.Context) (string, error) {
 }
 
 func (rw *raftWrapper) WaitForVoter(ctx context.Context) error {
-	//ctx, span := trace.StartSpan(ctx, "consensus/raft/WaitForVoter")
-	//defer span.End()
-
 	logger.Debug("waiting until we are promoted to a voter")
 
 	pid := hraft.ServerID(peer.Encode(rw.host.ID()))
@@ -322,8 +317,6 @@ func isVoter(srvID hraft.ServerID, cfg hraft.Configuration) bool {
 
 // WaitForUpdates holds until Raft has synced to the last index in the log
 func (rw *raftWrapper) WaitForUpdates(ctx context.Context) error {
-	//ctx, span := trace.StartSpan(ctx, "consensus/raft/WaitForUpdates")
-	//defer span.End()
 
 	logger.Debug("Raft state is catching up to the latest known version. Please wait...")
 	for {
@@ -344,8 +337,6 @@ func (rw *raftWrapper) WaitForUpdates(ctx context.Context) error {
 }
 
 func (rw *raftWrapper) WaitForPeer(ctx context.Context, pid string, depart bool) error {
-	//ctx, span := trace.StartSpan(ctx, "consensus/raft/WaitForPeer")
-	//defer span.End()
 
 	for {
 		select {
@@ -422,40 +413,32 @@ func (rw *raftWrapper) snapshotOnShutdown() error {
 
 // Shutdown shutdown Raft and closes the BoltDB.
 func (rw *raftWrapper) Shutdown(ctx context.Context) error {
-	//_, span := trace.StartSpan(ctx, "consensus/raft/Shutdown")
-	//defer span.End()
-
-	errMsgs := ""
 
 	rw.cancel()
 
+	var finalErr error
+
 	err := rw.snapshotOnShutdown()
 	if err != nil {
-		errMsgs += err.Error() + ".\n"
+		finalErr = multierr.Append(finalErr, err)
 	}
 
 	future := rw.raft.Shutdown()
 	err = future.Error()
 	if err != nil {
-		errMsgs += "could not shutdown raft: " + err.Error() + ".\n"
+		finalErr = multierr.Append(finalErr, err)
 	}
 
 	err = rw.boltdb.Close() // important!
 	if err != nil {
-		errMsgs += "could not close boltdb: " + err.Error()
+		finalErr = multierr.Append(finalErr, err)
 	}
 
-	if errMsgs != "" {
-		return errors.New(errMsgs)
-	}
-
-	return nil
+	return finalErr
 }
 
 // AddPeer adds a peer to Raft
 func (rw *raftWrapper) AddPeer(ctx context.Context, peerId peer.ID) error {
-	//ctx, span := trace.StartSpan(ctx, "consensus/raft/AddPeer")
-	//defer span.End()
 
 	// Check that we don't have it to not waste
 	// log entries if so.
@@ -488,9 +471,6 @@ func (rw *raftWrapper) AddPeer(ctx context.Context, peerId peer.ID) error {
 
 // RemovePeer removes a peer from Raft
 func (rw *raftWrapper) RemovePeer(ctx context.Context, peer string) error {
-	//ctx, span := trace.StartSpan(ctx, "consensus/RemovePeer")
-	//defer span.End()
-
 	// Check that we have it to not waste
 	// log entries if we don't.
 	peers, err := rw.Peers(ctx)
@@ -510,7 +490,7 @@ func (rw *raftWrapper) RemovePeer(ctx context.Context, peer string) error {
 		hraft.ServerID(peer),
 		0,
 		0,
-	) // TODO: Extra cfg value?
+	)
 	err = rmFuture.Error()
 	if err != nil {
 		logger.Error("raft cannot remove peer: ", err)
@@ -523,16 +503,10 @@ func (rw *raftWrapper) RemovePeer(ctx context.Context, peer string) error {
 // Leader returns Raft's leader. It may be an empty string if
 // there is no leader or it is unknown.
 func (rw *raftWrapper) Leader(ctx context.Context) string {
-	//_, span := trace.StartSpan(ctx, "consensus/raft/Leader")
-	//defer span.End()
-
 	return string(rw.raft.Leader())
 }
 
 func (rw *raftWrapper) Peers(ctx context.Context) ([]string, error) {
-	//_, span := trace.StartSpan(ctx, "consensus/raft/Peers")
-	//defer span.End()
-
 	ids := make([]string, 0)
 
 	configFuture := rw.raft.GetConfiguration()

@@ -603,7 +603,7 @@ type FeeConfig struct {
 }
 
 type UserRaftConfig struct {
-	// config to enabled node cluster with raft consensus
+	// EXPERIMENTAL. config to enabled node cluster with raft consensus
 	ClusterModeEnabled bool
 	// will shutdown libp2p host on shutdown. Useful for testing
 	HostShutdown bool
@@ -629,10 +629,6 @@ type UserRaftConfig struct {
 	BackupsRotate int
 	// Namespace to use when writing keys to the datastore
 	DatastoreNamespace string
-
-	// A Hashicorp Raft's configuration object.
-	//RaftConfig *hraft.Config
-
 	// Tracing enables propagation of contexts across binary boundaries.
 	Tracing bool
 }
