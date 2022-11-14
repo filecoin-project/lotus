@@ -31,7 +31,6 @@ type MsgSigner interface {
 	StoreSignedMessage(ctx context.Context, uuid uuid.UUID, message *types.SignedMessage) error
 	NextNonce(ctx context.Context, addr address.Address) (uint64, error)
 	SaveNonce(ctx context.Context, addr address.Address, nonce uint64) error
-	dstoreKey(addr address.Address) datastore.Key
 }
 
 // MessageSigner keeps track of nonces per address, and increments the nonce
