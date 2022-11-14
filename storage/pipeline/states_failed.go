@@ -257,8 +257,9 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 		return nil
 	}
 	if !active {
-		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
-		return ctx.Send(SectorAbortUpgrade{})
+		err := xerrors.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
+		log.Errorf(err.Error())
+		return ctx.Send(SectorAbortUpgrade{err})
 	}
 
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
@@ -420,6 +421,8 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 	if !sector.CCUpdate {
 		return xerrors.Errorf("should never reach AbortUpgrade as a non-CCUpdate sector")
 	}
+
+	m.cleanupAssignedDeals(sector)
 
 	// Remove snap deals replica if any
 	if err := m.sealer.ReleaseReplicaUpgrade(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {

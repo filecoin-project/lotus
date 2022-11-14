@@ -406,7 +406,7 @@ func checkSectors(ctx context.Context, t *testing.T, api kit.TestFullNode, miner
 
 	require.Len(t, tocheck, expectChecked)
 
-	bad, err := miner.CheckProvable(ctx, info.WindowPoStProofType, tocheck, true)
+	bad, err := miner.CheckProvable(ctx, info.WindowPoStProofType, tocheck)
 	require.NoError(t, err)
 	require.Len(t, bad, expectBad)
 }
