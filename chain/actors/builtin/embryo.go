@@ -8,9 +8,5 @@ import (
 
 func IsEmbryo(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
-	if ok {
-		return name == "embryo"
-	}
-
-	return false
+	return ok && name == "embryo"
 }

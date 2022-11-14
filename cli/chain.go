@@ -1518,6 +1518,9 @@ var ChainPruneCmd = &cli.Command{
 
 // TODO: Find a home for this.
 func isNativeEthereumAddress(addr address.Address) bool {
+	if addr.Protocol() != address.ID {
+		return false
+	}
 	id, _, err := varint.FromUvarint(addr.Payload())
 	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
@@ -1590,6 +1593,7 @@ var ChainExecEVMCmd = &cli.Command{
 			}
 			method = builtintypes.MethodsEAM.Create
 		} else {
+			// TODO this should be able to use Create now; needs new bundle
 			var salt [32]byte
 			binary.BigEndian.PutUint64(salt[:], nonce)
 

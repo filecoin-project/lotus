@@ -22,7 +22,7 @@ var ActorDebugging = true
 const BootstrappersFile = "wallabynet.pi"
 const GenesisFile = "wallabynet.car"
 
-const GenesisNetworkVersion = network.Version16
+const GenesisNetworkVersion = network.Version18
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 

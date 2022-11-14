@@ -68,6 +68,7 @@ func init() {
 	}
 
 	ExampleValues[reflect.TypeOf(c)] = c
+	ExampleValues[reflect.TypeOf(&c)] = &c
 
 	c2, err := cid.Decode("bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve")
 	if err != nil {
