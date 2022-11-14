@@ -1,13 +1,13 @@
 # Lotus changelog
 
-# 1.18.0-rc5 / 2022-11-1
+# 1.18.0 / 2022-11-14
 
 > ⚠️ **Please note that from Lotus v1.17.2&^ will require a Go-version of v1.18.1&^**
 
-This is the fifth release canadiate of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
+This is the final release of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
 codenamed the Shark upgrade](https://github.com/filecoin-project/community/discussions/74?sort=top#discussioncomment-3825422). Shark upgrade delivers a wave of protocol refinements that will allow for useful smart contracts to be written using the FVM (eg. programmable markets, lending contracts, etc.).
 
-A full changelog will be published upon final release.
+A full changelog will be published later tonight.
 
 The Shark upgrade introduces the following FIPs, delivered in [actors v9](https://github.com/filecoin-project/specs-actors/releases/tag/v9.0.1):
 - [FIP0029 Beneficiary Address for Storage Providers](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0029.md): step towards better lending market for SP
