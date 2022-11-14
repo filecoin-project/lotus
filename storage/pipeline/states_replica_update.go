@@ -227,21 +227,31 @@ func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo)
 		// Sleep for immutable epochs
 		if immutable {
 			dlineEpochsRemaining := dlinfo.NextOpen() - ts.Height()
-			waitTime := time.Duration(0)
+			var targetEpoch abi.ChainEpoch
 			if sectorDeadlineOpen {
 				// sleep for remainder of deadline
-				waitTime = time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining)
+				targetEpoch = ts.Height() + dlineEpochsRemaining
 			} else {
 				// sleep for remainder of deadline and next one
-				waitTime = time.Duration(build.BlockDelaySecs) * time.Second * time.Duration(dlineEpochsRemaining+dlinfo.WPoStChallengeWindow)
+				targetEpoch = ts.Height() + dlineEpochsRemaining + dlinfo.WPoStChallengeWindow
 			}
 
+			atHeight := make(chan struct{})
+			m.events.ChainAt(ctx.Context(), func(context.Context, *types.TipSet, abi.ChainEpoch) error {
+				close(atHeight)
+				return nil
+			}, func(ctx context.Context, ts *types.TipSet) error {
+				log.Warn("revert in handleWaitMutable")
+				return nil
+			}, 5, targetEpoch)
+
 			select {
-			case <-time.After(waitTime):
+			case <-atHeight:
 			case <-ctx.Context().Done():
 				return ctx.Context().Err()
 			}
 		}
+
 	}
 	return ctx.Send(SectorDeadlineMutable{})
 }
