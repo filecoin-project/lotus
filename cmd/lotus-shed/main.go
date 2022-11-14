@@ -76,7 +76,7 @@ func main() {
 		msigCmd,
 		fip36PollCmd,
 		invariantsCmd,
-		gasEstimationCmd,
+		gasTraceCmd,
 	}
 
 	app := &cli.App{

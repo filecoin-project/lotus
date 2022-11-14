@@ -1355,7 +1355,7 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"IsSlow":      isSlow,
 		"IsVerySlow":  isVerySlow,
 		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
-		"SumGas":      sumGas,
+		"SumGas":      SumGas,
 		"CodeStr":     codeStr,
 		"Call":        call,
 		"PrintTiming": func() bool { return printTiming },
@@ -1423,7 +1423,7 @@ func isVerySlow(t time.Duration) bool {
 	return t > 50*time.Millisecond
 }
 
-func sumGas(changes []*types.GasTrace) types.GasTrace {
+func SumGas(changes []*types.GasTrace) types.GasTrace {
 	var out types.GasTrace
 	for _, gc := range changes {
 		out.TotalGas += gc.TotalGas

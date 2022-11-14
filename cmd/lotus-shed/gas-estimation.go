@@ -8,13 +8,12 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -29,9 +28,15 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
-var gasEstimationCmd = &cli.Command{
-	Name:        "estimate-gas",
-	Description: "replay a message on the specified stateRoot and network version",
+// USAGE: Sync a node, then call migrate-nv17 on some old state. Pass in the cid of the migrated state root,
+// the epoch you migrated at, the network version you migrated to, and a message hash. You will be able to replay any
+// message from between the migration epoch, and where your node originally synced to. Note: You may run into issues
+// with nonces, or state that changed between the epoch you migrated at, and when the message was originally processed.
+// This can be avoided by replaying messages from close to the migration epoch, or circumvented by using a custom
+// FVM bundle.
+var gasTraceCmd = &cli.Command{
+	Name:        "trace-gas",
+	Description: "replay a message on the specified stateRoot and network version to get an execution trace",
 	ArgsUsage:   "[migratedStateRootCid migrationEpoch networkVersion messageHash]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -56,7 +61,7 @@ var gasEstimationCmd = &cli.Command{
 			return fmt.Errorf("failed to parse input: %w", err)
 		}
 
-		nv, err := strconv.ParseInt(cctx.Args().Get(2), 10, 64)
+		nv, err := strconv.ParseInt(cctx.Args().Get(2), 10, 32)
 		if err != nil {
 			return fmt.Errorf("failed to parse input: %w", err)
 		}
@@ -131,11 +136,12 @@ var gasEstimationCmd = &cli.Command{
 			return err
 		}
 
-		tw := tabwriter.NewWriter(os.Stdout, 2, 2, 2, ' ', 0)
+		tw := tabwriter.NewWriter(os.Stdout, 8, 2, 2, ' ', tabwriter.AlignRight)
 		res, err := sm.CallAtStateAndVersion(ctx, msg, executionTs, stateRootCid, network.Version(nv))
 		if err != nil {
 			return err
 		}
+		fmt.Println("Total gas used ", res.MsgRct.GasUsed)
 		printInternalExecutions(0, []types.ExecutionTrace{res.ExecutionTrace}, tw)
 
 		return tw.Flush()
@@ -144,10 +150,29 @@ var gasEstimationCmd = &cli.Command{
 
 func printInternalExecutions(depth int, trace []types.ExecutionTrace, tw *tabwriter.Writer) {
 	if depth == 0 {
-		_, _ = fmt.Fprintf(tw, "depth\tFrom\tTo\tValue\tMethod\tGasUsed\tExitCode\tReturn\n")
+		_, _ = fmt.Fprintf(tw, "Depth\tFrom\tTo\tMethod\tTotalGas\tComputeGas\tStorageGas\t\tExitCode\n")
 	}
 	for _, im := range trace {
-		_, _ = fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%d\t%d\t%d\t%x\n", depth, im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.MsgRct.GasUsed, im.MsgRct.ExitCode, im.MsgRct.Return)
+		sumGas := lcli.SumGas(im.GasCharges)
+		_, _ = fmt.Fprintf(tw, "%d\t%s\t%s\t%d\t%d\t%d\t%d\t\t%d\n", depth, truncateString(im.Msg.From.String(), 10), truncateString(im.Msg.To.String(), 10), im.Msg.Method, sumGas.TotalGas, sumGas.ComputeGas, sumGas.StorageGas, im.MsgRct.ExitCode)
 		printInternalExecutions(depth+1, im.Subcalls, tw)
 	}
+}
+
+func truncateString(str string, length int) string {
+	if len(str) <= length {
+		return str
+	}
+
+	truncated := ""
+	count := 0
+	for _, char := range str {
+		truncated += string(char)
+		count++
+		if count >= length {
+			break
+		}
+	}
+	truncated += "..."
+	return truncated
 }
