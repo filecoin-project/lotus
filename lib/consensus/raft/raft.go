@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.uber.org/multierr"
 	"os"
 	"path/filepath"
 	"time"
@@ -15,6 +14,7 @@ import (
 	p2praft "github.com/libp2p/go-libp2p-raft"
 	host "github.com/libp2p/go-libp2p/core/host"
 	peer "github.com/libp2p/go-libp2p/core/peer"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
 	"github.com/filecoin-project/lotus/lib/addrutil"

@@ -1215,7 +1215,7 @@ Default is 20 (about once a week).`,
 			Name: "ClusterModeEnabled",
 			Type: "bool",
 
-			Comment: `config to enabled node cluster with raft consensus`,
+			Comment: `EXPERIMENTAL. config to enabled node cluster with raft consensus`,
 		},
 		{
 			Name: "HostShutdown",
