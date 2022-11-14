@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -10,9 +11,9 @@ import (
 
 func TestMessageReceiptSerdeRoundrip(t *testing.T) {
 	var (
+		assert = assert.New(t)
 		buf    = new(bytes.Buffer)
 		err    error
-		assert = assert.New(t)
 	)
 
 	randomCid, err := cid.Decode("bafy2bzacecu7n7wbtogznrtuuvf73dsz7wasgyneqasksdblxupnyovmtwxxu")
@@ -26,6 +27,8 @@ func TestMessageReceiptSerdeRoundrip(t *testing.T) {
 	// marshal
 	err = mr.MarshalCBOR(buf)
 	assert.NoError(err)
+
+	t.Logf("version 0: %s\n", hex.EncodeToString(buf.Bytes()))
 
 	// unmarshal
 	var mr2 MessageReceipt
@@ -41,6 +44,8 @@ func TestMessageReceiptSerdeRoundrip(t *testing.T) {
 	// marshal
 	err = mr.MarshalCBOR(buf)
 	assert.NoError(err)
+
+	t.Logf("version 0 (with root): %s\n", hex.EncodeToString(buf.Bytes()))
 
 	// unmarshal
 	mr2 = MessageReceipt{}
@@ -58,6 +63,8 @@ func TestMessageReceiptSerdeRoundrip(t *testing.T) {
 	// marshal
 	err = mr.MarshalCBOR(buf)
 	assert.NoError(err)
+
+	t.Logf("version 1: %s\n", hex.EncodeToString(buf.Bytes()))
 
 	// unmarshal
 	mr2 = MessageReceipt{}

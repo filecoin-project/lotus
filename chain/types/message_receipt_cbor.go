@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-state-types/exitcode"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 // This file contains custom CBOR serde logic to deal with the new versioned
 // MessageReceipt resulting from the introduction of actor events (FIP-0049).
-
-var lengthBufMessageReceipt = []byte{132}
 
 // MarshalCBOR implements the standard marshalling logic, but omits the
 // EventsRoot field when the version is 0.
@@ -24,7 +23,20 @@ func (mr *MessageReceipt) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write(lengthBufMessageReceipt); err != nil {
+	//
+	// Versioning
+	//
+	var listHeader byte
+	switch mr.version {
+	case MessageReceiptVersion0:
+		listHeader = 0x83 // list with 3 fields
+	case MessageReceiptVersion1:
+		listHeader = 0x84 // list with 4 fields
+	default:
+		return xerrors.Errorf("invalid message receipt version: %d", mr.version)
+	}
+
+	if _, err := cw.Write([]byte{listHeader}); err != nil {
 		return err
 	}
 
@@ -107,7 +119,15 @@ func (mr *MessageReceipt) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	//
+	// Versioning
+	//
+	switch extra {
+	case 3:
+		mr.version = MessageReceiptVersion0
+	case 4:
+		mr.version = MessageReceiptVersion1
+	default:
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -187,34 +207,28 @@ func (mr *MessageReceipt) UnmarshalCBOR(r io.Reader) (err error) {
 	// Versioned fields.
 	//
 
-	// t.EventsRoot (cid.Cid) (struct)
+	if mr.version >= MessageReceiptVersion1 {
+		// t.EventsRoot (cid.Cid) (struct)
+		{
+			b, err := cr.ReadByte()
 
-	{
-		b, err := cr.ReadByte()
-		if err == io.EOF {
-			// No more input to read, so this is an v0 message receipt.
-			mr.version = MessageReceiptVersion0
-			return nil
-		}
-
-		mr.version = MessageReceiptVersion1
-
-		if err != nil {
-			return err
-		}
-		if b != cbg.CborNull[0] {
-			if err := cr.UnreadByte(); err != nil {
+			if err != nil {
 				return err
 			}
+			if b != cbg.CborNull[0] {
+				if err := cr.UnreadByte(); err != nil {
+					return err
+				}
 
-			c, err := cbg.ReadCid(cr)
-			if err != nil {
-				return xerrors.Errorf("failed to read cid field t.EventsRoot: %w", err)
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.EventsRoot: %w", err)
+				}
+
+				mr.EventsRoot = &c
 			}
-
-			mr.EventsRoot = &c
 		}
-
 	}
+
 	return nil
 }
