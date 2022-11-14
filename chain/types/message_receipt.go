@@ -3,8 +3,9 @@ package types
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 type MessageReceiptVersion byte
