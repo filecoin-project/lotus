@@ -180,7 +180,7 @@ func (mr *MessageReceipt) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for int64 field: %d", maj)
 		}
 
-		mr.GasUsed = int64(extraI)
+		mr.GasUsed = extraI
 	}
 
 	//
