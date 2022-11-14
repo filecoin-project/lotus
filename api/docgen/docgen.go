@@ -299,7 +299,8 @@ func init() {
 			"title":   "Lotus RPC API",
 			"version": "1.2.1/generated=2020-11-22T08:22:42-06:00",
 		},
-		"methods": []interface{}{}},
+		"methods": []interface{}{},
+	},
 	)
 
 	addExample(api.CheckStatusCode(0))
@@ -336,7 +337,8 @@ func init() {
 			NumConnsInbound:    3,
 			NumConnsOutbound:   4,
 			NumFD:              5,
-		}})
+		},
+	})
 	addExample(api.NetLimit{
 		Memory:          123,
 		StreamsInbound:  1,
@@ -375,10 +377,18 @@ func init() {
 
 	ethFeeHistoryReward := [][]api.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
+
+	addExample(api.EthFilterID("c5564560217c43e4bc0484df655e9019"))
+	addExample(api.EthSubscriptionID("b62df77831484129adf6682332ad0725"))
+
+	pstring := func(s string) *string { return &s }
+	addExample(&api.EthFilterSpec{
+		FromBlock: pstring("2301220"),
+		Address:   []api.EthAddress{ethaddr},
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
-
 	switch pkg {
 	case "api": // latest
 		switch name {

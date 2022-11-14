@@ -812,6 +812,11 @@ workflows:
       - gen-check
       - docs-check
       - test:
+          name: test-itest-actor_events
+          suite: itest-actor_events
+          target: "./itests/actor_events_test.go"
+      
+      - test:
           name: test-itest-api
           suite: itest-api
           target: "./itests/api_test.go"
