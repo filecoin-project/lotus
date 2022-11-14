@@ -188,6 +188,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	SubmitReplicaUpdate: planOne(
 		on(SectorReplicaUpdateSubmitted{}, ReplicaUpdateWait),
 		on(SectorSubmitReplicaUpdateFailed{}, ReplicaUpdateFailed),
+		on(SectorDeadlineImmutable{}, WaitMutable),
+	),
+	WaitMutable: planOne(
+		on(SectorDeadlineMutable{}, SubmitReplicaUpdate),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	ReplicaUpdateWait: planOne(
 		on(SectorReplicaUpdateLanded{}, UpdateActivating),
@@ -525,6 +530,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleProveReplicaUpdate, processed, nil
 	case SubmitReplicaUpdate:
 		return m.handleSubmitReplicaUpdate, processed, nil
+	case WaitMutable:
+		return m.handleWaitMutable, processed, nil
 	case ReplicaUpdateWait:
 		return m.handleReplicaUpdateWait, processed, nil
 	case FinalizeReplicaUpdate:
