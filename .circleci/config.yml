@@ -912,6 +912,11 @@ workflows:
           target: "./itests/dup_mpool_messages_test.go"
       
       - test:
+          name: test-itest-fevm
+          suite: itest-fevm
+          target: "./itests/fevm_test.go"
+      
+      - test:
           name: test-itest-gas_estimation
           suite: itest-gas_estimation
           target: "./itests/gas_estimation_test.go"
