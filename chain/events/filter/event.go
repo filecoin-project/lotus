@@ -375,7 +375,11 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 		}
 		ems[i].rct = &rct
 
-		evtArr, err := blockadt.AsArray(st, rct.EventsRoot)
+		if rct.EventsRoot == nil {
+			continue
+		}
+
+		evtArr, err := blockadt.AsArray(st, *rct.EventsRoot)
 		if err != nil {
 			return nil, xerrors.Errorf("load events amt: %w", err)
 		}
