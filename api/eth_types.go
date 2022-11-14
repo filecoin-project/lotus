@@ -470,7 +470,7 @@ type EthFilterSpec struct {
 	// Optional, default: empty list
 	Topics EthTopicSpec `json:"topics"`
 
-	// Restricts event logs returned to those in receipts contained in the tipset this block is part of.
+	// Restricts event logs returned to those emitted from messages contained in this tipset.
 	// If BlockHash is present in in the filter criteria, then neither FromBlock nor ToBlock are allowed.
 	// Added in EIP-234
 	BlockHash *EthHash `json:"blockHash,omitempty"`
@@ -506,7 +506,6 @@ func (e *EthAddressList) UnmarshalJSON(b []byte) error {
 // An event log with topics [A, B] will be matched by the following topic specs:
 // [] "all"
 // [[A]] "A in first position (and anything after)"
-// [[A]] "A in first position (and anything after)"
 // [nil, [B] ] "anything in first position AND B in second position (and anything after)"
 // [[A], [B]] "A in first position AND B in second position (and anything after)"
 // [[A, B], [A, B]] "(A OR B) in first position AND (A OR B) in second position (and anything after)"
@@ -515,6 +514,8 @@ func (e *EthAddressList) UnmarshalJSON(b []byte) error {
 // { "A", [ "B", "C" ] } must be decoded as [ [ A ], [ B, C ] ]
 type EthTopicSpec []EthHashList
 
+// EthHashList represents a list of EthHashes.
+// The JSON decoding treats string values as equivalent to arrays with one value.
 type EthHashList []EthHash
 
 func (e *EthHashList) UnmarshalJSON(b []byte) error {
@@ -567,6 +568,7 @@ func (h EthFilterResult) MarshalJSON() ([]byte, error) {
 	return []byte{'[', ']'}, nil
 }
 
+// EthLog represents the results of an event filter execution.
 type EthLog struct {
 	// Address is the address of the actor that produced the event log.
 	Address EthAddress `json:"address"`
@@ -590,16 +592,13 @@ type EthLog struct {
 	// The index corresponds to the sequence of messages produced by ChainGetParentMessages
 	TransactionIndex EthUint64 `json:"transactionIndex"`
 
-	// TransactionHash is the cid of the transaction that produced the event log.
+	// TransactionHash is the cid of the message that produced the event log.
 	TransactionHash EthHash `json:"transactionHash"`
 
-	// BlockHash is the hash of a block in the tipset containing the message receipt of the message execution.
-	// This may be passed to ChainGetParentReceipts to obtain a list of receipts. The receipt
-	// containing the events will be at TransactionIndex in the receipt list.
+	// BlockHash is the hash of the tipset containing the message that produced the log.
 	BlockHash EthHash `json:"blockHash"`
 
-	// BlockNumber is the epoch at which the message was executed. This is the epoch containing
-	// the message receipt.
+	// BlockNumber is the epoch of the tipset containing the message.
 	BlockNumber EthUint64 `json:"blockNumber"`
 }
 
