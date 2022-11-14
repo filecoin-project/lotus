@@ -1247,7 +1247,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 
 		var err error
 
-		for _, entry := range ev.Event.Entries {
+		for _, entry := range ev.Entries {
 			hash := api.EthHashData(entry.Value)
 			if entry.Key == ethTopic1 || entry.Key == ethTopic2 || entry.Key == ethTopic3 || entry.Key == ethTopic4 {
 				log.Topics = append(log.Topics, hash)

@@ -18,10 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type RobustAddresser interface {
-	LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error)
-}
-
 const indexed uint8 = 0x01
 
 type EventFilter struct {
@@ -42,7 +38,7 @@ type EventFilter struct {
 var _ Filter = (*EventFilter)(nil)
 
 type CollectedEvent struct {
-	Event       *types.Event
+	Entries     []types.EventEntry
 	EmitterAddr address.Address // f4 address of emitter
 	EventIdx    int             // index of the event within the list of emitted events
 	Reverted    bool
@@ -104,7 +100,7 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Event:       ev,
+				Entries:     ev.Entries,
 				EmitterAddr: addr,
 				EventIdx:    evIdx,
 				Reverted:    revert,
@@ -132,6 +128,12 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	return nil
+}
+
+func (f *EventFilter) setCollectedEvents(ces []*CollectedEvent) {
+	f.mu.Lock()
+	f.collected = ces
+	f.mu.Unlock()
 }
 
 func (f *EventFilter) TakeCollectedEvents(ctx context.Context) []*CollectedEvent {
@@ -282,14 +284,18 @@ type EventFilterManager struct {
 	ChainStore       *cstore.ChainStore
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
+	EventIndex       *EventIndex
 
-	mu      sync.Mutex // guards mutations to filters
-	filters map[string]*EventFilter
+	mu            sync.Mutex // guards mutations to filters
+	filters       map[string]*EventFilter
+	currentHeight abi.ChainEpoch
 }
 
 func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.currentHeight = to.Height()
+
 	if len(m.filters) == 0 {
 		return nil
 	}
@@ -313,6 +319,8 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.currentHeight = to.Height()
+
 	if len(m.filters) == 0 {
 		return nil
 	}
@@ -334,6 +342,14 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 }
 
 func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address, keys map[string][][]byte) (*EventFilter, error) {
+	m.mu.Lock()
+	currentHeight := m.currentHeight
+	m.mu.Unlock()
+
+	if m.EventIndex == nil && (minHeight < currentHeight || maxHeight < currentHeight) {
+		return nil, xerrors.Errorf("historic event index disabled")
+	}
+
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, xerrors.Errorf("new uuid: %w", err)
@@ -347,6 +363,12 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		addresses:  addresses,
 		keys:       keys,
 		maxResults: m.MaxFilterResults,
+	}
+
+	if m.EventIndex != nil && (minHeight < currentHeight || maxHeight < currentHeight) {
+		if err := m.EventIndex.PrefillFilter(ctx, f); err != nil {
+			return nil, err
+		}
 	}
 
 	m.mu.Lock()
