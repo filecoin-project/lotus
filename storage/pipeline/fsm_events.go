@@ -323,6 +323,9 @@ func (evt SectorStartCCUpdate) apply(state *SectorInfo) {
 	// Clear filler piece but remember in case of abort
 	state.CCPieces = state.Pieces
 	state.Pieces = nil
+
+	// Clear CreationTime in case this sector was accepting piece data previously
+	state.CreationTime = 0
 }
 
 type SectorReplicaUpdate struct {

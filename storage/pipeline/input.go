@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"sort"
 	"time"
 
@@ -91,12 +92,17 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 }
 
 func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
+	log := log.WithOptions(zap.Fields(
+		zap.Uint64("sector", uint64(sector.SectorNumber)),
+		zap.Int("deals", len(sector.dealIDs())),
+	))
+
 	now := time.Now()
 	st := m.sectorTimers[m.minerSectorID(sector.SectorNumber)]
 	if st != nil {
 		if !st.Stop() { // timer expired, SectorStartPacking was/is being sent
 			// we send another SectorStartPacking in case one was sent in the handleAddPiece state
-			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
+			log.Infow("starting to seal deal sector", "trigger", "wait-timeout")
 			return true, ctx.Send(SectorStartPacking{})
 		}
 	}
@@ -113,13 +119,13 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 
 	if len(sector.dealIDs()) >= maxDeals {
 		// can't accept more deals
-		log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "maxdeals")
+		log.Infow("starting to seal deal sector", "trigger", "maxdeals")
 		return true, ctx.Send(SectorStartPacking{})
 	}
 
 	if used.Padded() == abi.PaddedPieceSize(ssize) {
 		// sector full
-		log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "filled")
+		log.Infow("starting to seal deal sector", "trigger", "filled")
 		return true, ctx.Send(SectorStartPacking{})
 	}
 
@@ -149,15 +155,15 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		}
 
 		if now.After(sealTime) {
-			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
+			log.Infow("starting to seal deal sector", "trigger", "wait-timeout", "creation", sector.CreationTime)
 			return true, ctx.Send(SectorStartPacking{})
 		}
 
 		m.sectorTimers[m.minerSectorID(sector.SectorNumber)] = time.AfterFunc(sealTime.Sub(now), func() {
-			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timer")
+			log.Infow("starting to seal deal sector", "trigger", "wait-timer")
 
 			if err := ctx.Send(SectorStartPacking{}); err != nil {
-				log.Errorw("sending SectorStartPacking event failed", "sector", sector.SectorNumber, "error", err)
+				log.Errorw("sending SectorStartPacking event failed", "error", err)
 			}
 		})
 	}
