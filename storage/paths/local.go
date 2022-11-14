@@ -806,7 +806,7 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		log.Errorw("failed to generate valilla PoSt proof before context cancellation", "err", ctx.Err(), "duration", time.Now().Sub(start), "cache-id", cacheID, "sealed-id", sealedID, "cache", cache, "sealed", sealed)
 
 		// this will leave the GenerateSingleVanillaProof goroutine hanging, but that's still less bad than failing PoSt
-		return nil, xerrors.Errorf("failed to generate valilla proof before context cancellation: %w", ctx.Err())
+		return nil, xerrors.Errorf("failed to generate vanilla proof before context cancellation: %w", ctx.Err())
 	}
 }
 
