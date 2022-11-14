@@ -461,6 +461,7 @@ func (evt SectorRevertUpgradeToProving) apply(state *SectorInfo) {
 	state.ReplicaUpdateMessage = nil
 	state.Pieces = state.CCPieces
 	state.CCPieces = nil
+	state.CreationTime = 0
 }
 
 type SectorRetrySubmitReplicaUpdateWait struct{}

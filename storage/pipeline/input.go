@@ -2,11 +2,11 @@ package sealing
 
 import (
 	"context"
-	"go.uber.org/zap"
 	"sort"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
