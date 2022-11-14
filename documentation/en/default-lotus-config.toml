@@ -202,3 +202,44 @@
     #HotStoreFullGCFrequency = 20
 
 
+[ActorEvent]
+  # EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.
+  #
+  # type: bool
+  # env var: LOTUS_ACTOREVENT_ENABLEREALTIMEFILTERAPI
+  #EnableRealTimeFilterAPI = false
+
+  # EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
+  # A queryable index of events will be maintained.
+  #
+  # type: bool
+  # env var: LOTUS_ACTOREVENT_ENABLEHISTORICFILTERAPI
+  #EnableHistoricFilterAPI = false
+
+  # FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+  # this time become eligible for automatic deletion.
+  #
+  # type: Duration
+  # env var: LOTUS_ACTOREVENT_FILTERTTL
+  #FilterTTL = "24h0m0s"
+
+  # MaxFilters specifies the maximum number of filters that may exist at any one time.
+  #
+  # type: int
+  # env var: LOTUS_ACTOREVENT_MAXFILTERS
+  #MaxFilters = 100
+
+  # MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+  #
+  # type: int
+  # env var: LOTUS_ACTOREVENT_MAXFILTERRESULTS
+  #MaxFilterResults = 10000
+
+  # MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+  # the entire chain)
+  #
+  # type: uint64
+  # env var: LOTUS_ACTOREVENT_MAXFILTERHEIGHTRANGE
+  #MaxFilterHeightRange = 2880
+
+
