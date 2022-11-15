@@ -50,7 +50,7 @@ var ddls = []string{
 		value BLOB NOT NULL
 	)`,
 
-	// placeholder version to enable migrations.
+	// metadata containing version of schema
 	`CREATE TABLE IF NOT EXISTS _meta (
     	version UINT64 NOT NULL UNIQUE
 	)`,

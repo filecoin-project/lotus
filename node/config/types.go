@@ -624,6 +624,11 @@ type ActorEventConfig struct {
 	// the entire chain)
 	MaxFilterHeightRange uint64
 
+	// EventHistoryDatabasePath is the full path to a sqlite database that will be used to index actor events to
+	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
+	// the database must already exist and be writeable.
+	ActorEventDatabasePath string
+
 	// Others, not implemented yet:
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients

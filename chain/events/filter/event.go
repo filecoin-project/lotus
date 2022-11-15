@@ -306,6 +306,12 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 		load:  m.loadExecutedMessages,
 	}
 
+	if m.EventIndex != nil {
+		if err := m.EventIndex.CollectEvents(ctx, tse, false, m.AddressResolver); err != nil {
+			return err
+		}
+	}
+
 	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
 		if err := f.CollectEvents(ctx, tse, false, m.AddressResolver); err != nil {
@@ -331,6 +337,12 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 		load:  m.loadExecutedMessages,
 	}
 
+	if m.EventIndex != nil {
+		if err := m.EventIndex.CollectEvents(ctx, tse, true, m.AddressResolver); err != nil {
+			return err
+		}
+	}
+
 	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
 		if err := f.CollectEvents(ctx, tse, true, m.AddressResolver); err != nil {
@@ -346,7 +358,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
 
-	if m.EventIndex == nil && (minHeight < currentHeight || maxHeight < currentHeight) {
+	if m.EventIndex == nil && minHeight < currentHeight {
 		return nil, xerrors.Errorf("historic event index disabled")
 	}
 
@@ -365,7 +377,8 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		maxResults: m.MaxFilterResults,
 	}
 
-	if m.EventIndex != nil && (minHeight < currentHeight || maxHeight < currentHeight) {
+	if m.EventIndex != nil && minHeight < currentHeight {
+		// Filter needs historic events
 		if err := m.EventIndex.PrefillFilter(ctx, f); err != nil {
 			return nil, err
 		}
