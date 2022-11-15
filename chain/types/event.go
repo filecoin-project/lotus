@@ -1,12 +1,12 @@
 package types
 
 import (
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type Event struct {
 	// The ID of the actor that emitted this event.
-	Emitter address.Address
+	Emitter abi.ActorID
 
 	// Key values making up this event.
 	Entries []EventEntry
@@ -17,7 +17,7 @@ type EventEntry struct {
 	Flags uint8
 
 	// The key of this event entry
-	Key []byte
+	Key string
 
 	// Any DAG-CBOR encodeable type.
 	Value []byte

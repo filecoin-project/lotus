@@ -1852,8 +1852,9 @@ func (t *Event) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Emitter (address.Address) (struct)
-	if err := t.Emitter.MarshalCBOR(cw); err != nil {
+	// t.Emitter (abi.ActorID) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Emitter)); err != nil {
 		return err
 	}
 
@@ -1896,13 +1897,18 @@ func (t *Event) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Emitter (address.Address) (struct)
+	// t.Emitter (abi.ActorID) (uint64)
 
 	{
 
-		if err := t.Emitter.UnmarshalCBOR(cr); err != nil {
-			return xerrors.Errorf("unmarshaling t.Emitter: %w", err)
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
 		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Emitter = abi.ActorID(extra)
 
 	}
 	// t.Entries ([]types.EventEntry) (slice)
@@ -1956,16 +1962,15 @@ func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Key ([]uint8) (slice)
-	if len(t.Key) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.Key was too long")
+	// t.Key (string) (string)
+	if len(t.Key) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Key was too long")
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.Key))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Key))); err != nil {
 		return err
 	}
-
-	if _, err := cw.Write(t.Key[:]); err != nil {
+	if _, err := io.WriteString(w, string(t.Key)); err != nil {
 		return err
 	}
 
@@ -2020,26 +2025,15 @@ func (t *EventEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("integer in input was too large for uint8 field")
 	}
 	t.Flags = uint8(extra)
-	// t.Key ([]uint8) (slice)
+	// t.Key (string) (string)
 
-	maj, extra, err = cr.ReadHeader()
-	if err != nil {
-		return err
-	}
+	{
+		sval, err := cbg.ReadString(cr)
+		if err != nil {
+			return err
+		}
 
-	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.Key: byte array too large (%d)", extra)
-	}
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-
-	if extra > 0 {
-		t.Key = make([]uint8, extra)
-	}
-
-	if _, err := io.ReadFull(cr, t.Key[:]); err != nil {
-		return err
+		t.Key = string(sval)
 	}
 	// t.Value ([]uint8) (slice)
 
