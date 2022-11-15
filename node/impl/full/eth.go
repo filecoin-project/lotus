@@ -986,6 +986,8 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 		}
 
 	}
+
+	// Convert all addresses to filecoin f4 addresses
 	for _, ea := range filter.Address {
 		a, err := ea.ToFilecoinAddress()
 		if err != nil {
@@ -1254,7 +1256,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 			}
 		}
 
-		log.Address, err = api.EthAddressFromFilecoinAddress(ev.Event.Emitter)
+		log.Address, err = api.EthAddressFromFilecoinAddress(ev.EmitterAddr)
 		if err != nil {
 			return nil, err
 		}

@@ -4,14 +4,19 @@ import (
 	"context"
 	"time"
 
+	"github.com/multiformats/go-varint"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -26,8 +31,8 @@ type EventAPI struct {
 
 var _ events.EventAPI = &EventAPI{}
 
-func EthEvent(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
+func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
 		ee := &full.EthEvent{
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
@@ -50,7 +55,28 @@ func EthEvent(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle
 
 		if cfg.EnableRealTimeFilterAPI {
 			ee.EventFilterManager = &filter.EventFilterManager{
-				ChainStore:       cs,
+				ChainStore: cs,
+				AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+					// we only want to match using f4 addresses
+					idAddr, err := address.NewIDAddress(uint64(emitter))
+					if err != nil {
+						return address.Undef, false
+					}
+					addr, err := sm.LookupRobustAddress(ctx, idAddr, ts)
+					if err != nil {
+						return address.Undef, false
+					}
+					// if robust address is not f4 then we won't match against it so bail early
+					if addr.Protocol() != address.Delegated {
+						return address.Undef, false
+					}
+					// we have an f4 address, make sure it's assigned by the EAM
+					if namespace, _, err := varint.FromUvarint(addr.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
+						return address.Undef, false
+					}
+					return addr, true
+				},
+
 				MaxFilterResults: cfg.MaxFilterResults,
 			}
 			ee.TipSetFilterManager = &filter.TipSetFilterManager{
