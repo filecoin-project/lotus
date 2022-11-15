@@ -225,7 +225,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 					if change.Type == store.HCApply || change.Type == store.HCRevert {
 						count++
 						if count == iterations*3 {
-							waitAllCh <- struct{}{}
+							close(waitAllCh)
 						}
 					}
 				}
