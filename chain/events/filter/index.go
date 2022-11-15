@@ -59,6 +59,8 @@ var ddls = []string{
 	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
 }
 
+const schemaVersion = 1
+
 const (
 	insertEvent = `INSERT OR IGNORE INTO event
 	(height, tipset_key, tipset_key_cid, emitter_addr, event_index, message_cid, message_index, reverted)
@@ -86,10 +88,31 @@ func NewEventIndex(path string) (*EventIndex, error) {
 		}
 	}
 
-	for _, ddl := range ddls {
-		if _, err := db.Exec(ddl); err != nil {
+	q, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
+	if err == sql.ErrNoRows || !q.Next() {
+		// empty database, create the schema
+		for _, ddl := range ddls {
+			if _, err := db.Exec(ddl); err != nil {
+				_ = db.Close()
+				return nil, xerrors.Errorf("exec ddl %q: %w", ddl, err)
+			}
+		}
+	} else if err != nil {
+		_ = db.Close()
+		return nil, xerrors.Errorf("looking for _meta table: %w", err)
+	} else {
+		// Ensure we don't open a database from a different schema version
+
+		row := db.QueryRow("SELECT max(version) FROM _meta")
+		var version int
+		err := row.Scan(&version)
+		if err != nil {
 			_ = db.Close()
-			return nil, xerrors.Errorf("exec ddl %q: %w", ddl, err)
+			return nil, xerrors.Errorf("invalid database version: no version found")
+		}
+		if version != schemaVersion {
+			_ = db.Close()
+			return nil, xerrors.Errorf("invalid database version: got %d, expected %d", version, schemaVersion)
 		}
 	}
 
