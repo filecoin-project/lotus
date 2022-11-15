@@ -917,6 +917,11 @@ workflows:
           target: "./itests/dup_mpool_messages_test.go"
       
       - test:
+          name: test-itest-fevm_events
+          suite: itest-fevm_events
+          target: "./itests/fevm_events_test.go"
+      
+      - test:
           name: test-itest-fevm
           suite: itest-fevm
           target: "./itests/fevm_test.go"
