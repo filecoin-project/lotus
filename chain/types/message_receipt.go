@@ -11,10 +11,10 @@ import (
 type MessageReceiptVersion byte
 
 const (
-	// MessageReceiptVersion0 refers to pre FIP-0049 receipts.
-	MessageReceiptVersion0 MessageReceiptVersion = 0
-	// MessageReceiptVersion1 refers to post FIP-0049 receipts.
-	MessageReceiptVersion1 MessageReceiptVersion = 1
+	// MessageReceiptV0 refers to pre FIP-0049 receipts.
+	MessageReceiptV0 MessageReceiptVersion = 0
+	// MessageReceiptV1 refers to post FIP-0049 receipts.
+	MessageReceiptV1 MessageReceiptVersion = 1
 )
 
 type MessageReceipt struct {
@@ -30,7 +30,7 @@ type MessageReceipt struct {
 // convey events.
 func NewMessageReceiptV0(exitcode exitcode.ExitCode, ret []byte, gasUsed int64) MessageReceipt {
 	return MessageReceipt{
-		version:  MessageReceiptVersion0,
+		version:  MessageReceiptV0,
 		ExitCode: exitcode,
 		Return:   ret,
 		GasUsed:  gasUsed,
@@ -41,7 +41,7 @@ func NewMessageReceiptV0(exitcode exitcode.ExitCode, ret []byte, gasUsed int64) 
 // convey events.
 func NewMessageReceiptV1(exitcode exitcode.ExitCode, ret []byte, gasUsed int64, eventsRoot *cid.Cid) MessageReceipt {
 	return MessageReceipt{
-		version:    MessageReceiptVersion1,
+		version:    MessageReceiptV1,
 		ExitCode:   exitcode,
 		Return:     ret,
 		GasUsed:    gasUsed,
