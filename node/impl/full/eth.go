@@ -1216,10 +1216,10 @@ type filterTipSetCollector interface {
 }
 
 var (
-	ethTopic1 = []byte("topic1")
-	ethTopic2 = []byte("topic2")
-	ethTopic3 = []byte("topic3")
-	ethTopic4 = []byte("topic4")
+	ethTopic1 = "topic1"
+	ethTopic2 = "topic2"
+	ethTopic3 = "topic3"
+	ethTopic4 = "topic4"
 )
 
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResult, error) {
@@ -1237,19 +1237,20 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 
 		for _, entry := range ev.Event.Entries {
 			hash := api.EthHashData(entry.Value)
-			if bytes.Equal(entry.Key, ethTopic1) || bytes.Equal(entry.Key, ethTopic2) || bytes.Equal(entry.Key, ethTopic3) || bytes.Equal(entry.Key, ethTopic4) {
+			if entry.Key == ethTopic1 || entry.Key == ethTopic2 || entry.Key == ethTopic3 || entry.Key == ethTopic4 {
 				log.Topics = append(log.Topics, hash)
 			} else {
 				log.Data = append(log.Data, hash)
 			}
 		}
 
-		log.Address, err = api.EthAddressFromFilecoinAddress(ev.Event.Emitter)
+		addr, _ := address.NewIDAddress(uint64(ev.Event.Emitter))
+		log.Address, err = api.EthAddressFromFilecoinAddress(addr)
 		if err != nil {
 			return nil, err
 		}
 
-		log.TransactionHash, err = api.EthHashFromCid(ev.MsgCid)
+		log.TransactionHash, err = api.NewEthHashFromCid(ev.MsgCid)
 		if err != nil {
 			return nil, err
 		}
@@ -1258,7 +1259,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 		if err != nil {
 			return nil, err
 		}
-		log.BlockHash, err = api.EthHashFromCid(c)
+		log.BlockHash, err = api.NewEthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
@@ -1277,7 +1278,7 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*api.EthFilterResult, e
 		if err != nil {
 			return nil, err
 		}
-		hash, err := api.EthHashFromCid(c)
+		hash, err := api.NewEthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
@@ -1292,7 +1293,7 @@ func ethFilterResultFromMessages(cs []cid.Cid) (*api.EthFilterResult, error) {
 	res := &api.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := api.EthHashFromCid(c)
+		hash, err := api.NewEthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}

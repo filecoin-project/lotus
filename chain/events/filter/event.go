@@ -75,7 +75,8 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
-			if !f.matchAddress(ev.Emitter) {
+			addr, _ := address.NewIDAddress(uint64(ev.Emitter))
+			if !f.matchAddress(addr) {
 				continue
 			}
 			if !f.matchKeys(ev.Entries) {
@@ -176,7 +177,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 			continue
 		}
 
-		keyname := string(ee.Key)
+		keyname := ee.Key
 
 		// skip if we have already matched this key
 		if matched[keyname] {
