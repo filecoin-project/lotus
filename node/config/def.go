@@ -296,7 +296,6 @@ var (
 	DefaultNetworkTimeout       = 100 * time.Second
 	DefaultCommitRetryDelay     = 200 * time.Millisecond
 	DefaultBackupsRotate        = 6
-	DefaultDatastoreNamespace   = "/raft"
 )
 
 func DefaultUserRaftConfig() *UserRaftConfig {
@@ -308,7 +307,6 @@ func DefaultUserRaftConfig() *UserRaftConfig {
 	cfg.CommitRetries = DefaultCommitRetries
 	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
 	cfg.BackupsRotate = DefaultBackupsRotate
-	cfg.DatastoreNamespace = DefaultDatastoreNamespace
 
 	return &cfg
 }

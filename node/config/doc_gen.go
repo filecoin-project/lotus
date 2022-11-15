@@ -1218,12 +1218,6 @@ Default is 20 (about once a week).`,
 			Comment: `EXPERIMENTAL. config to enabled node cluster with raft consensus`,
 		},
 		{
-			Name: "HostShutdown",
-			Type: "bool",
-
-			Comment: `will shutdown libp2p host on shutdown. Useful for testing`,
-		},
-		{
 			Name: "DataFolder",
 			Type: "string",
 
@@ -1270,12 +1264,6 @@ we give up.`,
 
 			Comment: `BackupsRotate specifies the maximum number of Raft's DataFolder
 copies that we keep as backups (renaming) after cleanup.`,
-		},
-		{
-			Name: "DatastoreNamespace",
-			Type: "string",
-
-			Comment: `Namespace to use when writing keys to the datastore`,
 		},
 		{
 			Name: "Tracing",

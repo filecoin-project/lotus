@@ -209,12 +209,6 @@
   # env var: LOTUS_CLUSTER_CLUSTERMODEENABLED
   #ClusterModeEnabled = false
 
-  # will shutdown libp2p host on shutdown. Useful for testing
-  #
-  # type: bool
-  # env var: LOTUS_CLUSTER_HOSTSHUTDOWN
-  #HostShutdown = false
-
   # A folder to store Raft's data.
   #
   # type: string
@@ -262,12 +256,6 @@
   # type: int
   # env var: LOTUS_CLUSTER_BACKUPSROTATE
   #BackupsRotate = 6
-
-  # Namespace to use when writing keys to the datastore
-  #
-  # type: string
-  # env var: LOTUS_CLUSTER_DATASTORENAMESPACE
-  #DatastoreNamespace = "/raft"
 
   # Tracing enables propagation of contexts across binary boundaries.
   #

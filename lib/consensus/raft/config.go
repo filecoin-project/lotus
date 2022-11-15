@@ -20,15 +20,12 @@ var (
 	DefaultNetworkTimeout       = 100 * time.Second
 	DefaultCommitRetryDelay     = 200 * time.Millisecond
 	DefaultBackupsRotate        = 6
-	DefaultDatastoreNamespace   = "/r"
 )
 
 // ClusterRaftConfig allows to configure the Raft Consensus component for the node cluster.
 type ClusterRaftConfig struct {
 	// config to enabled node cluster with raft consensus
 	ClusterModeEnabled bool
-	// will shutdown libp2p host on shutdown. Useful for testing
-	HostShutdown bool
 	// A folder to store Raft's data.
 	DataFolder string
 	// InitPeerset provides the list of initial cluster peers for new Raft
@@ -49,9 +46,6 @@ type ClusterRaftConfig struct {
 	// BackupsRotate specifies the maximum number of Raft's DataFolder
 	// copies that we keep as backups (renaming) after cleanup.
 	BackupsRotate int
-	// Namespace to use when writing keys to the datastore
-	DatastoreNamespace string
-
 	// A Hashicorp Raft's configuration object.
 	RaftConfig *hraft.Config
 
@@ -68,7 +62,6 @@ func DefaultClusterRaftConfig() *ClusterRaftConfig {
 	cfg.CommitRetries = DefaultCommitRetries
 	cfg.CommitRetryDelay = DefaultCommitRetryDelay
 	cfg.BackupsRotate = DefaultBackupsRotate
-	cfg.DatastoreNamespace = DefaultDatastoreNamespace
 	cfg.RaftConfig = hraft.DefaultConfig()
 
 	// These options are imposed over any Default Raft Config.
@@ -89,7 +82,6 @@ func NewClusterRaftConfig(userRaftConfig *config.UserRaftConfig) *ClusterRaftCon
 	cfg.CommitRetries = userRaftConfig.CommitRetries
 	cfg.CommitRetryDelay = time.Duration(userRaftConfig.CommitRetryDelay)
 	cfg.BackupsRotate = userRaftConfig.BackupsRotate
-	cfg.DatastoreNamespace = userRaftConfig.DatastoreNamespace
 
 	// Keep this to be default hraft config for now
 	cfg.RaftConfig = hraft.DefaultConfig()

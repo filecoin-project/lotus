@@ -605,8 +605,6 @@ type FeeConfig struct {
 type UserRaftConfig struct {
 	// EXPERIMENTAL. config to enabled node cluster with raft consensus
 	ClusterModeEnabled bool
-	// will shutdown libp2p host on shutdown. Useful for testing
-	HostShutdown bool
 	// A folder to store Raft's data.
 	DataFolder string
 	// InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
@@ -627,8 +625,6 @@ type UserRaftConfig struct {
 	// BackupsRotate specifies the maximum number of Raft's DataFolder
 	// copies that we keep as backups (renaming) after cleanup.
 	BackupsRotate int
-	// Namespace to use when writing keys to the datastore
-	DatastoreNamespace string
 	// Tracing enables propagation of contexts across binary boundaries.
 	Tracing bool
 }

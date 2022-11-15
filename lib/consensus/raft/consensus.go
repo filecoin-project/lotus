@@ -276,13 +276,6 @@ func (cc *Consensus) Shutdown(ctx context.Context) error {
 		logger.Error(err)
 	}
 
-	if cc.config.HostShutdown {
-		err = cc.host.Close()
-		if err != nil {
-			logger.Error(err)
-		}
-	}
-
 	cc.cancel()
 	close(cc.rpcReady)
 	return nil
