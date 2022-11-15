@@ -110,6 +110,7 @@ func (e *EthBytes) UnmarshalJSON(b []byte) error {
 }
 
 type EthBlock struct {
+	Hash             EthHash    `json:"hash"`
 	ParentHash       EthHash    `json:"parentHash"`
 	Sha3Uncles       EthHash    `json:"sha3Uncles"`
 	Miner            EthAddress `json:"miner"`
@@ -117,16 +118,17 @@ type EthBlock struct {
 	TransactionsRoot EthHash    `json:"transactionsRoot"`
 	ReceiptsRoot     EthHash    `json:"receiptsRoot"`
 	// TODO: include LogsBloom
-	Difficulty    EthUint64 `json:"difficulty"`
-	Number        EthUint64 `json:"number"`
-	GasLimit      EthUint64 `json:"gasLimit"`
-	GasUsed       EthUint64 `json:"gasUsed"`
-	Timestamp     EthUint64 `json:"timestamp"`
-	Extradata     []byte    `json:"extraData"`
-	MixHash       EthHash   `json:"mixHash"`
-	Nonce         EthNonce  `json:"nonce"`
-	BaseFeePerGas EthBigInt `json:"baseFeePerGas"`
-	Size          EthUint64 `json:"size"`
+	Difficulty      EthUint64 `json:"difficulty"`
+	TotalDifficulty EthUint64 `json:"totalDifficulty"`
+	Number          EthUint64 `json:"number"`
+	GasLimit        EthUint64 `json:"gasLimit"`
+	GasUsed         EthUint64 `json:"gasUsed"`
+	Timestamp       EthUint64 `json:"timestamp"`
+	Extradata       []byte    `json:"extraData"`
+	MixHash         EthHash   `json:"mixHash"`
+	Nonce           EthNonce  `json:"nonce"`
+	BaseFeePerGas   EthBigInt `json:"baseFeePerGas"`
+	Size            EthUint64 `json:"size"`
 	// can be []EthTx or []string depending on query params
 	Transactions []interface{} `json:"transactions"`
 	Uncles       []EthHash     `json:"uncles"`
@@ -406,7 +408,7 @@ func decodeHexString(s string, length int) ([]byte, error) {
 	return b, nil
 }
 
-func EthHashFromCid(c cid.Cid) (EthHash, error) {
+func NewEthHashFromCid(c cid.Cid) (EthHash, error) {
 	return EthHashFromHex(c.Hash().HexString()[8:])
 }
 
