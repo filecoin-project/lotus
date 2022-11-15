@@ -97,50 +97,69 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 	// for that reason when checking block parent relationships, rather than instantiating a Tipset to do so
 	// (which runs a syntactic check), we do it directly on the CIDs.
 
+	var err error
 	// (0) cheap preliminary checks
 
 	// can blocks be decoded properly?
 	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
-		return nil, xerrors.Errorf("cannot decode first block header: %w", decodeErr)
+		err = xerrors.Errorf("cannot decode first block header: %w", decodeErr)
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	// A _valid_ block must use an ID address, but that's not what we're checking here. We're
 	// just making sure that adding additional address protocols won't lead to consensus issues.
 	if !abi.AddressValidForNetworkVersion(blockA.Miner, ss.networkVersion) {
-		return nil, xerrors.Errorf("address protocol unsupported in current network version: %d", blockA.Miner.Protocol())
+		err = xerrors.Errorf("address protocol unsupported in current network version: %d", blockA.Miner.Protocol())
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
-		return nil, xerrors.Errorf("cannot decode second block header: %f", decodeErr)
+		err = xerrors.Errorf("cannot decode second block header: %f", decodeErr)
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	if !abi.AddressValidForNetworkVersion(blockB.Miner, ss.networkVersion) {
-		return nil, xerrors.Errorf("address protocol unsupported in current network version: %d", blockB.Miner.Protocol())
+		err = xerrors.Errorf("address protocol unsupported in current network version: %d", blockB.Miner.Protocol())
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	// workaround chain halt
 	if build.IsNearUpgrade(blockA.Height, build.UpgradeOrangeHeight) {
-		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+		err = xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 	if build.IsNearUpgrade(blockB.Height, build.UpgradeOrangeHeight) {
-		return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+		err = xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
-		return nil, fmt.Errorf("no consensus fault: submitted blocks are the same")
+		err = xerrors.Errorf("no consensus fault: submitted blocks are the same")
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
 	if blockA.Miner != blockB.Miner {
-		return nil, fmt.Errorf("no consensus fault: blocks not mined by same miner")
+		err = xerrors.Errorf("no consensus fault: blocks not mined by same miner")
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	// block a must be earlier or equal to block b, epoch wise (ie at least as early in the chain).
 	if blockB.Height < blockA.Height {
-		return nil, fmt.Errorf("first block must not be of higher height than second")
+		err = xerrors.Errorf("first block must not be of higher height than second")
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	// (2) check for the consensus faults themselves
@@ -177,11 +196,16 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 	var blockC types.BlockHeader
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
-			return nil, xerrors.Errorf("cannot decode extra: %w", decodeErr)
+			err = xerrors.Errorf("cannot decode extra: %w", decodeErr)
+			log.Errorf("VerifyConsensusFault errored: %s", err)
+			return nil, err
 		}
 
 		if !abi.AddressValidForNetworkVersion(blockC.Miner, ss.networkVersion) {
-			return nil, xerrors.Errorf("address protocol unsupported in current network version: %d", blockC.Miner.Protocol())
+			err = xerrors.Errorf("address protocol unsupported in current network version: %d", blockC.Miner.Protocol())
+
+			log.Errorf("VerifyConsensusFault errored: %s", err)
+			return nil, err
 		}
 
 		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
@@ -196,7 +220,9 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 
 	// (3) return if no consensus fault by now
 	if consensusFault == nil {
-		return nil, xerrors.Errorf("no consensus fault detected")
+		err = xerrors.Errorf("no consensus fault detected")
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	// else
@@ -206,11 +232,15 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.Conse
 	// note we do not need to check extra's: it is a parent to block b
 	// which itself is signed, so it was willingly included by the miner
 	if sigErr := ss.VerifyBlockSig(&blockA); sigErr != nil {
-		return nil, xerrors.Errorf("cannot verify first block sig: %w", sigErr)
+		err = xerrors.Errorf("cannot verify first block sig: %w", sigErr)
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	if sigErr := ss.VerifyBlockSig(&blockB); sigErr != nil {
-		return nil, xerrors.Errorf("cannot verify second block sig: %w", sigErr)
+		err = xerrors.Errorf("cannot verify second block sig: %w", sigErr)
+		log.Errorf("VerifyConsensusFault errored: %s", err)
+		return nil, err
 	}
 
 	return consensusFault, nil
