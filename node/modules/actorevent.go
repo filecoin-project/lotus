@@ -6,7 +6,9 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
@@ -51,8 +53,25 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 
 		if cfg.EnableRealTimeFilterAPI {
 			ee.EventFilterManager = &filter.EventFilterManager{
-				ChainStore:       cs,
-				RobustAddresser:  sm,
+				ChainStore: cs,
+				AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+					// we only want to match using f4 addresses
+					idAddr, err := address.NewIDAddress(uint64(emitter))
+					if err != nil {
+						return address.Undef, false
+					}
+					addr, err := sm.LookupRobustAddress(ctx, idAddr, ts)
+					if err != nil {
+						return address.Undef, false
+					}
+
+					// if robust address is not f4 then we won't match against it so bail early
+					if addr.Protocol() != address.Delegated {
+						return address.Undef, false
+					}
+					return addr, true
+				},
+
 				MaxFilterResults: cfg.MaxFilterResults,
 			}
 			ee.TipSetFilterManager = &filter.TipSetFilterManager{

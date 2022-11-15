@@ -69,7 +69,7 @@ func (f *EventFilter) ClearSubChannel() {
 	f.ch = nil
 }
 
-func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, ra RobustAddresser) error {
+func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
 	if !f.matchTipset(te) {
 		return nil
 	}
@@ -83,23 +83,15 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
-			// lookup f4 address corresponding to the actor id
-			addr, ok := addressLookups[ev.Emitter]
-			if !ok {
-				idAddr, err := address.NewIDAddress(uint64(ev.Emitter))
-				if err != nil {
-					return xerrors.Errorf("convert emitter to id address: %w", err)
-				}
-				addr, err = ra.LookupRobustAddress(ctx, idAddr, te.rctTs)
-				if err != nil {
-					return xerrors.Errorf("lookup robust address: %w", err)
-				}
-
-				// if robust address is not f4 then we won't match against it so bail early
-				if addr.Protocol() != address.Delegated {
+			// lookup address corresponding to the actor id
+			addr, found := addressLookups[ev.Emitter]
+			if !found {
+				var ok bool
+				addr, ok = resolver(ctx, ev.Emitter, te.rctTs)
+				if !ok {
+					// not an address we will be able to match against
 					continue
 				}
-
 				addressLookups[ev.Emitter] = addr
 			}
 
@@ -288,7 +280,7 @@ func (e *executedMessage) Events() []*types.Event {
 
 type EventFilterManager struct {
 	ChainStore       *cstore.ChainStore
-	RobustAddresser  RobustAddresser
+	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
 
 	mu      sync.Mutex // guards mutations to filters
@@ -310,7 +302,7 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 
 	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
-		if err := f.CollectEvents(ctx, tse, false, m.RobustAddresser); err != nil {
+		if err := f.CollectEvents(ctx, tse, false, m.AddressResolver); err != nil {
 			return err
 		}
 	}
@@ -333,7 +325,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 
 	// TODO: could run this loop in parallel with errgroup if there are many filters
 	for _, f := range m.filters {
-		if err := f.CollectEvents(ctx, tse, true, m.RobustAddresser); err != nil {
+		if err := f.CollectEvents(ctx, tse, true, m.AddressResolver); err != nil {
 			return err
 		}
 	}

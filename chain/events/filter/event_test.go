@@ -9,7 +9,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -264,7 +263,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.filter.CollectEvents(context.Background(), tc.te, false, addrMap); err != nil {
+			if err := tc.filter.CollectEvents(context.Background(), tc.te, false, addrMap.ResolveAddress); err != nil {
 				require.NoError(t, err, "collect events")
 			}
 
@@ -424,21 +423,13 @@ func buildTipSetEvents(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, em exe
 	}
 }
 
-type addressMap map[address.Address]address.Address
+type addressMap map[abi.ActorID]address.Address
 
-func (a addressMap) add(actorID abi.ActorID, addr address.Address) error {
-	idAddr, err := address.NewIDAddress(uint64(actorID))
-	if err != nil {
-		return xerrors.Errorf("convert emitter to id address: %w", err)
-	}
-	a[idAddr] = addr
-	return nil
+func (a addressMap) add(actorID abi.ActorID, addr address.Address) {
+	a[actorID] = addr
 }
 
-func (a addressMap) LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error) {
-	ra, ok := a[idAddr]
-	if !ok {
-		return address.Undef, xerrors.Errorf("not found")
-	}
-	return ra, nil
+func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+	ra, ok := a[emitter]
+	return ra, ok
 }
