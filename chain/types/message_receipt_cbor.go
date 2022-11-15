@@ -193,7 +193,7 @@ func (t *messageReceiptV0) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for int64 field: %d", maj)
 		}
 
-		t.GasUsed = int64(extraI)
+		t.GasUsed = extraI
 	}
 	return nil
 }
@@ -331,7 +331,7 @@ func (t *messageReceiptV1) UnmarshalCBOR(r io.Reader) (err error) {
 			return fmt.Errorf("wrong type for int64 field: %d", maj)
 		}
 
-		t.GasUsed = int64(extraI)
+		t.GasUsed = extraI
 	}
 	// t.EventsRoot (cid.Cid) (struct)
 
