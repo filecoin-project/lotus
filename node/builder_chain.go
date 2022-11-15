@@ -244,7 +244,7 @@ func ConfigFullNode(c interface{}) Option {
 
 		// Actor event filtering support
 		Override(new(events.EventAPI), From(new(modules.EventAPI))),
-		Override(new(full.EthEventAPI), modules.EthEvent(cfg.ActorEvent)),
+		Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.ActorEvent)),
 	)
 }
 

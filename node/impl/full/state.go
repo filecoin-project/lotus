@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -617,14 +618,22 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 
 		t, err := stmgr.GetReturnType(ctx, m.StateManager, vmsg.To, vmsg.Method, ts)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get return type: %w", err)
+			if errors.Is(err, stmgr.ErrMetadataNotFound) {
+				// This is not nececessary an error -- EVM methods (and in the future native actors) may
+				//  return just bytes, and in the not so distant future we'll have native wasm actors
+				//  that are by definition not in the registry.
+				// So in this case, log a debug message and retun the raw bytes.
+				log.Debugf("failed to get return type: %s", err)
+				returndec = recpt.Return
+			} else {
+				return nil, xerrors.Errorf("failed to get return type: %w", err)
+			}
+		} else {
+			if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
+				return nil, err
+			}
+			returndec = t
 		}
-
-		if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
-			return nil, err
-		}
-
-		returndec = t
 	}
 
 	return &api.MsgLookup{

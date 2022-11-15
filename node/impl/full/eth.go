@@ -169,7 +169,7 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, 
 	if err != nil {
 		return api.EthBlock{}, xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
-	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
+	return a.newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (api.EthBlock, error) {
@@ -183,7 +183,7 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum string, full
 	if err != nil {
 		return api.EthBlock{}, xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
-	return a.ethBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
+	return a.newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *api.EthHash) (*api.EthTx, error) {
@@ -199,7 +199,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *api.Eth
 		return nil, nil
 	}
 
-	tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
+	tx, err := a.newEthTxFromFilecoinMessageLookup(ctx, msgLookup)
 	if err != nil {
 		return nil, nil
 	}
@@ -226,7 +226,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.Eth
 		return nil, nil
 	}
 
-	tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
+	tx, err := a.newEthTxFromFilecoinMessageLookup(ctx, msgLookup)
 	if err != nil {
 		return nil, nil
 	}
@@ -445,7 +445,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount api.EthUint64, n
 	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
 		// Unfortunately we need to rebuild the full message view so we can
 		// totalize gas used in the tipset.
-		block, err := a.ethBlockFromFilecoinTipSet(ctx, ts, false)
+		block, err := a.newEthBlockFromFilecoinTipSet(ctx, ts, false)
 		if err != nil {
 			return api.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
 		}
@@ -534,7 +534,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthByte
 	if err != nil {
 		return api.EmptyEthHash, err
 	}
-	return api.EthHashFromCid(cid)
+	return api.NewEthHashFromCid(cid)
 }
 
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx api.EthCall) (*types.Message, error) {
@@ -666,7 +666,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx api.EthCall, blkParam string
 	return api.EthBytes{}, nil
 }
 
-func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (api.EthBlock, error) {
+func (a *EthModule) newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool) (api.EthBlock, error) {
 	parent, err := a.Chain.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return api.EthBlock{}, err
@@ -675,7 +675,16 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 	if err != nil {
 		return api.EthBlock{}, err
 	}
-	parentBlkHash, err := api.EthHashFromCid(parentKeyCid)
+	parentBlkHash, err := api.NewEthHashFromCid(parentKeyCid)
+	if err != nil {
+		return api.EthBlock{}, err
+	}
+
+	blkCid, err := ts.Key().Cid()
+	if err != nil {
+		return api.EthBlock{}, err
+	}
+	blkHash, err := api.NewEthHashFromCid(blkCid)
 	if err != nil {
 		return api.EthBlock{}, err
 	}
@@ -698,13 +707,13 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 			gasUsed += msgLookup.Receipt.GasUsed
 
 			if fullTxInfo {
-				tx, err := a.ethTxFromFilecoinMessageLookup(ctx, msgLookup)
+				tx, err := a.newEthTxFromFilecoinMessageLookup(ctx, msgLookup)
 				if err != nil {
 					return api.EthBlock{}, nil
 				}
 				block.Transactions = append(block.Transactions, tx)
 			} else {
-				hash, err := api.EthHashFromCid(msg.Cid())
+				hash, err := api.NewEthHashFromCid(msg.Cid())
 				if err != nil {
 					return api.EthBlock{}, err
 				}
@@ -713,6 +722,7 @@ func (a *EthModule) ethBlockFromFilecoinTipSet(ctx context.Context, ts *types.Ti
 		}
 	}
 
+	block.Hash = blkHash
 	block.Number = api.EthUint64(ts.Height())
 	block.ParentHash = parentBlkHash
 	block.Timestamp = api.EthUint64(ts.Blocks()[0].Timestamp)
@@ -765,12 +775,12 @@ func (a *EthModule) lookupEthAddress(ctx context.Context, addr address.Address) 
 	return api.EthAddressFromFilecoinAddress(idAddr)
 }
 
-func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (api.EthTx, error) {
+func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (api.EthTx, error) {
 	if msgLookup == nil {
 		return api.EthTx{}, fmt.Errorf("msg does not exist")
 	}
 	cid := msgLookup.Message
-	txHash, err := api.EthHashFromCid(cid)
+	txHash, err := api.NewEthHashFromCid(cid)
 	if err != nil {
 		return api.EthTx{}, err
 	}
@@ -791,7 +801,7 @@ func (a *EthModule) ethTxFromFilecoinMessageLookup(ctx context.Context, msgLooku
 		return api.EthTx{}, err
 	}
 
-	blkHash, err := api.EthHashFromCid(parentTsCid)
+	blkHash, err := api.NewEthHashFromCid(parentTsCid)
 	if err != nil {
 		return api.EthTx{}, err
 	}
@@ -976,6 +986,8 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 		}
 
 	}
+
+	// Convert all addresses to filecoin f4 addresses
 	for _, ea := range filter.Address {
 		a, err := ea.ToFilecoinAddress()
 		if err != nil {
@@ -1244,8 +1256,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 			}
 		}
 
-		addr, _ := address.NewIDAddress(uint64(ev.Event.Emitter))
-		log.Address, err = api.EthAddressFromFilecoinAddress(addr)
+		log.Address, err = api.EthAddressFromFilecoinAddress(ev.EmitterAddr)
 		if err != nil {
 			return nil, err
 		}

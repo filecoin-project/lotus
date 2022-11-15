@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -23,11 +24,18 @@ import (
 
 func TestEventFilterCollectEvents(t *testing.T) {
 	rng := pseudo.New(pseudo.NewSource(299792458))
-	a1 := randomActorAddr(t, rng)
-	a2 := randomActorAddr(t, rng)
+	a1 := randomF4Addr(t, rng)
+	a2 := randomF4Addr(t, rng)
+
+	a1ID := abi.ActorID(1)
+	a2ID := abi.ActorID(2)
+
+	addrMap := addressMap{}
+	addrMap.add(a1ID, a1)
+	addrMap.add(a2ID, a2)
 
 	ev1 := fakeEvent(
-		a1,
+		a1ID,
 		[]kv{
 			{k: "type", v: []byte("approval")},
 			{k: "signer", v: []byte("addr1")},
@@ -40,7 +48,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	st := newStore()
 	events := []*types.Event{ev1}
 	em := executedMessage{
-		msg: fakeMessage(randomActorAddr(t, rng), randomActorAddr(t, rng)),
+		msg: fakeMessage(randomF4Addr(t, rng), randomF4Addr(t, rng)),
 		rct: fakeReceipt(t, rng, st, events),
 		evs: events,
 	}
@@ -52,13 +60,14 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	noCollectedEvents := []*CollectedEvent{}
 	oneCollectedEvent := []*CollectedEvent{
 		{
-			Event:     ev1,
-			EventIdx:  0,
-			Reverted:  false,
-			Height:    14000,
-			TipSetKey: events14000.msgTs.Key(),
-			MsgIdx:    0,
-			MsgCid:    em.msg.Cid(),
+			Event:       ev1,
+			EmitterAddr: a1,
+			EventIdx:    0,
+			Reverted:    false,
+			Height:      14000,
+			TipSetKey:   events14000.msgTs.Key(),
+			MsgIdx:      0,
+			MsgCid:      em.msg.Cid(),
 		},
 	}
 
@@ -254,7 +263,7 @@ func TestEventFilterCollectEvents(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc // appease lint
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.filter.CollectEvents(context.Background(), tc.te, false); err != nil {
+			if err := tc.filter.CollectEvents(context.Background(), tc.te, false, addrMap.ResolveAddress); err != nil {
 				require.NoError(t, err, "collect events")
 			}
 
@@ -269,7 +278,7 @@ type kv struct {
 	v []byte
 }
 
-func fakeEvent(emitter address.Address, indexed []kv, unindexed []kv) *types.Event {
+func fakeEvent(emitter abi.ActorID, indexed []kv, unindexed []kv) *types.Event {
 	ev := &types.Event{
 		Emitter: emitter,
 	}
@@ -293,9 +302,9 @@ func fakeEvent(emitter address.Address, indexed []kv, unindexed []kv) *types.Eve
 	return ev
 }
 
-func randomActorAddr(tb testing.TB, rng *pseudo.Rand) address.Address {
+func randomF4Addr(tb testing.TB, rng *pseudo.Rand) address.Address {
 	tb.Helper()
-	addr, err := address.NewActorAddress(randomBytes(32, rng))
+	addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, randomBytes(32, rng))
 	require.NoError(tb, err)
 
 	return addr
@@ -408,4 +417,15 @@ func buildTipSetEvents(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, em exe
 			return []executedMessage{em}, nil
 		},
 	}
+}
+
+type addressMap map[abi.ActorID]address.Address
+
+func (a addressMap) add(actorID abi.ActorID, addr address.Address) {
+	a[actorID] = addr
+}
+
+func (a addressMap) ResolveAddress(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+	ra, ok := a[emitter]
+	return ra, ok
 }
