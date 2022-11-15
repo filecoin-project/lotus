@@ -3,15 +3,17 @@ package itests
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/config"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestWorkerUpgradeAbortCleanup(t *testing.T) {

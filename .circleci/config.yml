@@ -954,6 +954,11 @@ workflows:
           target: "./itests/worker_test.go"
       
       - test:
+          name: test-itest-worker_upgrade
+          suite: itest-worker_upgrade
+          target: "./itests/worker_upgrade_test.go"
+      
+      - test:
           name: test-unit-cli
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
