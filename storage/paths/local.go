@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -758,20 +759,22 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		ProofType: si.SealProof,
 	}
 
-	var cache string
-	var sealed string
+	var cache, sealed, cacheID, sealedID string
+
 	if si.Update {
-		src, _, err := st.AcquireSector(ctx, sr, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+		src, si, err := st.AcquireSector(ctx, sr, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 		if err != nil {
 			return nil, xerrors.Errorf("acquire sector: %w", err)
 		}
 		cache, sealed = src.UpdateCache, src.Update
+		cacheID, sealedID = si.UpdateCache, si.Update
 	} else {
-		src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+		src, si, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 		if err != nil {
 			return nil, xerrors.Errorf("acquire sector: %w", err)
 		}
 		cache, sealed = src.Cache, src.Sealed
+		cacheID, sealedID = si.Cache, si.Sealed
 	}
 
 	if sealed == "" || cache == "" {
@@ -789,7 +792,22 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		SealedSectorPath: sealed,
 	}
 
-	return ffi.GenerateSingleVanillaProof(psi, si.Challenge)
+	start := time.Now()
+
+	resCh := make(chan result.Result[[]byte], 1)
+	go func() {
+		resCh <- result.Wrap(ffi.GenerateSingleVanillaProof(psi, si.Challenge))
+	}()
+
+	select {
+	case r := <-resCh:
+		return r.Unwrap()
+	case <-ctx.Done():
+		log.Errorw("failed to generate valilla PoSt proof before context cancellation", "err", ctx.Err(), "duration", time.Now().Sub(start), "cache-id", cacheID, "sealed-id", sealedID, "cache", cache, "sealed", sealed)
+
+		// this will leave the GenerateSingleVanillaProof goroutine hanging, but that's still less bad than failing PoSt
+		return nil, xerrors.Errorf("failed to generate vanilla proof before context cancellation: %w", ctx.Err())
+	}
 }
 
 var _ Store = &Local{}
