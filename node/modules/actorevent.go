@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
-	"go.uber.org/fx"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/multiformats/go-varint"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/filter"
@@ -64,9 +65,12 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 					if err != nil {
 						return address.Undef, false
 					}
-
 					// if robust address is not f4 then we won't match against it so bail early
 					if addr.Protocol() != address.Delegated {
+						return address.Undef, false
+					}
+					// we have an f4 address, make sure it's assigned by the EAM
+					if namespace, _, err := varint.FromUvarint(addr.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
 						return address.Undef, false
 					}
 					return addr, true
