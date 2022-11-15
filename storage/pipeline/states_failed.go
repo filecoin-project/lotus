@@ -425,6 +425,7 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 	m.cleanupAssignedDeals(sector)
 
 	// Remove snap deals replica if any
+	// This removes update / update-cache from all storage
 	if err := m.sealer.ReleaseReplicaUpgrade(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return xerrors.Errorf("removing CC update files from sector storage")
 	}
@@ -434,9 +435,13 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 		return xerrors.Errorf("getting sealing config: %w", err)
 	}
 
+	// This removes the unsealed file from all storage
+	// TODO: Pass full sector range
 	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.CCPieces, true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
 		log.Error(err)
 	}
+
+	// TODO: Remove sealed/cache copies
 
 	return ctx.Send(SectorRevertUpgradeToProving{})
 }
