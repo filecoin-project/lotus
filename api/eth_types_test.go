@@ -193,30 +193,33 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 
 		{
 			res: EthFilterResult{
-				NewBlockHashes: []EthHash{hash1, hash2},
+				Results: []any{hash1, hash2},
 			},
 			want: `["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184","0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"]`,
 		},
 
 		{
 			res: EthFilterResult{
-				NewTransactionHashes: []EthHash{hash1, hash2},
+				Results: []any{hash1, hash2},
 			},
 			want: `["0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184","0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"]`,
 		},
 
 		{
 			res: EthFilterResult{
-				NewLogs: []EthLog{log},
+				Results: []any{log},
 			},
 			want: `[` + string(logjson) + `]`,
 		},
 	}
 
 	for _, tc := range testcases {
-		data, err := json.Marshal(tc.res)
-		require.NoError(t, err)
-		require.Equal(t, tc.want, string(data))
+		tc := tc
+		t.Run("", func(t *testing.T) {
+			data, err := json.Marshal(tc.res)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, string(data))
+		})
 	}
 }
 
@@ -325,12 +328,23 @@ func TestEthAddressListUnmarshalJSON(t *testing.T) {
 			input: `"0xd4c5fb16488Aa48081296299d54b0c648C9333dA"`,
 			want:  EthAddressList{addr1},
 		},
+		{
+			input: `[]`,
+			want:  EthAddressList{},
+		},
+		{
+			input: `null`,
+			want:  EthAddressList(nil),
+		},
 	}
 	for _, tc := range testcases {
-		var got EthAddressList
-		err := json.Unmarshal([]byte(tc.input), &got)
-		require.NoError(t, err)
-		require.Equal(t, tc.want, got)
+		tc := tc
+		t.Run("", func(t *testing.T) {
+			var got EthAddressList
+			err := json.Unmarshal([]byte(tc.input), &got)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
 	}
 }
 

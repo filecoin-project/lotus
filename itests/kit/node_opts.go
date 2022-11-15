@@ -280,3 +280,10 @@ func SplitstoreMessges() NodeOpt {
 		return nil
 	})
 }
+
+func RealTimeFilterAPI() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.ActorEvent.EnableRealTimeFilterAPI = true
+		return nil
+	})
+}

@@ -1293,7 +1293,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 			return nil, err
 		}
 
-		res.NewLogs = append(res.NewLogs, log)
+		res.Results = append(res.Results, log)
 	}
 
 	return res, nil
@@ -1312,7 +1312,7 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*api.EthFilterResult, e
 			return nil, err
 		}
 
-		res.NewBlockHashes = append(res.NewBlockHashes, hash)
+		res.Results = append(res.Results, hash)
 	}
 
 	return res, nil
@@ -1327,7 +1327,7 @@ func ethFilterResultFromMessages(cs []cid.Cid) (*api.EthFilterResult, error) {
 			return nil, err
 		}
 
-		res.NewTransactionHashes = append(res.NewTransactionHashes, hash)
+		res.Results = append(res.Results, hash)
 	}
 
 	return res, nil

@@ -484,6 +484,9 @@ type EthFilterSpec struct {
 type EthAddressList []EthAddress
 
 func (e *EthAddressList) UnmarshalJSON(b []byte) error {
+	if bytes.Equal(b, []byte{'n', 'u', 'l', 'l'}) {
+		return nil
+	}
 	if len(b) > 0 && b[0] == '[' {
 		var addrs []EthAddress
 		err := json.Unmarshal(b, &addrs)
@@ -542,32 +545,27 @@ func (e *EthHashList) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// FilterResult represents the response from executing a filter: a list of bloack hashes, a list of transaction hashes
+// FilterResult represents the response from executing a filter: a list of block hashes, a list of transaction hashes
 // or a list of logs
 // This is a union type. Only one field will be populated.
 // The JSON encoding must produce an array of the populated field.
 type EthFilterResult struct {
-	// List of block hashes. Only populated when the filter has been installed via EthNewBlockFilter
-	NewBlockHashes []EthHash
-
-	// List of transaction hashes. Only populated when the filter has been installed via EthNewPendingTransactionFilter
-	NewTransactionHashes []EthHash
-
-	// List of event logs. Only populated when the filter has been installed via EthNewFilter
-	NewLogs []EthLog
+	Results []interface{}
 }
 
 func (h EthFilterResult) MarshalJSON() ([]byte, error) {
-	if h.NewBlockHashes != nil {
-		return json.Marshal(h.NewBlockHashes)
-	}
-	if h.NewTransactionHashes != nil {
-		return json.Marshal(h.NewTransactionHashes)
-	}
-	if h.NewLogs != nil {
-		return json.Marshal(h.NewLogs)
+	if h.Results != nil {
+		return json.Marshal(h.Results)
 	}
 	return []byte{'[', ']'}, nil
+}
+
+func (h *EthFilterResult) UnmarshalJSON(b []byte) error {
+	if bytes.Equal(b, []byte{'n', 'u', 'l', 'l'}) {
+		return nil
+	}
+	err := json.Unmarshal(b, &h.Results)
+	return err
 }
 
 // EthLog represents the results of an event filter execution.
