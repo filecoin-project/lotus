@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -96,4 +99,56 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	require.NoError(err)
 
 	return wait
+}
+
+// LoadEvents loads all events in an event AMT.
+func (e *EVM) LoadEvents(ctx context.Context, eventsRoot cid.Cid) []types.Event {
+	require := require.New(e.t)
+
+	s := &apiIpldStore{ctx, e}
+	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(5))
+	require.NoError(err)
+
+	ret := make([]types.Event, 0, amt.Len())
+	err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
+		var evt types.Event
+		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+			return err
+		}
+		ret = append(ret, evt)
+		return nil
+	})
+	require.NoError(err)
+	return ret
+}
+
+// TODO: cleanup and put somewhere reusable.
+type apiIpldStore struct {
+	ctx context.Context
+	api api.FullNode
+}
+
+func (ht *apiIpldStore) Context() context.Context {
+	return ht.ctx
+}
+
+func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+	raw, err := ht.api.ChainReadObj(ctx, c)
+	if err != nil {
+		return err
+	}
+
+	cu, ok := out.(cbg.CBORUnmarshaler)
+	if ok {
+		if err := cu.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return fmt.Errorf("object does not implement CBORUnmarshaler")
+}
+
+func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	panic("No mutations allowed")
 }
