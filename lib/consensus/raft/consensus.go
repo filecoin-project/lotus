@@ -379,9 +379,7 @@ func (cc *Consensus) Commit(ctx context.Context, op *ConsensusOp) error {
 
 		// Being here means we are the LEADER. We can commit.
 		// now commit the changes to our state
-		//cc.shutdownLock.RLock() // do not shut down while committing
 		_, finalErr = cc.consensus.CommitOp(op)
-		//cc.shutdownLock.RUnlock()
 		if finalErr != nil {
 			goto RETRY
 		}
@@ -406,10 +404,7 @@ func (cc *Consensus) AddPeer(ctx context.Context, pid peer.ID) error {
 			return err
 		}
 		// Being here means we are the leader and can commit
-		//cc.shutdownLock.RLock() // do not shutdown while committing
 		finalErr = cc.raft.AddPeer(ctx, pid)
-
-		//cc.shutdownLock.RUnlock()
 		if finalErr != nil {
 			time.Sleep(cc.config.CommitRetryDelay)
 			continue
@@ -434,9 +429,7 @@ func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 			return err
 		}
 		// Being here means we are the leader and can commit
-		//cc.shutdownLock.RLock() // do not shutdown while committing
 		finalErr = cc.raft.RemovePeer(ctx, peer.Encode(pid))
-		//cc.shutdownLock.RUnlock()
 		if finalErr != nil {
 			time.Sleep(cc.config.CommitRetryDelay)
 			continue
@@ -478,12 +471,6 @@ func (cc *Consensus) Leader(ctx context.Context) (peer.ID, error) {
 
 // Clean removes the Raft persisted state.
 func (cc *Consensus) Clean(ctx context.Context) error {
-	//cc.shutdownLock.RLock()
-	//defer cc.shutdownLock.RUnlock()
-	//if !cc.shutdown {
-	//	return errors.New("consensus component is not shutdown")
-	//}
-
 	//return CleanupRaft(cc.config)
 	return nil
 }
