@@ -46,7 +46,7 @@ var ddls = []string{
 		event_id INTEGER,
 		indexed INTEGER NOT NULL,
 		flags BLOB NOT NULL,
-		key BLOB NOT NULL,
+		key TEXT NOT NULL,
 		value BLOB NOT NULL
 	)`,
 
@@ -246,7 +246,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			// JOIN ee1 event_entry ON event.id=ee1.event_id
 			joins = append(joins, fmt.Sprintf("event_entry %s on event.id=%[1]s.event_id", joinAlias))
 			clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
-			values = append(values, []byte(key))
+			values = append(values, key)
 			subclauses := []string{}
 			for _, val := range vals {
 				subclauses = append(subclauses, fmt.Sprintf("%s.value=?", joinAlias))
@@ -317,7 +317,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			messageIndex int
 			reverted     bool
 			flags        []byte
-			key          []byte
+			key          string
 			value        []byte
 		}
 
