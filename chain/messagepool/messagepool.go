@@ -668,6 +668,8 @@ func (mp *MessagePool) verifyMsgBeforeAdd(ctx context.Context, m *types.SignedMe
 	return publish, nil
 }
 
+// Push checks the signed message for any violations, adds the message to the message pool and
+// publishes the message if the publish flag is set
 func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish bool) (cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.MpoolPushDuration)
 	defer done()
