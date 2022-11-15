@@ -268,14 +268,6 @@ func (cc *Consensus) finishBootstrap() {
 // shutdown, along with the libp2p transport.
 func (cc *Consensus) Shutdown(ctx context.Context) error {
 
-	//cc.shutdownLock.Lock()
-	//defer cc.shutdownLock.Unlock()
-
-	//if cc.shutdown {
-	//	logger.Debug("already shutdown")
-	//	return nil
-	//}
-
 	logger.Info("stopping Consensus component")
 
 	// Raft Shutdown
@@ -291,7 +283,6 @@ func (cc *Consensus) Shutdown(ctx context.Context) error {
 		}
 	}
 
-	//cc.shutdown = true
 	cc.cancel()
 	close(cc.rpcReady)
 	return nil
@@ -511,12 +502,6 @@ func (cc *Consensus) Clean(ctx context.Context) error {
 // The list will be sorted alphabetically.
 func (cc *Consensus) Peers(ctx context.Context) ([]peer.ID, error) {
 
-	//cc.shutdownLock.RLock() // prevent shutdown while here
-	//defer cc.shutdownLock.RUnlock()
-	//
-	//if cc.shutdown { // things hang a lot in this case
-	//	return nil, errors.New("consensus is shutdown")
-	//}
 	peers := []peer.ID{}
 	raftPeers, err := cc.raft.Peers(ctx)
 	if err != nil {
@@ -539,28 +524,3 @@ func (cc *Consensus) IsLeader(ctx context.Context) bool {
 	leader, _ := cc.Leader(ctx)
 	return leader == cc.host.ID()
 }
-
-// OfflineState state returns a cluster state by reading the Raft data and
-// writing it to the given datastore which is then wrapped as a state.RaftState.
-// Usually an in-memory datastore suffices. The given datastore should be
-// thread-safe.
-//func OfflineState(cfg *Config, store ds.Datastore) (state.RaftState, error) {
-//	r, snapExists, err := LastStateRaw(cfg)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	st, err := dsstate.New(context.Background(), store, cfg.DatastoreNamespace, dsstate.DefaultHandle())
-//	if err != nil {
-//		return nil, err
-//	}
-//	if !snapExists {
-//		return st, nil
-//	}
-//
-//	err = st.Unmarshal(r)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return st, nil
-//}
