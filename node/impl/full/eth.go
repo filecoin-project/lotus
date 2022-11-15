@@ -870,9 +870,23 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 	return tx, nil
 }
 
-func (e *EthEvent) EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*api.EthFilterResult, error) {
-	// TODO: implement EthGetLogs
-	return nil, api.ErrNotSupported
+func (e *EthEvent) EthGetLogs(ctx context.Context, filterSpec *api.EthFilterSpec) (*api.EthFilterResult, error) {
+	if e.EventFilterManager == nil {
+		return nil, api.ErrNotSupported
+	}
+
+	// Create a temporary filter
+	f, err := e.installEthFilterSpec(ctx, filterSpec)
+	if err != nil {
+		return nil, err
+	}
+	ces := f.TakeCollectedEvents(ctx)
+
+	if err := e.uninstallFilter(ctx, f); err != nil {
+		return nil, err
+	}
+
+	return ethFilterResultFromEvents(ces)
 }
 
 func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
@@ -915,11 +929,7 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*a
 	return nil, xerrors.Errorf("wrong filter type")
 }
 
-func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error) {
-	if e.FilterStore == nil || e.EventFilterManager == nil {
-		return "", api.ErrNotSupported
-	}
-
+func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *api.EthFilterSpec) (*filter.EventFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -928,39 +938,39 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 		keys      = map[string][][]byte{}
 	)
 
-	if filter.BlockHash != nil {
-		if filter.FromBlock != nil || filter.ToBlock != nil {
-			return "", xerrors.Errorf("must not specify block hash and from/to block")
+	if filterSpec.BlockHash != nil {
+		if filterSpec.FromBlock != nil || filterSpec.ToBlock != nil {
+			return nil, xerrors.Errorf("must not specify block hash and from/to block")
 		}
 
 		// TODO: derive a tipset hash from eth hash - might need to push this down into the EventFilterManager
 	} else {
-		if filter.FromBlock == nil || *filter.FromBlock == "latest" {
+		if filterSpec.FromBlock == nil || *filterSpec.FromBlock == "latest" {
 			ts := e.Chain.GetHeaviestTipSet()
 			minHeight = ts.Height()
-		} else if *filter.FromBlock == "earliest" {
+		} else if *filterSpec.FromBlock == "earliest" {
 			minHeight = 0
-		} else if *filter.FromBlock == "pending" {
-			return "", api.ErrNotSupported
+		} else if *filterSpec.FromBlock == "pending" {
+			return nil, api.ErrNotSupported
 		} else {
-			epoch, err := strconv.ParseUint(*filter.FromBlock, 10, 64)
+			epoch, err := strconv.ParseUint(*filterSpec.FromBlock, 10, 64)
 			if err != nil {
-				return "", xerrors.Errorf("invalid epoch")
+				return nil, xerrors.Errorf("invalid epoch")
 			}
 			minHeight = abi.ChainEpoch(epoch)
 		}
 
-		if filter.ToBlock == nil || *filter.ToBlock == "latest" {
+		if filterSpec.ToBlock == nil || *filterSpec.ToBlock == "latest" {
 			// here latest means the latest at the time
 			maxHeight = -1
-		} else if *filter.ToBlock == "earliest" {
+		} else if *filterSpec.ToBlock == "earliest" {
 			maxHeight = 0
-		} else if *filter.ToBlock == "pending" {
-			return "", api.ErrNotSupported
+		} else if *filterSpec.ToBlock == "pending" {
+			return nil, api.ErrNotSupported
 		} else {
-			epoch, err := strconv.ParseUint(*filter.ToBlock, 10, 64)
+			epoch, err := strconv.ParseUint(*filterSpec.ToBlock, 10, 64)
 			if err != nil {
-				return "", xerrors.Errorf("invalid epoch")
+				return nil, xerrors.Errorf("invalid epoch")
 			}
 			maxHeight = abi.ChainEpoch(epoch)
 		}
@@ -970,33 +980,33 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 			// Here the client is looking for events between the head and some future height
 			ts := e.Chain.GetHeaviestTipSet()
 			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return "", xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range")
 			}
 		} else if minHeight >= 0 && maxHeight == -1 {
 			// Here the client is looking for events between some time in the past and the current head
 			ts := e.Chain.GetHeaviestTipSet()
 			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return "", xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range")
 			}
 
 		} else if minHeight >= 0 && maxHeight >= 0 {
 			if minHeight > maxHeight || maxHeight-minHeight > e.MaxFilterHeightRange {
-				return "", xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range")
 			}
 		}
 
 	}
 
 	// Convert all addresses to filecoin f4 addresses
-	for _, ea := range filter.Address {
+	for _, ea := range filterSpec.Address {
 		a, err := ea.ToFilecoinAddress()
 		if err != nil {
-			return "", xerrors.Errorf("invalid address %x", ea)
+			return nil, xerrors.Errorf("invalid address %x", ea)
 		}
 		addresses = append(addresses, a)
 	}
 
-	for idx, vals := range filter.Topics {
+	for idx, vals := range filterSpec.Topics {
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 		key := fmt.Sprintf("topic%d", idx+1)
 		keyvals := make([][]byte, len(vals))
@@ -1006,7 +1016,15 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 		keys[key] = keyvals
 	}
 
-	f, err := e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
+	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
+}
+
+func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *api.EthFilterSpec) (api.EthFilterID, error) {
+	if e.FilterStore == nil || e.EventFilterManager == nil {
+		return "", api.ErrNotSupported
+	}
+
+	f, err := e.installEthFilterSpec(ctx, filterSpec)
 	if err != nil {
 		return "", err
 	}
