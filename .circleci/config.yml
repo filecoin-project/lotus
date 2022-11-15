@@ -916,6 +916,11 @@ workflows:
           target: "./itests/mpool_msg_uuid_test.go"
       
       - test:
+          name: test-itest-mpool_push_with_uuid
+          suite: itest-mpool_push_with_uuid
+          target: "./itests/mpool_push_with_uuid_test.go"
+      
+      - test:
           name: test-itest-multisig
           suite: itest-multisig
           target: "./itests/multisig_test.go"
@@ -954,6 +959,11 @@ workflows:
           name: test-itest-pending_deal_allocation
           suite: itest-pending_deal_allocation
           target: "./itests/pending_deal_allocation_test.go"
+      
+      - test:
+          name: test-itest-raft_messagesigner
+          suite: itest-raft_messagesigner
+          target: "./itests/raft_messagesigner_test.go"
       
       - test:
           name: test-itest-remove_verifreg_datacap
