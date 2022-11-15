@@ -459,7 +459,7 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 			}
 
 			cpy := evt
-			ems[i].evs[int(u)] = &cpy
+			ems[i].evs[int(u)] = &cpy //nolint:scopelint
 			return nil
 		})
 
