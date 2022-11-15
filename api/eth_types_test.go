@@ -91,7 +91,7 @@ func TestEthHash(t *testing.T) {
 		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
 
 		c := h.ToCid()
-		h1, err := EthHashFromCid(c)
+		h1, err := NewEthHashFromCid(c)
 		require.Nil(t, err)
 		require.Equal(t, h, h1)
 	}

@@ -353,12 +353,8 @@ func fakeReceipt(tb testing.TB, rng *pseudo.Rand, st adt.Store, events []*types.
 	eventsRoot, err := arr.Root()
 	require.NoError(tb, err, "flush events amt")
 
-	return &types.MessageReceipt{
-		ExitCode:   exitcode.Ok,
-		Return:     randomBytes(32, rng),
-		GasUsed:    rng.Int63(),
-		EventsRoot: &eventsRoot,
-	}
+	rec := types.NewMessageReceiptV1(exitcode.Ok, randomBytes(32, rng), rng.Int63(), &eventsRoot)
+	return &rec
 }
 
 func fakeTipSet(tb testing.TB, rng *pseudo.Rand, h abi.ChainEpoch, parents []cid.Cid) *types.TipSet {
