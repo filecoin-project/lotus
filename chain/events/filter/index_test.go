@@ -67,7 +67,9 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 	workDir, err := os.MkdirTemp("", "lotusevents")
 	require.NoError(t, err, "create temporary work directory")
 
-	defer os.RemoveAll(workDir)
+	defer func() {
+		_ = os.RemoveAll(workDir)
+	}()
 	t.Logf("using work dir %q", workDir)
 
 	dbPath := filepath.Join(workDir, "actorevents.db")
