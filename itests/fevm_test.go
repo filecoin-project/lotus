@@ -12,6 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -71,9 +72,8 @@ func TestFEVMBasic(t *testing.T) {
 
 		inputData, err := hex.DecodeString("000000000000000000000000ff00000000000000000000000000000000000065")
 		require.NoError(t, err)
-		
-		wait := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
 
+		wait := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
 		require.True(t, wait.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 
 		result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
