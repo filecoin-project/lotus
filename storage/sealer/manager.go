@@ -621,6 +621,15 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
+	/*
+
+		We want to:
+		* Trim cache
+		* (partially) free unsealed data
+		* Move stuff to long-term storage
+
+	*/
+
 	// first check if the unsealed file exists anywhere; If it doesn't ignore it
 	unsealed := storiface.FTUnsealed
 	{
@@ -631,21 +640,34 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 
 		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
 			unsealed = storiface.FTNone
+		} else {
+			// remove redundant copies if there are any
+			if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTUnsealed); err != nil {
+				return xerrors.Errorf("remove copies (unsealed): %w", err)
+			}
 		}
 	}
 
-	// Make sure that the sealed file is still in sealing storage; In case it already
-	// isn't, we want to do finalize in long-term storage
-	pathType := storiface.PathStorage
+	// remove redundant copies if there are any
+	if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTSealed); err != nil {
+		return xerrors.Errorf("remove copies (sealed): %w", err)
+	}
+	if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTCache); err != nil {
+		return xerrors.Errorf("remove copies (cache): %w", err)
+	}
+
+	// Make sure that the cache files are still in sealing storage; In case not,
+	// we want to do finalize in long-term storage
+	cachePathType := storiface.PathStorage
 	{
-		sealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTSealed, 0, false)
+		sealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTCache, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding sealed sector: %w", err)
 		}
 
 		for _, store := range sealedStores {
 			if store.CanSeal {
-				pathType = storiface.PathSealing
+				cachePathType = storiface.PathSealing
 				break
 			}
 		}
@@ -656,7 +678,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache, false)
 
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		m.schedFetch(sector, storiface.FTCache|unsealed, pathType, storiface.AcquireMove),
+		m.schedFetch(sector, storiface.FTCache|unsealed, cachePathType, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
 			_, err := m.waitSimpleCall(ctx)(w.FinalizeSector(ctx, sector, keepUnsealed))
 			return err

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var MinRetryTime = 1 * time.Minute
@@ -430,18 +431,11 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 		return xerrors.Errorf("removing CC update files from sector storage")
 	}
 
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting sealing config: %w", err)
-	}
-
-	// This removes the unsealed file from all storage
-	// TODO: Pass full sector range
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.CCPieces, true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+	// This removes the unsealed file from all storage, and makes sure sealed/unsealed files only exist in long-term-storage
+	// note: we're not keeping anything unsealed because we're reverting to CC
+	if err := m.sealer.FinalizeSector(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), []storiface.Range{}); err != nil {
 		log.Error(err)
 	}
-
-	// TODO: Remove sealed/cache copies
 
 	return ctx.Send(SectorRevertUpgradeToProving{})
 }
