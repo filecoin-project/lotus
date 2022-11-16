@@ -413,6 +413,10 @@ func (s *state{{.v}}) Info() (MinerInfo, error) {
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      {{if (ge .v 2)}}info.ConsensusFaultElapsed{{else}}-1{{end}},
+		{{if (ge .v 9)}}
+		Beneficiary:                info.Beneficiary,
+		BeneficiaryTerm:            info.BeneficiaryTerm,
+		PendingBeneficiaryTerm:     info.PendingBeneficiaryTerm,{{end}}
 	}
 
 	return mi, nil
@@ -580,7 +584,7 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 }
 
 func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	return minertypes.SectorPreCommitOnChainInfo{
+	{{if (le .v 8)}}return minertypes.SectorPreCommitOnChainInfo{
 		Info:               minertypes.SectorPreCommitInfo{
 			SealProof:     v{{.v}}.Info.SealProof,
 			SectorNumber:  v{{.v}}.Info.SectorNumber,
@@ -592,7 +596,7 @@ func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOn
 		},
 		PreCommitDeposit:   v{{.v}}.PreCommitDeposit,
 		PreCommitEpoch:     v{{.v}}.PreCommitEpoch,
-	}
+	}{{else}}return v{{.v}}{{end}}
 }
 
 func (s *state{{.v}}) GetState() interface{} {

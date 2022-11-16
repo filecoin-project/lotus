@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -137,7 +138,15 @@ func init() {
 	addExample(&textSelExample)
 	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
-	addExample(build.NewestNetworkVersion)
+	addExample(build.TestNetworkVersion)
+	allocationId := verifreg.AllocationId(0)
+	addExample(allocationId)
+	addExample(&allocationId)
+	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
+	claimId := verifreg.ClaimId(0)
+	addExample(claimId)
+	addExample(&claimId)
+	addExample(map[verifreg.ClaimId]verifreg.Claim{})
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{

@@ -49,7 +49,7 @@ const UpgradeHyperdriveHeight = -16
 const UpgradeChocolateHeight = -17
 const UpgradeOhSnapHeight = -18
 const UpgradeSkyrHeight = -19
-const UpgradeV17Height = abi.ChainEpoch(99999999999999)
+const UpgradeSharkHeight = abi.ChainEpoch(600)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,

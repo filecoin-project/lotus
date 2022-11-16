@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"golang.org/x/xerrors"
 
 {{if (le .v 7)}}
     {{if (ge .v 3)}}
@@ -18,6 +19,11 @@ import (
 	verifreg{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}verifreg"
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+{{end}}
+{{if (ge .v 9)}}
+	"github.com/filecoin-project/go-state-types/big"
+{{else}}
+    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 {{end}}
 )
 
@@ -62,7 +68,11 @@ func (s *state{{.v}}) RootKey() (address.Address, error) {
 }
 
 func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+{{if (le .v 8)}}
 	return getDataCap(s.store, actors.Version{{.v}}, s.verifiedClients, addr)
+{{else}}
+    return false, big.Zero(), xerrors.Errorf("unsupported in actors v{{.v}}")
+{{end}}
 }
 
 func (s *state{{.v}}) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -78,11 +88,19 @@ func (s *state{{.v}}) ForEachVerifier(cb func(addr address.Address, dcap abi.Sto
 }
 
 func (s *state{{.v}}) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+{{if (le .v 8)}}
 	return forEachCap(s.store, actors.Version{{.v}}, s.verifiedClients, cb)
+{{else}}
+    return xerrors.Errorf("unsupported in actors v{{.v}}")
+{{end}}
 }
 
 func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
+{{if (le .v 8)}}
 	return adt{{.v}}.AsMap(s.store, s.VerifiedClients{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+{{else}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{end}}
 }
 
 func (s *state{{.v}}) verifiers() (adt.Map, error) {
@@ -96,4 +114,36 @@ func (s *state{{.v}}) removeDataCapProposalIDs() (adt.Map, error) {
 
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+{{if (le .v 8)}}
+    return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+    return s.FindAllocation(s.store, clientIdAddr, allocationId)
+{{end}}
+}
+
+func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	return s.LoadAllocationsToMap(s.store, clientIdAddr)
+{{end}}
+}
+
+func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+{{if (le .v 8)}}
+    return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	return s.FindClaim(s.store, providerIdAddr, claimId)
+{{end}}
+}
+
+func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	return s.LoadClaimsToMap(s.store, providerIdAddr)
+{{end}}
 }

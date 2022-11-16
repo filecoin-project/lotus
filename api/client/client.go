@@ -19,7 +19,7 @@ import (
 func NewCommonRPCV0(ctx context.Context, addr string, requestHeader http.Header) (api.CommonNet, jsonrpc.ClientCloser, error) {
 	var res v0api.CommonNetStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader)
+		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))
 
 	return &res, closer, err
 }
@@ -29,7 +29,7 @@ func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Heade
 	var res v0api.FullNodeStruct
 
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader)
+		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))
 
 	return &res, closer, err
 }
@@ -38,7 +38,7 @@ func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Heade
 func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v1api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader)
+		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))
 
 	return &res, closer, err
 }
@@ -72,6 +72,7 @@ func NewStorageMinerRPCV0(ctx context.Context, addr string, requestHeader http.H
 		api.GetInternalStructs(&res), requestHeader,
 		append([]jsonrpc.Option{
 			rpcenc.ReaderParamEncoder(pushUrl),
+			jsonrpc.WithErrors(api.RPCErrors),
 		}, opts...)...)
 
 	return &res, closer, err
@@ -90,6 +91,7 @@ func NewWorkerRPCV0(ctx context.Context, addr string, requestHeader http.Header)
 		rpcenc.ReaderParamEncoder(pushUrl),
 		jsonrpc.WithNoReconnect(),
 		jsonrpc.WithTimeout(30*time.Second),
+		jsonrpc.WithErrors(api.RPCErrors),
 	)
 
 	return &res, closer, err
@@ -101,7 +103,7 @@ func NewGatewayRPCV1(ctx context.Context, addr string, requestHeader http.Header
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		api.GetInternalStructs(&res),
 		requestHeader,
-		opts...,
+		append(opts, jsonrpc.WithErrors(api.RPCErrors))...,
 	)
 
 	return &res, closer, err
@@ -113,7 +115,7 @@ func NewGatewayRPCV0(ctx context.Context, addr string, requestHeader http.Header
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		api.GetInternalStructs(&res),
 		requestHeader,
-		opts...,
+		append(opts, jsonrpc.WithErrors(api.RPCErrors))...,
 	)
 
 	return &res, closer, err
@@ -124,6 +126,7 @@ func NewWalletRPCV0(ctx context.Context, addr string, requestHeader http.Header)
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
 		api.GetInternalStructs(&res),
 		requestHeader,
+		jsonrpc.WithErrors(api.RPCErrors),
 	)
 
 	return &res, closer, err

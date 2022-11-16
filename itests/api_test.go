@@ -10,6 +10,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -51,6 +52,8 @@ func runAPITest(t *testing.T, opts ...interface{}) {
 	t.Run("testMiningReal", ts.testMiningReal)
 	t.Run("testSlowNotify", ts.testSlowNotify)
 	t.Run("testSearchMsg", ts.testSearchMsg)
+	t.Run("testOutOfGasError", ts.testOutOfGasError)
+	t.Run("testLookupNotFoundError", ts.testLookupNotFoundError)
 	t.Run("testNonGenesisMiner", ts.testNonGenesisMiner)
 }
 
@@ -147,6 +150,46 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 	require.NotNil(t, searchRes)
 
 	require.Equalf(t, res.TipSet, searchRes.TipSet, "search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
+}
+
+func (ts *apiSuite) testOutOfGasError(t *testing.T) {
+	ctx := context.Background()
+
+	full, _, _ := kit.EnsembleMinimal(t, ts.opts...)
+
+	senderAddr, err := full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	// the gas estimator API executes the message with gasLimit = BlockGasLimit
+	// Lowering it to 2 will cause it to run out of gas, testing the failure case we want
+	originalLimit := build.BlockGasLimit
+	build.BlockGasLimit = 2
+	defer func() {
+		build.BlockGasLimit = originalLimit
+	}()
+
+	msg := &types.Message{
+		From:  senderAddr,
+		To:    senderAddr,
+		Value: big.Zero(),
+	}
+
+	_, err = full.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+	require.Error(t, err, "should have failed")
+	require.True(t, xerrors.Is(err, &lapi.ErrOutOfGas{}))
+}
+
+func (ts *apiSuite) testLookupNotFoundError(t *testing.T) {
+	ctx := context.Background()
+
+	full, _, _ := kit.EnsembleMinimal(t, ts.opts...)
+
+	addr, err := full.WalletNew(ctx, types.KTSecp256k1)
+	require.NoError(t, err)
+
+	_, err = full.StateLookupID(ctx, addr, types.EmptyTSK)
+	require.Error(t, err)
+	require.True(t, xerrors.Is(err, &lapi.ErrActorNotFound{}))
 }
 
 func (ts *apiSuite) testMining(t *testing.T) {

@@ -53,7 +53,7 @@ func (m *mockStorageMinerAPI) StateMinerInfo(ctx context.Context, a address.Addr
 }
 
 func (m *mockStorageMinerAPI) StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error) {
-	return build.NewestNetworkVersion, nil
+	return build.TestNetworkVersion, nil
 }
 
 func (m *mockStorageMinerAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
@@ -175,6 +175,26 @@ type mockFaultTracker struct {
 func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	// Returns "bad" sectors so just return empty map meaning all sectors are good
 	return map[abi.SectorID]string{}, nil
+}
+
+func generatePartition(sectorCount uint64, recoverySectorCount uint64) api.Partition {
+	var partition api.Partition
+	sectors := bitfield.New()
+	recoverySectors := bitfield.New()
+	for s := uint64(0); s < sectorCount; s++ {
+		sectors.Set(s)
+	}
+	for s := uint64(0); s < recoverySectorCount; s++ {
+		recoverySectors.Set(s)
+	}
+	partition = api.Partition{
+		AllSectors:        sectors,
+		FaultySectors:     bitfield.New(),
+		RecoveringSectors: recoverySectors,
+		LiveSectors:       sectors,
+		ActiveSectors:     sectors,
+	}
+	return partition
 }
 
 // TestWDPostDoPost verifies that doPost will send the correct number of window
@@ -365,6 +385,55 @@ func TestWDPostDoPostPartLimitConfig(t *testing.T) {
 			// All previous messages should include the full number of partitions
 			require.Len(t, params.Partitions, userPartLimit)
 		}
+	}
+}
+
+// TestBatchPartitionsRecoverySectors tests if the batches with recovery sectors
+// contain only single partitions while keeping all the partitions in order
+func TestBatchPartitionsRecoverySectors(t *testing.T) {
+
+	proofType := abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
+	postAct := tutils.NewIDAddr(t, 100)
+
+	mockStgMinerAPI := newMockStorageMinerAPI()
+
+	userPartLimit := 4
+
+	scheduler := &WindowPoStScheduler{
+		api:          mockStgMinerAPI,
+		prover:       &mockProver{},
+		verifier:     &mockVerif{},
+		faultTracker: &mockFaultTracker{},
+		proofType:    proofType,
+		actor:        postAct,
+		journal:      journal.NilJournal(),
+		addrSel:      &ctladdr.AddressSelector{},
+
+		maxPartitionsPerPostMessage:             userPartLimit,
+		singleRecoveringPartitionPerPostMessage: true,
+	}
+
+	var partitions []api.Partition
+	for p := 0; p < 4; p++ {
+		partitions = append(partitions, generatePartition(100, 0))
+	}
+	for p := 0; p < 2; p++ {
+		partitions = append(partitions, generatePartition(100, 10))
+	}
+	for p := 0; p < 6; p++ {
+		partitions = append(partitions, generatePartition(100, 0))
+	}
+	partitions = append(partitions, generatePartition(100, 10))
+
+	expectedBatchLens := []int{4, 1, 1, 4, 2, 1}
+
+	batches, err := scheduler.BatchPartitions(partitions, network.Version16)
+	require.NoError(t, err)
+
+	require.Equal(t, len(batches), 6)
+
+	for i, batch := range batches {
+		require.Equal(t, len(batch), expectedBatchLens[i])
 	}
 }
 
