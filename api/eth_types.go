@@ -17,13 +17,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var (
@@ -208,80 +205,6 @@ type EthTxReceipt struct {
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         EthBytes    `json:"logsBloom"`
 	Logs              []EthLog    `json:"logs"`
-}
-
-func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult, events []types.Event, addressResolver func(id abi.ActorID) (address.Address, bool, error)) (EthTxReceipt, error) {
-	receipt := EthTxReceipt{
-		TransactionHash:  tx.Hash,
-		TransactionIndex: tx.TransactionIndex,
-		BlockHash:        tx.BlockHash,
-		BlockNumber:      tx.BlockNumber,
-		From:             tx.From,
-		To:               tx.To,
-		StateRoot:        EmptyEthHash,
-		LogsBloom:        []byte{0},
-	}
-
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
-		// Create and Create2 return the same things.
-		var ret eam.CreateReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
-			return EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
-		}
-		addr := EthAddress(ret.EthAddress)
-		receipt.ContractAddress = &addr
-	}
-
-	if lookup.Receipt.ExitCode.IsSuccess() {
-		receipt.Status = 1
-	}
-	if lookup.Receipt.ExitCode.IsError() {
-		receipt.Status = 0
-	}
-
-	if len(events) > 0 {
-		receipt.Logs = make([]EthLog, 0, len(events))
-		for i, evt := range events {
-			l := EthLog{
-				Removed:          false,
-				LogIndex:         EthUint64(i),
-				TransactionIndex: tx.TransactionIndex,
-				TransactionHash:  tx.Hash,
-				BlockHash:        tx.BlockHash,
-				BlockNumber:      tx.BlockNumber,
-			}
-
-			for _, entry := range evt.Entries {
-				hash := EthHashData(entry.Value)
-				if entry.Key == EthTopic1 || entry.Key == EthTopic2 || entry.Key == EthTopic3 || entry.Key == EthTopic4 {
-					l.Topics = append(l.Topics, hash)
-				} else {
-					l.Data = append(l.Data, hash)
-				}
-			}
-
-			f4addr, ok, err := addressResolver(evt.Emitter)
-			if err != nil || !ok {
-				return EthTxReceipt{}, xerrors.Errorf("failed to resolve predictable address: %w", err)
-			}
-
-			l.Address, err = EthAddressFromFilecoinAddress(f4addr)
-			if err != nil {
-				return EthTxReceipt{}, xerrors.Errorf("failed to translate to Ethereum address: %w", err)
-			}
-
-			receipt.Logs = append(receipt.Logs, l)
-		}
-	}
-
-	receipt.GasUsed = EthUint64(lookup.Receipt.GasUsed)
-
-	// TODO: handle CumulativeGasUsed
-	receipt.CumulativeGasUsed = EmptyEthInt
-
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
-	receipt.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
-	return receipt, nil
 }
 
 const (

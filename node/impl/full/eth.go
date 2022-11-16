@@ -244,24 +244,11 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.Eth
 		}
 	}
 
-	receipt, err := api.NewEthTxReceipt(tx, msgLookup, replay, events, func(id abi.ActorID) (address.Address, bool, error) {
-		addr, err := address.NewIDAddress(uint64(id))
-		if err != nil {
-			return address.Undef, false, xerrors.Errorf("failed to create ID address: %w", err)
-		}
-		actor, err := a.StateGetActor(ctx, addr, types.EmptyTSK)
-		if err != nil {
-			return address.Undef, false, xerrors.Errorf("failed to load actor: %w", err)
-		}
-		if actor.Address == nil {
-			return address.Undef, false, nil
-		}
-		return *actor.Address, true, nil
-	})
-
+	receipt, err := a.newEthTxReceipt(ctx, tx, msgLookup, replay, events)
 	if err != nil {
 		return nil, nil
 	}
+
 	return &receipt, nil
 }
 
@@ -890,6 +877,81 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 		Input:                input,
 	}
 	return tx, nil
+}
+
+func (a *EthModule) newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, replay *api.InvocResult, events []types.Event) (api.EthTxReceipt, error) {
+	receipt := api.EthTxReceipt{
+		TransactionHash:  tx.Hash,
+		TransactionIndex: tx.TransactionIndex,
+		BlockHash:        tx.BlockHash,
+		BlockNumber:      tx.BlockNumber,
+		From:             tx.From,
+		To:               tx.To,
+		StateRoot:        api.EmptyEthHash,
+		LogsBloom:        []byte{0},
+	}
+
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+		// Create and Create2 return the same things.
+		var ret eam.CreateReturn
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
+		}
+		addr := api.EthAddress(ret.EthAddress)
+		receipt.ContractAddress = &addr
+	}
+
+	if lookup.Receipt.ExitCode.IsSuccess() {
+		receipt.Status = 1
+	}
+	if lookup.Receipt.ExitCode.IsError() {
+		receipt.Status = 0
+	}
+
+	if len(events) > 0 {
+		receipt.Logs = make([]api.EthLog, 0, len(events))
+		for i, evt := range events {
+			l := api.EthLog{
+				Removed:          false,
+				LogIndex:         api.EthUint64(i),
+				TransactionIndex: tx.TransactionIndex,
+				TransactionHash:  tx.Hash,
+				BlockHash:        tx.BlockHash,
+				BlockNumber:      tx.BlockNumber,
+			}
+
+			for _, entry := range evt.Entries {
+				hash := api.EthHashData(entry.Value)
+				if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
+					l.Topics = append(l.Topics, hash)
+				} else {
+					l.Data = append(l.Data, hash)
+				}
+			}
+
+			addr, err := address.NewIDAddress(uint64(evt.Emitter))
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed to create ID address: %w", err)
+			}
+
+			l.Address, err = a.lookupEthAddress(ctx, addr)
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
+			}
+
+			receipt.Logs = append(receipt.Logs, l)
+		}
+	}
+
+	receipt.GasUsed = api.EthUint64(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	receipt.CumulativeGasUsed = api.EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	receipt.EffectiveGasPrice = api.EthBigInt(effectiveGasPrice)
+
+	return receipt, nil
 }
 
 func (e *EthEvent) EthGetLogs(ctx context.Context, filterSpec *api.EthFilterSpec) (*api.EthFilterResult, error) {
