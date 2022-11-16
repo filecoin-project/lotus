@@ -4,7 +4,6 @@ package itests
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -281,10 +280,10 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	ts, err := client.ChainHead(ctx)
 	require.NoError(err)
 
-	raddr, err := client.StateLookupRobustAddress(ctx, idAddr, ts.Key())
+	actor, err := client.StateGetActor(ctx, idAddr, ts.Key())
 	require.NoError(err)
-
-	ethContractAddr, err := api.EthAddressFromFilecoinAddress(raddr)
+	require.NotNil(actor.Address)
+	ethContractAddr, err := api.EthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
 	// collect filter results
@@ -294,7 +293,11 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	// expect to have seen iteration number of events
 	require.Equal(iterations, len(res.Results))
 
-	fmt.Printf("ethAddr=%v\n", ethContractAddr.String())
+	topic1Hash := api.EthHashData([]byte{0x42, 0x11, 0x11})
+	topic2Hash := api.EthHashData([]byte{0x42, 0x22, 0x22})
+	topic3Hash := api.EthHashData([]byte{0x42, 0x33, 0x33})
+	topic4Hash := api.EthHashData([]byte{0x42, 0x44, 0x44})
+	data1Hash := api.EthHashData([]byte{0x48, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88})
 
 	for _, r := range res.Results {
 		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results
@@ -304,20 +307,10 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 		elog, err := ParseEthLog(rc)
 		require.NoError(err)
 
-		_ = elog
+		require.Equal(ethContractAddr, elog.Address, "event address")
+		require.Equal(api.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
 
-		require.Equal(ethContractAddr.String(), rc["address"], "event address")
-		require.Equal("0x0", rc["transactionIndex"], "transaction index") // only one message per tipset
-
-		txHashAny, ok := rc["transactionHash"]
-		require.True(ok, "transactionHash")
-		txHashStr, ok := txHashAny.(string)
-		require.True(ok, "transactionHash string")
-
-		txHash, err := api.EthHashFromHex(txHashStr)
-		require.NoError(err)
-
-		msg, exists := received[txHash]
+		msg, exists := received[elog.TransactionHash]
 		require.True(exists, "message seen on chain")
 
 		tsCid, err := msg.ts.Key().Cid()
@@ -326,13 +319,17 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 		tsCidHash, err := api.NewEthHashFromCid(tsCid)
 		require.NoError(err)
 
-		require.Equal(tsCidHash.String(), rc["blockHash"], "block hash")
+		require.Equal(tsCidHash, elog.BlockHash, "block hash")
 
-		for k, v := range rc {
-			switch k {
-			}
-			fmt.Printf("%s=%v\n", k, v)
-		}
+		require.Equal(4, len(elog.Topics), "number of topics")
+		require.Equal(topic1Hash, elog.Topics[0], "topic1")
+		require.Equal(topic2Hash, elog.Topics[1], "topic2")
+		require.Equal(topic3Hash, elog.Topics[2], "topic3")
+		require.Equal(topic4Hash, elog.Topics[3], "topic4")
+
+		require.Equal(1, len(elog.Data), "number of data")
+		require.Equal(data1Hash, elog.Data[0], "data1")
+
 	}
 }
 
