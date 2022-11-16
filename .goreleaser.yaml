@@ -16,33 +16,45 @@ builds:
     builder: prebuilt
     goos:
       - darwin
+      - linux
     goarch:
       - amd64
       - arm64
     goamd64:
       - v1
+    ignore:
+      - goos: linux
+        goarch: arm64
     prebuilt:
       path: /tmp/workspace/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus
   - id: lotus-miner
     builder: prebuilt
     goos:
       - darwin
+      - linux
     goarch:
       - amd64
       - arm64
     goamd64:
       - v1
+    ignore:
+      - goos: linux
+        goarch: arm64
     prebuilt:
       path: /tmp/workspace/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-miner
   - id: lotus-worker
     builder: prebuilt
     goos:
       - darwin
+      - linux
     goarch:
       - amd64
       - arm64
     goamd64:
       - v1
+    ignore:
+      - goos: linux
+        goarch: arm64
     prebuilt:
       path: /tmp/workspace/{{ .Os }}_{{ .Arch }}{{ with .Amd64 }}_{{ . }}{{ end }}/lotus-worker
 
