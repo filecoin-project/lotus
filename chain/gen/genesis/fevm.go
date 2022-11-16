@@ -2,11 +2,11 @@ package genesis
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
@@ -64,25 +64,38 @@ func SetupFEVM(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder,
 		return cid.Undef, fmt.Errorf("failed to get CodeCID for EVM during genesis")
 	}
 
-	eth0Addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, make([]byte, 32))
+	// initcode:
+	// %push(code_end - code_begin)
+	// dup1
+	// %push(code_begin)
+	// push1 0x00
+	// codecopy
+	// push1 0x00
+	// return
+	// code_begin:
+	// push1 0x00
+	// push1 0x00
+	// return
+	// code_end:
+	initcode, err := hex.DecodeString("600580600b6000396000f360006000f3")
 	if err != nil {
-		return cid.Undef, fmt.Errorf("failed to create ETH0 f4 address: %w", err)
-	}
-
-	eth0AddrBytes, err := eth0Addr.Marshal()
-	if err != nil {
-		return cid.Undef, fmt.Errorf("failed to marshal ETH0 f4 address: %w", err)
+		return cid.Undef, fmt.Errorf("failed to parse ETH0 init code during genesis: %w", err)
 	}
 
 	ctorParams := &evm10.ConstructorParams{
-		Creator:  make([]byte, 20), // self!
-		Initcode: []byte{},
+		Creator: make([]byte, 20), // self!
+		// TODO we have a bunch of bugs in the evm constructo around empty contracts
+		// - empty init code is not allowed
+		// - returning an empty contract is not allowed
+		// So this uses code that constructs a just return contract until that can be fixed
+		// and we can pass an empty byte array
+		Initcode: initcode,
 	}
 
 	params := &init10.Exec4Params{
 		CodeCID:           evmCodeCid,
 		ConstructorParams: mustEnc(ctorParams),
-		SubAddress:        eth0AddrBytes,
+		SubAddress:        make([]byte, 20),
 	}
 
 	// TODO method 3 is Exec4; we have to name the methods in go-state-types and avoid using the number
