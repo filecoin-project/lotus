@@ -30,7 +30,7 @@ type EthTx struct {
 	Hash                 EthHash     `json:"hash"`
 	BlockHash            EthHash     `json:"blockHash"`
 	BlockNumber          EthUint64   `json:"blockNumber"`
-	TransactionIndex     EthUint64   `json:"transacionIndex"`
+	TransactionIndex     EthUint64   `json:"transactionIndex"`
 	From                 EthAddress  `json:"from"`
 	To                   *EthAddress `json:"to"`
 	Value                EthBigInt   `json:"value"`
@@ -51,7 +51,7 @@ type EthTxArgs struct {
 	To                   *EthAddress `json:"to"`
 	Value                big.Int     `json:"value"`
 	MaxFeePerGas         big.Int     `json:"maxFeePerGas"`
-	MaxPriorityFeePerGas big.Int     `json:"maxPrioritiyFeePerGas"`
+	MaxPriorityFeePerGas big.Int     `json:"maxPriorityFeePerGas"`
 	GasLimit             int         `json:"gasLimit"`
 	Input                []byte      `json:"input"`
 	V                    []byte      `json:"v"`
