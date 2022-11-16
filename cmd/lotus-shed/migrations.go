@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -62,6 +63,11 @@ var migrationsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
+
+		err := logging.SetLogLevelRegex("badger*", "ERROR")
+		if err != nil {
+			return err
+		}
 
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)

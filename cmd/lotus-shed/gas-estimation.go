@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -29,6 +28,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
+const MAINNET_GENESIS_TIME = 1598306400
+
 // USAGE: Sync a node, then call migrate-nv17 on some old state. Pass in the cid of the migrated state root,
 // the epoch you migrated at, the network version you migrated to, and a message CID. You will be able to replay any
 // message from between the migration epoch, and where your node originally synced to. Note: You may run into issues
@@ -38,7 +39,7 @@ import (
 var gasTraceCmd = &cli.Command{
 	Name:        "trace-gas",
 	Description: "replay a message on the specified stateRoot and network version to get an execution trace",
-	ArgsUsage:   "[migratedStateRootCid migrationEpoch networkVersion messageCid]",
+	ArgsUsage:   "[migratedStateRootCid networkVersion messageCid]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
@@ -48,7 +49,7 @@ var gasTraceCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
 
-		if cctx.NArg() != 4 {
+		if cctx.NArg() != 3 {
 			return lcli.IncorrectNumArgs(cctx)
 		}
 
@@ -57,17 +58,12 @@ var gasTraceCmd = &cli.Command{
 			return fmt.Errorf("failed to parse input: %w", err)
 		}
 
-		epoch, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		nv, err := strconv.ParseInt(cctx.Args().Get(1), 10, 32)
 		if err != nil {
 			return fmt.Errorf("failed to parse input: %w", err)
 		}
 
-		nv, err := strconv.ParseInt(cctx.Args().Get(2), 10, 32)
-		if err != nil {
-			return fmt.Errorf("failed to parse input: %w", err)
-		}
-
-		messageCid, err := cid.Decode(cctx.Args().Get(3))
+		messageCid, err := cid.Decode(cctx.Args().Get(2))
 		if err != nil {
 			return fmt.Errorf("failed to parse input: %w", err)
 		}
@@ -105,7 +101,7 @@ var gasTraceCmd = &cli.Command{
 		dcs := build.DrandConfigSchedule()
 		shd := beacon.Schedule{}
 		for _, dc := range dcs {
-			bc, err := drand.NewDrandBeacon(1598306400, build.BlockDelaySecs, nil, dc.Config)
+			bc, err := drand.NewDrandBeacon(MAINNET_GENESIS_TIME, build.BlockDelaySecs, nil, dc.Config)
 			if err != nil {
 				return xerrors.Errorf("creating drand beacon: %w", err)
 			}
@@ -132,17 +128,12 @@ var gasTraceCmd = &cli.Command{
 			return err
 		}
 
-		executionTs, err := cs.GetTipsetByHeight(ctx, abi.ChainEpoch(epoch), nil, false)
-		if err != nil {
-			return err
-		}
-
 		tw := tabwriter.NewWriter(os.Stdout, 8, 2, 2, ' ', tabwriter.AlignRight)
-		res, err := sm.CallAtStateAndVersion(ctx, msg, executionTs, stateRootCid, network.Version(nv))
+		res, err := sm.CallAtStateAndVersion(ctx, msg, stateRootCid, network.Version(nv))
 		if err != nil {
 			return err
 		}
-		fmt.Println("Total gas used ", res.MsgRct.GasUsed)
+		fmt.Println("Total gas used: ", res.MsgRct.GasUsed)
 		printInternalExecutions(0, []types.ExecutionTrace{res.ExecutionTrace}, tw)
 
 		return tw.Flush()
@@ -151,7 +142,7 @@ var gasTraceCmd = &cli.Command{
 
 var replayOfflineCmd = &cli.Command{
 	Name:        "replay-offline",
-	Description: "replay a message on the specified stateRoot and network version to get an execution trace",
+	Description: "replay a message to get a gas trace",
 	ArgsUsage:   "[messageCid]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -160,16 +151,11 @@ var replayOfflineCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "lookback-limit",
-			Value: 1000,
+			Value: 10000,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
-
-		err := logging.SetLogLevel("*", "FATAL")
-		if err != nil {
-			return err
-		}
 
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
@@ -215,12 +201,13 @@ var replayOfflineCmd = &cli.Command{
 		dcs := build.DrandConfigSchedule()
 		shd := beacon.Schedule{}
 		for _, dc := range dcs {
-			bc, err := drand.NewDrandBeacon(1598306400, build.BlockDelaySecs, nil, dc.Config) // 1598306400 is mainnet genesis time
+			bc, err := drand.NewDrandBeacon(MAINNET_GENESIS_TIME, build.BlockDelaySecs, nil, dc.Config)
 			if err != nil {
 				return xerrors.Errorf("creating drand beacon: %w", err)
 			}
 			shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
 		}
+
 		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
@@ -243,9 +230,13 @@ var replayOfflineCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		if ts == nil {
+			return xerrors.Errorf("could not find message within the last %d epochs", lookbackLimit)
+		}
+		executionTs, err := cs.GetTipsetByHeight(ctx, ts.Height()-2, ts, true)
 
 		tw := tabwriter.NewWriter(os.Stdout, 8, 2, 2, ' ', tabwriter.AlignRight)
-		res, err := sm.Call(ctx, msg, ts)
+		res, err := sm.CallWithGas(ctx, msg, []types.ChainMsg{}, executionTs)
 		if err != nil {
 			return err
 		}

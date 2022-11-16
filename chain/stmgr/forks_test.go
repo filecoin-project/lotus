@@ -335,7 +335,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		parentHeight := pts.Height()
 		currentHeight := ts.TipSet.TipSet().Height()
 
-		// CallWithGas calls _at_ the current tipset.
+		// CallWithGas calls on top of the given tipset.
 		ret, err := sm.CallWithGas(ctx, m, nil, ts.TipSet.TipSet())
 		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
 			// If I had a fork, or I _will_ have a fork, it should fail.
@@ -347,7 +347,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 
 		// Call always applies the message to the "next block" after the tipset's parent state.
 		ret, err = sm.Call(ctx, m, ts.TipSet.TipSet())
-		if parentHeight == testForkHeight {
+		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
 			require.Equal(t, ErrExpensiveFork, err)
 		} else {
 			require.NoError(t, err)
