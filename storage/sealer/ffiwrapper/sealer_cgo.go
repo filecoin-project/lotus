@@ -999,7 +999,7 @@ func (sb *Sealer) ReleaseSealed(ctx context.Context, sector storiface.SectorRef)
 	return xerrors.Errorf("not supported at this layer")
 }
 
-func (sb *Sealer) freeUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
 		return err
@@ -1067,13 +1067,9 @@ func (sb *Sealer) freeUnsealed(ctx context.Context, sector storiface.SectorRef, 
 	return nil
 }
 
-func (sb *Sealer) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (sb *Sealer) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
-		return err
-	}
-
-	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
 		return err
 	}
 
@@ -1124,13 +1120,9 @@ func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.Secto
 	return ffi.ClearCache(uint64(ssize), dest)
 }
 
-func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
-		return err
-	}
-
-	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
 		return err
 	}
 
@@ -1159,16 +1151,6 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	}
 
 	return nil
-}
-
-func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
-	// This call is meant to mark storage as 'freeable'. Given that unsealing is
-	// very expensive, we don't remove data as soon as we can - instead we only
-	// do that when we don't have free space for data that really needs it
-
-	// This function should not be called at this layer, everything should be
-	// handled in localworker
-	return xerrors.Errorf("not supported at this layer")
 }
 
 func (sb *Sealer) ReleaseReplicaUpgrade(ctx context.Context, sector storiface.SectorRef) error {

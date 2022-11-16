@@ -77,7 +77,7 @@ func TestWorkerPledgeLocalFin(t *testing.T) {
 func TestWorkerDataCid(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTDataCid, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+		kit.WithSealWorkerTasks) // no mock proofs
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -407,7 +407,7 @@ func TestWindowPostWorkerManualPoSt(t *testing.T) {
 func TestSchedulerRemoveRequest(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTDataCid, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTPreCommit1})) // no mock proofs
 
 	//ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 

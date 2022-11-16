@@ -336,7 +336,7 @@ func TestSnarkPackV2(t *testing.T) {
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1, sealtasks.TTCommit2, sealtasks.TTFinalize,
 		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2, sealtasks.TTUnseal,
-		sealtasks.TTRegenSectorKey,
+		sealtasks.TTRegenSectorKey, sealtasks.TTReleaseUnsealed,
 	}
 	wds := datastore.NewMapDatastore()
 

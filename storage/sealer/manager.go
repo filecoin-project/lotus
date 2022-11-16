@@ -142,7 +142,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 	go m.sched.runSched()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTFinalizeReplicaUpdate,
+		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTReleaseUnsealed, sealtasks.TTFinalizeReplicaUpdate,
 	}
 	if sc.AllowSectorDownload {
 		localTasks = append(localTasks, sealtasks.TTDownloadSector)
@@ -613,7 +613,27 @@ func (m *Manager) SealCommit2(ctx context.Context, sector storiface.SectorRef, p
 	return out, waitErr
 }
 
-func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+// sectorStorageType tries to figure out storage type for a given sector; expects only a single copy of the file in the
+// storage system
+func (m *Manager) sectorStorageType(ctx context.Context, sector storiface.SectorRef, ft storiface.SectorFileType) (bool, storiface.PathType, error) {
+	stores, err := m.index.StorageFindSector(ctx, sector.ID, ft, 0, false)
+	if err != nil {
+		return false, "", xerrors.Errorf("finding sector: %w", err)
+	}
+	if len(stores) == 0 {
+		return false, "", nil
+	}
+
+	for _, store := range stores {
+		if store.CanSeal {
+			return true, storiface.PathSealing, nil
+		}
+	}
+
+	return true, storiface.PathStorage, nil
+}
+
+func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -630,25 +650,10 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 
 	*/
 
-	// first check if the unsealed file exists anywhere; If it doesn't ignore it
-	unsealed := storiface.FTUnsealed
-	{
-		unsealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding unsealed sector: %w", err)
-		}
-
-		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
-			unsealed = storiface.FTNone
-		} else {
-			// remove redundant copies if there are any
-			if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTUnsealed); err != nil {
-				return xerrors.Errorf("remove copies (unsealed): %w", err)
-			}
-		}
-	}
-
 	// remove redundant copies if there are any
+	if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTUnsealed); err != nil {
+		return xerrors.Errorf("remove copies (sealed): %w", err)
+	}
 	if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTSealed); err != nil {
 		return xerrors.Errorf("remove copies (sealed): %w", err)
 	}
@@ -658,29 +663,19 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 
 	// Make sure that the cache files are still in sealing storage; In case not,
 	// we want to do finalize in long-term storage
-	cachePathType := storiface.PathStorage
-	{
-		sealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTCache, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding sealed sector: %w", err)
-		}
-
-		for _, store := range sealedStores {
-			if store.CanSeal {
-				cachePathType = storiface.PathSealing
-				break
-			}
-		}
+	_, cachePathType, err := m.sectorStorageType(ctx, sector, storiface.FTCache)
+	if err != nil {
+		return xerrors.Errorf("checking cache storage type: %w", err)
 	}
 
 	// do the cache trimming wherever the likely still very large cache lives.
 	// we really don't want to move it.
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache, false)
 
-	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		m.schedFetch(sector, storiface.FTCache|unsealed, cachePathType, storiface.AcquireMove),
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
+		m.schedFetch(sector, storiface.FTCache, cachePathType, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
-			_, err := m.waitSimpleCall(ctx)(w.FinalizeSector(ctx, sector, keepUnsealed))
+			_, err := m.waitSimpleCall(ctx)(w.FinalizeSector(ctx, sector))
 			return err
 		})
 	if err != nil {
@@ -691,9 +686,14 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
 
 	// only move the unsealed file if it still exists and needs moving
-	moveUnsealed := unsealed
+	moveUnsealed := storiface.FTUnsealed
 	{
-		if len(keepUnsealed) == 0 {
+		found, unsealedPathType, err := m.sectorStorageType(ctx, sector, storiface.FTUnsealed)
+		if err != nil {
+			return xerrors.Errorf("checking cache storage type: %w", err)
+		}
+
+		if !found || unsealedPathType == storiface.PathStorage {
 			moveUnsealed = storiface.FTNone
 		}
 	}
@@ -712,25 +712,12 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	return nil
 }
 
-func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTSealed|storiface.FTUnsealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache); err != nil {
 		return xerrors.Errorf("acquiring sector lock: %w", err)
-	}
-
-	// first check if the unsealed file exists anywhere; If it doesn't ignore it
-	moveUnsealed := storiface.FTUnsealed
-	{
-		unsealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding unsealed sector: %w", err)
-		}
-
-		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
-			moveUnsealed = storiface.FTNone
-		}
 	}
 
 	// Make sure that the update file is still in sealing storage; In case it already
@@ -755,9 +742,9 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdateCache, false)
 
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeReplicaUpdate, selector,
-		m.schedFetch(sector, storiface.FTCache|storiface.FTUpdateCache|moveUnsealed, pathType, storiface.AcquireMove),
+		m.schedFetch(sector, storiface.FTCache|storiface.FTUpdateCache, pathType, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
-			_, err := m.waitSimpleCall(ctx)(w.FinalizeReplicaUpdate(ctx, sector, keepUnsealed))
+			_, err := m.waitSimpleCall(ctx)(w.FinalizeReplicaUpdate(ctx, sector))
 			return err
 		})
 	if err != nil {
@@ -782,9 +769,15 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 
 	err = multierr.Append(move(storiface.FTUpdate|storiface.FTUpdateCache), move(storiface.FTCache))
 	err = multierr.Append(err, move(storiface.FTSealed)) // Sealed separate from cache just in case ReleaseSectorKey was already called
-	// if we found unsealed files, AND have been asked to keep at least one, move unsealed
-	if moveUnsealed != storiface.FTNone && len(keepUnsealed) != 0 {
-		err = multierr.Append(err, move(moveUnsealed))
+
+	{
+		unsealedStores, ferr := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
+		if err != nil {
+			err = multierr.Append(err, xerrors.Errorf("find unsealed sector before move: %w", ferr))
+		} else if len(unsealedStores) > 0 {
+			// if we found unsealed files, AND have been asked to keep at least one piece, move unsealed
+			err = multierr.Append(err, move(storiface.FTUnsealed))
+		}
 	}
 
 	if err != nil {
@@ -794,16 +787,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	return nil
 }
 
-func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
-	ssize, err := sector.ProofType.SectorSize()
-	if err != nil {
-		return err
-	}
-	if len(safeToFree) == 0 || safeToFree[0].Offset != 0 || safeToFree[0].Size.Padded() != abi.PaddedPieceSize(ssize) {
-		// todo support partial free
-		return nil
-	}
-
+func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -811,7 +795,25 @@ func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRe
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	return m.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil)
+	found, pathType, err := m.sectorStorageType(ctx, sector, storiface.FTUnsealed)
+	if err != nil {
+		return xerrors.Errorf("checking cache storage type: %w", err)
+	}
+	if !found {
+		// already removed
+		return nil
+	}
+
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, false)
+
+	return m.sched.Schedule(ctx, sector, sealtasks.TTReleaseUnsealed, selector, m.schedFetch(sector, storiface.FTUnsealed, pathType, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
+		_, err := m.waitSimpleCall(ctx)(w.ReleaseUnsealed(ctx, sector, keepUnsealed))
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storiface.SectorRef) error {
