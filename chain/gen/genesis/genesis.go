@@ -579,12 +579,6 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	// temp chainstore
 	cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, j)
 
-	// setup FEVM
-	stateroot, err = SetupFEVM(ctx, cs, sys, stateroot, template.NetworkVersion)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to setup FEVM functionality: %w", err)
-	}
-
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, sys, stateroot, template, keyIDs, template.NetworkVersion)
 	if err != nil {
@@ -595,6 +589,12 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
+	}
+
+	// setup FEVM
+	stateroot, err = SetupFEVM(ctx, cs, sys, stateroot, template.NetworkVersion)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to setup FEVM functionality: %w", err)
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
