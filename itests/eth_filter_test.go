@@ -414,11 +414,11 @@ func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
 				return nil, xerrors.Errorf(k + " not a slice")
 			}
 			for _, s := range sl {
-				data, err := ethHash(k, s)
+				data, err := hex.DecodeString(s.(string))
 				if err != nil {
 					return nil, err
 				}
-				el.Data = append(el.Data, data)
+				el.Data = data
 			}
 		case "topics":
 			sl, ok := v.([]interface{})
@@ -426,7 +426,7 @@ func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
 				return nil, xerrors.Errorf(k + " not a slice")
 			}
 			for _, s := range sl {
-				topic, err := ethHash(k, s)
+				topic, err := hex.DecodeString(s.(string))
 				if err != nil {
 					return nil, err
 				}
