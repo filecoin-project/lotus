@@ -287,3 +287,12 @@ func RealTimeFilterAPI() NodeOpt {
 		return nil
 	})
 }
+
+func HistoricFilterAPI(dbpath string) NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.ActorEvent.EnableRealTimeFilterAPI = true
+		cfg.ActorEvent.EnableHistoricFilterAPI = true
+		cfg.ActorEvent.ActorEventDatabasePath = dbpath
+		return nil
+	})
+}

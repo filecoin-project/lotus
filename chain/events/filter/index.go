@@ -130,6 +130,7 @@ func (ei *EventIndex) Close() error {
 
 func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, revert bool, resolver func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)) error {
 	// cache of lookups between actor id and f4 address
+
 	addressLookups := make(map[abi.ActorID]address.Address)
 
 	ems, err := te.messages(ctx)
@@ -243,7 +244,6 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 		for key, vals := range f.keys {
 			join++
 			joinAlias := fmt.Sprintf("ee%d", join)
-			// JOIN ee1 event_entry ON event.id=ee1.event_id
 			joins = append(joins, fmt.Sprintf("event_entry %s on event.id=%[1]s.event_id", joinAlias))
 			clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
 			values = append(values, key)

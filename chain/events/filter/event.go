@@ -299,10 +299,9 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 	defer m.mu.Unlock()
 	m.currentHeight = to.Height()
 
-	if len(m.filters) == 0 {
+	if len(m.filters) == 0 && m.EventIndex == nil {
 		return nil
 	}
-
 	tse := &TipSetEvents{
 		msgTs: from,
 		rctTs: to,
@@ -330,7 +329,7 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 	defer m.mu.Unlock()
 	m.currentHeight = to.Height()
 
-	if len(m.filters) == 0 {
+	if len(m.filters) == 0 && m.EventIndex == nil {
 		return nil
 	}
 

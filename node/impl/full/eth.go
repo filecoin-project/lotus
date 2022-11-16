@@ -882,9 +882,7 @@ func (e *EthEvent) EthGetLogs(ctx context.Context, filterSpec *api.EthFilterSpec
 	}
 	ces := f.TakeCollectedEvents(ctx)
 
-	if err := e.uninstallFilter(ctx, f); err != nil {
-		return nil, err
-	}
+	_ = e.uninstallFilter(ctx, f)
 
 	return ethFilterResultFromEvents(ces)
 }
