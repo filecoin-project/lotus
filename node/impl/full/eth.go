@@ -1133,7 +1133,7 @@ type EthSubscriptionManager struct {
 	subs     map[string]*ethSubscription
 }
 
-func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSubscription, error) {
+func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSubscription, error) { // nolint
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, xerrors.Errorf("new uuid: %w", err)
