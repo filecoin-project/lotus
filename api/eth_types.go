@@ -545,8 +545,8 @@ type EthLog struct {
 	// Address is the address of the actor that produced the event log.
 	Address EthAddress `json:"address"`
 
-	// Data is the values of the event log, excluding topics
-	Data []EthHash `json:"data"`
+	// Data is the value of the event log, excluding topics
+	Data EthHash `json:"data"`
 
 	// List of topics associated with the event log.
 	Topics []EthHash `json:"topics"`
