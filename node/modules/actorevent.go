@@ -31,10 +31,9 @@ type EventAPI struct {
 
 var _ events.EventAPI = &EventAPI{}
 
-func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.EthModuleAPI) (*full.EthEvent, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, em full.EthModuleAPI) (*full.EthEvent, error) {
+func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEvent, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.EthEvent, error) {
 		ee := &full.EthEvent{
-			EthModuleAPI:         em,
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
 		}
@@ -46,7 +45,9 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 		}
 
 		ee.SubManager = &full.EthSubscriptionManager{
-			EthModuleAPI: em,
+			Chain:    cs,
+			StateAPI: stateapi,
+			ChainAPI: chainapi,
 		}
 		ee.FilterStore = filter.NewMemFilterStore(cfg.MaxFilters)
 
