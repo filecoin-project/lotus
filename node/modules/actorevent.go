@@ -31,9 +31,10 @@ type EventAPI struct {
 
 var _ events.EventAPI = &EventAPI{}
 
-func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
+func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.EthModuleAPI) (*full.EthEvent, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, em full.EthModuleAPI) (*full.EthEvent, error) {
 		ee := &full.EthEvent{
+			EthModuleAPI:         em,
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
 		}
@@ -44,6 +45,9 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 			return ee, nil
 		}
 
+		ee.SubManager = &full.EthSubscriptionManager{
+			EthModuleAPI: em,
+		}
 		ee.FilterStore = filter.NewMemFilterStore(cfg.MaxFilters)
 
 		// Start garbage collection for filters
