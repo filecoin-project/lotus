@@ -99,6 +99,16 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		rpcServer.AliasMethod("eth_estimateGas", "Filecoin.EthEstimateGas")
 		rpcServer.AliasMethod("eth_call", "Filecoin.EthCall")
 
+		rpcServer.AliasMethod("eth_getLogs", "Filecoin.EthGetLogs")
+		rpcServer.AliasMethod("eth_getFilterChanges", "Filecoin.EthGetFilterChanges")
+		rpcServer.AliasMethod("eth_getFilterLogs", "Filecoin.EthGetFilterLogs")
+		rpcServer.AliasMethod("eth_newFilter", "Filecoin.EthNewFilter")
+		rpcServer.AliasMethod("eth_newBlockFilter", "Filecoin.EthNewBlockFilter")
+		rpcServer.AliasMethod("eth_newPendingTransactionFilter", "Filecoin.EthNewPendingTransactionFilter")
+		rpcServer.AliasMethod("eth_uninstallFilter", "Filecoin.EthUninstallFilter")
+		rpcServer.AliasMethod("eth_subscribe", "Filecoin.EthSubscribe")
+		rpcServer.AliasMethod("eth_unsubscribe", "Filecoin.EthUnsubscribe")
+
 		rpcServer.AliasMethod("net_version", "Filecoin.NetVersion")
 		rpcServer.AliasMethod("net_listening", "Filecoin.NetListening")
 
