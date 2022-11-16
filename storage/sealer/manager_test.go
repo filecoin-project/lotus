@@ -148,7 +148,7 @@ func TestSimple(t *testing.T) {
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTReleaseUnsealed, sealtasks.TTFetch,
 	}
 
 	err := m.AddWorker(ctx, newTestWorker(WorkerConfig{
@@ -207,7 +207,7 @@ func TestSnapDeals(t *testing.T) {
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1, sealtasks.TTCommit2, sealtasks.TTFinalize,
 		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2, sealtasks.TTUnseal,
-		sealtasks.TTRegenSectorKey,
+		sealtasks.TTRegenSectorKey, sealtasks.TTReleaseUnsealed,
 	}
 	wds := datastore.NewMapDatastore()
 
@@ -304,13 +304,13 @@ func TestSnapDeals(t *testing.T) {
 
 	fmt.Printf("Decode\n")
 	// Remove unsealed data and decode for retrieval
-	require.NoError(t, m.FinalizeSector(ctx, sid, nil))
+	require.NoError(t, m.ReleaseUnsealed(ctx, sid, nil))
 	startDecode := time.Now()
 	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
 	fmt.Printf("Decode duration (%s): %s\n", ss.ShortString(), time.Since(startDecode))
 
 	// Remove just the first piece and decode for retrieval
-	require.NoError(t, m.FinalizeSector(ctx, sid, []storiface.Range{{Offset: p1.Size.Unpadded(), Size: p2.Size.Unpadded()}}))
+	require.NoError(t, m.ReleaseUnsealed(ctx, sid, []storiface.Range{{Offset: p1.Size.Unpadded(), Size: p2.Size.Unpadded()}}))
 	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
 
 	fmt.Printf("GSK\n")
@@ -320,7 +320,7 @@ func TestSnapDeals(t *testing.T) {
 	fmt.Printf("GSK duration (%s): %s\n", ss.ShortString(), time.Since(startGSK))
 
 	fmt.Printf("Remove data\n")
-	require.NoError(t, m.FinalizeSector(ctx, sid, nil))
+	require.NoError(t, m.ReleaseUnsealed(ctx, sid, nil))
 	fmt.Printf("Release Sector Key\n")
 	require.NoError(t, m.ReleaseSectorKey(ctx, sid))
 	fmt.Printf("Unseal Replica\n")
@@ -476,7 +476,7 @@ func TestRedoPC1(t *testing.T) {
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTReleaseUnsealed, sealtasks.TTFetch,
 	}
 
 	tw := newTestWorker(WorkerConfig{
@@ -531,7 +531,7 @@ func TestRestartManager(t *testing.T) {
 			defer cleanup()
 
 			localTasks := []sealtasks.TaskType{
-				sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+				sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTReleaseUnsealed, sealtasks.TTFetch,
 			}
 
 			tw := newTestWorker(WorkerConfig{
@@ -702,7 +702,7 @@ func TestReenableWorker(t *testing.T) {
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTReleaseUnsealed, sealtasks.TTFetch,
 	}
 
 	wds := datastore.NewMapDatastore()

@@ -642,12 +642,9 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	}
 
 	/*
-
 		We want to:
-		* Trim cache
-		* (partially) free unsealed data
-		* Move stuff to long-term storage
-
+		- Trim cache
+		- Move stuff to long-term storage
 	*/
 
 	// remove redundant copies if there are any

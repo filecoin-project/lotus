@@ -202,7 +202,6 @@ func (sh *Scheduler) Schedule(ctx context.Context, sector storiface.SectorRef, t
 		ret: ret,
 		Ctx: ctx,
 	}:
-		log.Debugw("sched request sent", "sector", sector, "task", taskType)
 	case <-sh.closing:
 		return xerrors.New("closing")
 	case <-ctx.Done():
