@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -151,6 +152,82 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		Error:          errs,
 		Duration:       ret.Duration,
 	}, err
+}
+
+func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Message, ts *types.TipSet, stateCid cid.Cid, v network.Version) (*api.InvocResult, error) {
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
+
+	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
+	vmopt := &vm.VMOpts{
+		StateBase:      stateCid,
+		Epoch:          ts.Height() + 1,
+		Rand:           r,
+		Bstore:         buffStore,
+		Actors:         sm.tsExec.NewActorRegistry(),
+		Syscalls:       sm.Syscalls,
+		CircSupplyCalc: sm.GetVMCirculatingSupply,
+		NetworkVersion: v,
+		BaseFee:        ts.Blocks()[0].ParentBaseFee,
+		LookbackState:  LookbackStateGetterForTipset(sm, ts),
+		Tracing:        true,
+	}
+
+	vmi, err := sm.newVM(ctx, vmopt)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to set up vm: %w", err)
+	}
+
+	stTree, err := state.LoadStateTree(cbor.NewCborStore(buffStore), stateCid)
+	if err != nil {
+		return nil, xerrors.Errorf("loading state tree: %w", err)
+	}
+
+	fromActor, err := stTree.GetActor(msg.From)
+	if err != nil {
+		return nil, xerrors.Errorf("call raw get actor: %s", err)
+	}
+
+	msg.Nonce = fromActor.Nonce
+
+	fromKey, err := sm.ResolveToKeyAddress(ctx, msg.From, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("could not resolve key: %w", err)
+	}
+
+	var msgApply types.ChainMsg
+
+	switch fromKey.Protocol() {
+	case address.BLS:
+		msgApply = msg
+	case address.SECP256K1:
+		msgApply = &types.SignedMessage{
+			Message: *msg,
+			Signature: crypto.Signature{
+				Type: crypto.SigTypeSecp256k1,
+				Data: make([]byte, 65),
+			},
+		}
+	}
+
+	ret, err := vmi.ApplyMessage(ctx, msgApply)
+	if err != nil {
+		return nil, xerrors.Errorf("gas estimation failed: %w", err)
+	}
+
+	var errs string
+	if ret.ActorErr != nil {
+		errs = ret.ActorErr.Error()
+	}
+
+	return &api.InvocResult{
+		MsgCid:         msg.Cid(),
+		Msg:            msg,
+		MsgRct:         &ret.MessageReceipt,
+		GasCost:        MakeMsgGasCost(msg, ret),
+		ExecutionTrace: ret.ExecutionTrace,
+		Error:          errs,
+		Duration:       ret.Duration,
+	}, nil
 }
 
 func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {
