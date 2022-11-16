@@ -79,19 +79,21 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 				if err != nil {
 					return address.Undef, false
 				}
-				addr, err := sm.LookupRobustAddress(ctx, idAddr, ts)
-				if err != nil {
+
+				actor, err := sm.LoadActor(ctx, idAddr, ts)
+				if err != nil || actor.Address == nil {
 					return address.Undef, false
 				}
+
 				// if robust address is not f4 then we won't match against it so bail early
-				if addr.Protocol() != address.Delegated {
+				if actor.Address.Protocol() != address.Delegated {
 					return address.Undef, false
 				}
 				// we have an f4 address, make sure it's assigned by the EAM
-				if namespace, _, err := varint.FromUvarint(addr.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
+				if namespace, _, err := varint.FromUvarint(actor.Address.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
 					return address.Undef, false
 				}
-				return addr, true
+				return *actor.Address, true
 			},
 
 			MaxFilterResults: cfg.MaxFilterResults,

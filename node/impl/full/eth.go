@@ -1252,7 +1252,6 @@ var (
 
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResult, error) {
 	res := &api.EthFilterResult{}
-
 	for _, ev := range evs {
 		log := api.EthLog{
 			Removed:          ev.Reverted,
