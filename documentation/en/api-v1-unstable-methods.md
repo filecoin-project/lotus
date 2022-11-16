@@ -15,6 +15,7 @@
   * [ChainExport](#ChainExport)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
+  * [ChainGetEvents](#ChainGetEvents)
   * [ChainGetGenesis](#ChainGetGenesis)
   * [ChainGetMessage](#ChainGetMessage)
   * [ChainGetMessagesInTipset](#ChainGetMessagesInTipset)
@@ -610,6 +611,37 @@ Response:
     }
   ]
 }
+```
+
+### ChainGetEvents
+ChainGetEvents returns the events under an event AMT root CID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Emitter": 1000,
+    "Entries": [
+      {
+        "Flags": 7,
+        "Key": "string value",
+        "Value": "Ynl0ZSBhcnJheQ=="
+      }
+    ]
+  }
+]
 ```
 
 ### ChainGetGenesis
@@ -2703,7 +2735,21 @@ Response:
   "effectiveGasPrice": "0x0",
   "logsBloom": "0x07",
   "logs": [
-    "string value"
+    {
+      "address": "0x0707070707070707070707070707070707070707",
+      "data": [
+        "0x0707070707070707070707070707070707070707070707070707070707070707"
+      ],
+      "topics": [
+        "0x0707070707070707070707070707070707070707070707070707070707070707"
+      ],
+      "removed": true,
+      "logIndex": "0x5",
+      "transactionIndex": "0x5",
+      "transactionHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockHash": "0x0707070707070707070707070707070707070707070707070707070707070707",
+      "blockNumber": "0x5"
+    }
   ]
 }
 ```

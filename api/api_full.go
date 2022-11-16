@@ -181,6 +181,9 @@ type FullNode interface {
 	// ChainBlockstoreInfo returns some basic information about the blockstore
 	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
 
+	// ChainGetEvents returns the events under an event AMT root CID.
+	ChainGetEvents(context.Context, cid.Cid) ([]types.Event, error) //perm:read
+
 	// GasEstimateFeeCap estimates gas fee cap
 	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error) //perm:read
 

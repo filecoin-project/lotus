@@ -183,6 +183,21 @@ func (mr *MockFullNodeMockRecorder) ChainGetBlockMessages(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetBlockMessages", reflect.TypeOf((*MockFullNode)(nil).ChainGetBlockMessages), arg0, arg1)
 }
 
+// ChainGetEvents mocks base method.
+func (m *MockFullNode) ChainGetEvents(arg0 context.Context, arg1 cid.Cid) ([]types.Event, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetEvents", arg0, arg1)
+	ret0, _ := ret[0].([]types.Event)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetEvents indicates an expected call of ChainGetEvents.
+func (mr *MockFullNodeMockRecorder) ChainGetEvents(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetEvents", reflect.TypeOf((*MockFullNode)(nil).ChainGetEvents), arg0, arg1)
+}
+
 // ChainGetGenesis mocks base method.
 func (m *MockFullNode) ChainGetGenesis(arg0 context.Context) (*types.TipSet, error) {
 	m.ctrl.T.Helper()

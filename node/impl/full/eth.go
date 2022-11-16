@@ -59,7 +59,6 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
-	// EthFeeHistory(ctx context.Context, blkCount string)
 }
 
 type EthEventAPI interface {
@@ -237,7 +236,29 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.Eth
 		return nil, nil
 	}
 
-	receipt, err := api.NewEthTxReceipt(tx, msgLookup, replay)
+	var events []types.Event
+	if rct := replay.MsgRct; rct != nil && rct.EventsRoot != nil {
+		events, err = a.ChainAPI.ChainGetEvents(ctx, *rct.EventsRoot)
+		if err != nil {
+			return nil, nil
+		}
+	}
+
+	receipt, err := api.NewEthTxReceipt(tx, msgLookup, replay, events, func(id abi.ActorID) (address.Address, bool, error) {
+		addr, err := address.NewIDAddress(uint64(id))
+		if err != nil {
+			return address.Undef, false, xerrors.Errorf("failed to create ID address: %w", err)
+		}
+		actor, err := a.StateGetActor(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return address.Undef, false, xerrors.Errorf("failed to load actor: %w", err)
+		}
+		if actor.Address == nil {
+			return address.Undef, false, nil
+		}
+		return *actor.Address, true, nil
+	})
+
 	if err != nil {
 		return nil, nil
 	}
@@ -1242,13 +1263,6 @@ type filterTipSetCollector interface {
 	TakeCollectedTipSets(context.Context) []types.TipSetKey
 }
 
-var (
-	ethTopic1 = "topic1"
-	ethTopic2 = "topic2"
-	ethTopic3 = "topic3"
-	ethTopic4 = "topic4"
-)
-
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResult, error) {
 	res := &api.EthFilterResult{}
 	for _, ev := range evs {
@@ -1263,7 +1277,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 
 		for _, entry := range ev.Entries {
 			hash := api.EthHashData(entry.Value)
-			if entry.Key == ethTopic1 || entry.Key == ethTopic2 || entry.Key == ethTopic3 || entry.Key == ethTopic4 {
+			if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
 				log.Topics = append(log.Topics, hash)
 			} else {
 				log.Data = append(log.Data, hash)
