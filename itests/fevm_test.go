@@ -12,7 +12,10 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -85,4 +88,32 @@ func TestFEVMBasic(t *testing.T) {
 		require.Equal(t, result, expectedResult)
 
 	}
+}
+
+// TestFEVMETH0 tests that the ETH0 actor is in genesis
+func TestFEVMETH0(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	eth0id, err := address.NewIDAddress(1001)
+	require.NoError(t, err)
+
+	act, err := client.StateGetActor(ctx, eth0id, types.EmptyTSK)
+	require.NoError(t, err)
+
+	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+
+	av, err := actorstypes.VersionForNetwork(nv)
+	require.NoError(t, err)
+
+	evmCodeCid, ok := actors.GetActorCodeID(av, actors.EvmKey)
+	require.True(t, ok, "failed to get EVM code id")
+	require.Equal(t, act.Code, evmCodeCid)
 }
