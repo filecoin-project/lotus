@@ -111,6 +111,9 @@ func (m *TipSetFilterManager) Install(ctx context.Context) (*TipSetFilter, error
 	}
 
 	m.mu.Lock()
+	if m.filters == nil {
+		m.filters = make(map[string]*TipSetFilter)
+	}
 	m.filters[id.String()] = f
 	m.mu.Unlock()
 

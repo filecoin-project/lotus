@@ -59,7 +59,6 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
-	// EthFeeHistory(ctx context.Context, blkCount string)
 }
 
 type EthEventAPI interface {
@@ -70,7 +69,7 @@ type EthEventAPI interface {
 	EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error)
+	EthSubscribe(ctx context.Context, eventType string, params *api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error)
 	EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error)
 }
 
@@ -97,12 +96,13 @@ type EthModule struct {
 var _ EthModuleAPI = (*EthModule)(nil)
 
 type EthEvent struct {
+	EthModuleAPI
 	Chain                *store.ChainStore
 	EventFilterManager   *filter.EventFilterManager
 	TipSetFilterManager  *filter.TipSetFilterManager
 	MemPoolFilterManager *filter.MemPoolFilterManager
 	FilterStore          filter.FilterStore
-	SubManager           ethSubscriptionManager
+	SubManager           *EthSubscriptionManager
 	MaxFilterHeightRange abi.ChainEpoch
 }
 
@@ -236,10 +236,19 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash api.Eth
 		return nil, nil
 	}
 
-	receipt, err := api.NewEthTxReceipt(tx, msgLookup, replay)
+	var events []types.Event
+	if rct := replay.MsgRct; rct != nil && rct.EventsRoot != nil {
+		events, err = a.ChainAPI.ChainGetEvents(ctx, *rct.EventsRoot)
+		if err != nil {
+			return nil, nil
+		}
+	}
+
+	receipt, err := a.newEthTxReceipt(ctx, tx, msgLookup, replay, events)
 	if err != nil {
 		return nil, nil
 	}
+
 	return &receipt, nil
 }
 
@@ -870,9 +879,96 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 	return tx, nil
 }
 
-func (e *EthEvent) EthGetLogs(ctx context.Context, filter *api.EthFilterSpec) (*api.EthFilterResult, error) {
-	// TODO: implement EthGetLogs
-	return nil, api.ErrNotSupported
+func (a *EthModule) newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, replay *api.InvocResult, events []types.Event) (api.EthTxReceipt, error) {
+	receipt := api.EthTxReceipt{
+		TransactionHash:  tx.Hash,
+		TransactionIndex: tx.TransactionIndex,
+		BlockHash:        tx.BlockHash,
+		BlockNumber:      tx.BlockNumber,
+		From:             tx.From,
+		To:               tx.To,
+		StateRoot:        api.EmptyEthHash,
+		LogsBloom:        []byte{0},
+	}
+
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+		// Create and Create2 return the same things.
+		var ret eam.CreateReturn
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
+		}
+		addr := api.EthAddress(ret.EthAddress)
+		receipt.ContractAddress = &addr
+	}
+
+	if lookup.Receipt.ExitCode.IsSuccess() {
+		receipt.Status = 1
+	}
+	if lookup.Receipt.ExitCode.IsError() {
+		receipt.Status = 0
+	}
+
+	if len(events) > 0 {
+		receipt.Logs = make([]api.EthLog, 0, len(events))
+		for i, evt := range events {
+			l := api.EthLog{
+				Removed:          false,
+				LogIndex:         api.EthUint64(i),
+				TransactionIndex: tx.TransactionIndex,
+				TransactionHash:  tx.Hash,
+				BlockHash:        tx.BlockHash,
+				BlockNumber:      tx.BlockNumber,
+			}
+
+			for _, entry := range evt.Entries {
+				hash := api.EthHashData(entry.Value)
+				if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
+					l.Topics = append(l.Topics, hash)
+				} else {
+					l.Data = append(l.Data, hash)
+				}
+			}
+
+			addr, err := address.NewIDAddress(uint64(evt.Emitter))
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed to create ID address: %w", err)
+			}
+
+			l.Address, err = a.lookupEthAddress(ctx, addr)
+			if err != nil {
+				return api.EthTxReceipt{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
+			}
+
+			receipt.Logs = append(receipt.Logs, l)
+		}
+	}
+
+	receipt.GasUsed = api.EthUint64(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	receipt.CumulativeGasUsed = api.EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	receipt.EffectiveGasPrice = api.EthBigInt(effectiveGasPrice)
+
+	return receipt, nil
+}
+
+func (e *EthEvent) EthGetLogs(ctx context.Context, filterSpec *api.EthFilterSpec) (*api.EthFilterResult, error) {
+	if e.EventFilterManager == nil {
+		return nil, api.ErrNotSupported
+	}
+
+	// Create a temporary filter
+	f, err := e.installEthFilterSpec(ctx, filterSpec)
+	if err != nil {
+		return nil, err
+	}
+	ces := f.TakeCollectedEvents(ctx)
+
+	_ = e.uninstallFilter(ctx, f)
+
+	return ethFilterResultFromEvents(ces)
 }
 
 func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) (*api.EthFilterResult, error) {
@@ -915,11 +1011,7 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*a
 	return nil, xerrors.Errorf("wrong filter type")
 }
 
-func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) (api.EthFilterID, error) {
-	if e.FilterStore == nil || e.EventFilterManager == nil {
-		return "", api.ErrNotSupported
-	}
-
+func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *api.EthFilterSpec) (*filter.EventFilter, error) {
 	var (
 		minHeight abi.ChainEpoch
 		maxHeight abi.ChainEpoch
@@ -928,39 +1020,39 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 		keys      = map[string][][]byte{}
 	)
 
-	if filter.BlockHash != nil {
-		if filter.FromBlock != nil || filter.ToBlock != nil {
-			return "", xerrors.Errorf("must not specify block hash and from/to block")
+	if filterSpec.BlockHash != nil {
+		if filterSpec.FromBlock != nil || filterSpec.ToBlock != nil {
+			return nil, xerrors.Errorf("must not specify block hash and from/to block")
 		}
 
 		// TODO: derive a tipset hash from eth hash - might need to push this down into the EventFilterManager
 	} else {
-		if filter.FromBlock == nil || *filter.FromBlock == "latest" {
+		if filterSpec.FromBlock == nil || *filterSpec.FromBlock == "latest" {
 			ts := e.Chain.GetHeaviestTipSet()
 			minHeight = ts.Height()
-		} else if *filter.FromBlock == "earliest" {
+		} else if *filterSpec.FromBlock == "earliest" {
 			minHeight = 0
-		} else if *filter.FromBlock == "pending" {
-			return "", api.ErrNotSupported
+		} else if *filterSpec.FromBlock == "pending" {
+			return nil, api.ErrNotSupported
 		} else {
-			epoch, err := strconv.ParseUint(*filter.FromBlock, 10, 64)
+			epoch, err := api.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
-				return "", xerrors.Errorf("invalid epoch")
+				return nil, xerrors.Errorf("invalid epoch")
 			}
 			minHeight = abi.ChainEpoch(epoch)
 		}
 
-		if filter.ToBlock == nil || *filter.ToBlock == "latest" {
+		if filterSpec.ToBlock == nil || *filterSpec.ToBlock == "latest" {
 			// here latest means the latest at the time
 			maxHeight = -1
-		} else if *filter.ToBlock == "earliest" {
+		} else if *filterSpec.ToBlock == "earliest" {
 			maxHeight = 0
-		} else if *filter.ToBlock == "pending" {
-			return "", api.ErrNotSupported
+		} else if *filterSpec.ToBlock == "pending" {
+			return nil, api.ErrNotSupported
 		} else {
-			epoch, err := strconv.ParseUint(*filter.ToBlock, 10, 64)
+			epoch, err := api.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
-				return "", xerrors.Errorf("invalid epoch")
+				return nil, xerrors.Errorf("invalid epoch")
 			}
 			maxHeight = abi.ChainEpoch(epoch)
 		}
@@ -970,33 +1062,33 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 			// Here the client is looking for events between the head and some future height
 			ts := e.Chain.GetHeaviestTipSet()
 			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return "", xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range")
 			}
 		} else if minHeight >= 0 && maxHeight == -1 {
 			// Here the client is looking for events between some time in the past and the current head
 			ts := e.Chain.GetHeaviestTipSet()
 			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return "", xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range")
 			}
 
 		} else if minHeight >= 0 && maxHeight >= 0 {
 			if minHeight > maxHeight || maxHeight-minHeight > e.MaxFilterHeightRange {
-				return "", xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range")
 			}
 		}
 
 	}
 
 	// Convert all addresses to filecoin f4 addresses
-	for _, ea := range filter.Address {
+	for _, ea := range filterSpec.Address {
 		a, err := ea.ToFilecoinAddress()
 		if err != nil {
-			return "", xerrors.Errorf("invalid address %x", ea)
+			return nil, xerrors.Errorf("invalid address %x", ea)
 		}
 		addresses = append(addresses, a)
 	}
 
-	for idx, vals := range filter.Topics {
+	for idx, vals := range filterSpec.Topics {
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 		key := fmt.Sprintf("topic%d", idx+1)
 		keyvals := make([][]byte, len(vals))
@@ -1006,7 +1098,15 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filter *api.EthFilterSpec) 
 		keys[key] = keyvals
 	}
 
-	f, err := e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
+	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
+}
+
+func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *api.EthFilterSpec) (api.EthFilterID, error) {
+	if e.FilterStore == nil || e.EventFilterManager == nil {
+		return "", api.ErrNotSupported
+	}
+
+	f, err := e.installEthFilterSpec(ctx, filterSpec)
 	if err != nil {
 		return "", err
 	}
@@ -1119,39 +1219,31 @@ const (
 	EthSubscribeEventTypeLogs  = "logs"
 )
 
-func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error) {
+func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error) {
+	if e.SubManager == nil {
+		return nil, api.ErrNotSupported
+	}
 	// Note that go-jsonrpc will set the method field of the response to "xrpc.ch.val" but the ethereum api expects the name of the
 	// method to be "eth_subscription". This probably doesn't matter in practice.
-
-	// Validate event types and parameters first
-	for _, et := range eventTypes {
-		switch et {
-		case EthSubscribeEventTypeHeads:
-		case EthSubscribeEventTypeLogs:
-		default:
-			return nil, xerrors.Errorf("unsupported event type: %s", et)
-
-		}
-	}
 
 	sub, err := e.SubManager.StartSubscription(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, et := range eventTypes {
-		switch et {
-		case EthSubscribeEventTypeHeads:
-			f, err := e.TipSetFilterManager.Install(ctx)
-			if err != nil {
-				// clean up any previous filters added and stop the sub
-				_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
-				return nil, err
-			}
-			sub.addFilter(ctx, f)
+	switch eventType {
+	case EthSubscribeEventTypeHeads:
+		f, err := e.TipSetFilterManager.Install(ctx)
+		if err != nil {
+			// clean up any previous filters added and stop the sub
+			_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+			return nil, err
+		}
+		sub.addFilter(ctx, f)
 
-		case EthSubscribeEventTypeLogs:
-			keys := map[string][][]byte{}
+	case EthSubscribeEventTypeLogs:
+		keys := map[string][][]byte{}
+		if params != nil {
 			for idx, vals := range params.Topics {
 				// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 				key := fmt.Sprintf("topic%d", idx+1)
@@ -1161,21 +1253,27 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params
 				}
 				keys[key] = keyvals
 			}
-
-			f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
-			if err != nil {
-				// clean up any previous filters added and stop the sub
-				_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
-				return nil, err
-			}
-			sub.addFilter(ctx, f)
 		}
+
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
+		if err != nil {
+			// clean up any previous filters added and stop the sub
+			_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+			return nil, err
+		}
+		sub.addFilter(ctx, f)
+	default:
+		return nil, xerrors.Errorf("unsupported event type: %s", eventType)
 	}
 
 	return sub.out, nil
 }
 
 func (e *EthEvent) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error) {
+	if e.SubManager == nil {
+		return false, api.ErrNotSupported
+	}
+
 	filters, err := e.SubManager.StopSubscription(ctx, string(id))
 	if err != nil {
 		return false, nil
@@ -1227,16 +1325,8 @@ type filterTipSetCollector interface {
 	TakeCollectedTipSets(context.Context) []types.TipSetKey
 }
 
-var (
-	ethTopic1 = "topic1"
-	ethTopic2 = "topic2"
-	ethTopic3 = "topic3"
-	ethTopic4 = "topic4"
-)
-
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResult, error) {
 	res := &api.EthFilterResult{}
-
 	for _, ev := range evs {
 		log := api.EthLog{
 			Removed:          ev.Reverted,
@@ -1247,9 +1337,9 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 
 		var err error
 
-		for _, entry := range ev.Event.Entries {
+		for _, entry := range ev.Entries {
 			hash := api.EthHashData(entry.Value)
-			if entry.Key == ethTopic1 || entry.Key == ethTopic2 || entry.Key == ethTopic3 || entry.Key == ethTopic4 {
+			if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
 				log.Topics = append(log.Topics, hash)
 			} else {
 				log.Data = append(log.Data, hash)
@@ -1275,7 +1365,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 			return nil, err
 		}
 
-		res.NewLogs = append(res.NewLogs, log)
+		res.Results = append(res.Results, log)
 	}
 
 	return res, nil
@@ -1294,7 +1384,7 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*api.EthFilterResult, e
 			return nil, err
 		}
 
-		res.NewBlockHashes = append(res.NewBlockHashes, hash)
+		res.Results = append(res.Results, hash)
 	}
 
 	return res, nil
@@ -1309,18 +1399,19 @@ func ethFilterResultFromMessages(cs []cid.Cid) (*api.EthFilterResult, error) {
 			return nil, err
 		}
 
-		res.NewTransactionHashes = append(res.NewTransactionHashes, hash)
+		res.Results = append(res.Results, hash)
 	}
 
 	return res, nil
 }
 
-type ethSubscriptionManager struct {
+type EthSubscriptionManager struct {
+	EthModuleAPI
 	mu   sync.Mutex
 	subs map[string]*ethSubscription
 }
 
-func (e *ethSubscriptionManager) StartSubscription(ctx context.Context) (*ethSubscription, error) {
+func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSubscription, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, xerrors.Errorf("new uuid: %w", err)
@@ -1329,10 +1420,11 @@ func (e *ethSubscriptionManager) StartSubscription(ctx context.Context) (*ethSub
 	ctx, quit := context.WithCancel(ctx)
 
 	sub := &ethSubscription{
-		id:   id.String(),
-		in:   make(chan interface{}, 200),
-		out:  make(chan api.EthSubscriptionResponse),
-		quit: quit,
+		EthModuleAPI: e.EthModuleAPI,
+		id:           id.String(),
+		in:           make(chan interface{}, 200),
+		out:          make(chan api.EthSubscriptionResponse),
+		quit:         quit,
 	}
 
 	e.mu.Lock()
@@ -1347,7 +1439,7 @@ func (e *ethSubscriptionManager) StartSubscription(ctx context.Context) (*ethSub
 	return sub, nil
 }
 
-func (e *ethSubscriptionManager) StopSubscription(ctx context.Context, id string) ([]filter.Filter, error) {
+func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id string) ([]filter.Filter, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -1362,6 +1454,7 @@ func (e *ethSubscriptionManager) StopSubscription(ctx context.Context, id string
 }
 
 type ethSubscription struct {
+	EthModuleAPI
 	id  string
 	in  chan interface{}
 	out chan api.EthSubscriptionResponse
@@ -1394,7 +1487,24 @@ func (e *ethSubscription) start(ctx context.Context) {
 			case *filter.CollectedEvent:
 				resp.Result, err = ethFilterResultFromEvents([]*filter.CollectedEvent{vt})
 			case *types.TipSet:
-				resp.Result = vt
+				// Sadly convoluted since the logic for conversion to eth block is long and buried away
+				// in unexported methods of EthModule
+				tsCid, err := vt.Key().Cid()
+				if err != nil {
+					break
+				}
+
+				hash, err := api.NewEthHashFromCid(tsCid)
+				if err != nil {
+					break
+				}
+
+				eb, err := e.EthGetBlockByHash(ctx, hash, true)
+				if err != nil {
+					break
+				}
+
+				resp.Result = eb
 			default:
 				log.Warnf("unexpected subscription value type: %T", vt)
 			}

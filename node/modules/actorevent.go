@@ -31,18 +31,23 @@ type EventAPI struct {
 
 var _ events.EventAPI = &EventAPI{}
 
-func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool) (*full.EthEvent, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool) (*full.EthEvent, error) {
+func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.EthModuleAPI) (*full.EthEvent, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, em full.EthModuleAPI) (*full.EthEvent, error) {
 		ee := &full.EthEvent{
+			EthModuleAPI:         em,
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
 		}
 
-		if !cfg.EnableRealTimeFilterAPI && !cfg.EnableHistoricFilterAPI {
+		if !cfg.EnableRealTimeFilterAPI {
 			// all event functionality is disabled
+			// the historic filter API relies on the real time one
 			return ee, nil
 		}
 
+		ee.SubManager = &full.EthSubscriptionManager{
+			EthModuleAPI: em,
+		}
 		ee.FilterStore = filter.NewMemFilterStore(cfg.MaxFilters)
 
 		// Start garbage collection for filters
@@ -53,67 +58,79 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 			},
 		})
 
-		if cfg.EnableRealTimeFilterAPI {
-			ee.EventFilterManager = &filter.EventFilterManager{
-				ChainStore: cs,
-				AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
-					// we only want to match using f4 addresses
-					idAddr, err := address.NewIDAddress(uint64(emitter))
-					if err != nil {
-						return address.Undef, false
-					}
-					addr, err := sm.LookupRobustAddress(ctx, idAddr, ts)
-					if err != nil {
-						return address.Undef, false
-					}
-					// if robust address is not f4 then we won't match against it so bail early
-					if addr.Protocol() != address.Delegated {
-						return address.Undef, false
-					}
-					// we have an f4 address, make sure it's assigned by the EAM
-					if namespace, _, err := varint.FromUvarint(addr.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
-						return address.Undef, false
-					}
-					return addr, true
-				},
-
-				MaxFilterResults: cfg.MaxFilterResults,
-			}
-			ee.TipSetFilterManager = &filter.TipSetFilterManager{
-				MaxFilterResults: cfg.MaxFilterResults,
-			}
-			ee.MemPoolFilterManager = &filter.MemPoolFilterManager{
-				MaxFilterResults: cfg.MaxFilterResults,
+		// Enable indexing of actor events
+		var eventIndex *filter.EventIndex
+		if cfg.EnableHistoricFilterAPI {
+			var err error
+			eventIndex, err = filter.NewEventIndex(cfg.ActorEventDatabasePath)
+			if err != nil {
+				return nil, err
 			}
 
-			const ChainHeadConfidence = 1
-
-			ctx := helpers.LifecycleCtx(mctx, lc)
 			lc.Append(fx.Hook{
-				OnStart: func(context.Context) error {
-					ev, err := events.NewEventsWithConfidence(ctx, &evapi, ChainHeadConfidence)
-					if err != nil {
-						return err
-					}
-					// ignore returned tipsets
-					_ = ev.Observe(ee.EventFilterManager)
-					_ = ev.Observe(ee.TipSetFilterManager)
-
-					ch, err := mp.Updates(ctx)
-					if err != nil {
-						return err
-					}
-					go ee.MemPoolFilterManager.WaitForMpoolUpdates(ctx, ch)
-
-					return nil
+				OnStop: func(ctx context.Context) error {
+					return eventIndex.Close()
 				},
 			})
-
 		}
 
-		if cfg.EnableHistoricFilterAPI {
-			// TODO: enable indexer
+		ee.EventFilterManager = &filter.EventFilterManager{
+			ChainStore: cs,
+			EventIndex: eventIndex, // will be nil unless EnableHistoricFilterAPI is true
+			AddressResolver: func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool) {
+				// we only want to match using f4 addresses
+				idAddr, err := address.NewIDAddress(uint64(emitter))
+				if err != nil {
+					return address.Undef, false
+				}
+
+				actor, err := sm.LoadActor(ctx, idAddr, ts)
+				if err != nil || actor.Address == nil {
+					return address.Undef, false
+				}
+
+				// if robust address is not f4 then we won't match against it so bail early
+				if actor.Address.Protocol() != address.Delegated {
+					return address.Undef, false
+				}
+				// we have an f4 address, make sure it's assigned by the EAM
+				if namespace, _, err := varint.FromUvarint(actor.Address.Payload()); err != nil || namespace != builtintypes.EthereumAddressManagerActorID {
+					return address.Undef, false
+				}
+				return *actor.Address, true
+			},
+
+			MaxFilterResults: cfg.MaxFilterResults,
 		}
+		ee.TipSetFilterManager = &filter.TipSetFilterManager{
+			MaxFilterResults: cfg.MaxFilterResults,
+		}
+		ee.MemPoolFilterManager = &filter.MemPoolFilterManager{
+			MaxFilterResults: cfg.MaxFilterResults,
+		}
+
+		const ChainHeadConfidence = 1
+
+		ctx := helpers.LifecycleCtx(mctx, lc)
+		lc.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				ev, err := events.NewEventsWithConfidence(ctx, &evapi, ChainHeadConfidence)
+				if err != nil {
+					return err
+				}
+				// ignore returned tipsets
+				_ = ev.Observe(ee.EventFilterManager)
+				_ = ev.Observe(ee.TipSetFilterManager)
+
+				ch, err := mp.Updates(ctx)
+				if err != nil {
+					return err
+				}
+				go ee.MemPoolFilterManager.WaitForMpoolUpdates(ctx, ch)
+
+				return nil
+			},
+		})
 
 		return ee, nil
 	}

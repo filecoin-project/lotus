@@ -3,24 +3,23 @@ package filter
 import (
 	"bytes"
 	"context"
+	"math"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	cstore "github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-type RobustAddresser interface {
-	LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error)
-}
 
 const indexed uint8 = 0x01
 
@@ -42,7 +41,7 @@ type EventFilter struct {
 var _ Filter = (*EventFilter)(nil)
 
 type CollectedEvent struct {
-	Event       *types.Event
+	Entries     []types.EventEntry
 	EmitterAddr address.Address // f4 address of emitter
 	EventIdx    int             // index of the event within the list of emitted events
 	Reverted    bool
@@ -104,7 +103,7 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Event:       ev,
+				Entries:     ev.Entries,
 				EmitterAddr: addr,
 				EventIdx:    evIdx,
 				Reverted:    revert,
@@ -132,6 +131,12 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	return nil
+}
+
+func (f *EventFilter) setCollectedEvents(ces []*CollectedEvent) {
+	f.mu.Lock()
+	f.collected = ces
+	f.mu.Unlock()
 }
 
 func (f *EventFilter) TakeCollectedEvents(ctx context.Context) []*CollectedEvent {
@@ -282,22 +287,31 @@ type EventFilterManager struct {
 	ChainStore       *cstore.ChainStore
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
+	EventIndex       *EventIndex
 
-	mu      sync.Mutex // guards mutations to filters
-	filters map[string]*EventFilter
+	mu            sync.Mutex // guards mutations to filters
+	filters       map[string]*EventFilter
+	currentHeight abi.ChainEpoch
 }
 
 func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.filters) == 0 {
+	m.currentHeight = to.Height()
+
+	if len(m.filters) == 0 && m.EventIndex == nil {
 		return nil
 	}
-
 	tse := &TipSetEvents{
 		msgTs: from,
 		rctTs: to,
 		load:  m.loadExecutedMessages,
+	}
+
+	if m.EventIndex != nil {
+		if err := m.EventIndex.CollectEvents(ctx, tse, false, m.AddressResolver); err != nil {
+			return err
+		}
 	}
 
 	// TODO: could run this loop in parallel with errgroup if there are many filters
@@ -313,7 +327,9 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(m.filters) == 0 {
+	m.currentHeight = to.Height()
+
+	if len(m.filters) == 0 && m.EventIndex == nil {
 		return nil
 	}
 
@@ -321,6 +337,12 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 		msgTs: to,
 		rctTs: from,
 		load:  m.loadExecutedMessages,
+	}
+
+	if m.EventIndex != nil {
+		if err := m.EventIndex.CollectEvents(ctx, tse, true, m.AddressResolver); err != nil {
+			return err
+		}
 	}
 
 	// TODO: could run this loop in parallel with errgroup if there are many filters
@@ -334,6 +356,14 @@ func (m *EventFilterManager) Revert(ctx context.Context, from, to *types.TipSet)
 }
 
 func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight abi.ChainEpoch, tipsetCid cid.Cid, addresses []address.Address, keys map[string][][]byte) (*EventFilter, error) {
+	m.mu.Lock()
+	currentHeight := m.currentHeight
+	m.mu.Unlock()
+
+	if m.EventIndex == nil && minHeight < currentHeight {
+		return nil, xerrors.Errorf("historic event index disabled")
+	}
+
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, xerrors.Errorf("new uuid: %w", err)
@@ -349,7 +379,17 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		maxResults: m.MaxFilterResults,
 	}
 
+	if m.EventIndex != nil && minHeight < currentHeight {
+		// Filter needs historic events
+		if err := m.EventIndex.PrefillFilter(ctx, f); err != nil {
+			return nil, err
+		}
+	}
+
 	m.mu.Lock()
+	if m.filters == nil {
+		m.filters = make(map[string]*EventFilter)
+	}
 	m.filters[id.String()] = f
 	m.mu.Unlock()
 
@@ -402,18 +442,29 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 			continue
 		}
 
-		evtArr, err := blockadt.AsArray(st, *rct.EventsRoot)
+		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(5))
 		if err != nil {
 			return nil, xerrors.Errorf("load events amt: %w", err)
 		}
 
-		ems[i].evs = make([]*types.Event, evtArr.Length())
+		ems[i].evs = make([]*types.Event, evtArr.Len())
 		var evt types.Event
-		_ = arr.ForEach(&evt, func(i int64) error {
+		err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
+			if u > math.MaxInt {
+				return xerrors.Errorf("too many events")
+			}
+			if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+				return err
+			}
+
 			cpy := evt
-			ems[i].evs[int(i)] = &cpy
+			ems[i].evs[int(u)] = &cpy //nolint:scopelint
 			return nil
 		})
+
+		if err != nil {
+			return nil, xerrors.Errorf("read events: %w", err)
+		}
 
 	}
 

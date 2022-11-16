@@ -124,6 +124,9 @@ func (m *MemPoolFilterManager) Install(ctx context.Context) (*MemPoolFilter, err
 	}
 
 	m.mu.Lock()
+	if m.filters == nil {
+		m.filters = make(map[string]*MemPoolFilter)
+	}
 	m.filters[id.String()] = f
 	m.mu.Unlock()
 

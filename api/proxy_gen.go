@@ -123,6 +123,8 @@ type FullNodeStruct struct {
 
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) `perm:"read"`
 
+		ChainGetEvents func(p0 context.Context, p1 cid.Cid) ([]types.Event, error) `perm:"read"`
+
 		ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) `perm:"read"`
@@ -275,7 +277,7 @@ type FullNodeStruct struct {
 
 		EthSendRawTransaction func(p0 context.Context, p1 EthBytes) (EthHash, error) `perm:"read"`
 
-		EthSubscribe func(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) `perm:"write"`
+		EthSubscribe func(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) `perm:"write"`
 
 		EthUninstallFilter func(p0 context.Context, p1 EthFilterID) (bool, error) `perm:"write"`
 
@@ -1330,6 +1332,17 @@ func (s *FullNodeStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*B
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	if s.Internal.ChainGetEvents == nil {
+		return *new([]types.Event), ErrNotSupported
+	}
+	return s.Internal.ChainGetEvents(p0, p1)
+}
+
+func (s *FullNodeStub) ChainGetEvents(p0 context.Context, p1 cid.Cid) ([]types.Event, error) {
+	return *new([]types.Event), ErrNotSupported
+}
+
 func (s *FullNodeStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
 	if s.Internal.ChainGetGenesis == nil {
 		return nil, ErrNotSupported
@@ -2166,14 +2179,14 @@ func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (E
 	return *new(EthHash), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
+func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
 	if s.Internal.EthSubscribe == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthSubscribe(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
+func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
 	return nil, ErrNotSupported
 }
 

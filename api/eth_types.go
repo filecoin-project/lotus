@@ -19,9 +19,15 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/lotus/build"
+)
+
+var (
+	EthTopic1 = "topic1"
+	EthTopic2 = "topic2"
+	EthTopic3 = "topic3"
+	EthTopic4 = "topic4"
 )
 
 type EthUint64 uint64
@@ -45,6 +51,14 @@ func (e *EthUint64) UnmarshalJSON(b []byte) error {
 	eint := EthUint64(parsedInt)
 	*e = eint
 	return nil
+}
+
+func EthUint64FromHex(s string) (EthUint64, error) {
+	parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
+	if err != nil {
+		return EthUint64(0), err
+	}
+	return EthUint64(parsedInt), nil
 }
 
 type EthBigInt big.Int
@@ -177,14 +191,12 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 }
 
 type EthTxReceipt struct {
-	TransactionHash  EthHash     `json:"transactionHash"`
-	TransactionIndex EthUint64   `json:"transactionIndex"`
-	BlockHash        EthHash     `json:"blockHash"`
-	BlockNumber      EthUint64   `json:"blockNumber"`
-	From             EthAddress  `json:"from"`
-	To               *EthAddress `json:"to"`
-	// Logs
-	// LogsBloom
+	TransactionHash   EthHash     `json:"transactionHash"`
+	TransactionIndex  EthUint64   `json:"transactionIndex"`
+	BlockHash         EthHash     `json:"blockHash"`
+	BlockNumber       EthUint64   `json:"blockNumber"`
+	From              EthAddress  `json:"from"`
+	To                *EthAddress `json:"to"`
 	StateRoot         EthHash     `json:"root"`
 	Status            EthUint64   `json:"status"`
 	ContractAddress   *EthAddress `json:"contractAddress"`
@@ -192,47 +204,7 @@ type EthTxReceipt struct {
 	GasUsed           EthUint64   `json:"gasUsed"`
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         EthBytes    `json:"logsBloom"`
-	Logs              []string    `json:"logs"`
-}
-
-func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxReceipt, error) {
-	receipt := EthTxReceipt{
-		TransactionHash:  tx.Hash,
-		TransactionIndex: tx.TransactionIndex,
-		BlockHash:        tx.BlockHash,
-		BlockNumber:      tx.BlockNumber,
-		From:             tx.From,
-		To:               tx.To,
-		StateRoot:        EmptyEthHash,
-		LogsBloom:        []byte{0},
-		Logs:             []string{},
-	}
-
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
-		// Create and Create2 return the same things.
-		var ret eam.CreateReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
-			return EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
-		}
-		addr := EthAddress(ret.EthAddress)
-		receipt.ContractAddress = &addr
-	}
-
-	if lookup.Receipt.ExitCode.IsSuccess() {
-		receipt.Status = 1
-	}
-	if lookup.Receipt.ExitCode.IsError() {
-		receipt.Status = 0
-	}
-
-	receipt.GasUsed = EthUint64(lookup.Receipt.GasUsed)
-
-	// TODO: handle CumulativeGasUsed
-	receipt.CumulativeGasUsed = EmptyEthInt
-
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
-	receipt.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
-	return receipt, nil
+	Logs              []EthLog    `json:"logs"`
 }
 
 const (
@@ -484,6 +456,9 @@ type EthFilterSpec struct {
 type EthAddressList []EthAddress
 
 func (e *EthAddressList) UnmarshalJSON(b []byte) error {
+	if bytes.Equal(b, []byte{'n', 'u', 'l', 'l'}) {
+		return nil
+	}
 	if len(b) > 0 && b[0] == '[' {
 		var addrs []EthAddress
 		err := json.Unmarshal(b, &addrs)
@@ -542,32 +517,27 @@ func (e *EthHashList) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// FilterResult represents the response from executing a filter: a list of bloack hashes, a list of transaction hashes
+// FilterResult represents the response from executing a filter: a list of block hashes, a list of transaction hashes
 // or a list of logs
 // This is a union type. Only one field will be populated.
 // The JSON encoding must produce an array of the populated field.
 type EthFilterResult struct {
-	// List of block hashes. Only populated when the filter has been installed via EthNewBlockFilter
-	NewBlockHashes []EthHash
-
-	// List of transaction hashes. Only populated when the filter has been installed via EthNewPendingTransactionFilter
-	NewTransactionHashes []EthHash
-
-	// List of event logs. Only populated when the filter has been installed via EthNewFilter
-	NewLogs []EthLog
+	Results []interface{}
 }
 
 func (h EthFilterResult) MarshalJSON() ([]byte, error) {
-	if h.NewBlockHashes != nil {
-		return json.Marshal(h.NewBlockHashes)
-	}
-	if h.NewTransactionHashes != nil {
-		return json.Marshal(h.NewTransactionHashes)
-	}
-	if h.NewLogs != nil {
-		return json.Marshal(h.NewLogs)
+	if h.Results != nil {
+		return json.Marshal(h.Results)
 	}
 	return []byte{'[', ']'}, nil
+}
+
+func (h *EthFilterResult) UnmarshalJSON(b []byte) error {
+	if bytes.Equal(b, []byte{'n', 'u', 'l', 'l'}) {
+		return nil
+	}
+	err := json.Unmarshal(b, &h.Results)
+	return err
 }
 
 // EthLog represents the results of an event filter execution.

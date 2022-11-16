@@ -69,6 +69,14 @@ this time become eligible for automatic deletion.`,
 			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
 the entire chain)`,
 		},
+		{
+			Name: "ActorEventDatabasePath",
+			Type: "string",
+
+			Comment: `EventHistoryDatabasePath is the full path to a sqlite database that will be used to index actor events to
+support the historic filter APIs. If the database does not exist it will be created. The directory containing
+the database must already exist and be writeable.`,
+		},
 	},
 	"Backup": []DocField{
 		{

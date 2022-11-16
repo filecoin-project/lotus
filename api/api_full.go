@@ -181,6 +181,9 @@ type FullNode interface {
 	// ChainBlockstoreInfo returns some basic information about the blockstore
 	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
 
+	// ChainGetEvents returns the events under an event AMT root CID.
+	ChainGetEvents(context.Context, cid.Cid) ([]types.Event, error) //perm:read
+
 	// GasEstimateFeeCap estimates gas fee cap
 	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error) //perm:read
 
@@ -824,7 +827,7 @@ type FullNode interface {
 	//  - logs: notify new event logs that match a criteria
 	// params contains additional parameters used with the log event type
 	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
-	EthSubscribe(ctx context.Context, eventTypes []string, params EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) //perm:write
+	EthSubscribe(ctx context.Context, eventType string, params *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) //perm:write
 
 	// Unsubscribe from a websocket subscription
 	EthUnsubscribe(ctx context.Context, id EthSubscriptionID) (bool, error) //perm:write
