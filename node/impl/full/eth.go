@@ -1459,7 +1459,7 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 		BlockNumber:      tx.BlockNumber,
 		From:             tx.From,
 		To:               tx.To,
-		StateRoot:        api.EmptyEthHash,
+		Type:             api.EthUint64(2),
 		LogsBloom:        []byte{0},
 	}
 
@@ -1481,6 +1481,12 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 	}
 
 	if len(events) > 0 {
+		// TODO return a dummy non-zero bloom to signal that there are logs
+		//  need to figure out how worth it is to populate with a real bloom
+		//  should be feasible here since we are iterating over the logs anyway
+		receipt.LogsBloom = make([]byte, 256)
+		receipt.LogsBloom[255] = 0x01
+
 		receipt.Logs = make([]api.EthLog, 0, len(events))
 		for i, evt := range events {
 			l := api.EthLog{
