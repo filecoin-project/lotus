@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -116,4 +117,8 @@ func TestFEVMETH0(t *testing.T) {
 	evmCodeCid, ok := actors.GetActorCodeID(av, actors.EvmKey)
 	require.True(t, ok, "failed to get EVM code id")
 	require.Equal(t, act.Code, evmCodeCid)
+
+	eth0Addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, make([]byte, 20))
+	require.NoError(t, err)
+	require.Equal(t, *act.Address, eth0Addr)
 }
