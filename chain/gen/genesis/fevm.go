@@ -11,6 +11,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -73,9 +74,14 @@ func SetupFEVM(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder,
 		return cid.Undef, fmt.Errorf("failed to marshal ETH0 f4 address: %w", err)
 	}
 
+	ctorParams := &evm10.ConstructorParams{
+		Creator:  make([]byte, 20), // self!
+		Initcode: []byte{},
+	}
+
 	params := &init10.Exec4Params{
 		CodeCID:           evmCodeCid,
-		ConstructorParams: []byte{},
+		ConstructorParams: mustEnc(ctorParams),
 		SubAddress:        eth0AddrBytes,
 	}
 
