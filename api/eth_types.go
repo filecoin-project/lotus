@@ -197,7 +197,6 @@ type EthTxReceipt struct {
 	BlockNumber       EthUint64   `json:"blockNumber"`
 	From              EthAddress  `json:"from"`
 	To                *EthAddress `json:"to"`
-	StateRoot         EthHash     `json:"root"`
 	Status            EthUint64   `json:"status"`
 	ContractAddress   *EthAddress `json:"contractAddress"`
 	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
@@ -205,6 +204,7 @@ type EthTxReceipt struct {
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         EthBytes    `json:"logsBloom"`
 	Logs              []EthLog    `json:"logs"`
+	Type              EthUint64   `json:"type"`
 }
 
 const (
