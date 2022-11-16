@@ -701,6 +701,7 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 		Code:    codecid,
 		Head:    vm.EmptyObjectCid,
 		Balance: big.Zero(),
+		Address: &builtintypes.EthereumAddressManagerActorAddr, // so that it can create ETH0
 	}
 	return nst.SetActor(builtintypes.EthereumAddressManagerActorAddr, header)
 }
