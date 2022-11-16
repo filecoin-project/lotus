@@ -951,7 +951,7 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *api.Eth
 		} else if *filterSpec.FromBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
-			epoch, err := strconv.ParseUint(*filterSpec.FromBlock, 10, 64)
+			epoch, err := api.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")
 			}
@@ -966,7 +966,7 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *api.Eth
 		} else if *filterSpec.ToBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
-			epoch, err := strconv.ParseUint(*filterSpec.ToBlock, 10, 64)
+			epoch, err := api.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")
 			}

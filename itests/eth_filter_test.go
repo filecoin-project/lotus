@@ -533,10 +533,10 @@ func TestEthGetLogsAll(t *testing.T) {
 	}
 	require.Equal(iterations, len(received), "all messages on chain")
 
-	ts, err := client.ChainHead(ctx)
+	head, err := client.ChainHead(ctx)
 	require.NoError(err)
 
-	actor, err := client.StateGetActor(ctx, idAddr, ts.Key())
+	actor, err := client.StateGetActor(ctx, idAddr, head.Key())
 	require.NoError(err)
 	require.NotNil(actor.Address)
 	ethContractAddr, err := api.EthAddressFromFilecoinAddress(*actor.Address)
@@ -552,12 +552,12 @@ func TestEthGetLogsAll(t *testing.T) {
 
 	// get logs
 	res, err := client.EthGetLogs(ctx, &api.EthFilterSpec{
-		FromBlock: pstring("0"),
+		FromBlock: pstring("0x0"),
 	})
 	require.NoError(err)
 
-	// expect to have seen iteration number of events
-	require.Equal(iterations, len(res.Results))
+	// expect to have all messages sent
+	require.Equal(len(received), len(res.Results))
 
 	for _, r := range res.Results {
 		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results
