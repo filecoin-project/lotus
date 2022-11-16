@@ -2,6 +2,7 @@ package init
 
 import (
 	"crypto/sha256"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -9,10 +10,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	init3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/init"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -123,4 +126,21 @@ func (s *state3) AddressMapHashFunction() func(input []byte) []byte {
 		res := sha256.Sum256(input)
 		return res[:]
 	}
+}
+
+func (s *state3) ActorKey() string {
+	return actors.InitKey
+}
+
+func (s *state3) ActorVersion() actorstypes.Version {
+	return actorstypes.Version3
+}
+
+func (s *state3) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }
