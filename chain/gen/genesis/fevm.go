@@ -84,7 +84,7 @@ func SetupFEVM(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder,
 
 	ctorParams := &evm10.ConstructorParams{
 		Creator: make([]byte, 20), // self!
-		// TODO we have a bunch of bugs in the evm constructo around empty contracts
+		// TODO we have a bunch of bugs in the evm constructor around empty contracts
 		// - empty init code is not allowed
 		// - returning an empty contract is not allowed
 		// So this uses code that constructs a just return contract until that can be fixed
