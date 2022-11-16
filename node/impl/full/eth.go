@@ -1058,11 +1058,11 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 		var err error
 
 		for _, entry := range ev.Entries {
-			hash := api.EthHashData(entry.Value)
+			value := api.EthBytes(decodeLogBytes(entry.Value))
 			if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
-				log.Topics = append(log.Topics, hash)
+				log.Topics = append(log.Topics, value)
 			} else {
-				log.Data = hash
+				log.Data = value
 			}
 		}
 
@@ -1499,11 +1499,11 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 			}
 
 			for _, entry := range evt.Entries {
-				hash := api.EthHashData(entry.Value)
+				value := api.EthBytes(decodeLogBytes(entry.Value))
 				if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
-					l.Topics = append(l.Topics, hash)
+					l.Topics = append(l.Topics, value)
 				} else {
-					l.Data = hash
+					l.Data = value
 				}
 			}
 
@@ -1530,4 +1530,19 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 	receipt.EffectiveGasPrice = api.EthBigInt(effectiveGasPrice)
 
 	return receipt, nil
+}
+
+// decodeLogBytes decodes a CBOR-serialized array into its original form.
+//
+// This function swallows errors and returns the original array if it failed
+// to decode.
+func decodeLogBytes(orig []byte) []byte {
+	if orig == nil {
+		return orig
+	}
+	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
+	if err != nil {
+		return orig
+	}
+	return decoded
 }
