@@ -110,8 +110,6 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		cache := nv15.NewMemMigrationCache()
-
 		blk, err := cs.GetBlock(ctx, blkCid)
 		if err != nil {
 			return err
@@ -137,12 +135,14 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
 
 		if !cctx.IsSet("skip-pre-migration") {
-			startTime = time.Now()
+			cache := nv15.NewMemMigrationCache()
 
 			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
 			if err != nil {
 				return err
 			}
+
+			startTime = time.Now()
 
 			err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
 			if err != nil {

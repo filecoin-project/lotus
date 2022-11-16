@@ -132,8 +132,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 	msg.Nonce = fromActor.Nonce
 
-	// TODO: maybe just use the invoker directly?
-	ret, err := vmi.ApplyImplicitMessage(ctx, msg)
+	ret, err := vmi.ApplyMessage(ctx, msg)
 	if err != nil && ret == nil {
 		return nil, xerrors.Errorf("apply message failed: %w", err)
 	}
@@ -155,19 +154,21 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 }
 
 func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Message, ts *types.TipSet, stateCid cid.Cid, v network.Version) (*api.InvocResult, error) {
-	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
+	nvGetter := func(context.Context, abi.ChainEpoch) network.Version {
+		return v
+	}
 
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
 		Epoch:          ts.Height() + 1,
-		Rand:           r,
+		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, nvGetter),
 		Bstore:         buffStore,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NetworkVersion: v,
-		BaseFee:        ts.Blocks()[0].ParentBaseFee,
+		BaseFee:        types.NewInt(0),
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		Tracing:        true,
 	}
@@ -281,8 +282,6 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
-	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
-
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.Int64Attribute("gas_limit", msg.GasLimit),
@@ -295,7 +294,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
 		Epoch:          vmHeight,
-		Rand:           r,
+		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion),
 		Bstore:         buffStore,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,

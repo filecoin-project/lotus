@@ -42,6 +42,25 @@ type Loc struct {
 	Function string
 }
 
+func (et ExecutionTrace) SumGas() GasTrace {
+	return SumGas(et.GasCharges)
+}
+
+func SumGas(charges []*GasTrace) GasTrace {
+	var out GasTrace
+	for _, gc := range charges {
+		out.TotalGas += gc.TotalGas
+		out.ComputeGas += gc.ComputeGas
+		out.StorageGas += gc.StorageGas
+
+		out.TotalVirtualGas += gc.TotalVirtualGas
+		out.VirtualComputeGas += gc.VirtualComputeGas
+		out.VirtualStorageGas += gc.VirtualStorageGas
+	}
+
+	return out
+}
+
 func (l Loc) Show() bool {
 	ignorePrefix := []string{
 		"reflect.",

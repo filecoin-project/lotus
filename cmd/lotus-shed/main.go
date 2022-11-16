@@ -77,6 +77,7 @@ func main() {
 		fip36PollCmd,
 		invariantsCmd,
 		gasTraceCmd,
+		replayOfflineCmd,
 	}
 
 	app := &cli.App{
