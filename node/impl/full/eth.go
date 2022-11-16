@@ -1062,7 +1062,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 			if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
 				log.Topics = append(log.Topics, hash)
 			} else {
-				log.Data = append(log.Data, hash)
+				log.Data = hash
 			}
 		}
 
@@ -1497,7 +1497,7 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 				if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
 					l.Topics = append(l.Topics, hash)
 				} else {
-					l.Data = append(l.Data, hash)
+					l.Data = hash
 				}
 			}
 
