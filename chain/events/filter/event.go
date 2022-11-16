@@ -198,7 +198,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 			continue
 		}
 
-		keyname := string(ee.Key)
+		keyname := ee.Key
 
 		// skip if we have already matched this key
 		if matched[keyname] {

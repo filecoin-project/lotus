@@ -1228,10 +1228,10 @@ type filterTipSetCollector interface {
 }
 
 var (
-	ethTopic1 = []byte("topic1")
-	ethTopic2 = []byte("topic2")
-	ethTopic3 = []byte("topic3")
-	ethTopic4 = []byte("topic4")
+	ethTopic1 = "topic1"
+	ethTopic2 = "topic2"
+	ethTopic3 = "topic3"
+	ethTopic4 = "topic4"
 )
 
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResult, error) {
@@ -1249,7 +1249,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 
 		for _, entry := range ev.Event.Entries {
 			hash := api.EthHashData(entry.Value)
-			if bytes.Equal(entry.Key, ethTopic1) || bytes.Equal(entry.Key, ethTopic2) || bytes.Equal(entry.Key, ethTopic3) || bytes.Equal(entry.Key, ethTopic4) {
+			if entry.Key == ethTopic1 || entry.Key == ethTopic2 || entry.Key == ethTopic3 || entry.Key == ethTopic4 {
 				log.Topics = append(log.Topics, hash)
 			} else {
 				log.Data = append(log.Data, hash)

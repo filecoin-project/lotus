@@ -24,6 +24,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -1767,6 +1768,37 @@ var ChainInvokeEVMCmd = &cli.Command{
 			afmt.Println(hex.EncodeToString(result))
 		} else {
 			afmt.Println("OK")
+		}
+
+		if eventsRoot := wait.Receipt.EventsRoot; eventsRoot != nil {
+			afmt.Println("Events emitted:")
+
+			s := &apiIpldStore{ctx, api}
+			amt, err := amt4.LoadAMT(ctx, s, *eventsRoot, amt4.UseTreeBitWidth(5))
+			if err != nil {
+				return err
+			}
+
+			var evt types.Event
+			err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
+				fmt.Printf("%x\n", deferred.Raw)
+				if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+					return err
+				}
+				fmt.Printf("\tEmitter ID: %s\n", evt.Emitter)
+				for _, e := range evt.Entries {
+					value, err := cbg.ReadByteArray(bytes.NewBuffer(e.Value), uint64(len(e.Value)))
+					if err != nil {
+						return err
+					}
+					fmt.Printf("\t\tKey: %s, Value: 0x%x, Flags: b%b\n", e.Key, value, e.Flags)
+				}
+				return nil
+
+			})
+		}
+		if err != nil {
+			return err
 		}
 
 		return nil

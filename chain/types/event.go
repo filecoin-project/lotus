@@ -17,7 +17,7 @@ type EventEntry struct {
 	Flags uint8
 
 	// The key of this event entry
-	Key []byte
+	Key string
 
 	// Any DAG-CBOR encodeable type.
 	Value []byte
