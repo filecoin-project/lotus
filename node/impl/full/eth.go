@@ -1058,7 +1058,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*api.EthFilterResu
 		var err error
 
 		for _, entry := range ev.Entries {
-			value := api.EthBytes(decodeLogBytes(entry.Value))
+			value := api.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
 			if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
 				log.Topics = append(log.Topics, value)
 			} else {
@@ -1499,7 +1499,7 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 			}
 
 			for _, entry := range evt.Entries {
-				value := api.EthBytes(decodeLogBytes(entry.Value))
+				value := api.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
 				if entry.Key == api.EthTopic1 || entry.Key == api.EthTopic2 || entry.Key == api.EthTopic3 || entry.Key == api.EthTopic4 {
 					l.Topics = append(l.Topics, value)
 				} else {
@@ -1545,4 +1545,18 @@ func decodeLogBytes(orig []byte) []byte {
 		return orig
 	}
 	return decoded
+}
+
+// TODO we could also emit full EVM words from the EVM runtime, but not doing so
+// makes the contract slightly cheaper (and saves storage bytes), at the expense
+// of having to left pad in the API, which is a pretty acceptable tradeoff at
+// face value. There may be other protocol implications to consider.
+func leftpad32(orig []byte) []byte {
+	needed := 32 - len(orig)
+	if needed <= 0 {
+		return orig
+	}
+	ret := make([]byte, 32)
+	copy(ret[needed:], orig)
+	return ret
 }
