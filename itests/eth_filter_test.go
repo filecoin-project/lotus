@@ -592,3 +592,117 @@ func TestEthGetLogsAll(t *testing.T) {
 
 	}
 }
+
+func TestEthSubscribeLogs(t *testing.T) {
+	require := require.New(t)
+
+	kit.QuietMiningLogs()
+
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("contracts/events.bin")
+	require.NoError(err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(err)
+
+	fromAddr, err := client.WalletDefaultAddress(ctx)
+	require.NoError(err)
+
+	result := client.EVM().DeployContract(ctx, fromAddr, contract)
+
+	idAddr, err := address.NewIDAddress(result.ActorID)
+	require.NoError(err)
+	t.Logf("actor ID address is %s", idAddr)
+
+	// install filter
+	respCh, err := client.EthSubscribe(ctx, "logs", nil)
+	require.NoError(err)
+
+	subResponses := []api.EthSubscriptionResponse{}
+	go func() {
+		for resp := range respCh {
+			subResponses = append(subResponses, resp)
+		}
+	}()
+
+	const iterations = 10
+
+	type msgInTipset struct {
+		msg api.Message
+		ts  *types.TipSet
+	}
+
+	msgChan := make(chan msgInTipset, iterations)
+
+	waitAllCh := make(chan struct{})
+	go func() {
+		headChangeCh, err := client.ChainNotify(ctx)
+		require.NoError(err)
+		<-headChangeCh // skip hccurrent
+
+		count := 0
+		for {
+			select {
+			case headChanges := <-headChangeCh:
+				for _, change := range headChanges {
+					if change.Type == store.HCApply || change.Type == store.HCRevert {
+						msgs, err := client.ChainGetMessagesInTipset(ctx, change.Val.Key())
+						require.NoError(err)
+
+						count += len(msgs)
+						for _, m := range msgs {
+							select {
+							case msgChan <- msgInTipset{msg: m, ts: change.Val}:
+							default:
+							}
+						}
+
+						if count == iterations {
+							close(msgChan)
+							close(waitAllCh)
+							return
+						}
+					}
+				}
+			}
+		}
+	}()
+
+	time.Sleep(blockTime * 6)
+
+	for i := 0; i < iterations; i++ {
+		// log a four topic event with data
+		ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
+	}
+
+	select {
+	case <-waitAllCh:
+	case <-time.After(time.Minute):
+		t.Errorf("timeout to wait for pack messages")
+	}
+
+	if len(subResponses) > 0 {
+		ok, err := client.EthUnsubscribe(ctx, subResponses[0].SubscriptionID)
+		require.NoError(err)
+		require.True(ok, "unsubscribed")
+	}
+
+	received := make(map[api.EthHash]msgInTipset)
+	for m := range msgChan {
+		eh, err := api.NewEthHashFromCid(m.msg.Cid)
+		require.NoError(err)
+		received[eh] = m
+	}
+	require.Equal(iterations, len(received), "all messages on chain")
+
+	// expect to have seen all logs
+	require.Equal(len(received), len(subResponses))
+}

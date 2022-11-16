@@ -302,6 +302,7 @@ func (m *EventFilterManager) Apply(ctx context.Context, from, to *types.TipSet) 
 	if len(m.filters) == 0 && m.EventIndex == nil {
 		return nil
 	}
+
 	tse := &TipSetEvents{
 		msgTs: from,
 		rctTs: to,
@@ -360,7 +361,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	currentHeight := m.currentHeight
 	m.mu.Unlock()
 
-	if m.EventIndex == nil && minHeight < currentHeight {
+	if m.EventIndex == nil && minHeight != -1 && minHeight < currentHeight {
 		return nil, xerrors.Errorf("historic event index disabled")
 	}
 
@@ -379,7 +380,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		maxResults: m.MaxFilterResults,
 	}
 
-	if m.EventIndex != nil && minHeight < currentHeight {
+	if m.EventIndex != nil && minHeight != -1 && minHeight < currentHeight {
 		// Filter needs historic events
 		if err := m.EventIndex.PrefillFilter(ctx, f); err != nil {
 			return nil, err
