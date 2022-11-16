@@ -2796,9 +2796,7 @@ Perms: write
 Inputs:
 ```json
 [
-  [
-    "string value"
-  ],
+  "string value",
   {
     "topics": [
       [

@@ -70,7 +70,7 @@ type EthEventAPI interface {
 	EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id api.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error)
+	EthSubscribe(ctx context.Context, eventType string, params *api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error)
 	EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID) (bool, error)
 }
 
@@ -1135,39 +1135,28 @@ const (
 	EthSubscribeEventTypeLogs  = "logs"
 )
 
-func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error) {
+func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error) {
 	// Note that go-jsonrpc will set the method field of the response to "xrpc.ch.val" but the ethereum api expects the name of the
 	// method to be "eth_subscription". This probably doesn't matter in practice.
-
-	// Validate event types and parameters first
-	for _, et := range eventTypes {
-		switch et {
-		case EthSubscribeEventTypeHeads:
-		case EthSubscribeEventTypeLogs:
-		default:
-			return nil, xerrors.Errorf("unsupported event type: %s", et)
-
-		}
-	}
 
 	sub, err := e.SubManager.StartSubscription(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, et := range eventTypes {
-		switch et {
-		case EthSubscribeEventTypeHeads:
-			f, err := e.TipSetFilterManager.Install(ctx)
-			if err != nil {
-				// clean up any previous filters added and stop the sub
-				_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
-				return nil, err
-			}
-			sub.addFilter(ctx, f)
+	switch eventType {
+	case EthSubscribeEventTypeHeads:
+		f, err := e.TipSetFilterManager.Install(ctx)
+		if err != nil {
+			// clean up any previous filters added and stop the sub
+			_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+			return nil, err
+		}
+		sub.addFilter(ctx, f)
 
-		case EthSubscribeEventTypeLogs:
-			keys := map[string][][]byte{}
+	case EthSubscribeEventTypeLogs:
+		keys := map[string][][]byte{}
+		if params != nil {
 			for idx, vals := range params.Topics {
 				// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 				key := fmt.Sprintf("topic%d", idx+1)
@@ -1177,15 +1166,17 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventTypes []string, params
 				}
 				keys[key] = keyvals
 			}
-
-			f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
-			if err != nil {
-				// clean up any previous filters added and stop the sub
-				_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
-				return nil, err
-			}
-			sub.addFilter(ctx, f)
 		}
+
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
+		if err != nil {
+			// clean up any previous filters added and stop the sub
+			_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+			return nil, err
+		}
+		sub.addFilter(ctx, f)
+	default:
+		return nil, xerrors.Errorf("unsupported event type: %s", eventType)
 	}
 
 	return sub.out, nil

@@ -824,7 +824,7 @@ type FullNode interface {
 	//  - logs: notify new event logs that match a criteria
 	// params contains additional parameters used with the log event type
 	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
-	EthSubscribe(ctx context.Context, eventTypes []string, params EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) //perm:write
+	EthSubscribe(ctx context.Context, eventType string, params *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) //perm:write
 
 	// Unsubscribe from a websocket subscription
 	EthUnsubscribe(ctx context.Context, id EthSubscriptionID) (bool, error) //perm:write

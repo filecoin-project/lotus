@@ -275,7 +275,7 @@ type FullNodeStruct struct {
 
 		EthSendRawTransaction func(p0 context.Context, p1 EthBytes) (EthHash, error) `perm:"read"`
 
-		EthSubscribe func(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) `perm:"write"`
+		EthSubscribe func(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) `perm:"write"`
 
 		EthUninstallFilter func(p0 context.Context, p1 EthFilterID) (bool, error) `perm:"write"`
 
@@ -2166,14 +2166,14 @@ func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (E
 	return *new(EthHash), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
+func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
 	if s.Internal.EthSubscribe == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthSubscribe(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 []string, p2 EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
+func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
 	return nil, ErrNotSupported
 }
 
