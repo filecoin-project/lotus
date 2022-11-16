@@ -21,16 +21,18 @@ func TestEmbeddedMetadata(t *testing.T) {
 
 // Test that we're registering the manifest correctly.
 func TestRegistration(t *testing.T) {
-	manifestCid, found := actors.GetManifest(actorstypes.Version9)
-	require.True(t, found)
-	require.True(t, manifestCid.Defined())
+	for _, av := range []actorstypes.Version{actorstypes.Version8, actorstypes.Version9} {
+		manifestCid, found := actors.GetManifest(av)
+		require.True(t, found)
+		require.True(t, manifestCid.Defined())
 
-	for _, key := range actors.GetBuiltinActorsKeys(actorstypes.Version9) {
-		actorCid, found := actors.GetActorCodeID(actorstypes.Version9, key)
-		require.True(t, found)
-		name, version, found := actors.GetActorMetaByCode(actorCid)
-		require.True(t, found)
-		require.Equal(t, actorstypes.Version9, version)
-		require.Equal(t, key, name)
+		for _, key := range actors.GetBuiltinActorsKeys(av) {
+			actorCid, found := actors.GetActorCodeID(av, key)
+			require.True(t, found)
+			name, version, found := actors.GetActorMetaByCode(actorCid)
+			require.True(t, found)
+			require.Equal(t, av, version)
+			require.Equal(t, key, name)
+		}
 	}
 }
