@@ -1,29 +1,30 @@
 # Lotus changelog
 
-# 1.18.0-rc5 / 2022-11-1
+# 1.18.0 / 2022-11-15
 
 > ⚠️ **Please note that from Lotus v1.17.2&^ will require a Go-version of v1.18.1&^**
 
-This is the fifth release canadiate of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
+This is the final release of the upcoming MANDATORY release of Lotus that introduces [Filecoin network v17,
 codenamed the Shark upgrade](https://github.com/filecoin-project/community/discussions/74?sort=top#discussioncomment-3825422). Shark upgrade delivers a wave of protocol refinements that will allow for useful smart contracts to be written using the FVM (eg. programmable markets, lending contracts, etc.).
 
-A full changelog will be published upon final release.
+**The Filecoin mainnet is scheduled to upgrade to nv17 at epoch 2383680, on Nov 30th on 2022-11-30T14:00:00Z. All node operators, including storage providers, must upgrade to this release before that time. Storage providers must update their daemons, miners, market and worker(s)/boost.**
 
-The Shark upgrade introduces the following FIPs, delivered in [actors v9](https://github.com/filecoin-project/specs-actors/releases/tag/v9.0.1):
+The Shark upgrade introduces the following FIPs, delivered in [actors v9](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.3):
 - [FIP0029 Beneficiary Address for Storage Providers](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0029.md): step towards better lending market for SP
 - [FIP0034 Fix PreCommit Deposit Independent of Sector Content](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0034.md): resolves a significant weakening of Filecoin PoRep’s security guarantees
-  - ❗Pre-commit deposit will be calculated as the 20-day projection of expected reward earned by a sector with a sector quality of 10 (i.e. full of verified deals), regardless of sector content. Leave the initial pledge value, due when the sector is proven, unchanged.
+  - ❗Pre-commit deposit will be calculated as the 20-day projection of expected reward earned by a sector with **a sector quality of 10 (i.e. full of verified deals)**, regardless of sector content. The Initial Pledge value, due when the sector is proven, is left **unchanged**.
 - [FIP0041 Forward Compatibility for PreCommit](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0041.md): enables a cleaner and easier transition to Programmable Storage Markets
 - [FIP0044 Standard Message Authentication](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0044.md): enable metadata authentication for user defined actor
-- [FIP0045 Decoupling Fil+ from Marketplace](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0045.md): DataCap and the QAP it brings is now associated with DATA. DataCap for the data many have terms where anyone who cares about that piece of data may extend the term, which incentives SPs to store the data longer on the network
-  - HUGE step towards user programmable storage market
-  - ⭐️ First Fungible Token Contract - Datacap Actor, on Filecoin!  ([fungible token standard](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0046.md), [token contract library](https://github.com/helix-onchain/filecoin/tree/5455f4f831e0f3f20005a9a789623d7ad6dada15/frc46_token))
-
-  
-## Calibration-net Upgrade
-
-This release candidate sets the calibration-net upgrade at epoch 16800. The bundle the network will be using is [v9.0.3](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.3)(located at `build/actors/v9.tar.zst` ). Upon the migration, the manifest CID should be `bafy2bzacedbedgynklc4dgpyxippkxmba2mgtw7ecntoneclsvvl4klqwuyyy`.
-
+- [FIP0045 Decoupling Fil+ from Marketplace](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0045.md): DataCap and the 10x QAP is now only associated with how long DATA is wanted to be stored on the network.
+  - This is a transitional state to enabling far more efficient and dynamic storage markets on Filecoin network in the future.
+  - ⭐️ First Fungible Token Contract - Datacap Actor, on Filecoin!  ([fungible token standard](https://github.com/filecoin-project/FIPs/blob/master/FRCs/frc-0046.md), [token contract library](https://github.com/helix-onchain/filecoin/tree/5455f4f831e0f3f20005a9a789623d7ad6dada15/frc46_token)).
+  - For storage deal participants (clients and storage providers):
+    - `PublishStorageDeals`/`ProveCommit(Aggregate)`/`ProveReplicaUpdates` message that includes verified deals will see a gas usage increase, more details can be found [here](https://github.com/filecoin-project/FIPs/blob/385f069b3b146c5fef4fdc1109a0e2f35f399e48/FIPS/fip-0045.md?plain=1#L784)
+    -  `Term` is introduced for defining how long the DataCap is assigned to a piece of data. Anyone who cares about that piece of data may extend the _term_, which incentives SPs to store the data longer on the network without a new deal/resealing.
+    - There is no  more diluted verified deal QAP due to deal/sector space time for new sectors that contains verified deals after this upgrade.
+    - SPs may enjoy 90 days of extra QAP than deal duration by default, given `term_max` is always `deal duration + 90 days`.
+❗ We highly recommend all lotus users, especially storage providers, developers and clients to read the FIPs in detail to understand the protocol changes and potential impact to network participants!
+      
 ## Snapshots
 
 The [#fil-infra](https://filecoinproject.slack.com/archives/C039RBG3RPC) team at PL has launched a brand new Lightweight Filecoin Chain Snapshots Service to support chain management needs for the node operators, check [here](https://www.notion.so/pl-strflt/Lightweight-Filecoin-Chain-Snapshots-17e4c386f35c44548f5863afb7b5e024) for the full detail. 
@@ -31,7 +32,34 @@ We are planning to switch [the snapshot service listed in lotus docs](https://lo
 
 ## Migration 
 
-(TBC)
+We are expecting a heavier than normal state migration for this upgrade due to the amount of the state changes introduced.
+All node operators, including storage providers, should be aware that two pre-migrations are being scheduled. The first pre-migration will begin at 2022-11-30T12:00:00Z (120 minutes before the real upgrade), the second pre-migration will begin at 2022-11-30T13:45:00Z (7.5 minutes before the real upgrade). 
+The first pre-migration will take up to 1.5hr, depending on the amount of the historical state in the node blockstore and the hardware specs the node is running on. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries. 
+We recommend node operators (who haven't enbabled splistore `universal` mode) that do not care about historical chain states, to prune the chain blockstore by syncing from a snapshot 1-2 days before the upgrade.
+Note to full archival node operators: you may expect a migration that takes up to 20 min upon the upgrade, during this period your node will fall out of sync and your chain service may have some disruption. However, you can expect the node to catch up soon after the migration completes.
+
+### v9 Built-in actor bundles
+
+Bundles for all networks(mainnet, calibnet, and etc) are included in the lotus source tree (`build/actors/`) and embedded on build, for v9 actors you can find it [here](https://github.com/filecoin-project/lotus/blob/master/build/actors/v9.tar.zst). 
+Reminder: Lotus verifies that the bundle CIDs are the right ones upon build & upgrade against the values in `build/builtin_actors_gen.go`, according to the network you are building. You may also check the bundle manifest CID matches the bundle gen-ed values by running `lotus state actor-cids --network-version 17`.
+
+The manifest CID & full list of actor code CIDs for nv17 using [actor v9](https://github.com/filecoin-project/builtin-actors/releases/tag/v9.0.3) is:
+
+```
+"_manifest":        "bafy2bzaceb6j6666h36xnhksu3ww4kxb6e25niayfgkdnifaqi6m6ooc66i6i"
+"account":          "bafk2bzacect2p7urje3pylrrrjy3tngn6yaih4gtzauuatf2jllk3ksgfiw2y"
+"cron":             "bafk2bzacebcec3lffmos3nawm5cvwehssxeqwxixoyyfvejy7viszzsxzyu26"
+"datacap":          "bafk2bzacebb6uy2ys7tapekmtj7apnjg7oyj4ia5t7tlkvbmwtxwv74lb2pug"
+"init":             "bafk2bzacebtdq4zyuxk2fzbdkva6kc4mx75mkbfmldplfntayhbl5wkqou33i"
+"multisig":         "bafk2bzacec4va3nmugyqjqrs3lqyr2ij67jhjia5frvx7omnh2isha6abxzya"
+"paymentchannel":   "bafk2bzacebhdvjbjcgupklddfavzef4e4gnkt3xk3rbmgfmk7xhecszhfxeds"
+"reward":           "bafk2bzacebezgbbmcm2gbcqwisus5fjvpj7hhmu5ubd37phuku3hmkfulxm2o"
+"storagemarket":    "bafk2bzacec3j7p6gklk64stax5px3xxd7hdtejaepnd4nw7s2adihde6emkcu"
+"storageminer":     "bafk2bzacedyux5hlrildwutvvjdcsvjtwsoc5xnqdjl73ouiukgklekeuyfl4"
+"storagepower":     "bafk2bzacedsetphfajgne4qy3vdrpyd6ekcmtfs2zkjut4r34cvnuoqemdrtw"
+"system":           "bafk2bzaceagvlo2jtahj7dloshrmwfulrd6e2izqev32qm46eumf754weec6c"
+"verifiedregistry": "bafk2bzacecf3yodlyudzukumehbuabgqljyhjt5ifiv4vetcfohnvsxzynwga"
+```
 
 ## New Features
 - Integrate actor v9:
@@ -61,7 +89,6 @@ We are planning to switch [the snapshot service listed in lotus docs](https://lo
 - github.com/filecoin-project/go-jsonrpc (v0.1.7 -> v0.1.8)
 - github.com/filecoin-project/go-state-types (v0.1.12-beta -> v0.9.0):
 
-
 ## Others
 - fix: upgrade: no splash banner for nv17 :( ([filecoin-project/lotus#9486](https://github.com/filecoin-project/lotus/pull/9486))
 - chore: build: add calib upgrade param for shark ([filecoin-project/lotus#9483](https://github.com/filecoin-project/lotus/pull/9483))
@@ -70,21 +97,36 @@ We are planning to switch [the snapshot service listed in lotus docs](https://lo
 - Delete lotus-pond (#9352) ([filecoin-project/lotus#9352](https://github.com/filecoin-project/lotus/pull/9352))
 - build: set version to v1.18.0-dev
 
+## lotus-market EOL notice 
+
+As mentioned in [lotus v1.17.0 release notes](https://github.com/filecoin-project/lotus/releases/tag/v1.17.0), markets related features, enhancements and fixes is now lower priority for Lotus. We recommend our users to migrate to other deal making focused software, like [boost](https://boost.filecoin.io/) as soon as possible. That being said, the lotus maintainers will be:
+-  Lotus maintainers will stop supporting lotus-market subcomponent/**storage** deal making related issues or enhancements on Jan 31, 2023.
+- In Q2 2023, we will be deprecating/removing lotus-market related code from this repository.
+If you have any questions or concerns, please raise them in [Lotus discussion](https://github.com/filecoin-project/lotus/discussions/categories/market)!
+
+
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Geoff Stuart | 51 | +8677/-19320 | 401 |
-| Aayush Rajasekaran | 5 | +1452/-166 | 34 |
-| Łukasz Magiera | 5 | +429/-135 | 45 |
-| Aayush | 19 | +281/-157 | 72 |
-| Shrenuj Bansal | 3 | +176/-61 | 10 |
-| Jennifer Wang | 7 | +19/-18 | 15 |
-| simlecode | 1 | +5/-5 | 4 |
+| @geoff-vball | 73 | +14533/-19712 | 509 |
+| @arajasek | 16 | +2230/-303 | 49 |
+| @arajasek | 29 | +701/-297 | 117 |
+| @magik6k | 5 | +429/-135 | 45 |
+| @Frrist | 1 | +246/-203 | 25 |
+| @stebalien | 2 | +323/-2 | 6 |
+| @shrenujbansal  | 3 | +176/-61 | 10 |
+| @ZenGround0 | 2 | +78/-38 | 5 |
+| @jennijuju | 8 | +97/-18 | 16 |
+| @simlecode | 5 | +18/-9 | 11 |
 | Kevin Li | 1 | +7/-0 | 1 |
+| @zenground0 | 2 | +3/-3 | 3 |
+| @jennijuju | 1 | +3/-3 | 2 |
 | Rod Vagg | 1 | +3/-2 | 2 |
+| @jennijuju | 1 | +2/-2 | 2 |
 | Peter Rabbitson | 1 | +3/-0 | 1 |
-| ZenGround0 | 1 | +2/-0 | 1 |
+| Jakub Sztandera | 1 | +1/-1 | 1 |
+
 
 
 # v1.17.2 / 2022-10-05
