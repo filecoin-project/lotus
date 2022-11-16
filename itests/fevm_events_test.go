@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 // TestFEVMEvents does a basic events smoke test.
