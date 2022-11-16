@@ -546,10 +546,10 @@ type EthLog struct {
 	Address EthAddress `json:"address"`
 
 	// Data is the value of the event log, excluding topics
-	Data EthHash `json:"data"`
+	Data EthBytes `json:"data"`
 
 	// List of topics associated with the event log.
-	Topics []EthHash `json:"topics"`
+	Topics []EthBytes `json:"topics"`
 
 	// Following fields are derived from the transaction containing the log
 
