@@ -3,11 +3,12 @@ package mock
 import (
 	"io"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
