@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -72,6 +73,8 @@ type Manager struct {
 	work   *statestore.StateStore
 
 	parallelCheckLimit        int
+	singleCheckTimeout        time.Duration
+	partitionCheckTimeout     time.Duration
 	disableBuiltinWindowPoSt  bool
 	disableBuiltinWinningPoSt bool
 	disallowRemoteFinalize    bool
@@ -121,6 +124,8 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 		localProver: prover,
 
 		parallelCheckLimit:        pc.ParallelCheckLimit,
+		singleCheckTimeout:        time.Duration(pc.SingleCheckTimeout),
+		partitionCheckTimeout:     time.Duration(pc.PartitionCheckTimeout),
 		disableBuiltinWindowPoSt:  pc.DisableBuiltinWindowPoSt,
 		disableBuiltinWinningPoSt: pc.DisableBuiltinWinningPoSt,
 		disallowRemoteFinalize:    sc.DisallowRemoteFinalize,
