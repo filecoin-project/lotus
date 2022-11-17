@@ -28,6 +28,7 @@ var actors = map[string][]int{
 	"reward":   lotusactors.Versions,
 	"verifreg": lotusactors.Versions,
 	"datacap":  lotusactors.Versions[8:],
+	"evm":      lotusactors.Versions[9:],
 }
 
 func main() {
