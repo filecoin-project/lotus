@@ -11,9 +11,9 @@ import (
 
 var _ State = (*state0)(nil)
 
-func load0(store adt.Store, root cid.Cid) (State, error) {
+func load0(store adt.Store, rooty cid.Cid) (State, error) {
 	out := state0{store: store}
-	err := store.Get(store.Context(), root, &out)
+	err := store.Get(store.Context(), rooty, &out)
 	if err != nil {
 		return nil, err
 	}
