@@ -97,8 +97,8 @@ func NewClusterRaftConfig(userRaftConfig *config.UserRaftConfig) *ClusterRaftCon
 
 }
 
-//// Validate checks that this configuration has working values,
-//// at least in appearance.
+// // Validate checks that this configuration has working values,
+// // at least in appearance.
 func ValidateConfig(cfg *ClusterRaftConfig) error {
 	if cfg.RaftConfig == nil {
 		return xerrors.Errorf("no hashicorp/raft.Config")

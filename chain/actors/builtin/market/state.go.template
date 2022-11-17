@@ -191,7 +191,7 @@ func (s *dealStates{{.v}}) ForEach(cb func(dealID abi.DealID, ds DealState) erro
 	})
 }
 
-func (s *dealStates{{.v}}) decode(val *cbg.Deferred) (*DealState, error) {
+func (s *dealStates{{.v}}) Decode(val *cbg.Deferred) (*DealState, error) {
 	var ds{{.v}} market{{.v}}.DealState
 	if err := ds{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
@@ -200,8 +200,12 @@ func (s *dealStates{{.v}}) decode(val *cbg.Deferred) (*DealState, error) {
 	return &ds, nil
 }
 
-func (s *dealStates{{.v}}) array() adt.Array {
+func (s *dealStates{{.v}}) StatesArray() adt.Array {
 	return s.Array
+}
+
+func (s *dealStates{{.v}}) ArrayBitWidth() int {
+    return {{if (ge .v 3)}}market{{.v}}.StatesAmtBitwidth{{else}}3{{end}}
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
@@ -251,7 +255,7 @@ func (s *dealProposals{{.v}}) ForEach(cb func(dealID abi.DealID, dp DealProposal
 	})
 }
 
-func (s *dealProposals{{.v}}) decode(val *cbg.Deferred) (*DealProposal, error) {
+func (s *dealProposals{{.v}}) Decode(val *cbg.Deferred) (*DealProposal, error) {
 	var dp{{.v}} market{{.v}}.DealProposal
 	if err := dp{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
@@ -265,8 +269,12 @@ func (s *dealProposals{{.v}}) decode(val *cbg.Deferred) (*DealProposal, error) {
     return &dp, nil
 }
 
-func (s *dealProposals{{.v}}) array() adt.Array {
+func (s *dealProposals{{.v}}) ProposalsArray() adt.Array {
 	return s.Array
+}
+
+func (s *dealProposals{{.v}}) ArrayBitWidth() int {
+    return {{if (ge .v 3)}}market{{.v}}.ProposalsAmtBitwidth{{else}}3{{end}}
 }
 
 func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, error) {

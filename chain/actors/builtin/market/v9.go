@@ -169,7 +169,7 @@ func (s *dealStates9) ForEach(cb func(dealID abi.DealID, ds DealState) error) er
 	})
 }
 
-func (s *dealStates9) decode(val *cbg.Deferred) (*DealState, error) {
+func (s *dealStates9) Decode(val *cbg.Deferred) (*DealState, error) {
 	var ds9 market9.DealState
 	if err := ds9.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
@@ -178,8 +178,12 @@ func (s *dealStates9) decode(val *cbg.Deferred) (*DealState, error) {
 	return &ds, nil
 }
 
-func (s *dealStates9) array() adt.Array {
+func (s *dealStates9) StatesArray() adt.Array {
 	return s.Array
+}
+
+func (s *dealStates9) ArrayBitWidth() int {
+	return market9.StatesAmtBitwidth
 }
 
 func fromV9DealState(v9 market9.DealState) DealState {
@@ -222,7 +226,7 @@ func (s *dealProposals9) ForEach(cb func(dealID abi.DealID, dp DealProposal) err
 	})
 }
 
-func (s *dealProposals9) decode(val *cbg.Deferred) (*DealProposal, error) {
+func (s *dealProposals9) Decode(val *cbg.Deferred) (*DealProposal, error) {
 	var dp9 market9.DealProposal
 	if err := dp9.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
@@ -236,8 +240,12 @@ func (s *dealProposals9) decode(val *cbg.Deferred) (*DealProposal, error) {
 	return &dp, nil
 }
 
-func (s *dealProposals9) array() adt.Array {
+func (s *dealProposals9) ProposalsArray() adt.Array {
 	return s.Array
+}
+
+func (s *dealProposals9) ArrayBitWidth() int {
+	return market9.ProposalsAmtBitwidth
 }
 
 func fromV9DealProposal(v9 market9.DealProposal) (DealProposal, error) {
