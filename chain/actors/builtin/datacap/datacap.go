@@ -55,4 +55,8 @@ type State interface {
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	Governor() (address.Address, error)
 	GetState() interface{}
+
+	VerifiedClientsMap() (adt.Map, error)
+	VerifiedClientsMapBitWidth() int
+	VerifiedClientsMapHashFunction() func(input []byte) []byte
 }

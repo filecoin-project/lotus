@@ -1,6 +1,8 @@
 package datacap
 
 import (
+	"crypto/sha256"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -49,13 +51,24 @@ func (s *state{{.v}}) GetState() interface{} {
 }
 
 func (s *state{{.v}}) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-	return forEachClient(s.store, actors.Version{{.v}}, s.verifiedClients, cb)
-}
-
-func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
-	return adt{{.v}}.AsMap(s.store, s.Token.Balances, int(s.Token.HamtBitWidth))
+	return forEachClient(s.store, actors.Version{{.v}}, s.VerifiedClientsMap, cb)
 }
 
 func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-	return getDataCap(s.store, actors.Version{{.v}}, s.verifiedClients, addr)
+	return getDataCap(s.store, actors.Version{{.v}}, s.VerifiedClientsMap, addr)
+}
+
+func (s *state{{.v}}) VerifiedClientsMap() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.Token.Balances, int(s.Token.HamtBitWidth))
+}
+
+func (s *state{{.v}}) VerifiedClientsMapBitWidth() int {
+    return int(s.Token.HamtBitWidth)
+}
+
+func (s *state{{.v}}) VerifiedClientsMapHashFunction() func(input []byte) []byte {
+    return func(input []byte) []byte {
+           		res := sha256.Sum256(input)
+           		return res[:]
+        }
 }
