@@ -1,6 +1,7 @@
 package init
 
 import (
+    "crypto/sha256"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -119,10 +120,25 @@ func (s *state{{.v}}) SetAddressMap(mcid cid.Cid) error {
 	return nil
 }
 
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
 func (s *state{{.v}}) AddressMap() (adt.Map, error) {
 	return adt{{.v}}.AsMap(s.store, s.State.AddressMap{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
 }
 
-func (s *state{{.v}}) GetState() interface{} {
-	return &s.State
+func (s *state{{.v}}) AddressMapBitWidth() int {
+    {{- if (ge .v 3)}}
+        return builtin{{.v}}.DefaultHamtBitwidth
+    {{- else}}
+        return 5
+    {{- end}}
+}
+
+func (s *state{{.v}}) AddressMapHashFunction() func(input []byte) []byte {
+    return func(input []byte) []byte {
+        res := sha256.Sum256(input)
+        return res[:]
+    }
 }

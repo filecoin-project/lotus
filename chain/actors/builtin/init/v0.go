@@ -1,6 +1,8 @@
 package init
 
 import (
+	"crypto/sha256"
+
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -103,10 +105,21 @@ func (s *state0) SetAddressMap(mcid cid.Cid) error {
 	return nil
 }
 
+func (s *state0) GetState() interface{} {
+	return &s.State
+}
+
 func (s *state0) AddressMap() (adt.Map, error) {
 	return adt0.AsMap(s.store, s.State.AddressMap)
 }
 
-func (s *state0) GetState() interface{} {
-	return &s.State
+func (s *state0) AddressMapBitWidth() int {
+	return 5
+}
+
+func (s *state0) AddressMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
 }
