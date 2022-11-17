@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NETWORKS=(devnet devnet-wasm wallaby mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet)
+NETWORKS=(devnet wallaby mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet)
 
 set -e
 
@@ -13,6 +13,11 @@ fi
 VERSION="$1" # actors version
 RELEASE="$2" # actors release name
 RELEASE_OVERRIDES=("${@:3}")
+
+if [[ ${VERSION#v} -ge 10 ]]; then
+    NETWORKS+=("devnet-wasm")
+fi
+
 
 echo "Downloading bundles for actors version ${VERSION} release ${RELEASE}"
 echo "With release overrides ${RELEASE_OVERRIDES[*]}"
