@@ -28,7 +28,7 @@ Prepping an RC:
 - [ ] version string in `build/version.go` has been updated (in the `release/vX.Y.Z` branch)
 - [ ] run `make gen && make docsgen-cli`
 - [ ] Generate changelog using the script at scripts/mkreleaselog
-- [ ] Add contents of generated text to lotus/changelog.md in addition to other details
+- [ ] Add contents of generated text to lotus/CHANGELOG.md in addition to other details
 - [ ] tag commit with `vX.Y.Z-rcN`
 - [ ] cut a pre-release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true)
 
