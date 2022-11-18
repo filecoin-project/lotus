@@ -20,7 +20,7 @@ PID="$!"
 trap "kill -9 ${PID}" EXIT
 sleep 30
 
-cp "../appimage/Lotus-${CIRCLE_TAG}-x86_64.AppImage" .
+cp "/tmp/workspace/appimage/Lotus-${CIRCLE_TAG}-x86_64.AppImage" .
 sha512sum "Lotus-${CIRCLE_TAG}-x86_64.AppImage" > "Lotus-${CIRCLE_TAG}-x86_64.AppImage.sha512"
 ipfs add -q "Lotus-${CIRCLE_TAG}-x86_64.AppImage" > "Lotus-${CIRCLE_TAG}-x86_64.AppImage.cid"
 popd
