@@ -385,13 +385,13 @@ jobs:
       - when:
           condition: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist --snapshot
+            - run: goreleaser release --rm-dist --snapshot --debug
             - run: ./scripts/generate-checksums.sh
       - when:
           condition:
             not: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist
+            - run: goreleaser release --rm-dist --debug
             - run: ./scripts/generate-checksums.sh
             - run: ./scripts/publish-checksums.sh
 
