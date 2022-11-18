@@ -1460,6 +1460,7 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 		From:             tx.From,
 		To:               tx.To,
 		Type:             api.EthUint64(2),
+		Logs:             []api.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
 		LogsBloom:        []byte{0},
 	}
 
