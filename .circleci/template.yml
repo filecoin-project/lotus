@@ -838,6 +838,8 @@ workflows:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - release:
           name: "Release"
+          context:
+            - filecoin-goreleaser-key
           requires:
             - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
@@ -851,6 +853,8 @@ workflows:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - release:
           name: "Release (dry-run)"
+          context:
+            - filecoin-goreleaser-key
           dry-run: true
           requires:
             - "Build ( darwin / amd64 )"
