@@ -151,6 +151,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		NetworkVersion: nvGetter(ctx, vmHeight),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
+		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
 		Tracing:        true,
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
