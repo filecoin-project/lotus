@@ -97,6 +97,7 @@ commands:
           sudo bash install.sh
           popd
           rm -rf kubo
+          rm kubo_v0.16.0_linux-amd64.tar.gz
   git_fetch_all_tags:
     steps:
       - run:
@@ -384,13 +385,13 @@ jobs:
       - when:
           condition: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist --snapshot
+            - run: goreleaser release --rm-dist --snapshot --debug
             - run: ./scripts/generate-checksums.sh
       - when:
           condition:
             not: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist
+            - run: goreleaser release --rm-dist --debug
             - run: ./scripts/generate-checksums.sh
             - run: ./scripts/publish-checksums.sh
 
@@ -838,6 +839,8 @@ workflows:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - release:
           name: "Release"
+          context:
+            - filecoin-goreleaser-key
           requires:
             - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
@@ -851,6 +854,8 @@ workflows:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - release:
           name: "Release (dry-run)"
+          context:
+            - filecoin-goreleaser-key
           dry-run: true
           requires:
             - "Build ( darwin / amd64 )"
