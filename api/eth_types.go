@@ -81,7 +81,7 @@ type EthBytes []byte
 
 func (e EthBytes) MarshalJSON() ([]byte, error) {
 	if len(e) == 0 {
-		return json.Marshal("0x00")
+		return json.Marshal("0x")
 	}
 	s := hex.EncodeToString(e)
 	if len(s)%2 == 1 {
