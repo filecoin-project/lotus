@@ -118,24 +118,25 @@ type EthBlock struct {
 	StateRoot        EthHash    `json:"stateRoot"`
 	TransactionsRoot EthHash    `json:"transactionsRoot"`
 	ReceiptsRoot     EthHash    `json:"receiptsRoot"`
-	// TODO: include LogsBloom
-	Difficulty      EthUint64 `json:"difficulty"`
-	TotalDifficulty EthUint64 `json:"totalDifficulty"`
-	Number          EthUint64 `json:"number"`
-	GasLimit        EthUint64 `json:"gasLimit"`
-	GasUsed         EthUint64 `json:"gasUsed"`
-	Timestamp       EthUint64 `json:"timestamp"`
-	Extradata       []byte    `json:"extraData"`
-	MixHash         EthHash   `json:"mixHash"`
-	Nonce           EthNonce  `json:"nonce"`
-	BaseFeePerGas   EthBigInt `json:"baseFeePerGas"`
-	Size            EthUint64 `json:"size"`
+	LogsBloom        EthBytes   `json:"logsBloom"`
+	Difficulty       EthUint64  `json:"difficulty"`
+	TotalDifficulty  EthUint64  `json:"totalDifficulty"`
+	Number           EthUint64  `json:"number"`
+	GasLimit         EthUint64  `json:"gasLimit"`
+	GasUsed          EthUint64  `json:"gasUsed"`
+	Timestamp        EthUint64  `json:"timestamp"`
+	Extradata        []byte     `json:"extraData"`
+	MixHash          EthHash    `json:"mixHash"`
+	Nonce            EthNonce   `json:"nonce"`
+	BaseFeePerGas    EthBigInt  `json:"baseFeePerGas"`
+	Size             EthUint64  `json:"size"`
 	// can be []EthTx or []string depending on query params
 	Transactions []interface{} `json:"transactions"`
 	Uncles       []EthHash     `json:"uncles"`
 }
 
 var (
+	EmptyEthBloom = [256]byte{}
 	EmptyEthHash  = EthHash{}
 	EmptyEthInt   = EthUint64(0)
 	EmptyEthNonce = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
@@ -148,6 +149,7 @@ func NewEthBlock() EthBlock {
 		TransactionsRoot: EmptyEthHash,
 		ReceiptsRoot:     EmptyEthHash,
 		Difficulty:       EmptyEthInt,
+		LogsBloom:        EmptyEthBloom[:],
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
