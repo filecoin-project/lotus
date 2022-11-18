@@ -679,6 +679,8 @@ type StorageMinerStruct struct {
 
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
+		CheckProve func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
 
 		ComputeProof func(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) `perm:"read"`
@@ -4129,6 +4131,17 @@ func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.Registered
 }
 
 func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+	return *new(map[abi.SectorNumber]string), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) CheckProve(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
+	if s.Internal.CheckProve == nil {
+		return *new(map[abi.SectorNumber]string), ErrNotSupported
+	}
+	return s.Internal.CheckProve(p0, p1, p2, p3, p4)
+}
+
+func (s *StorageMinerStub) CheckProve(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 

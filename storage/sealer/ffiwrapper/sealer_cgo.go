@@ -36,6 +36,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"strings"
 )
 
 var _ storiface.Storage = &Sealer{}
@@ -189,6 +191,20 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 }
 
 func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
+	// add by lin
+	isRealData := true
+	sectortype := os.Getenv("LOTUS_SECTOR_TYPE_SXX")
+	if sectortype == "1" {
+		isRealData = false
+	}
+	if !isRealData {
+		if mypieceInfo, err := sb.myAddPiece(ctx, sector, pieceSize); err == nil {
+			return mypieceInfo, nil
+		} else {
+			log.Warn(err)
+		}
+	}
+	// end
 	origPieceData := pieceData
 	defer func() {
 		closer, ok := origPieceData.(io.Closer)
@@ -381,6 +397,12 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, exis
 
 		pieceCID = paddedCid
 	}
+
+	// add by xiao
+	if !isRealData {
+		sb.createTemplateFile(stagedPath.Unsealed, pieceSize, pieceCID)
+	}
+	//end
 
 	return abi.PieceInfo{
 		Size:     pieceSize.Padded(),
@@ -1298,3 +1320,91 @@ func (sb *Sealer) GenerateWindowPoStWithVanilla(ctx context.Context, proofType a
 		ProofBytes: pp.ProofBytes,
 	}, nil
 }
+
+// add by xiao
+func (sb *Sealer) myAddPiece(ctx context.Context, sector storiface.SectorRef, pieceSize abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
+	var done func()
+	var pieceInfo abi.PieceInfo
+
+	defer func() {
+		if done != nil {
+			done()
+		}
+	}()
+
+	stagedPath, done, err := sb.sectors.AcquireSector(ctx, sector, 0, storiface.FTUnsealed, storiface.PathSealing)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("acquire unsealed sector: %w", err)
+	}
+
+	n := strings.Index(stagedPath.Unsealed, "unsealed")
+	if n == -1 {
+		return abi.PieceInfo{}, xerrors.Errorf("unsealed not exsit")
+	}
+	apTemplatePath := string([]byte(stagedPath.Unsealed)[:n])
+
+	if _, err := os.Stat(apTemplatePath + "piece-info.json"); os.IsNotExist(err) || err != nil { // 判断piece-info.json文件是否存在
+		return abi.PieceInfo{}, xerrors.Errorf("piece-info.json not exsite: %w", err)
+	}
+
+	if _, err := os.Stat(apTemplatePath + "s-template"); os.IsNotExist(err) || err != nil { // 判断s-template文件是否存在
+		return abi.PieceInfo{}, xerrors.Errorf("s-template not exsite: %w", err)
+	}
+
+	configFile, err := os.Open(apTemplatePath + "piece-info.json")
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("open piece-info.json failed: %w", err)
+	}
+	defer configFile.Close()
+
+	jsonParser := json.NewDecoder(configFile)
+	if err := jsonParser.Decode(&pieceInfo); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("decode piece-info.json failed: %w", err)
+	}
+
+	if pieceInfo.Size != pieceSize.Padded() {
+		return abi.PieceInfo{}, xerrors.Errorf("pieceInfo.Size not the same")
+	}
+
+	if err = os.Link(apTemplatePath+"s-template", stagedPath.Unsealed); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("Sector %d unsealed do not create: %w", err)
+	}
+
+	return pieceInfo, nil
+}
+
+func (sb *Sealer) createTemplateFile(unsealedFile string, pieceSize abi.UnpaddedPieceSize, pieceCID cid.Cid) {
+	n := strings.Index(unsealedFile, "unsealed")
+	if n == -1 {
+		log.Warn("unsealed not exsit")
+	} else {
+		apTemplatePath := string([]byte(unsealedFile)[:n])
+
+		myPieceInfo := &abi.PieceInfo{
+			Size:     pieceSize.Padded(),
+			PieceCID: pieceCID,
+		}
+
+		fd, err := os.Create(apTemplatePath + "piece-info.json")
+		if err != nil {
+			log.Warn("create piece-info.json failed: ", err)
+		}
+		defer fd.Close()
+
+		data, err := json.MarshalIndent(myPieceInfo, "", "      ") //data类型是[]byte
+		if err != nil {
+			log.Warn("marshalIndent myPieceInfo failed: ", err)
+		}
+
+		_, err = fd.Write(data)
+		if err != nil {
+			log.Warn("write piece-info.json failed : ", err)
+		}
+
+		if err = os.Link(unsealedFile, apTemplatePath+"s-template"); err != nil {
+			log.Warn("create s-template hard link failed: ", err)
+		}
+	}
+}
+
+// end

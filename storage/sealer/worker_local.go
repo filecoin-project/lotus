@@ -790,6 +790,15 @@ func (l *LocalWorker) memInfo() (memPhysical, memUsed, memSwap, memSwapUsed uint
 }
 
 func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
+	hostname := l.name
+
+	// add by pan
+	workername := os.Getenv("WORKER_NAME")
+	if workername != "" {
+		hostname = workername
+	}
+	// end
+
 	gpus, err := ffi.GetGPUDevices()
 	if err != nil {
 		log.Errorf("getting gpu devices failed: %+v", err)
@@ -808,7 +817,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	}
 
 	return storiface.WorkerInfo{
-		Hostname:        l.name,
+		Hostname:        hostname,
 		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
 			MemPhysical: memPhysical,

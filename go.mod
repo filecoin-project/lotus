@@ -332,6 +332,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 	lukechampine.com/blake3 v1.1.7 // indirect
+	github.com/moran666666/sector-counter v0.0.0-20200819122504-72fe8e09bf44
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi

@@ -1324,6 +1324,35 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 	return out, nil
 }
 
+func (sm *StorageMinerAPI) CheckProve(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) {
+	var rg storiface.RGetter
+	if expensive {
+		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+			si, err := sm.Miner.SectorsStatus(ctx, id.Number, false)
+			if err != nil {
+				return cid.Undef, false, err
+			}
+			if si.CommR == nil {
+				return cid.Undef, false, xerrors.Errorf("commr is nil")
+			}
+
+			return *si.CommR, si.ReplicaUpdateMessage != nil, nil
+		}
+	}
+
+	bad, err := sm.StorageMgr.CheckProve(ctx, pp, sectors, update, rg)
+	if err != nil {
+		return nil, err
+	}
+
+	var out = make(map[abi.SectorNumber]string)
+	for sid, err := range bad {
+		out[sid.Number] = err
+	}
+
+	return out, nil
+}
+
 func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressConfig, error) {
 	return sm.AddrSel.AddressConfig, nil
 }

@@ -24,6 +24,11 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"os"
+	"encoding/json"
+	"bytes"
+	"io/ioutil"
 )
 
 var log = logging.Logger("advmgr")
@@ -539,7 +544,9 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 		return storiface.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, true)
+	// change by pan
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, false)
+	//selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, true)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTPreCommit2, selector, m.schedFetch(sector, storiface.FTCache|storiface.FTSealed, storiface.PathSealing, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
 		err := m.startWork(ctx, w, wk)(w.SealPreCommit2(ctx, sector, phase1Out))
@@ -705,7 +712,17 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	}
 
 	// get a selector for moving stuff into long-term storage
-	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+	// fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+
+	// change by pan
+	moveByWorker := m.MoveByWorker(ctx, sector)
+	var fetchSel WorkerSelector
+	if moveByWorker {
+		fetchSel = newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, false)
+	} else {
+		fetchSel = newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+	}
+    // end
 
 	// only move the unsealed file if it still exists and needs moving
 	moveUnsealed := unsealed
@@ -725,6 +742,11 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	if err != nil {
 		return xerrors.Errorf("moving sector to storage: %w", err)
 	}
+
+	// add by pan
+	m.declareSector(ctx, sector, storiface.FTSealed)
+	m.declareSector(ctx, sector, storiface.FTCache)
+	// end
 
 	return nil
 }
@@ -811,6 +833,11 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	if err != nil {
 		return xerrors.Errorf("moving sector to storage: %w", err)
 	}
+
+	// add by pan
+	m.declareSector(ctx, sector, storiface.FTUpdate)
+	m.declareSector(ctx, sector, storiface.FTUpdateCache)
+	// end
 
 	return nil
 }
@@ -1313,6 +1340,103 @@ func (m *Manager) Close(ctx context.Context) error {
 	m.winningPoStSched.schedClose()
 	return m.sched.Close(ctx)
 }
+
+// add by pan
+func (m *Manager) MoveByWorker(ctx context.Context, sector storiface.SectorRef) bool {
+	seal, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTSealed, 0, false)
+	if err != nil {
+		return false
+	}
+	if len(seal) != 1 {
+		return false
+	}
+	sl, err := m.index.StorageList(ctx)
+	if err != nil {
+		return false
+	}
+	for id, _ := range sl {
+		store, err := m.index.StorageInfo(ctx, id)
+		if err != nil {
+			continue
+		}
+		if !store.CanStore {
+			continue
+		}
+		for _, value := range store.URLs {
+			for _, url := range seal[0].BaseURLs {
+				if value == url {
+					log.Info("SectorId(" + sector.ID.Number.String() + ") move storage by worker")
+					return true
+				}
+			}
+		}
+	}
+	log.Info("SectorId(" + sector.ID.Number.String() + ") move storage by miner")
+	return false
+}
+
+func (m *Manager) declareSector(ctx context.Context, sector storiface.SectorRef, sectorFileType storiface.SectorFileType) {
+
+	url := os.Getenv("DECLARE_API_URL")
+	token := os.Getenv("DECLARE_API_TOKEN")
+	storageID := os.Getenv("DECLARE_STORAGE_ID")
+	if url != "" && token != "" && storageID != "" {
+		m.StorageDeclareSector(ctx, sector, sectorFileType, url, token, storageID)
+	}
+
+	url = os.Getenv("WINNER_DECLARE_API_URL")
+	token = os.Getenv("WINNER_DECLARE_API_TOKEN")
+	storageID = os.Getenv("WINNER_DECLARE_STORAGE_ID")
+
+	if url != "" && token != "" && storageID != "" {
+		m.StorageDeclareSector(ctx, sector, sectorFileType, url, token, storageID)
+	}
+
+}
+
+func (m *Manager) StorageDeclareSector(ctx context.Context, sector storiface.SectorRef, sectorFileType storiface.SectorFileType, url string, token string, storageID string) {
+
+	parameters := make(map[string]interface{})
+	parameters["jsonrpc"] = "2.0"
+	parameters["method"] = "Filecoin.StorageDeclareSector"
+	parameters["params"] = []interface{}{
+				storageID,
+				map[string]interface{}{
+					"Miner":  sector.ID.Miner,
+					"Number": sector.ID.Number,
+				},
+				sectorFileType,
+				true,
+			}
+	parameters["id"] = 1
+	data, err := json.Marshal(parameters)
+	if err != nil {
+		return
+	}
+	bearer := "Bearer " + token
+
+	body := bytes.NewReader(data)
+
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return
+	}
+	req.Header.Add("Authorization", bearer)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	buffer, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	log.Info("SectorId(" + sector.ID.Number.String() + ") declare " + string(buffer))
+}
+// end
 
 var _ Unsealer = &Manager{}
 var _ SectorManager = &Manager{}
