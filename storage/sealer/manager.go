@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -434,6 +435,65 @@ func (m *Manager) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 func (m *Manager) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	// add by lin
+	isRealData := true
+	sectortype := os.Getenv("LOTUS_SECTOR_TYPE_SXX")
+	if sectortype == "1" {
+		isRealData = false
+	}
+	if isRealData {
+		// add by pan
+		tmp := map[uuid.UUID]int{}
+		jobs := m.WorkerJobs()
+		for wid, jobs := range jobs {
+			for _, job := range jobs {
+				t := job.Task.Short()
+				if t != "PC1" && t != "AP" {
+					continue
+				}
+				count, ok := tmp[wid]
+				if ok {
+					count = count + 1
+				} else {
+					count = 1
+				}
+				tmp[wid] = count
+			}
+		}
+		workers := m.WorkerStats(ctx)
+		for wid, worker := range workers {
+			if strings.HasSuffix(worker.Info.Hostname, "pc1") {
+				count, ok := tmp[wid]
+				if !ok {
+					count = 0
+					tmp[wid] = count
+				}
+			}
+		}
+		var workeid uuid.UUID
+		i := -1
+		for wid, count := range tmp {
+			if i == -1 || count < i {
+				workeid = wid
+				i = count
+			}
+		}
+
+		worker, ok := workers[workeid]
+		if ok {
+			minerpath := os.Getenv("LOTUS_MINER_PATH")
+			path := minerpath + "/sectors"
+			_, err := os.Stat(path)
+			if os.IsNotExist(err) {
+				err = os.Mkdir(path, 0755)
+			}
+			path = path + "/" + storiface.SectorName(sector.ID)
+			err = os.WriteFile(path, []byte(worker.Info.Hostname), 0666)
+		}
+		// end
+	}
+	// end
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTUnsealed); err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("acquiring sector lock: %w", err)

@@ -1039,6 +1039,9 @@ type StartDealParams struct {
 	DealStartEpoch     abi.ChainEpoch
 	FastRetrieval      bool
 	VerifiedDeal       bool
+	// add by pan
+	Peerid *peer.ID
+	//
 }
 
 func (s *StartDealParams) UnmarshalJSON(raw []byte) (err error) {

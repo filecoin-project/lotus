@@ -269,11 +269,21 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}
+
+	// change by pan
+	peerid := *mi.PeerId
+	if params.Peerid != nil {
+		peerid = *params.Peerid
+		log.Infof("miner peerid %s/*", peerid)
+	}
+
 	dStream, err := network.NewFromLibp2pHost(a.Host,
 		// params duplicated from .../node/modules/client.go
 		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
 		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
-	).NewDealStream(ctx, *mi.PeerId)
+	).NewDealStream(ctx, peerid)
+	// end
+
 	if err != nil {
 		return nil, xerrors.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
 	}
