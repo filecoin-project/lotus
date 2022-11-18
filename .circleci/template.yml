@@ -97,6 +97,7 @@ commands:
           sudo bash install.sh
           popd
           rm -rf kubo
+          rm kubo_v0.16.0_linux-amd64.tar.gz
   git_fetch_all_tags:
     steps:
       - run:
