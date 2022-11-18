@@ -1461,7 +1461,7 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 		To:               tx.To,
 		Type:             api.EthUint64(2),
 		Logs:             []api.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
-		LogsBloom:        []byte{0},
+		LogsBloom:        api.EmptyEthBloom[:],
 	}
 
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
@@ -1485,7 +1485,6 @@ func newEthTxReceipt(ctx context.Context, tx api.EthTx, lookup *api.MsgLookup, r
 		// TODO return a dummy non-zero bloom to signal that there are logs
 		//  need to figure out how worth it is to populate with a real bloom
 		//  should be feasible here since we are iterating over the logs anyway
-		receipt.LogsBloom = make([]byte, 256)
 		receipt.LogsBloom[255] = 0x01
 
 		receipt.Logs = make([]api.EthLog, 0, len(events))
