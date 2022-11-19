@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/urfave/cli/v2"
-	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
+	ledgerfil "github.com/zondax/ledger-filecoin-go"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"

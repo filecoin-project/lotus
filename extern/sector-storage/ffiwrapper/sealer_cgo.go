@@ -14,6 +14,8 @@ import (
 	"math/bits"
 	"os"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/proof"
 
@@ -745,6 +747,34 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storage.SectorRef, 
 			}
 		}
 	}
+
+	//
+	// 写调度优化
+	// 说明:
+	//    从原来的完成全部过程后传输回miner存储改进为在P2将sector传输到miner与worker共同后端
+	//    减掉最后传输回miner的步骤
+	//
+
+	dst := strings.Replace(paths.Sealed, "sealed", "sealed_bs", 1)
+	start := time.Now()
+	multiwrite := false
+	if multiwrite {
+		// 将sector从sealed转存到sealed_bs中
+		log.Infof("sector %d: starting mulitwrite.", sector.ID.Number)
+		// 调节参数化设置
+		err := MultiWrite(paths.Sealed, dst, 1024, 32)
+		if err != nil {
+			log.Errorf("multiWrite err: %+v", err)
+		}
+	} else {
+		log.Infof("sector %d: starting simplewrite.", sector.ID.Number)
+		write, err := SimpleWrite(paths.Sealed, dst)
+		if err != nil {
+			log.Errorf("simplewrite err: %v, %v", err, write)
+		}
+	}
+	t1 := time.Now()
+	log.Infof("sector %d: Write backend completed, Spend time: [%v]", sector.ID.Number, t1.Sub(start))
 
 	return storage.SectorCids{
 		Unsealed: unsealedCID,

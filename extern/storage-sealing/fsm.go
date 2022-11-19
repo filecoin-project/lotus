@@ -764,6 +764,7 @@ func planOne(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err e
 				}
 
 				event.User.(mutator).apply(state)
+				// 改变状态
 				more, err := next(state)
 				if err != nil || !more {
 					return uint64(i + 1), err

@@ -288,6 +288,7 @@ require (
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-runewidth v0.0.10 // indirect
+	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/miekg/dns v1.1.48 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
@@ -327,7 +328,8 @@ require (
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
 	github.com/zondax/hid v0.9.0 // indirect
-	github.com/zondax/ledger-go v0.12.1 // indirect
+	github.com/zondax/ledger-filecoin-go v0.10.0 // indirect
+	github.com/zondax/ledger-go v0.12.2 // indirect
 	go.opentelemetry.io/otel/metric v0.25.0 // indirect
 	go.opentelemetry.io/otel/sdk/export/metric v0.25.0 // indirect
 	go.opentelemetry.io/otel/trace v1.3.0 // indirect

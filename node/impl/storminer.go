@@ -289,6 +289,7 @@ func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorSt
 		return nil, err
 	}
 
+	// 扇区状态分类
 	out := make(map[api.SectorState]int)
 	for i := range sectors {
 		state := api.SectorState(sectors[i].State)
