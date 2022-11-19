@@ -46,7 +46,7 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 			engine.WithHost(marketHost),
 			engine.WithRetrievalAddrs(marketHost.Addrs()...),
 			engine.WithEntriesCacheCapacity(cfg.EntriesCacheCapacity),
-			engine.WithEntriesChunkSize(cfg.EntriesChunkSize),
+			engine.WithChainedEntries(cfg.EntriesChunkSize),
 			engine.WithTopicName(topicName),
 			engine.WithPurgeCacheOnStart(cfg.PurgeCacheOnStart),
 		}
