@@ -405,7 +405,7 @@ func (sb *Sealer) pieceCid(spt abi.RegisteredSealProof, in []byte) (cid.Cid, err
 }
 
 func (sb *Sealer) tryDecodeUpdatedReplica(ctx context.Context, sector storiface.SectorRef, commD cid.Cid, unsealedPath string, randomness abi.SealRandomness) (bool, error) {
-	replicaPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathStorage)
+	replicaPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathSealing)
 	if xerrors.Is(err, storiface.ErrSectorNotFound) {
 		return false, nil
 	} else if err != nil {
@@ -464,12 +464,12 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 	maxPieceSize := abi.PaddedPieceSize(ssize)
 
 	// try finding existing
-	unsealedPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed, storiface.FTNone, storiface.PathStorage)
+	unsealedPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed, storiface.FTNone, storiface.PathSealing)
 	var pf *partialfile.PartialFile
 
 	switch {
 	case xerrors.Is(err, storiface.ErrSectorNotFound):
-		unsealedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTUnsealed, storiface.PathStorage)
+		unsealedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTUnsealed, storiface.PathSealing)
 		if err != nil {
 			return xerrors.Errorf("acquire unsealed sector path (allocate): %w", err)
 		}
@@ -516,7 +516,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 	}
 
 	// Piece data sealed in sector
-	srcPaths, srcDone, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathStorage)
+	srcPaths, srcDone, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquire sealed sector paths: %w", err)
 	}
