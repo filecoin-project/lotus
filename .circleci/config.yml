@@ -1026,6 +1026,11 @@ workflows:
           target: "./itests/sector_terminate_test.go"
       
       - test:
+          name: test-itest-sector_unseal
+          suite: itest-sector_unseal
+          target: "./itests/sector_unseal_test.go"
+      
+      - test:
           name: test-itest-self_sent_txn
           suite: itest-self_sent_txn
           target: "./itests/self_sent_txn_test.go"
