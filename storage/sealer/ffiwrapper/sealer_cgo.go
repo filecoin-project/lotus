@@ -32,7 +32,6 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/nullreader"
 	spaths "github.com/filecoin-project/lotus/storage/paths"
-	nr "github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -442,11 +441,6 @@ func (sb *Sealer) AcquireSectorKeyOrRegenerate(ctx context.Context, sector stori
 	}
 	paddedSize := abi.PaddedPieceSize(sectorSize)
 
-	_, err = sb.AddPiece(ctx, sector, nil, paddedSize.Unpadded(), nr.NewNullReader(paddedSize.Unpadded()))
-	if err != nil {
-		return paths, done, xerrors.Errorf("recomputing empty data: %w", err)
-	}
-
 	err = sb.RegenerateSectorKey(ctx, sector, randomness, []abi.PieceInfo{{PieceCID: zerocomm.ZeroPieceCommitment(paddedSize.Unpadded()), Size: paddedSize}})
 	if err != nil {
 		return paths, done, xerrors.Errorf("during pc1: %w", err)
@@ -689,7 +683,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storif
 }
 
 func (sb *Sealer) RegenerateSectorKey(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) error {
-	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed|storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -720,7 +714,7 @@ func (sb *Sealer) RegenerateSectorKey(ctx context.Context, sector storiface.Sect
 	_, err = ffi.SealPreCommitPhase1(
 		sector.ProofType,
 		paths.Cache,
-		paths.Unsealed,
+		"/dev/zero",
 		paths.Sealed,
 		sector.ID.Number,
 		sector.ID.Miner,
