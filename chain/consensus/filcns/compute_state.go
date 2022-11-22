@@ -100,6 +100,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			NetworkVersion: sm.GetNetworkVersion(ctx, e),
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
+			TipSetGetter:   stmgr.TipSetGetterForTipset(sm.ChainStore(), ts),
 			Tracing:        vmTracing,
 		}
 
