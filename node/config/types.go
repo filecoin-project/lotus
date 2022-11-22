@@ -230,6 +230,23 @@ type ProvingConfig struct {
 	// 'lotus-miner proving compute window-post 0'
 	ParallelCheckLimit int
 
+	// Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
+	//
+	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+	// test challenge took longer than this timeout
+	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this sector are
+	// blocked (e.g. in case of disconnected NFS mount)
+	SingleCheckTimeout Duration
+
+	// Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
+	// the partition which didn't get checked on time will be skipped
+	//
+	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+	// test challenge took longer than this timeout
+	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this partition are
+	// blocked or slow
+	PartitionCheckTimeout Duration
+
 	// Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
 	//
 	// WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
