@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/lotus/api"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 var log = logging.Logger("retry")

@@ -302,10 +302,28 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 	return nil
 }
 
-// MsgsFromBlockTemplate extracts the different types of messages from a block
-// template and populates the header for the next block to be proposed.
-func MsgsFromBlockTemplate(ctx context.Context, sm *stmgr.StateManager, next *types.BlockHeader,
-	pts *types.TipSet, bt *api.BlockTemplate) ([]*types.Message, []*types.SignedMessage, error) {
+// CreateBlockHeader generates the block header from the block template of
+// the block being proposed.
+func CreateBlockHeader(ctx context.Context, sm *stmgr.StateManager, pts *types.TipSet,
+	bt *api.BlockTemplate) (*types.BlockHeader, []*types.Message, []*types.SignedMessage, error) {
+
+	st, recpts, err := sm.TipSetState(ctx, pts)
+	if err != nil {
+		return nil, nil, nil, xerrors.Errorf("failed to load tipset state: %w", err)
+	}
+	next := &types.BlockHeader{
+		Miner:         bt.Miner,
+		Parents:       bt.Parents.Cids(),
+		Ticket:        bt.Ticket,
+		ElectionProof: bt.Eproof,
+
+		BeaconEntries:         bt.BeaconValues,
+		Height:                bt.Epoch,
+		Timestamp:             bt.Timestamp,
+		WinPoStProof:          bt.WinningPoStProof,
+		ParentStateRoot:       st,
+		ParentMessageReceipts: recpts,
+	}
 
 	var blsMessages []*types.Message
 	var secpkMessages []*types.SignedMessage
@@ -319,32 +337,32 @@ func MsgsFromBlockTemplate(ctx context.Context, sm *stmgr.StateManager, next *ty
 
 			c, err := sm.ChainStore().PutMessage(ctx, &msg.Message)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
 		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 {
 			c, err := sm.ChainStore().PutMessage(ctx, msg)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			secpkMsgCids = append(secpkMsgCids, c)
 			secpkMessages = append(secpkMessages, msg)
 
 		} else {
-			return nil, nil, xerrors.Errorf("unknown sig type: %d", msg.Signature.Type)
+			return nil, nil, nil, xerrors.Errorf("unknown sig type: %d", msg.Signature.Type)
 		}
 	}
 
 	store := sm.ChainStore().ActorStore(ctx)
 	blsmsgroot, err := ToMessagesArray(store, blsMsgCids)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("building bls amt: %w", err)
+		return nil, nil, nil, xerrors.Errorf("building bls amt: %w", err)
 	}
 	secpkmsgroot, err := ToMessagesArray(store, secpkMsgCids)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("building secpk amt: %w", err)
+		return nil, nil, nil, xerrors.Errorf("building secpk amt: %w", err)
 	}
 
 	mmcid, err := store.Put(store.Context(), &types.MsgMeta{
@@ -352,29 +370,29 @@ func MsgsFromBlockTemplate(ctx context.Context, sm *stmgr.StateManager, next *ty
 		SecpkMessages: secpkmsgroot,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	next.Messages = mmcid
 
 	aggSig, err := AggregateSignatures(blsSigs)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	next.BLSAggregate = aggSig
 	pweight, err := sm.ChainStore().Weight(ctx, pts)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	next.ParentWeight = pweight
 
 	baseFee, err := sm.ChainStore().ComputeBaseFee(ctx, pts)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("computing base fee: %w", err)
+		return nil, nil, nil, xerrors.Errorf("computing base fee: %w", err)
 	}
 	next.ParentBaseFee = baseFee
 
-	return blsMessages, secpkMessages, err
+	return next, blsMessages, secpkMessages, err
 
 }
 
