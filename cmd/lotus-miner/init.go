@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-statestore"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	storageminer "github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -218,7 +219,7 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []paths.LocalPath
+			var localPaths []storiface.LocalPath
 
 			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
 				log.Infof("Setting up storage config with presealed sectors: %v", pssb)
@@ -228,14 +229,14 @@ var initCmd = &cli.Command{
 					if err != nil {
 						return err
 					}
-					localPaths = append(localPaths, paths.LocalPath{
+					localPaths = append(localPaths, storiface.LocalPath{
 						Path: psp,
 					})
 				}
 			}
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&paths.LocalStorageMeta{
+				b, err := json.MarshalIndent(&storiface.LocalStorageMeta{
 					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -249,12 +250,12 @@ var initCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, paths.LocalPath{
+				localPaths = append(localPaths, storiface.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *paths.StorageConfig) {
+			if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -395,7 +396,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market8.DealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api v1api.FullNode, deal markettypes.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -471,7 +472,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			}
 			stor := paths.NewRemote(lstor, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 
-			smgr, err := sealer.New(ctx, lstor, stor, lr, si, sealer.Config{
+			smgr, err := sealer.New(ctx, lstor, stor, lr, si, config.SealerConfig{
 				ParallelFetchLimit:       10,
 				AllowAddPiece:            true,
 				AllowPreCommit1:          true,
@@ -481,7 +482,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 				AllowReplicaUpdate:       true,
 				AllowProveReplicaUpdate2: true,
 				AllowRegenSectorKey:      true,
-			}, wsts, smsts)
+			}, config.ProvingConfig{}, wsts, smsts)
 			if err != nil {
 				return err
 			}

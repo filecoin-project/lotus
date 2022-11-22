@@ -1,12 +1,14 @@
 package verifreg
 
 import (
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -108,11 +110,33 @@ func MakeState(store adt.Store, av actorstypes.Version, rootKeyAddress address.A
 type State interface {
 	cbor.Marshaler
 
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	RootKey() (address.Address, error)
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
 	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
+	GetAllocation(clientIdAddr address.Address, allocationId verifregtypes.AllocationId) (*verifregtypes.Allocation, bool, error)
+	GetAllocations(clientIdAddr address.Address) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error)
+	GetClaim(providerIdAddr address.Address, claimId verifregtypes.ClaimId) (*verifregtypes.Claim, bool, error)
+	GetClaims(providerIdAddr address.Address) (map[verifregtypes.ClaimId]verifregtypes.Claim, error)
 	GetState() interface{}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+	}
 }

@@ -1,6 +1,7 @@
 package reward
 
 import (
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -109,6 +110,10 @@ func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.St
 type State interface {
 	cbor.Marshaler
 
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	ThisEpochBaselinePower() (abi.StoragePower, error)
 	ThisEpochReward() (abi.StoragePower, error)
 	ThisEpochRewardSmoothed() (builtin.FilterEstimate, error)
@@ -127,3 +132,17 @@ type State interface {
 }
 
 type AwardBlockRewardParams = reward0.AwardBlockRewardParams
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+	}
+}

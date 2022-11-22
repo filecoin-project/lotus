@@ -8,9 +8,11 @@ unexport GOFLAGS
 GOCC?=go
 
 GOVERSION:=$(shell $(GOCC) version | tr ' ' '\n' | grep go1 | sed 's/^go//' | awk -F. '{printf "%d%03d%03d", $$1, $$2, $$3}')
-ifeq ($(shell expr $(GOVERSION) \< 1018001), 1)
+GOVERSIONMIN:=$(shell cat GO_VERSION_MIN | awk -F. '{printf "%d%03d%03d", $$1, $$2, $$3}')
+
+ifeq ($(shell expr $(GOVERSION) \< $(GOVERSIONMIN)), 1)
 $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell expr $(GOVERSION) % 1000000 / 1000).$(shell expr $(GOVERSION) % 1000))
-$(error Update Golang to version to at least 1.18.1)
+$(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
 # git modules that need to be loaded
@@ -64,7 +66,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway lotus-fountain lotus-stats
+build-devnets: build lotus-seed lotus-shed
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -171,18 +173,6 @@ benchmarks:
 	@echo Submitting results
 	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
-
-lotus-pond: 2k
-	$(GOCC) build -o lotus-pond ./lotuspond
-.PHONY: lotus-pond
-BINS+=lotus-pond
-
-lotus-pond-front:
-	(cd lotuspond/front && npm i && CI=false npm run build)
-.PHONY: lotus-pond-front
-
-lotus-pond-app: lotus-pond-front lotus-pond
-.PHONY: lotus-pond-app
 
 lotus-fountain:
 	rm -f lotus-fountain
@@ -311,9 +301,6 @@ type-gen: api-gen
 	$(GOCC) generate -x ./...
 	goimports -w api/
 
-method-gen: api-gen
-	(cd ./lotuspond/front/src/chain && $(GOCC) run ./methodgen.go)
-
 actors-code-gen:
 	$(GOCC) run ./gen/inline-gen . gen/inlinegen-data.json
 	$(GOCC) run ./chain/actors/agen
@@ -379,7 +366,7 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 fiximports:
 	./scripts/fiximports
 
-gen: actors-code-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
+gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

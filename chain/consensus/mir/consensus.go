@@ -62,31 +62,7 @@ func (bft *Mir) CreateBlock(ctx context.Context, w lapi.Wallet, bt *lapi.BlockTe
 		return nil, fmt.Errorf("failed to load parent tipset: %w", err)
 	}
 
-	st, recpts, err := bft.sm.TipSetState(ctx, pts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load tipset state: %w", err)
-	}
-
-	next := &types.BlockHeader{
-		Miner:         builtin.SystemActorAddr, // Mir blocks are not signed, we use system addr as miner.
-		Parents:       bt.Parents.Cids(),
-		Ticket:        bt.Ticket,
-		ElectionProof: bt.Eproof,
-
-		BeaconEntries: bt.BeaconValues,
-		Height:        bt.Epoch,
-		// Each validator in Mir be assembling the block with a different
-		// timestamp. To avoid validators from pushing blocks with different
-		// timestamps that lead to different CIDs, we use the epoch as
-		// a timestamp for now.
-		// TODO: Consider exporting a batch timestamp from Mir and use it
-		// for the block timestamp.
-		Timestamp:             uint64(bt.Epoch),
-		WinPoStProof:          bt.WinningPoStProof,
-		ParentStateRoot:       st,
-		ParentMessageReceipts: recpts,
-	}
-	blsMessages, secpkMessages, err := consensus.MsgsFromBlockTemplate(ctx, bft.sm, next, pts, bt)
+	next, blsMessages, secpkMessages, err := consensus.CreateBlockHeader(ctx, bft.sm, pts, bt)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to process messages from block template: %w", err)
 	}

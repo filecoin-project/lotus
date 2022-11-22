@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -13,9 +12,9 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtinst "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	rtt "github.com/filecoin-project/go-state-types/rt"
 	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -25,7 +24,7 @@ import (
 )
 
 type MethodMeta struct {
-	Num string
+	Name string
 
 	Params reflect.Type
 	Ret    reflect.Type
@@ -38,27 +37,27 @@ type ActorRegistry struct {
 }
 
 // An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
-type ActorPredicate func(vmr.Runtime, rtt.VMActor) error
+type ActorPredicate func(vmr.Runtime, cid.Cid) error
 
 func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
-	return func(rt vmr.Runtime, v rtt.VMActor) error {
+	return func(rt vmr.Runtime, codeCid cid.Cid) error {
 		aver, err := actorstypes.VersionForNetwork(rt.NetworkVersion())
 		if err != nil {
 			return xerrors.Errorf("unsupported network version: %w", err)
 		}
 		if aver != ver {
-			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d and nver %d", v.Code(), ver, aver, rt.CurrEpoch(), rt.NetworkVersion())
+			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d and nver %d", codeCid, ver, aver, rt.CurrEpoch(), rt.NetworkVersion())
 		}
 		return nil
 	}
 }
 
 type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
-type nativeCode []invokeFunc
+type nativeCode map[uint64]invokeFunc
 
 type actorInfo struct {
 	methods nativeCode
-	vmActor rtt.VMActor
+	vmActor builtin.RegistryEntry
 	// TODO: consider making this a network version range?
 	predicate ActorPredicate
 }
@@ -76,25 +75,30 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Receiver())
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
-	if err := act.predicate(rt, act.vmActor); err != nil {
+	if err := act.predicate(rt, codeCid); err != nil {
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "unsupported actor: %s", err)
 	}
-	if method >= abi.MethodNum(len(act.methods)) || act.methods[method] == nil {
+	if act.methods[uint64(method)] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	return act.methods[method](rt, params)
+	return act.methods[uint64(method)](rt, params)
 
 }
 
-func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, vmactors ...rtt.VMActor) {
+func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, vmactors []builtin.RegistryEntry) {
 	if pred == nil {
-		pred = func(vmr.Runtime, rtt.VMActor) error { return nil }
+		pred = func(vmr.Runtime, cid.Cid) error { return nil }
 	}
 	for _, a := range vmactors {
-		// register in the `actors` map (for the invoker)
-		code, err := ar.transform(a)
-		if err != nil {
-			panic(xerrors.Errorf("%s: %w", string(a.Code().Hash()), err))
+
+		var code nativeCode
+		var err error
+		if av <= actorstypes.Version7 {
+			// register in the `actors` map (for the invoker)
+			code, err = ar.transform(a)
+			if err != nil {
+				panic(xerrors.Errorf("%s: %w", string(a.Code().Hash()), err))
+			}
 		}
 
 		ai := &actorInfo{
@@ -124,7 +128,7 @@ func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, v
 
 		// Explicitly add send, it's special.
 		methods[builtin.MethodSend] = MethodMeta{
-			Num:    "0",
+			Name:   "Send",
 			Params: reflect.TypeOf(new(abi.EmptyValue)),
 			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
 		}
@@ -132,18 +136,27 @@ func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, v
 		// Iterate over exported methods. Some of these _may_ be nil and
 		// must be skipped.
 		for number, export := range exports {
-			if export == nil {
+			if export.Method == nil {
 				continue
 			}
 
-			ev := reflect.ValueOf(export)
+			ev := reflect.ValueOf(export.Method)
 			et := ev.Type()
 
-			methods[abi.MethodNum(number)] = MethodMeta{
-				Num:    strconv.Itoa(number),
-				Params: et.In(1),
-				Ret:    et.Out(0),
+			mm := MethodMeta{
+				Name: export.Name,
+				Ret:  et.Out(0),
 			}
+
+			if av <= actorstypes.Version7 {
+				// methods exported from specs-actors have the runtime as the first param, so we want et.In(1)
+				mm.Params = et.In(1)
+			} else {
+				// methods exported from go-state-types do not, so we want et.In(0)
+				mm.Params = et.In(0)
+			}
+
+			methods[abi.MethodNum(number)] = mm
 		}
 		if realCode.Defined() {
 			ar.Methods[realCode] = methods
@@ -159,13 +172,10 @@ func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, 
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
 	}
 
-	if err := act.predicate(rt, act.vmActor); err != nil {
+	if err := act.predicate(rt, codeCid); err != nil {
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Cannot create actor: %w", err)
 	}
 
-	if rtt.IsSingletonActor(act.vmActor) {
-		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only have one instance of singleton actors.")
-	}
 	return &types.Actor{
 		Code:    codeCid,
 		Head:    EmptyObjectCid,
@@ -175,15 +185,16 @@ func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, 
 }
 
 type invokee interface {
-	Exports() []interface{}
+	Exports() map[uint64]builtinst.MethodMeta
 }
 
 func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
 	runtimeType := reflect.TypeOf((*vmr.Runtime)(nil)).Elem()
-	for i, m := range exports {
+	for i, e := range exports {
 		i := i
+		m := e.Method
 		newErr := func(format string, args ...interface{}) error {
 			str := fmt.Sprintf(format, args...)
 			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
@@ -219,7 +230,8 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 		}
 	}
 	code := make(nativeCode, len(exports))
-	for id, m := range exports {
+	for id, e := range exports {
+		m := e.Method
 		if m == nil {
 			continue
 		}

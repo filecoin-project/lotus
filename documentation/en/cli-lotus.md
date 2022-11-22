@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.17.3-dev
+   1.19.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1208,6 +1208,8 @@ COMMANDS:
    check-client-datacap           check verified client remaining bytes
    check-notary-datacap           check a notary's remaining bytes
    sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
+   list-allocations               List allocations made by client
+   remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
    help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1221,7 +1223,7 @@ NAME:
    lotus filplus grant-datacap - give allowance to the specified verified client address
 
 USAGE:
-   lotus filplus grant-datacap [command options] [arguments...]
+   lotus filplus grant-datacap [command options] [clientAddress datacap]
 
 OPTIONS:
    --from value  specify your notary address to send the message from
@@ -1260,7 +1262,7 @@ NAME:
    lotus filplus check-client-datacap - check verified client remaining bytes
 
 USAGE:
-   lotus filplus check-client-datacap [command options] [arguments...]
+   lotus filplus check-client-datacap [command options] clientAddress
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1273,7 +1275,7 @@ NAME:
    lotus filplus check-notary-datacap - check a notary's remaining bytes
 
 USAGE:
-   lotus filplus check-notary-datacap [command options] [arguments...]
+   lotus filplus check-notary-datacap [command options] notaryAddress
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1286,10 +1288,36 @@ NAME:
    lotus filplus sign-remove-data-cap-proposal - allows a notary to sign a Remove Data Cap Proposal
 
 USAGE:
-   lotus filplus sign-remove-data-cap-proposal [command options] [arguments...]
+   lotus filplus sign-remove-data-cap-proposal [command options] [verifierAddress clientAddress allowanceToRemove]
 
 OPTIONS:
    --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
+   
+```
+
+### lotus filplus list-allocations
+```
+NAME:
+   lotus filplus list-allocations - List allocations made by client
+
+USAGE:
+   lotus filplus list-allocations [command options] clientAddress
+
+OPTIONS:
+   --expired  list only expired allocations (default: false)
+   
+```
+
+### lotus filplus remove-expired-allocations
+```
+NAME:
+   lotus filplus remove-expired-allocations - remove expired allocations (if no allocations are specified all eligible allocations are removed)
+
+USAGE:
+   lotus filplus remove-expired-allocations [command options] clientAddress Optional[...allocationId]
+
+OPTIONS:
+   --from value  optionally specify the account to send the message from
    
 ```
 
@@ -2059,11 +2087,7 @@ COMMANDS:
    decode                            decode various types
    encode                            encode various types
    disputer                          interact with the window post disputer
-   install-actor                     Install a new actor and return the actor code CID
-   create-actor                      Create an new actor via the init actor and return its address
-   invoke                            Invoke a method in an actor
-   create-evm-actor                  Create an new EVM actor via the init actor and return its address
-   invoke-evm-actor                  Invoke a contract entry point in an EVM actor
+   prune                             prune the stored chain state and perform garbage collection
    help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2386,68 +2410,19 @@ OPTIONS:
    
 ```
 
-### lotus chain install-actor
+### lotus chain prune
 ```
 NAME:
-   lotus chain install-actor - Install a new actor and return the actor code CID
+   lotus chain prune - prune the stored chain state and perform garbage collection
 
 USAGE:
-   lotus chain install-actor [command options] code
+   lotus chain prune [command options] [arguments...]
 
 OPTIONS:
-   --from value  optionally specify the account to use for sending the installation message
-   
-```
-
-### lotus chain create-actor
-```
-NAME:
-   lotus chain create-actor - Create an new actor via the init actor and return its address
-
-USAGE:
-   lotus chain create-actor [command options] code-cid [params]
-
-OPTIONS:
-   --from value  optionally specify the account to use for sending the exec message
-   
-```
-
-### lotus chain invoke
-```
-NAME:
-   lotus chain invoke - Invoke a method in an actor
-
-USAGE:
-   lotus chain invoke [command options] address method [params]
-
-OPTIONS:
-   --from value  optionally specify the account to use for sending the exec message
-   
-```
-
-### lotus chain create-evm-actor
-```
-NAME:
-   lotus chain create-evm-actor - Create an new EVM actor via the init actor and return its address
-
-USAGE:
-   lotus chain create-evm-actor [command options] contract [params]
-
-OPTIONS:
-   --from value  optionally specify the account to use for sending the exec message
-   
-```
-
-### lotus chain invoke-evm-actor
-```
-NAME:
-   lotus chain invoke-evm-actor - Invoke a contract entry point in an EVM actor
-
-USAGE:
-   lotus chain invoke-evm-actor [command options] address contract-entry-point [input-data]
-
-OPTIONS:
-   --from value  optionally specify the account to use for sending the exec message
+   --move-to value    specify new path for coldstore during moving gc
+   --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
+   --online-gc        use online gc for garbage collecting the coldstore (default: false)
+   --retention value  specify state retention policy (default: -1)
    
 ```
 

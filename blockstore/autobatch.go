@@ -181,18 +181,22 @@ func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block,
 	}
 
 	bs.stateLock.Lock()
-	defer bs.stateLock.Unlock()
 	v, ok := bs.flushingBatch.blockMap[c]
 	if ok {
+		bs.stateLock.Unlock()
 		return v, nil
 	}
 
 	v, ok = bs.bufferedBatch.blockMap[c]
 	if ok {
+		bs.stateLock.Unlock()
 		return v, nil
 	}
+	bs.stateLock.Unlock()
 
-	return bs.Get(ctx, c)
+	// We have to check the backing store one more time because it may have been flushed by the
+	// time we were able to take the lock above.
+	return bs.backingBs.Get(ctx, c)
 }
 
 func (bs *AutobatchBlockstore) DeleteBlock(context.Context, cid.Cid) error {

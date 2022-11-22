@@ -3,6 +3,7 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,12 +12,14 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	"github.com/filecoin-project/go-state-types/dline"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -382,6 +385,10 @@ func (s *state9) Info() (MinerInfo, error) {
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
+
+		Beneficiary:            info.Beneficiary,
+		BeneficiaryTerm:        info.BeneficiaryTerm,
+		PendingBeneficiaryTerm: info.PendingBeneficiaryTerm,
 	}
 
 	return mi, nil
@@ -542,21 +549,26 @@ func fromV9SectorOnChainInfo(v9 miner9.SectorOnChainInfo) SectorOnChainInfo {
 }
 
 func fromV9SectorPreCommitOnChainInfo(v9 miner9.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	return minertypes.SectorPreCommitOnChainInfo{
-		Info: minertypes.SectorPreCommitInfo{
-			SealProof:     v9.Info.SealProof,
-			SectorNumber:  v9.Info.SectorNumber,
-			SealedCID:     v9.Info.SealedCID,
-			SealRandEpoch: v9.Info.SealRandEpoch,
-			DealIDs:       v9.Info.DealIDs,
-			Expiration:    v9.Info.Expiration,
-			UnsealedCid:   nil,
-		},
-		PreCommitDeposit: v9.PreCommitDeposit,
-		PreCommitEpoch:   v9.PreCommitEpoch,
-	}
+	return v9
 }
 
 func (s *state9) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state9) ActorKey() string {
+	return actors.MinerKey
+}
+
+func (s *state9) ActorVersion() actorstypes.Version {
+	return actorstypes.Version9
+}
+
+func (s *state9) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

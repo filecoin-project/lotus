@@ -2,6 +2,7 @@ package full
 
 import (
 	"context"
+	"os"
 	"sync/atomic"
 
 	"github.com/ipfs/go-cid"
@@ -70,7 +71,7 @@ func (a *SyncAPI) SyncBlock(ctx context.Context, blk *types.BlockMsg) error {
 		return xerrors.Errorf("loading parent block: %w", err)
 	}
 
-	if a.SlashFilter != nil {
+	if a.SlashFilter != nil && os.Getenv("LOTUS_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" {
 		if err := a.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
 			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 			return xerrors.Errorf("<!!> SLASH FILTER ERROR: %w", err)

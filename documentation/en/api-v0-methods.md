@@ -170,6 +170,11 @@
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetAllocation](#StateGetAllocation)
+  * [StateGetAllocationForPendingDeal](#StateGetAllocationForPendingDeal)
+  * [StateGetAllocations](#StateGetAllocations)
+  * [StateGetClaim](#StateGetClaim)
+  * [StateGetClaims](#StateGetClaims)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
@@ -5256,6 +5261,163 @@ Response:
 }
 ```
 
+### StateGetAllocation
+StateGetAllocation returns the allocation for a given address and allocation ID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  0,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Client": 1000,
+  "Provider": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "Expiration": 10101
+}
+```
+
+### StateGetAllocationForPendingDeal
+StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  5432,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Client": 1000,
+  "Provider": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "Expiration": 10101
+}
+```
+
+### StateGetAllocations
+StateGetAllocations returns the all the allocations for a given client.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
+### StateGetClaim
+StateGetClaim returns the claim for a given address and claim ID.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  0,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Provider": 1000,
+  "Client": 1000,
+  "Data": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Size": 1032,
+  "TermMin": 10101,
+  "TermMax": 10101,
+  "TermStart": 10101,
+  "Sector": 9
+}
+```
+
+### StateGetClaims
+StateGetClaims returns the all the claims for a given provider.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `{}`
+
 ### StateGetNetworkParams
 StateGetNetworkParams return current network params
 
@@ -5294,7 +5456,9 @@ Response:
     "UpgradeTurboHeight": 10101,
     "UpgradeHyperdriveHeight": 10101,
     "UpgradeChocolateHeight": 10101,
-    "UpgradeOhSnapHeight": 10101
+    "UpgradeOhSnapHeight": 10101,
+    "UpgradeSkyrHeight": 10101,
+    "UpgradeSharkHeight": 10101
   }
 }
 ```
@@ -5571,7 +5735,8 @@ Response:
     "State": {
       "SectorStartEpoch": 10101,
       "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101
+      "SlashEpoch": 10101,
+      "VerifiedClaim": 0
     }
   }
 }
@@ -5649,7 +5814,8 @@ Response:
   "State": {
     "SectorStartEpoch": 10101,
     "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101
+    "SlashEpoch": 10101,
+    "VerifiedClaim": 0
   }
 }
 ```
@@ -5696,7 +5862,8 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQAPower": true
   }
 ]
 ```
@@ -6168,7 +6335,8 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null
+    "SectorKeyCID": null,
+    "SimpleQAPower": true
   }
 ]
 ```
@@ -6591,7 +6759,8 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": null
+  "SectorKeyCID": null,
+  "SimpleQAPower": true
 }
 ```
 

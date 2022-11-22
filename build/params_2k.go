@@ -56,7 +56,7 @@ var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 
 var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 
-var UpgradeV17Height = abi.ChainEpoch(99999999999999)
+var UpgradeSharkHeight = abi.ChainEpoch(100)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -109,7 +109,7 @@ func init() {
 	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
 	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
 	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
-	UpgradeV17Height = getUpgradeHeight("LOTUS_V17_HEIGHT", UpgradeV17Height)
+	UpgradeSharkHeight = getUpgradeHeight("LOTUS_SHARK_HEIGHT", UpgradeSharkHeight)
 
 	BuildType |= Build2k
 

@@ -38,7 +38,7 @@ func createTestStorage(t *testing.T, p string, seal bool, att ...*paths.Local) s
 		}
 	}
 
-	cfg := &paths.LocalStorageMeta{
+	cfg := &storiface.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   10,
 		CanSeal:  seal,
@@ -77,8 +77,8 @@ func TestMoveShared(t *testing.T) {
 			_ = lr.Close()
 		})
 
-		err = lr.SetStorage(func(config *paths.StorageConfig) {
-			*config = paths.StorageConfig{}
+		err = lr.SetStorage(func(config *storiface.StorageConfig) {
+			*config = storiface.StorageConfig{}
 		})
 		require.NoError(t, err)
 

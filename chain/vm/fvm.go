@@ -39,7 +39,6 @@ import (
 
 var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
-var debugBundleV8path = os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V8")
 
 type FvmExtern struct {
 	Rand
@@ -384,10 +383,15 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 			return xerrors.Errorf("loading debug manifest: %w", err)
 		}
 
+		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
+		if err != nil {
+			return xerrors.Errorf("getting actors version: %w", err)
+		}
+
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
-		for _, key := range actors.GetBuiltinActorsKeys() {
-			from, ok := actors.GetActorCodeID(actorstypes.Version8, key)
+		for _, key := range actors.GetBuiltinActorsKeys(av) {
+			from, ok := actors.GetActorCodeID(av, key)
 			if !ok {
 				log.Warnf("actor missing in the from manifest %s", key)
 				continue
@@ -418,12 +422,10 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
 	}
 
-	switch av {
-	case actorstypes.Version8:
-		if debugBundleV8path != "" {
-			if err := createMapping(debugBundleV8path); err != nil {
-				log.Errorf("failed to create v8 debug mapping")
-			}
+	debugBundlePath := os.Getenv(fmt.Sprintf("LOTUS_FVM_DEBUG_BUNDLE_V%d", av))
+	if debugBundlePath != "" {
+		if err := createMapping(debugBundlePath); err != nil {
+			log.Errorf("failed to create v%d debug mapping", av)
 		}
 	}
 

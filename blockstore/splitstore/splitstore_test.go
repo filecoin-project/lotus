@@ -38,6 +38,7 @@ func init() {
 func testSplitStore(t *testing.T, cfg *Config) {
 	ctx := context.Background()
 	chain := &mockChain{t: t}
+	fmt.Printf("Config: %v\n", cfg)
 
 	// the myriads of stores
 	ds := dssync.MutexWrap(datastore.NewMapDatastore())
@@ -225,7 +226,7 @@ func TestSplitStoreCompaction(t *testing.T) {
 	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
 	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
 	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
-	testSplitStore(t, &Config{MarkSetType: "map"})
+	testSplitStore(t, &Config{MarkSetType: "map", UniversalColdBlocks: true})
 }
 
 func TestSplitStoreCompactionWithBadger(t *testing.T) {
@@ -237,7 +238,7 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 	t.Cleanup(func() {
 		badgerMarkSetBatchSize = bs
 	})
-	testSplitStore(t, &Config{MarkSetType: "badger"})
+	testSplitStore(t, &Config{MarkSetType: "badger", UniversalColdBlocks: true})
 }
 
 func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
@@ -283,7 +284,7 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 	path := t.TempDir()
 
 	// open the splitstore
-	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
+	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map", UniversalColdBlocks: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +423,7 @@ func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.
 
 	path := t.TempDir()
 
-	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
+	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map", UniversalColdBlocks: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -522,7 +523,7 @@ func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blocks
 
 	path := t.TempDir()
 
-	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
+	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map", UniversalColdBlocks: true})
 	if err != nil {
 		t.Fatal(err)
 	}
