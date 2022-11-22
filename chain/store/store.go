@@ -1,7 +1,6 @@
 package store
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -650,12 +649,6 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 		return nil
 	}
 
-	tskBlk, err := ts.Key().ToStorageBlock()
-	if err != nil {
-		log.Errorf("failed to create a block from tsk: %s", ts.Key())
-	}
-	_ = cs.chainLocalBlockstore.Put(ctx, tskBlk)
-
 	return nil
 }
 
@@ -1170,24 +1163,6 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	}
 
 	return cs.LoadTipSet(ctx, lbts.Parents())
-}
-
-func (cs *ChainStore) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) {
-	blk, err := cs.chainBlockstore.Get(ctx, c)
-	if err != nil {
-		return nil, xerrors.Errorf("cannot find tipset with cid %s: %w", c, err)
-	}
-
-	tsk := new(types.TipSetKey)
-	if err := tsk.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
-		return nil, xerrors.Errorf("cannot unmarshal block into tipset key: %w", err)
-	}
-
-	ts, err := cs.GetTipSetFromKey(ctx, *tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("cannot get tipset from key: %w", err)
-	}
-	return ts, nil
 }
 
 func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove
