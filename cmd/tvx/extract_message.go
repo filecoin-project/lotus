@@ -417,10 +417,10 @@ func findMsgAndPrecursors(ctx context.Context, mode string, msgCid cid.Cid, send
 		case mode == PrecursorSelectAll:
 			fallthrough
 		case mode == PrecursorSelectParticipants &&
-			msgSenderID == senderID ||
-			msgRecipientID == recipientID ||
-			msgSenderID == recipientID ||
-			msgRecipientID == senderID:
+			(msgSenderID == senderID ||
+				msgRecipientID == recipientID ||
+				msgSenderID == recipientID ||
+				msgRecipientID == senderID):
 			related = append(related, m.Message)
 		}
 

@@ -1,11 +1,14 @@
 package verifreg
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
@@ -113,4 +116,21 @@ func (s *state10) GetClaims(providerIdAddr address.Address) (map[verifreg9.Claim
 
 	return s.LoadClaimsToMap(s.store, providerIdAddr)
 
+}
+
+func (s *state10) ActorKey() string {
+	return actors.VerifregKey
+}
+
+func (s *state10) ActorVersion() actorstypes.Version {
+	return actorstypes.Version10
+}
+
+func (s *state10) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

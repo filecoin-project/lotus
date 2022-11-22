@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"github.com/ipfs/go-cid"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -60,5 +61,16 @@ var (
 
 
 type State interface {
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	GetState() interface{}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

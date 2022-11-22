@@ -19,18 +19,18 @@ const pathSize = 16 << 20
 
 type TestingLocalStorage struct {
 	root string
-	c    StorageConfig
+	c    storiface.StorageConfig
 }
 
 func (t *TestingLocalStorage) DiskUsage(path string) (int64, error) {
 	return 1, nil
 }
 
-func (t *TestingLocalStorage) GetStorage() (StorageConfig, error) {
+func (t *TestingLocalStorage) GetStorage() (storiface.StorageConfig, error) {
 	return t.c, nil
 }
 
-func (t *TestingLocalStorage) SetStorage(f func(*StorageConfig)) error {
+func (t *TestingLocalStorage) SetStorage(f func(*storiface.StorageConfig)) error {
 	f(&t.c)
 	return nil
 }
@@ -51,7 +51,7 @@ func (t *TestingLocalStorage) init(subpath string) error {
 
 	metaFile := filepath.Join(path, MetaFile)
 
-	meta := &LocalStorageMeta{
+	meta := &storiface.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   1,
 		CanSeal:  true,

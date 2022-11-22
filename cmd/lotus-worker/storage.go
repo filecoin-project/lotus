@@ -13,7 +13,6 @@ import (
 	"golang.org/x/xerrors"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -103,7 +102,7 @@ var storageAttachCmd = &cli.Command{
 				}
 			}
 
-			cfg := &paths.LocalStorageMeta{
+			cfg := &storiface.LocalStorageMeta{
 				ID:         storiface.ID(uuid.New().String()),
 				Weight:     cctx.Uint64("weight"),
 				CanSeal:    cctx.Bool("seal"),

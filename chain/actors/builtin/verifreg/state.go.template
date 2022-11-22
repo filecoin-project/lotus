@@ -1,6 +1,8 @@
 package verifreg
 
 import (
+    "fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -149,4 +151,21 @@ func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[verifreg9.C
 {{else}}
 	return s.LoadClaimsToMap(s.store, providerIdAddr)
 {{end}}
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.VerifregKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

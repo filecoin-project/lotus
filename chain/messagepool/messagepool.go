@@ -82,6 +82,7 @@ var (
 	ErrRBFTooLowPremium       = errors.New("replace by fee has too low GasPremium")
 	ErrTooManyPendingMessages = errors.New("too many pending messages for actor")
 	ErrNonceGap               = errors.New("unfulfilled nonce gap")
+	ErrExistingNonce          = errors.New("message with nonce already exists")
 )
 
 const (
@@ -276,7 +277,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 			}
 		} else {
 			return false, xerrors.Errorf("message from %s with nonce %d already in mpool: %w",
-				m.Message.From, m.Message.Nonce, ErrSoftValidationFailure)
+				m.Message.From, m.Message.Nonce, ErrExistingNonce)
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
@@ -667,7 +668,9 @@ func (mp *MessagePool) verifyMsgBeforeAdd(ctx context.Context, m *types.SignedMe
 	return publish, nil
 }
 
-func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
+// Push checks the signed message for any violations, adds the message to the message pool and
+// publishes the message if the publish flag is set
+func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish bool) (cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.MpoolPushDuration)
 	defer done()
 
@@ -683,14 +686,14 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 	}()
 
 	mp.curTsLk.Lock()
-	publish, err := mp.addTs(ctx, m, mp.curTs, true, false)
+	ok, err := mp.addTs(ctx, m, mp.curTs, true, false)
 	if err != nil {
 		mp.curTsLk.Unlock()
 		return cid.Undef, err
 	}
 	mp.curTsLk.Unlock()
 
-	if publish {
+	if ok && publish {
 		msgb, err := m.Serialize()
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("error serializing message: %w", err)
@@ -1582,4 +1585,9 @@ func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
 	}
 
 	return baseFeeLowerBound
+}
+
+type MpoolNonceAPI interface {
+	GetNonce(context.Context, address.Address, types.TipSetKey) (uint64, error)
+	GetActor(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)
 }

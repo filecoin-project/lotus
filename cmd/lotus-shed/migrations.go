@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -54,11 +55,19 @@ var migrationsCmd = &cli.Command{
 			Value: "~/.lotus",
 		},
 		&cli.BoolFlag{
+			Name: "skip-pre-migration",
+		},
+		&cli.BoolFlag{
 			Name: "check-invariants",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
+
+		err := logging.SetLogLevelRegex("badger*", "ERROR")
+		if err != nil {
+			return err
+		}
 
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
@@ -107,8 +116,6 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		cache := nv15.NewMemMigrationCache()
-
 		blk, err := cs.GetBlock(ctx, blkCid)
 		if err != nil {
 			return err
@@ -119,44 +126,7 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
-		if err != nil {
-			return err
-		}
-
 		startTime := time.Now()
-
-		err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
-		if err != nil {
-			return err
-		}
-
-		preMigration1Time := time.Since(startTime)
-
-		ts2, err := cs.GetTipsetByHeight(ctx, blk.Height-15, migrationTs, false)
-		if err != nil {
-			return err
-		}
-
-		startTime = time.Now()
-
-		err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts2.ParentState(), ts2.Height()-1, ts2)
-		if err != nil {
-			return err
-		}
-
-		preMigration2Time := time.Since(startTime)
-
-		startTime = time.Now()
-
-		newCid1, err := filcns.UpgradeActorsV9(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
-		if err != nil {
-			return err
-		}
-
-		cachedMigrationTime := time.Since(startTime)
-
-		startTime = time.Now()
 
 		newCid2, err := filcns.UpgradeActorsV9(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
@@ -165,17 +135,59 @@ var migrationsCmd = &cli.Command{
 
 		uncachedMigrationTime := time.Since(startTime)
 
-		if newCid1 != newCid2 {
-			return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
-				newCid2)
-		}
-
 		fmt.Println("migration height ", blk.Height-1)
+		fmt.Println("old cid ", blk.ParentStateRoot)
 		fmt.Println("new cid ", newCid2)
-		fmt.Println("completed premigration 1, took ", preMigration1Time)
-		fmt.Println("completed premigration 2, took ", preMigration2Time)
-		fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
+
+		if !cctx.IsSet("skip-pre-migration") {
+			cache := nv15.NewMemMigrationCache()
+
+			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
+			if err != nil {
+				return err
+			}
+
+			startTime = time.Now()
+
+			err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
+			if err != nil {
+				return err
+			}
+
+			preMigration1Time := time.Since(startTime)
+
+			ts2, err := cs.GetTipsetByHeight(ctx, blk.Height-15, migrationTs, false)
+			if err != nil {
+				return err
+			}
+
+			startTime = time.Now()
+
+			err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts2.ParentState(), ts2.Height()-1, ts2)
+			if err != nil {
+				return err
+			}
+
+			preMigration2Time := time.Since(startTime)
+
+			startTime = time.Now()
+
+			newCid1, err := filcns.UpgradeActorsV9(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+			if err != nil {
+				return err
+			}
+
+			cachedMigrationTime := time.Since(startTime)
+
+			if newCid1 != newCid2 {
+				return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
+					newCid2)
+			}
+			fmt.Println("completed premigration 1, took ", preMigration1Time)
+			fmt.Println("completed premigration 2, took ", preMigration2Time)
+			fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
+		}
 
 		if cctx.Bool("check-invariants") {
 			err = checkMigrationInvariants(ctx, blk.ParentStateRoot, newCid2, bs, blk.Height-1)

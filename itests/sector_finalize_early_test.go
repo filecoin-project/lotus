@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func TestDealsWithFinalizeEarly(t *testing.T) {
@@ -36,11 +36,11 @@ func TestDealsWithFinalizeEarly(t *testing.T) {
 
 	ctx := context.Background()
 
-	miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+	miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 		meta.Weight = 1000000000
 		meta.CanSeal = true
 	})
-	miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+	miner.AddStorage(ctx, t, func(meta *storiface.LocalStorageMeta) {
 		meta.Weight = 1000000000
 		meta.CanStore = true
 	})

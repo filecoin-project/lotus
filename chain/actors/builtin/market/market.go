@@ -3,6 +3,7 @@ package market
 import (
 	"unicode/utf8"
 
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -120,6 +121,11 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	BalancesChanged(State) (bool, error)
 	EscrowTable() (BalanceTable, error)
 	LockedTable() (BalanceTable, error)
@@ -271,5 +277,20 @@ func labelFromGoString(s string) (markettypes.DealLabel, error) {
 		return markettypes.NewLabelFromString(s)
 	} else {
 		return markettypes.NewLabelFromBytes([]byte(s))
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
 	}
 }

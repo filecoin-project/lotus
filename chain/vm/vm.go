@@ -192,6 +192,7 @@ type (
 	CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
 	NtwkVersionGetter    func(context.Context, abi.ChainEpoch) network.Version
 	LookbackStateGetter  func(context.Context, abi.ChainEpoch) (*state.StateTree, error)
+	TipSetGetter         func(context.Context, abi.ChainEpoch) (types.TipSetKey, error)
 )
 
 var _ Interface = (*LegacyVM)(nil)
@@ -223,10 +224,15 @@ type VMOpts struct {
 	NetworkVersion network.Version
 	BaseFee        abi.TokenAmount
 	LookbackState  LookbackStateGetter
+	TipSetGetter   TipSetGetter
 	Tracing        bool
 }
 
 func NewLegacyVM(ctx context.Context, opts *VMOpts) (*LegacyVM, error) {
+	if opts.NetworkVersion >= network.Version16 {
+		return nil, xerrors.Errorf("the legacy VM does not support network versions 16+")
+	}
+
 	buf := blockstore.NewBuffered(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, opts.StateBase)

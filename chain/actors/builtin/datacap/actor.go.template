@@ -3,6 +3,8 @@ package datacap
 import (
     "golang.org/x/xerrors"
 
+	"github.com/ipfs/go-cid"
+
     "github.com/filecoin-project/go-address"
     "github.com/filecoin-project/go-state-types/abi"
     actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -49,8 +51,19 @@ func MakeState(store adt.Store, av actorstypes.Version, governor address.Address
 type State interface {
 	cbor.Marshaler
 
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	Governor() (address.Address, error)
 	GetState() interface{}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

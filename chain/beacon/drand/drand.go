@@ -107,7 +107,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 
 	client, err := dclient.Wrap(clients, opts...)
 	if err != nil {
-		return nil, xerrors.Errorf("creating drand client")
+		return nil, xerrors.Errorf("creating drand client: %w", err)
 	}
 
 	lc, err := lru.New(1024)

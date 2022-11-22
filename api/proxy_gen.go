@@ -342,6 +342,10 @@ type FullNodeStruct struct {
 
 		PaychVoucherSubmit func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) `perm:"sign"`
 
+		RaftLeader func(p0 context.Context) (peer.ID, error) `perm:"read"`
+
+		RaftState func(p0 context.Context) (*RaftStateData, error) `perm:"read"`
+
 		StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
 		StateActorCodeCIDs func(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) `perm:"read"`
@@ -679,7 +683,7 @@ type StorageMinerStruct struct {
 
 		BeneficiaryWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
 
-		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
 
@@ -2473,6 +2477,28 @@ func (s *FullNodeStub) PaychVoucherSubmit(p0 context.Context, p1 address.Address
 	return *new(cid.Cid), ErrNotSupported
 }
 
+func (s *FullNodeStruct) RaftLeader(p0 context.Context) (peer.ID, error) {
+	if s.Internal.RaftLeader == nil {
+		return *new(peer.ID), ErrNotSupported
+	}
+	return s.Internal.RaftLeader(p0)
+}
+
+func (s *FullNodeStub) RaftLeader(p0 context.Context) (peer.ID, error) {
+	return *new(peer.ID), ErrNotSupported
+}
+
+func (s *FullNodeStruct) RaftState(p0 context.Context) (*RaftStateData, error) {
+	if s.Internal.RaftState == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.RaftState(p0)
+}
+
+func (s *FullNodeStub) RaftState(p0 context.Context) (*RaftStateData, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	if s.Internal.StateAccountKey == nil {
 		return *new(address.Address), ErrNotSupported
@@ -4134,14 +4160,14 @@ func (s *StorageMinerStub) BeneficiaryWithdrawBalance(p0 context.Context, p1 abi
 	return *new(cid.Cid), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
 	}
-	return s.Internal.CheckProvable(p0, p1, p2, p3)
+	return s.Internal.CheckProvable(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) {
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 

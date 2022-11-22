@@ -390,3 +390,64 @@ func TestTicketExpired(t *testing.T) {
 		}
 	}
 }
+
+func TestCreationTimeCleared(t *testing.T) {
+	var notif []struct{ before, after SectorInfo }
+	ma, _ := address.NewIDAddress(55151)
+	m := test{
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
+			},
+			notifee: func(before, after SectorInfo) {
+				notif = append(notif, struct{ before, after SectorInfo }{before, after})
+			},
+		},
+		t:     t,
+		state: &SectorInfo{State: Available},
+	}
+
+	// sector starts with zero CreationTime
+	m.planSingle(SectorStartCCUpdate{})
+	require.Equal(m.t, m.state.State, SnapDealsWaitDeals)
+
+	require.Equal(t, int64(0), m.state.CreationTime)
+
+	// First AddPiece will set CreationTime
+	m.planSingle(SectorAddPiece{})
+	require.Equal(m.t, m.state.State, SnapDealsAddPiece)
+
+	require.NotEqual(t, int64(0), m.state.CreationTime)
+
+	m.planSingle(SectorPieceAdded{})
+	require.Equal(m.t, m.state.State, SnapDealsWaitDeals)
+
+	// abort shoult clean up CreationTime
+	m.planSingle(SectorAbortUpgrade{})
+	require.Equal(m.t, m.state.State, AbortUpgrade)
+
+	require.NotEqual(t, int64(0), m.state.CreationTime)
+
+	m.planSingle(SectorRevertUpgradeToProving{})
+	require.Equal(m.t, m.state.State, Proving)
+
+	require.Equal(t, int64(0), m.state.CreationTime)
+
+	m.planSingle(SectorMarkForUpdate{})
+
+	// in case CreationTime was set for whatever reason (lotus bug / manual sector state change)
+	// make sure we clean it up when starting upgrade
+	m.state.CreationTime = 325
+	m.planSingle(SectorStartCCUpdate{})
+	require.Equal(m.t, m.state.State, SnapDealsWaitDeals)
+
+	require.Equal(t, int64(0), m.state.CreationTime)
+
+	// "First" AddPiece will set CreationTime
+	m.planSingle(SectorAddPiece{})
+	require.Equal(m.t, m.state.State, SnapDealsAddPiece)
+
+	require.NotEqual(t, int64(0), m.state.CreationTime)
+}
