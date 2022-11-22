@@ -63,7 +63,16 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 
 	// create garbage
 	g := NewGarbager(ctx, t, full)
-	garbage, e := g.Drop(ctx)
+	// state
+	garbageS, eS := g.Drop(ctx)
+	// message
+	garbageM, eM := g.Message(ctx)
+	e := eM
+	if eS > eM {
+		e = eS
+	}
+	assert.True(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 
 	// calculate next compaction where we should actually see cleanup
 
@@ -94,7 +103,8 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 	waitForCompaction(ctx, t, garbageCompactionIndex, full)
 
 	// check that garbage is cleaned up
-	assert.False(t, g.Exists(ctx, garbage), "Garbage still exists in blockstore")
+	assert.False(t, g.Exists(ctx, garbageS), "Garbage state still exists in blockstore")
+	assert.False(t, g.Exists(ctx, garbageM), "Garbage message still exists in blockstore")
 }
 
 // Create unreachable state
@@ -112,8 +122,16 @@ func TestColdStorePrune(t *testing.T) {
 
 	// create garbage
 	g := NewGarbager(ctx, t, full)
-	garbage, e := g.Drop(ctx)
-	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
+	// state
+	garbageS, eS := g.Drop(ctx)
+	// message
+	garbageM, eM := g.Message(ctx)
+	e := eM
+	if eS > eM {
+		e = eS
+	}
+	assert.True(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 
 	// calculate next compaction where we should actually see cleanup
 
@@ -148,7 +166,8 @@ func TestColdStorePrune(t *testing.T) {
 	// This data should now be moved to the coldstore.
 	// Access it without hotview to keep it there while checking that it still exists
 	// Only state compute uses hot view so garbager Exists backed by ChainReadObj is all good
-	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 	bm.Restart()
 
 	// wait for compaction to finsih and pause to make sure it doesn't start to avoid racing
@@ -165,14 +184,15 @@ func TestColdStorePrune(t *testing.T) {
 	require.NoError(t, full.ChainPrune(ctx, pruneOpts))
 	bm.Restart()
 	waitForPrune(ctx, t, 1, full)
-	assert.False(g.t, g.Exists(ctx, garbage), "Garbage should be removed from cold store after prune but it's still there")
+	assert.False(g.t, g.Exists(ctx, garbageS), "Garbage state should be removed from cold store after prune but it's still there")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message should be on the cold store after prune")
 }
 
-func TestAutoPrune(t *testing.T) {
+func TestMessagesMode(t *testing.T) {
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
 	splitstore.CheckSyncGap = false
-	opts := []interface{}{kit.MockProofs(), kit.SplitstoreUniversal(), kit.SplitstoreAutoPrune(), kit.FsRepo()}
+	opts := []interface{}{kit.MockProofs(), kit.SplitstoreMessges(), kit.FsRepo()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
 	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
 	_ = full
@@ -180,8 +200,16 @@ func TestAutoPrune(t *testing.T) {
 
 	// create garbage
 	g := NewGarbager(ctx, t, full)
-	garbage, e := g.Drop(ctx)
-	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
+	// state
+	garbageS, eS := g.Drop(ctx)
+	// message
+	garbageM, eM := g.Message(ctx)
+	e := eM
+	if eS > eM {
+		e = eS
+	}
+	assert.True(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 
 	// calculate next compaction where we should actually see cleanup
 
@@ -213,13 +241,12 @@ func TestAutoPrune(t *testing.T) {
 
 	bm.Pause()
 
-	// This data should now be moved to the coldstore.
+	// Messages should be moved to the coldstore
+	// State should be gced
 	// Access it without hotview to keep it there while checking that it still exists
 	// Only state compute uses hot view so garbager Exists backed by ChainReadObj is all good
-	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
-	bm.Restart()
-	waitForPrune(ctx, t, 1, full)
-	assert.False(g.t, g.Exists(ctx, garbage), "Garbage should be removed from cold store through auto prune but it's still there")
+	assert.False(g.t, g.Exists(ctx, garbageS), "Garbage state not found in splitstore")
+	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 }
 
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
@@ -304,7 +331,7 @@ func NewGarbager(ctx context.Context, t *testing.T, n *kit.TestFullNode) *Garbag
 		latest:     0,
 		maddr4Data: address.Undef,
 	}
-	g.createMiner(ctx)
+	g.createMiner4Data(ctx)
 	g.newPeerID(ctx)
 	return g
 }
@@ -318,6 +345,12 @@ func (g *Garbager) Drop(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
 	// wait for message and return the chain height that the drop occurred at
 	g.latest++
 	return c, g.newPeerID(ctx)
+}
+
+// message returns the cid referencing a message and the chain epoch it went on chain
+func (g *Garbager) Message(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
+	mw := g.createMiner(ctx)
+	return mw.Message, mw.Height
 }
 
 // exists checks whether the cid is reachable through the node
@@ -374,8 +407,15 @@ func (g *Garbager) mInfoCid(ctx context.Context) cid.Cid {
 	return mSt.Info
 }
 
-func (g *Garbager) createMiner(ctx context.Context) {
+func (g *Garbager) createMiner4Data(ctx context.Context) {
 	require.True(g.t, g.maddr4Data == address.Undef, "garbager miner actor already created")
+	mw := g.createMiner(ctx)
+	var retval power6.CreateMinerReturn
+	require.NoError(g.t, retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)))
+	g.maddr4Data = retval.IDAddress
+}
+
+func (g *Garbager) createMiner(ctx context.Context) *lapi.MsgLookup {
 	owner, err := g.node.WalletDefaultAddress(ctx)
 	require.NoError(g.t, err)
 	worker := owner
@@ -401,8 +441,5 @@ func (g *Garbager) createMiner(ctx context.Context) {
 	mw, err := g.node.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, lapi.LookbackNoLimit, true)
 	require.NoError(g.t, err)
 	require.True(g.t, mw.Receipt.ExitCode == 0, "garbager's internal create miner message failed")
-
-	var retval power6.CreateMinerReturn
-	require.NoError(g.t, retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)))
-	g.maddr4Data = retval.IDAddress
+	return mw
 }

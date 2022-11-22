@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"sync"
-	"time"
 
 	"golang.org/x/xerrors"
 
@@ -14,8 +13,6 @@ import (
 
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
-
-var PostCheckTimeout = 160 * time.Second
 
 // FaultTracker TODO: Track things more actively
 type FaultTracker interface {
@@ -50,6 +47,12 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 		badLk.Unlock()
 	}
 
+	if m.partitionCheckTimeout > 0 {
+		var cancel2 context.CancelFunc
+		ctx, cancel2 = context.WithTimeout(ctx, m.partitionCheckTimeout)
+		defer cancel2()
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(len(sectors))
 
@@ -57,7 +60,9 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 		select {
 		case throttle <- struct{}{}:
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			addBad(sector.ID, fmt.Sprintf("waiting for check worker: %s", ctx.Err()))
+			wg.Done()
+			continue
 		}
 
 		go func(sector storiface.SectorRef) {
@@ -107,8 +112,13 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 				return
 			}
 
-			vctx, cancel2 := context.WithTimeout(ctx, PostCheckTimeout)
-			defer cancel2()
+			vctx := ctx
+
+			if m.singleCheckTimeout > 0 {
+				var cancel2 context.CancelFunc
+				vctx, cancel2 = context.WithTimeout(ctx, m.singleCheckTimeout)
+				defer cancel2()
+			}
 
 			_, err = m.storage.GenerateSingleVanillaProof(vctx, sector.ID.Miner, storiface.PostSectorChallenge{
 				SealProof:    sector.ProofType,

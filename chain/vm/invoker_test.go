@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -13,15 +14,28 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/rt"
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 type basicContract struct{}
+
+func (b basicContract) Code() cid.Cid {
+	return cid.Undef
+}
+
+func (b basicContract) State() cbor2.Er {
+	// works well enough as a dummy state
+	return new(basicParams)
+}
+
 type basicParams struct {
 	B byte
 }
@@ -107,7 +121,8 @@ func (*basicRtMessage) ValueReceived() abi.TokenAmount {
 func TestInvokerBasic(t *testing.T) {
 	//stm: @INVOKER_TRANSFORM_001
 	inv := ActorRegistry{}
-	code, err := inv.transform(basicContract{})
+	registry := builtin.MakeRegistryLegacy([]rt.VMActor{basicContract{}})
+	code, err := inv.transform(registry[0])
 	assert.NoError(t, err)
 
 	{

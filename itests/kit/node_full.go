@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +18,14 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/node"
 )
+
+type Libp2p struct {
+	PeerID  peer.ID
+	PrivKey libp2pcrypto.PrivKey
+}
 
 // TestFullNode represents a full node enrolled in an Ensemble.
 type TestFullNode struct {
@@ -27,9 +36,34 @@ type TestFullNode struct {
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node.
 	ListenAddr multiaddr.Multiaddr
+	ListenURL  string
 	DefaultKey *key.Key
 
+	Pkey *Libp2p
+
+	Stop node.StopFunc
+
 	options nodeOpts
+}
+
+func MergeFullNodes(fullNodes []*TestFullNode) *TestFullNode {
+	var wrappedFullNode TestFullNode
+	var fns api.FullNodeStruct
+	wrappedFullNode.FullNode = &fns
+
+	cliutil.FullNodeProxy(fullNodes, &fns)
+
+	wrappedFullNode.t = fullNodes[0].t
+	wrappedFullNode.ListenAddr = fullNodes[0].ListenAddr
+	wrappedFullNode.DefaultKey = fullNodes[0].DefaultKey
+	wrappedFullNode.Stop = fullNodes[0].Stop
+	wrappedFullNode.options = fullNodes[0].options
+
+	return &wrappedFullNode
+}
+
+func (f TestFullNode) Shutdown(ctx context.Context) error {
+	return f.Stop(ctx)
 }
 
 func (f *TestFullNode) ClientImportCARFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, carv1FilePath string, origFilePath string) {
@@ -84,6 +118,10 @@ func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn
 
 		time.Sleep(time.Second)
 	}
+}
+
+func (f *TestFullNode) AssignPrivKey(pkey *Libp2p) {
+	f.Pkey = pkey
 }
 
 // ChainPredicate encapsulates a chain condition.

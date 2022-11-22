@@ -341,7 +341,7 @@ var msigInspectCmd = &cli.Command{
 						paramStr = string(b)
 					}
 
-					fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Num, tx.Method, paramStr)
+					fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s(%d)\t%s\n", txid, "pending", len(tx.Approved), target, types.FIL(tx.Value), method.Name, tx.Method, paramStr)
 				}
 			}
 			if err := w.Flush(); err != nil {

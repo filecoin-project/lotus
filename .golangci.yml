@@ -43,9 +43,6 @@ issues:
 
   exclude-use-default: false
   exclude-rules:
-    - path: lotuspond
-      linters:
-        - errcheck
 
     - path: node/modules/lp2p
       linters:

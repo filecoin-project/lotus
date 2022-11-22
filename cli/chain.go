@@ -62,6 +62,7 @@ var ChainCmd = &cli.Command{
 		ChainDecodeCmd,
 		ChainEncodeCmd,
 		ChainDisputeSetCmd,
+		ChainPruneCmd,
 	},
 }
 
@@ -494,8 +495,8 @@ var ChainInspectUsage = &cli.Command{
 
 			mm := consensus.NewActorRegistry().Methods[code][m.Message.Method] // TODO: use remote map
 
-			byMethod[mm.Num] += m.Message.GasLimit
-			byMethodC[mm.Num]++
+			byMethod[mm.Name] += m.Message.GasLimit
+			byMethodC[mm.Name]++
 		}
 
 		type keyGasPair struct {

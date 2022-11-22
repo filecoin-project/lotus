@@ -314,7 +314,7 @@ func GetActorCodeIDs(av actorstypes.Version) (map[string]cid.Cid, error) {
 		return cids, nil
 	}
 
-	actorsKeys := GetBuiltinActorsKeys()
+	actorsKeys := GetBuiltinActorsKeys(av)
 	synthCids := make(map[string]cid.Cid)
 
 	for _, key := range actorsKeys {
