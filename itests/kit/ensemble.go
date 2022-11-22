@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
@@ -175,6 +176,16 @@ func (n *Ensemble) Mocknet() mocknet.Mocknet {
 	return n.mn
 }
 
+func (n *Ensemble) NewPrivKey() (libp2pcrypto.PrivKey, peer.ID) {
+	privkey, _, err := libp2pcrypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(n.t, err)
+
+	peerId, err := peer.IDFromPrivateKey(privkey)
+	require.NoError(n.t, err)
+
+	return privkey, peerId
+}
+
 // FullNode enrolls a new full node.
 func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	options := DefaultNodeOpts
@@ -200,13 +211,14 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	}
 
 	*full = TestFullNode{t: n.t, options: options, DefaultKey: key}
+
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
 	return n
 }
 
 // Miner enrolls a new miner, using the provided full node for chain
 // interactions.
-func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
+func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	require.NotNil(n.t, full, "full node required when instantiating miner")
 
 	options := DefaultNodeOpts
@@ -291,8 +303,16 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	minerNode.Libp2p.PeerID = peerId
 	minerNode.Libp2p.PrivKey = privkey
 
-	n.inactive.miners = append(n.inactive.miners, minerNode)
+	return n
+}
 
+func (n *Ensemble) AddInactiveMiner(m *TestMiner) {
+	n.inactive.miners = append(n.inactive.miners, m)
+}
+
+func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
+	n.MinerEnroll(minerNode, full, opts...)
+	n.AddInactiveMiner(minerNode)
 	return n
 }
 
@@ -358,6 +378,21 @@ func (n *Ensemble) Start() *Ensemble {
 		lr, err := r.Lock(repo.FullNode)
 		require.NoError(n.t, err)
 
+		ks, err := lr.KeyStore()
+		require.NoError(n.t, err)
+
+		if full.Pkey != nil {
+			pk, err := libp2pcrypto.MarshalPrivateKey(full.Pkey.PrivKey)
+			require.NoError(n.t, err)
+
+			err = ks.Put("libp2p-host", types.KeyInfo{
+				Type:       "libp2p-host",
+				PrivateKey: pk,
+			})
+			require.NoError(n.t, err)
+
+		}
+
 		c, err := lr.Config()
 		require.NoError(n.t, err)
 
@@ -416,6 +451,7 @@ func (n *Ensemble) Start() *Ensemble {
 
 		// Construct the full node.
 		stop, err := node.New(ctx, opts...)
+		full.Stop = stop
 
 		require.NoError(n.t, err)
 
@@ -425,15 +461,31 @@ func (n *Ensemble) Start() *Ensemble {
 		err = full.WalletSetDefault(context.Background(), addr)
 		require.NoError(n.t, err)
 
+		var rpcShutdownOnce sync.Once
+		var stopOnce sync.Once
+		var stopErr error
+
+		stopFunc := stop
+		stop = func(ctx context.Context) error {
+			stopOnce.Do(func() {
+				stopErr = stopFunc(ctx)
+			})
+			return stopErr
+		}
+
 		// Are we hitting this node through its RPC?
 		if full.options.rpc {
-			withRPC := fullRpc(n.t, full)
+			withRPC, rpcCloser := fullRpc(n.t, full)
 			n.inactive.fullnodes[i] = withRPC
+			full.Stop = func(ctx2 context.Context) error {
+				rpcShutdownOnce.Do(rpcCloser)
+				return stop(ctx)
+			}
+			n.t.Cleanup(func() { rpcShutdownOnce.Do(rpcCloser) })
 		}
 
 		n.t.Cleanup(func() {
 			_ = stop(context.Background())
-
 		})
 
 		n.active.fullnodes = append(n.active.fullnodes, full)
@@ -477,7 +529,9 @@ func (n *Ensemble) Start() *Ensemble {
 					Method: power.Methods.CreateMiner,
 					Params: params,
 				}
-				signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, nil)
+				signed, err := m.FullNode.FullNode.MpoolPushMessage(ctx, createStorageMinerMsg, &api.MessageSendSpec{
+					MsgUuid: uuid.New(),
+				})
 				require.NoError(n.t, err)
 
 				mw, err := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
@@ -501,7 +555,9 @@ func (n *Ensemble) Start() *Ensemble {
 					Value:  types.NewInt(0),
 				}
 
-				signed, err2 := m.FullNode.FullNode.MpoolPushMessage(ctx, msg, nil)
+				signed, err2 := m.FullNode.FullNode.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{
+					MsgUuid: uuid.New(),
+				})
 				require.NoError(n.t, err2)
 
 				mw, err2 := m.FullNode.FullNode.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
@@ -586,11 +642,11 @@ func (n *Ensemble) Start() *Ensemble {
 			psd := m.PresealDir
 			noPaths := m.options.noStorage
 
-			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+			err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 				if noPaths {
-					sc.StoragePaths = []paths.LocalPath{}
+					sc.StoragePaths = []storiface.LocalPath{}
 				}
-				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
+				sc.StoragePaths = append(sc.StoragePaths, storiface.LocalPath{Path: psd})
 			})
 
 			require.NoError(n.t, err)
@@ -611,7 +667,9 @@ func (n *Ensemble) Start() *Ensemble {
 				Value:  types.NewInt(0),
 			}
 
-			_, err2 := m.FullNode.MpoolPushMessage(ctx, msg, nil)
+			_, err2 := m.FullNode.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{
+				MsgUuid: uuid.New(),
+			})
 			require.NoError(n.t, err2)
 		}
 
@@ -620,6 +678,13 @@ func (n *Ensemble) Start() *Ensemble {
 		disallowRemoteFinalize := m.options.disallowRemoteFinalize
 
 		var mineBlock = make(chan lotusminer.MineReq)
+
+		copy := *m.FullNode
+		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
+		m.FullNode = &copy
+
+		//m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
+
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
 			node.Base(),
@@ -627,12 +692,14 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-			node.Override(new(v1api.RawFullNodeAPI), m.FullNode.FullNode),
+			//node.Override(new(v1api.RawFullNodeAPI), func() api.FullNode { return modules.MakeUuidWrapper(m.FullNode) }),
+			//node.Override(new(v1api.RawFullNodeAPI), modules.MakeUuidWrapper),
+			node.Override(new(v1api.RawFullNodeAPI), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
 			// disable resource filtering so that local worker gets assigned tasks
 			// regardless of system pressure.
-			node.Override(new(sectorstorage.Config), func() sectorstorage.Config {
+			node.Override(new(config.SealerConfig), func() config.SealerConfig {
 				scfg := config.DefaultStorageMiner()
 
 				if noLocal {
@@ -645,8 +712,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 				scfg.Storage.Assigner = assigner
 				scfg.Storage.DisallowRemoteFinalize = disallowRemoteFinalize
-				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
-				return scfg.StorageManager()
+				scfg.Storage.ResourceFiltering = config.ResourceFilteringDisabled
+				return scfg.Storage
 			}),
 
 			// upgrades
@@ -737,8 +804,8 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		if m.options.noStorage {
-			err := lr.SetStorage(func(sc *paths.StorageConfig) {
-				sc.StoragePaths = []paths.LocalPath{}
+			err := lr.SetStorage(func(sc *storiface.StorageConfig) {
+				sc.StoragePaths = []storiface.LocalPath{}
 			})
 			require.NoError(n.t, err)
 		}
@@ -814,9 +881,9 @@ func (n *Ensemble) Start() *Ensemble {
 			wait.Unlock()
 		})
 		wait.Lock()
+		n.bootstrapped = true
 	}
 
-	n.bootstrapped = true
 	return n
 }
 

@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -175,7 +174,7 @@ func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
 
 const metaFile = "sectorstore.json"
 
-func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*paths.LocalStorageMeta)) storiface.ID {
+func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*storiface.LocalStorageMeta)) storiface.ID {
 	p := t.TempDir()
 
 	if err := os.MkdirAll(p, 0755); err != nil {
@@ -189,7 +188,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*pa
 		require.NoError(t, err)
 	}
 
-	cfg := &paths.LocalStorageMeta{
+	cfg := &storiface.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   10,
 		CanSeal:  false,

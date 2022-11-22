@@ -39,7 +39,7 @@ func init() {
 	logging.SetAllLoggers(logging.LevelDebug)
 }
 
-type testStorage paths.StorageConfig
+type testStorage storiface.StorageConfig
 
 func (t testStorage) DiskUsage(path string) (int64, error) {
 	return 1, nil // close enough
@@ -50,7 +50,7 @@ func newTestStorage(t *testing.T) *testStorage {
 	require.NoError(t, err)
 
 	{
-		b, err := json.MarshalIndent(&paths.LocalStorageMeta{
+		b, err := json.MarshalIndent(&storiface.LocalStorageMeta{
 			ID:       storiface.ID(uuid.New().String()),
 			Weight:   1,
 			CanSeal:  true,
@@ -63,7 +63,7 @@ func newTestStorage(t *testing.T) *testStorage {
 	}
 
 	return &testStorage{
-		StoragePaths: []paths.LocalPath{
+		StoragePaths: []storiface.LocalPath{
 			{Path: tp},
 		},
 	}
@@ -82,12 +82,12 @@ func (t testStorage) cleanup() {
 	}
 }
 
-func (t testStorage) GetStorage() (paths.StorageConfig, error) {
-	return paths.StorageConfig(t), nil
+func (t testStorage) GetStorage() (storiface.StorageConfig, error) {
+	return storiface.StorageConfig(t), nil
 }
 
-func (t *testStorage) SetStorage(f func(*paths.StorageConfig)) error {
-	f((*paths.StorageConfig)(t))
+func (t *testStorage) SetStorage(f func(*storiface.StorageConfig)) error {
+	f((*storiface.StorageConfig)(t))
 	return nil
 }
 

@@ -116,6 +116,10 @@ func MakeState(store adt.Store, av actorstypes.Version, networkName string) (Sta
 type State interface {
 	cbor.Marshaler
 
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	ResolveAddress(address address.Address) (address.Address, bool, error)
 	MapAddressToNewID(address address.Address) (address.Address, error)
 	NetworkName() (dtypes.NetworkName, error)
@@ -136,6 +140,24 @@ type State interface {
 	// Sets the address map for the init actor. This should only be used for testing.
 	SetAddressMap(mcid cid.Cid) error
 
-	AddressMap() (adt.Map, error)
 	GetState() interface{}
+
+	AddressMap() (adt.Map, error)
+	AddressMapBitWidth() int
+	AddressMapHashFunction() func(input []byte) []byte
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
 }

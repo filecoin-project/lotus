@@ -3,6 +3,7 @@ package multisig
 import (
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -114,6 +115,10 @@ func MakeState(store adt.Store, av actorstypes.Version, signers []address.Addres
 type State interface {
 	cbor.Marshaler
 
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	LockedBalance(epoch abi.ChainEpoch) (abi.TokenAmount, error)
 	StartEpoch() (abi.ChainEpoch, error)
 	UnlockDuration() (abi.ChainEpoch, error)
@@ -214,4 +219,19 @@ func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	}
 
 	return actors.SerializeParams(&params)
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
 }

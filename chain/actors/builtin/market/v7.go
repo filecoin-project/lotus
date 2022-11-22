@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,10 +12,12 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -319,4 +322,21 @@ func (s *state7) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes
 
 	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
 
+}
+
+func (s *state7) ActorKey() string {
+	return actors.MarketKey
+}
+
+func (s *state7) ActorVersion() actorstypes.Version {
+	return actorstypes.Version7
+}
+
+func (s *state7) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

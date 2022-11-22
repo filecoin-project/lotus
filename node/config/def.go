@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 const (
@@ -98,6 +97,7 @@ func DefaultFullNode() *FullNode {
 				HotStoreFullGCFrequency: 20,
 			},
 		},
+		Cluster: *DefaultUserRaftConfig(),
 	}
 }
 
@@ -141,7 +141,9 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Proving: ProvingConfig{
-			ParallelCheckLimit: 128,
+			ParallelCheckLimit:    128,
+			PartitionCheckTimeout: Duration(20 * time.Minute),
+			SingleCheckTimeout:    Duration(10 * time.Minute),
 		},
 
 		Storage: SealerConfig{
@@ -162,7 +164,7 @@ func DefaultStorageMiner() *StorageMiner {
 			Assigner: "utilization",
 
 			// By default use the hardware resource filtering strategy.
-			ResourceFiltering: sealer.ResourceFilteringHardware,
+			ResourceFiltering: ResourceFilteringHardware,
 		},
 
 		Dealmaking: DealmakingConfig{
@@ -273,4 +275,40 @@ func (dur *Duration) UnmarshalText(text []byte) error {
 func (dur Duration) MarshalText() ([]byte, error) {
 	d := time.Duration(dur)
 	return []byte(d.String()), nil
+}
+
+// ResourceFilteringStrategy is an enum indicating the kinds of resource
+// filtering strategies that can be configured for workers.
+type ResourceFilteringStrategy string
+
+const (
+	// ResourceFilteringHardware specifies that available hardware resources
+	// should be evaluated when scheduling a task against the worker.
+	ResourceFilteringHardware = ResourceFilteringStrategy("hardware")
+
+	// ResourceFilteringDisabled disables resource filtering against this
+	// worker. The scheduler may assign any task to this worker.
+	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
+)
+
+var (
+	DefaultDataSubFolder        = "raft"
+	DefaultWaitForLeaderTimeout = 15 * time.Second
+	DefaultCommitRetries        = 1
+	DefaultNetworkTimeout       = 100 * time.Second
+	DefaultCommitRetryDelay     = 200 * time.Millisecond
+	DefaultBackupsRotate        = 6
+)
+
+func DefaultUserRaftConfig() *UserRaftConfig {
+	var cfg UserRaftConfig
+	cfg.DataFolder = "" // empty so it gets omitted
+	cfg.InitPeersetMultiAddr = []string{}
+	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
+	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
+	cfg.CommitRetries = DefaultCommitRetries
+	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
+	cfg.BackupsRotate = DefaultBackupsRotate
+
+	return &cfg
 }

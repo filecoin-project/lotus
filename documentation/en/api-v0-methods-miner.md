@@ -415,8 +415,7 @@ Inputs:
       },
       "ProofType": 8
     }
-  ],
-  true
+  ]
 ]
 ```
 

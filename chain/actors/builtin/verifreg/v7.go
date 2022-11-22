@@ -1,11 +1,14 @@
 package verifreg
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
@@ -112,4 +115,21 @@ func (s *state7) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimI
 
 	return nil, xerrors.Errorf("unsupported in actors v7")
 
+}
+
+func (s *state7) ActorKey() string {
+	return actors.VerifregKey
+}
+
+func (s *state7) ActorVersion() actorstypes.Version {
+	return actorstypes.Version7
+}
+
+func (s *state7) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

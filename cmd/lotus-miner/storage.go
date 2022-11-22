@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
-	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -148,7 +147,7 @@ over time
 				}
 			}
 
-			cfg := &paths.LocalStorageMeta{
+			cfg := &storiface.LocalStorageMeta{
 				ID:         storiface.ID(uuid.New().String()),
 				Weight:     cctx.Uint64("weight"),
 				CanSeal:    cctx.Bool("seal"),

@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -185,18 +186,18 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 
 		fmt.Printf("Proving Period Boundary: %d\n", cd.PeriodStart%cd.WPoStProvingPeriod)
-		fmt.Printf("Proving Period Start:    %s\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart, head))
-		fmt.Printf("Next Period Start:       %s\n\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, head))
+		fmt.Printf("Proving Period Start:    %s\n", cliutil.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart, head))
+		fmt.Printf("Next Period Start:       %s\n\n", cliutil.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, head))
 
 		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
 		fmt.Printf("Recovering:  %d\n", recovering)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
 		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
-		fmt.Printf("Deadline Open:        %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Open))
-		fmt.Printf("Deadline Close:       %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Close))
-		fmt.Printf("Deadline Challenge:   %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Challenge))
-		fmt.Printf("Deadline FaultCutoff: %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.FaultCutoff))
+		fmt.Printf("Deadline Open:        %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.Open))
+		fmt.Printf("Deadline Close:       %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.Close))
+		fmt.Printf("Deadline Challenge:   %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.Challenge))
+		fmt.Printf("Deadline FaultCutoff: %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.FaultCutoff))
 		return nil
 	},
 }
@@ -582,7 +583,7 @@ var provingCheckProvableCmd = &cli.Command{
 				})
 			}
 
-			bad, err := minerApi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
+			bad, err := minerApi.CheckProvable(ctx, info.WindowPoStProofType, tocheck)
 			if err != nil {
 				return err
 			}

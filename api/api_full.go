@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -799,6 +800,9 @@ type FullNode interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
+
+	RaftState(ctx context.Context) (*RaftStateData, error) //perm:read
+	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
 }
 
 type StorageAsk struct {
@@ -1048,7 +1052,11 @@ type RetrievalOrder struct {
 	Client                  address.Address
 	Miner                   address.Address
 	MinerPeer               *retrievalmarket.RetrievalPeer
+
+	RemoteStore *RemoteStoreID `json:"RemoteStore,omitempty"`
 }
+
+type RemoteStoreID = uuid.UUID
 
 type InvocResult struct {
 	MsgCid         cid.Cid

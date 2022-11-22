@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -534,6 +535,7 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.ProveReplicaUpdate},
 	{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
 	{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
+	{col: color.FgYellow, state: sealing.WaitMutable},
 	{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
 	{col: color.FgYellow, state: sealing.ReleaseSectorKey},
 
@@ -664,7 +666,7 @@ func producedBlocks(ctx context.Context, count int, maddr address.Address, napi 
 				fmt.Printf("%8d | %s | %s\n", ts.Height(), bh.Cid(), types.FIL(minerReward))
 				count--
 			} else if tty && bh.Height%120 == 0 {
-				_, _ = fmt.Fprintf(os.Stderr, "\r\x1b[0KChecking epoch %s", lcli.EpochTime(head.Height(), bh.Height))
+				_, _ = fmt.Fprintf(os.Stderr, "\r\x1b[0KChecking epoch %s", cliutil.EpochTime(head.Height(), bh.Height))
 			}
 		}
 		tsk = ts.Parents()
