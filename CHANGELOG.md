@@ -2,11 +2,13 @@
 
 # 1.19.0-rc1 / 2022-11-16
 
-This is the first release candidate for the upcoming OPTIONAL v1.19.0 release of Lotus. 
+This is the 2nd release candidate for the upcoming OPTIONAL v1.19.0 release of Lotus. 
 More detailed changelog and description will come later
 
 ## Changes
 
+- feat: wdpost: Configurable pre-check timeouts
+- fix/build: Update Zondax/hid to 0.9.1
 - chore: update lotus version to 1.19.0-rc1
 - chore: merge release into master ([filecoin-project/lotus#9657](https://github.com/filecoin-project/lotus/pull/9657))
 - Raft consensus for lotus nodes in a cluster ([filecoin-project/lotus#9294](https://github.com/filecoin-project/lotus/pull/9294))
