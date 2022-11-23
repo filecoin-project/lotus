@@ -6,7 +6,7 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.18.1
+      - image: cimg/go:1.18.8
     resource_class: 2xlarge
   ubuntu:
     docker:
