@@ -93,25 +93,25 @@ func (s *state7) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state7) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state7) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v7")
 
 }
 
-func (s *state7) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+func (s *state7) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
 
 	return nil, xerrors.Errorf("unsupported in actors v7")
 
 }
 
-func (s *state7) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+func (s *state7) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v7")
 
 }
 
-func (s *state7) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+func (s *state7) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
 
 	return nil, xerrors.Errorf("unsupported in actors v7")
 

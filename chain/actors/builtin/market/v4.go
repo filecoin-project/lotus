@@ -182,14 +182,14 @@ func (s *dealStates4) array() adt.Array {
 }
 
 func fromV4DealState(v4 market4.DealState) DealState {
-
-	return DealState{
+	ret := DealState{
 		SectorStartEpoch: v4.SectorStartEpoch,
 		LastUpdatedEpoch: v4.LastUpdatedEpoch,
 		SlashEpoch:       v4.SlashEpoch,
 		VerifiedClaim:    0,
 	}
 
+	return ret
 }
 
 type dealProposals4 struct {
