@@ -2,7 +2,7 @@
 
 # 1.19.0-rc1 / 2022-11-16
 
-This is the first release candidate for the upcoming OPTIONAL v1.19.0 release of Lotus. 
+This is the 2nd release candidate for the upcoming OPTIONAL v1.19.0 release of Lotus. 
 More detailed changelog and description will come later
 
 ## Changes
