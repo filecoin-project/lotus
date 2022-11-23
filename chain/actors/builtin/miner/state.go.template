@@ -31,6 +31,11 @@ import (
 	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
 	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
 {{end}}
+{{if (gt .v 8)}}
+{{if (lt .v .latestVersion)}}
+  minerX "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/miner"
+{{end}}
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -417,13 +422,38 @@ func (s *state{{.v}}) Info() (MinerInfo, error) {
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      {{if (ge .v 2)}}info.ConsensusFaultElapsed{{else}}-1{{end}},
 		{{if (ge .v 9)}}
-		Beneficiary:                info.Beneficiary,
+   		Beneficiary:                info.Beneficiary,
+        {{if (lt .v .latestVersion)}}
+		BeneficiaryTerm:            minerX.BeneficiaryTerm{
+          Quota: info.BeneficiaryTerm.Quota,
+          UsedQuota: info.BeneficiaryTerm.UsedQuota,
+          Expiration: info.BeneficiaryTerm.Expiration,
+        },
+		PendingBeneficiaryTerm:     convertX{{.v}}PendingBeneficiaryChange(info.PendingBeneficiaryTerm),
+        {{else}}
 		BeneficiaryTerm:            info.BeneficiaryTerm,
-		PendingBeneficiaryTerm:     info.PendingBeneficiaryTerm,{{end}}
+		PendingBeneficiaryTerm:     info.PendingBeneficiaryTerm,
+        {{end}}
+        {{end}}
 	}
 
 	return mi, nil
 }
+
+{{if (gt .v 8)}}
+{{if (lt .v .latestVersion)}}
+func convertX{{.v}}PendingBeneficiaryChange(p *miner{{.v}}.PendingBeneficiaryChange) *minerX.PendingBeneficiaryChange {
+  if p == nil { return nil }
+  return &minerX.PendingBeneficiaryChange{
+          NewBeneficiary: p.NewBeneficiary,
+          NewQuota: p.NewQuota,
+          NewExpiration: p.NewExpiration,
+          ApprovedByBeneficiary: p.ApprovedByBeneficiary,
+          ApprovedByNominee: p.ApprovedByNominee,
+        }
+}
+{{end}}
+{{end}}
 
 func (s *state{{.v}}) DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error) {
 	return s.State.{{if (ge .v 4)}}Recorded{{end}}DeadlineInfo(epoch), nil
@@ -587,7 +617,8 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 }
 
 func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	{{if (le .v 8)}}return minertypes.SectorPreCommitOnChainInfo{
+	{{if (le .v 8)}}
+    return minertypes.SectorPreCommitOnChainInfo{
 		Info:               minertypes.SectorPreCommitInfo{
 			SealProof:     v{{.v}}.Info.SealProof,
 			SectorNumber:  v{{.v}}.Info.SectorNumber,
@@ -599,7 +630,24 @@ func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOn
 		},
 		PreCommitDeposit:   v{{.v}}.PreCommitDeposit,
 		PreCommitEpoch:     v{{.v}}.PreCommitEpoch,
-	}{{else}}return v{{.v}}{{end}}
+	}
+    {{else if (lt .v .latestVersion)}}
+        return minertypes.SectorPreCommitOnChainInfo{
+		Info:               minertypes.SectorPreCommitInfo{
+			SealProof:     v{{.v}}.Info.SealProof,
+			SectorNumber:  v{{.v}}.Info.SectorNumber,
+			SealedCID:     v{{.v}}.Info.SealedCID,
+			SealRandEpoch: v{{.v}}.Info.SealRandEpoch,
+			DealIDs:       v{{.v}}.Info.DealIDs,
+			Expiration:    v{{.v}}.Info.Expiration,
+			UnsealedCid:   v{{.v}}.Info.UnsealedCid,
+		},
+		PreCommitDeposit:   v{{.v}}.PreCommitDeposit,
+		PreCommitEpoch:     v{{.v}}.PreCommitEpoch,
+	}
+    {{else}}
+      return v{{.v}}
+    {{end}}
 }
 
 func (s *state{{.v}}) GetState() interface{} {

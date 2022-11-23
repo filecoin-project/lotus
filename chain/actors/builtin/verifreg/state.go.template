@@ -24,12 +24,8 @@ import (
 {{end}}
 {{if (ge .v 9)}}
 	"github.com/filecoin-project/go-state-types/big"
-{{if (gt .v 9)}}
-    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 {{end}}
-{{else}}
-    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
-{{end}}
+    verifregX "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/verifreg"
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -121,33 +117,97 @@ func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+{{if (gt .v 8)}}
+{{if (lt .v .latestVersion)}}
+func convertX{{.v}}Allocation(alloc *verifreg{{.v}}.Allocation) *verifregX.Allocation {
+     if alloc == nil { return nil }
+     return &verifregX.Allocation{
+       Client: alloc.Client,
+       Provider: alloc.Provider,
+       Data: alloc.Data,
+       Size: alloc.Size,
+       TermMin: alloc.TermMin,
+       TermMax: alloc.TermMax,
+       Expiration: alloc.Expiration,
+    }
+}
+
+func convertX{{.v}}Claim(claim *verifreg{{.v}}.Claim) *verifregX.Claim {
+     if claim == nil { return nil }
+     return &verifregX.Claim{
+       Provider: claim.Provider,
+       Client: claim.Client,
+       Data: claim.Data,
+       Size: claim.Size,
+       TermMin: claim.TermMin,
+       TermMax: claim.TermMax,
+       TermStart: claim.TermStart,
+       Sector: claim.Sector,
+    }
+}
+
+{{end}}
+{{end}}
+
+func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifregX.AllocationId) (*verifregX.Allocation, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else if (lt .v .latestVersion)}}
+    alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg{{.v}}.AllocationId(allocationId))
+    if err != nil {
+      return nil, ok, err
+   }
+   return convertX{{.v}}Allocation(alloc), ok, err
 {{else}}
     return s.FindAllocation(s.store, clientIdAddr, allocationId)
 {{end}}
 }
 
-func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[verifregX.AllocationId]verifregX.Allocation, error) {
 {{if (le .v 8)}}
     return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else if (lt .v .latestVersion)}}
+   allocs, err := s.LoadAllocationsToMap(s.store, clientIdAddr)
+   if err != nil {
+     return nil, err
+   }
+   res := make(map[verifregX.AllocationId]verifregX.Allocation, len(allocs))
+   for id, alloc := range allocs {
+       res[verifregX.AllocationId(id)] = *convertX{{.v}}Allocation(&alloc)
+   }
+   return res, nil
 {{else}}
 	return s.LoadAllocationsToMap(s.store, clientIdAddr)
 {{end}}
 }
 
-func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifregX.ClaimId) (*verifregX.Claim, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else if (lt .v .latestVersion)}}
+    claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg{{.v}}.ClaimId(claimId))
+    if err != nil {
+      return nil, ok, err
+   }
+   return convertX{{.v}}Claim(claim), ok, err
 {{else}}
 	return s.FindClaim(s.store, providerIdAddr, claimId)
 {{end}}
 }
 
-func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[verifregX.ClaimId]verifregX.Claim, error) {
 {{if (le .v 8)}}
     return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else if (lt .v .latestVersion)}}
+   claims, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+   if err != nil {
+     return nil, err
+   }
+   res := make(map[verifregX.ClaimId]verifregX.Claim, len(claims))
+   for id, claim := range claims {
+       res[verifregX.ClaimId(id)] = *convertX{{.v}}Claim(&claim)
+   }
+   return res, nil
 {{else}}
 	return s.LoadClaimsToMap(s.store, providerIdAddr)
 {{end}}

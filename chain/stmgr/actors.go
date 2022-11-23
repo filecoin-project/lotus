@@ -281,9 +281,14 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 		st = market.EmptyDealState()
 	}
 
+	// the api returns v9 market type explicitly, so we abide.
+	// this is an artifact of (my imho deeply flawed, but that's another story) policy of
+	// copying types in go-state-types.
+	// If you want to fix this to return the latest version type, be my guest, i am not going
+	// down this rabbit hole.
 	return &api.MarketDeal{
-		Proposal: *proposal,
-		State:    *st,
+		Proposal: market.AsV9DealProposal(*proposal),
+		State:    market.AsV9DealState(*st),
 	}, nil
 }
 

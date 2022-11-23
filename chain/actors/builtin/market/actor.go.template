@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/market"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/verifreg"
 {{range .versions}}
     {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
