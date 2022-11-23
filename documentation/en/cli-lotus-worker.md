@@ -96,10 +96,10 @@ USAGE:
    lotus-worker storage command [command options] [arguments...]
 
 COMMANDS:
-   attach     attach local storage path
-   detach     detach local storage path
-   redeclare  redeclare sectors in a local storage path
-   help, h    Shows a list of commands or help for one command
+     attach     attach local storage path
+     detach     detach local storage path
+     redeclare  redeclare sectors in a local storage path
+     help, h    Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -115,13 +115,13 @@ USAGE:
    lotus-worker storage attach [command options] [arguments...]
 
 OPTIONS:
-   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)  (accepts multiple inputs)
-   --groups value       path group names                                                              (accepts multiple inputs)
-   --init               initialize the path first (default: false)
-   --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
-   --seal               (for init) use path for sealing (default: false)
-   --store              (for init) use path for long-term storage (default: false)
-   --weight value       (for init) path weight (default: 10)
+   --allow-to value [ --allow-to value ]  path groups allowed to pull data from this path (allow all if not specified)
+   --groups value [ --groups value ]      path group names
+   --init                                 initialize the path first (default: false)
+   --max-storage value                    (for init) limit storage space for sectors (expensive for very large paths!)
+   --seal                                 (for init) use path for sealing (default: false)
+   --store                                (for init) use path for long-term storage (default: false)
+   --weight value                         (for init) path weight (default: 10)
    
 ```
 
@@ -202,9 +202,9 @@ USAGE:
    lotus-worker tasks command [command options] [arguments...]
 
 COMMANDS:
-   enable   Enable a task type
-   disable  Disable a task type
-   help, h  Shows a list of commands or help for one command
+     enable   Enable a task type
+     disable  Disable a task type
+     help, h  Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
