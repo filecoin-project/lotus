@@ -31,6 +31,6 @@ cd ../b
 go mod vendor
 
 cd ..
-diff -r --color a/vendor b/vendor
-diff -r --color a/vendor b/vendor > mod.diff
+diff -Naur --color b/vendor a/vendor
+diff -Naur --color b/vendor a/vendor > mod.diff
 echo "Saved to $temp/mod.diff"
