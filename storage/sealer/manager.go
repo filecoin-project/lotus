@@ -615,7 +615,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector storiface.SectorRef, p
 
 // sectorStorageType tries to figure out storage type for a given sector; expects only a single copy of the file in the
 // storage system
-func (m *Manager) sectorStorageType(ctx context.Context, sector storiface.SectorRef, ft storiface.SectorFileType) (bool, storiface.PathType, error) {
+func (m *Manager) sectorStorageType(ctx context.Context, sector storiface.SectorRef, ft storiface.SectorFileType) (sectorFound bool, ptype storiface.PathType, err error) {
 	stores, err := m.index.StorageFindSector(ctx, sector.ID, ft, 0, false)
 	if err != nil {
 		return false, "", xerrors.Errorf("finding sector: %w", err)
