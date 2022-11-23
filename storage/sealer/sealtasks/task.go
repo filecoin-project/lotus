@@ -20,8 +20,8 @@ const (
 	TTCommit1    TaskType = "seal/v0/commit/1"
 	TTCommit2    TaskType = "seal/v0/commit/2"
 
-	TTFinalize        TaskType = "seal/v0/finalize"
-	TTReleaseUnsealed TaskType = "seal/v0/releaseunsealed"
+	TTFinalize         TaskType = "seal/v0/finalize"
+	TTFinalizeUnsealed TaskType = "seal/v0/finalizeunsealed"
 
 	TTFetch  TaskType = "seal/v0/fetch"
 	TTUnseal TaskType = "seal/v0/unseal"
@@ -51,10 +51,10 @@ var order = map[TaskType]int{
 	TTCommit1:             2,
 	TTUnseal:              1,
 
-	TTFetch:           -1,
-	TTDownloadSector:  -2,
-	TTFinalize:        -3,
-	TTReleaseUnsealed: -4,
+	TTFetch:            -1,
+	TTDownloadSector:   -2,
+	TTFinalize:         -3,
+	TTFinalizeUnsealed: -4,
 
 	TTGenerateWindowPoSt:  -5,
 	TTGenerateWinningPoSt: -6, // most priority
@@ -69,8 +69,8 @@ var shortNames = map[TaskType]string{
 	TTCommit1:    "C1",
 	TTCommit2:    "C2",
 
-	TTFinalize:        "FIN",
-	TTReleaseUnsealed: "FUS",
+	TTFinalize:         "FIN",
+	TTFinalizeUnsealed: "FUS",
 
 	TTFetch:  "GET",
 	TTUnseal: "UNS",

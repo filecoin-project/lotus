@@ -142,7 +142,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 	go m.sched.runSched()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTReleaseUnsealed, sealtasks.TTFinalizeReplicaUpdate,
+		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTFinalizeUnsealed, sealtasks.TTFinalizeReplicaUpdate,
 	}
 	if sc.AllowSectorDownload {
 		localTasks = append(localTasks, sealtasks.TTDownloadSector)
@@ -803,7 +803,7 @@ func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRe
 
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, false)
 
-	return m.sched.Schedule(ctx, sector, sealtasks.TTReleaseUnsealed, selector, m.schedFetch(sector, storiface.FTUnsealed, pathType, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
+	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeUnsealed, selector, m.schedFetch(sector, storiface.FTUnsealed, pathType, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
 		_, err := m.waitSimpleCall(ctx)(w.ReleaseUnsealed(ctx, sector, keepUnsealed))
 		if err != nil {
 			return err

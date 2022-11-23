@@ -107,7 +107,7 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 	// the unsealed file from the miner.
 	ppt.addRemoteWorker(t, []sealtasks.TaskType{
 		sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1,
-		sealtasks.TTFetch, sealtasks.TTFinalize, sealtasks.TTReleaseUnsealed,
+		sealtasks.TTFetch, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed,
 	})
 
 	// create a worker that can ONLY unseal and fetch
