@@ -44,7 +44,7 @@ type EthModuleAPI interface {
 	EthGetCode(ctx context.Context, address api.EthAddress, blkOpt string) (api.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, address api.EthAddress, position api.EthBytes, blkParam string) (api.EthBytes, error)
 	EthGetBalance(ctx context.Context, address api.EthAddress, blkParam string) (api.EthBigInt, error)
-	EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlk string, rewardPercentiles []int64) (api.EthFeeHistory, error)
+	EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlk string, rewardPercentiles []float64) (api.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (api.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
@@ -54,7 +54,6 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx api.EthCall, blkParam string) (api.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (api.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx api.EthBytes) (api.EthHash, error)
-	// EthFeeHistory(ctx context.Context, blkCount string)
 }
 
 var _ EthModuleAPI = *new(api.FullNode)
@@ -377,7 +376,7 @@ func (a *EthModule) EthChainId(ctx context.Context) (api.EthUint64, error) {
 	return api.EthUint64(build.Eip155ChainId), nil
 }
 
-func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlkNum string, rewardPercentiles []int64) (api.EthFeeHistory, error) {
+func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlkNum string, rewardPercentiles []float64) (api.EthFeeHistory, error) {
 	if blkCount > 1024 {
 		return api.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}
@@ -495,6 +494,13 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthByte
 	smsg, err := txArgs.ToSignedMessage()
 	if err != nil {
 		return api.EmptyEthHash, err
+	}
+
+	_, err = a.StateAPI.StateGetActor(ctx, smsg.Message.To, types.EmptyTSK)
+	if err != nil {
+		// if actor does not exist on chain yet, set the method to 0 because
+		// embryos only implement method 0
+		smsg.Message.Method = builtin.MethodSend
 	}
 
 	cid, err := a.MpoolAPI.MpoolPush(ctx, smsg)
@@ -769,7 +775,7 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 	}
 
 	// lookup the transactionIndex
-	txIdx := -1 
+	txIdx := -1
 	msgs, err := a.Chain.MessagesForTipset(ctx, parentTs)
 	if err != nil {
 		return api.EthTx{}, err

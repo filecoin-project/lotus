@@ -229,7 +229,7 @@ type FullNodeStruct struct {
 
 		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthUint64, error) `perm:"read"`
 
-		EthFeeHistory func(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) `perm:"read"`
+		EthFeeHistory func(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) `perm:"read"`
 
 		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
@@ -1899,14 +1899,14 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64
 	return *new(EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) {
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
 		return *new(EthFeeHistory), ErrNotSupported
 	}
 	return s.Internal.EthFeeHistory(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) {
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) {
 	return *new(EthFeeHistory), ErrNotSupported
 }
 
