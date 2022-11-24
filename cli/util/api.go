@@ -274,7 +274,7 @@ func FullNodeProxy[T api.FullNode](ins []T, outstr *api.FullNodeStruct) {
 				}
 
 				total := len(rins)
-				result, err := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() (results []reflect.Value, err2 error) {
+				result, _ := retry.Retry(ctx, 5, initialBackoff, errorsToRetry, func() (results []reflect.Value, err2 error) {
 					curr = (curr + 1) % total
 
 					result := fns[curr].Call(args)

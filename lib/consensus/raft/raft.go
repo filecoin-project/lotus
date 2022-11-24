@@ -80,7 +80,7 @@ func newRaftWrapper(
 	raftW.staging = staging
 	raftW.repo = repo
 	// Set correct LocalID
-	cfg.RaftConfig.LocalID = hraft.ServerID(peer.Encode(host.ID()))
+	cfg.RaftConfig.LocalID = hraft.ServerID(host.ID().String())
 
 	df := cfg.GetDataFolder(repo)
 	err := makeDataFolder(df)
@@ -248,7 +248,7 @@ func makeServerConf(peers []peer.ID) hraft.Configuration {
 
 	// Servers are peers + self. We avoid duplicate entries below
 	for _, pid := range peers {
-		p := peer.Encode(pid)
+		p := pid.String()
 		_, ok := sm[p]
 		if !ok { // avoid dups
 			sm[p] = struct{}{}

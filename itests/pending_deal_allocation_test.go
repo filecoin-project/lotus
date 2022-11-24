@@ -31,8 +31,6 @@ import (
 )
 
 func TestGetAllocationForPendingDeal(t *testing.T) {
-	ctx := context.Background()
-
 	rootKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 

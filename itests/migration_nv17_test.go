@@ -38,8 +38,6 @@ import (
 )
 
 func TestMigrationNV17(t *testing.T) {
-	ctx := context.Background()
-
 	kit.QuietMiningLogs()
 
 	rootKey, err := key.GenerateKey(types.KTSecp256k1)

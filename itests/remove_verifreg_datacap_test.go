@@ -29,8 +29,6 @@ import (
 )
 
 func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
-	ctx := context.Background()
-
 	kit.QuietMiningLogs()
 
 	rootKey, err := key.GenerateKey(types.KTSecp256k1)

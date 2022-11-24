@@ -898,7 +898,7 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
 
 	m := msg.Message
-	refundValue := types.NewInt(0)
+	var refundValue types.BigInt
 	var messageMethod string
 
 	switch m.Method {
@@ -925,7 +925,7 @@ func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *
 func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
 
 	m := msg.Message
-	refundValue := types.NewInt(0)
+	var refundValue types.BigInt
 	var messageMethod string
 
 	if _, found := r.blockmap[m.To]; found {
