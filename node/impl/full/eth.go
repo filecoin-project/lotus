@@ -768,6 +768,21 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 		return api.EthTx{}, err
 	}
 
+	// lookup the transactionIndex
+	txIdx := -1 
+	msgs, err := a.Chain.MessagesForTipset(ctx, parentTs)
+	if err != nil {
+		return api.EthTx{}, err
+	}
+	for i, msg := range msgs {
+		if msg.Cid() == msgLookup.Message {
+			txIdx = i
+		}
+	}
+	if txIdx == -1 {
+		return api.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
+	}
+
 	blkHash, err := api.NewEthHashFromCid(parentTsCid)
 	if err != nil {
 		return api.EthTx{}, err
@@ -826,6 +841,7 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 		To:                   toAddr,
 		Value:                api.EthBigInt(msg.Value),
 		Type:                 api.EthUint64(2),
+		TransactionIndex:     api.EthUint64(txIdx),
 		Gas:                  api.EthUint64(msg.GasLimit),
 		MaxFeePerGas:         api.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: api.EthBigInt(msg.GasPremium),
