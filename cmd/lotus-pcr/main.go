@@ -418,12 +418,21 @@ var runCmd = &cli.Command{
 			Usage:   "messages with a prove cap larger than this will be skipped when processing pre commit messages",
 			Value:   "0.000000001",
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "3s",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		go func() {
 			server := &http.Server{
 				Addr:              ":6060",
-				ReadHeaderTimeout: 3 * time.Second,
+				ReadHeaderTimeout: timeout,
 			}
 
 			_ = server.ListenAndServe()

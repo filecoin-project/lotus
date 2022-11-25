@@ -26,6 +26,10 @@ var itestdCmd = &cli.Command{
 			Name:  "listen",
 			Value: "127.0.0.1:5674",
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "3s",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		var nodes []kit.ItestdNotif
@@ -45,9 +49,14 @@ var itestdCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("net listen: %w", err)
 		}
+
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
 		s := &httptest.Server{
 			Listener: l,
-			Config:   &http.Server{Handler: m, ReadHeaderTimeout: 3 * time.Second},
+			Config:   &http.Server{Handler: m, ReadHeaderTimeout: timeout},
 		}
 		s.Start()
 		fmt.Printf("ITest env:\n\nLOTUS_ITESTD=%s\n\nSay 'sh' to spawn a shell connected to test nodes\n--- waiting for clients\n", s.URL)

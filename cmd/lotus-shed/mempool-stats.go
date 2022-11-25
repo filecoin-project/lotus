@@ -6,6 +6,8 @@ import (
 	"sort"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -76,8 +78,14 @@ type msgInfo struct {
 
 var mpoolStatsCmd = &cli.Command{
 	Name: "mpool-stats",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "3s",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("rpc", "ERROR")
+		_ = logging.SetLogLevel("rpc", "ERROR")
 
 		if err := view.Register(AgeView, SizeView, InboundRate, InclusionRate, MsgWait); err != nil {
 			return err
@@ -92,10 +100,15 @@ var mpoolStatsCmd = &cli.Command{
 
 		http.Handle("/debug/metrics", expo)
 
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		go func() {
 			server := &http.Server{
 				Addr:              ":10555",
-				ReadHeaderTimeout: 3 * time.Second,
+				ReadHeaderTimeout: timeout,
 			}
 
 			if err := server.ListenAndServe(); err != nil {

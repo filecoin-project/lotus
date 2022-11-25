@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"contrib.go.opencensus.io/exporter/prometheus"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -128,6 +130,10 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_STATS_IPLD_STORE_CACHE_SIZE"},
 			Value:   2 << 15,
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "3s",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
@@ -158,11 +164,16 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		go func() {
 			http.Handle("/metrics", exporter)
 			server := &http.Server{
 				Addr:              ":6688",
-				ReadHeaderTimeout: 3 * time.Second,
+				ReadHeaderTimeout: timeout,
 			}
 			if err := server.ListenAndServe(); err != nil {
 				log.Errorw("failed to start http server", "err", err)
