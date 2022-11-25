@@ -284,7 +284,7 @@ func (rw *raftWrapper) WaitForLeader(ctx context.Context) (string, error) {
 func (rw *raftWrapper) WaitForVoter(ctx context.Context) error {
 	logger.Debug("waiting until we are promoted to a voter")
 
-	pid := hraft.ServerID(peer.Encode(rw.host.ID()))
+	pid := hraft.ServerID(rw.host.ID().String())
 	for {
 		select {
 		case <-ctx.Done():

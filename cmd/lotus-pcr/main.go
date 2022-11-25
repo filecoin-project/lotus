@@ -421,7 +421,12 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		go func() {
-			_ = http.ListenAndServe(":6060", nil)
+			server := &http.Server{
+				Addr:              ":6060",
+				ReadHeaderTimeout: 3 * time.Second,
+			}
+
+			_ = server.ListenAndServe()
 		}()
 
 		ctx := context.Background()

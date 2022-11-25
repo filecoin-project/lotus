@@ -199,6 +199,7 @@ func TestMigrationNV17(t *testing.T) {
 	require.NoError(t, err)
 
 	sig, err := clientApi.WalletSign(ctx, verifiedClientAddr, serializedProposal.Bytes())
+	require.NoError(t, err)
 
 	publishDealParams := markettypes.PublishStorageDealsParams{
 		Deals: []markettypes.ClientDealProposal{{
@@ -405,6 +406,7 @@ func TestMigrationNV17(t *testing.T) {
 	require.NoError(t, err)
 
 	sig, err = clientApi.WalletSign(ctx, verifiedClientAddr, serializedProposal.Bytes())
+	require.NoError(t, err)
 
 	publishDealParams = markettypes.PublishStorageDealsParams{
 		Deals: []markettypes.ClientDealProposal{{

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/chzyer/readline"
 	"github.com/urfave/cli/v2"
@@ -46,7 +47,7 @@ var itestdCmd = &cli.Command{
 		}
 		s := &httptest.Server{
 			Listener: l,
-			Config:   &http.Server{Handler: m},
+			Config:   &http.Server{Handler: m, ReadHeaderTimeout: 3 * time.Second},
 		}
 		s.Start()
 		fmt.Printf("ITest env:\n\nLOTUS_ITESTD=%s\n\nSay 'sh' to spawn a shell connected to test nodes\n--- waiting for clients\n", s.URL)
