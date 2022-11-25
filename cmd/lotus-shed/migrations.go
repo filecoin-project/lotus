@@ -239,8 +239,10 @@ func checkMigrationInvariants(ctx context.Context, v8StateRootCid cid.Cid, v9Sta
 	if err != nil {
 		return err
 	}
-
-	v9actorTree, _ := builtin.LoadTree(actorStore, v9stateRoot.Actors)
+	v9actorTree, err := builtin.LoadTree(actorStore, v9stateRoot.Actors)
+	if err != nil {
+		return err
+	}
 	messages, err := v9.CheckStateInvariants(v9actorTree, epoch, actorCodeCids)
 	if err != nil {
 		return xerrors.Errorf("checking state invariants: %w", err)

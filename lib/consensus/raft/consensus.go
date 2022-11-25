@@ -151,7 +151,13 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 	consensus.SetActor(actor)
 
 	peers := []peer.ID{}
-	addrInfos, _ := addrutil.ParseAddresses(ctx, cfg.InitPeerset)
+	addrInfos, err := addrutil.ParseAddresses(ctx, cfg.InitPeerset)
+	if err != nil {
+		logger.Error("error parsing addresses: ", err)
+		cancel()
+		return nil, err
+	}
+
 	for _, addrInfo := range addrInfos {
 		peers = append(peers, addrInfo.ID)
 
