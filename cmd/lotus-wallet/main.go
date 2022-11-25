@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/gorilla/mux"
@@ -240,7 +241,8 @@ var runCmd = &cli.Command{
 		}
 
 		srv := &http.Server{
-			Handler: handler,
+			Handler:           handler,
+			ReadHeaderTimeout: 3 * time.Second,
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-wallet"))
 				return ctx

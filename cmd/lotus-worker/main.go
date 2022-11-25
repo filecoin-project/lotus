@@ -563,7 +563,8 @@ var runCmd = &cli.Command{
 		log.Info("Setting up control endpoint at " + address)
 
 		srv := &http.Server{
-			Handler: sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			Handler:           sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			ReadHeaderTimeout: 3 * time.Second,
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
 				return ctx

@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -51,7 +52,8 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 
 	// Instantiate the server and start listening.
 	srv := &http.Server{
-		Handler: h,
+		Handler:           h,
+		ReadHeaderTimeout: 3 * time.Second,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, id))
 			return ctx
