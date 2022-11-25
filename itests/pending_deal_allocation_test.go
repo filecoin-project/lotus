@@ -144,6 +144,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	require.NoError(t, err)
 
 	sig, err := api.WalletSign(ctx, verifiedClientAddr, serializedProposal.Bytes())
+	require.NoError(t, err)
 
 	publishDealParams := markettypes.PublishStorageDealsParams{
 		Deals: []markettypes.ClientDealProposal{{
@@ -194,5 +195,6 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	}
 
 	marketDeal, err := api.StateMarketStorageDeal(ctx, dealIds[0], types.EmptyTSK)
+	require.NoError(t, err)
 	require.Equal(t, marketDeal.State.SectorStartEpoch, abi.ChainEpoch(-1))
 }
