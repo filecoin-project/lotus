@@ -127,7 +127,12 @@ var runCmd = &cli.Command{
 			os.Exit(0)
 		}()
 
-		return http.ListenAndServe(cctx.String("front"), nil)
+		server := &http.Server{
+			Addr:              cctx.String("front"),
+			ReadHeaderTimeout: 3 * time.Second,
+		}
+
+		return server.ListenAndServe()
 	},
 }
 

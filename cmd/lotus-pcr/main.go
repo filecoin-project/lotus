@@ -421,7 +421,7 @@ var runCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		go func() {
-			http.ListenAndServe(":6060", nil) //nolint:errcheck
+			_ = http.ListenAndServe(":6060", nil)
 		}()
 
 		ctx := context.Background()

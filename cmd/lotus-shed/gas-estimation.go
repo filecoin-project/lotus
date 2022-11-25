@@ -234,6 +234,9 @@ var replayOfflineCmd = &cli.Command{
 			return xerrors.Errorf("could not find message within the last %d epochs", lookbackLimit)
 		}
 		executionTs, err := cs.GetTipsetByHeight(ctx, ts.Height()-2, ts, true)
+		if err != nil {
+			return err
+		}
 
 		tw := tabwriter.NewWriter(os.Stdout, 8, 2, 2, ' ', tabwriter.AlignRight)
 		res, err := sm.CallWithGas(ctx, msg, []types.ChainMsg{}, executionTs)

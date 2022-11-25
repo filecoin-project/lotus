@@ -219,7 +219,7 @@ var finalResultCmd = &cli.Command{
 				// TODO: Confirm that these are always ID addresses
 				signers, err := ms.Signers()
 				if err != nil {
-					return xerrors.Errorf("fail to get msig signers", err)
+					return xerrors.Errorf("fail to get msig signers: %w", err)
 				}
 				for _, s := range signers {
 					signerId := lookupId(s)
@@ -244,12 +244,12 @@ var finalResultCmd = &cli.Command{
 			if builtin.IsStorageMinerActor(act.Code) {
 				m, err := miner.Load(store, act)
 				if err != nil {
-					return xerrors.Errorf("fail to load miner actor: \n", err)
+					return xerrors.Errorf("fail to load miner actor: %w", err)
 				}
 
 				info, err := m.Info()
 				if err != nil {
-					return xerrors.Errorf("fail to get miner info: \n", err)
+					return xerrors.Errorf("fail to get miner info: %w\n", err)
 				}
 
 				ownerId := lookupId(info.Owner)
@@ -353,7 +353,7 @@ var finalResultCmd = &cli.Command{
 			//process votes for regular accounts
 			accountActor, err := st.GetActor(signerId)
 			if err != nil {
-				return xerrors.Errorf("fail to get account account for signer: ", err)
+				return xerrors.Errorf("fail to get account account for signer: %w\n", err)
 			}
 
 			clientBytes, ok := clientToDealStorage[signerId]

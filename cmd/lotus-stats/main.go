@@ -160,7 +160,11 @@ var runCmd = &cli.Command{
 
 		go func() {
 			http.Handle("/metrics", exporter)
-			if err := http.ListenAndServe(":6688", nil); err != nil {
+			server := &http.Server{
+				Addr:              ":6688",
+				ReadHeaderTimeout: 3 * time.Second,
+			}
+			if err := server.ListenAndServe(); err != nil {
 				log.Errorw("failed to start http server", "err", err)
 			}
 		}()

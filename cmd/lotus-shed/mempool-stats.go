@@ -93,7 +93,12 @@ var mpoolStatsCmd = &cli.Command{
 		http.Handle("/debug/metrics", expo)
 
 		go func() {
-			if err := http.ListenAndServe(":10555", nil); err != nil {
+			server := &http.Server{
+				Addr:              ":10555",
+				ReadHeaderTimeout: 3 * time.Second,
+			}
+
+			if err := server.ListenAndServe(); err != nil {
 				panic(err)
 			}
 		}()
