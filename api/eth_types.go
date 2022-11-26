@@ -444,3 +444,27 @@ type EthFeeHistory struct {
 	GasUsedRatio  []float64      `json:"gasUsedRatio"`
 	Reward        *[][]EthBigInt `json:"reward,omitempty"`
 }
+
+type BlkNumType int64
+
+const (
+	BlkNumLatest BlkNumType = iota
+	BlkNumPending
+	BlkNumVal
+)
+
+func ParseBlkNumOption(str string) (typ BlkNumType, blkNum EthUint64, err error) {
+	switch str {
+	case "pending":
+		return BlkNumPending, 0, nil
+	case "latest":
+		return BlkNumLatest, 0, nil
+	default:
+		var num EthUint64
+		err := num.UnmarshalJSON([]byte(`"` + str + `"`))
+		if err != nil {
+			return BlkNumVal, 0, err
+		}
+		return BlkNumVal, num, nil
+	}
+}

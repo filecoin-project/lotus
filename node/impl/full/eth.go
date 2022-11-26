@@ -139,9 +139,15 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash api.EthHash, 
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (api.EthBlock, error) {
-	var num api.EthUint64
-	err := num.UnmarshalJSON([]byte(`"` + blkNum + `"`))
+	typ, num, err := api.ParseBlkNumOption(blkNum)
 	if err != nil {
+		return api.EthBlock{}, fmt.Errorf("cannot parse block number: %v", err)
+	}
+
+	switch typ {
+	case api.BlkNumLatest:
+		num = api.EthUint64(a.Chain.GetHeaviestTipSet().Height()) - 1
+	case api.BlkNumPending:
 		num = api.EthUint64(a.Chain.GetHeaviestTipSet().Height())
 	}
 
