@@ -358,6 +358,21 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 		return xerrors.Errorf("worker UnsealPiece call: %s", err)
 	}
 
+	// get a selector for moving unsealed sector into long-term storage
+	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTUnsealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+
+	// move unsealed sector to long-term storage
+	// Possible TODO: Add an option to not keep the unsealed sector in long term storage?
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
+		m.schedFetch(sector, storiface.FTUnsealed, storiface.PathStorage, storiface.AcquireMove),
+		func(ctx context.Context, w Worker) error {
+			_, err := m.waitSimpleCall(ctx)(w.MoveStorage(ctx, sector, storiface.FTUnsealed))
+			return err
+		})
+	if err != nil {
+		return xerrors.Errorf("moving unsealed sector to long term storage: %w", err)
+	}
+
 	return nil
 }
 
