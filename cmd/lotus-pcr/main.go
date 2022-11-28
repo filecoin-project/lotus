@@ -424,9 +424,9 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		timeout, err := time.ParseDuration(cctx.String("http-timeout"))
 		if err != nil {
-			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-timeout"), err)
 		}
 
 		go func() {
