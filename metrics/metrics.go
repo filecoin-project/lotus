@@ -14,7 +14,7 @@ import (
 )
 
 // Distribution
-var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100000)
+var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100_000, 250_000, 500_000, 1000_000)
 var workMillisecondsDistribution = view.Distribution(
 	250, 500, 1000, 2000, 5000, 10_000, 30_000, 60_000, 2*60_000, 5*60_000, 10*60_000, 15*60_000, 30*60_000, // short sealing tasks
 	40*60_000, 45*60_000, 50*60_000, 55*60_000, 60*60_000, 65*60_000, 70*60_000, 75*60_000, 80*60_000, 85*60_000, 100*60_000, 120*60_000, // PC2 / C2 range
@@ -135,6 +135,11 @@ var (
 	StorageReservedBytes    = stats.Int64("storage/path_reserved_bytes", "reserved storage bytes", stats.UnitBytes)
 	StorageLimitUsedBytes   = stats.Int64("storage/path_limit_used_bytes", "used optional storage limit bytes", stats.UnitBytes)
 	StorageLimitMaxBytes    = stats.Int64("storage/path_limit_max_bytes", "optional storage limit", stats.UnitBytes)
+
+	SchedAssignerCycleDuration           = stats.Float64("sched/assigner_cycle_ms", "Duration of scheduler assigner cycle", stats.UnitMilliseconds)
+	SchedAssignerCandidatesDuration      = stats.Float64("sched/assigner_cycle_candidates_ms", "Duration of scheduler assigner candidate matching step", stats.UnitMilliseconds)
+	SchedAssignerWindowSelectionDuration = stats.Float64("sched/assigner_cycle_window_select_ms", "Duration of scheduler window selection step", stats.UnitMilliseconds)
+	SchedAssignerSubmitDuration          = stats.Float64("sched/assigner_cycle_submit_ms", "Duration of scheduler window submit step", stats.UnitMilliseconds)
 
 	DagStorePRInitCount        = stats.Int64("dagstore/pr_init_count", "PieceReader init count", stats.UnitDimensionless)
 	DagStorePRBytesRequested   = stats.Int64("dagstore/pr_requested_bytes", "PieceReader requested bytes", stats.UnitBytes)
@@ -428,6 +433,23 @@ var (
 		TagKeys:     []tag.Key{StorageID},
 	}
 
+	SchedAssignerCycleDurationView = &view.View{
+		Measure:     SchedAssignerCycleDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	SchedAssignerCandidatesDurationView = &view.View{
+		Measure:     SchedAssignerCandidatesDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	SchedAssignerWindowSelectionDurationView = &view.View{
+		Measure:     SchedAssignerWindowSelectionDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	SchedAssignerSubmitDurationView = &view.View{
+		Measure:     SchedAssignerSubmitDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+
 	DagStorePRInitCountView = &view.View{
 		Measure:     DagStorePRInitCount,
 		Aggregation: view.Count(),
@@ -697,6 +719,7 @@ var MinerNodeViews = append([]*view.View{
 	WorkerCallsReturnedCountView,
 	WorkerUntrackedCallsReturnedView,
 	WorkerCallsReturnedDurationView,
+
 	SectorStatesView,
 	StorageFSAvailableView,
 	StorageAvailableView,
@@ -708,6 +731,12 @@ var MinerNodeViews = append([]*view.View{
 	StorageReservedBytesView,
 	StorageLimitUsedBytesView,
 	StorageLimitMaxBytesView,
+
+	SchedAssignerCycleDurationView,
+	SchedAssignerCandidatesDurationView,
+	SchedAssignerWindowSelectionDurationView,
+	SchedAssignerSubmitDurationView,
+
 	DagStorePRInitCountView,
 	DagStorePRBytesRequestedView,
 	DagStorePRBytesDiscardedView,

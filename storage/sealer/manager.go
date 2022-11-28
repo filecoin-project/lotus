@@ -105,7 +105,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
 
-	sh, err := newScheduler(sc.Assigner)
+	sh, err := newScheduler(ctx, sc.Assigner)
 	if err != nil {
 		return nil, err
 	}

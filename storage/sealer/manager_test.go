@@ -110,7 +110,7 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 
 	stor := paths.NewRemote(lstor, si, nil, 6000, &paths.DefaultPartialFileHandler{})
 
-	sh, err := newScheduler("")
+	sh, err := newScheduler(ctx, "")
 	require.NoError(t, err)
 
 	m := &Manager{

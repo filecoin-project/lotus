@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 type WindowSelector func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int
@@ -51,6 +53,11 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 	// Step 1
 	throttle := make(chan struct{}, windowsLen)
+
+	partDone := metrics.Timer(sh.mctx, metrics.SchedAssignerCandidatesDuration)
+	defer func() {
+		partDone()
+	}()
 
 	var wg sync.WaitGroup
 	wg.Add(queueLen)
@@ -152,9 +159,14 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 	log.Debugf("SCHED Acceptable win: %+v", acceptableWindows)
 
 	// Step 2
+	partDone()
+	partDone = metrics.Timer(sh.mctx, metrics.SchedAssignerWindowSelectionDuration)
+
 	scheduled := a.WindowSel(sh, queueLen, acceptableWindows, windows)
 
 	// Step 3
+	partDone()
+	partDone = metrics.Timer(sh.mctx, metrics.SchedAssignerSubmitDuration)
 
 	if scheduled == 0 {
 		return
