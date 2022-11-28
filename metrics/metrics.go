@@ -142,8 +142,8 @@ var (
 	SchedAssignerCandidatesDuration      = stats.Float64("sched/assigner_cycle_candidates_ms", "Duration of scheduler assigner candidate matching step", stats.UnitMilliseconds)
 	SchedAssignerWindowSelectionDuration = stats.Float64("sched/assigner_cycle_window_select_ms", "Duration of scheduler window selection step", stats.UnitMilliseconds)
 	SchedAssignerSubmitDuration          = stats.Float64("sched/assigner_cycle_submit_ms", "Duration of scheduler window submit step", stats.UnitMilliseconds)
-	SchedCycleOpenWindows                = stats.Int64("sched/assigner_cycle_open_window_count", "Number of open windows in scheduling cycles", stats.UnitDimensionless)
-	SchedCycleQueueSize                  = stats.Int64("sched/assigner_cycle_task_queue_entry_count", "Number of task queue entries in scheduling cycles", stats.UnitDimensionless)
+	SchedCycleOpenWindows                = stats.Int64("sched/assigner_cycle_open_window", "Number of open windows in scheduling cycles", stats.UnitDimensionless)
+	SchedCycleQueueSize                  = stats.Int64("sched/assigner_cycle_task_queue_entry", "Number of task queue entries in scheduling cycles", stats.UnitDimensionless)
 
 	DagStorePRInitCount        = stats.Int64("dagstore/pr_init_count", "PieceReader init count", stats.UnitDimensionless)
 	DagStorePRBytesRequested   = stats.Int64("dagstore/pr_requested_bytes", "PieceReader requested bytes", stats.UnitBytes)
@@ -461,14 +461,6 @@ var (
 		Measure:     SchedCycleQueueSize,
 		Aggregation: queueSizeDistribution,
 	}
-	SchedCycleLastOpenWindowsView = &view.View{
-		Measure:     SchedCycleOpenWindows,
-		Aggregation: view.LastValue(),
-	}
-	SchedCycleLastQueueSizeView = &view.View{
-		Measure:     SchedCycleQueueSize,
-		Aggregation: view.LastValue(),
-	}
 
 	DagStorePRInitCountView = &view.View{
 		Measure:     DagStorePRInitCount,
@@ -758,8 +750,6 @@ var MinerNodeViews = append([]*view.View{
 	SchedAssignerSubmitDurationView,
 	SchedCycleOpenWindowsView,
 	SchedCycleQueueSizeView,
-	SchedCycleLastQueueSizeView,
-	SchedCycleLastOpenWindowsView,
 
 	DagStorePRInitCountView,
 	DagStorePRBytesRequestedView,
