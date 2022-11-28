@@ -92,7 +92,7 @@ func TestWorkerUpgradeAbortCleanup(t *testing.T) {
 			case id == wpaths[0].ID: // worker path
 				if workers != storiface.FTNone {
 					require.Len(t, decls, 1)
-					require.EqualValues(t, decls[0].SectorFileType.Strings(), workers.Strings())
+					require.EqualValues(t, workers.Strings(), decls[0].SectorFileType.Strings())
 				} else {
 					require.Len(t, decls, 0)
 				}
@@ -101,7 +101,7 @@ func TestWorkerUpgradeAbortCleanup(t *testing.T) {
 			default: // miner path
 				if miners != storiface.FTNone {
 					require.Len(t, decls, 1)
-					require.EqualValues(t, decls[0].SectorFileType.Strings(), miners.Strings())
+					require.EqualValues(t, miners.Strings(), decls[0].SectorFileType.Strings())
 				} else {
 					require.Len(t, decls, 0)
 				}
