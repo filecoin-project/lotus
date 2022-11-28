@@ -2,6 +2,7 @@ package sealer
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"math/rand"
 	"sort"
 	"sync"
@@ -36,6 +37,11 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 		3. Submit windows with scheduled tasks to workers
 
 	*/
+
+	cachedWorkers := &schedWorkerCache{
+		Workers: sh.Workers,
+		cached:  map[storiface.WorkerID]*cachedSchedWorker{},
+	}
 
 	windowsLen := len(sh.OpenWindows)
 	queueLen := sh.SchedQueue.Len()
@@ -81,7 +87,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 			var havePreferred bool
 
 			for wnd, windowRequest := range sh.OpenWindows {
-				worker, ok := sh.Workers[windowRequest.Worker]
+				worker, ok := cachedWorkers.Get(windowRequest.Worker)
 				if !ok {
 					log.Errorf("worker referenced by windowRequest not found (worker: %s)", windowRequest.Worker)
 					// TODO: How to move forward here?
@@ -143,8 +149,8 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 					return acceptableWindows[sqi][i] < acceptableWindows[sqi][j] // nolint:scopelint
 				}
 
-				wi := sh.Workers[wii]
-				wj := sh.Workers[wji]
+				wi, _ := cachedWorkers.Get(wii)
+				wj, _ := cachedWorkers.Get(wji)
 
 				rpcCtx, cancel := context.WithTimeout(task.Ctx, SelectorTimeout)
 				defer cancel()
