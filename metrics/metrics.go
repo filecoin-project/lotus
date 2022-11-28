@@ -22,6 +22,8 @@ var workMillisecondsDistribution = view.Distribution(
 	350*60_000, 400*60_000, 600*60_000, 800*60_000, 1000*60_000, 1300*60_000, 1800*60_000, 4000*60_000, 10000*60_000, // intel PC1 range
 )
 
+var queueSizeDistribution = view.Distribution(0, 1, 2, 3, 5, 7, 10, 15, 25, 35, 50, 70, 90, 130, 200, 300, 500, 1000, 2000, 5000, 10000)
+
 // Global Tags
 var (
 	// common
@@ -140,6 +142,8 @@ var (
 	SchedAssignerCandidatesDuration      = stats.Float64("sched/assigner_cycle_candidates_ms", "Duration of scheduler assigner candidate matching step", stats.UnitMilliseconds)
 	SchedAssignerWindowSelectionDuration = stats.Float64("sched/assigner_cycle_window_select_ms", "Duration of scheduler window selection step", stats.UnitMilliseconds)
 	SchedAssignerSubmitDuration          = stats.Float64("sched/assigner_cycle_submit_ms", "Duration of scheduler window submit step", stats.UnitMilliseconds)
+	SchedCycleOpenWindows                = stats.Int64("sched/assigner_cycle_open_window_count", "Number of open windows in scheduling cycles", stats.UnitDimensionless)
+	SchedCycleQueueSize                  = stats.Int64("sched/assigner_cycle_task_queue_entry_count", "Number of task queue entries in scheduling cycles", stats.UnitDimensionless)
 
 	DagStorePRInitCount        = stats.Int64("dagstore/pr_init_count", "PieceReader init count", stats.UnitDimensionless)
 	DagStorePRBytesRequested   = stats.Int64("dagstore/pr_requested_bytes", "PieceReader requested bytes", stats.UnitBytes)
@@ -449,6 +453,22 @@ var (
 		Measure:     SchedAssignerSubmitDuration,
 		Aggregation: defaultMillisecondsDistribution,
 	}
+	SchedCycleOpenWindowsView = &view.View{
+		Measure:     SchedCycleOpenWindows,
+		Aggregation: queueSizeDistribution,
+	}
+	SchedCycleQueueSizeView = &view.View{
+		Measure:     SchedCycleQueueSize,
+		Aggregation: queueSizeDistribution,
+	}
+	SchedCycleLastOpenWindowsView = &view.View{
+		Measure:     SchedCycleOpenWindows,
+		Aggregation: view.LastValue(),
+	}
+	SchedCycleLastQueueSizeView = &view.View{
+		Measure:     SchedCycleQueueSize,
+		Aggregation: view.LastValue(),
+	}
 
 	DagStorePRInitCountView = &view.View{
 		Measure:     DagStorePRInitCount,
@@ -736,6 +756,10 @@ var MinerNodeViews = append([]*view.View{
 	SchedAssignerCandidatesDurationView,
 	SchedAssignerWindowSelectionDurationView,
 	SchedAssignerSubmitDurationView,
+	SchedCycleOpenWindowsView,
+	SchedCycleQueueSizeView,
+	SchedCycleLastQueueSizeView,
+	SchedCycleLastOpenWindowsView,
 
 	DagStorePRInitCountView,
 	DagStorePRBytesRequestedView,

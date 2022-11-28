@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 
+	"go.opencensus.io/stats"
+
 	"github.com/filecoin-project/lotus/metrics"
 )
 
@@ -37,6 +39,9 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 	windowsLen := len(sh.OpenWindows)
 	queueLen := sh.SchedQueue.Len()
+
+	stats.Record(sh.mctx, metrics.SchedCycleOpenWindows.M(int64(windowsLen)))
+	stats.Record(sh.mctx, metrics.SchedCycleQueueSize.M(int64(queueLen)))
 
 	log.Debugf("SCHED %d queued; %d open windows", queueLen, windowsLen)
 
