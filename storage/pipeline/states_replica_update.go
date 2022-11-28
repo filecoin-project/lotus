@@ -335,7 +335,7 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 
 		lb := policy.GetWinningPoStSectorSetLookback(nv)
 
-		targetHeight := mw.Height + lb + InteractivePoRepConfidence
+		targetHeight := mw.Height + lb
 
 		return m.events.ChainAt(context.Background(), func(context.Context, *types.TipSet, abi.ChainEpoch) error {
 			return ctx.Send(SectorUpdateActive{})
