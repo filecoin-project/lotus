@@ -40,6 +40,7 @@ USAGE:
 OPTIONS:
    --addpiece                    enable addpiece (default: true) [$LOTUS_WORKER_ADDPIECE]
    --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true) [$LOTUS_WORKER_COMMIT]
+   --http-server-timeout value   (default: "3s")
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456") [$LOTUS_WORKER_LISTEN]
    --name value                  custom worker name (default: hostname) [$LOTUS_WORKER_NAME]
    --no-default                  disable all default compute tasks, use the worker for storage/fetching only (default: false) [$LOTUS_WORKER_NO_DEFAULT]
