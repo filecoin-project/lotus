@@ -107,7 +107,7 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 	// the unsealed file from the miner.
 	ppt.addRemoteWorker(t, []sealtasks.TaskType{
 		sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1,
-		sealtasks.TTFetch, sealtasks.TTFinalize,
+		sealtasks.TTFetch, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed,
 	})
 
 	// create a worker that can ONLY unseal and fetch
@@ -352,7 +352,8 @@ func (p *pieceProviderTestHarness) readPiece(t *testing.T, offset storiface.Unpa
 }
 
 func (p *pieceProviderTestHarness) finalizeSector(t *testing.T, keepUnseal []storiface.Range) {
-	require.NoError(t, p.mgr.FinalizeSector(p.ctx, p.sector, keepUnseal))
+	require.NoError(t, p.mgr.ReleaseUnsealed(p.ctx, p.sector, keepUnseal))
+	require.NoError(t, p.mgr.FinalizeSector(p.ctx, p.sector))
 }
 
 func (p *pieceProviderTestHarness) shutdown(t *testing.T) {

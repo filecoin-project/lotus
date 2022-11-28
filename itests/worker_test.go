@@ -2,13 +2,11 @@ package itests
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
@@ -79,7 +77,7 @@ func TestWorkerPledgeLocalFin(t *testing.T) {
 func TestWorkerDataCid(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTDataCid, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+		kit.WithSealWorkerTasks) // no mock proofs
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -409,33 +407,13 @@ func TestWindowPostWorkerManualPoSt(t *testing.T) {
 func TestSchedulerRemoveRequest(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTDataCid, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTPreCommit1})) // no mock proofs
 
 	//ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
 	require.True(t, e)
-
-	type info struct {
-		CallToWork struct {
-		} `json:"CallToWork"`
-		EarlyRet     interface{} `json:"EarlyRet"`
-		ReturnedWork interface{} `json:"ReturnedWork"`
-		SchedInfo    struct {
-			OpenWindows []string `json:"OpenWindows"`
-			Requests    []struct {
-				Priority int    `json:"Priority"`
-				SchedID  string `json:"SchedId"`
-				Sector   struct {
-					Miner  int `json:"Miner"`
-					Number int `json:"Number"`
-				} `json:"Sector"`
-				TaskType string `json:"TaskType"`
-			} `json:"Requests"`
-		} `json:"SchedInfo"`
-		Waiting interface{} `json:"Waiting"`
-	}
 
 	tocheck := miner.StartPledge(ctx, 1, 0, nil)
 	var sn abi.SectorNumber
@@ -453,39 +431,18 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	}
 
 	// Dump current scheduler info
-	schedb, err := miner.SealingSchedDiag(ctx, false)
-	require.NoError(t, err)
-
-	j, err := json.MarshalIndent(&schedb, "", "  ")
-	require.NoError(t, err)
-
-	var b info
-	err = json.Unmarshal(j, &b)
-	require.NoError(t, err)
-
-	var schedidb uuid.UUID
+	b := miner.SchedInfo(ctx)
 
 	// cast scheduler info and get the request UUID. Call the SealingRemoveRequest()
 	require.Len(t, b.SchedInfo.Requests, 1)
 	require.Equal(t, "seal/v0/precommit/2", b.SchedInfo.Requests[0].TaskType)
 
-	schedidb, err = uuid.Parse(b.SchedInfo.Requests[0].SchedID)
-	require.NoError(t, err)
-
-	err = miner.SealingRemoveRequest(ctx, schedidb)
+	err = miner.SealingRemoveRequest(ctx, b.SchedInfo.Requests[0].SchedId)
 	require.NoError(t, err)
 
 	// Dump the schduler again and compare the UUID if a request is present
 	// If no request present then pass the test
-	scheda, err := miner.SealingSchedDiag(ctx, false)
-	require.NoError(t, err)
-
-	k, err := json.MarshalIndent(&scheda, "", "  ")
-	require.NoError(t, err)
-
-	var a info
-	err = json.Unmarshal(k, &a)
-	require.NoError(t, err)
+	a := miner.SchedInfo(ctx)
 
 	require.Len(t, a.SchedInfo.Requests, 0)
 }
