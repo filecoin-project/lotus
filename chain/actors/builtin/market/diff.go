@@ -12,7 +12,7 @@ import (
 
 func DiffDealProposals(pre, cur DealProposals) (*DealProposalChanges, error) {
 	results := new(DealProposalChanges)
-	if err := adt.DiffAdtArray(pre.array(), cur.array(), &marketProposalsDiffer{results, pre, cur}); err != nil {
+	if err := adt.DiffAdtArray(pre.ProposalsArray(), cur.ProposalsArray(), &marketProposalsDiffer{results, pre, cur}); err != nil {
 		return nil, fmt.Errorf("diffing deal states: %w", err)
 	}
 	return results, nil
@@ -24,7 +24,7 @@ type marketProposalsDiffer struct {
 }
 
 func (d *marketProposalsDiffer) Add(key uint64, val *cbg.Deferred) error {
-	dp, err := d.cur.decode(val)
+	dp, err := d.cur.Decode(val)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func (d *marketProposalsDiffer) Modify(key uint64, from, to *cbg.Deferred) error
 }
 
 func (d *marketProposalsDiffer) Remove(key uint64, val *cbg.Deferred) error {
-	dp, err := d.pre.decode(val)
+	dp, err := d.pre.Decode(val)
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (d *marketProposalsDiffer) Remove(key uint64, val *cbg.Deferred) error {
 
 func DiffDealStates(pre, cur DealStates) (*DealStateChanges, error) {
 	results := new(DealStateChanges)
-	if err := adt.DiffAdtArray(pre.array(), cur.array(), &marketStatesDiffer{results, pre, cur}); err != nil {
+	if err := adt.DiffAdtArray(pre.StatesArray(), cur.StatesArray(), &marketStatesDiffer{results, pre, cur}); err != nil {
 		return nil, fmt.Errorf("diffing deal states: %w", err)
 	}
 	return results, nil
@@ -60,7 +60,7 @@ type marketStatesDiffer struct {
 }
 
 func (d *marketStatesDiffer) Add(key uint64, val *cbg.Deferred) error {
-	ds, err := d.cur.decode(val)
+	ds, err := d.cur.Decode(val)
 	if err != nil {
 		return err
 	}
@@ -69,11 +69,11 @@ func (d *marketStatesDiffer) Add(key uint64, val *cbg.Deferred) error {
 }
 
 func (d *marketStatesDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
-	dsFrom, err := d.pre.decode(from)
+	dsFrom, err := d.pre.Decode(from)
 	if err != nil {
 		return err
 	}
-	dsTo, err := d.cur.decode(to)
+	dsTo, err := d.cur.Decode(to)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (d *marketStatesDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
 }
 
 func (d *marketStatesDiffer) Remove(key uint64, val *cbg.Deferred) error {
-	ds, err := d.pre.decode(val)
+	ds, err := d.pre.Decode(val)
 	if err != nil {
 		return err
 	}
