@@ -87,7 +87,7 @@ type Scheduler struct {
 
 type WorkerHandle struct {
 	workerRpc Worker
-	
+
 	Info storiface.WorkerInfo
 
 	preparing *ActiveResources // use with WorkerHandle.lk

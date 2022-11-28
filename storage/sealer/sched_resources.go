@@ -1,9 +1,10 @@
 package sealer
 
 import (
+	"sync"
+
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"sync"
 )
 
 type ActiveResources struct {
