@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -51,6 +52,8 @@ type WorkerSelector interface {
 }
 
 type Scheduler struct {
+	mctx context.Context // metrics context
+
 	assigner Assigner
 
 	workersLk sync.RWMutex
@@ -146,7 +149,7 @@ type rmRequest struct {
 	res chan error
 }
 
-func newScheduler(assigner string) (*Scheduler, error) {
+func newScheduler(ctx context.Context, assigner string) (*Scheduler, error) {
 	var a Assigner
 	switch assigner {
 	case "", "utilization":
@@ -158,6 +161,7 @@ func newScheduler(assigner string) (*Scheduler, error) {
 	}
 
 	return &Scheduler{
+		mctx:     ctx,
 		assigner: a,
 
 		Workers: map[storiface.WorkerID]*WorkerHandle{},
@@ -365,6 +369,9 @@ type Assigner interface {
 func (sh *Scheduler) trySched() {
 	sh.workersLk.RLock()
 	defer sh.workersLk.RUnlock()
+
+	done := metrics.Timer(sh.mctx, metrics.SchedAssignerCycleDuration)
+	defer done()
 
 	sh.assigner.TrySched(sh)
 }
