@@ -2244,7 +2244,7 @@ Inputs:
   "0x5",
   "string value",
   [
-    9
+    12.3
   ]
 ]
 ```

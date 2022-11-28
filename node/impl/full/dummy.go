@@ -67,7 +67,7 @@ func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address api.EthAddre
 	return api.EthBigIntZero, ErrImplementMe
 }
 
-func (e *EthModuleDummy) EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlk string, rewardPercentiles []int64) (api.EthFeeHistory, error) {
+func (e *EthModuleDummy) EthFeeHistory(ctx context.Context, blkCount api.EthUint64, newestBlk string, rewardPercentiles []float64) (api.EthFeeHistory, error) {
 	return api.EthFeeHistory{}, ErrImplementMe
 }
 
