@@ -208,16 +208,17 @@ func (s *dealStates{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-    {{if (le .v 8)}}
-    return DealState{
+    ret := DealState{
         SectorStartEpoch: v{{.v}}.SectorStartEpoch,
         LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
         SlashEpoch: v{{.v}}.SlashEpoch,
         VerifiedClaim: 0,
     }
-    {{else}}
-    return (DealState)(v{{.v}})
+    {{if (ge .v 9)}}
+        ret.VerifiedClaim = verifregtypes.AllocationId(v{{.v}}.VerifiedClaim)
     {{end}}
+
+    return ret
 }
 
 type dealProposals{{.v}} struct {
@@ -373,7 +374,7 @@ func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifreg
 {{if (le .v 8)}}
     	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
 {{else}}
-	allocations, err := adt9.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+	allocations, err := adt{{.v}}.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
     if err != nil {
         return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
     }

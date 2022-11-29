@@ -4261,7 +4261,7 @@ Perms: read
 Inputs:
 ```json
 [
-  17
+  18
 ]
 ```
 
@@ -4276,7 +4276,7 @@ Perms: read
 Inputs:
 ```json
 [
-  17
+  18
 ]
 ```
 
@@ -4430,7 +4430,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Nonce": 42,
-    "Balance": "0"
+    "Balance": "0",
+    "Address": "\u003cempty\u003e"
   }
 }
 ```
@@ -4664,7 +4665,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Nonce": 42,
-  "Balance": "0"
+  "Balance": "0",
+  "Address": "\u003cempty\u003e"
 }
 ```
 
@@ -5738,7 +5740,7 @@ Inputs:
 ]
 ```
 
-Response: `17`
+Response: `18`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

@@ -208,6 +208,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	},
+	// TODO v10 upgrade
 	}
 
 	for _, u := range updates {
@@ -1550,6 +1551,15 @@ func upgradeActorsV9Common(
 	}
 
 	return newRoot, nil
+}
+
+func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+
+	// TODO migration
+	// - the init actor state to include the (empty) installed actors field
+	// - state tree migration to v5
+	return cid.Undef, fmt.Errorf("IMPLEMENTME: v10 migration")
 }
 
 // Example upgrade function if upgrade requires only code changes

@@ -12,6 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
+	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
@@ -1040,9 +1041,9 @@ func (t *MsgMeta) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufActor = []byte{132}
+var lengthBufActorV4 = []byte{132}
 
-func (t *Actor) MarshalCBOR(w io.Writer) error {
+func (t *ActorV4) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -1050,7 +1051,7 @@ func (t *Actor) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write(lengthBufActor); err != nil {
+	if _, err := cw.Write(lengthBufActorV4); err != nil {
 		return err
 	}
 
@@ -1079,8 +1080,8 @@ func (t *Actor) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *Actor) UnmarshalCBOR(r io.Reader) (err error) {
-	*t = Actor{}
+func (t *ActorV4) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ActorV4{}
 
 	cr := cbg.NewCborReader(r)
 
@@ -1146,6 +1147,142 @@ func (t *Actor) UnmarshalCBOR(r io.Reader) (err error) {
 
 		if err := t.Balance.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Balance: %w", err)
+		}
+
+	}
+	return nil
+}
+
+var lengthBufActorV5 = []byte{133}
+
+func (t *ActorV5) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufActorV5); err != nil {
+		return err
+	}
+
+	// t.Code (cid.Cid) (struct)
+
+	if err := cbg.WriteCid(cw, t.Code); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Code: %w", err)
+	}
+
+	// t.Head (cid.Cid) (struct)
+
+	if err := cbg.WriteCid(cw, t.Head); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Head: %w", err)
+	}
+
+	// t.Nonce (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Nonce)); err != nil {
+		return err
+	}
+
+	// t.Balance (big.Int) (struct)
+	if err := t.Balance.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.Address (address.Address) (struct)
+	if err := t.Address.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *ActorV5) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ActorV5{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 5 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Code (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(cr)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Code: %w", err)
+		}
+
+		t.Code = c
+
+	}
+	// t.Head (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(cr)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Head: %w", err)
+		}
+
+		t.Head = c
+
+	}
+	// t.Nonce (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Nonce = uint64(extra)
+
+	}
+	// t.Balance (big.Int) (struct)
+
+	{
+
+		if err := t.Balance.UnmarshalCBOR(cr); err != nil {
+			return xerrors.Errorf("unmarshaling t.Balance: %w", err)
+		}
+
+	}
+	// t.Address (address.Address) (struct)
+
+	{
+
+		b, err := cr.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := cr.UnreadByte(); err != nil {
+				return err
+			}
+			t.Address = new(address.Address)
+			if err := t.Address.UnmarshalCBOR(cr); err != nil {
+				return xerrors.Errorf("unmarshaling t.Address pointer: %w", err)
+			}
 		}
 
 	}

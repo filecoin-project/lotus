@@ -9,6 +9,18 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
+	account10 "github.com/filecoin-project/go-state-types/builtin/v10/account"
+	cron10 "github.com/filecoin-project/go-state-types/builtin/v10/cron"
+	datacap10 "github.com/filecoin-project/go-state-types/builtin/v10/datacap"
+	_init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
+	market10 "github.com/filecoin-project/go-state-types/builtin/v10/market"
+	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
+	multisig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
+	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
+	power10 "github.com/filecoin-project/go-state-types/builtin/v10/power"
+	reward10 "github.com/filecoin-project/go-state-types/builtin/v10/reward"
+	system10 "github.com/filecoin-project/go-state-types/builtin/v10/system"
+	verifreg10 "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
 	account8 "github.com/filecoin-project/go-state-types/builtin/v8/account"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
 	_init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
@@ -250,6 +262,84 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					code:    codeID,
 					methods: datacap9.Methods,
 					state:   new(datacap9.State),
+				})
+			}
+		}
+
+	case actorstypes.Version10:
+		for key, codeID := range codeIDs {
+			switch key {
+			case actors.AccountKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: account10.Methods,
+					state:   new(account10.State),
+				})
+			case actors.CronKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: cron10.Methods,
+					state:   new(cron10.State),
+				})
+			case actors.InitKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: _init10.Methods,
+					state:   new(_init10.State),
+				})
+			case actors.MarketKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: market10.Methods,
+					state:   new(market10.State),
+				})
+			case actors.MinerKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: miner10.Methods,
+					state:   new(miner10.State),
+				})
+			case actors.MultisigKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: multisig10.Methods,
+					state:   new(multisig10.State),
+				})
+			case actors.PaychKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: paych10.Methods,
+					state:   new(paych10.State),
+				})
+			case actors.PowerKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: power10.Methods,
+					state:   new(power10.State),
+				})
+			case actors.RewardKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: reward10.Methods,
+					state:   new(reward10.State),
+				})
+			case actors.SystemKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: system10.Methods,
+					state:   new(system10.State),
+				})
+			case actors.VerifregKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: verifreg10.Methods,
+					state:   new(verifreg10.State),
+				})
+			case actors.DatacapKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: datacap10.Methods,
+					state:   new(datacap10.State),
 				})
 			}
 		}

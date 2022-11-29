@@ -17,7 +17,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
-	miner{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin{{import .latestVersion}}miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 {{range .versions}}
     {{if (le . 7)}}
@@ -82,8 +82,8 @@ type State interface {
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
-	GetPrecommittedSector(abi.SectorNumber) (*miner{{.latestVersion}}.SectorPreCommitOnChainInfo, error)
-	ForEachPrecommittedSector(func(miner{{.latestVersion}}.SectorPreCommitOnChainInfo) error) error
+	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
+	ForEachPrecommittedSector(func(SectorPreCommitOnChainInfo) error) error
 	LoadSectors(sectorNos *bitfield.BitField) ([]*SectorOnChainInfo, error)
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
@@ -112,7 +112,7 @@ type State interface {
 	sectors() (adt.Array, error)
 	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
 	precommits() (adt.Map, error)
-	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner{{.latestVersion}}.SectorPreCommitOnChainInfo, error)
+	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (SectorPreCommitOnChainInfo, error)
 	GetState() interface{}
 }
 
@@ -150,7 +150,7 @@ type Partition interface {
 	UnprovenSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = miner{{.latestVersion}}.SectorOnChainInfo
+type SectorOnChainInfo = minertypes.SectorOnChainInfo
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -205,9 +205,12 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 	}
 }
 
-type MinerInfo = miner{{.latestVersion}}.MinerInfo
-type WorkerKeyChange = miner{{.latestVersion}}.WorkerKeyChange
-type SectorPreCommitOnChainInfo = miner{{.latestVersion}}.SectorPreCommitOnChainInfo
+type MinerInfo = minertypes.MinerInfo
+type BeneficiaryTerm = minertypes.BeneficiaryTerm
+type PendingBeneficiaryChange = minertypes.PendingBeneficiaryChange
+type WorkerKeyChange = minertypes.WorkerKeyChange
+type SectorPreCommitOnChainInfo = minertypes.SectorPreCommitOnChainInfo
+type SectorPreCommitInfo = minertypes.SectorPreCommitInfo
 type WindowPostVerifyInfo = proof.WindowPoStVerifyInfo
 
 type SectorExpiration struct {
@@ -235,8 +238,8 @@ type SectorExtensions struct {
 }
 
 type PreCommitChanges struct {
-	Added   []miner{{.latestVersion}}.SectorPreCommitOnChainInfo
-	Removed []miner{{.latestVersion}}.SectorPreCommitOnChainInfo
+	Added   []SectorPreCommitOnChainInfo
+	Removed []SectorPreCommitOnChainInfo
 }
 
 type LockedFunds struct {
