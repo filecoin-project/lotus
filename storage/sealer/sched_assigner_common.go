@@ -67,6 +67,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 	partDone := metrics.Timer(sh.mctx, metrics.SchedAssignerCandidatesDuration)
 	defer func() {
+		// call latest value of partDone in case we error out somewhere
 		partDone()
 	}()
 

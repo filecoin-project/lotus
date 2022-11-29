@@ -589,12 +589,16 @@ func TestSched(t *testing.T) {
 type slowishSelector bool
 
 func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a SchedWorker) (bool, bool, error) {
+	// note: we don't care about output here, just the time those calls take
+	// (selector Ok/Cmp is called in the scheduler)
 	_, _ = a.Paths(ctx)
 	_, _ = a.TaskTypes(ctx)
 	return bool(s), false, nil
 }
 
 func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b SchedWorker) (bool, error) {
+	// note: we don't care about output here, just the time those calls take
+	// (selector Ok/Cmp is called in the scheduler)
 	_, _ = a.Paths(ctx)
 	return true, nil
 }
