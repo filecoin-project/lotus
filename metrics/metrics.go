@@ -50,6 +50,9 @@ var (
 	StorageID, _      = tag.NewKey("storage_id")
 	SectorState, _    = tag.NewKey("sector_state")
 
+	PathSeal, _    = tag.NewKey("path_seal")
+	PathStorage, _ = tag.NewKey("path_storage")
+
 	// rcmgr
 	ServiceID, _  = tag.NewKey("svc")
 	ProtocolID, _ = tag.NewKey("proto")
@@ -389,52 +392,52 @@ var (
 	StorageFSAvailableView = &view.View{
 		Measure:     StorageFSAvailable,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageAvailableView = &view.View{
 		Measure:     StorageAvailable,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageReservedView = &view.View{
 		Measure:     StorageReserved,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageLimitUsedView = &view.View{
 		Measure:     StorageLimitUsed,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageCapacityBytesView = &view.View{
 		Measure:     StorageCapacityBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageFSAvailableBytesView = &view.View{
 		Measure:     StorageFSAvailableBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageAvailableBytesView = &view.View{
 		Measure:     StorageAvailableBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageReservedBytesView = &view.View{
 		Measure:     StorageReservedBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageLimitUsedBytesView = &view.View{
 		Measure:     StorageLimitUsedBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageLimitMaxBytesView = &view.View{
 		Measure:     StorageLimitMaxBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 
 	SchedAssignerCycleDurationView = &view.View{
