@@ -33,7 +33,7 @@ import (
 var DealSectorPriority = 1024
 var MaxTicketAge = policy.MaxPreCommitRandomnessLookback
 
-func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
+func (m *Sealing) cleanupAssignedDeals(sector SectorInfo) {
 	m.inputLk.Lock()
 	// make sure we are not accepting deals into this sector
 	for _, c := range m.assignedPieces[m.minerSectorID(sector.SectorNumber)] {
@@ -51,6 +51,10 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	delete(m.openSectors, m.minerSectorID(sector.SectorNumber))
 	delete(m.assignedPieces, m.minerSectorID(sector.SectorNumber))
 	m.inputLk.Unlock()
+}
+
+func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
+	m.cleanupAssignedDeals(sector)
 
 	// if this is a snapdeals sector, but it ended up not having any deals, abort the upgrade
 	if sector.State == SnapDealsPacking && !sector.hasDeals() {
@@ -858,7 +862,11 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 		return xerrors.Errorf("getting sealing config: %w", err)
 	}
 
-	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.Pieces, false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.Pieces, false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("release unsealed: %w", err)})
+	}
+
+	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 

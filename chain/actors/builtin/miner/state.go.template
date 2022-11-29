@@ -1,6 +1,7 @@
 package miner
 
 import (
+    "fmt"
 	"bytes"
 	"errors"
 {{if (le .v 1)}}
@@ -15,6 +16,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v{{.latestVersion}}/miner"
 
 {{if (le .v 7)}}
@@ -601,4 +604,21 @@ func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOn
 
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.MinerKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

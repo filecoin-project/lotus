@@ -45,6 +45,7 @@ type FvmExtern struct {
 	blockstore.Blockstore
 	epoch   abi.ChainEpoch
 	lbState LookbackStateGetter
+	tsGet   TipSetGetter
 	base    cid.Cid
 }
 
@@ -97,6 +98,14 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 	}
 
 	return ret
+}
+
+func (x *FvmExtern) TipsetCid(ctx context.Context, epoch abi.ChainEpoch) (cid.Cid, error) {
+	tsk, err := x.tsGet(ctx, epoch)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return tsk.Cid()
 }
 
 // VerifyConsensusFault is similar to the one in syscalls.go used by the Lotus VM, except it never errors
@@ -294,6 +303,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 			Rand:       opts.Rand,
 			Blockstore: opts.Bstore,
 			lbState:    opts.LookbackState,
+			tsGet:      opts.TipSetGetter,
 			base:       opts.StateBase,
 			epoch:      opts.Epoch,
 		},

@@ -1,6 +1,7 @@
 package power
 
 import (
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -111,6 +112,10 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 type State interface {
 	cbor.Marshaler
 
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	TotalLocked() (abi.TokenAmount, error)
 	TotalPower() (Claim, error)
 	TotalCommitted() (Claim, error)
@@ -149,5 +154,19 @@ func AddClaims(a Claim, b Claim) Claim {
 	return Claim{
 		RawBytePower:    big.Add(a.RawBytePower, b.RawBytePower),
 		QualityAdjPower: big.Add(a.QualityAdjPower, b.QualityAdjPower),
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
 	}
 }

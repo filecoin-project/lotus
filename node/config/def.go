@@ -97,6 +97,7 @@ func DefaultFullNode() *FullNode {
 				HotStoreFullGCFrequency: 20,
 			},
 		},
+		Cluster: *DefaultUserRaftConfig(),
 	}
 }
 
@@ -140,7 +141,9 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Proving: ProvingConfig{
-			ParallelCheckLimit: 128,
+			ParallelCheckLimit:    128,
+			PartitionCheckTimeout: Duration(20 * time.Minute),
+			SingleCheckTimeout:    Duration(10 * time.Minute),
 		},
 
 		Storage: SealerConfig{
@@ -287,3 +290,25 @@ const (
 	// worker. The scheduler may assign any task to this worker.
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
+
+var (
+	DefaultDataSubFolder        = "raft"
+	DefaultWaitForLeaderTimeout = 15 * time.Second
+	DefaultCommitRetries        = 1
+	DefaultNetworkTimeout       = 100 * time.Second
+	DefaultCommitRetryDelay     = 200 * time.Millisecond
+	DefaultBackupsRotate        = 6
+)
+
+func DefaultUserRaftConfig() *UserRaftConfig {
+	var cfg UserRaftConfig
+	cfg.DataFolder = "" // empty so it gets omitted
+	cfg.InitPeersetMultiAddr = []string{}
+	cfg.WaitForLeaderTimeout = Duration(DefaultWaitForLeaderTimeout)
+	cfg.NetworkTimeout = Duration(DefaultNetworkTimeout)
+	cfg.CommitRetries = DefaultCommitRetries
+	cfg.CommitRetryDelay = Duration(DefaultCommitRetryDelay)
+	cfg.BackupsRotate = DefaultBackupsRotate
+
+	return &cfg
+}

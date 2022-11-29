@@ -583,7 +583,7 @@ var provingCheckProvableCmd = &cli.Command{
 				})
 			}
 
-			bad, err := minerApi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
+			bad, err := minerApi.CheckProvable(ctx, info.WindowPoStProofType, tocheck)
 			if err != nil {
 				return err
 			}

@@ -3,6 +3,7 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,12 +12,14 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -558,4 +561,21 @@ func fromV3SectorPreCommitOnChainInfo(v3 miner3.SectorPreCommitOnChainInfo) mine
 
 func (s *state3) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state3) ActorKey() string {
+	return actors.MinerKey
+}
+
+func (s *state3) ActorVersion() actorstypes.Version {
+	return actorstypes.Version3
+}
+
+func (s *state3) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

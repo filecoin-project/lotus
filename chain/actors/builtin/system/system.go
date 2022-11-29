@@ -103,7 +103,25 @@ func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (
 }
 
 type State interface {
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	GetState() interface{}
 	GetBuiltinActors() cid.Cid
 	SetBuiltinActors(cid.Cid) error
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+	}
 }

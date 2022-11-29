@@ -38,10 +38,13 @@ func (mc Libp2pMeshCreator) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch full node listen addrs, err: %w", err)
 	}
 
-	// Connect to the full node, ask it to protect the connection and protect the connection on
-	// markets end too.
-	if err := mc.marketsHost.Connect(ctx, faddrs); err != nil {
-		return fmt.Errorf("failed to connect index provider host with the full node: %w", err)
+	// Connect from the full node, ask it to protect the connection and protect the connection on
+	// markets end too. Connection is initiated form full node to avoid the need to expose libp2p port on full node
+	if err := mc.fullnodeApi.NetConnect(ctx, peer.AddrInfo{
+		ID:    mc.marketsHost.ID(),
+		Addrs: mc.marketsHost.Addrs(),
+	}); err != nil {
+		return fmt.Errorf("failed to connect to index provider host from full node: %w", err)
 	}
 	mc.marketsHost.ConnManager().Protect(faddrs.ID, protectTag)
 

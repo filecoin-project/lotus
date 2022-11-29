@@ -497,15 +497,15 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof
 	return id, []abi.PieceInfo{pi}, nil
 }
 
-func (mgr *SectorMgr) FinalizeSector(context.Context, storiface.SectorRef, []storiface.Range) error {
+func (mgr *SectorMgr) FinalizeSector(context.Context, storiface.SectorRef) error {
 	return nil
 }
 
-func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storiface.SectorRef, []storiface.Range) error {
+func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storiface.SectorRef) error {
 	return nil
 }
 
-func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
+func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	return nil
 }
 

@@ -369,7 +369,7 @@ var runCmd = &cli.Command{
 		}
 
 		if workerType == "" {
-			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed, sealtasks.TTFinalizeReplicaUpdate)
 
 			if !cctx.Bool("no-default") {
 				workerType = sealtasks.WorkerSealing

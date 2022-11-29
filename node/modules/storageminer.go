@@ -37,7 +37,6 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -56,7 +55,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/retry"
 	"github.com/filecoin-project/lotus/markets"
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/idxprov"
@@ -89,12 +87,7 @@ func (a *UuidWrapper) MpoolPushMessage(ctx context.Context, msg *types.Message, 
 		spec = new(api.MessageSendSpec)
 	}
 	spec.MsgUuid = uuid.New()
-	errorsToRetry := []error{&jsonrpc.RPCConnectionError{}}
-	initialBackoff, err := time.ParseDuration("1s")
-	if err != nil {
-		return nil, err
-	}
-	return retry.Retry(5, initialBackoff, errorsToRetry, func() (*types.SignedMessage, error) { return a.FullNode.MpoolPushMessage(ctx, msg, spec) })
+	return a.FullNode.MpoolPushMessage(ctx, msg, spec)
 }
 
 func MakeUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
