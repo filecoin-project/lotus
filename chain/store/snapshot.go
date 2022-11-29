@@ -5,9 +5,11 @@ import (
 	"context"
 	"io"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
+	carv2 "github.com/ipld/go-car/v2"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -55,12 +57,58 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	//  universal store. When we physically segregate the stores, we will need
 	//  to route state objects to the state blockstore, and chain objects to
 	//  the chain blockstore.
-	header, err := car.LoadCar(ctx, cs.StateBlockstore(), r)
+
+	br, err := carv2.NewBlockReader(r)
 	if err != nil {
 		return nil, xerrors.Errorf("loadcar failed: %w", err)
 	}
 
-	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(header.Roots...))
+	s := cs.StateBlockstore()
+
+	parallelPuts := 5
+	putThrottle := make(chan error, parallelPuts)
+	for i := 0; i < parallelPuts; i++ {
+		putThrottle <- nil
+	}
+
+	var buf []blocks.Block
+	for {
+		blk, err := br.Next()
+		if err != nil {
+			if err == io.EOF {
+				if len(buf) > 0 {
+					if err := s.PutMany(ctx, buf); err != nil {
+						return nil, err
+					}
+				}
+
+				break
+			}
+			return nil, err
+		}
+
+		buf = append(buf, blk)
+
+		if len(buf) > 1000 {
+			if lastErr := <-putThrottle; lastErr != nil { // consume one error to have the right to add one
+				return nil, lastErr
+			}
+
+			go func(buf []blocks.Block) {
+				putThrottle <- s.PutMany(ctx, buf)
+			}(buf)
+			buf = nil
+		}
+	}
+
+	// check errors
+	for i := 0; i < parallelPuts; i++ {
+		if lastErr := <-putThrottle; lastErr != nil {
+			return nil, lastErr
+		}
+	}
+
+	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(br.Roots...))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
