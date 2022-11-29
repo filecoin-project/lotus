@@ -79,7 +79,6 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
 	//raftOps := kit.ConstructorOpts()
-	kit.ThroughRPC()
 
 	ens := kit.NewEnsemble(t).FullNode(node0, raftOps, kit.ThroughRPC()).FullNode(node1, raftOps, kit.ThroughRPC()).FullNode(node2, raftOps, kit.ThroughRPC())
 	node0.AssignPrivKey(pkey0)
@@ -527,7 +526,6 @@ func TestGoRPCAuth(t *testing.T) {
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
 	//raftOps := kit.ConstructorOpts()
-	kit.ThroughRPC()
 
 	ens := kit.NewEnsemble(t).FullNode(&node0, raftOps, kit.ThroughRPC()).FullNode(&node1, raftOps, kit.ThroughRPC()).FullNode(&node2, raftOps, kit.ThroughRPC()).FullNode(&node3, raftOps)
 	node0.AssignPrivKey(pkey0)

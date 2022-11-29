@@ -98,6 +98,9 @@ var invariantsCmd = &cli.Command{
 		fmt.Println("Network Version ", nv)
 
 		av, err := actorstypes.VersionForNetwork(nv)
+		if err != nil {
+			return err
+		}
 		fmt.Println("Actors Version ", av)
 
 		actorCodeCids, err := actors.GetActorCodeIDs(av)
@@ -114,6 +117,9 @@ var invariantsCmd = &cli.Command{
 		}
 
 		actorTree, err := builtin.LoadTree(actorStore, stateRoot.Actors)
+		if err != nil {
+			return err
+		}
 
 		startTime := time.Now()
 

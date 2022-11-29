@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -22,7 +23,10 @@ type Closer func()
 func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) (*httptest.Server, multiaddr.Multiaddr, Closer) {
 	testServ := &httptest.Server{
 		Listener: listener,
-		Config:   &http.Server{Handler: handler},
+		Config: &http.Server{
+			Handler:           handler,
+			ReadHeaderTimeout: 30 * time.Second,
+		},
 	}
 	testServ.Start()
 

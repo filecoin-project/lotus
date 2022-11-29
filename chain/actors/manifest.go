@@ -32,6 +32,9 @@ const (
 	SystemKey   = "system"
 	VerifregKey = "verifiedregistry"
 	DatacapKey  = "datacap"
+	EvmKey      = "evm"
+	EamKey      = "eam"
+	EmbryoKey   = "embryo"
 )
 
 func GetBuiltinActorsKeys(av actorstypes.Version) []string {
@@ -50,6 +53,9 @@ func GetBuiltinActorsKeys(av actorstypes.Version) []string {
 	}
 	if av >= 9 {
 		keys = append(keys, DatacapKey)
+	}
+	if av >= 10 {
+		keys = append(keys, EvmKey, EamKey, EmbryoKey)
 	}
 	return keys
 }

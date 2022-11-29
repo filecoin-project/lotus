@@ -121,6 +121,10 @@ var multisigGetAllCmd = &cli.Command{
 			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
+
 		out, err := json.MarshalIndent(msigActorsInfo, "", "  ")
 		if err != nil {
 			return err
