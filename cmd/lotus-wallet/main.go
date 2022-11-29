@@ -145,7 +145,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "http-server-timeout",
-			Value: "3s",
+			Value: "30s",
 		},
 	},
 	Description: "Needs FULLNODE_API_INFO env-var to be set before running (see lotus-wallet --help for setup instructions)",

@@ -26,7 +26,7 @@ GLOBAL OPTIONS:
    --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --version, -v                            print the version (default: false)
    --worker-repo value, --workerrepo value  Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [$LOTUS_WORKER_PATH, $WORKER_PATH]
-   
+
 ```
 
 ## lotus-worker run
@@ -40,7 +40,7 @@ USAGE:
 OPTIONS:
    --addpiece                    enable addpiece (default: true) [$LOTUS_WORKER_ADDPIECE]
    --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true) [$LOTUS_WORKER_COMMIT]
-   --http-server-timeout value   (default: "3s")
+   --http-server-timeout value   (default: "30s")
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456") [$LOTUS_WORKER_LISTEN]
    --name value                  custom worker name (default: hostname) [$LOTUS_WORKER_NAME]
    --no-default                  disable all default compute tasks, use the worker for storage/fetching only (default: false) [$LOTUS_WORKER_NO_DEFAULT]
@@ -59,7 +59,7 @@ OPTIONS:
    --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true) [$LOTUS_WORKER_UNSEAL]
    --windowpost                  enable window post (default: false) [$LOTUS_WORKER_WINDOWPOST]
    --winningpost                 enable winning post (default: false) [$LOTUS_WORKER_WINNINGPOST]
-   
+
 ```
 
 ## lotus-worker stop
@@ -72,7 +72,7 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
-   
+
 ```
 
 ## lotus-worker info
@@ -85,7 +85,7 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
-   
+
 ```
 
 ## lotus-worker storage
@@ -104,7 +104,7 @@ COMMANDS:
 
 OPTIONS:
    --help, -h  show help (default: false)
-   
+
 ```
 
 ### lotus-worker storage attach
@@ -123,7 +123,7 @@ OPTIONS:
    --seal                                 (for init) use path for sealing (default: false)
    --store                                (for init) use path for long-term storage (default: false)
    --weight value                         (for init) path weight (default: 10)
-   
+
 ```
 
 ### lotus-worker storage detach
@@ -136,7 +136,7 @@ USAGE:
 
 OPTIONS:
    --really-do-it  (default: false)
-   
+
 ```
 
 ### lotus-worker storage redeclare
@@ -151,7 +151,7 @@ OPTIONS:
    --all           redeclare all storage paths (default: false)
    --drop-missing  Drop index entries with missing files (default: false)
    --id value      storage path ID
-   
+
 ```
 
 ## lotus-worker set
@@ -164,7 +164,7 @@ USAGE:
 
 OPTIONS:
    --enabled  enable/disable new task processing (default: true)
-   
+
 ```
 
 ## lotus-worker wait-quiet
@@ -177,7 +177,7 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
-   
+
 ```
 
 ## lotus-worker resources
@@ -191,7 +191,7 @@ USAGE:
 OPTIONS:
    --all      print all resource envvars (default: false)
    --default  print default resource envvars (default: false)
-   
+
 ```
 
 ## lotus-worker tasks
@@ -209,7 +209,7 @@ COMMANDS:
 
 OPTIONS:
    --help, -h  show help (default: false)
-   
+
 ```
 
 ### lotus-worker tasks enable
@@ -222,7 +222,7 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
-   
+
 ```
 
 ### lotus-worker tasks disable
@@ -235,5 +235,5 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
-   
+
 ```

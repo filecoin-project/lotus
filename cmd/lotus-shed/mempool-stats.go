@@ -80,7 +80,7 @@ var mpoolStatsCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "http-server-timeout",
-			Value: "3s",
+			Value: "30s",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

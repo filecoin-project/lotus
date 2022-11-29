@@ -420,7 +420,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "http-server-timeout",
-			Value: "3s",
+			Value: "30s",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
