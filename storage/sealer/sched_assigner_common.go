@@ -9,6 +9,7 @@ import (
 	"go.opencensus.io/stats"
 
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type WindowSelector func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int
@@ -37,6 +38,11 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 	*/
 
+	cachedWorkers := &schedWorkerCache{
+		Workers: sh.Workers,
+		cached:  map[storiface.WorkerID]*cachedSchedWorker{},
+	}
+
 	windowsLen := len(sh.OpenWindows)
 	queueLen := sh.SchedQueue.Len()
 
@@ -61,6 +67,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 	partDone := metrics.Timer(sh.mctx, metrics.SchedAssignerCandidatesDuration)
 	defer func() {
+		// call latest value of partDone in case we error out somewhere
 		partDone()
 	}()
 
@@ -81,7 +88,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 			var havePreferred bool
 
 			for wnd, windowRequest := range sh.OpenWindows {
-				worker, ok := sh.Workers[windowRequest.Worker]
+				worker, ok := cachedWorkers.Get(windowRequest.Worker)
 				if !ok {
 					log.Errorf("worker referenced by windowRequest not found (worker: %s)", windowRequest.Worker)
 					// TODO: How to move forward here?
@@ -143,8 +150,8 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 					return acceptableWindows[sqi][i] < acceptableWindows[sqi][j] // nolint:scopelint
 				}
 
-				wi := sh.Workers[wii]
-				wj := sh.Workers[wji]
+				wi, _ := cachedWorkers.Get(wii)
+				wj, _ := cachedWorkers.Get(wji)
 
 				rpcCtx, cancel := context.WithTimeout(task.Ctx, SelectorTimeout)
 				defer cancel()
