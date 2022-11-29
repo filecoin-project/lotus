@@ -708,6 +708,7 @@ func (n *Ensemble) Start() *Ensemble {
 					scfg.Storage.AllowPreCommit1 = false
 					scfg.Storage.AllowPreCommit2 = false
 					scfg.Storage.AllowCommit = false
+					scfg.Storage.AllowUnseal = false
 				}
 
 				scfg.Storage.Assigner = assigner

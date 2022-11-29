@@ -1599,13 +1599,7 @@ Inputs:
       "Number": 0
     },
     "ProofType": 0
-  },
-  [
-    {
-      "Offset": 1024,
-      "Size": 1024
-    }
-  ]
+  }
 ]
 ```
 
@@ -1634,13 +1628,7 @@ Inputs:
       "Number": 0
     },
     "ProofType": 0
-  },
-  [
-    {
-      "Offset": 1024,
-      "Size": 1024
-    }
-  ]
+  }
 ]
 ```
 

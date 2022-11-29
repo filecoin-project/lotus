@@ -904,6 +904,11 @@ workflows:
           target: "./itests/sector_terminate_test.go"
       
       - test:
+          name: test-itest-sector_unseal
+          suite: itest-sector_unseal
+          target: "./itests/sector_unseal_test.go"
+      
+      - test:
           name: test-itest-self_sent_txn
           suite: itest-self_sent_txn
           target: "./itests/self_sent_txn_test.go"
@@ -952,6 +957,11 @@ workflows:
           name: test-itest-worker
           suite: itest-worker
           target: "./itests/worker_test.go"
+      
+      - test:
+          name: test-itest-worker_upgrade
+          suite: itest-worker_upgrade
+          target: "./itests/worker_upgrade_test.go"
       
       - test:
           name: test-unit-cli
