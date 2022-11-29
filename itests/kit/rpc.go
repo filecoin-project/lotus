@@ -25,7 +25,7 @@ func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) 
 		Listener: listener,
 		Config: &http.Server{
 			Handler:           handler,
-			ReadHeaderTimeout: 3 * time.Second,
+			ReadHeaderTimeout: 30 * time.Second,
 		},
 	}
 	testServ.Start()

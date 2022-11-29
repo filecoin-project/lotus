@@ -638,7 +638,7 @@ func startStorageMinerAPIServer(t *TestEnvironment, repo repo.Repo, minerApi api
 		return nil, fmt.Errorf("no API endpoint in repo: %w", err)
 	}
 
-	srv := &http.Server{Handler: ah, ReadHeaderTimeout: 3 * time.Second}
+	srv := &http.Server{Handler: ah, ReadHeaderTimeout: 30 * time.Second}
 
 	listenAddr, err := startServer(endpoint, srv)
 	if err != nil {

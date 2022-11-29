@@ -53,7 +53,7 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 	// Instantiate the server and start listening.
 	srv := &http.Server{
 		Handler:           h,
-		ReadHeaderTimeout: 3 * time.Second,
+		ReadHeaderTimeout: 30 * time.Second,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, id))
 			return ctx
