@@ -33,7 +33,7 @@ func TestUnsealPiece(t *testing.T) {
 	ens.Worker(miner, &worker, kit.ThroughRPC(), kit.NoStorage(), // no storage to have better control over path settings
 		kit.WithTaskTypes([]sealtasks.TaskType{
 			sealtasks.TTFetch, sealtasks.TTAddPiece,
-			sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2,
+			sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2,
 			sealtasks.TTReplicaUpdate, sealtasks.TTUnseal, // only first update step, later steps will not run and we'll abort
 		}),
 	)
