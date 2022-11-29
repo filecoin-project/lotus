@@ -105,7 +105,7 @@ func TestFundManagerBasic(t *testing.T) {
 	// Note: Expect failure because there is no available balance to withdraw:
 	// balance - reserved = 16 - 16 = 0
 	amt = abi.NewTokenAmount(1)
-	sentinel, err = s.fm.Withdraw(s.ctx, s.walletAddr, s.acctAddr, amt)
+	_, err = s.fm.Withdraw(s.ctx, s.walletAddr, s.acctAddr, amt)
 	require.Error(t, err)
 }
 

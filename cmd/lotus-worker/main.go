@@ -272,6 +272,10 @@ var runCmd = &cli.Command{
 			Value:   "30m",
 			EnvVars: []string{"LOTUS_WORKER_TIMEOUT"},
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "30s",
+		},
 	},
 	Before: func(cctx *cli.Context) error {
 		if cctx.IsSet("address") {
@@ -562,8 +566,14 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up control endpoint at " + address)
 
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		srv := &http.Server{
-			Handler: sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			Handler:           sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			ReadHeaderTimeout: timeout,
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
 				return ctx
