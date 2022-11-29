@@ -314,8 +314,8 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131840,
-  "BlockDelay": 42
+  "APIVersion": 0,
+  "BlockDelay": 0
 }
 ```
 
@@ -453,24 +453,11 @@ Response:
 {
   "Miner": "f01234",
   "Ticket": {
-    "VRFProof": "Ynl0ZSBhcnJheQ=="
+    "VRFProof": null
   },
-  "ElectionProof": {
-    "WinCount": 9,
-    "VRFProof": "Ynl0ZSBhcnJheQ=="
-  },
-  "BeaconEntries": [
-    {
-      "Round": 42,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    }
-  ],
-  "WinPoStProof": [
-    {
-      "PoStProof": 8,
-      "ProofBytes": "Ynl0ZSBhcnJheQ=="
-    }
-  ],
+  "ElectionProof": null,
+  "BeaconEntries": null,
+  "WinPoStProof": null,
   "Parents": [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -478,25 +465,15 @@ Response:
   ],
   "ParentWeight": "0",
   "Height": 10101,
-  "ParentStateRoot": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "ParentMessageReceipts": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "ParentStateRoot": null,
+  "ParentMessageReceipts": null,
   "Messages": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "BLSAggregate": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  },
+  "BLSAggregate": null,
   "Timestamp": 42,
-  "BlockSig": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  },
-  "ForkSignaling": 42,
+  "BlockSig": null,
+  "ForkSignaling": 0,
   "ParentBaseFee": "0"
 }
 ```
@@ -530,49 +507,8 @@ Inputs:
 Response:
 ```json
 {
-  "BlsMessages": [
-    {
-      "Version": 42,
-      "To": "f01234",
-      "From": "f01234",
-      "Nonce": 42,
-      "Value": "0",
-      "GasLimit": 9,
-      "GasFeeCap": "0",
-      "GasPremium": "0",
-      "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ==",
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      }
-    }
-  ],
-  "SecpkMessages": [
-    {
-      "Message": {
-        "Version": 42,
-        "To": "f01234",
-        "From": "f01234",
-        "Nonce": 42,
-        "Value": "0",
-        "GasLimit": 9,
-        "GasFeeCap": "0",
-        "GasPremium": "0",
-        "Method": 1,
-        "Params": "Ynl0ZSBhcnJheQ==",
-        "CID": {
-          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-        }
-      },
-      "Signature": {
-        "Type": 2,
-        "Data": "Ynl0ZSBhcnJheQ=="
-      },
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      }
-    }
-  ],
+  "BlsMessages": null,
+  "SecpkMessages": null,
   "Cids": [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -622,13 +558,13 @@ Response:
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
+  "GasLimit": 0,
   "GasFeeCap": "0",
   "GasPremium": "0",
   "Method": 1,
   "Params": "Ynl0ZSBhcnJheQ==",
   "CID": {
-    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
   }
 }
 ```
@@ -666,13 +602,13 @@ Response:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     }
   }
@@ -730,13 +666,13 @@ Response:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     }
   }
@@ -766,7 +702,7 @@ Response:
   {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   }
 ]
 ```
@@ -986,8 +922,8 @@ Inputs:
 ```json
 [
   {
-    "MovingGC": true,
-    "RetainState": 9
+    "MovingGC": false,
+    "RetainState": 0
   }
 ]
 ```
@@ -1169,16 +1105,14 @@ Inputs: `null`
 Response:
 ```json
 {
-  "TransferID": 3,
+  "TransferID": 0,
   "Status": 1,
-  "BaseCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "IsInitiator": true,
-  "IsSender": true,
+  "BaseCID": null,
+  "IsInitiator": false,
+  "IsSender": false,
   "Voucher": "string value",
   "Message": "string value",
-  "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "OtherPeer": "",
   "Transferred": 42,
   "Stages": {
     "Stages": [
@@ -1217,11 +1151,9 @@ Inputs:
 Response:
 ```json
 {
-  "PayloadSize": 9,
-  "PieceSize": 1032,
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
+  "PayloadSize": 0,
+  "PieceSize": 0,
+  "PieceCID": null
 }
 ```
 
@@ -1243,8 +1175,8 @@ Inputs:
 Response:
 ```json
 {
-  "PayloadSize": 9,
-  "PieceSize": 1032
+  "PayloadSize": 0,
+  "PieceSize": 0
 }
 ```
 
@@ -1261,18 +1193,13 @@ Inputs:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DAGs": [
-      {
-        "DataSelector": "Links/21/Hash/Links/42/Hash",
-        "ExportMerkleProof": true
-      }
-    ],
-    "FromLocalCAR": "string value",
-    "DealID": 5
+    "DAGs": null,
+    "FromLocalCAR": "",
+    "DealID": 0
   },
   {
     "Path": "string value",
-    "IsCAR": true
+    "IsCAR": false
   }
 ]
 ```
@@ -1308,12 +1235,12 @@ Response:
     "MinPrice": "0",
     "UnsealPrice": "0",
     "PricePerByte": "0",
-    "PaymentInterval": 42,
-    "PaymentIntervalIncrease": 42,
+    "PaymentInterval": 0,
+    "PaymentIntervalIncrease": 0,
     "Miner": "f01234",
     "MinerPeer": {
-      "Address": "f01234",
-      "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Address": "\u003cempty\u003e",
+      "ID": "",
       "PieceCID": null
     }
   }
@@ -1331,7 +1258,7 @@ Inputs:
 [
   {
     "Path": "string value",
-    "IsCAR": true
+    "IsCAR": false
   },
   "string value"
 ]
@@ -1357,81 +1284,21 @@ Inputs:
 Response:
 ```json
 {
-  "ProposalCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "ProposalCid": null,
   "State": 42,
   "Message": "string value",
-  "DealStages": {
-    "Stages": [
-      {
-        "Name": "string value",
-        "Description": "string value",
-        "ExpectedDuration": "string value",
-        "CreatedTime": "0001-01-01T00:00:00Z",
-        "UpdatedTime": "0001-01-01T00:00:00Z",
-        "Logs": [
-          {
-            "Log": "string value",
-            "UpdatedTime": "0001-01-01T00:00:00Z"
-          }
-        ]
-      }
-    ]
-  },
+  "DealStages": null,
   "Provider": "f01234",
-  "DataRef": {
-    "TransferType": "string value",
-    "Root": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PieceCid": null,
-    "PieceSize": 1024,
-    "RawBlockSize": 42
-  },
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "DataRef": null,
+  "PieceCID": null,
   "Size": 42,
   "PricePerEpoch": "0",
   "Duration": 42,
-  "DealID": 5432,
+  "DealID": 0,
   "CreationTime": "0001-01-01T00:00:00Z",
   "Verified": true,
-  "TransferChannelID": {
-    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "ID": 3
-  },
-  "DataTransfer": {
-    "TransferID": 3,
-    "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
-    "Voucher": "string value",
-    "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42,
-    "Stages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    }
-  }
+  "TransferChannelID": null,
+  "DataTransfer": null
 }
 ```
 
@@ -1461,81 +1328,21 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ProposalCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "ProposalCid": null,
   "State": 42,
   "Message": "string value",
-  "DealStages": {
-    "Stages": [
-      {
-        "Name": "string value",
-        "Description": "string value",
-        "ExpectedDuration": "string value",
-        "CreatedTime": "0001-01-01T00:00:00Z",
-        "UpdatedTime": "0001-01-01T00:00:00Z",
-        "Logs": [
-          {
-            "Log": "string value",
-            "UpdatedTime": "0001-01-01T00:00:00Z"
-          }
-        ]
-      }
-    ]
-  },
+  "DealStages": null,
   "Provider": "f01234",
-  "DataRef": {
-    "TransferType": "string value",
-    "Root": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PieceCid": null,
-    "PieceSize": 1024,
-    "RawBlockSize": 42
-  },
-  "PieceCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "DataRef": null,
+  "PieceCID": null,
   "Size": 42,
-  "PricePerEpoch": "0",
+  "PricePerEpoch": "\u003cnil\u003e",
   "Duration": 42,
-  "DealID": 5432,
+  "DealID": 0,
   "CreationTime": "0001-01-01T00:00:00Z",
   "Verified": true,
-  "TransferChannelID": {
-    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "ID": 3
-  },
-  "DataTransfer": {
-    "TransferID": 3,
-    "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
-    "Voucher": "string value",
-    "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42,
-    "Stages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    }
-  }
+  "TransferChannelID": null,
+  "DataTransfer": null
 }
 ```
 
@@ -1550,53 +1357,19 @@ Inputs: `null`
 Response:
 ```json
 {
-  "PayloadCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "ID": 5,
+  "PayloadCID": null,
+  "ID": 0,
   "PieceCID": null,
-  "PricePerByte": "0",
-  "UnsealPrice": "0",
+  "PricePerByte": "\u003cnil\u003e",
+  "UnsealPrice": "\u003cnil\u003e",
   "Status": 0,
   "Message": "string value",
   "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "BytesReceived": 42,
-  "BytesPaidFor": 42,
-  "TotalPaid": "0",
-  "TransferChannelID": {
-    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "ID": 3
-  },
-  "DataTransfer": {
-    "TransferID": 3,
-    "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
-    "Voucher": "string value",
-    "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Transferred": 42,
-    "Stages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    }
-  },
+  "BytesReceived": 0,
+  "BytesPaidFor": 0,
+  "TotalPaid": "\u003cnil\u003e",
+  "TransferChannelID": null,
+  "DataTransfer": null,
   "Event": 5
 }
 ```
@@ -1629,7 +1402,7 @@ Inputs:
 [
   {
     "Path": "string value",
-    "IsCAR": true
+    "IsCAR": false
   }
 ]
 ```
@@ -1640,7 +1413,7 @@ Response:
   "Root": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "ImportID": 50
+  "ImportID": 0
 }
 ```
 
@@ -1656,16 +1429,14 @@ Response:
 ```json
 [
   {
-    "TransferID": 3,
+    "TransferID": 0,
     "Status": 1,
-    "BaseCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "IsInitiator": true,
-    "IsSender": true,
+    "BaseCID": null,
+    "IsInitiator": false,
+    "IsSender": false,
     "Voucher": "string value",
     "Message": "string value",
-    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "OtherPeer": "",
     "Transferred": 42,
     "Stages": {
       "Stages": [
@@ -1699,81 +1470,21 @@ Response:
 ```json
 [
   {
-    "ProposalCid": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "ProposalCid": null,
     "State": 42,
     "Message": "string value",
-    "DealStages": {
-      "Stages": [
-        {
-          "Name": "string value",
-          "Description": "string value",
-          "ExpectedDuration": "string value",
-          "CreatedTime": "0001-01-01T00:00:00Z",
-          "UpdatedTime": "0001-01-01T00:00:00Z",
-          "Logs": [
-            {
-              "Log": "string value",
-              "UpdatedTime": "0001-01-01T00:00:00Z"
-            }
-          ]
-        }
-      ]
-    },
+    "DealStages": null,
     "Provider": "f01234",
-    "DataRef": {
-      "TransferType": "string value",
-      "Root": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceCid": null,
-      "PieceSize": 1024,
-      "RawBlockSize": 42
-    },
-    "PieceCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "DataRef": null,
+    "PieceCID": null,
     "Size": 42,
     "PricePerEpoch": "0",
     "Duration": 42,
-    "DealID": 5432,
+    "DealID": 0,
     "CreationTime": "0001-01-01T00:00:00Z",
     "Verified": true,
-    "TransferChannelID": {
-      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "ID": 3
-    },
-    "DataTransfer": {
-      "TransferID": 3,
-      "Status": 1,
-      "BaseCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "IsInitiator": true,
-      "IsSender": true,
-      "Voucher": "string value",
-      "Message": "string value",
-      "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Transferred": 42,
-      "Stages": {
-        "Stages": [
-          {
-            "Name": "string value",
-            "Description": "string value",
-            "CreatedTime": "0001-01-01T00:00:00Z",
-            "UpdatedTime": "0001-01-01T00:00:00Z",
-            "Logs": [
-              {
-                "Log": "string value",
-                "UpdatedTime": "0001-01-01T00:00:00Z"
-              }
-            ]
-          }
-        ]
-      }
-    }
+    "TransferChannelID": null,
+    "DataTransfer": null
   }
 ]
 ```
@@ -1794,8 +1505,8 @@ Response:
     "Err": "string value",
     "Root": null,
     "Source": "string value",
-    "FilePath": "string value",
-    "CARPath": "string value"
+    "FilePath": "",
+    "CARPath": ""
   }
 ]
 ```
@@ -1812,53 +1523,19 @@ Response:
 ```json
 [
   {
-    "PayloadCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "ID": 5,
+    "PayloadCID": null,
+    "ID": 0,
     "PieceCID": null,
     "PricePerByte": "0",
     "UnsealPrice": "0",
     "Status": 0,
     "Message": "string value",
     "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "BytesReceived": 42,
-    "BytesPaidFor": 42,
+    "BytesReceived": 0,
+    "BytesPaidFor": 0,
     "TotalPaid": "0",
-    "TransferChannelID": {
-      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "ID": 3
-    },
-    "DataTransfer": {
-      "TransferID": 3,
-      "Status": 1,
-      "BaseCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "IsInitiator": true,
-      "IsSender": true,
-      "Voucher": "string value",
-      "Message": "string value",
-      "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Transferred": 42,
-      "Stages": {
-        "Stages": [
-          {
-            "Name": "string value",
-            "Description": "string value",
-            "CreatedTime": "0001-01-01T00:00:00Z",
-            "UpdatedTime": "0001-01-01T00:00:00Z",
-            "Logs": [
-              {
-                "Log": "string value",
-                "UpdatedTime": "0001-01-01T00:00:00Z"
-              }
-            ]
-          }
-        ]
-      }
-    },
+    "TransferChannelID": null,
+    "DataTransfer": null,
     "Event": 5
   }
 ]
@@ -1890,15 +1567,15 @@ Response:
   },
   "Piece": null,
   "Size": 42,
-  "MinPrice": "0",
-  "UnsealPrice": "0",
-  "PricePerByte": "0",
-  "PaymentInterval": 42,
-  "PaymentIntervalIncrease": 42,
+  "MinPrice": "\u003cnil\u003e",
+  "UnsealPrice": "\u003cnil\u003e",
+  "PricePerByte": "\u003cnil\u003e",
+  "PaymentInterval": 0,
+  "PaymentIntervalIncrease": 0,
   "Miner": "f01234",
   "MinerPeer": {
-    "Address": "f01234",
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Address": "\u003cempty\u003e",
+    "ID": "",
     "PieceCID": null
   }
 }
@@ -1924,16 +1601,14 @@ Response:
   "Response": {
     "Price": "0",
     "VerifiedPrice": "0",
-    "MinPieceSize": 1032,
-    "MaxPieceSize": 1032,
+    "MinPieceSize": 0,
+    "MaxPieceSize": 0,
     "Miner": "f01234",
     "Timestamp": 10101,
     "Expiry": 10101,
-    "SeqNo": 42
+    "SeqNo": 0
   },
-  "DealProtocols": [
-    "string value"
-  ]
+  "DealProtocols": null
 }
 ```
 
@@ -1983,20 +1658,15 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Piece": null,
-    "DataSelector": "Links/21/Hash/Links/42/Hash",
+    "DataSelector": null,
     "Size": 42,
     "Total": "0",
-    "UnsealPrice": "0",
-    "PaymentInterval": 42,
-    "PaymentIntervalIncrease": 42,
+    "UnsealPrice": "\u003cnil\u003e",
+    "PaymentInterval": 0,
+    "PaymentIntervalIncrease": 0,
     "Client": "f01234",
     "Miner": "f01234",
-    "MinerPeer": {
-      "Address": "f01234",
-      "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "PieceCID": null
-    },
-    "RemoteStore": "00000000-0000-0000-0000-000000000000"
+    "MinerPeer": null
   }
 ]
 ```
@@ -2004,7 +1674,7 @@ Inputs:
 Response:
 ```json
 {
-  "DealID": 5
+  "DealID": 0
 }
 ```
 
@@ -2050,22 +1720,22 @@ Inputs:
 [
   {
     "Data": {
-      "TransferType": "string value",
+      "TransferType": "",
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
       "PieceCid": null,
-      "PieceSize": 1024,
-      "RawBlockSize": 42
+      "PieceSize": 0,
+      "RawBlockSize": 0
     },
     "Wallet": "f01234",
     "Miner": "f01234",
     "EpochPrice": "0",
-    "MinBlocksDuration": 42,
+    "MinBlocksDuration": 0,
     "ProviderCollateral": "0",
-    "DealStartEpoch": 10101,
-    "FastRetrieval": true,
-    "VerifiedDeal": true
+    "DealStartEpoch": 0,
+    "FastRetrieval": false,
+    "VerifiedDeal": false
   }
 ]
 ```
@@ -2083,22 +1753,22 @@ Inputs:
 [
   {
     "Data": {
-      "TransferType": "string value",
+      "TransferType": "",
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
       "PieceCid": null,
-      "PieceSize": 1024,
-      "RawBlockSize": 42
+      "PieceSize": 0,
+      "RawBlockSize": 0
     },
     "Wallet": "f01234",
     "Miner": "f01234",
     "EpochPrice": "0",
-    "MinBlocksDuration": 42,
+    "MinBlocksDuration": 0,
     "ProviderCollateral": "0",
-    "DealStartEpoch": 10101,
-    "FastRetrieval": true,
-    "VerifiedDeal": true
+    "DealStartEpoch": 0,
+    "FastRetrieval": false,
+    "VerifiedDeal": false
   }
 ]
 ```
@@ -2144,13 +1814,13 @@ Inputs:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
   9,
@@ -2183,13 +1853,13 @@ Inputs:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
   [
@@ -2246,18 +1916,18 @@ Inputs:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "00000000-0000-0000-0000-000000000000"
   },
   [
     {
@@ -2278,13 +1948,13 @@ Response:
   "From": "f01234",
   "Nonce": 42,
   "Value": "0",
-  "GasLimit": 9,
+  "GasLimit": 0,
   "GasFeeCap": "0",
   "GasPremium": "0",
   "Method": 1,
   "Params": "Ynl0ZSBhcnJheQ==",
   "CID": {
-    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
   }
 }
 ```
@@ -2320,16 +1990,8 @@ Response:
       "Subsystem": "string value"
     },
     "Active": true,
-    "LastActive": {
-      "Type": "string value",
-      "Message": "json raw message",
-      "Time": "0001-01-01T00:00:00Z"
-    },
-    "LastResolved": {
-      "Type": "string value",
-      "Message": "json raw message",
-      "Time": "0001-01-01T00:00:00Z"
-    }
+    "LastActive": null,
+    "LastResolved": null
   }
 ]
 ```
@@ -2485,18 +2147,13 @@ Inputs:
       }
     ],
     "Ticket": {
-      "VRFProof": "Ynl0ZSBhcnJheQ=="
+      "VRFProof": null
     },
     "Eproof": {
-      "WinCount": 9,
-      "VRFProof": "Ynl0ZSBhcnJheQ=="
+      "WinCount": 0,
+      "VRFProof": null
     },
-    "BeaconValues": [
-      {
-        "Round": 42,
-        "Data": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
+    "BeaconValues": null,
     "Messages": [
       {
         "Message": {
@@ -2505,13 +2162,13 @@ Inputs:
           "From": "f01234",
           "Nonce": 42,
           "Value": "0",
-          "GasLimit": 9,
+          "GasLimit": 0,
           "GasFeeCap": "0",
           "GasPremium": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
           "CID": {
-            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+            "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
           }
         },
         "Signature": {
@@ -2519,18 +2176,13 @@ Inputs:
           "Data": "Ynl0ZSBhcnJheQ=="
         },
         "CID": {
-          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
         }
       }
     ],
     "Epoch": 10101,
     "Timestamp": 42,
-    "WinningPoStProof": [
-      {
-        "PoStProof": 8,
-        "ProofBytes": "Ynl0ZSBhcnJheQ=="
-      }
-    ]
+    "WinningPoStProof": null
   }
 ]
 ```
@@ -2541,24 +2193,11 @@ Response:
   "Header": {
     "Miner": "f01234",
     "Ticket": {
-      "VRFProof": "Ynl0ZSBhcnJheQ=="
+      "VRFProof": null
     },
-    "ElectionProof": {
-      "WinCount": 9,
-      "VRFProof": "Ynl0ZSBhcnJheQ=="
-    },
-    "BeaconEntries": [
-      {
-        "Round": 42,
-        "Data": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
-    "WinPoStProof": [
-      {
-        "PoStProof": 8,
-        "ProofBytes": "Ynl0ZSBhcnJheQ=="
-      }
-    ],
+    "ElectionProof": null,
+    "BeaconEntries": null,
+    "WinPoStProof": null,
     "Parents": [
       {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -2566,37 +2205,19 @@ Response:
     ],
     "ParentWeight": "0",
     "Height": 10101,
-    "ParentStateRoot": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "ParentMessageReceipts": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "ParentStateRoot": null,
+    "ParentMessageReceipts": null,
     "Messages": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "BLSAggregate": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
+    "BLSAggregate": null,
     "Timestamp": 42,
-    "BlockSig": {
-      "Type": 2,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    },
-    "ForkSignaling": 42,
+    "BlockSig": null,
+    "ForkSignaling": 0,
     "ParentBaseFee": "0"
   },
-  "BlsMessages": [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
-  ],
-  "SecpkMessages": [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    }
-  ]
+  "BlsMessages": null,
+  "SecpkMessages": null
 }
 ```
 
@@ -2628,27 +2249,20 @@ Response:
   "NetworkPower": "0",
   "Sectors": [
     {
-      "SealProof": 8,
-      "SectorNumber": 9,
+      "SealProof": 0,
+      "SectorNumber": 0,
       "SectorKey": null,
-      "SealedCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
+      "SealedCID": null
     }
   ],
-  "WorkerKey": "f01234",
-  "SectorSize": 34359738368,
+  "WorkerKey": "\u003cempty\u003e",
+  "SectorSize": 0,
   "PrevBeaconEntry": {
-    "Round": 42,
-    "Data": "Ynl0ZSBhcnJheQ=="
+    "Round": 0,
+    "Data": null
   },
-  "BeaconEntries": [
-    {
-      "Round": 42,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    }
-  ],
-  "EligibleForMining": true
+  "BeaconEntries": null,
+  "EligibleForMining": false
 }
 ```
 
@@ -2674,13 +2288,13 @@ Inputs:
         "From": "f01234",
         "Nonce": 42,
         "Value": "0",
-        "GasLimit": 9,
+        "GasLimit": 0,
         "GasFeeCap": "0",
         "GasPremium": "0",
         "Method": 1,
         "Params": "Ynl0ZSBhcnJheQ==",
         "CID": {
-          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
         }
       },
       "Signature": {
@@ -2688,7 +2302,7 @@ Inputs:
         "Data": "Ynl0ZSBhcnJheQ=="
       },
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     }
   ]
@@ -2720,19 +2334,19 @@ Inputs:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     }
   ],
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "00000000-0000-0000-0000-000000000000"
   }
 ]
 ```
@@ -2747,13 +2361,13 @@ Response:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     },
     "Signature": {
@@ -2761,7 +2375,7 @@ Response:
       "Data": "Ynl0ZSBhcnJheQ=="
     },
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   }
 ]
@@ -2784,13 +2398,13 @@ Inputs:
         "From": "f01234",
         "Nonce": 42,
         "Value": "0",
-        "GasLimit": 9,
+        "GasLimit": 0,
         "GasFeeCap": "0",
         "GasPremium": "0",
         "Method": 1,
         "Params": "Ynl0ZSBhcnJheQ==",
         "CID": {
-          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
         }
       },
       "Signature": {
@@ -2798,7 +2412,7 @@ Inputs:
         "Data": "Ynl0ZSBhcnJheQ=="
       },
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     }
   ]
@@ -2831,16 +2445,16 @@ Inputs:
         "From": "f01234",
         "Nonce": 42,
         "Value": "0",
-        "GasLimit": 9,
+        "GasLimit": 0,
         "GasFeeCap": "0",
         "GasPremium": "0",
         "Method": 1,
         "Params": "Ynl0ZSBhcnJheQ==",
         "CID": {
-          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
         }
       },
-      "ValidNonce": true
+      "ValidNonce": false
     }
   ]
 ]
@@ -2855,11 +2469,9 @@ Response:
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
       "Code": 0,
-      "OK": true,
-      "Err": "string value",
-      "Hint": {
-        "abc": 123
-      }
+      "OK": false,
+      "Err": "",
+      "Hint": null
     }
   ]
 ]
@@ -2887,11 +2499,9 @@ Response:
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
       "Code": 0,
-      "OK": true,
-      "Err": "string value",
-      "Hint": {
-        "abc": 123
-      }
+      "OK": false,
+      "Err": "",
+      "Hint": null
     }
   ]
 ]
@@ -2913,13 +2523,13 @@ Inputs:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     }
   ]
@@ -2935,11 +2545,9 @@ Response:
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
       "Code": 0,
-      "OK": true,
-      "Err": "string value",
-      "Hint": {
-        "abc": 123
-      }
+      "OK": false,
+      "Err": "",
+      "Hint": null
     }
   ]
 ]
@@ -2971,14 +2579,12 @@ Inputs: `null`
 Response:
 ```json
 {
-  "PriorityAddrs": [
-    "f01234"
-  ],
-  "SizeLimitHigh": 123,
-  "SizeLimitLow": 123,
-  "ReplaceByFeeRatio": 12.3,
-  "PruneCooldown": 60000000000,
-  "GasLimitOverestimation": 12.3
+  "PriorityAddrs": null,
+  "SizeLimitHigh": 0,
+  "SizeLimitLow": 0,
+  "ReplaceByFeeRatio": 0,
+  "PruneCooldown": 0,
+  "GasLimitOverestimation": 0
 }
 ```
 
@@ -3028,13 +2634,13 @@ Response:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     },
     "Signature": {
@@ -3042,7 +2648,7 @@ Response:
       "Data": "Ynl0ZSBhcnJheQ=="
     },
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   }
 ]
@@ -3064,13 +2670,13 @@ Inputs:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     },
     "Signature": {
@@ -3078,7 +2684,7 @@ Inputs:
       "Data": "Ynl0ZSBhcnJheQ=="
     },
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   }
 ]
@@ -3111,18 +2717,18 @@ Inputs:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
   {
     "MaxFee": "0",
-    "MsgUuid": "07070707-0707-0707-0707-070707070707"
+    "MsgUuid": "00000000-0000-0000-0000-000000000000"
   }
 ]
 ```
@@ -3136,13 +2742,13 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
   "Signature": {
@@ -3150,7 +2756,7 @@ Response:
     "Data": "Ynl0ZSBhcnJheQ=="
   },
   "CID": {
-    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
   }
 }
 ```
@@ -3171,13 +2777,13 @@ Inputs:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     },
     "Signature": {
@@ -3185,7 +2791,7 @@ Inputs:
       "Data": "Ynl0ZSBhcnJheQ=="
     },
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   }
 ]
@@ -3229,13 +2835,13 @@ Response:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     },
     "Signature": {
@@ -3243,7 +2849,7 @@ Response:
       "Data": "Ynl0ZSBhcnJheQ=="
     },
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   }
 ]
@@ -3259,14 +2865,12 @@ Inputs:
 ```json
 [
   {
-    "PriorityAddrs": [
-      "f01234"
-    ],
-    "SizeLimitHigh": 123,
-    "SizeLimitLow": 123,
-    "ReplaceByFeeRatio": 12.3,
-    "PruneCooldown": 60000000000,
-    "GasLimitOverestimation": 12.3
+    "PriorityAddrs": null,
+    "SizeLimitHigh": 0,
+    "SizeLimitLow": 0,
+    "ReplaceByFeeRatio": 0,
+    "PruneCooldown": 0,
+    "GasLimitOverestimation": 0
   }
 ]
 ```
@@ -3291,13 +2895,13 @@ Response:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     },
     "Signature": {
@@ -3305,7 +2909,7 @@ Response:
       "Data": "Ynl0ZSBhcnJheQ=="
     },
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   }
 }
@@ -3345,16 +2949,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3386,16 +2990,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3426,16 +3030,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3464,16 +3068,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3511,16 +3115,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3549,16 +3153,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3592,16 +3196,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3636,16 +3240,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3699,7 +3303,7 @@ Response:
 ```json
 [
   {
-    "ID": 9,
+    "ID": 0,
     "To": "f01234",
     "Value": "0",
     "Method": 1,
@@ -3767,9 +3371,9 @@ Inputs:
 Response:
 ```json
 {
-  "InitialBalance": "0",
-  "StartEpoch": 10101,
-  "UnlockDuration": 10101
+  "InitialBalance": "\u003cnil\u003e",
+  "StartEpoch": 0,
+  "UnlockDuration": 0
 }
 ```
 
@@ -3802,16 +3406,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3844,16 +3448,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3886,16 +3490,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3927,16 +3531,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3967,16 +3571,16 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "ValidNonce": true
+  "ValidNonce": false
 }
 ```
 
@@ -3993,7 +3597,7 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "ID": "",
   "Addrs": [
     "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
   ]
@@ -4025,7 +3629,7 @@ Response:
 ```json
 {
   "Reachability": 1,
-  "PublicAddr": "string value"
+  "PublicAddr": ""
 }
 ```
 
@@ -4039,10 +3643,10 @@ Inputs: `null`
 Response:
 ```json
 {
-  "TotalIn": 9,
-  "TotalOut": 9,
-  "RateIn": 12.3,
-  "RateOut": 12.3
+  "TotalIn": 0,
+  "TotalOut": 0,
+  "RateIn": 0,
+  "RateOut": 0
 }
 ```
 
@@ -4096,12 +3700,8 @@ Inputs:
     "Peers": [
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
-    "IPAddrs": [
-      "string value"
-    ],
-    "IPSubnets": [
-      "string value"
-    ]
+    "IPAddrs": null,
+    "IPSubnets": null
   }
 ]
 ```
@@ -4121,12 +3721,8 @@ Response:
   "Peers": [
     "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
   ],
-  "IPAddrs": [
-    "string value"
-  ],
-  "IPSubnets": [
-    "string value"
-  ]
+  "IPAddrs": null,
+  "IPSubnets": null
 }
 ```
 
@@ -4142,12 +3738,8 @@ Inputs:
     "Peers": [
       "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
     ],
-    "IPAddrs": [
-      "string value"
-    ],
-    "IPSubnets": [
-      "string value"
-    ]
+    "IPAddrs": null,
+    "IPSubnets": null
   }
 ]
 ```
@@ -4163,7 +3755,7 @@ Inputs:
 ```json
 [
   {
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": "",
     "Addrs": [
       "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
     ]
@@ -4216,7 +3808,7 @@ Inputs:
 Response:
 ```json
 {
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "ID": "",
   "Addrs": [
     "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
   ]
@@ -4264,7 +3856,7 @@ Inputs:
 Response:
 ```json
 {
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "ID": "",
   "Agent": "string value",
   "Addrs": [
     "string value"
@@ -4272,16 +3864,7 @@ Response:
   "Protocols": [
     "string value"
   ],
-  "ConnMgrMeta": {
-    "FirstSeen": "0001-01-01T00:00:00Z",
-    "Value": 123,
-    "Tags": {
-      "name": 42
-    },
-    "Conns": {
-      "name": "2021-03-08T22:52:18Z"
-    }
-  }
+  "ConnMgrMeta": null
 }
 ```
 
@@ -4296,7 +3879,7 @@ Response:
 ```json
 [
   {
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": "",
     "Addrs": [
       "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
     ]
@@ -4375,7 +3958,7 @@ Response:
 ```json
 [
   {
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": "",
     "Score": {
       "Score": 12.3,
       "Topics": {
@@ -4386,9 +3969,9 @@ Response:
           "InvalidMessageDeliveries": 3
         }
       },
-      "AppSpecificScore": 12.3,
-      "IPColocationFactor": 12.3,
-      "BehaviourPenalty": 12.3
+      "AppSpecificScore": 0,
+      "IPColocationFactor": 0,
+      "BehaviourPenalty": 0
     }
   }
 ]
@@ -4434,19 +4017,19 @@ Response:
 ```json
 {
   "System": {
-    "NumStreamsInbound": 123,
-    "NumStreamsOutbound": 123,
-    "NumConnsInbound": 123,
-    "NumConnsOutbound": 123,
-    "NumFD": 123,
+    "NumStreamsInbound": 0,
+    "NumStreamsOutbound": 0,
+    "NumConnsInbound": 0,
+    "NumConnsOutbound": 0,
+    "NumFD": 0,
     "Memory": 9
   },
   "Transient": {
-    "NumStreamsInbound": 123,
-    "NumStreamsOutbound": 123,
-    "NumConnsInbound": 123,
-    "NumConnsOutbound": 123,
-    "NumFD": 123,
+    "NumStreamsInbound": 0,
+    "NumStreamsOutbound": 0,
+    "NumConnsInbound": 0,
+    "NumConnsOutbound": 0,
+    "NumFD": 0,
     "Memory": 9
   },
   "Services": {
@@ -4502,16 +4085,16 @@ Response:
 ```json
 {
   "SyncStatus": {
-    "Epoch": 42,
-    "Behind": 42
+    "Epoch": 0,
+    "Behind": 0
   },
   "PeerStatus": {
-    "PeersToPublishMsgs": 123,
-    "PeersToPublishBlocks": 123
+    "PeersToPublishMsgs": 0,
+    "PeersToPublishBlocks": 0
   },
   "ChainStatus": {
-    "BlocksPerTipsetLast100": 12.3,
-    "BlocksPerTipsetLastFinality": 12.3
+    "BlocksPerTipsetLast100": 0,
+    "BlocksPerTipsetLastFinality": 0
   }
 }
 ```
@@ -4630,9 +4213,7 @@ Response:
 ```json
 {
   "Channel": "f01234",
-  "WaitSentinel": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
+  "WaitSentinel": null
 }
 ```
 
@@ -4655,7 +4236,7 @@ Inputs:
   "f01234",
   "0",
   {
-    "OffChain": true
+    "OffChain": false
   }
 ]
 ```
@@ -4664,9 +4245,7 @@ Response:
 ```json
 {
   "Channel": "f01234",
-  "WaitSentinel": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  }
+  "WaitSentinel": null
 }
 ```
 
@@ -4713,9 +4292,9 @@ Inputs:
   [
     {
       "Amount": "0",
-      "TimeLockMin": 10101,
-      "TimeLockMax": 10101,
-      "MinSettle": 10101,
+      "TimeLockMin": 0,
+      "TimeLockMax": 0,
+      "MinSettle": 0,
       "Extra": {
         "Actor": "f01234",
         "Method": 1,
@@ -4730,15 +4309,13 @@ Response:
 ```json
 {
   "Channel": "f01234",
-  "WaitSentinel": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "WaitSentinel": null,
   "Vouchers": [
     {
-      "ChannelAddr": "f01234",
-      "TimeLockMin": 10101,
-      "TimeLockMax": 10101,
-      "SecretHash": "Ynl0ZSBhcnJheQ==",
+      "ChannelAddr": "\u003cempty\u003e",
+      "TimeLockMin": 0,
+      "TimeLockMax": 0,
+      "SecretHash": null,
       "Extra": {
         "Actor": "f01234",
         "Method": 1,
@@ -4747,7 +4324,7 @@ Response:
       "Lane": 42,
       "Nonce": 42,
       "Amount": "0",
-      "MinSettleHeight": 10101,
+      "MinSettleHeight": 0,
       "Merges": [
         {
           "Lane": 42,
@@ -4797,7 +4374,7 @@ Inputs:
 Response:
 ```json
 {
-  "ControlAddr": "f01234",
+  "ControlAddr": "\u003cempty\u003e",
   "Direction": 1
 }
 ```
@@ -4812,10 +4389,10 @@ Inputs:
 [
   "f01234",
   {
-    "ChannelAddr": "f01234",
-    "TimeLockMin": 10101,
-    "TimeLockMax": 10101,
-    "SecretHash": "Ynl0ZSBhcnJheQ==",
+    "ChannelAddr": "\u003cempty\u003e",
+    "TimeLockMin": 0,
+    "TimeLockMax": 0,
+    "SecretHash": null,
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4824,7 +4401,7 @@ Inputs:
     "Lane": 42,
     "Nonce": 42,
     "Amount": "0",
-    "MinSettleHeight": 10101,
+    "MinSettleHeight": 0,
     "Merges": [
       {
         "Lane": 42,
@@ -4853,10 +4430,10 @@ Inputs:
 [
   "f01234",
   {
-    "ChannelAddr": "f01234",
-    "TimeLockMin": 10101,
-    "TimeLockMax": 10101,
-    "SecretHash": "Ynl0ZSBhcnJheQ==",
+    "ChannelAddr": "\u003cempty\u003e",
+    "TimeLockMin": 0,
+    "TimeLockMax": 0,
+    "SecretHash": null,
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4865,7 +4442,7 @@ Inputs:
     "Lane": 42,
     "Nonce": 42,
     "Amount": "0",
-    "MinSettleHeight": 10101,
+    "MinSettleHeight": 0,
     "Merges": [
       {
         "Lane": 42,
@@ -4894,10 +4471,10 @@ Inputs:
 [
   "f01234",
   {
-    "ChannelAddr": "f01234",
-    "TimeLockMin": 10101,
-    "TimeLockMax": 10101,
-    "SecretHash": "Ynl0ZSBhcnJheQ==",
+    "ChannelAddr": "\u003cempty\u003e",
+    "TimeLockMin": 0,
+    "TimeLockMax": 0,
+    "SecretHash": null,
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4906,7 +4483,7 @@ Inputs:
     "Lane": 42,
     "Nonce": 42,
     "Amount": "0",
-    "MinSettleHeight": 10101,
+    "MinSettleHeight": 0,
     "Merges": [
       {
         "Lane": 42,
@@ -4941,10 +4518,10 @@ Response:
 ```json
 {
   "Voucher": {
-    "ChannelAddr": "f01234",
-    "TimeLockMin": 10101,
-    "TimeLockMax": 10101,
-    "SecretHash": "Ynl0ZSBhcnJheQ==",
+    "ChannelAddr": "\u003cempty\u003e",
+    "TimeLockMin": 0,
+    "TimeLockMax": 0,
+    "SecretHash": null,
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4953,7 +4530,7 @@ Response:
     "Lane": 42,
     "Nonce": 42,
     "Amount": "0",
-    "MinSettleHeight": 10101,
+    "MinSettleHeight": 0,
     "Merges": [
       {
         "Lane": 42,
@@ -4985,10 +4562,10 @@ Response:
 ```json
 [
   {
-    "ChannelAddr": "f01234",
-    "TimeLockMin": 10101,
-    "TimeLockMax": 10101,
-    "SecretHash": "Ynl0ZSBhcnJheQ==",
+    "ChannelAddr": "\u003cempty\u003e",
+    "TimeLockMin": 0,
+    "TimeLockMax": 0,
+    "SecretHash": null,
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4997,7 +4574,7 @@ Response:
     "Lane": 42,
     "Nonce": 42,
     "Amount": "0",
-    "MinSettleHeight": 10101,
+    "MinSettleHeight": 0,
     "Merges": [
       {
         "Lane": 42,
@@ -5022,10 +4599,10 @@ Inputs:
 [
   "f01234",
   {
-    "ChannelAddr": "f01234",
-    "TimeLockMin": 10101,
-    "TimeLockMax": 10101,
-    "SecretHash": "Ynl0ZSBhcnJheQ==",
+    "ChannelAddr": "\u003cempty\u003e",
+    "TimeLockMin": 0,
+    "TimeLockMax": 0,
+    "SecretHash": null,
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -5034,7 +4611,7 @@ Inputs:
     "Lane": 42,
     "Nonce": 42,
     "Amount": "0",
-    "MinSettleHeight": 10101,
+    "MinSettleHeight": 0,
     "Merges": [
       {
         "Lane": 42,
@@ -5211,13 +4788,13 @@ Inputs:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
   [
@@ -5234,33 +4811,25 @@ Inputs:
 Response:
 ```json
 {
-  "MsgCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "MsgCid": null,
   "Msg": {
     "Version": 42,
     "To": "f01234",
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "MsgRct": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
+  "MsgRct": null,
   "GasCost": {
-    "Message": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "Message": null,
     "GasUsed": "0",
     "BaseFeeBurn": "0",
     "OverEstimationBurn": "0",
@@ -5270,95 +4839,12 @@ Response:
     "TotalCost": "0"
   },
   "ExecutionTrace": {
-    "Msg": {
-      "Version": 42,
-      "To": "f01234",
-      "From": "f01234",
-      "Nonce": 42,
-      "Value": "0",
-      "GasLimit": 9,
-      "GasFeeCap": "0",
-      "GasPremium": "0",
-      "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ==",
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      }
-    },
-    "MsgRct": {
-      "ExitCode": 0,
-      "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
-    },
-    "Error": "string value",
-    "Duration": 60000000000,
-    "GasCharges": [
-      {
-        "Name": "string value",
-        "loc": [
-          {
-            "File": "string value",
-            "Line": 123,
-            "Function": "string value"
-          }
-        ],
-        "tg": 9,
-        "cg": 9,
-        "sg": 9,
-        "vtg": 9,
-        "vcg": 9,
-        "vsg": 9,
-        "tt": 60000000000,
-        "ex": {}
-      }
-    ],
-    "Subcalls": [
-      {
-        "Msg": {
-          "Version": 42,
-          "To": "f01234",
-          "From": "f01234",
-          "Nonce": 42,
-          "Value": "0",
-          "GasLimit": 9,
-          "GasFeeCap": "0",
-          "GasPremium": "0",
-          "Method": 1,
-          "Params": "Ynl0ZSBhcnJheQ==",
-          "CID": {
-            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-          }
-        },
-        "MsgRct": {
-          "ExitCode": 0,
-          "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
-        },
-        "Error": "string value",
-        "Duration": 60000000000,
-        "GasCharges": [
-          {
-            "Name": "string value",
-            "loc": [
-              {
-                "File": "string value",
-                "Line": 123,
-                "Function": "string value"
-              }
-            ],
-            "tg": 9,
-            "cg": 9,
-            "sg": 9,
-            "vtg": 9,
-            "vcg": 9,
-            "vsg": 9,
-            "tt": 60000000000,
-            "ex": {}
-          }
-        ],
-        "Subcalls": null
-      }
-    ]
+    "Msg": null,
+    "MsgRct": null,
+    "Error": "",
+    "Duration": 0,
+    "GasCharges": null,
+    "Subcalls": null
   },
   "Error": "string value",
   "Duration": 60000000000
@@ -5472,13 +4958,13 @@ Inputs:
       "From": "f01234",
       "Nonce": 42,
       "Value": "0",
-      "GasLimit": 9,
+      "GasLimit": 0,
       "GasFeeCap": "0",
       "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
       "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+        "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
       }
     }
   ],
@@ -5501,33 +4987,25 @@ Response:
   },
   "Trace": [
     {
-      "MsgCid": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
+      "MsgCid": null,
       "Msg": {
         "Version": 42,
         "To": "f01234",
         "From": "f01234",
         "Nonce": 42,
         "Value": "0",
-        "GasLimit": 9,
+        "GasLimit": 0,
         "GasFeeCap": "0",
         "GasPremium": "0",
         "Method": 1,
         "Params": "Ynl0ZSBhcnJheQ==",
         "CID": {
-          "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
         }
       },
-      "MsgRct": {
-        "ExitCode": 0,
-        "Return": "Ynl0ZSBhcnJheQ==",
-        "GasUsed": 9
-      },
+      "MsgRct": null,
       "GasCost": {
-        "Message": {
-          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-        },
+        "Message": null,
         "GasUsed": "0",
         "BaseFeeBurn": "0",
         "OverEstimationBurn": "0",
@@ -5537,95 +5015,12 @@ Response:
         "TotalCost": "0"
       },
       "ExecutionTrace": {
-        "Msg": {
-          "Version": 42,
-          "To": "f01234",
-          "From": "f01234",
-          "Nonce": 42,
-          "Value": "0",
-          "GasLimit": 9,
-          "GasFeeCap": "0",
-          "GasPremium": "0",
-          "Method": 1,
-          "Params": "Ynl0ZSBhcnJheQ==",
-          "CID": {
-            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-          }
-        },
-        "MsgRct": {
-          "ExitCode": 0,
-          "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
-        },
-        "Error": "string value",
-        "Duration": 60000000000,
-        "GasCharges": [
-          {
-            "Name": "string value",
-            "loc": [
-              {
-                "File": "string value",
-                "Line": 123,
-                "Function": "string value"
-              }
-            ],
-            "tg": 9,
-            "cg": 9,
-            "sg": 9,
-            "vtg": 9,
-            "vcg": 9,
-            "vsg": 9,
-            "tt": 60000000000,
-            "ex": {}
-          }
-        ],
-        "Subcalls": [
-          {
-            "Msg": {
-              "Version": 42,
-              "To": "f01234",
-              "From": "f01234",
-              "Nonce": 42,
-              "Value": "0",
-              "GasLimit": 9,
-              "GasFeeCap": "0",
-              "GasPremium": "0",
-              "Method": 1,
-              "Params": "Ynl0ZSBhcnJheQ==",
-              "CID": {
-                "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-              }
-            },
-            "MsgRct": {
-              "ExitCode": 0,
-              "Return": "Ynl0ZSBhcnJheQ==",
-              "GasUsed": 9
-            },
-            "Error": "string value",
-            "Duration": 60000000000,
-            "GasCharges": [
-              {
-                "Name": "string value",
-                "loc": [
-                  {
-                    "File": "string value",
-                    "Line": 123,
-                    "Function": "string value"
-                  }
-                ],
-                "tg": 9,
-                "cg": 9,
-                "sg": 9,
-                "vtg": 9,
-                "vcg": 9,
-                "vsg": 9,
-                "tt": 60000000000,
-                "ex": {}
-              }
-            ],
-            "Subcalls": null
-          }
-        ]
+        "Msg": null,
+        "MsgRct": null,
+        "Error": "",
+        "Duration": 0,
+        "GasCharges": null,
+        "Subcalls": null
       },
       "Error": "string value",
       "Duration": 60000000000
@@ -5808,8 +5203,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Size": 1032,
-  "TermMin": 10101,
-  "TermMax": 10101,
+  "TermMin": 0,
+  "TermMax": 0,
   "Expiration": 10101
 }
 ```
@@ -5845,8 +5240,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Size": 1032,
-  "TermMin": 10101,
-  "TermMax": 10101,
+  "TermMin": 0,
+  "TermMax": 0,
   "Expiration": 10101
 }
 ```
@@ -5928,9 +5323,9 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Size": 1032,
-  "TermMin": 10101,
-  "TermMax": 10101,
-  "TermStart": 10101,
+  "TermMin": 0,
+  "TermMax": 0,
+  "TermStart": 0,
   "Sector": 9
 }
 ```
@@ -5969,36 +5364,34 @@ Inputs: `null`
 Response:
 ```json
 {
-  "NetworkName": "lotus",
-  "BlockDelaySecs": 42,
+  "NetworkName": "",
+  "BlockDelaySecs": 0,
   "ConsensusMinerMinPower": "0",
-  "SupportedProofTypes": [
-    8
-  ],
-  "PreCommitChallengeDelay": 10101,
+  "SupportedProofTypes": null,
+  "PreCommitChallengeDelay": 0,
   "ForkUpgradeParams": {
-    "UpgradeSmokeHeight": 10101,
-    "UpgradeBreezeHeight": 10101,
-    "UpgradeIgnitionHeight": 10101,
-    "UpgradeLiftoffHeight": 10101,
-    "UpgradeAssemblyHeight": 10101,
-    "UpgradeRefuelHeight": 10101,
-    "UpgradeTapeHeight": 10101,
-    "UpgradeKumquatHeight": 10101,
-    "UpgradePriceListOopsHeight": 10101,
-    "BreezeGasTampingDuration": 10101,
-    "UpgradeCalicoHeight": 10101,
-    "UpgradePersianHeight": 10101,
-    "UpgradeOrangeHeight": 10101,
-    "UpgradeClausHeight": 10101,
-    "UpgradeTrustHeight": 10101,
-    "UpgradeNorwegianHeight": 10101,
-    "UpgradeTurboHeight": 10101,
-    "UpgradeHyperdriveHeight": 10101,
-    "UpgradeChocolateHeight": 10101,
-    "UpgradeOhSnapHeight": 10101,
-    "UpgradeSkyrHeight": 10101,
-    "UpgradeSharkHeight": 10101
+    "UpgradeSmokeHeight": 0,
+    "UpgradeBreezeHeight": 0,
+    "UpgradeIgnitionHeight": 0,
+    "UpgradeLiftoffHeight": 0,
+    "UpgradeAssemblyHeight": 0,
+    "UpgradeRefuelHeight": 0,
+    "UpgradeTapeHeight": 0,
+    "UpgradeKumquatHeight": 0,
+    "UpgradePriceListOopsHeight": 0,
+    "BreezeGasTampingDuration": 0,
+    "UpgradeCalicoHeight": 0,
+    "UpgradePersianHeight": 0,
+    "UpgradeOrangeHeight": 0,
+    "UpgradeClausHeight": 0,
+    "UpgradeTrustHeight": 0,
+    "UpgradeNorwegianHeight": 0,
+    "UpgradeTurboHeight": 0,
+    "UpgradeHyperdriveHeight": 0,
+    "UpgradeChocolateHeight": 0,
+    "UpgradeOhSnapHeight": 0,
+    "UpgradeSkyrHeight": 0,
+    "UpgradeSharkHeight": 0
   }
 }
 ```
@@ -6241,24 +5634,22 @@ Response:
 {
   "t026363": {
     "Proposal": {
-      "PieceCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "PieceSize": 1032,
-      "VerifiedDeal": true,
+      "PieceCID": null,
+      "PieceSize": 0,
+      "VerifiedDeal": false,
       "Client": "f01234",
       "Provider": "f01234",
       "Label": "",
-      "StartEpoch": 10101,
-      "EndEpoch": 10101,
+      "StartEpoch": 0,
+      "EndEpoch": 0,
       "StoragePricePerEpoch": "0",
       "ProviderCollateral": "0",
       "ClientCollateral": "0"
     },
     "State": {
-      "SectorStartEpoch": 10101,
-      "LastUpdatedEpoch": 10101,
-      "SlashEpoch": 10101,
+      "SectorStartEpoch": 0,
+      "LastUpdatedEpoch": 0,
+      "SlashEpoch": 0,
       "VerifiedClaim": 0
     }
   }
@@ -6320,24 +5711,22 @@ Response:
 ```json
 {
   "Proposal": {
-    "PieceCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "PieceSize": 1032,
-    "VerifiedDeal": true,
+    "PieceCID": null,
+    "PieceSize": 0,
+    "VerifiedDeal": false,
     "Client": "f01234",
     "Provider": "f01234",
     "Label": "",
-    "StartEpoch": 10101,
-    "EndEpoch": 10101,
+    "StartEpoch": 0,
+    "EndEpoch": 0,
     "StoragePricePerEpoch": "0",
     "ProviderCollateral": "0",
     "ClientCollateral": "0"
   },
   "State": {
-    "SectorStartEpoch": 10101,
-    "LastUpdatedEpoch": 10101,
-    "SlashEpoch": 10101,
+    "SectorStartEpoch": 0,
+    "LastUpdatedEpoch": 0,
+    "SlashEpoch": 0,
     "VerifiedClaim": 0
   }
 }
@@ -6368,14 +5757,10 @@ Response:
 ```json
 [
   {
-    "SectorNumber": 9,
-    "SealProof": 8,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "DealIDs": [
-      5432
-    ],
+    "SectorNumber": 0,
+    "SealProof": 0,
+    "SealedCID": null,
+    "DealIDs": null,
     "Activation": 10101,
     "Expiration": 10101,
     "DealWeight": "0",
@@ -6383,10 +5768,10 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
+    "ReplacedSectorAge": 0,
     "ReplacedDayReward": "0",
     "SectorKeyCID": null,
-    "SimpleQAPower": true
+    "SimpleQAPower": false
   }
 ]
 ```
@@ -6468,10 +5853,9 @@ Response:
 [
   {
     "PostSubmissions": [
-      5,
-      1
+      0
     ],
-    "DisputableProofCount": 42
+    "DisputableProofCount": 0
   }
 ]
 ```
@@ -6531,32 +5915,20 @@ Response:
 {
   "Owner": "f01234",
   "Worker": "f01234",
-  "NewWorker": "f01234",
-  "ControlAddresses": [
-    "f01234"
-  ],
-  "WorkerChangeEpoch": 10101,
-  "PeerId": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "NewWorker": "\u003cempty\u003e",
+  "ControlAddresses": null,
+  "WorkerChangeEpoch": 0,
+  "PeerId": null,
   "Multiaddrs": [
     "Ynl0ZSBhcnJheQ=="
   ],
-  "WindowPoStProofType": 8,
-  "SectorSize": 34359738368,
-  "WindowPoStPartitionSectors": 42,
-  "ConsensusFaultElapsed": 10101,
+  "WindowPoStProofType": 0,
+  "SectorSize": 0,
+  "WindowPoStPartitionSectors": 0,
+  "ConsensusFaultElapsed": 0,
   "Beneficiary": "f01234",
-  "BeneficiaryTerm": {
-    "Quota": "0",
-    "UsedQuota": "0",
-    "Expiration": 10101
-  },
-  "PendingBeneficiaryTerm": {
-    "NewBeneficiary": "f01234",
-    "NewQuota": "0",
-    "NewExpiration": 10101,
-    "ApprovedByBeneficiary": true,
-    "ApprovedByNominee": true
-  }
+  "BeneficiaryTerm": null,
+  "PendingBeneficiaryTerm": null
 }
 ```
 
@@ -6571,15 +5943,11 @@ Inputs:
 [
   "f01234",
   {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": [
-      5432
-    ],
+    "SealProof": 0,
+    "SectorNumber": 0,
+    "SealedCID": null,
+    "SealRandEpoch": 0,
+    "DealIDs": null,
     "Expiration": 10101,
     "UnsealedCid": null
   },
@@ -6623,24 +5991,19 @@ Response:
 [
   {
     "AllSectors": [
-      5,
-      1
+      0
     ],
     "FaultySectors": [
-      5,
-      1
+      0
     ],
     "RecoveringSectors": [
-      5,
-      1
+      0
     ],
     "LiveSectors": [
-      5,
-      1
+      0
     ],
     "ActiveSectors": [
-      5,
-      1
+      0
     ]
   }
 ]
@@ -6678,7 +6041,7 @@ Response:
     "RawBytePower": "0",
     "QualityAdjPower": "0"
   },
-  "HasMinPower": true
+  "HasMinPower": false
 }
 ```
 
@@ -6693,15 +6056,11 @@ Inputs:
 [
   "f01234",
   {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": [
-      5432
-    ],
+    "SealProof": 0,
+    "SectorNumber": 0,
+    "SealedCID": null,
+    "SealRandEpoch": 0,
+    "DealIDs": null,
     "Expiration": 10101,
     "UnsealedCid": null
   },
@@ -6743,18 +6102,18 @@ Inputs:
 Response:
 ```json
 {
-  "CurrentEpoch": 10101,
-  "PeriodStart": 10101,
+  "CurrentEpoch": 0,
+  "PeriodStart": 0,
   "Index": 42,
   "Open": 10101,
   "Close": 10101,
   "Challenge": 10101,
-  "FaultCutoff": 10101,
-  "WPoStPeriodDeadlines": 42,
-  "WPoStProvingPeriod": 10101,
-  "WPoStChallengeWindow": 10101,
-  "WPoStChallengeLookback": 10101,
-  "FaultDeclarationCutoff": 10101
+  "FaultCutoff": 0,
+  "WPoStPeriodDeadlines": 0,
+  "WPoStProvingPeriod": 0,
+  "WPoStChallengeWindow": 0,
+  "WPoStChallengeLookback": 0,
+  "FaultDeclarationCutoff": 0
 }
 ```
 
@@ -6869,14 +6228,10 @@ Response:
 ```json
 [
   {
-    "SectorNumber": 9,
-    "SealProof": 8,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "DealIDs": [
-      5432
-    ],
+    "SectorNumber": 0,
+    "SealProof": 0,
+    "SealedCID": null,
+    "DealIDs": null,
     "Activation": 10101,
     "Expiration": 10101,
     "DealWeight": "0",
@@ -6884,10 +6239,10 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
-    "ReplacedSectorAge": 10101,
+    "ReplacedSectorAge": 0,
     "ReplacedDayReward": "0",
     "SectorKeyCID": null,
-    "SimpleQAPower": true
+    "SimpleQAPower": false
   }
 ]
 ```
@@ -6998,33 +6353,25 @@ Inputs:
 Response:
 ```json
 {
-  "MsgCid": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "MsgCid": null,
   "Msg": {
     "Version": 42,
     "To": "f01234",
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
-  "MsgRct": {
-    "ExitCode": 0,
-    "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
-  },
+  "MsgRct": null,
   "GasCost": {
-    "Message": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
+    "Message": null,
     "GasUsed": "0",
     "BaseFeeBurn": "0",
     "OverEstimationBurn": "0",
@@ -7034,95 +6381,12 @@ Response:
     "TotalCost": "0"
   },
   "ExecutionTrace": {
-    "Msg": {
-      "Version": 42,
-      "To": "f01234",
-      "From": "f01234",
-      "Nonce": 42,
-      "Value": "0",
-      "GasLimit": 9,
-      "GasFeeCap": "0",
-      "GasPremium": "0",
-      "Method": 1,
-      "Params": "Ynl0ZSBhcnJheQ==",
-      "CID": {
-        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-      }
-    },
-    "MsgRct": {
-      "ExitCode": 0,
-      "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
-    },
-    "Error": "string value",
-    "Duration": 60000000000,
-    "GasCharges": [
-      {
-        "Name": "string value",
-        "loc": [
-          {
-            "File": "string value",
-            "Line": 123,
-            "Function": "string value"
-          }
-        ],
-        "tg": 9,
-        "cg": 9,
-        "sg": 9,
-        "vtg": 9,
-        "vcg": 9,
-        "vsg": 9,
-        "tt": 60000000000,
-        "ex": {}
-      }
-    ],
-    "Subcalls": [
-      {
-        "Msg": {
-          "Version": 42,
-          "To": "f01234",
-          "From": "f01234",
-          "Nonce": 42,
-          "Value": "0",
-          "GasLimit": 9,
-          "GasFeeCap": "0",
-          "GasPremium": "0",
-          "Method": 1,
-          "Params": "Ynl0ZSBhcnJheQ==",
-          "CID": {
-            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
-          }
-        },
-        "MsgRct": {
-          "ExitCode": 0,
-          "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
-        },
-        "Error": "string value",
-        "Duration": 60000000000,
-        "GasCharges": [
-          {
-            "Name": "string value",
-            "loc": [
-              {
-                "File": "string value",
-                "Line": 123,
-                "Function": "string value"
-              }
-            ],
-            "tg": 9,
-            "cg": 9,
-            "sg": 9,
-            "vtg": 9,
-            "vcg": 9,
-            "vsg": 9,
-            "tt": 60000000000,
-            "ex": {}
-          }
-        ],
-        "Subcalls": null
-      }
-    ]
+    "Msg": null,
+    "MsgRct": null,
+    "Error": "",
+    "Duration": 0,
+    "GasCharges": null,
+    "Subcalls": null
   },
   "Error": "string value",
   "Duration": 60000000000
@@ -7178,17 +6442,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
-  "ReturnDec": {},
-  "TipSet": [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
+  "ReturnDec": null,
+  "TipSet": [],
   "Height": 10101
 }
 ```
@@ -7218,7 +6475,7 @@ Inputs:
 Response:
 ```json
 {
-  "OnTime": 10101,
+  "OnTime": 0,
   "Early": 10101
 }
 ```
@@ -7250,14 +6507,10 @@ Inputs:
 Response:
 ```json
 {
-  "SectorNumber": 9,
-  "SealProof": 8,
-  "SealedCID": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "DealIDs": [
-    5432
-  ],
+  "SectorNumber": 0,
+  "SealProof": 0,
+  "SealedCID": null,
+  "DealIDs": null,
   "Activation": 10101,
   "Expiration": 10101,
   "DealWeight": "0",
@@ -7265,10 +6518,10 @@ Response:
   "InitialPledge": "0",
   "ExpectedDayReward": "0",
   "ExpectedStoragePledge": "0",
-  "ReplacedSectorAge": 10101,
+  "ReplacedSectorAge": 0,
   "ReplacedDayReward": "0",
   "SectorKeyCID": null,
-  "SimpleQAPower": true
+  "SimpleQAPower": false
 }
 ```
 
@@ -7333,20 +6586,16 @@ Response:
 ```json
 {
   "Info": {
-    "SealProof": 8,
-    "SectorNumber": 9,
-    "SealedCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "SealRandEpoch": 10101,
-    "DealIDs": [
-      5432
-    ],
+    "SealProof": 0,
+    "SectorNumber": 0,
+    "SealedCID": null,
+    "SealRandEpoch": 0,
+    "DealIDs": null,
     "Expiration": 10101,
     "UnsealedCid": null
   },
   "PreCommitDeposit": "0",
-  "PreCommitEpoch": 10101
+  "PreCommitEpoch": 0
 }
 ```
 
@@ -7374,12 +6623,12 @@ Inputs:
 Response:
 ```json
 {
-  "FilVested": "0",
-  "FilMined": "0",
-  "FilBurnt": "0",
-  "FilLocked": "0",
-  "FilCirculating": "0",
-  "FilReserveDisbursed": "0"
+  "FilVested": "\u003cnil\u003e",
+  "FilMined": "\u003cnil\u003e",
+  "FilBurnt": "\u003cnil\u003e",
+  "FilLocked": "\u003cnil\u003e",
+  "FilCirculating": "\u003cnil\u003e",
+  "FilReserveDisbursed": "\u003cnil\u003e"
 }
 ```
 
@@ -7499,17 +6748,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 0
   },
-  "ReturnDec": {},
-  "TipSet": [
-    {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    {
-      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
-    }
-  ],
+  "ReturnDec": null,
+  "TipSet": [],
   "Height": 10101
 }
 ```
@@ -7573,24 +6815,11 @@ Response:
 {
   "Miner": "f01234",
   "Ticket": {
-    "VRFProof": "Ynl0ZSBhcnJheQ=="
+    "VRFProof": null
   },
-  "ElectionProof": {
-    "WinCount": 9,
-    "VRFProof": "Ynl0ZSBhcnJheQ=="
-  },
-  "BeaconEntries": [
-    {
-      "Round": 42,
-      "Data": "Ynl0ZSBhcnJheQ=="
-    }
-  ],
-  "WinPoStProof": [
-    {
-      "PoStProof": 8,
-      "ProofBytes": "Ynl0ZSBhcnJheQ=="
-    }
-  ],
+  "ElectionProof": null,
+  "BeaconEntries": null,
+  "WinPoStProof": null,
   "Parents": [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -7598,25 +6827,15 @@ Response:
   ],
   "ParentWeight": "0",
   "Height": 10101,
-  "ParentStateRoot": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
-  "ParentMessageReceipts": {
-    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-  },
+  "ParentStateRoot": null,
+  "ParentMessageReceipts": null,
   "Messages": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "BLSAggregate": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  },
+  "BLSAggregate": null,
   "Timestamp": 42,
-  "BlockSig": {
-    "Type": 2,
-    "Data": "Ynl0ZSBhcnJheQ=="
-  },
-  "ForkSignaling": 42,
+  "BlockSig": null,
+  "ForkSignaling": 0,
   "ParentBaseFee": "0"
 }
 ```
@@ -7650,27 +6869,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "ActiveSyncs": [
-    {
-      "WorkerID": 42,
-      "Base": {
-        "Cids": null,
-        "Blocks": null,
-        "Height": 0
-      },
-      "Target": {
-        "Cids": null,
-        "Blocks": null,
-        "Height": 0
-      },
-      "Stage": 1,
-      "Height": 10101,
-      "Start": "0001-01-01T00:00:00Z",
-      "End": "0001-01-01T00:00:00Z",
-      "Message": "string value"
-    }
-  ],
-  "VMApplied": 42
+  "ActiveSyncs": null,
+  "VMApplied": 0
 }
 ```
 
@@ -7688,24 +6888,11 @@ Inputs:
     "Header": {
       "Miner": "f01234",
       "Ticket": {
-        "VRFProof": "Ynl0ZSBhcnJheQ=="
+        "VRFProof": null
       },
-      "ElectionProof": {
-        "WinCount": 9,
-        "VRFProof": "Ynl0ZSBhcnJheQ=="
-      },
-      "BeaconEntries": [
-        {
-          "Round": 42,
-          "Data": "Ynl0ZSBhcnJheQ=="
-        }
-      ],
-      "WinPoStProof": [
-        {
-          "PoStProof": 8,
-          "ProofBytes": "Ynl0ZSBhcnJheQ=="
-        }
-      ],
+      "ElectionProof": null,
+      "BeaconEntries": null,
+      "WinPoStProof": null,
       "Parents": [
         {
           "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -7713,37 +6900,19 @@ Inputs:
       ],
       "ParentWeight": "0",
       "Height": 10101,
-      "ParentStateRoot": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "ParentMessageReceipts": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
+      "ParentStateRoot": null,
+      "ParentMessageReceipts": null,
       "Messages": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
-      "BLSAggregate": {
-        "Type": 2,
-        "Data": "Ynl0ZSBhcnJheQ=="
-      },
+      "BLSAggregate": null,
       "Timestamp": 42,
-      "BlockSig": {
-        "Type": 2,
-        "Data": "Ynl0ZSBhcnJheQ=="
-      },
-      "ForkSignaling": 42,
+      "BlockSig": null,
+      "ForkSignaling": 0,
       "ParentBaseFee": "0"
     },
-    "BlsMessages": [
-      {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
-    ],
-    "SecpkMessages": [
-      {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      }
-    ]
+    "BlsMessages": null,
+    "SecpkMessages": null
   }
 ]
 ```
@@ -7859,7 +7028,7 @@ Response:
 ```json
 {
   "Type": "bls",
-  "PrivateKey": "Ynl0ZSBhcnJheQ=="
+  "PrivateKey": null
 }
 ```
 
@@ -7889,7 +7058,7 @@ Inputs:
 [
   {
     "Type": "bls",
-    "PrivateKey": "Ynl0ZSBhcnJheQ=="
+    "PrivateKey": null
   }
 ]
 ```
@@ -7981,13 +7150,13 @@ Inputs:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   }
 ]
@@ -8002,13 +7171,13 @@ Response:
     "From": "f01234",
     "Nonce": 42,
     "Value": "0",
-    "GasLimit": 9,
+    "GasLimit": 0,
     "GasFeeCap": "0",
     "GasPremium": "0",
     "Method": 1,
     "Params": "Ynl0ZSBhcnJheQ==",
     "CID": {
-      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
     }
   },
   "Signature": {
@@ -8016,7 +7185,7 @@ Response:
     "Data": "Ynl0ZSBhcnJheQ=="
   },
   "CID": {
-    "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    "/": "bafy2bzacebnkgxcy5pyk763pyw5l2sbltrai3qga5k2rcvvpgpdx2stlegnz4"
   }
 }
 ```

@@ -63,13 +63,17 @@ type Sealer interface {
 	SealCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids SectorCids) (Commit1Out, error)
 	SealCommit2(ctx context.Context, sector SectorRef, c1o Commit1Out) (Proof, error)
 
-	FinalizeSector(ctx context.Context, sector SectorRef, keepUnsealed []Range) error
+	FinalizeSector(ctx context.Context, sector SectorRef) error
 
 	// ReleaseUnsealed marks parts of the unsealed sector file as safe to drop
 	//  (called by the fsm on restart, allows storage to keep no persistent
 	//   state about unsealed fast-retrieval copies)
-	ReleaseUnsealed(ctx context.Context, sector SectorRef, safeToFree []Range) error
+	ReleaseUnsealed(ctx context.Context, sector SectorRef, keepUnsealed []Range) error
+	// ReleaseSectorKey removes `sealed` from all storage
+	// called after successful sector upgrade
 	ReleaseSectorKey(ctx context.Context, sector SectorRef) error
+	// ReleaseReplicaUpgrade removes `update` / `update-cache` from all storage
+	// called when aborting sector upgrade
 	ReleaseReplicaUpgrade(ctx context.Context, sector SectorRef) error
 
 	// Removes all data associated with the specified sector
@@ -85,7 +89,7 @@ type Sealer interface {
 	// GenerateSectorKeyFromData computes sector key given unsealed data and updated replica
 	GenerateSectorKeyFromData(ctx context.Context, sector SectorRef, unsealed cid.Cid) error
 
-	FinalizeReplicaUpdate(ctx context.Context, sector SectorRef, keepUnsealed []Range) error
+	FinalizeReplicaUpdate(ctx context.Context, sector SectorRef) error
 
 	DownloadSectorData(ctx context.Context, sector SectorRef, finalized bool, src map[SectorFileType]SectorLocation) error
 }
