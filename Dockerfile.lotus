@@ -1,3 +1,5 @@
+##### DEPRECATED
+
 FROM golang:1.18.8-buster AS builder-deps
 MAINTAINER Lotus Development Team
 

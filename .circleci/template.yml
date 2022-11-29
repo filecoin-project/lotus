@@ -1,6 +1,7 @@
 version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@1.3.2
+  docker: circleci/docker@2.1.4
 
 executors:
   golang:
@@ -583,6 +584,92 @@ jobs:
           shell: /bin/bash -o pipefail
           command: |
             snapcraft upload *.snap --release << parameters.channel >>
+  build-docker:
+    description: >
+      Publish to Dockerhub
+    executor: docker/docker
+    parameters:
+      image:
+        type: string
+        default: lotus
+        description: >
+          Passed to the docker build process to determine which image in the
+          Dockerfile should be built. Expected values are `lotus`,
+          `lotus-all-in-one`
+      network:
+        type: string
+        default: "mainnet"
+        description: >
+          Passed to the docker build process using GOFLAGS+=-tags=<<network>>.
+          Expected values are `debug`, `2k`, `calibnet`, `butterflynet`,
+          `interopnet`.
+      channel:
+        type: string
+        default: ""
+        description: >
+          The release channel to use for this image.
+      push:
+        type: boolean
+        default: false
+        description: >
+          When true, pushes the image to Dockerhub
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check:
+          docker-username: DOCKERHUB_USERNAME
+          docker-password: DOCKERHUB_PASSWORD
+      - when:
+          condition:
+            equal: [ mainnet, <<parameters.network>> ]
+          steps:
+            - when:
+                condition: <parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>>
+                      tag: <<parameters.channel>>
+                  - run:
+                      name: Docker push
+                      command: |
+                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
+                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
+                        fi
+            - unless:
+                condition: <<parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>>
+      - when:
+          condition:
+            not:
+              equal: [ mainnet, <<parameters.network>> ]
+          steps:
+            - when:
+                condition: <<parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
+                      tag: <<parameters.channel>>-<<parameters.network>>
+                  - run:
+                      name: Docker push
+                      command: |
+                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
+                        if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
+                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
+                        fi
+            - unless:
+                condition: <<parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
 
   publish-packer-snap:
     description: build packer image with snap. mainnet only.
@@ -592,51 +679,6 @@ jobs:
       - checkout
       - packer_build:
           template: tools/packer/lotus-snap.pkr.hcl
-  publish-dockerhub:
-    description: publish to dockerhub
-    machine:
-      image: ubuntu-2004:202010-01
-    parameters:
-      tag:
-        type: string
-        default: latest
-    steps:
-      - checkout
-      - run:
-          name: dockerhub login
-          command: echo $DOCKERHUB_PASSWORD | docker login --username $DOCKERHUB_USERNAME --password-stdin
-      - run:
-          name: docker build
-          command: |
-            docker build --target lotus -t filecoin/lotus:<< parameters.tag >> -f Dockerfile.lotus .
-            docker build --target lotus-gateway -t filecoin/lotus-gateway:<< parameters.tag >> -f Dockerfile.lotus .
-            docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:<< parameters.tag >> -f Dockerfile.lotus .
-            if [["[[ ! -z $CIRCLE_SHA1 ]]"]]; then
-              docker build --target lotus -t filecoin/lotus:$CIRCLE_SHA1 -f Dockerfile.lotus .
-              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_SHA1 -f Dockerfile.lotus .
-              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_SHA1 -f Dockerfile.lotus .
-            fi
-            if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
-              docker build --target lotus -t filecoin/lotus:$CIRCLE_TAG -f Dockerfile.lotus .
-              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_TAG -f Dockerfile.lotus .
-              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_TAG -f Dockerfile.lotus .
-            fi
-      - run:
-          name: docker push
-          command: |
-            docker push filecoin/lotus:<< parameters.tag >>
-            docker push filecoin/lotus-gateway:<< parameters.tag >>
-            docker push filecoin/lotus-all-in-one:<< parameters.tag >>
-            if [["[[ ! -z $CIRCLE_SHA1 ]]"]]; then
-              docker push filecoin/lotus:$CIRCLE_SHA1
-              docker push filecoin/lotus-gateway:$CIRCLE_SHA1
-              docker push filecoin/lotus-all-in-one:$CIRCLE_SHA1
-            fi
-            if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
-              docker push filecoin/lotus:$CIRCLE_TAG
-              docker push filecoin/lotus-gateway:$CIRCLE_TAG
-              docker push filecoin/lotus-all-in-one:$CIRCLE_TAG
-            fi
 
 workflows:
   version: 2.1
@@ -759,10 +801,11 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      [[- range .SnapNames]]
       - publish-snapcraft:
-          name: "Publish Snapcraft (lotus-filecoin / candidate)"
+          name: "Publish Snapcraft ([[.]] / stable)"
           channel: stable
-          snap-name: lotus-filecoin
+          snap-name: [[.]]
           filters:
             branches:
               ignore:
@@ -771,9 +814,9 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+$/
       - publish-snapcraft:
-          name: "Publish Snapcraft (lotus-filecoin / candidate)"
+          name: "Publish Snapcraft ([[.]] / candidate)"
           channel: candidate
-          snap-name: lotus-filecoin
+          snap-name: [[.]]
           filters:
             branches:
               ignore:
@@ -781,10 +824,14 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
-      - publish-snapcraft:
-          name: "Publish Snapcraft (lotus / stable)"
+      [[- end]]
+      [[- range .Networks]]
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / [[.]])"
+          image: lotus-all-in-one
           channel: stable
-          snap-name: lotus
+          network: [[.]]
+          push: true
           filters:
             branches:
               ignore:
@@ -792,10 +839,12 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
-      - publish-snapcraft:
-          name: "Publish Snapcraft (lotus / candidate)"
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / [[.]])"
+          image: lotus-all-in-one
           channel: candidate
-          snap-name: lotus
+          network: [[.]]
+          push: true
           filters:
             branches:
               ignore:
@@ -803,26 +852,16 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
-      - publish-dockerhub:
-          name: "Publish Dockerhub (stable)"
-          tag: stable
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / [[.]])"
+          image: lotus-all-in-one
+          network: [[.]]
+          push: false
           filters:
             branches:
-              ignore:
-                - /.*/
-            tags:
               only:
-                - /^v\d+\.\d+\.\d+$/
-      - publish-dockerhub:
-          name: "Publish Dockerhub (candidate)"
-          tag: candidate
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+-rc\d+$/
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      [[- end]]
 
   nightly:
     triggers:
@@ -833,17 +872,20 @@ workflows:
               only:
                 - master
     jobs:
+      [[- range .SnapNames]]
       - publish-snapcraft:
-          name: "Publish Snapcraft Nightly (lotus-filecoin / edge)"
+          name: "Publish Snapcraft ([[.]] / edge)"
           channel: edge
-          snap-name: lotus-filecoin
-      - publish-snapcraft:
-          name: "Publish Snapcraft Nightly (lotus / edge)"
-          channel: edge
-          snap-name: lotus
-      - publish-dockerhub:
-          name: publish-dockerhub-nightly
-          tag: nightly
+          snap-name: [[.]]
+      [[- end]]
+      [[- range .Networks]]
+      - build-docker:
+          name: "Docker (lotus-all-in-one / nightly / [[.]])"
+          image: lotus-all-in-one
+          channel: nightly
+          network: [[.]]
+          push: true
+      [[- end]]
   biweekly:
     triggers:
       - schedule:
