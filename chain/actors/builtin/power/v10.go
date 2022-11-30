@@ -2,16 +2,19 @@ package power
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	power10 "github.com/filecoin-project/go-state-types/builtin/v10/power"
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
@@ -183,4 +186,21 @@ func fromV10Claim(v10 power10.Claim) Claim {
 		RawBytePower:    v10.RawBytePower,
 		QualityAdjPower: v10.QualityAdjPower,
 	}
+}
+
+func (s *state10) ActorKey() string {
+	return actors.PowerKey
+}
+
+func (s *state10) ActorVersion() actorstypes.Version {
+	return actorstypes.Version10
+}
+
+func (s *state10) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

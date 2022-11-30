@@ -3,6 +3,7 @@ package node
 import (
 	"os"
 
+	gorpc "github.com/libp2p/go-libp2p-gorpc"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -29,7 +30,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
+	raftcns "github.com/filecoin-project/lotus/lib/consensus/raft"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -106,6 +109,7 @@ var ChainNode = Options(
 
 	// Service: Wallet
 	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
+	Override(new(messagesigner.MsgSigner), func(ms *messagesigner.MessageSigner) *messagesigner.MessageSigner { return ms }),
 	Override(new(*wallet.LocalWallet), wallet.NewWallet),
 	Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
 	Override(new(api.Wallet), From(new(wallet.MultiWallet))),
@@ -130,6 +134,7 @@ var ChainNode = Options(
 	Override(new(*market.FundManager), market.NewFundManager),
 	Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
 	Override(new(storagemarket.BlockstoreAccessor), modules.StorageBlockstoreAccessor),
+	Override(new(*retrievaladapter.APIBlockstoreAccessor), retrievaladapter.NewAPIBlockstoreAdapter),
 	Override(new(storagemarket.StorageClient), modules.StorageClient),
 	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
@@ -141,7 +146,7 @@ var ChainNode = Options(
 	// Lite node API
 	ApplyIf(isLiteNode,
 		Override(new(messagepool.Provider), messagepool.NewProviderLite),
-		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
+		Override(new(messagepool.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
 		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
 		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
@@ -154,7 +159,7 @@ var ChainNode = Options(
 	// Full node API / service startup
 	ApplyIf(isFullNode,
 		Override(new(messagepool.Provider), messagepool.NewProvider),
-		Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
+		Override(new(messagepool.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 		Override(new(full.EthModuleAPI), From(new(full.EthModule))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
@@ -239,6 +244,17 @@ func ConfigFullNode(c interface{}) Option {
 		If(cfg.Wallet.DisableLocal,
 			Unset(new(*wallet.LocalWallet)),
 			Override(new(wallet.Default), wallet.NilDefault),
+		),
+
+		// Chain node cluster enabled
+		If(cfg.Cluster.ClusterModeEnabled,
+			Override(new(*gorpc.Client), modules.NewRPCClient),
+			Override(new(*raftcns.ClusterRaftConfig), raftcns.NewClusterRaftConfig(&cfg.Cluster)),
+			Override(new(*raftcns.Consensus), raftcns.NewConsensusWithRPCClient(false)),
+			Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
+			Override(new(messagesigner.MsgSigner), From(new(*messagesigner.MessageSignerConsensus))),
+			Override(new(*modules.RPCHandler), modules.NewRPCHandler),
+			Override(GoRPCServer, modules.NewRPCServer),
 		),
 
 		// Actor event filtering support

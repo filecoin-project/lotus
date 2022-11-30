@@ -231,7 +231,7 @@ type FullNodeStruct struct {
 
 		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthUint64, error) `perm:"read"`
 
-		EthFeeHistory func(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) `perm:"read"`
+		EthFeeHistory func(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) `perm:"read"`
 
 		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
 
@@ -410,6 +410,10 @@ type FullNodeStruct struct {
 		PaychVoucherList func(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) `perm:"write"`
 
 		PaychVoucherSubmit func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) `perm:"sign"`
+
+		RaftLeader func(p0 context.Context) (peer.ID, error) `perm:"read"`
+
+		RaftState func(p0 context.Context) (*RaftStateData, error) `perm:"read"`
 
 		StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
@@ -748,7 +752,7 @@ type StorageMinerStruct struct {
 
 		BeneficiaryWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
 
-		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
 
@@ -1043,9 +1047,9 @@ type WorkerStruct struct {
 
 		Fetch func(p0 context.Context, p1 storiface.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) `perm:"admin"`
 
-		FinalizeReplicaUpdate func(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) `perm:"admin"`
+		FinalizeReplicaUpdate func(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) `perm:"admin"`
 
-		FinalizeSector func(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) `perm:"admin"`
+		FinalizeSector func(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) `perm:"admin"`
 
 		GenerateSectorKeyFromData func(p0 context.Context, p1 storiface.SectorRef, p2 cid.Cid) (storiface.CallID, error) `perm:"admin"`
 
@@ -1926,14 +1930,14 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64
 	return *new(EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) {
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
 		return *new(EthFeeHistory), ErrNotSupported
 	}
 	return s.Internal.EthFeeHistory(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []int64) (EthFeeHistory, error) {
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) {
 	return *new(EthFeeHistory), ErrNotSupported
 }
 
@@ -2914,6 +2918,28 @@ func (s *FullNodeStruct) PaychVoucherSubmit(p0 context.Context, p1 address.Addre
 
 func (s *FullNodeStub) PaychVoucherSubmit(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) {
 	return *new(cid.Cid), ErrNotSupported
+}
+
+func (s *FullNodeStruct) RaftLeader(p0 context.Context) (peer.ID, error) {
+	if s.Internal.RaftLeader == nil {
+		return *new(peer.ID), ErrNotSupported
+	}
+	return s.Internal.RaftLeader(p0)
+}
+
+func (s *FullNodeStub) RaftLeader(p0 context.Context) (peer.ID, error) {
+	return *new(peer.ID), ErrNotSupported
+}
+
+func (s *FullNodeStruct) RaftState(p0 context.Context) (*RaftStateData, error) {
+	if s.Internal.RaftState == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.RaftState(p0)
+}
+
+func (s *FullNodeStub) RaftState(p0 context.Context) (*RaftStateData, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
@@ -4577,14 +4603,14 @@ func (s *StorageMinerStub) BeneficiaryWithdrawBalance(p0 context.Context, p1 abi
 	return *new(cid.Cid), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
 	}
-	return s.Internal.CheckProvable(p0, p1, p2, p3)
+	return s.Internal.CheckProvable(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef) (map[abi.SectorNumber]string, error) {
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 
@@ -6106,25 +6132,25 @@ func (s *WorkerStub) Fetch(p0 context.Context, p1 storiface.SectorRef, p2 storif
 	return *new(storiface.CallID), ErrNotSupported
 }
 
-func (s *WorkerStruct) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStruct) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	if s.Internal.FinalizeReplicaUpdate == nil {
 		return *new(storiface.CallID), ErrNotSupported
 	}
-	return s.Internal.FinalizeReplicaUpdate(p0, p1, p2)
+	return s.Internal.FinalizeReplicaUpdate(p0, p1)
 }
 
-func (s *WorkerStub) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStub) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 
-func (s *WorkerStruct) FinalizeSector(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStruct) FinalizeSector(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	if s.Internal.FinalizeSector == nil {
 		return *new(storiface.CallID), ErrNotSupported
 	}
-	return s.Internal.FinalizeSector(p0, p1, p2)
+	return s.Internal.FinalizeSector(p0, p1)
 }
 
-func (s *WorkerStub) FinalizeSector(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStub) FinalizeSector(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

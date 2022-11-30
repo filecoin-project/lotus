@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -38,7 +37,7 @@ type TestWorker struct {
 	options nodeOpts
 }
 
-func (tm *TestWorker) AddStorage(ctx context.Context, t *testing.T, conf func(*paths.LocalStorageMeta)) storiface.ID {
+func (tm *TestWorker) AddStorage(ctx context.Context, t *testing.T, conf func(*storiface.LocalStorageMeta)) storiface.ID {
 	p := t.TempDir()
 
 	if err := os.MkdirAll(p, 0755); err != nil {
@@ -52,7 +51,7 @@ func (tm *TestWorker) AddStorage(ctx context.Context, t *testing.T, conf func(*p
 		require.NoError(t, err)
 	}
 
-	cfg := &paths.LocalStorageMeta{
+	cfg := &storiface.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   10,
 		CanSeal:  false,

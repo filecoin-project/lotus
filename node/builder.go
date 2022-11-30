@@ -122,6 +122,7 @@ const (
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
 	SetupFallbackBlockstoresKey
+	GoRPCServer
 
 	SetApiEndpointKey
 

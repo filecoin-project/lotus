@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
+	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -252,6 +253,14 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di dline.Info, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPoStCycle")
 	defer span.End()
+
+	start := time.Now()
+
+	log := log.WithOptions(zap.Fields(zap.Time("cycle", start)))
+	log.Infow("starting PoSt cycle", "manual", manual, "ts", ts, "deadline", di.Index)
+	defer func() {
+		log.Infow("post cycle done", "took", time.Now().Sub(start))
+	}()
 
 	if !manual {
 		// TODO: extract from runPoStCycle, run on fault cutoff boundaries

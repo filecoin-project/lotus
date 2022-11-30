@@ -24,6 +24,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -353,6 +355,10 @@ func init() {
 	addExample(map[string]bitfield.BitField{
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
+	addExample(&api.RaftStateData{
+		NonceMap: make(map[address.Address]uint64),
+		MsgUuids: make(map[uuid.UUID]*types.SignedMessage),
+	})
 
 	addExample(http.Header{
 		"Authorization": []string{"Bearer ey.."},
@@ -377,6 +383,7 @@ func init() {
 
 	ethFeeHistoryReward := [][]api.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
+	addExample(&uuid.UUID{})
 
 	addExample(api.EthFilterID("c5564560217c43e4bc0484df655e9019"))
 	addExample(api.EthSubscriptionID("b62df77831484129adf6682332ad0725"))
@@ -475,7 +482,8 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 		if f.Type == parent {
 			continue
 		}
-		if strings.Title(f.Name) == f.Name {
+		caser := cases.Title(language.English)
+		if caser.String(f.Name) == f.Name {
 			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}

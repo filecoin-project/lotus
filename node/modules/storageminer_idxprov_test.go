@@ -78,8 +78,9 @@ func Test_IndexProviderTopic(t *testing.T) {
 					func() *pubsub.PubSub { return ps },
 					func() dtypes.MetadataDS { return datastore.NewMapDatastore() },
 					modules.IndexProvider(config.IndexProviderConfig{
-						Enable:    true,
-						TopicName: test.givenConfiguredTopic,
+						Enable:           true,
+						TopicName:        test.givenConfiguredTopic,
+						EntriesChunkSize: 16384,
 					}),
 				),
 				fx.Invoke(func(p provider.Interface) {}),
