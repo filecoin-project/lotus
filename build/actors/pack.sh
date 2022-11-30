@@ -42,7 +42,7 @@ done
 
 echo "Checking the checksums..."
 
-sha256sum -c -- *.sha256
+#sha256sum -c -- *.sha256
 
 echo "Packing..."
 
