@@ -15,7 +15,6 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
 	"github.com/filecoin-project/go-state-types/dline"
 
@@ -197,7 +196,7 @@ func (s *state10) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, 
 	return &out, nil
 }
 
-func (s *state10) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state10) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
 	info, ok, err := s.State.GetPrecommittedSector(s.store, num)
 	if !ok || err != nil {
 		return nil, err
@@ -208,7 +207,7 @@ func (s *state10) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.Secto
 	return &ret, nil
 }
 
-func (s *state10) ForEachPrecommittedSector(cb func(minertypes.SectorPreCommitOnChainInfo) error) error {
+func (s *state10) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
 	precommitted, err := adt10.AsMap(s.store, s.State.PreCommittedSectors, builtin10.DefaultHamtBitwidth)
 	if err != nil {
 		return err
@@ -387,8 +386,8 @@ func (s *state10) Info() (MinerInfo, error) {
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
 
 		Beneficiary:            info.Beneficiary,
-		BeneficiaryTerm:        info.BeneficiaryTerm,
-		PendingBeneficiaryTerm: info.PendingBeneficiaryTerm,
+		BeneficiaryTerm:        BeneficiaryTerm(info.BeneficiaryTerm),
+		PendingBeneficiaryTerm: (*PendingBeneficiaryChange)(info.PendingBeneficiaryTerm),
 	}
 
 	return mi, nil
@@ -420,11 +419,11 @@ func (s *state10) precommits() (adt.Map, error) {
 	return adt10.AsMap(s.store, s.PreCommittedSectors, builtin10.DefaultHamtBitwidth)
 }
 
-func (s *state10) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state10) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreCommitOnChainInfo, error) {
 	var sp miner10.SectorPreCommitOnChainInfo
 	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, err
+		return SectorPreCommitOnChainInfo{}, err
 	}
 
 	return fromV10SectorPreCommitOnChainInfo(sp), nil
@@ -548,8 +547,24 @@ func fromV10SectorOnChainInfo(v10 miner10.SectorOnChainInfo) SectorOnChainInfo {
 	return info
 }
 
-func fromV10SectorPreCommitOnChainInfo(v10 miner10.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	return v10
+func fromV10SectorPreCommitOnChainInfo(v10 miner10.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+	ret := SectorPreCommitOnChainInfo{
+		Info: SectorPreCommitInfo{
+			SealProof:     v10.Info.SealProof,
+			SectorNumber:  v10.Info.SectorNumber,
+			SealedCID:     v10.Info.SealedCID,
+			SealRandEpoch: v10.Info.SealRandEpoch,
+			DealIDs:       v10.Info.DealIDs,
+			Expiration:    v10.Info.Expiration,
+			UnsealedCid:   nil,
+		},
+		PreCommitDeposit: v10.PreCommitDeposit,
+		PreCommitEpoch:   v10.PreCommitEpoch,
+	}
+
+	ret.Info.UnsealedCid = v10.Info.UnsealedCid
+
+	return ret
 }
 
 func (s *state10) GetState() interface{} {

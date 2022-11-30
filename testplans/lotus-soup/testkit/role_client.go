@@ -182,7 +182,7 @@ func startFullNodeAPIServer(t *TestEnvironment, repo repo.Repo, napi api.FullNod
 		Next: mux.ServeHTTP,
 	}
 
-	srv := &http.Server{Handler: ah}
+	srv := &http.Server{Handler: ah, ReadHeaderTimeout: 30 * time.Second}
 
 	endpoint, err := repo.APIEndpoint()
 	if err != nil {

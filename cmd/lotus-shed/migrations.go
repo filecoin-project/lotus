@@ -239,8 +239,10 @@ func checkMigrationInvariants(ctx context.Context, v8StateRootCid cid.Cid, v9Sta
 	if err != nil {
 		return err
 	}
-
 	v9actorTree, err := builtin.LoadTree(actorStore, v9stateRoot.Actors)
+	if err != nil {
+		return err
+	}
 	messages, err := v9.CheckStateInvariants(v9actorTree, epoch, actorCodeCids)
 	if err != nil {
 		return xerrors.Errorf("checking state invariants: %w", err)
@@ -465,7 +467,7 @@ func compareProposalToAllocation(prop market8.DealProposal, alloc verifreg9.Allo
 		return xerrors.Errorf("couldnt get ID from address")
 	}
 	if proposalClientID != uint64(alloc.Client) {
-		return xerrors.Errorf("client id mismatch between proposal and allocation: %s, %s", proposalClientID, alloc.Client)
+		return xerrors.Errorf("client id mismatch between proposal and allocation: %v, %v", proposalClientID, alloc.Client)
 	}
 
 	proposalProviderID, err := address.IDFromAddress(prop.Provider)
@@ -473,11 +475,11 @@ func compareProposalToAllocation(prop market8.DealProposal, alloc verifreg9.Allo
 		return xerrors.Errorf("couldnt get ID from address")
 	}
 	if proposalProviderID != uint64(alloc.Provider) {
-		return xerrors.Errorf("provider id mismatch between proposal and allocation: %s, %s", proposalProviderID, alloc.Provider)
+		return xerrors.Errorf("provider id mismatch between proposal and allocation: %v, %v", proposalProviderID, alloc.Provider)
 	}
 
 	if prop.PieceSize != alloc.Size {
-		return xerrors.Errorf("piece size mismatch between proposal and allocation: %s, %s", prop.PieceSize, alloc.Size)
+		return xerrors.Errorf("piece size mismatch between proposal and allocation: %v, %v", prop.PieceSize, alloc.Size)
 	}
 
 	if alloc.TermMax != 540*builtin.EpochsInDay {

@@ -417,6 +417,10 @@ func (st *SealSeed) Equals(ost *SealSeed) bool {
 
 type SectorState string
 
+func (s *SectorState) String() string {
+	return string(*s)
+}
+
 type AddrUse int
 
 const (

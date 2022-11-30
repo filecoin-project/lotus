@@ -94,27 +94,42 @@ func (s *state10) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state10) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state10) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
 
-	return s.FindAllocation(s.store, clientIdAddr, allocationId)
+	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg10.AllocationId(allocationId))
+	return (*Allocation)(alloc), ok, err
+}
+
+func (s *state10) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
+
+	v10Map, err := s.LoadAllocationsToMap(s.store, clientIdAddr)
+
+	retMap := make(map[AllocationId]Allocation, len(v10Map))
+	for k, v := range v10Map {
+		retMap[AllocationId(k)] = Allocation(v)
+	}
+
+	return retMap, err
 
 }
 
-func (s *state10) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+func (s *state10) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
-	return s.LoadAllocationsToMap(s.store, clientIdAddr)
-
-}
-
-func (s *state10) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
-
-	return s.FindClaim(s.store, providerIdAddr, claimId)
+	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg10.ClaimId(claimId))
+	return (*Claim)(claim), ok, err
 
 }
 
-func (s *state10) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+func (s *state10) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
 
-	return s.LoadClaimsToMap(s.store, providerIdAddr)
+	v10Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[ClaimId]Claim, len(v10Map))
+	for k, v := range v10Map {
+		retMap[ClaimId(k)] = Claim(v)
+	}
+
+	return retMap, err
 
 }
 
