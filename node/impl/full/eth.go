@@ -560,7 +560,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx api.EthByte
 
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx api.EthCall) (*types.Message, error) {
 	var from address.Address
-	if tx.From == nil {
+	if tx.From == nil || *tx.From == (api.EthAddress{}) {
 		// TODO: We're sending from the "burnt funds" account for now, because we need to
 		// send from an actual account till we deploy an EVM _account_ to this address, not
 		// an empty EVM contract.
