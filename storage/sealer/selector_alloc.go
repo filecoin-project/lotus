@@ -26,7 +26,7 @@ func newAllocSelector(index paths.SectorIndex, alloc storiface.SectorFileType, p
 	}
 }
 
-func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *WorkerHandle) (bool, bool, error) {
+func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd SchedWorker) (bool, bool, error) {
 	tasks, err := whnd.TaskTypes(ctx)
 	if err != nil {
 		return false, false, xerrors.Errorf("getting supported worker task types: %w", err)
@@ -35,7 +35,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 		return false, false, nil
 	}
 
-	paths, err := whnd.workerRpc.Paths(ctx)
+	paths, err := whnd.Paths(ctx)
 	if err != nil {
 		return false, false, xerrors.Errorf("getting worker paths: %w", err)
 	}
@@ -71,7 +71,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 	return requested == storiface.FTNone, false, nil
 }
 
-func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {
+func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b SchedWorker) (bool, error) {
 	return a.Utilization() < b.Utilization(), nil
 }
 

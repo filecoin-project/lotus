@@ -208,16 +208,17 @@ func (s *dealStates{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-    {{if (le .v 8)}}
-    return DealState{
+    ret := DealState{
         SectorStartEpoch: v{{.v}}.SectorStartEpoch,
         LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
         SlashEpoch: v{{.v}}.SlashEpoch,
         VerifiedClaim: 0,
     }
-    {{else}}
-    return (DealState)(v{{.v}})
+    {{if (ge .v 9)}}
+        ret.VerifiedClaim = verifregtypes.AllocationId(v{{.v}}.VerifiedClaim)
     {{end}}
+
+    return ret
 }
 
 type dealProposals{{.v}} struct {

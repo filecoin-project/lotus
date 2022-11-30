@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -130,8 +130,8 @@ type State interface {
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
-	GetPrecommittedSector(abi.SectorNumber) (*miner10.SectorPreCommitOnChainInfo, error)
-	ForEachPrecommittedSector(func(miner10.SectorPreCommitOnChainInfo) error) error
+	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
+	ForEachPrecommittedSector(func(SectorPreCommitOnChainInfo) error) error
 	LoadSectors(sectorNos *bitfield.BitField) ([]*SectorOnChainInfo, error)
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
@@ -160,7 +160,7 @@ type State interface {
 	sectors() (adt.Array, error)
 	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
 	precommits() (adt.Map, error)
-	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner10.SectorPreCommitOnChainInfo, error)
+	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (SectorPreCommitOnChainInfo, error)
 	GetState() interface{}
 }
 
@@ -198,7 +198,7 @@ type Partition interface {
 	UnprovenSectors() (bitfield.BitField, error)
 }
 
-type SectorOnChainInfo = miner10.SectorOnChainInfo
+type SectorOnChainInfo = minertypes.SectorOnChainInfo
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -253,9 +253,12 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 	}
 }
 
-type MinerInfo = miner10.MinerInfo
-type WorkerKeyChange = miner10.WorkerKeyChange
-type SectorPreCommitOnChainInfo = miner10.SectorPreCommitOnChainInfo
+type MinerInfo = minertypes.MinerInfo
+type BeneficiaryTerm = minertypes.BeneficiaryTerm
+type PendingBeneficiaryChange = minertypes.PendingBeneficiaryChange
+type WorkerKeyChange = minertypes.WorkerKeyChange
+type SectorPreCommitOnChainInfo = minertypes.SectorPreCommitOnChainInfo
+type SectorPreCommitInfo = minertypes.SectorPreCommitInfo
 type WindowPostVerifyInfo = proof.WindowPoStVerifyInfo
 
 type SectorExpiration struct {
@@ -283,8 +286,8 @@ type SectorExtensions struct {
 }
 
 type PreCommitChanges struct {
-	Added   []miner10.SectorPreCommitOnChainInfo
-	Removed []miner10.SectorPreCommitOnChainInfo
+	Added   []SectorPreCommitOnChainInfo
+	Removed []SectorPreCommitOnChainInfo
 }
 
 type LockedFunds struct {
