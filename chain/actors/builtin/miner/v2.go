@@ -27,7 +27,7 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 	out := state2{store: store}
 	err := store.Get(store.Context(), root, &out)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting actor: %w", err)
 	}
 	return &out, nil
 }
@@ -92,7 +92,7 @@ func (s *state2) PreCommitDeposits() (abi.TokenAmount, error) {
 func (s *state2) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 	info, ok, err := s.State.GetSector(s.store, num)
 	if !ok || err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting sector: %w", err)
 	}
 
 	ret := fromV2SectorOnChainInfo(*info)
@@ -102,7 +102,7 @@ func (s *state2) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 func (s *state2) FindSector(num abi.SectorNumber) (*SectorLocation, error) {
 	dlIdx, partIdx, err := s.State.FindSector(s.store, num)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("finding sector: %w", err)
 	}
 	return &SectorLocation{
 		Deadline:  dlIdx,
@@ -113,14 +113,14 @@ func (s *state2) FindSector(num abi.SectorNumber) (*SectorLocation, error) {
 func (s *state2) NumLiveSectors() (uint64, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
-		return 0, err
+		return 0, xerrors.Errorf("loading deadlines: %w", err)
 	}
 	var total uint64
 	if err := dls.ForEach(s.store, func(dlIdx uint64, dl *miner2.Deadline) error {
 		total += dl.LiveSectors
 		return nil
 	}); err != nil {
-		return 0, err
+		return 0, xerrors.Errorf("iterating over deadlines: %w", err)
 	}
 	return total, nil
 }
@@ -131,7 +131,7 @@ func (s *state2) NumLiveSectors() (uint64, error) {
 func (s *state2) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading deadlines: %w", err)
 	}
 	// NOTE: this can be optimized significantly.
 	// 1. If the sector is non-faulty, it will either expire on-time (can be
@@ -145,18 +145,18 @@ func (s *state2) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 	err = dls.ForEach(s.store, func(dlIdx uint64, dl *miner2.Deadline) error {
 		partitions, err := dl.PartitionsArray(s.store)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting partitions: %w", err)
 		}
 		quant := s.State.QuantSpecForDeadline(dlIdx)
 		var part miner2.Partition
 		return partitions.ForEach(&part, func(partIdx int64) error {
 			if found, err := part.Sectors.IsSet(uint64(num)); err != nil {
-				return err
+				return xerrors.Errorf("checking sector is set: %w", err)
 			} else if !found {
 				return nil
 			}
 			if found, err := part.Terminated.IsSet(uint64(num)); err != nil {
-				return err
+				return xerrors.Errorf("checking sector terminated: %w", err)
 			} else if found {
 				// already terminated
 				return stopErr
@@ -164,18 +164,18 @@ func (s *state2) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 
 			q, err := miner2.LoadExpirationQueue(s.store, part.ExpirationsEpochs, quant)
 			if err != nil {
-				return err
+				return xerrors.Errorf("loading expiration queue: %w", err)
 			}
 			var exp miner2.ExpirationSet
 			return q.ForEach(&exp, func(epoch int64) error {
 				if early, err := exp.EarlySectors.IsSet(uint64(num)); err != nil {
-					return err
+					return xerrors.Errorf("checking sector early: %w", err)
 				} else if early {
 					out.Early = abi.ChainEpoch(epoch)
 					return nil
 				}
 				if onTime, err := exp.OnTimeSectors.IsSet(uint64(num)); err != nil {
-					return err
+					return xerrors.Errorf("checking sector on time: %w", err)
 				} else if onTime {
 					out.OnTime = abi.ChainEpoch(epoch)
 					return stopErr
@@ -188,7 +188,7 @@ func (s *state2) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 		err = nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("iterating over deadlines: %w", err)
 	}
 	if out.Early == 0 && out.OnTime == 0 {
 		return nil, xerrors.Errorf("failed to find sector %d", num)
@@ -199,7 +199,7 @@ func (s *state2) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 func (s *state2) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
 	info, ok, err := s.State.GetPrecommittedSector(s.store, num)
 	if !ok || err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting precommits: %w", err)
 	}
 
 	ret := fromV2SectorPreCommitOnChainInfo(*info)
@@ -210,14 +210,14 @@ func (s *state2) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 func (s *state2) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
 	precommitted, err := adt2.AsMap(s.store, s.State.PreCommittedSectors)
 	if err != nil {
-		return err
+		return xerrors.Errorf("getting precommits: %w", err)
 	}
 
 	var info miner2.SectorPreCommitOnChainInfo
 	if err := precommitted.ForEach(&info, func(_ string) error {
 		return cb(fromV2SectorPreCommitOnChainInfo(info))
 	}); err != nil {
-		return err
+		return xerrors.Errorf("iterating over precommits: %w", err)
 	}
 
 	return nil
@@ -226,7 +226,7 @@ func (s *state2) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) e
 func (s *state2) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, error) {
 	sectors, err := miner2.LoadSectors(s.store, s.State.Sectors)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading sectors: %w", err)
 	}
 
 	// If no sector numbers are specified, load all.
@@ -238,7 +238,7 @@ func (s *state2) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 			infos = append(infos, &info)
 			return nil
 		}); err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("iterating over sectors: %w", err)
 		}
 		return infos, nil
 	}
@@ -246,7 +246,7 @@ func (s *state2) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	// Otherwise, load selected.
 	infos2, err := sectors.Load(*snos)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading sector infos: %w", err)
 	}
 	infos := make([]*SectorOnChainInfo, len(infos2))
 	for i, info2 := range infos2 {
@@ -265,7 +265,7 @@ func (s *state2) loadAllocatedSectorNumbers() (bitfield.BitField, error) {
 func (s *state2) IsAllocated(num abi.SectorNumber) (bool, error) {
 	allocatedSectors, err := s.loadAllocatedSectorNumbers()
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("loading allocated sector numbers: %w", err)
 	}
 
 	return allocatedSectors.IsSet(uint64(num))
@@ -278,12 +278,12 @@ func (s *state2) GetProvingPeriodStart() (abi.ChainEpoch, error) {
 func (s *state2) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error) {
 	allocatedSectors, err := s.loadAllocatedSectorNumbers()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading allocated sector numbers: %w", err)
 	}
 
 	allocatedRuns, err := allocatedSectors.RunIterator()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting allocated runs: %w", err)
 	}
 
 	unallocatedRuns, err := rle.Subtract(
@@ -291,19 +291,19 @@ func (s *state2) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
 		allocatedRuns,
 	)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting unallocated runs: %w", err)
 	}
 
 	iter, err := rle.BitsFromRuns(unallocatedRuns)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting bits from runs: %w", err)
 	}
 
 	sectors := make([]abi.SectorNumber, 0, count)
 	for iter.HasNext() && len(sectors) < count {
 		nextNo, err := iter.Next()
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("getting next: %w", err)
 		}
 		sectors = append(sectors, abi.SectorNumber(nextNo))
 	}
@@ -314,7 +314,7 @@ func (s *state2) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
 func (s *state2) GetAllocatedSectors() (*bitfield.BitField, error) {
 	var allocatedSectors bitfield.BitField
 	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting allocated sectors: %w", err)
 	}
 
 	return &allocatedSectors, nil
@@ -323,11 +323,11 @@ func (s *state2) GetAllocatedSectors() (*bitfield.BitField, error) {
 func (s *state2) LoadDeadline(idx uint64) (Deadline, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading deadlines: %w", err)
 	}
 	dl, err := dls.LoadDeadline(s.store, idx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading deadline: %w", err)
 	}
 	return &deadline2{*dl, s.store}, nil
 }
@@ -335,7 +335,7 @@ func (s *state2) LoadDeadline(idx uint64) (Deadline, error) {
 func (s *state2) ForEachDeadline(cb func(uint64, Deadline) error) error {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
-		return err
+		return xerrors.Errorf("loading deadlines: %w", err)
 	}
 	return dls.ForEach(s.store, func(i uint64, dl *miner2.Deadline) error {
 		return cb(i, &deadline2{*dl, s.store})
@@ -368,12 +368,12 @@ func (s *state2) MinerInfoChanged(other State) (bool, error) {
 func (s *state2) Info() (MinerInfo, error) {
 	info, err := s.State.GetInfo(s.store)
 	if err != nil {
-		return MinerInfo{}, err
+		return MinerInfo{}, xerrors.Errorf("getting miner info: %w", err)
 	}
 
 	wpp, err := info.SealProofType.RegisteredWindowPoStProof()
 	if err != nil {
-		return MinerInfo{}, err
+		return MinerInfo{}, xerrors.Errorf("getting miner info: %w", err)
 	}
 
 	mi := MinerInfo{
@@ -410,7 +410,7 @@ func (s *state2) decodeSectorOnChainInfo(val *cbg.Deferred) (SectorOnChainInfo, 
 	var si miner2.SectorOnChainInfo
 	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
-		return SectorOnChainInfo{}, err
+		return SectorOnChainInfo{}, xerrors.Errorf("unmarshalling sector on chain info: %w", err)
 	}
 
 	return fromV2SectorOnChainInfo(si), nil
@@ -424,7 +424,7 @@ func (s *state2) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 	var sp miner2.SectorPreCommitOnChainInfo
 	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
-		return SectorPreCommitOnChainInfo{}, err
+		return SectorPreCommitOnChainInfo{}, xerrors.Errorf("unmarshalling sector precommit on chain info: %w", err)
 	}
 
 	return fromV2SectorPreCommitOnChainInfo(sp), nil
@@ -434,13 +434,13 @@ func (s *state2) EraseAllUnproven() error {
 
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
-		return err
+		return xerrors.Errorf("loading deadlines: %w", err)
 	}
 
 	err = dls.ForEach(s.store, func(dindx uint64, dl *miner2.Deadline) error {
 		ps, err := dl.PartitionsArray(s.store)
 		if err != nil {
-			return err
+			return xerrors.Errorf("loading partitions: %w", err)
 		}
 
 		var part miner2.Partition
@@ -449,20 +449,19 @@ func (s *state2) EraseAllUnproven() error {
 			err = ps.Set(uint64(pindx), &part)
 			return nil
 		})
-
 		if err != nil {
-			return err
+			return xerrors.Errorf("iterating over partitions: %w", err)
 		}
 
 		dl.Partitions, err = ps.Root()
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting partitions root: %w", err)
 		}
 
 		return dls.UpdateDeadline(s.store, dindx, dl)
 	})
 	if err != nil {
-		return err
+		return xerrors.Errorf("iterating over deadlines: %w", err)
 	}
 
 	return s.State.SaveDeadlines(s.store, dls)
@@ -472,7 +471,7 @@ func (s *state2) EraseAllUnproven() error {
 func (d *deadline2) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading partitions: %w", err)
 	}
 	return &partition2{*p, d.store}, nil
 }
@@ -480,7 +479,7 @@ func (d *deadline2) LoadPartition(idx uint64) (Partition, error) {
 func (d *deadline2) ForEachPartition(cb func(uint64, Partition) error) error {
 	ps, err := d.Deadline.PartitionsArray(d.store)
 	if err != nil {
-		return err
+		return xerrors.Errorf("loading partitions: %w", err)
 	}
 	var part miner2.Partition
 	return ps.ForEach(&part, func(i int64) error {
