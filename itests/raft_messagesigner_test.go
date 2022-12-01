@@ -488,11 +488,11 @@ func TestChainStoreSync(t *testing.T) {
 }
 
 func TestGoRPCAuth(t *testing.T) {
+	ctx := context.Background()
 
 	blockTime := 1 * time.Second
 
 	kit.QuietMiningLogs()
-	ctx := context.Background()
 
 	var (
 		node0 kit.TestFullNode
@@ -507,27 +507,33 @@ func TestGoRPCAuth(t *testing.T) {
 	pkey2, _ := generatePrivKey()
 
 	pkeys := []*kit.Libp2p{pkey0, pkey1, pkey2}
-	initPeerSet := []string{}
+	var initPeerSet []string
 	for _, pkey := range pkeys {
 		initPeerSet = append(initPeerSet, "/p2p/"+pkey.PeerID.String())
 	}
 
 	raftOps := kit.ConstructorOpts(
 		node.Override(new(*gorpc.Client), modules.NewRPCClient),
-		node.Override(new(*consensus.ClusterRaftConfig), func() *consensus.ClusterRaftConfig {
-			cfg := consensus.DefaultClusterRaftConfig()
-			cfg.InitPeerset = initPeerSet
-			return cfg
-		}),
 		node.Override(new(*consensus.Consensus), consensus.NewConsensusWithRPCClient(false)),
 		node.Override(new(*messagesigner.MessageSignerConsensus), messagesigner.NewMessageSignerConsensus),
 		node.Override(new(messagesigner.MsgSigner), func(ms *messagesigner.MessageSignerConsensus) *messagesigner.MessageSignerConsensus { return ms }),
 		node.Override(new(*modules.RPCHandler), modules.NewRPCHandler),
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
-	//raftOps := kit.ConstructorOpts()
 
-	ens := kit.NewEnsemble(t).FullNode(&node0, raftOps, kit.ThroughRPC()).FullNode(&node1, raftOps, kit.ThroughRPC()).FullNode(&node2, raftOps, kit.ThroughRPC()).FullNode(&node3, raftOps)
+	connectedClusterOps := kit.ConstructorOpts(
+		node.Override(new(*consensus.ClusterRaftConfig), func() *consensus.ClusterRaftConfig {
+			cfg := consensus.DefaultClusterRaftConfig()
+			cfg.InitPeerset = initPeerSet
+			return cfg
+		}))
+
+	soloClusterOps := kit.ConstructorOpts(
+		node.Override(new(*consensus.ClusterRaftConfig), consensus.DefaultClusterRaftConfig()),
+	)
+
+	ens := kit.NewEnsemble(t).FullNode(&node0, raftOps, connectedClusterOps, kit.ThroughRPC()).FullNode(&node1, raftOps, connectedClusterOps, kit.ThroughRPC()).FullNode(&node2, raftOps, connectedClusterOps, kit.ThroughRPC()).FullNode(&node3, raftOps, soloClusterOps)
+
 	node0.AssignPrivKey(pkey0)
 	node1.AssignPrivKey(pkey1)
 	node2.AssignPrivKey(pkey2)
@@ -536,7 +542,7 @@ func TestGoRPCAuth(t *testing.T) {
 	wrappedFullNode := kit.MergeFullNodes(nodes)
 
 	ens.MinerEnroll(&miner, wrappedFullNode, kit.WithAllSubsystems(), kit.ThroughRPC())
-	ens.Start()
+	ens.Start().InterconnectAll()
 
 	// Import miner wallet to all nodes
 	addr0, err := node0.WalletImport(ctx, &miner.OwnerKey.KeyInfo)
@@ -548,12 +554,8 @@ func TestGoRPCAuth(t *testing.T) {
 
 	fmt.Println(addr0, addr1, addr2)
 
-	ens.InterconnectAll()
-
 	ens.AddInactiveMiner(&miner)
-	ens.Start()
-
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.Start().InterconnectAll().BeginMining(blockTime)
 
 	leader, err := node0.RaftLeader(ctx)
 	require.NoError(t, err)

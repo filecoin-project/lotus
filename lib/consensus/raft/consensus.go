@@ -304,7 +304,7 @@ func (cc *Consensus) Trust(ctx context.Context, pid peer.ID) error { return nil 
 // Distrust is a no-Op.
 func (cc *Consensus) Distrust(ctx context.Context, pid peer.ID) error { return nil }
 
-// returns true if the operation was redirected to the leader
+// RedirectToLeader returns true if the operation was redirected to the leader
 // note that if the leader just dissappeared, the rpc call will
 // fail because we haven't heard that it's gone.
 func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interface{}) (bool, error) {
@@ -439,7 +439,7 @@ func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 	return finalErr
 }
 
-// RaftState retrieves the current consensus RaftState. It may error if no RaftState has
+// State retrieves the current consensus RaftState. It may error if no RaftState has
 // been agreed upon or the state is not consistent. The returned RaftState is the
 // last agreed-upon RaftState known by this node. No writes are allowed, as all
 // writes to the shared state should happen through the Consensus component

@@ -194,7 +194,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		require.NoError(n.t, err)
 	}
 
-	key, err := key.GenerateKey(types.KTBLS)
+	k, err := key.GenerateKey(types.KTBLS)
 	require.NoError(n.t, err)
 
 	if !n.bootstrapped && !options.balance.IsZero() {
@@ -204,19 +204,19 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		genacc := genesis.Actor{
 			Type:    genesis.TAccount,
 			Balance: options.balance,
-			Meta:    (&genesis.AccountMeta{Owner: key.Address}).ActorMeta(),
+			Meta:    (&genesis.AccountMeta{Owner: k.Address}).ActorMeta(),
 		}
 
 		n.genesis.accounts = append(n.genesis.accounts, genacc)
 	}
 
-	*full = TestFullNode{t: n.t, options: options, DefaultKey: key}
+	*full = TestFullNode{t: n.t, options: options, DefaultKey: k}
 
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
 	return n
 }
 
-// Miner enrolls a new miner, using the provided full node for chain
+// MinerEnroll enrolls a new miner, using the provided full node for chain
 // interactions.
 func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	require.NotNil(n.t, full, "full node required when instantiating miner")
@@ -679,9 +679,9 @@ func (n *Ensemble) Start() *Ensemble {
 
 		var mineBlock = make(chan lotusminer.MineReq)
 
-		copy := *m.FullNode
-		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
-		m.FullNode = &copy
+		cp := *m.FullNode
+		cp.FullNode = modules.MakeUuidWrapper(cp.FullNode)
+		m.FullNode = &cp
 
 		//m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
 

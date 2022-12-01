@@ -188,7 +188,7 @@ func OwnerAddr(wk *key.Key) NodeOpt {
 // the node.
 func ConstructorOpts(extra ...node.Option) NodeOpt {
 	return func(opts *nodeOpts) error {
-		opts.extraNodeOpts = extra
+		opts.extraNodeOpts = append(opts.extraNodeOpts, extra...)
 		return nil
 	}
 }
