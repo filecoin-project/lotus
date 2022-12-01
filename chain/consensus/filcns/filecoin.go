@@ -122,7 +122,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("block was from the future (now=%d, blk=%d): %w", now, h.Timestamp, consensus.ErrTemporal)
 	}
 	if h.Timestamp > now {
-		log.Warn("Got block from the future, but within threshold ", h.Timestamp, build.Clock.Now().Unix())
+		log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
 	}
 
 	msgsCheck := async.Err(func() error {

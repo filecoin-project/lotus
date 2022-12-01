@@ -50,7 +50,6 @@ func getRaftState(ctx context.Context, t *testing.T, node *kit.TestFullNode) *ap
 }
 
 func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *kit.TestFullNode, node2 *kit.TestFullNode, miner *kit.TestMiner) *kit.Ensemble {
-
 	blockTime := 1 * time.Second
 
 	pkey0, _ := generatePrivKey()
@@ -62,8 +61,6 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 	for _, pkey := range pkeys {
 		initPeerSet = append(initPeerSet, "/p2p/"+pkey.PeerID.String())
 	}
-
-	//initPeerSet := []peer.ID{pkey0.PeerID, pkey1.PeerID, pkey2.PeerID}
 
 	raftOps := kit.ConstructorOpts(
 		node.Override(new(*gorpc.Client), modules.NewRPCClient),
@@ -78,7 +75,6 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 		node.Override(new(*modules.RPCHandler), modules.NewRPCHandler),
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
-	//raftOps := kit.ConstructorOpts()
 
 	ens := kit.NewEnsemble(t).FullNode(node0, raftOps, kit.ThroughRPC()).FullNode(node1, raftOps, kit.ThroughRPC()).FullNode(node2, raftOps, kit.ThroughRPC())
 	node0.AssignPrivKey(pkey0)
@@ -89,7 +85,7 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 	wrappedFullNode := kit.MergeFullNodes(nodes)
 
 	ens.MinerEnroll(miner, wrappedFullNode, kit.WithAllSubsystems(), kit.ThroughRPC())
-	ens.Start()
+	ens.Start().InterconnectAll()
 
 	// Import miner wallet to all nodes
 	addr0, err := node0.WalletImport(ctx, &miner.OwnerKey.KeyInfo)
@@ -101,12 +97,8 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 
 	fmt.Println(addr0, addr1, addr2)
 
-	ens.InterconnectAll()
-
 	ens.AddInactiveMiner(miner)
-	ens.Start()
-
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.Start().InterconnectAll().BeginMining(blockTime)
 
 	return ens
 }
@@ -532,7 +524,11 @@ func TestGoRPCAuth(t *testing.T) {
 		node.Override(new(*consensus.ClusterRaftConfig), consensus.DefaultClusterRaftConfig()),
 	)
 
-	ens := kit.NewEnsemble(t).FullNode(&node0, raftOps, connectedClusterOps, kit.ThroughRPC()).FullNode(&node1, raftOps, connectedClusterOps, kit.ThroughRPC()).FullNode(&node2, raftOps, connectedClusterOps, kit.ThroughRPC()).FullNode(&node3, raftOps, soloClusterOps)
+	ens := kit.NewEnsemble(t)
+	ens.FullNode(&node0, raftOps, connectedClusterOps, kit.ThroughRPC())
+	ens.FullNode(&node1, raftOps, connectedClusterOps, kit.ThroughRPC())
+	ens.FullNode(&node2, raftOps, connectedClusterOps, kit.ThroughRPC())
+	ens.FullNode(&node3, raftOps, soloClusterOps)
 
 	node0.AssignPrivKey(pkey0)
 	node1.AssignPrivKey(pkey1)
