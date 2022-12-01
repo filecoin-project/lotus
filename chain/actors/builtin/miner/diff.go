@@ -110,7 +110,8 @@ func (m *sectorDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
 		return err
 	}
 
-	if siFrom.Expiration != siTo.Expiration {
+	// TODO check if this is correct
+	if siFrom.CommitmentExpiration != siTo.CommitmentExpiration || siFrom.ProofExpiration != siTo.ProofExpiration {
 		m.Results.Extended = append(m.Results.Extended, SectorExtensions{
 			From: siFrom,
 			To:   siTo,

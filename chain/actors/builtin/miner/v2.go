@@ -526,20 +526,21 @@ func (p *partition2) UnprovenSectors() (bitfield.BitField, error) {
 }
 
 func fromV2SectorOnChainInfo(v2 miner2.SectorOnChainInfo) SectorOnChainInfo {
-	info := SectorOnChainInfo{
+
+	return SectorOnChainInfo{
 		SectorNumber:          v2.SectorNumber,
 		SealProof:             v2.SealProof,
 		SealedCID:             v2.SealedCID,
 		DealIDs:               v2.DealIDs,
 		Activation:            v2.Activation,
-		Expiration:            v2.Expiration,
+		CommitmentExpiration:  v2.Expiration,
+		ProofExpiration:       v2.Expiration,
 		DealWeight:            v2.DealWeight,
 		VerifiedDealWeight:    v2.VerifiedDealWeight,
 		InitialPledge:         v2.InitialPledge,
 		ExpectedDayReward:     v2.ExpectedDayReward,
 		ExpectedStoragePledge: v2.ExpectedStoragePledge,
 	}
-	return info
 }
 
 func fromV2SectorPreCommitOnChainInfo(v2 miner2.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {

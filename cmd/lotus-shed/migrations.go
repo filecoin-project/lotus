@@ -17,11 +17,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
@@ -609,7 +609,7 @@ func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 *state.StateTree, store
 		return err
 	}
 
-	err = m.ForEachPrecommittedSector(func(info miner9.SectorPreCommitOnChainInfo) error {
+	err = m.ForEachPrecommittedSector(func(info minertypes.SectorPreCommitOnChainInfo) error {
 		dealIDs := info.Info.DealIDs
 
 		if len(dealIDs) == 0 {

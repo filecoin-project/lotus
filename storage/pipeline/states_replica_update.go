@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
@@ -154,7 +154,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		SealedCID:    *sector.UpdateSealed,
 		//SealRandEpoch: 0,
 		DealIDs:    sector.dealIDs(),
-		Expiration: onChainInfo.Expiration,
+		Expiration: onChainInfo.CommitmentExpiration,
 		//ReplaceCapacity: false,
 		//ReplaceSectorDeadline: 0,
 		//ReplaceSectorPartition: 0,

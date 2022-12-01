@@ -42,9 +42,9 @@ func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
 		return xerrors.Errorf("cannot mark inactive sector for upgrade")
 	}
 
-	if onChainInfo.Expiration-ts.Height() < market7.DealMinDuration {
+	if onChainInfo.CommitmentExpiration-ts.Height() < market7.DealMinDuration {
 		return xerrors.Errorf("pointless to upgrade sector %d, expiration %d is less than a min deal duration away from current epoch."+
-			"Upgrade expiration before marking for upgrade", id, onChainInfo.Expiration)
+			"Upgrade expiration before marking for upgrade", id, onChainInfo.CommitmentExpiration)
 	}
 
 	return m.sectors.Send(uint64(id), SectorMarkForUpdate{})

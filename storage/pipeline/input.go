@@ -452,8 +452,8 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		memo[sn] = struct {
 			e abi.ChainEpoch
 			p abi.TokenAmount
-		}{e: onChainInfo.Expiration, p: onChainInfo.InitialPledge}
-		return onChainInfo.Expiration, onChainInfo.InitialPledge, nil
+		}{e: onChainInfo.CommitmentExpiration, p: onChainInfo.InitialPledge}
+		return onChainInfo.CommitmentExpiration, onChainInfo.InitialPledge, nil
 	}
 
 	ssize, err := sp.SectorSize()
@@ -926,14 +926,15 @@ func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showO
 		LastErr: info.LastErr,
 		Log:     log,
 		// on chain info
-		SealProof:          info.SectorType,
-		Activation:         0,
-		Expiration:         0,
-		DealWeight:         big.Zero(),
-		VerifiedDealWeight: big.Zero(),
-		InitialPledge:      big.Zero(),
-		OnTime:             0,
-		Early:              0,
+		SealProof:            info.SectorType,
+		Activation:           0,
+		CommitmentExpiration: 0,
+		ProofExpiration:      0,
+		DealWeight:           big.Zero(),
+		VerifiedDealWeight:   big.Zero(),
+		InitialPledge:        big.Zero(),
+		OnTime:               0,
+		Early:                0,
 	}
 
 	return sInfo, nil

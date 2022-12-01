@@ -10,7 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -81,12 +81,12 @@ var diffMinerStates = &cli.Command{
 
 		actorStore := store.ActorStore(ctx, bs)
 
-		var minerStA miner9.State
+		var minerStA minertypes.State
 		if err = actorStore.Get(ctx, stCidA, &minerStA); err != nil {
 			return err
 		}
 
-		var minerStB miner9.State
+		var minerStB minertypes.State
 		if err = actorStore.Get(ctx, stCidB, &minerStB); err != nil {
 			return err
 		}
@@ -121,11 +121,11 @@ var diffMinerStates = &cli.Command{
 				if dA.SectorsSnapshot != dB.SectorsSnapshot {
 					fmt.Println("They differ at Sectors snapshot ", dA.SectorsSnapshot, " != ", dB.SectorsSnapshot)
 
-					sectorsSnapshotA, err := miner9.LoadSectors(actorStore, dA.SectorsSnapshot)
+					sectorsSnapshotA, err := minertypes.LoadSectors(actorStore, dA.SectorsSnapshot)
 					if err != nil {
 						return err
 					}
-					sectorsSnapshotB, err := miner9.LoadSectors(actorStore, dB.SectorsSnapshot)
+					sectorsSnapshotB, err := minertypes.LoadSectors(actorStore, dB.SectorsSnapshot)
 					if err != nil {
 						return err
 					}
@@ -134,7 +134,7 @@ var diffMinerStates = &cli.Command{
 						fmt.Println("sector snapshots have different lengts!")
 					}
 
-					var infoA miner9.SectorOnChainInfo
+					var infoA minertypes.SectorOnChainInfo
 					err = sectorsSnapshotA.ForEach(&infoA, func(i int64) error {
 						infoB, ok, err := sectorsSnapshotB.Get(abi.SectorNumber(i))
 						if err != nil {

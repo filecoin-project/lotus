@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -159,7 +159,8 @@ var sectorsStatusCmd = &cli.Command{
 			fmt.Printf("\nSector On Chain Info\n")
 			fmt.Printf("SealProof:\t\t%x\n", status.SealProof)
 			fmt.Printf("Activation:\t\t%v\n", status.Activation)
-			fmt.Printf("Expiration:\t\t%v\n", status.Expiration)
+			fmt.Printf("Commitment Expiration:\t\t%v\n", status.CommitmentExpiration)
+			fmt.Printf("Proof Expiration:\t\t%v\n", status.ProofExpiration)
 			fmt.Printf("DealWeight:\t\t%v\n", status.DealWeight)
 			fmt.Printf("VerifiedDealWeight:\t\t%v\n", status.VerifiedDealWeight)
 			fmt.Printf("InitialPledge:\t\t%v\n", types.FIL(status.InitialPledge))
@@ -438,11 +439,11 @@ var sectorsListCmd = &cli.Command{
 			const verifiedPowerGainMul = 9
 
 			dw, vp := .0, .0
-			estimate := (st.Expiration-st.Activation <= 0) || sealing.IsUpgradeState(sealing.SectorState(st.State))
+			estimate := (st.CommitmentExpiration-st.Activation <= 0) || sealing.IsUpgradeState(sealing.SectorState(st.State))
 			if !estimate {
 				rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
-				dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
-				vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				dw = float64(big.Div(rdw, big.NewInt(int64(st.CommitmentExpiration-st.Activation))).Uint64())
+				vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.CommitmentExpiration-st.Activation))).Uint64())
 			} else {
 				for _, piece := range st.Pieces {
 					if piece.DealInfo != nil {
@@ -461,7 +462,7 @@ var sectorsListCmd = &cli.Command{
 				}
 			}
 
-			exp := st.Expiration
+			exp := st.CommitmentExpiration
 			if st.OnTime > 0 && st.OnTime < exp {
 				exp = st.OnTime // Can be different when the sector was CC upgraded
 			}
@@ -632,7 +633,7 @@ var sectorsCheckExpireCmd = &cli.Command{
 
 		n := 0
 		for _, s := range sectors {
-			if s.Expiration-currEpoch <= abi.ChainEpoch(cctx.Int64("cutoff")) {
+			if s.CommitmentExpiration-currEpoch <= abi.ChainEpoch(cctx.Int64("cutoff")) {
 				sectors[n] = s
 				n++
 			}
@@ -640,10 +641,10 @@ var sectorsCheckExpireCmd = &cli.Command{
 		sectors = sectors[:n]
 
 		sort.Slice(sectors, func(i, j int) bool {
-			if sectors[i].Expiration == sectors[j].Expiration {
+			if sectors[i].CommitmentExpiration == sectors[j].CommitmentExpiration {
 				return sectors[i].SectorNumber < sectors[j].SectorNumber
 			}
-			return sectors[i].Expiration < sectors[j].Expiration
+			return sectors[i].CommitmentExpiration < sectors[j].CommitmentExpiration
 		})
 
 		tw := tablewriter.New(
@@ -668,7 +669,7 @@ var sectorsCheckExpireCmd = &cli.Command{
 				"SealProof":     sector.SealProof,
 				"InitialPledge": types.FIL(sector.InitialPledge).Short(),
 				"Activation":    cliutil.EpochTime(currEpoch, sector.Activation),
-				"Expiration":    cliutil.EpochTime(currEpoch, sector.Expiration),
+				"Expiration":    cliutil.EpochTime(currEpoch, sector.CommitmentExpiration),
 				"MaxExpiration": cliutil.EpochTime(currEpoch, MaxExpiration),
 				"MaxExtendNow":  cliutil.EpochTime(currEpoch, MaxExtendNow),
 			})
@@ -945,7 +946,7 @@ var sectorsRenewCmd = &cli.Command{
 					continue
 				}
 
-				if si.Expiration >= from && si.Expiration <= to {
+				if si.CommitmentExpiration >= from && si.CommitmentExpiration <= to {
 					if _, exclude := excludeSet[uint64(si.SectorNumber)]; !exclude {
 						sis = append(sis, si)
 					}
@@ -966,7 +967,7 @@ var sectorsRenewCmd = &cli.Command{
 
 		for _, si := range sis {
 			extension := abi.ChainEpoch(cctx.Int64("extension"))
-			newExp := si.Expiration + extension
+			newExp := si.CommitmentExpiration + extension
 
 			if cctx.IsSet("new-expiration") {
 				newExp = abi.ChainEpoch(cctx.Int64("new-expiration"))
@@ -982,7 +983,7 @@ var sectorsRenewCmd = &cli.Command{
 				newExp = maxExp
 			}
 
-			if newExp <= si.Expiration || withinTolerance(newExp, si.Expiration) {
+			if newExp <= si.CommitmentExpiration || withinTolerance(newExp, si.CommitmentExpiration) {
 				continue
 			}
 
@@ -1198,25 +1199,25 @@ var sectorsExtendCmd = &cli.Command{
 					continue
 				}
 
-				if si.Expiration < (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-ignore"))) {
+				if si.CommitmentExpiration < (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-ignore"))) {
 					continue
 				}
 
 				if cctx.IsSet("expiration-cutoff") {
-					if si.Expiration > (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-cutoff"))) {
+					if si.CommitmentExpiration > (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-cutoff"))) {
 						continue
 					}
 				}
 
 				ml := policy.GetSectorMaxLifetime(si.SealProof, nv)
 				// if the sector's missing less than "tolerance" of its maximum possible lifetime, don't bother extending it
-				if withinTolerance(si.Expiration-si.Activation, ml) {
+				if withinTolerance(si.CommitmentExpiration-si.Activation, ml) {
 					continue
 				}
 
 				// Set the new expiration to 48 hours less than the theoretical maximum lifetime
 				newExp := ml - (miner.WPoStProvingPeriod * 2) + si.Activation
-				if withinTolerance(si.Expiration, newExp) || si.Expiration >= newExp {
+				if withinTolerance(si.CommitmentExpiration, newExp) || si.CommitmentExpiration >= newExp {
 					continue
 				}
 
@@ -1237,7 +1238,7 @@ var sectorsExtendCmd = &cli.Command{
 				} else {
 					added := false
 					for exp := range es {
-						if withinTolerance(exp, newExp) && newExp >= exp && exp > si.Expiration {
+						if withinTolerance(exp, newExp) && newExp >= exp && exp > si.CommitmentExpiration {
 							es[exp] = append(es[exp], uint64(si.SectorNumber))
 							added = true
 							break
@@ -1910,7 +1911,7 @@ var sectorsExpiredCmd = &cli.Command{
 				toRemove = append(toRemove, s)
 			}
 
-			fmt.Printf("%d%s\t%s\t%s\n", s, rmMsg, st.State, cliutil.EpochTime(head.Height(), st.Expiration))
+			fmt.Printf("%d%s\t%s\t%s\n", s, rmMsg, st.State, cliutil.EpochTime(head.Height(), st.CommitmentExpiration))
 
 			return nil
 		})
