@@ -65,7 +65,7 @@ func init() {
 	MigrationMaxWorkerCount = runtime.NumCPU()
 	// check if an alternative value was request by environment
 	if mwcs := os.Getenv(EnvMigrationMaxWorkerCount); mwcs != "" {
-		mwc, err := strconv.ParseInt(mwcs, 10, 64)
+		mwc, err := strconv.ParseInt(mwcs, 10, 32)
 		if err != nil {
 			log.Warnf("invalid value for %s (%s) defaulting to %d: %s", EnvMigrationMaxWorkerCount, mwcs, MigrationMaxWorkerCount, err)
 			return
