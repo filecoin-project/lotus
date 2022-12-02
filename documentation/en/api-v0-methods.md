@@ -448,11 +448,12 @@ Inputs:
     }
   ],
   {
-    "WriteBufferSize": 123,
+    "WriteBufferSize": 0,
     "Workers": 9,
-    "IncludeMessages": true,
-    "IncludeReceipts": true,
-    "IncludeStateRoots": true
+    "CacheSize": 0,
+    "IncludeMessages": false,
+    "IncludeReceipts": false,
+    "IncludeStateRoots": false
   }
 ]
 ```
@@ -484,11 +485,12 @@ Inputs:
     }
   ],
   {
-    "WriteBufferSize": 123,
+    "WriteBufferSize": 0,
     "Workers": 9,
-    "IncludeMessages": true,
-    "IncludeReceipts": true,
-    "IncludeStateRoots": true
+    "CacheSize": 0,
+    "IncludeMessages": false,
+    "IncludeReceipts": false,
+    "IncludeStateRoots": false
   }
 ]
 ```
