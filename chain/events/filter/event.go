@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -369,9 +370,10 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	if err != nil {
 		return nil, xerrors.Errorf("new uuid: %w", err)
 	}
+	hexId := "0x" + strings.Replace(id.String(), "-", "", -1)
 
 	f := &EventFilter{
-		id:         id.String(),
+		id:         hexId,
 		minHeight:  minHeight,
 		maxHeight:  maxHeight,
 		tipsetCid:  tipsetCid,
