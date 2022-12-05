@@ -74,6 +74,10 @@ var runCmd = &cli.Command{
 			Name:  "captcha-threshold",
 			Value: 0.5,
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "30s",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		sendPerRequest, err := types.ParseFIL(cctx.String("amount"))
@@ -127,7 +131,17 @@ var runCmd = &cli.Command{
 			os.Exit(0)
 		}()
 
-		return http.ListenAndServe(cctx.String("front"), nil)
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
+		server := &http.Server{
+			Addr:              cctx.String("front"),
+			ReadHeaderTimeout: timeout,
+		}
+
+		return server.ListenAndServe()
 	},
 }
 

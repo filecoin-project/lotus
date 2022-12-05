@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,6 +29,10 @@ func TestAutobatchBlockstore(t *testing.T) {
 	v2, err := ab.Get(ctx, b2.Cid())
 	require.NoError(t, err)
 	require.Equal(t, b2.RawData(), v2.RawData())
+
+	// Regression test for a deadlock.
+	_, err = ab.Get(ctx, b3.Cid())
+	require.True(t, ipld.IsNotFound(err))
 
 	require.NoError(t, ab.Flush(ctx))
 	require.NoError(t, ab.Shutdown(ctx))

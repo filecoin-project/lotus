@@ -98,6 +98,10 @@ type Config struct {
 	// and directly purges cold blocks.
 	DiscardColdBlocks bool
 
+	// UniversalColdBlocks indicates whether all blocks being garbage collected and purged
+	// from the hotstore should be written to the cold store
+	UniversalColdBlocks bool
+
 	// HotstoreMessageRetention indicates the hotstore retention policy for messages.
 	// It has the following semantics:
 	// - a value of 0 will only retain messages within the compaction boundary (4 finalities)
@@ -111,21 +115,6 @@ type Config struct {
 	// A positive value is the number of compactions before a full GC is performed;
 	// a value of 1 will perform full GC in every compaction.
 	HotStoreFullGCFrequency uint64
-
-	// EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
-	// where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
-	// Default is false
-	EnableColdStoreAutoPrune bool
-
-	// ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
-	// Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
-	// full GC in every prune.
-	// Default is 7 (about once every a week)
-	ColdStoreFullGCFrequency uint64
-
-	// ColdStoreRetention specifies the retention policy for data reachable from the chain, in
-	// finalities beyond the compaction boundary, default is 0, -1 retains everything
-	ColdStoreRetention int64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely

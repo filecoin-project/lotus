@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.17.3-dev
+   1.19.1-dev
 
 COMMANDS:
    run         Start lotus worker
@@ -40,6 +40,7 @@ USAGE:
 OPTIONS:
    --addpiece                    enable addpiece (default: true) [$LOTUS_WORKER_ADDPIECE]
    --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true) [$LOTUS_WORKER_COMMIT]
+   --http-server-timeout value   (default: "30s")
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456") [$LOTUS_WORKER_LISTEN]
    --name value                  custom worker name (default: hostname) [$LOTUS_WORKER_NAME]
    --no-default                  disable all default compute tasks, use the worker for storage/fetching only (default: false) [$LOTUS_WORKER_NO_DEFAULT]
@@ -96,10 +97,10 @@ USAGE:
    lotus-worker storage command [command options] [arguments...]
 
 COMMANDS:
-   attach     attach local storage path
-   detach     detach local storage path
-   redeclare  redeclare sectors in a local storage path
-   help, h    Shows a list of commands or help for one command
+     attach     attach local storage path
+     detach     detach local storage path
+     redeclare  redeclare sectors in a local storage path
+     help, h    Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -115,13 +116,13 @@ USAGE:
    lotus-worker storage attach [command options] [arguments...]
 
 OPTIONS:
-   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)  (accepts multiple inputs)
-   --groups value       path group names                                                              (accepts multiple inputs)
-   --init               initialize the path first (default: false)
-   --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
-   --seal               (for init) use path for sealing (default: false)
-   --store              (for init) use path for long-term storage (default: false)
-   --weight value       (for init) path weight (default: 10)
+   --allow-to value [ --allow-to value ]  path groups allowed to pull data from this path (allow all if not specified)
+   --groups value [ --groups value ]      path group names
+   --init                                 initialize the path first (default: false)
+   --max-storage value                    (for init) limit storage space for sectors (expensive for very large paths!)
+   --seal                                 (for init) use path for sealing (default: false)
+   --store                                (for init) use path for long-term storage (default: false)
+   --weight value                         (for init) path weight (default: 10)
    
 ```
 
@@ -202,9 +203,9 @@ USAGE:
    lotus-worker tasks command [command options] [arguments...]
 
 COMMANDS:
-   enable   Enable a task type
-   disable  Disable a task type
-   help, h  Shows a list of commands or help for one command
+     enable   Enable a task type
+     disable  Disable a task type
+     help, h  Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)

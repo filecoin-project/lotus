@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -17,9 +18,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
@@ -323,6 +325,11 @@ type FullNode interface {
 	// WalletValidateAddress validates whether a given string can be decoded as a well-formed address
 	WalletValidateAddress(context.Context, string) (address.Address, error) //perm:read
 
+	// This method is exclusively used for Non Interactive Authentication based on a SP Worker Address
+	FilIdSp(ctx context.Context, maddr address.Address) (string, error) //perm:sign
+	// This method is exclusively used for Non Interactive Authentication based on provided Wallet Address
+	FilIdAddr(ctx context.Context, addr address.Address) (string, error) //perm:sign
+
 	// Other
 
 	// MethodGroup: Client
@@ -527,6 +534,17 @@ type FullNode interface {
 	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
+	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
+	// pending allocation is not found.
+	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocation returns the allocation for a given address and allocation ID.
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
+	// StateGetAllocations returns the all the allocations for a given client.
+	StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) //perm:read
+	// StateGetClaim returns the claim for a given address and claim ID.
+	StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) //perm:read
+	// StateGetClaims returns the all the claims for a given provider.
+	StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) //perm:read
 	// StateComputeDataCID computes DataCID from a set of on-chain deals
 	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
@@ -752,11 +770,8 @@ type FullNode interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	// This method is exclusively used for Non Interactive Authentication based on a SP Worker Address
-	FilIdSp(ctx context.Context, maddr address.Address) (string, error) //perm:sign
-
-	// This method is exclusively used for Non Interactive Authentication based on provided Wallet Address
-	FilIdAddr(ctx context.Context, addr address.Address) (string, error) //perm:sign
+	RaftState(ctx context.Context) (*RaftStateData, error) //perm:read
+	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
 }
 
 type StorageAsk struct {
@@ -1006,7 +1021,11 @@ type RetrievalOrder struct {
 	Client                  address.Address
 	Miner                   address.Address
 	MinerPeer               *retrievalmarket.RetrievalPeer
+
+	RemoteStore *RemoteStoreID `json:"RemoteStore,omitempty"`
 }
+
+type RemoteStoreID = uuid.UUID
 
 type InvocResult struct {
 	MsgCid         cid.Cid

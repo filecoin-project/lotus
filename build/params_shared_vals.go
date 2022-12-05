@@ -26,14 +26,14 @@ const UnixfsLinksPerLevel = 1024
 
 const AllowableClockDriftSecs = uint64(1)
 
-// TODO: This is still terrible...What's the impact of updating this before mainnet actually upgrades
+// Used by tests and some obscure tooling
 /* inline-gen template
 
-const NewestNetworkVersion = network.Version{{.latestNetworkVersion}}
+const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 
 /* inline-gen start */
 
-const NewestNetworkVersion = network.Version17
+const TestNetworkVersion = network.Version18
 
 /* inline-gen end */
 

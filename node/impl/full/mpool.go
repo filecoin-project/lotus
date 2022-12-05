@@ -44,7 +44,9 @@ type MpoolAPI struct {
 	WalletAPI
 	GasAPI
 
-	MessageSigner *messagesigner.MessageSigner
+	RaftAPI
+
+	MessageSigner messagesigner.MsgSigner
 
 	PushLocks *dtypes.MpoolLocker
 }
@@ -131,7 +133,7 @@ func (a *MpoolAPI) MpoolClear(ctx context.Context, local bool) error {
 }
 
 func (m *MpoolModule) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
-	return m.Mpool.Push(ctx, smsg)
+	return m.Mpool.Push(ctx, smsg, true)
 }
 
 func (a *MpoolAPI) MpoolPushUntrusted(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
@@ -143,8 +145,29 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	msg = &cp
 	inMsg := *msg
 
-	// Check if this uuid has already been processed. Ignore if uuid is not populated
-	if (spec != nil) && (spec.MsgUuid != uuid.UUID{}) {
+	// Redirect to leader if current node is not leader. A single non raft based node is always the leader
+	if !a.RaftAPI.IsLeader(ctx) {
+		var signedMsg types.SignedMessage
+		redirected, err := a.RaftAPI.RedirectToLeader(ctx, "MpoolPushMessage", api.MpoolMessageWhole{Msg: msg, Spec: spec}, &signedMsg)
+		if err != nil {
+			return nil, err
+		}
+		// It's possible that the current node became the leader between the check and the redirect
+		// In that case, continue with rest of execution and only return signedMsg if something was redirected
+		if redirected {
+			return &signedMsg, nil
+		}
+	}
+
+	// Generate spec and uuid if not available in the message
+	if spec == nil {
+		spec = &api.MessageSendSpec{
+			MsgUuid: uuid.New(),
+		}
+	} else if (spec.MsgUuid == uuid.UUID{}) {
+		spec.MsgUuid = uuid.New()
+	} else {
+		// Check if this uuid has already been processed. Ignore if uuid is not populated
 		signedMessage, err := a.MessageSigner.GetSignedMessage(ctx, spec.MsgUuid)
 		if err == nil {
 			log.Warnf("Message already processed. cid=%s", signedMessage.Cid())
@@ -196,7 +219,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	}
 
 	// Sign and push the message
-	signedMsg, err := a.MessageSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
+	signedMsg, err := a.MessageSigner.SignMessage(ctx, msg, spec, func(smsg *types.SignedMessage) error {
 		if _, err := a.MpoolModuleAPI.MpoolPush(ctx, smsg); err != nil {
 			return xerrors.Errorf("mpool push: failed to push message: %w", err)
 		}
@@ -207,11 +230,9 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	}
 
 	// Store uuid->signed message in datastore
-	if (spec != nil) && (spec.MsgUuid != uuid.UUID{}) {
-		err = a.MessageSigner.StoreSignedMessage(ctx, spec.MsgUuid, signedMsg)
-		if err != nil {
-			return nil, err
-		}
+	err = a.MessageSigner.StoreSignedMessage(ctx, spec.MsgUuid, signedMsg)
+	if err != nil {
+		return nil, err
 	}
 
 	return signedMsg, nil
@@ -220,7 +241,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
-		smsgCid, err := a.Mpool.Push(ctx, smsg)
+		smsgCid, err := a.Mpool.Push(ctx, smsg, true)
 		if err != nil {
 			return messageCids, err
 		}

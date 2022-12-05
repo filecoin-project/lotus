@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/wdpost"
@@ -35,10 +34,10 @@ func TestWindowPostNoBuiltinWindow(t *testing.T) {
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ConstructorOpts(
-			node.Override(new(sealer.Config), func() sealer.Config {
-				c := config.DefaultStorageMiner().StorageManager()
-				c.DisableBuiltinWindowPoSt = true
-				return c
+			node.Override(new(config.ProvingConfig), func() config.ProvingConfig {
+				c := config.DefaultStorageMiner()
+				c.Proving.DisableBuiltinWindowPoSt = true
+				return c.Proving
 			}),
 			node.Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(
 				config.DefaultStorageMiner().Fees,
@@ -92,10 +91,10 @@ func TestWindowPostNoBuiltinWindowWithWorker(t *testing.T) {
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ConstructorOpts(
-			node.Override(new(sealer.Config), func() sealer.Config {
-				c := config.DefaultStorageMiner().StorageManager()
-				c.DisableBuiltinWindowPoSt = true
-				return c
+			node.Override(new(config.ProvingConfig), func() config.ProvingConfig {
+				c := config.DefaultStorageMiner()
+				c.Proving.DisableBuiltinWindowPoSt = true
+				return c.Proving
 			}),
 			node.Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(
 				config.DefaultStorageMiner().Fees,

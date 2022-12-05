@@ -22,12 +22,11 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -126,7 +125,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	}
 
 	{
-		b, err := json.MarshalIndent(&paths.LocalStorageMeta{
+		b, err := json.MarshalIndent(&storiface.LocalStorageMeta{
 			ID:       storiface.ID(uuid.New().String()),
 			Weight:   0, // read-only
 			CanSeal:  false,
@@ -165,7 +164,7 @@ func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storiface.
 		return nil, xerrors.Errorf("commit: %w", err)
 	}
 
-	if err := sb.FinalizeSector(context.TODO(), sid, nil); err != nil {
+	if err := sb.FinalizeSector(context.TODO(), sid); err != nil {
 		return nil, xerrors.Errorf("trim cache: %w", err)
 	}
 
@@ -250,12 +249,12 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 
 func createDeals(m *genesis.Miner, k *key.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for i, sector := range m.Sectors {
-		label, err := market8.NewLabelFromString(fmt.Sprintf("%d", i))
+		label, err := markettypes.NewLabelFromString(fmt.Sprintf("%d", i))
 		if err != nil {
 			return xerrors.Errorf("error creating deal label: %w", err)
 		}
 
-		proposal := &market8.DealProposal{
+		proposal := &markettypes.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
@@ -268,7 +267,7 @@ func createDeals(m *genesis.Miner, k *key.Key, maddr address.Address, ssize abi.
 			ClientCollateral:     big.Zero(),
 		}
 
-		sector.DealClientKey = k
+		sector.DealClientKey = k.KeyInfo
 		sector.Deal = *proposal
 	}
 

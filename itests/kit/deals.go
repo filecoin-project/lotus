@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -308,6 +309,12 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 }
 
 func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool, offers ...api.QueryOffer) (path string) {
+	return dh.PerformRetrievalWithOrder(ctx, deal, root, carExport, func(offer api.QueryOffer, a address.Address) api.RetrievalOrder {
+		return offer.Order(a)
+	}, offers...)
+}
+
+func (dh *DealHarness) PerformRetrievalWithOrder(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool, makeOrder func(api.QueryOffer, address.Address) api.RetrievalOrder, offers ...api.QueryOffer) (path string) {
 	var offer api.QueryOffer
 	if len(offers) == 0 {
 		// perform retrieval.
@@ -331,7 +338,9 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 	updates, err := dh.client.ClientGetRetrievalUpdates(updatesCtx)
 	require.NoError(dh.t, err)
 
-	retrievalRes, err := dh.client.ClientRetrieve(ctx, offer.Order(caddr))
+	order := makeOrder(offer, caddr)
+
+	retrievalRes, err := dh.client.ClientRetrieve(ctx, order)
 	require.NoError(dh.t, err)
 consumeEvents:
 	for {
@@ -356,6 +365,11 @@ consumeEvents:
 		}
 	}
 	cancel()
+
+	if order.RemoteStore != nil {
+		// if we're retrieving into a remote store, skip export
+		return ""
+	}
 
 	require.NoError(dh.t, dh.client.ClientExport(ctx,
 		api.ExportRef{

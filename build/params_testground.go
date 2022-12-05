@@ -107,7 +107,7 @@ var (
 	UpgradeChocolateHeight  abi.ChainEpoch = -16
 	UpgradeOhSnapHeight     abi.ChainEpoch = -17
 	UpgradeSkyrHeight       abi.ChainEpoch = -18
-	UpgradeV17Height        abi.ChainEpoch = -19
+	UpgradeSharkHeight      abi.ChainEpoch = -19
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,

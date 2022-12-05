@@ -40,7 +40,6 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -198,9 +197,9 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			}
 		}
 
-		var localPaths []paths.LocalPath
+		var localPaths []storiface.LocalPath
 
-		b, err := json.MarshalIndent(&paths.LocalStorageMeta{
+		b, err := json.MarshalIndent(&storiface.LocalStorageMeta{
 			ID:       storiface.ID(uuid.New().String()),
 			Weight:   10,
 			CanSeal:  true,
@@ -214,11 +213,11 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			return nil, fmt.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 		}
 
-		localPaths = append(localPaths, paths.LocalPath{
+		localPaths = append(localPaths, storiface.LocalPath{
 			Path: lr.Path(),
 		})
 
-		if err := lr.SetStorage(func(sc *paths.StorageConfig) {
+		if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 			sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 		}); err != nil {
 			return nil, err
@@ -639,7 +638,7 @@ func startStorageMinerAPIServer(t *TestEnvironment, repo repo.Repo, minerApi api
 		return nil, fmt.Errorf("no API endpoint in repo: %w", err)
 	}
 
-	srv := &http.Server{Handler: ah}
+	srv := &http.Server{Handler: ah, ReadHeaderTimeout: 30 * time.Second}
 
 	listenAddr, err := startServer(endpoint, srv)
 	if err != nil {

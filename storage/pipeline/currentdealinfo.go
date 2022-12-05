@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -122,7 +122,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.EmptyTSK, xerrors.Errorf("getting publish deal message %s: %w", publishCid, err)
 	}
 
-	var pubDealsParams market8.PublishStorageDealsParams
+	var pubDealsParams markettypes.PublishStorageDealsParams
 	if err := pubDealsParams.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return dealID, types.EmptyTSK, xerrors.Errorf("unmarshalling publish deal message params for message %s: %w", publishCid, err)
 	}

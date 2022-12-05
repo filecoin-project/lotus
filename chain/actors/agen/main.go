@@ -27,6 +27,8 @@ var actors = map[string][]int{
 	"system":   lotusactors.Versions,
 	"reward":   lotusactors.Versions,
 	"verifreg": lotusactors.Versions,
+	"datacap":  lotusactors.Versions[8:],
+	"evm":      lotusactors.Versions[9:],
 }
 
 func main() {
@@ -55,7 +57,7 @@ func generateAdapters() error {
 	for act, versions := range actors {
 		actDir := filepath.Join("chain/actors/builtin", act)
 
-		if err := generateState(actDir); err != nil {
+		if err := generateState(actDir, versions); err != nil {
 			return err
 		}
 
@@ -97,7 +99,7 @@ func generateAdapters() error {
 	return nil
 }
 
-func generateState(actDir string) error {
+func generateState(actDir string, versions []int) error {
 	af, err := ioutil.ReadFile(filepath.Join(actDir, "state.go.template"))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -107,7 +109,7 @@ func generateState(actDir string) error {
 		return xerrors.Errorf("loading state adapter template: %w", err)
 	}
 
-	for _, version := range lotusactors.Versions {
+	for _, version := range versions {
 		tpl := template.Must(template.New("").Funcs(template.FuncMap{}).Parse(string(af)))
 
 		var b bytes.Buffer

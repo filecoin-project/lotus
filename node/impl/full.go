@@ -40,6 +40,7 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
+	full.RaftAPI
 
 	DS          dtypes.MetadataDS
 	NetworkName dtypes.NetworkName
@@ -201,6 +202,14 @@ func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) (stri
 	}
 
 	return fmt.Sprintf("%s %d;%s;%s", filAuthHdr, head.Height(), addr, base64.StdEncoding.EncodeToString(sig.Data)), nil
+}
+
+func (n *FullNodeAPI) RaftState(ctx context.Context) (*api.RaftStateData, error) {
+	return n.RaftAPI.GetRaftState(ctx)
+}
+
+func (n *FullNodeAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
+	return n.RaftAPI.Leader(ctx)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

@@ -38,7 +38,6 @@ func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, me
 		return nil, fmt.Errorf("unknown method %d for actor %s", method, act.Code)
 	}
 
-	fmt.Println("found ", m.Ret, " and ", m.Params, " for ", m.Num)
 	return reflect.New(m.Ret.Elem()).Interface().(cbg.CBORUnmarshaler), nil
 }
 
@@ -96,6 +95,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		NetworkVersion: sm.GetNetworkVersion(ctx, height),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
+		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
 		Tracing:        true,
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
@@ -129,6 +129,16 @@ func LookbackStateGetterForTipset(sm *StateManager, ts *types.TipSet) vm.Lookbac
 			return nil, err
 		}
 		return sm.StateTree(st)
+	}
+}
+
+func TipSetGetterForTipset(cs *store.ChainStore, ts *types.TipSet) vm.TipSetGetter {
+	return func(ctx context.Context, round abi.ChainEpoch) (types.TipSetKey, error) {
+		ts, err := cs.GetTipsetByHeight(ctx, round, ts, true)
+		if err != nil {
+			return types.EmptyTSK, err
+		}
+		return ts.Key(), nil
 	}
 }
 

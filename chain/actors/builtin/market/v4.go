@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -9,9 +10,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -178,7 +182,14 @@ func (s *dealStates4) array() adt.Array {
 }
 
 func fromV4DealState(v4 market4.DealState) DealState {
-	return (DealState)(v4)
+	ret := DealState{
+		SectorStartEpoch: v4.SectorStartEpoch,
+		LastUpdatedEpoch: v4.LastUpdatedEpoch,
+		SlashEpoch:       v4.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
+	return ret
 }
 
 type dealProposals4 struct {
@@ -287,4 +298,27 @@ func (r *publishStorageDealsReturn4) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn4) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state4) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
+
+}
+
+func (s *state4) ActorKey() string {
+	return actors.MarketKey
+}
+
+func (s *state4) ActorVersion() actorstypes.Version {
+	return actorstypes.Version4
+}
+
+func (s *state4) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -71,6 +73,8 @@ type Manager struct {
 	work   *statestore.StateStore
 
 	parallelCheckLimit        int
+	singleCheckTimeout        time.Duration
+	partitionCheckTimeout     time.Duration
 	disableBuiltinWindowPoSt  bool
 	disableBuiltinWinningPoSt bool
 	disallowRemoteFinalize    bool
@@ -90,63 +94,18 @@ type result struct {
 	err error
 }
 
-// ResourceFilteringStrategy is an enum indicating the kinds of resource
-// filtering strategies that can be configured for workers.
-type ResourceFilteringStrategy string
-
-const (
-	// ResourceFilteringHardware specifies that available hardware resources
-	// should be evaluated when scheduling a task against the worker.
-	ResourceFilteringHardware = ResourceFilteringStrategy("hardware")
-
-	// ResourceFilteringDisabled disables resource filtering against this
-	// worker. The scheduler may assign any task to this worker.
-	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
-)
-
-type Config struct {
-	ParallelFetchLimit int
-
-	// Local worker config
-	AllowSectorDownload      bool
-	AllowAddPiece            bool
-	AllowPreCommit1          bool
-	AllowPreCommit2          bool
-	AllowCommit              bool
-	AllowUnseal              bool
-	AllowReplicaUpdate       bool
-	AllowProveReplicaUpdate2 bool
-	AllowRegenSectorKey      bool
-
-	LocalWorkerName string
-
-	// ResourceFiltering instructs the system which resource filtering strategy
-	// to use when evaluating tasks against this worker. An empty value defaults
-	// to "hardware".
-	ResourceFiltering ResourceFilteringStrategy
-
-	// PoSt config
-	ParallelCheckLimit        int
-	DisableBuiltinWindowPoSt  bool
-	DisableBuiltinWinningPoSt bool
-
-	DisallowRemoteFinalize bool
-
-	Assigner string
-}
-
 type StorageAuth http.Header
 
 type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
-func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc Config, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
+func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc config.SealerConfig, pc config.ProvingConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
 
-	sh, err := newScheduler(sc.Assigner)
+	sh, err := newScheduler(ctx, sc.Assigner)
 	if err != nil {
 		return nil, err
 	}
@@ -164,9 +123,11 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 
 		localProver: prover,
 
-		parallelCheckLimit:        sc.ParallelCheckLimit,
-		disableBuiltinWindowPoSt:  sc.DisableBuiltinWindowPoSt,
-		disableBuiltinWinningPoSt: sc.DisableBuiltinWinningPoSt,
+		parallelCheckLimit:        pc.ParallelCheckLimit,
+		singleCheckTimeout:        time.Duration(pc.SingleCheckTimeout),
+		partitionCheckTimeout:     time.Duration(pc.PartitionCheckTimeout),
+		disableBuiltinWindowPoSt:  pc.DisableBuiltinWindowPoSt,
+		disableBuiltinWinningPoSt: pc.DisableBuiltinWinningPoSt,
 		disallowRemoteFinalize:    sc.DisallowRemoteFinalize,
 
 		work:       mss,
@@ -181,7 +142,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 	go m.sched.runSched()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTFinalizeReplicaUpdate,
+		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch, sealtasks.TTFinalizeUnsealed, sealtasks.TTFinalizeReplicaUpdate,
 	}
 	if sc.AllowSectorDownload {
 		localTasks = append(localTasks, sealtasks.TTDownloadSector)
@@ -212,7 +173,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 	}
 
 	wcfg := WorkerConfig{
-		IgnoreResourceFiltering: sc.ResourceFiltering == ResourceFilteringDisabled,
+		IgnoreResourceFiltering: sc.ResourceFiltering == config.ResourceFilteringDisabled,
 		TaskTypes:               localTasks,
 		Name:                    sc.LocalWorkerName,
 	}
@@ -235,8 +196,8 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	if err := m.ls.SetStorage(func(sc *paths.StorageConfig) {
-		sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: path})
+	if err := m.ls.SetStorage(func(sc *storiface.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, storiface.LocalPath{Path: path})
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}
@@ -269,8 +230,8 @@ func (m *Manager) DetachLocalStorage(ctx context.Context, path string) error {
 
 	// drop from the persisted storage.json
 	var found bool
-	if err := m.ls.SetStorage(func(sc *paths.StorageConfig) {
-		out := make([]paths.LocalPath, 0, len(sc.StoragePaths))
+	if err := m.ls.SetStorage(func(sc *storiface.StorageConfig) {
+		out := make([]storiface.LocalPath, 0, len(sc.StoragePaths))
 		for _, storagePath := range sc.StoragePaths {
 			if storagePath.Path != path {
 				out = append(out, storagePath)
@@ -395,6 +356,21 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 	})
 	if err != nil {
 		return xerrors.Errorf("worker UnsealPiece call: %s", err)
+	}
+
+	// get a selector for moving unsealed sector into long-term storage
+	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTUnsealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+
+	// move unsealed sector to long-term storage
+	// Possible TODO: Add an option to not keep the unsealed sector in long term storage?
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
+		m.schedFetch(sector, storiface.FTUnsealed, storiface.PathStorage, storiface.AcquireMove),
+		func(ctx context.Context, w Worker) error {
+			_, err := m.waitSimpleCall(ctx)(w.MoveStorage(ctx, sector, storiface.FTUnsealed))
+			return err
+		})
+	if err != nil {
+		return xerrors.Errorf("moving unsealed sector to long term storage: %w", err)
 	}
 
 	return nil
@@ -652,7 +628,27 @@ func (m *Manager) SealCommit2(ctx context.Context, sector storiface.SectorRef, p
 	return out, waitErr
 }
 
-func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+// sectorStorageType tries to figure out storage type for a given sector; expects only a single copy of the file in the
+// storage system
+func (m *Manager) sectorStorageType(ctx context.Context, sector storiface.SectorRef, ft storiface.SectorFileType) (sectorFound bool, ptype storiface.PathType, err error) {
+	stores, err := m.index.StorageFindSector(ctx, sector.ID, ft, 0, false)
+	if err != nil {
+		return false, "", xerrors.Errorf("finding sector: %w", err)
+	}
+	if len(stores) == 0 {
+		return false, "", nil
+	}
+
+	for _, store := range stores {
+		if store.CanSeal {
+			return true, storiface.PathSealing, nil
+		}
+	}
+
+	return true, storiface.PathStorage, nil
+}
+
+func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -660,44 +656,38 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	// first check if the unsealed file exists anywhere; If it doesn't ignore it
-	unsealed := storiface.FTUnsealed
-	{
-		unsealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding unsealed sector: %w", err)
-		}
+	/*
+		We want to:
+		- Trim cache
+		- Move stuff to long-term storage
+	*/
 
-		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
-			unsealed = storiface.FTNone
-		}
+	// remove redundant copies if there are any
+	if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTUnsealed); err != nil {
+		return xerrors.Errorf("remove copies (sealed): %w", err)
+	}
+	if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTSealed); err != nil {
+		return xerrors.Errorf("remove copies (sealed): %w", err)
+	}
+	if err := m.storage.RemoveCopies(ctx, sector.ID, storiface.FTCache); err != nil {
+		return xerrors.Errorf("remove copies (cache): %w", err)
 	}
 
-	// Make sure that the sealed file is still in sealing storage; In case it already
-	// isn't, we want to do finalize in long-term storage
-	pathType := storiface.PathStorage
-	{
-		sealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTSealed, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding sealed sector: %w", err)
-		}
-
-		for _, store := range sealedStores {
-			if store.CanSeal {
-				pathType = storiface.PathSealing
-				break
-			}
-		}
+	// Make sure that the cache files are still in sealing storage; In case not,
+	// we want to do finalize in long-term storage
+	_, cachePathType, err := m.sectorStorageType(ctx, sector, storiface.FTCache)
+	if err != nil {
+		return xerrors.Errorf("checking cache storage type: %w", err)
 	}
 
 	// do the cache trimming wherever the likely still very large cache lives.
 	// we really don't want to move it.
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache, false)
 
-	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
-		m.schedFetch(sector, storiface.FTCache|unsealed, pathType, storiface.AcquireMove),
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
+		m.schedFetch(sector, storiface.FTCache, cachePathType, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
-			_, err := m.waitSimpleCall(ctx)(w.FinalizeSector(ctx, sector, keepUnsealed))
+			_, err := m.waitSimpleCall(ctx)(w.FinalizeSector(ctx, sector))
 			return err
 		})
 	if err != nil {
@@ -708,9 +698,14 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
 
 	// only move the unsealed file if it still exists and needs moving
-	moveUnsealed := unsealed
+	moveUnsealed := storiface.FTUnsealed
 	{
-		if len(keepUnsealed) == 0 {
+		found, unsealedPathType, err := m.sectorStorageType(ctx, sector, storiface.FTUnsealed)
+		if err != nil {
+			return xerrors.Errorf("checking cache storage type: %w", err)
+		}
+
+		if !found || unsealedPathType == storiface.PathStorage {
 			moveUnsealed = storiface.FTNone
 		}
 	}
@@ -729,25 +724,12 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	return nil
 }
 
-func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTSealed|storiface.FTUnsealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache); err != nil {
 		return xerrors.Errorf("acquiring sector lock: %w", err)
-	}
-
-	// first check if the unsealed file exists anywhere; If it doesn't ignore it
-	moveUnsealed := storiface.FTUnsealed
-	{
-		unsealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
-		if err != nil {
-			return xerrors.Errorf("finding unsealed sector: %w", err)
-		}
-
-		if len(unsealedStores) == 0 { // Is some edge-cases unsealed sector may not exist already, that's fine
-			moveUnsealed = storiface.FTNone
-		}
 	}
 
 	// Make sure that the update file is still in sealing storage; In case it already
@@ -772,9 +754,9 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdateCache, false)
 
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeReplicaUpdate, selector,
-		m.schedFetch(sector, storiface.FTCache|storiface.FTUpdateCache|moveUnsealed, pathType, storiface.AcquireMove),
+		m.schedFetch(sector, storiface.FTCache|storiface.FTUpdateCache, pathType, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
-			_, err := m.waitSimpleCall(ctx)(w.FinalizeReplicaUpdate(ctx, sector, keepUnsealed))
+			_, err := m.waitSimpleCall(ctx)(w.FinalizeReplicaUpdate(ctx, sector))
 			return err
 		})
 	if err != nil {
@@ -784,11 +766,6 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	move := func(types storiface.SectorFileType) error {
 		// get a selector for moving stuff into long-term storage
 		fetchSel := newMoveSelector(m.index, sector.ID, types, storiface.PathStorage, !m.disallowRemoteFinalize)
-		{
-			if len(keepUnsealed) == 0 {
-				moveUnsealed = storiface.FTNone
-			}
-		}
 
 		err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 			m.schedFetch(sector, types, storiface.PathStorage, storiface.AcquireMove),
@@ -804,8 +781,15 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 
 	err = multierr.Append(move(storiface.FTUpdate|storiface.FTUpdateCache), move(storiface.FTCache))
 	err = multierr.Append(err, move(storiface.FTSealed)) // Sealed separate from cache just in case ReleaseSectorKey was already called
-	if moveUnsealed != storiface.FTNone {
-		err = multierr.Append(err, move(moveUnsealed))
+
+	{
+		unsealedStores, ferr := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
+		if err != nil {
+			err = multierr.Append(err, xerrors.Errorf("find unsealed sector before move: %w", ferr))
+		} else if len(unsealedStores) > 0 {
+			// if we found unsealed files, AND have been asked to keep at least one piece, move unsealed
+			err = multierr.Append(err, move(storiface.FTUnsealed))
+		}
 	}
 
 	if err != nil {
@@ -815,16 +799,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 	return nil
 }
 
-func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
-	ssize, err := sector.ProofType.SectorSize()
-	if err != nil {
-		return err
-	}
-	if len(safeToFree) == 0 || safeToFree[0].Offset != 0 || safeToFree[0].Size.Padded() != abi.PaddedPieceSize(ssize) {
-		// todo support partial free
-		return nil
-	}
-
+func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -832,7 +807,25 @@ func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRe
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
-	return m.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil)
+	found, pathType, err := m.sectorStorageType(ctx, sector, storiface.FTUnsealed)
+	if err != nil {
+		return xerrors.Errorf("checking cache storage type: %w", err)
+	}
+	if !found {
+		// already removed
+		return nil
+	}
+
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, false)
+
+	return m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeUnsealed, selector, m.schedFetch(sector, storiface.FTUnsealed, pathType, storiface.AcquireMove), func(ctx context.Context, w Worker) error {
+		_, err := m.waitSimpleCall(ctx)(w.ReleaseUnsealed(ctx, sector, keepUnsealed))
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storiface.SectorRef) error {
