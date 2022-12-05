@@ -125,7 +125,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 			}
 
 			return nil
-		})
+		}, func(cid.Cid) error { return nil })
 
 	if err != nil {
 		err = xerrors.Errorf("error walking chain: %w", err)

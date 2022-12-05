@@ -11,6 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -40,6 +41,7 @@ type FullNodeAPI struct {
 	full.MsigAPI
 	full.WalletAPI
 	full.SyncAPI
+	full.RaftAPI
 
 	DS          dtypes.MetadataDS
 	NetworkName dtypes.NetworkName
@@ -124,50 +126,37 @@ func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (sta
 }
 
 // This method is exclusively used for Non Interactive Authentication based on SP Worker Address
-func (n *FullNodeAPI) FilIdSp(ctx context.Context, maddr address.Address) (string, error) {
-	filAuthHdr := "FIL-SPID-V0"
+func (n *FullNodeAPI) FilIdSp(ctx context.Context, spID address.Address, optionalArg []byte) (string, error) {
 
 	head, err := n.ChainHead(ctx)
 	if err != nil {
 		return "", xerrors.Errorf("failed to get chain head: %w", err)
 	}
 
-	beacon, err := n.StateGetBeaconEntry(ctx, head.Height())
+	finHeight := head.Height() - miner.ChainFinality
+	finTipSet, err := n.ChainGetTipSetByHeight(ctx, finHeight, head.Key())
 	if err != nil {
-		return "", xerrors.Errorf("failed to get DRAND beacon: %w", err)
+		return "", xerrors.Errorf("failed to get finalized tipset at %d: %w", finHeight, err)
 	}
-
-	finality := head.Height() - miner.ChainFinality
-	ftipset, err := n.ChainGetTipSetByHeight(ctx, finality, head.Key())
-	if err != nil {
-		return "", xerrors.Errorf("failed to get finality tipset: %w", err)
-	}
-
-	msg := make([]byte, 0, 99)
-
-	// Append prefix to avoid making a viable message
-	// FIXME: this should be replaced by SPIDV1 combined with proper domain-separation when it arrives
-	msg = append(msg, []byte("   ")...)
-	// Append beacon
-	msg = append(msg, beacon.Data...)
 
 	// Get miner info for last finality
-	minfo, err := n.StateMinerInfo(ctx, maddr, ftipset.Key())
+	minfo, err := n.StateMinerInfo(ctx, spID, finTipSet.Key())
 	if err != nil {
-		return "", xerrors.Errorf("failed to get miner info: %w", err)
+		return "", xerrors.Errorf("failed to get info for SP %s at %d: %w", spID.String(), finTipSet.Height(), err)
 	}
 
-	sig, err := n.WalletSign(ctx, minfo.Worker, msg)
-	if err != nil {
-		return "", xerrors.Errorf("failed to sign message with worker address key: %w", err)
-	}
-
-	return fmt.Sprintf("%s %d;%s;%s", filAuthHdr, head.Height(), maddr, base64.StdEncoding.EncodeToString(sig.Data)), nil
+	return signNoninteractiveChallege(
+		ctx,
+		n,
+		"FIL-SPID-V0",
+		spID, minfo.Worker,
+		head.Height(),
+		optionalArg,
+	)
 }
 
 // This method is exclusively used for Non Interactive Authentication based on provided Wallet Address
-func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) (string, error) {
-	filAuthHdr := "FIL-ADDRID-V0"
+func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address, optionalArg []byte) (string, error) {
 
 	head, err := n.ChainHead(ctx)
 	if err != nil {
@@ -177,30 +166,66 @@ func (n *FullNodeAPI) FilIdAddr(ctx context.Context, addr address.Address) (stri
 	if addr.Protocol() == address.ID {
 		resolvedAddr, err := n.StateAccountKey(ctx, addr, head.Key())
 		if err != nil {
-			return "", xerrors.Errorf("could not find public key address: %w", err)
+			return "", xerrors.Errorf("could not resolve ID address %s to public address: %w", addr.String(), err)
 		}
 		addr = resolvedAddr
 	}
 
-	beacon, err := n.StateGetBeaconEntry(ctx, head.Height())
+	return signNoninteractiveChallege(
+		ctx,
+		n,
+		"FIL-ADDRID-V0",
+		addr, addr,
+		head.Height(),
+		optionalArg,
+	)
+}
+
+func signNoninteractiveChallege(ctx context.Context, n *FullNodeAPI, challengeType string, target, signer address.Address, drandHeight abi.ChainEpoch, optionalArg []byte) (string, error) {
+
+	if len(optionalArg) > 2048 {
+		return "", xerrors.Errorf("optional argument longer than the maximum of 2048 bytes")
+	}
+
+	beacon, err := n.StateGetBeaconEntry(ctx, drandHeight)
 	if err != nil {
 		return "", xerrors.Errorf("failed to get DRAND beacon: %w", err)
 	}
 
-	msg := make([]byte, 0, 99)
-
-	// Append prefix to avoid making a viable message
-	// FIXME: this should be replaced by ADDRIDV1 combined with proper domain-separation when it arrives
-	msg = append(msg, []byte("   ")...)
-	// Append beacon
-	msg = append(msg, beacon.Data...)
-
-	sig, err := n.WalletSign(ctx, addr, msg)
+	sig, err := n.WalletSign(
+		ctx,
+		signer,
+		append(
+			append(
+				append(
+					// Prefix is to avoid ever producing a viable CBOR message
+					// FIXME: this should be replaced by SPIDV1 combined with proper domain-separation when it arrives
+					make([]byte, 0, 3+len(beacon.Data)+len(optionalArg)),
+					[]byte("   ")...,
+				),
+				beacon.Data...,
+			),
+			optionalArg...,
+		),
+	)
 	if err != nil {
-		return "", xerrors.Errorf("failed to sign message with wallet address key: %w", err)
+		return "", xerrors.Errorf("failed to sign message with key %s: %w", signer.String(), err)
 	}
 
-	return fmt.Sprintf("%s %d;%s;%s", filAuthHdr, head.Height(), addr, base64.StdEncoding.EncodeToString(sig.Data)), nil
+	token := fmt.Sprintf("%s %d;%s;%s", challengeType, drandHeight, target, base64.StdEncoding.EncodeToString(sig.Data))
+	if len(optionalArg) > 0 {
+		token += ";" + base64.StdEncoding.EncodeToString(optionalArg)
+	}
+
+	return token, nil
+}
+
+func (n *FullNodeAPI) RaftState(ctx context.Context) (*api.RaftStateData, error) {
+	return n.RaftAPI.GetRaftState(ctx)
+}
+
+func (n *FullNodeAPI) RaftLeader(ctx context.Context) (peer.ID, error) {
+	return n.RaftAPI.Leader(ctx)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

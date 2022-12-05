@@ -25,7 +25,7 @@ import (
 
 type msigBriefInfo struct {
 	ID        address.Address
-	Signer    interface{}
+	Signer    []address.Address
 	Balance   abi.TokenAmount
 	Threshold uint64
 }
@@ -121,6 +121,10 @@ var multisigGetAllCmd = &cli.Command{
 			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
+
 		out, err := json.MarshalIndent(msigActorsInfo, "", "  ")
 		if err != nil {
 			return err

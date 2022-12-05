@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ipfs/go-blockservice"
@@ -52,7 +53,7 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
@@ -97,6 +98,7 @@ type API struct {
 	Imports                   dtypes.ClientImportMgr
 	StorageBlockstoreAccessor storagemarket.BlockstoreAccessor
 	RtvlBlockstoreAccessor    rm.BlockstoreAccessor
+	ApiBlockstoreAccessor     *retrievaladapter.APIBlockstoreAccessor
 
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
@@ -228,12 +230,12 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	// stateless flow from here to the end
 	//
 
-	label, err := market8.NewLabelFromString(params.Data.Root.Encode(multibase.MustNewEncoder('u')))
+	label, err := markettypes.NewLabelFromString(params.Data.Root.Encode(multibase.MustNewEncoder('u')))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to encode label: %w", err)
 	}
 
-	dealProposal := &market8.DealProposal{
+	dealProposal := &markettypes.DealProposal{
 		PieceCID:             *params.Data.PieceCid,
 		PieceSize:            params.Data.PieceSize.Padded(),
 		Client:               walletKey,
@@ -265,7 +267,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		return nil, xerrors.Errorf("failed to sign proposal : %w", err)
 	}
 
-	dealProposalSigned := &market8.ClientDealProposal{
+	dealProposalSigned := &markettypes.ClientDealProposal{
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}
@@ -845,6 +847,13 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 	}
 
 	id := a.Retrieval.NextID()
+
+	if order.RemoteStore != nil {
+		if err := a.ApiBlockstoreAccessor.RegisterDealToRetrievalStore(id, *order.RemoteStore); err != nil {
+			return 0, xerrors.Errorf("registering api store: %w", err)
+		}
+	}
+
 	id, err = a.Retrieval.Retrieve(
 		ctx,
 		id,
@@ -999,6 +1008,8 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 		roots[i] = dag.root
 	}
 
+	var lk sync.Mutex
+
 	return dest.doWrite(func(w io.Writer) error {
 
 		if err := car.WriteHeader(&car.CarHeader{
@@ -1011,13 +1022,29 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 		cs := cid.NewSet()
 
 		for _, dagSpec := range dags {
+			dagSpec := dagSpec
+
 			if err := utils.TraverseDag(
 				ctx,
 				ds,
 				root,
 				dagSpec.selector,
+				func(node format.Node) error {
+					// if we're exporting merkle proofs for this dag, export all nodes read by the traversal
+					if dagSpec.exportAll {
+						lk.Lock()
+						defer lk.Unlock()
+						if cs.Visit(node.Cid()) {
+							err := util.LdWrite(w, node.Cid().Bytes(), node.RawData())
+							if err != nil {
+								return xerrors.Errorf("writing block data: %w", err)
+							}
+						}
+					}
+					return nil
+				},
 				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
-					if r == traversal.VisitReason_SelectionMatch {
+					if !dagSpec.exportAll && r == traversal.VisitReason_SelectionMatch {
 						var c cid.Cid
 						if p.LastBlock.Link == nil {
 							c = root
@@ -1082,8 +1109,9 @@ func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, ds format.DAGServi
 }
 
 type dagSpec struct {
-	root     cid.Cid
-	selector ipld.Node
+	root      cid.Cid
+	selector  ipld.Node
+	exportAll bool
 }
 
 func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds format.DAGService, car bool) ([]dagSpec, error) {
@@ -1098,6 +1126,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 
 	out := make([]dagSpec, len(dsp))
 	for i, spec := range dsp {
+		out[i].exportAll = spec.ExportMerkleProof
 
 		if spec.DataSelector == nil {
 			return nil, xerrors.Errorf("invalid DagSpec at position %d: `DataSelector` can not be nil", i)
@@ -1131,6 +1160,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 			ds,
 			root,
 			rsn,
+			nil,
 			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 				if r == traversal.VisitReason_SelectionMatch {
 					if !car && p.LastBlock.Path.String() != p.Path.String() {

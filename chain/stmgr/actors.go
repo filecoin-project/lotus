@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -251,13 +252,13 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 
 	proposals, err := state.Proposals()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get proposals from state : %w", err)
 	}
 
 	proposal, found, err := proposals.Get(dealID)
 
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get proposal : %w", err)
 	} else if !found {
 		return nil, xerrors.Errorf(
 			"deal %d not found "+
@@ -268,12 +269,12 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 
 	states, err := state.States()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get states : %w", err)
 	}
 
 	st, found, err := states.Get(dealID)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get state : %w", err)
 	}
 
 	if !found {
@@ -510,6 +511,24 @@ func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (m
 	}
 
 	actState, err := market.Load(sm.cs.ActorStore(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return actState, nil
+}
+
+func (sm *StateManager) GetVerifregState(ctx context.Context, ts *types.TipSet) (verifreg.State, error) {
+	st, err := sm.ParentState(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	act, err := st.GetActor(verifreg.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	actState, err := verifreg.Load(sm.cs.ActorStore(ctx), act)
 	if err != nil {
 		return nil, err
 	}

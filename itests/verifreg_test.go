@@ -123,10 +123,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			//stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
 			dcap, err := api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 			require.NoError(t, err)
-
-			if !dcap.Equals(datacap) {
-				t.Fatal("")
-			}
+			require.Equal(t, *dcap, datacap)
 
 			// try to assign datacap to the same client should fail for actor v4 and below
 			params, err = actors.SerializeParams(&verifregst.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: datacap})
@@ -229,7 +226,8 @@ func TestRemoveDataCap(t *testing.T) {
 	// make the 2 verifiers
 
 	makeVerifier := func(addr address.Address) error {
-		params, aerr := actors.SerializeParams(&verifregst.AddVerifierParams{Address: addr, Allowance: big.NewInt(100000000000)})
+		allowance := big.NewInt(100000000000)
+		params, aerr := actors.SerializeParams(&verifregst.AddVerifierParams{Address: addr, Allowance: allowance})
 		require.NoError(t, aerr)
 
 		msg := &types.Message{
@@ -247,6 +245,10 @@ func TestRemoveDataCap(t *testing.T) {
 		res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+		verifierAllowance, err := api.StateVerifierStatus(ctx, addr, types.EmptyTSK)
+		require.NoError(t, err)
+		require.Equal(t, allowance, *verifierAllowance)
 
 		return nil
 	}
@@ -280,10 +282,7 @@ func TestRemoveDataCap(t *testing.T) {
 	//stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
 	dcap, err := api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
-
-	if !dcap.Equals(datacap) {
-		t.Fatal("unexpected datacap")
-	}
+	require.Equal(t, *dcap, datacap)
 
 	// helper to create removedatacap message
 	makeRemoveDatacapMsg := func(removeDatacap big.Int, proposalID uint64) *types.Message {
@@ -354,10 +353,7 @@ func TestRemoveDataCap(t *testing.T) {
 	//stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
 	dcap, err = api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
-
-	if !dcap.Equals(big.Sub(datacap, removeDatacap)) {
-		t.Fatal("unexpected datacap")
-	}
+	require.Equal(t, *dcap, big.Sub(datacap, removeDatacap))
 
 	// now take away the second half!
 

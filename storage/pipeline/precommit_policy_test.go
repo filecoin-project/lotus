@@ -44,7 +44,7 @@ func fakeConfigGetter(stub *fakeConfigStub) dtypes.GetSealingConfigFunc {
 }
 
 func (f *fakeChain) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	return build.NewestNetworkVersion, nil
+	return build.TestNetworkVersion, nil
 }
 
 func (f *fakeChain) ChainHead(ctx context.Context) (*types.TipSet, error) {

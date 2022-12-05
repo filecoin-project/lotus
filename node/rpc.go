@@ -3,13 +3,17 @@ package node
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime"
 	"strconv"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
@@ -23,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/metrics/proxy"
@@ -47,7 +52,8 @@ func ServeRPC(h http.Handler, id string, addr multiaddr.Multiaddr) (StopFunc, er
 
 	// Instantiate the server and start listening.
 	srv := &http.Server{
-		Handler: h,
+		Handler:           h,
+		ReadHeaderTimeout: 30 * time.Second,
 		BaseContext: func(listener net.Listener) context.Context {
 			ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, id))
 			return ctx
@@ -92,6 +98,7 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 	// Import handler
 	handleImportFunc := handleImport(a.(*impl.FullNodeAPI))
 	handleExportFunc := handleExport(a.(*impl.FullNodeAPI))
+	handleRemoteStoreFunc := handleRemoteStore(a.(*impl.FullNodeAPI))
 	if permissioned {
 		importAH := &auth.Handler{
 			Verify: a.AuthVerify,
@@ -104,9 +111,16 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 			Next:   handleExportFunc,
 		}
 		m.Handle("/rest/v0/export", exportAH)
+
+		storeAH := &auth.Handler{
+			Verify: a.AuthVerify,
+			Next:   handleRemoteStoreFunc,
+		}
+		m.Handle("/rest/v0/store/{uuid}", storeAH)
 	} else {
 		m.HandleFunc("/rest/v0/import", handleImportFunc)
 		m.HandleFunc("/rest/v0/export", handleExportFunc)
+		m.HandleFunc("/rest/v0/store/{uuid}", handleRemoteStoreFunc)
 	}
 
 	// debugging
@@ -254,5 +268,36 @@ func handleFractionOpt(name string, setter func(int)) http.HandlerFunc {
 		}
 		rpclog.Infof("setting %s to %d", name, fr)
 		setter(fr)
+	}
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func handleRemoteStore(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		id, err := uuid.Parse(vars["uuid"])
+		if err != nil {
+			http.Error(w, fmt.Sprintf("parse uuid: %s", err), http.StatusBadRequest)
+			return
+		}
+
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
+
+		nstore := bstore.NewNetworkStoreWS(c)
+		if err := a.ApiBlockstoreAccessor.RegisterApiStore(id, nstore); err != nil {
+			log.Errorw("registering api bstore", "error", err)
+			_ = c.Close()
+			return
+		}
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var MinRetryTime = 1 * time.Minute
@@ -257,8 +258,9 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 		return nil
 	}
 	if !active {
-		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
-		return ctx.Send(SectorAbortUpgrade{})
+		err := xerrors.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
+		log.Errorf(err.Error())
+		return ctx.Send(SectorAbortUpgrade{err})
 	}
 
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
@@ -421,17 +423,22 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 		return xerrors.Errorf("should never reach AbortUpgrade as a non-CCUpdate sector")
 	}
 
+	m.cleanupAssignedDeals(sector)
+
 	// Remove snap deals replica if any
+	// This removes update / update-cache from all storage
 	if err := m.sealer.ReleaseReplicaUpgrade(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return xerrors.Errorf("removing CC update files from sector storage")
 	}
 
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting sealing config: %w", err)
+	// This removes the unsealed file from all storage
+	// note: we're not keeping anything unsealed because we're reverting to CC
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), []storiface.Range{}); err != nil {
+		log.Error(err)
 	}
 
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.CCPieces, true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+	// and makes sure sealed/cache files only exist in long-term-storage
+	if err := m.sealer.FinalizeSector(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		log.Error(err)
 	}
 

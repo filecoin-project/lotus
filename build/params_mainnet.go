@@ -79,14 +79,14 @@ const UpgradeOhSnapHeight = 1594680
 // 2022-07-06T14:00:00Z
 const UpgradeSkyrHeight = 1960320
 
-var UpgradeV17Height = abi.ChainEpoch(99999999999999)
+// 2022-11-30T14:00:00Z
+var UpgradeSharkHeight = abi.ChainEpoch(2383680)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
-var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 var PropagationDelaySecs = uint64(10)
 
@@ -95,8 +95,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_V17") == "1" {
-		UpgradeV17Height = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SHARK") == "1" {
+		UpgradeSharkHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

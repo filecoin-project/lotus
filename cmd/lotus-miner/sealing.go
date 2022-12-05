@@ -146,7 +146,7 @@ func workersCmd(sealing bool) *cli.Command {
 				})
 				var taskStr string
 				for _, t := range tc {
-					taskStr = t[1] + " "
+					taskStr += t[1] + " "
 				}
 				if taskStr != "" {
 					fmt.Printf("\tTASK: %s\n", taskStr)

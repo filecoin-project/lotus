@@ -166,11 +166,11 @@
 
   [Chainstore.Splitstore]
     # ColdStoreType specifies the type of the coldstore.
-    # It can be "universal" (default) or "discard" for discarding cold blocks.
+    # It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
     #
     # type: string
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTORETYPE
-    #ColdStoreType = "universal"
+    #ColdStoreType = "messages"
 
     # HotStoreType specifies the type of the hotstore.
     # Only currently supported value is "badger".
@@ -201,28 +201,66 @@
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREFULLGCFREQUENCY
     #HotStoreFullGCFrequency = 20
 
-    # EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
-    # where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
-    # Default is false
-    #
-    # type: bool
-    # env var: LOTUS_CHAINSTORE_SPLITSTORE_ENABLECOLDSTOREAUTOPRUNE
-    #EnableColdStoreAutoPrune = false
 
-    # ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
-    # Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
-    # full GC in every prune.
-    # Default is 7 (about once every a week)
-    #
-    # type: uint64
-    # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTOREFULLGCFREQUENCY
-    #ColdStoreFullGCFrequency = 7
+[Cluster]
+  # EXPERIMENTAL. config to enabled node cluster with raft consensus
+  #
+  # type: bool
+  # env var: LOTUS_CLUSTER_CLUSTERMODEENABLED
+  #ClusterModeEnabled = false
 
-    # ColdStoreRetention specifies the retention policy for data reachable from the chain, in
-    # finalities beyond the compaction boundary, default is 0, -1 retains everything
-    #
-    # type: int64
-    # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTORERETENTION
-    #ColdStoreRetention = 0
+  # A folder to store Raft's data.
+  #
+  # type: string
+  # env var: LOTUS_CLUSTER_DATAFOLDER
+  #DataFolder = ""
+
+  # InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
+  # peers (with no prior state). It is ignored when Raft was already
+  # initialized or when starting in staging mode.
+  #
+  # type: []string
+  # env var: LOTUS_CLUSTER_INITPEERSETMULTIADDR
+  #InitPeersetMultiAddr = []
+
+  # LeaderTimeout specifies how long to wait for a leader before
+  # failing an operation.
+  #
+  # type: Duration
+  # env var: LOTUS_CLUSTER_WAITFORLEADERTIMEOUT
+  #WaitForLeaderTimeout = "15s"
+
+  # NetworkTimeout specifies how long before a Raft network
+  # operation is timed out
+  #
+  # type: Duration
+  # env var: LOTUS_CLUSTER_NETWORKTIMEOUT
+  #NetworkTimeout = "1m40s"
+
+  # CommitRetries specifies how many times we retry a failed commit until
+  # we give up.
+  #
+  # type: int
+  # env var: LOTUS_CLUSTER_COMMITRETRIES
+  #CommitRetries = 1
+
+  # How long to wait between retries
+  #
+  # type: Duration
+  # env var: LOTUS_CLUSTER_COMMITRETRYDELAY
+  #CommitRetryDelay = "200ms"
+
+  # BackupsRotate specifies the maximum number of Raft's DataFolder
+  # copies that we keep as backups (renaming) after cleanup.
+  #
+  # type: int
+  # env var: LOTUS_CLUSTER_BACKUPSROTATE
+  #BackupsRotate = 6
+
+  # Tracing enables propagation of contexts across binary boundaries.
+  #
+  # type: bool
+  # env var: LOTUS_CLUSTER_TRACING
+  #Tracing = false
 
 
