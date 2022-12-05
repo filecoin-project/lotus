@@ -1478,11 +1478,6 @@ var ChainPruneCmd = &cli.Command{
 			Value: false,
 			Usage: "use moving gc for garbage collecting the coldstore",
 		},
-		&cli.StringFlag{
-			Name:  "move-to",
-			Value: "",
-			Usage: "specify new path for coldstore during moving gc",
-		},
 		&cli.IntFlag{
 			Name:  "retention",
 			Value: -1,

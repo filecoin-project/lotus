@@ -2423,7 +2423,6 @@ USAGE:
    lotus chain prune [command options] [arguments...]
 
 OPTIONS:
-   --move-to value    specify new path for coldstore during moving gc
    --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
    --online-gc        use online gc for garbage collecting the coldstore (default: false)
    --retention value  specify state retention policy (default: -1)
