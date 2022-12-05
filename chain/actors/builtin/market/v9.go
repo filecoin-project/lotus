@@ -186,9 +186,16 @@ func (s *dealStates9) array() adt.Array {
 }
 
 func fromV9DealState(v9 market9.DealState) DealState {
+	ret := DealState{
+		SectorStartEpoch: v9.SectorStartEpoch,
+		LastUpdatedEpoch: v9.LastUpdatedEpoch,
+		SlashEpoch:       v9.SlashEpoch,
+		VerifiedClaim:    0,
+	}
 
-	return (DealState)(v9)
+	ret.VerifiedClaim = verifregtypes.AllocationId(v9.VerifiedClaim)
 
+	return ret
 }
 
 type dealProposals9 struct {

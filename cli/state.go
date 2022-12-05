@@ -1321,7 +1321,7 @@ var compStateMsg = `
   {{end}}
   </td></tr>
   {{end}}
-  {{with SumGas .GasCharges}}
+  {{with sumGas .GasCharges}}
   <tr class="sum"><td><b>Sum</b></td>
   {{template "gasC" .}}
   <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
@@ -1355,7 +1355,7 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"IsSlow":      isSlow,
 		"IsVerySlow":  isVerySlow,
 		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
-		"SumGas":      sumGas,
+		"sumGas":      types.SumGas,
 		"CodeStr":     codeStr,
 		"Call":        call,
 		"PrintTiming": func() bool { return printTiming },
@@ -1421,21 +1421,6 @@ func isSlow(t time.Duration) bool {
 
 func isVerySlow(t time.Duration) bool {
 	return t > 50*time.Millisecond
-}
-
-func sumGas(changes []*types.GasTrace) types.GasTrace {
-	var out types.GasTrace
-	for _, gc := range changes {
-		out.TotalGas += gc.TotalGas
-		out.ComputeGas += gc.ComputeGas
-		out.StorageGas += gc.StorageGas
-
-		out.TotalVirtualGas += gc.TotalVirtualGas
-		out.VirtualComputeGas += gc.VirtualComputeGas
-		out.VirtualStorageGas += gc.VirtualStorageGas
-	}
-
-	return out
 }
 
 func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
