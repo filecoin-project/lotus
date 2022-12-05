@@ -75,7 +75,7 @@ release:
     owner: filecoin-project
     name: lotus
   prerelease: auto
-  name_template: "Release v{{.Version}}"
+  name_template: "v{{.Version}}"
 
 brews:
   - tap:
