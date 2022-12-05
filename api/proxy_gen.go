@@ -218,9 +218,9 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		FilIdAddr func(p0 context.Context, p1 address.Address) (string, error) `perm:"sign"`
+		FilIdAddr func(p0 context.Context, p1 address.Address, p2 []byte) (string, error) `perm:"sign"`
 
-		FilIdSp func(p0 context.Context, p1 address.Address) (string, error) `perm:"sign"`
+		FilIdSp func(p0 context.Context, p1 address.Address, p2 []byte) (string, error) `perm:"sign"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -1799,25 +1799,25 @@ func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) FilIdAddr(p0 context.Context, p1 address.Address) (string, error) {
+func (s *FullNodeStruct) FilIdAddr(p0 context.Context, p1 address.Address, p2 []byte) (string, error) {
 	if s.Internal.FilIdAddr == nil {
 		return "", ErrNotSupported
 	}
-	return s.Internal.FilIdAddr(p0, p1)
+	return s.Internal.FilIdAddr(p0, p1, p2)
 }
 
-func (s *FullNodeStub) FilIdAddr(p0 context.Context, p1 address.Address) (string, error) {
+func (s *FullNodeStub) FilIdAddr(p0 context.Context, p1 address.Address, p2 []byte) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (s *FullNodeStruct) FilIdSp(p0 context.Context, p1 address.Address) (string, error) {
+func (s *FullNodeStruct) FilIdSp(p0 context.Context, p1 address.Address, p2 []byte) (string, error) {
 	if s.Internal.FilIdSp == nil {
 		return "", ErrNotSupported
 	}
-	return s.Internal.FilIdSp(p0, p1)
+	return s.Internal.FilIdSp(p0, p1, p2)
 }
 
-func (s *FullNodeStub) FilIdSp(p0 context.Context, p1 address.Address) (string, error) {
+func (s *FullNodeStub) FilIdSp(p0 context.Context, p1 address.Address, p2 []byte) (string, error) {
 	return "", ErrNotSupported
 }
 

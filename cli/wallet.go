@@ -772,7 +772,7 @@ var walletIDSp = &cli.Command{
 			return xerrors.Errorf("parsing miner id: %w", err)
 		}
 
-		result, err := api.FilIdSp(ctx, addr)
+		result, err := api.FilIdSp(ctx, addr, nil) // last arg can be an arbitrary up-to-2k []byte, use API directly if needed
 		if err != nil {
 			return err
 		}
@@ -805,7 +805,7 @@ var walletIDAddr = &cli.Command{
 			return xerrors.Errorf("parsing wallet address: %w", err)
 		}
 
-		result, err := api.FilIdAddr(ctx, addr)
+		result, err := api.FilIdAddr(ctx, addr, nil) // last arg can be an arbitrary up-to-2k []byte, use API directly if needed
 		if err != nil {
 			return err
 		}

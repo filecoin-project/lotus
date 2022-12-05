@@ -326,9 +326,9 @@ type FullNode interface {
 	WalletValidateAddress(context.Context, string) (address.Address, error) //perm:read
 
 	// This method is exclusively used for Non Interactive Authentication based on a SP Worker Address
-	FilIdSp(ctx context.Context, maddr address.Address) (string, error) //perm:sign
+	FilIdSp(ctx context.Context, maddr address.Address, optionalArg []byte) (string, error) //perm:sign
 	// This method is exclusively used for Non Interactive Authentication based on provided Wallet Address
-	FilIdAddr(ctx context.Context, addr address.Address) (string, error) //perm:sign
+	FilIdAddr(ctx context.Context, addr address.Address, optionalArg []byte) (string, error) //perm:sign
 
 	// Other
 

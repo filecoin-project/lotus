@@ -1811,7 +1811,8 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234"
+  "f01234",
+  "Ynl0ZSBhcnJheQ=="
 ]
 ```
 
@@ -1826,7 +1827,8 @@ Perms: sign
 Inputs:
 ```json
 [
-  "f01234"
+  "f01234",
+  "Ynl0ZSBhcnJheQ=="
 ]
 ```
 
