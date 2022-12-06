@@ -130,7 +130,6 @@ If so, this check is introduced via [#9032](https://github.com/filecoin-project/
 ## Bug Fixes
 
 - fix: cli: check found before dereferencing SectorInfo #9703
->>>>>>> release/v1.18.1
 
 # 1.18.0 / 2022-11-15
 
