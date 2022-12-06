@@ -200,6 +200,9 @@ type Partition interface {
 
 type SectorOnChainInfo = minertypes.SectorOnChainInfo
 
+const ProofRefreshIncrease = minertypes.ProofRefreshIncrease
+const MaxProofValidity = minertypes.MaxProofValidity
+
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
 	// ones in network version 8.

@@ -5,21 +5,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 )
 
 var _ State = (*state4)(nil)
@@ -526,6 +524,10 @@ func (p *partition4) UnprovenSectors() (bitfield.BitField, error) {
 
 func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
 
+	proofExpiration := v4.Activation + MaxProofValidity
+	for proofExpiration < v4.Expiration {
+		proofExpiration += ProofRefreshIncrease
+	}
 	return SectorOnChainInfo{
 		SectorNumber:          v4.SectorNumber,
 		SealProof:             v4.SealProof,
@@ -533,7 +535,7 @@ func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {
 		DealIDs:               v4.DealIDs,
 		Activation:            v4.Activation,
 		CommitmentExpiration:  v4.Expiration,
-		ProofExpiration:       v4.Expiration,
+		ProofExpiration:       proofExpiration,
 		DealWeight:            v4.DealWeight,
 		VerifiedDealWeight:    v4.VerifiedDealWeight,
 		InitialPledge:         v4.InitialPledge,

@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -552,6 +553,7 @@ func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.
 		SealedCID:            info.SealedCID,
 		DealIDs:              info.DealIDs,
 		CommitmentExpiration: info.Expiration,
+		ProofExpiration:      activation + minertypes.MaxProofValidity,
 
 		Activation:            activation,
 		DealWeight:            weight,

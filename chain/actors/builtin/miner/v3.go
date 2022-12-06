@@ -526,6 +526,10 @@ func (p *partition3) UnprovenSectors() (bitfield.BitField, error) {
 
 func fromV3SectorOnChainInfo(v3 miner3.SectorOnChainInfo) SectorOnChainInfo {
 
+	proofExpiration := v3.Activation + MaxProofValidity
+	for proofExpiration < v3.Expiration {
+		proofExpiration += ProofRefreshIncrease
+	}
 	return SectorOnChainInfo{
 		SectorNumber:          v3.SectorNumber,
 		SealProof:             v3.SealProof,
@@ -533,7 +537,7 @@ func fromV3SectorOnChainInfo(v3 miner3.SectorOnChainInfo) SectorOnChainInfo {
 		DealIDs:               v3.DealIDs,
 		Activation:            v3.Activation,
 		CommitmentExpiration:  v3.Expiration,
-		ProofExpiration:       v3.Expiration,
+		ProofExpiration:       proofExpiration,
 		DealWeight:            v3.DealWeight,
 		VerifiedDealWeight:    v3.VerifiedDealWeight,
 		InitialPledge:         v3.InitialPledge,
