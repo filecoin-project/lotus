@@ -529,6 +529,7 @@ func fromV7SectorOnChainInfo(v7 miner7.SectorOnChainInfo) SectorOnChainInfo {
 	for proofExpiration < v7.Expiration {
 		proofExpiration += ProofRefreshIncrease
 	}
+
 	return SectorOnChainInfo{
 		SectorNumber:          v7.SectorNumber,
 		SealProof:             v7.SealProof,

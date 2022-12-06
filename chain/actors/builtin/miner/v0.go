@@ -500,6 +500,7 @@ func fromV0SectorOnChainInfo(v0 miner0.SectorOnChainInfo) SectorOnChainInfo {
 	for proofExpiration < v0.Expiration {
 		proofExpiration += ProofRefreshIncrease
 	}
+
 	return SectorOnChainInfo{
 		SectorNumber:          v0.SectorNumber,
 		SealProof:             v0.SealProof,
