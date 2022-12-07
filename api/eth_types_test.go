@@ -176,7 +176,7 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 		BlockHash:        hash2,
 		BlockNumber:      53,
 		Topics:           []EthBytes{hash1[:]},
-		Data:             []EthBytes{hash1[:]},
+		Data:             EthBytes(hash1[:]),
 		Address:          addr,
 	}
 	logjson, err := json.Marshal(log)
