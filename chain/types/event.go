@@ -22,3 +22,5 @@ type EventEntry struct {
 	// Any DAG-CBOR encodeable type.
 	Value []byte
 }
+
+type FilterID [32]byte // compatible with EthHash
