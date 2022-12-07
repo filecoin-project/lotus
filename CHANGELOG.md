@@ -1,32 +1,59 @@
 # Lotus changelog
 
-# 1.19.0-rc2 / 2022-11-23
+# 1.19.0 / 2022-12-07
 
-This is the 2nd release candidate for the upcoming OPTIONAL v1.19.0 release of Lotus. 
-More detailed changelog and description will come later
+This is an optional release of Lotus. This feature release includes the official release of SplitStore
 
-## Changes
+## Highlights
+#### SplitStore
+Splitstore aims to reduce the node performance impact that's caused by the Filecoin's very large, and continuously growing datastore. Splitstore v2 introduces the coldstore auto prune/GC feature & some improvements for the hotstore
 
+#### Node Cluster
+EXPERIMENTAL. The node cluster allows you to run multiple lotus daemons for the same miner increasing resiliency.
+We welcome all lotus users to join the early testing for this feature and provide feedback
+
+## New features
 - feat: wdpost: Configurable pre-check timeouts
-- fix/build: Update Zondax/hid to 0.9.1
-- chore: update lotus version to 1.19.0-rc1
-- chore: merge release into master ([filecoin-project/lotus#9657](https://github.com/filecoin-project/lotus/pull/9657))
 - Raft consensus for lotus nodes in a cluster ([filecoin-project/lotus#9294](https://github.com/filecoin-project/lotus/pull/9294))
+- feat: chain: future proof the from & to address protocols ([filecoin-project/lotus#9515](https://github.com/filecoin-project/lotus/pull/9515))
+- feat: Retrieval into remote blockstores ([filecoin-project/lotus#9565](https://github.com/filecoin-project/lotus/pull/9565))
+- feat:splitstore:single compaction that can handle prune aka two marksets one compaction (#9571) ([filecoin-project/lotus#9571](https://github.com/filecoin-project/lotus/pull/9571))
+- feat: Add node uptime rpc / output in info command ([filecoin-project/lotus#9436](https://github.com/filecoin-project/lotus/pull/9436))
+- feat: wdpost: Add ability to only have single partition per msg for partitions with… ([filecoin-project/lotus#9413](https://github.com/filecoin-project/lotus/pull/9413))
 - feat: storage: Force exit GenerateSingleVanillaProof on cancelled context ([filecoin-project/lotus#9613](https://github.com/filecoin-project/lotus/pull/9613))
+- feat: miner paramfetch: Don't fetch param files when not needed ([filecoin-project/lotus#9391](https://github.com/filecoin-project/lotus/pull/9391))
+- feat: dealpublisher: check for duplicate deals before adding ([filecoin-project/lotus#9365](https://github.com/filecoin-project/lotus/pull/9365))
+- feat: Drop active retrieval check (#764) ([filecoin-project/go-fil-markets#764](https://github.com/filecoin-project/go-fil-markets/pull/764))
+- feat(retrievalmarkets): expose GetDynamicAsk (#748) ([filecoin-project/go-fil-markets#748](https://github.com/filecoin-project/go-fil-markets/pull/748))
+- feat: handle retrieval queries for unindexed identity payload CIDs (#747) ([filecoin-project/go-fil-markets#747](https://github.com/filecoin-project/go-fil-markets/pull/747))
+- feat: client: Add retrieval deal ID and bytes transferred to retrieval output ([filecoin-project/lotus#9398](https://github.com/filecoin-project/lotus/pull/9398))
+- feat: add a method for validating an address for a network version (#115) ([filecoin-project/go-state-types#115](https://github.com/filecoin-project/go-state-types/pull/115))
+
+## Improvements
 - fix: miner-cli: Fix lotus-miner proving check ([filecoin-project/lotus#9643](https://github.com/filecoin-project/lotus/pull/9643))
 - fix: sealing pipeline: Clear CreationTime when starting sector upgrade ([filecoin-project/lotus#9642](https://github.com/filecoin-project/lotus/pull/9642))
 - fix:sealing-fsm:wait mutable fsm state for immutable sector upgrade error ([filecoin-project/lotus#9598](https://github.com/filecoin-project/lotus/pull/9598))
-- deps: Update go-fil-markets to v1.25.0 ([filecoin-project/lotus#9633](https://github.com/filecoin-project/lotus/pull/9633))
 - fix: cli: add beneficiary info to lotus-miner actor control list ([filecoin-project/lotus#9632](https://github.com/filecoin-project/lotus/pull/9632))
 - fix: sealing pipeine: Release assigned deals on snapdeals abort ([filecoin-project/lotus#9601](https://github.com/filecoin-project/lotus/pull/9601))
-- refactor: sealing: minor refactor of FinalizeReplicaUpdate ([filecoin-project/lotus#9614](https://github.com/filecoin-project/lotus/pull/9614))
 - fix: docker: make compatible with arm platform ([filecoin-project/lotus#9363](https://github.com/filecoin-project/lotus/pull/9363))
+- fix: cliutil: Fix URL-based API endpoint parsing
+- fix: post worker sched: Don't check worker session in a busy loop ([filecoin-project/lotus#9495](https://github.com/filecoin-project/lotus/pull/9495))
+- fix: store identity CIDs in CARs for online deals (#749) ([filecoin-project/go-fil-markets#749](https://github.com/filecoin-project/go-fil-markets/pull/749))
+
+## Dependencies
+- deps: upgrade go-merkledag to 0.8.1 (#9717)
+- deps: Update go-fil-markets to v1.25.0 ([filecoin-project/lotus#9633](https://github.com/filecoin-project/lotus/pull/9633))
+- deps: upgrade go-merkledag to 0.8.0 ([filecoin-project/lotus#9455](https://github.com/filecoin-project/lotus/pull/9455))
+
+## Others
+- Rely on local env varibale instead of context
+- fix/build: Update Zondax/hid to 0.9.1
+- chore: update lotus version to 1.19.0-rc1
+- chore: merge release into master ([filecoin-project/lotus#9657](https://github.com/filecoin-project/lotus/pull/9657))
+- refactor: sealing: minor refactor of FinalizeReplicaUpdate ([filecoin-project/lotus#9614](https://github.com/filecoin-project/lotus/pull/9614))
 - update ffi to 280c4f8b94fd46dc (#9608) ([filecoin-project/lotus#9608](https://github.com/filecoin-project/lotus/pull/9608))
-- feat: chain: future proof the from & to address protocols ([filecoin-project/lotus#9515](https://github.com/filecoin-project/lotus/pull/9515))
 - _ci_ Refactor release pipeline to better support m1 builds ([filecoin-project/lotus#9600](https://github.com/filecoin-project/lotus/pull/9600))
 - fix: tvx: make it work with the FVM ([filecoin-project/lotus#9604](https://github.com/filecoin-project/lotus/pull/9604))
-- feat: Retrieval into remote blockstores ([filecoin-project/lotus#9565](https://github.com/filecoin-project/lotus/pull/9565))
-- feat:splitstore:single compaction that can handle prune aka two marksets one compaction (#9571) ([filecoin-project/lotus#9571](https://github.com/filecoin-project/lotus/pull/9571))
 - chore: merge release/v1.18.0 into master ([filecoin-project/lotus#9597](https://github.com/filecoin-project/lotus/pull/9597))
 - fix: autobatch: remove potential deadlock when a block is missing ([filecoin-project/lotus#9602](https://github.com/filecoin-project/lotus/pull/9602))
 - shed: set control address: add dump bytes option ([filecoin-project/lotus#9572](https://github.com/filecoin-project/lotus/pull/9572))
@@ -37,29 +64,22 @@ More detailed changelog and description will come later
 - Makefile: Drop rarely used binaries from build-devnets (#9513) ([filecoin-project/lotus#9513](https://github.com/filecoin-project/lotus/pull/9513))
 - _ci_: Have apt-get wait until it can get a lock in packer builds ([filecoin-project/lotus#9534](https://github.com/filecoin-project/lotus/pull/9534))
 - _ci_ Appimage go1.18.1 fix ([filecoin-project/lotus#9496](https://github.com/filecoin-project/lotus/pull/9496))
-- fix: post worker sched: Don't check worker session in a busy loop ([filecoin-project/lotus#9495](https://github.com/filecoin-project/lotus/pull/9495))
 - feat: shed: FIP0036 post poll result processing  ([filecoin-project/lotus#9387](https://github.com/filecoin-project/lotus/pull/9387))
 - _ci_: Fix failing Digital Ocean and Amazon Machine Image release process ([filecoin-project/lotus#9425](https://github.com/filecoin-project/lotus/pull/9425))
 - fix: bstore: Handle codecs correctly in membstore Get ([filecoin-project/lotus#9471](https://github.com/filecoin-project/lotus/pull/9471))
 - misc: github: Cleanup PR template ([filecoin-project/lotus#9472](https://github.com/filecoin-project/lotus/pull/9472))
-- feat: Add node uptime rpc / output in info command ([filecoin-project/lotus#9436](https://github.com/filecoin-project/lotus/pull/9436))
 - fix: not multiplied by the number of seconds ([filecoin-project/lotus#9460](https://github.com/filecoin-project/lotus/pull/9460))
 - fix: ux: specify arg in `net ping` cmd ([filecoin-project/lotus#9459](https://github.com/filecoin-project/lotus/pull/9459))
-- deps: upgrade go-merkledag to 0.8.0 ([filecoin-project/lotus#9455](https://github.com/filecoin-project/lotus/pull/9455))
 - fix: ux: Add outputs to wallet commands ([filecoin-project/lotus#9416](https://github.com/filecoin-project/lotus/pull/9416))
 - docs: release template: Mention codegen in release prep ([filecoin-project/lotus#9430](https://github.com/filecoin-project/lotus/pull/9430))
 - chore: merge releases (v1.17.2) into master ([filecoin-project/lotus#9433](https://github.com/filecoin-project/lotus/pull/9433))
 - chore:shed: Teach shed/sim to understand --tipset=@nnn notation ([filecoin-project/lotus#9434](https://github.com/filecoin-project/lotus/pull/9434))
-- feat: wdpost: Add ability to only have single partition per msg for partitions with… ([filecoin-project/lotus#9413](https://github.com/filecoin-project/lotus/pull/9413))
 - _chore_: Upgrade `hid` ([filecoin-project/lotus#9406](https://github.com/filecoin-project/lotus/pull/9406))
-- feat: client: Add retrieval deal ID and bytes transferred to retrieval output ([filecoin-project/lotus#9398](https://github.com/filecoin-project/lotus/pull/9398))
 - fix: cli: renew --only-cc with sectorfile ([filecoin-project/lotus#9402](https://github.com/filecoin-project/lotus/pull/9402))
-- feat: miner paramfetch: Don't fetch param files when not needed ([filecoin-project/lotus#9391](https://github.com/filecoin-project/lotus/pull/9391))
 - chore: release: Update `release_issue_template` ([filecoin-project/lotus#9150](https://github.com/filecoin-project/lotus/pull/9150))
 - _ci_: Use golang 1.18.1 to build appimage ([filecoin-project/lotus#9386](https://github.com/filecoin-project/lotus/pull/9386))
 - Backport: #9061 rpc errors ([filecoin-project/lotus#9384](https://github.com/filecoin-project/lotus/pull/9384))
 - _ci_: Don't publish new homebrew releases for RC builds ([filecoin-project/lotus#9350](https://github.com/filecoin-project/lotus/pull/9350))
-- feat: dealpublisher: check for duplicate deals before adding ([filecoin-project/lotus#9365](https://github.com/filecoin-project/lotus/pull/9365))
 - fix: miner: init miner's with 32GiB sectors by default ([filecoin-project/lotus#9364](https://github.com/filecoin-project/lotus/pull/9364))
 - shed: util: get all msig ([filecoin-project/lotus#9322](https://github.com/filecoin-project/lotus/pull/9322))
 - fix: test: simplify TestDeadlineToggling ([filecoin-project/lotus#9356](https://github.com/filecoin-project/lotus/pull/9356))
@@ -70,20 +90,15 @@ More detailed changelog and description will come later
 - docs: release template: clarify location of version.go ([filecoin-project/lotus#9338](https://github.com/filecoin-project/lotus/pull/9338))
 - build: Bump version to v1.17.3-dev ([filecoin-project/lotus#9337](https://github.com/filecoin-project/lotus/pull/9337))
 - github.com/filecoin-project/go-fil-markets (v1.24.0-v17 -> v1.25.0):
-- feat: Drop active retrieval check (#764) ([filecoin-project/go-fil-markets#764](https://github.com/filecoin-project/go-fil-markets/pull/764))
 - Merge branch 'release/v1.24.3'
 - Update ffi and update markets to v9 (#751) (#761) ([filecoin-project/go-fil-markets#761](https://github.com/filecoin-project/go-fil-markets/pull/761))
-- fix: store identity CIDs in CARs for online deals (#749) ([filecoin-project/go-fil-markets#749](https://github.com/filecoin-project/go-fil-markets/pull/749))
 - chore: extract Provider piece logic to separate file (#750) ([filecoin-project/go-fil-markets#750](https://github.com/filecoin-project/go-fil-markets/pull/750))
 - Merge branch 'release/v1.24.2'
 - Feat/support custom metadata (#759) ([filecoin-project/go-fil-markets#759](https://github.com/filecoin-project/go-fil-markets/pull/759))
 - Revert "Update ffi and update markets to v9 (#751)" (#755) ([filecoin-project/go-fil-markets#755](https://github.com/filecoin-project/go-fil-markets/pull/755))
 - Update ffi and update markets to v9 (#751) ([filecoin-project/go-fil-markets#751](https://github.com/filecoin-project/go-fil-markets/pull/751))
-- feat(retrievalmarkets): expose GetDynamicAsk (#748) ([filecoin-project/go-fil-markets#748](https://github.com/filecoin-project/go-fil-markets/pull/748))
-- feat: handle retrieval queries for unindexed identity payload CIDs (#747) ([filecoin-project/go-fil-markets#747](https://github.com/filecoin-project/go-fil-markets/pull/747))
 - release: v1.24.0 ([filecoin-project/go-fil-markets#745](https://github.com/filecoin-project/go-fil-markets/pull/745))
 - github.com/filecoin-project/go-state-types (v0.9.8 -> v0.9.9):
-- feat: add a method for validating an address for a network version (#115) ([filecoin-project/go-state-types#115](https://github.com/filecoin-project/go-state-types/pull/115))
 
 Contributors
 
