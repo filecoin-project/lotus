@@ -696,7 +696,7 @@ func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) 
 		return nil, api.ErrNotSupported
 	}
 
-	f, err := e.FilterStore.Get(ctx, filter.FilterID(id))
+	f, err := e.FilterStore.Get(ctx, types.FilterID(id))
 	if err != nil {
 		return nil, err
 	}
@@ -718,7 +718,7 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*a
 		return nil, api.ErrNotSupported
 	}
 
-	f, err := e.FilterStore.Get(ctx, filter.FilterID(id))
+	f, err := e.FilterStore.Get(ctx, types.FilterID(id))
 	if err != nil {
 		return nil, err
 	}
@@ -895,7 +895,7 @@ func (e *EthEvent) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (
 		return false, api.ErrNotSupported
 	}
 
-	f, err := e.FilterStore.Get(ctx, filter.FilterID(id))
+	f, err := e.FilterStore.Get(ctx, types.FilterID(id))
 	if err != nil {
 		if errors.Is(err, filter.ErrFilterNotFound) {
 			return false, nil
