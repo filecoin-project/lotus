@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -24,7 +23,7 @@ import (
 const indexed uint8 = 0x01
 
 type EventFilter struct {
-	id         string
+	id         FilterID
 	minHeight  abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	maxHeight  abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
 	tipsetCid  cid.Cid
@@ -51,7 +50,7 @@ type CollectedEvent struct {
 	MsgCid      cid.Cid         // cid of message that produced event
 }
 
-func (f *EventFilter) ID() string {
+func (f *EventFilter) ID() FilterID {
 	return f.id
 }
 
@@ -290,7 +289,7 @@ type EventFilterManager struct {
 	EventIndex       *EventIndex
 
 	mu            sync.Mutex // guards mutations to filters
-	filters       map[string]*EventFilter
+	filters       map[FilterID]*EventFilter
 	currentHeight abi.ChainEpoch
 }
 
@@ -365,13 +364,13 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 		return nil, xerrors.Errorf("historic event index disabled")
 	}
 
-	id, err := uuid.NewRandom()
+	id, err := newFilterID()
 	if err != nil {
-		return nil, xerrors.Errorf("new uuid: %w", err)
+		return nil, xerrors.Errorf("new filter id: %w", err)
 	}
 
 	f := &EventFilter{
-		id:         id.String(),
+		id:         id,
 		minHeight:  minHeight,
 		maxHeight:  maxHeight,
 		tipsetCid:  tipsetCid,
@@ -389,15 +388,15 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 
 	m.mu.Lock()
 	if m.filters == nil {
-		m.filters = make(map[string]*EventFilter)
+		m.filters = make(map[FilterID]*EventFilter)
 	}
-	m.filters[id.String()] = f
+	m.filters[id] = f
 	m.mu.Unlock()
 
 	return f, nil
 }
 
-func (m *EventFilterManager) Remove(ctx context.Context, id string) error {
+func (m *EventFilterManager) Remove(ctx context.Context, id FilterID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, found := m.filters[id]; !found {

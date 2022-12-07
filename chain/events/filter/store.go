@@ -5,10 +5,13 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
+	"golang.org/x/xerrors"
 )
 
 type Filter interface {
-	ID() string
+	ID() FilterID
 	LastTaken() time.Time
 	SetSubChannel(chan<- interface{})
 	ClearSubChannel()
@@ -16,8 +19,8 @@ type Filter interface {
 
 type FilterStore interface {
 	Add(context.Context, Filter) error
-	Get(context.Context, string) (Filter, error)
-	Remove(context.Context, string) error
+	Get(context.Context, FilterID) (Filter, error)
+	Remove(context.Context, FilterID) error
 	NotTakenSince(when time.Time) []Filter // returns a list of filters that have not had their collected results taken
 }
 
@@ -27,10 +30,22 @@ var (
 	ErrMaximumNumberOfFilters  = errors.New("maximum number of filters registered")
 )
 
+type FilterID [32]byte // compatible with EthHash
+
+func newFilterID() (FilterID, error) {
+	rawid, err := uuid.NewRandom()
+	if err != nil {
+		return FilterID{}, xerrors.Errorf("new uuid: %w", err)
+	}
+	id := FilterID{}
+	copy(id[:], rawid[:]) // uuid is 16 bytes
+	return id, nil
+}
+
 type memFilterStore struct {
 	max     int
 	mu      sync.Mutex
-	filters map[string]Filter
+	filters map[FilterID]Filter
 }
 
 var _ FilterStore = (*memFilterStore)(nil)
@@ -38,7 +53,7 @@ var _ FilterStore = (*memFilterStore)(nil)
 func NewMemFilterStore(maxFilters int) FilterStore {
 	return &memFilterStore{
 		max:     maxFilters,
-		filters: make(map[string]Filter),
+		filters: make(map[FilterID]Filter),
 	}
 }
 
@@ -57,7 +72,7 @@ func (m *memFilterStore) Add(_ context.Context, f Filter) error {
 	return nil
 }
 
-func (m *memFilterStore) Get(_ context.Context, id string) (Filter, error) {
+func (m *memFilterStore) Get(_ context.Context, id FilterID) (Filter, error) {
 	m.mu.Lock()
 	f, found := m.filters[id]
 	m.mu.Unlock()
@@ -67,7 +82,7 @@ func (m *memFilterStore) Get(_ context.Context, id string) (Filter, error) {
 	return f, nil
 }
 
-func (m *memFilterStore) Remove(_ context.Context, id string) error {
+func (m *memFilterStore) Remove(_ context.Context, id FilterID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

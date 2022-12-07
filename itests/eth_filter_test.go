@@ -294,11 +294,11 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	// expect to have seen iteration number of events
 	require.Equal(iterations, len(res.Results))
 
-	topic1Hash := api.EthHashData([]byte{0x42, 0x11, 0x11})
-	topic2Hash := api.EthHashData([]byte{0x42, 0x22, 0x22})
-	topic3Hash := api.EthHashData([]byte{0x42, 0x33, 0x33})
-	topic4Hash := api.EthHashData([]byte{0x42, 0x44, 0x44})
-	data1Hash := api.EthHashData([]byte{0x48, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88})
+	topic1 := api.EthBytes(leftpad32([]byte{0x11, 0x11}))
+	topic2 := api.EthBytes(leftpad32([]byte{0x22, 0x22}))
+	topic3 := api.EthBytes(leftpad32([]byte{0x33, 0x33}))
+	topic4 := api.EthBytes(leftpad32([]byte{0x44, 0x44}))
+	data1 := api.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
 
 	for _, r := range res.Results {
 		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results
@@ -323,13 +323,12 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 		require.Equal(tsCidHash, elog.BlockHash, "block hash")
 
 		require.Equal(4, len(elog.Topics), "number of topics")
-		require.Equal(topic1Hash, elog.Topics[0], "topic1")
-		require.Equal(topic2Hash, elog.Topics[1], "topic2")
-		require.Equal(topic3Hash, elog.Topics[2], "topic3")
-		require.Equal(topic4Hash, elog.Topics[3], "topic4")
+		require.Equal(topic1, elog.Topics[0], "topic1")
+		require.Equal(topic2, elog.Topics[1], "topic2")
+		require.Equal(topic3, elog.Topics[2], "topic3")
+		require.Equal(topic4, elog.Topics[3], "topic4")
 
-		require.Equal(1, len(elog.Data), "number of data")
-		require.Equal(data1Hash, elog.Data[0], "data1")
+		require.Equal(data1, elog.Data, "data1")
 
 	}
 }
@@ -368,67 +367,76 @@ func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
 			}
 			s, ok := v.(string)
 			if !ok {
-				return nil, xerrors.Errorf(k + " not a string")
+				return nil, xerrors.Errorf(k + ": not a string")
 			}
 			el.Removed, err = strconv.ParseBool(s)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
 		case "address":
 			s, ok := v.(string)
 			if !ok {
-				return nil, xerrors.Errorf(k + " not a string")
+				return nil, xerrors.Errorf(k + ": not a string")
 			}
 			el.Address, err = api.EthAddressFromHex(s)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
 		case "logIndex":
 			el.LogIndex, err = ethUint64(k, v)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
 		case "transactionIndex":
 			el.TransactionIndex, err = ethUint64(k, v)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
 		case "blockNumber":
 			el.BlockNumber, err = ethUint64(k, v)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
 		case "transactionHash":
 			el.TransactionHash, err = ethHash(k, v)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
 		case "blockHash":
 			el.BlockHash, err = ethHash(k, v)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
 		case "data":
-			sl, ok := v.([]interface{})
+			s, ok := v.(string)
 			if !ok {
-				return nil, xerrors.Errorf(k + " not a slice")
+				return nil, xerrors.Errorf(k + ": not a string")
 			}
-			for _, s := range sl {
-				data, err := hex.DecodeString(s.(string))
-				if err != nil {
-					return nil, err
-				}
-				el.Data = data
+			data, err := hex.DecodeString(s[2:])
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
+			el.Data = data
+
 		case "topics":
+			s, ok := v.(string)
+			if ok {
+				topic, err := hex.DecodeString(s[2:])
+				if err != nil {
+					return nil, xerrors.Errorf("%s: %w", k, err)
+				}
+				el.Topics = append(el.Topics, topic)
+				continue
+			}
+
 			sl, ok := v.([]interface{})
 			if !ok {
-				return nil, xerrors.Errorf(k + " not a slice")
+				return nil, xerrors.Errorf(k + ": not a slice")
 			}
 			for _, s := range sl {
-				topic, err := hex.DecodeString(s.(string))
+				topic, err := hex.DecodeString(s.(string)[2:])
 				if err != nil {
-					return nil, err
+					return nil, xerrors.Errorf("%s: %w", k, err)
 				}
 				el.Topics = append(el.Topics, topic)
 			}
@@ -542,11 +550,11 @@ func TestEthGetLogsAll(t *testing.T) {
 	ethContractAddr, err := api.EthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
-	topic1Hash := api.EthHashData([]byte{0x42, 0x11, 0x11})
-	topic2Hash := api.EthHashData([]byte{0x42, 0x22, 0x22})
-	topic3Hash := api.EthHashData([]byte{0x42, 0x33, 0x33})
-	topic4Hash := api.EthHashData([]byte{0x42, 0x44, 0x44})
-	data1Hash := api.EthHashData([]byte{0x48, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88})
+	topic1 := api.EthBytes(leftpad32([]byte{0x11, 0x11}))
+	topic2 := api.EthBytes(leftpad32([]byte{0x22, 0x22}))
+	topic3 := api.EthBytes(leftpad32([]byte{0x33, 0x33}))
+	topic4 := api.EthBytes(leftpad32([]byte{0x44, 0x44}))
+	data1 := api.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
 
 	pstring := func(s string) *string { return &s }
 
@@ -582,13 +590,12 @@ func TestEthGetLogsAll(t *testing.T) {
 		require.Equal(tsCidHash, elog.BlockHash, "block hash")
 
 		require.Equal(4, len(elog.Topics), "number of topics")
-		require.Equal(topic1Hash, elog.Topics[0], "topic1")
-		require.Equal(topic2Hash, elog.Topics[1], "topic2")
-		require.Equal(topic3Hash, elog.Topics[2], "topic3")
-		require.Equal(topic4Hash, elog.Topics[3], "topic4")
+		require.Equal(topic1, elog.Topics[0], "topic1")
+		require.Equal(topic2, elog.Topics[1], "topic2")
+		require.Equal(topic3, elog.Topics[2], "topic3")
+		require.Equal(topic4, elog.Topics[3], "topic4")
 
-		require.Equal(1, len(elog.Data), "number of data")
-		require.Equal(data1Hash, elog.Data[0], "data1")
+		require.Equal(data1, elog.Data, "data1")
 
 	}
 }
@@ -705,4 +712,14 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 	// expect to have seen all logs
 	require.Equal(len(received), len(subResponses))
+}
+
+func leftpad32(orig []byte) []byte {
+	needed := 32 - len(orig)
+	if needed <= 0 {
+		return orig
+	}
+	ret := make([]byte, 32)
+	copy(ret[needed:], orig)
+	return ret
 }
