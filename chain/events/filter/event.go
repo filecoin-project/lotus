@@ -23,7 +23,7 @@ import (
 const indexed uint8 = 0x01
 
 type EventFilter struct {
-	id         FilterID
+	id         types.FilterID
 	minHeight  abi.ChainEpoch // minimum epoch to apply filter or -1 if no minimum
 	maxHeight  abi.ChainEpoch // maximum epoch to apply filter or -1 if no maximum
 	tipsetCid  cid.Cid
@@ -50,7 +50,7 @@ type CollectedEvent struct {
 	MsgCid      cid.Cid         // cid of message that produced event
 }
 
-func (f *EventFilter) ID() FilterID {
+func (f *EventFilter) ID() types.FilterID {
 	return f.id
 }
 
@@ -289,7 +289,7 @@ type EventFilterManager struct {
 	EventIndex       *EventIndex
 
 	mu            sync.Mutex // guards mutations to filters
-	filters       map[FilterID]*EventFilter
+	filters       map[types.FilterID]*EventFilter
 	currentHeight abi.ChainEpoch
 }
 
@@ -388,7 +388,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 
 	m.mu.Lock()
 	if m.filters == nil {
-		m.filters = make(map[FilterID]*EventFilter)
+		m.filters = make(map[types.FilterID]*EventFilter)
 	}
 	m.filters[id] = f
 	m.mu.Unlock()
@@ -396,7 +396,7 @@ func (m *EventFilterManager) Install(ctx context.Context, minHeight, maxHeight a
 	return f, nil
 }
 
-func (m *EventFilterManager) Remove(ctx context.Context, id FilterID) error {
+func (m *EventFilterManager) Remove(ctx context.Context, id types.FilterID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, found := m.filters[id]; !found {

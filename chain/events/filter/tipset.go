@@ -11,7 +11,7 @@ import (
 )
 
 type TipSetFilter struct {
-	id         FilterID
+	id         types.FilterID
 	maxResults int // maximum number of results to collect, 0 is unlimited
 	ch         chan<- interface{}
 
@@ -22,7 +22,7 @@ type TipSetFilter struct {
 
 var _ Filter = (*TipSetFilter)(nil)
 
-func (f *TipSetFilter) ID() FilterID {
+func (f *TipSetFilter) ID() types.FilterID {
 	return f.id
 }
 
@@ -76,7 +76,7 @@ type TipSetFilterManager struct {
 	MaxFilterResults int
 
 	mu      sync.Mutex // guards mutations to filters
-	filters map[FilterID]*TipSetFilter
+	filters map[types.FilterID]*TipSetFilter
 }
 
 func (m *TipSetFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
@@ -111,7 +111,7 @@ func (m *TipSetFilterManager) Install(ctx context.Context) (*TipSetFilter, error
 
 	m.mu.Lock()
 	if m.filters == nil {
-		m.filters = make(map[FilterID]*TipSetFilter)
+		m.filters = make(map[types.FilterID]*TipSetFilter)
 	}
 	m.filters[id] = f
 	m.mu.Unlock()
@@ -119,7 +119,7 @@ func (m *TipSetFilterManager) Install(ctx context.Context) (*TipSetFilter, error
 	return f, nil
 }
 
-func (m *TipSetFilterManager) Remove(ctx context.Context, id FilterID) error {
+func (m *TipSetFilterManager) Remove(ctx context.Context, id types.FilterID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, found := m.filters[id]; !found {

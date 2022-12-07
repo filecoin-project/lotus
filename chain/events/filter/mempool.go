@@ -13,7 +13,7 @@ import (
 )
 
 type MemPoolFilter struct {
-	id         FilterID
+	id         types.FilterID
 	maxResults int // maximum number of results to collect, 0 is unlimited
 	ch         chan<- interface{}
 
@@ -24,7 +24,7 @@ type MemPoolFilter struct {
 
 var _ Filter = (*MemPoolFilter)(nil)
 
-func (f *MemPoolFilter) ID() FilterID {
+func (f *MemPoolFilter) ID() types.FilterID {
 	return f.id
 }
 
@@ -78,7 +78,7 @@ type MemPoolFilterManager struct {
 	MaxFilterResults int
 
 	mu      sync.Mutex // guards mutations to filters
-	filters map[FilterID]*MemPoolFilter
+	filters map[types.FilterID]*MemPoolFilter
 }
 
 func (m *MemPoolFilterManager) WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate) {
@@ -124,7 +124,7 @@ func (m *MemPoolFilterManager) Install(ctx context.Context) (*MemPoolFilter, err
 
 	m.mu.Lock()
 	if m.filters == nil {
-		m.filters = make(map[FilterID]*MemPoolFilter)
+		m.filters = make(map[types.FilterID]*MemPoolFilter)
 	}
 	m.filters[id] = f
 	m.mu.Unlock()
@@ -132,7 +132,7 @@ func (m *MemPoolFilterManager) Install(ctx context.Context) (*MemPoolFilter, err
 	return f, nil
 }
 
-func (m *MemPoolFilterManager) Remove(ctx context.Context, id FilterID) error {
+func (m *MemPoolFilterManager) Remove(ctx context.Context, id types.FilterID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, found := m.filters[id]; !found {
