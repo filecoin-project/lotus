@@ -71,7 +71,7 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	{
 		si, err := client.StateSectorGetInfo(ctx, maddr, CCUpgrade, types.EmptyTSK)
 		require.NoError(t, err)
-		require.Less(t, 50000, int(si.Expiration))
+		require.Less(t, 50000, int(si.CommitmentExpiration))
 	}
 	client.WaitForSectorActive(ctx, t, CCUpgrade, maddr)
 

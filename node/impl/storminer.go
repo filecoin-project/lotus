@@ -35,7 +35,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -225,7 +225,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 	}
 	sInfo.SealProof = onChainInfo.SealProof
 	sInfo.Activation = onChainInfo.Activation
-	sInfo.Expiration = onChainInfo.Expiration
+	sInfo.Expiration = onChainInfo.CommitmentExpiration
 	sInfo.DealWeight = onChainInfo.DealWeight
 	sInfo.VerifiedDealWeight = onChainInfo.VerifiedDealWeight
 	sInfo.InitialPledge = onChainInfo.InitialPledge

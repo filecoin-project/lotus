@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	typegen "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -34,11 +35,11 @@ func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 		curVal := new(typegen.Deferred)
 		found, err := curArr.Get(uint64(i), curVal)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting curVal: %x", err)
 		}
 		if !found {
 			if err := out.Remove(uint64(i), prevVal); err != nil {
-				return err
+				return xerrors.Errorf("removing from prev: %x", err)
 			}
 			return nil
 		}
@@ -46,13 +47,13 @@ func DiffAdtArray(preArr, curArr Array, out AdtArrayDiff) error {
 		// no modification
 		if !bytes.Equal(prevVal.Raw, curVal.Raw) {
 			if err := out.Modify(uint64(i), prevVal, curVal); err != nil {
-				return err
+				return xerrors.Errorf("modifying bytes: %x", err)
 			}
 		}
 		notNew[i] = struct{}{}
 		return nil
 	}); err != nil {
-		return err
+		return xerrors.Errorf("iterating array: %x", err)
 	}
 
 	curVal := new(typegen.Deferred)

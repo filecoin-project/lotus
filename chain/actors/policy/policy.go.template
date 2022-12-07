@@ -220,11 +220,11 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 }
 
 func GetMaxSectorExpirationExtension() abi.ChainEpoch {
-	return miner{{.latestVersion}}.MaxSectorExpirationExtension
+	return miner{{.latestVersion}}.MaxSectorCommitmentExtension
 }
 
 func GetMinSectorExpiration() abi.ChainEpoch {
-	return miner{{.latestVersion}}.MinSectorExpiration
+	return miner{{.latestVersion}}.MinSectorCommitment
 }
 
 func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {

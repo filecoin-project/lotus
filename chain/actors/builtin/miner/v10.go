@@ -535,14 +535,14 @@ func fromV10SectorOnChainInfo(v10 miner10.SectorOnChainInfo) SectorOnChainInfo {
 		SealedCID:             v10.SealedCID,
 		DealIDs:               v10.DealIDs,
 		Activation:            v10.Activation,
-		Expiration:            v10.Expiration,
+		CommitmentExpiration:  v10.CommitmentExpiration,
 		DealWeight:            v10.DealWeight,
 		VerifiedDealWeight:    v10.VerifiedDealWeight,
 		InitialPledge:         v10.InitialPledge,
 		ExpectedDayReward:     v10.ExpectedDayReward,
 		ExpectedStoragePledge: v10.ExpectedStoragePledge,
-
-		SectorKeyCID: v10.SectorKeyCID,
+		SectorKeyCID:          v10.SectorKeyCID,
+		ProofExpiration:       v10.ProofExpiration,
 	}
 	return info
 }

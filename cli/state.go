@@ -1803,7 +1803,7 @@ var StateSectorCmd = &cli.Command{
 		fmt.Println("DealIDs: ", si.DealIDs)
 		fmt.Println()
 		fmt.Println("Activation: ", cliutil.EpochTimeTs(ts.Height(), si.Activation, ts))
-		fmt.Println("Expiration: ", cliutil.EpochTimeTs(ts.Height(), si.Expiration, ts))
+		fmt.Println("Expiration: ", cliutil.EpochTimeTs(ts.Height(), si.CommitmentExpiration, ts))
 		fmt.Println()
 		fmt.Println("DealWeight: ", si.DealWeight)
 		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)

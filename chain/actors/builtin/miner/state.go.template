@@ -573,15 +573,14 @@ func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorO
 		SealedCID:             v{{.v}}.SealedCID,
 		DealIDs:               v{{.v}}.DealIDs,
 		Activation:            v{{.v}}.Activation,
-		Expiration:            v{{.v}}.Expiration,
+		CommitmentExpiration:  v{{.v}}.{{if (ge .v 10)}}Commitment{{end}}Expiration,
 		DealWeight:            v{{.v}}.DealWeight,
 		VerifiedDealWeight:    v{{.v}}.VerifiedDealWeight,
 		InitialPledge:         v{{.v}}.InitialPledge,
 		ExpectedDayReward:     v{{.v}}.ExpectedDayReward,
 		ExpectedStoragePledge: v{{.v}}.ExpectedStoragePledge,
-		{{if (ge .v 7)}}
-		SectorKeyCID: v{{.v}}.SectorKeyCID,
-        {{end}}
+		{{if (ge .v 7)}}SectorKeyCID: v{{.v}}.SectorKeyCID,{{end}}
+		{{if (ge .v 10)}}ProofExpiration: v{{.v}}.ProofExpiration,{{end}}
 	}
 	return info
 }

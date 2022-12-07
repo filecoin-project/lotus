@@ -120,7 +120,7 @@ func (sa *sectorAccessor) sectorsStatus(ctx context.Context, sid abi.SectorNumbe
 	}
 	sInfo.SealProof = onChainInfo.SealProof
 	sInfo.Activation = onChainInfo.Activation
-	sInfo.Expiration = onChainInfo.Expiration
+	sInfo.Expiration = onChainInfo.CommitmentExpiration
 	sInfo.DealWeight = onChainInfo.DealWeight
 	sInfo.VerifiedDealWeight = onChainInfo.VerifiedDealWeight
 	sInfo.InitialPledge = onChainInfo.InitialPledge

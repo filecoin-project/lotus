@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
@@ -632,7 +632,7 @@ var sectorsCheckExpireCmd = &cli.Command{
 
 		n := 0
 		for _, s := range sectors {
-			if s.Expiration-currEpoch <= abi.ChainEpoch(cctx.Int64("cutoff")) {
+			if s.CommitmentExpiration-currEpoch <= abi.ChainEpoch(cctx.Int64("cutoff")) {
 				sectors[n] = s
 				n++
 			}
@@ -640,10 +640,10 @@ var sectorsCheckExpireCmd = &cli.Command{
 		sectors = sectors[:n]
 
 		sort.Slice(sectors, func(i, j int) bool {
-			if sectors[i].Expiration == sectors[j].Expiration {
+			if sectors[i].CommitmentExpiration == sectors[j].CommitmentExpiration {
 				return sectors[i].SectorNumber < sectors[j].SectorNumber
 			}
-			return sectors[i].Expiration < sectors[j].Expiration
+			return sectors[i].CommitmentExpiration < sectors[j].CommitmentExpiration
 		})
 
 		tw := tablewriter.New(
@@ -668,7 +668,7 @@ var sectorsCheckExpireCmd = &cli.Command{
 				"SealProof":     sector.SealProof,
 				"InitialPledge": types.FIL(sector.InitialPledge).Short(),
 				"Activation":    cliutil.EpochTime(currEpoch, sector.Activation),
-				"Expiration":    cliutil.EpochTime(currEpoch, sector.Expiration),
+				"Expiration":    cliutil.EpochTime(currEpoch, sector.CommitmentExpiration),
 				"MaxExpiration": cliutil.EpochTime(currEpoch, MaxExpiration),
 				"MaxExtendNow":  cliutil.EpochTime(currEpoch, MaxExtendNow),
 			})
@@ -945,7 +945,7 @@ var sectorsRenewCmd = &cli.Command{
 					continue
 				}
 
-				if si.Expiration >= from && si.Expiration <= to {
+				if si.CommitmentExpiration >= from && si.CommitmentExpiration <= to {
 					if _, exclude := excludeSet[uint64(si.SectorNumber)]; !exclude {
 						sis = append(sis, si)
 					}
@@ -966,7 +966,7 @@ var sectorsRenewCmd = &cli.Command{
 
 		for _, si := range sis {
 			extension := abi.ChainEpoch(cctx.Int64("extension"))
-			newExp := si.Expiration + extension
+			newExp := si.CommitmentExpiration + extension
 
 			if cctx.IsSet("new-expiration") {
 				newExp = abi.ChainEpoch(cctx.Int64("new-expiration"))
@@ -982,7 +982,7 @@ var sectorsRenewCmd = &cli.Command{
 				newExp = maxExp
 			}
 
-			if newExp <= si.Expiration || withinTolerance(newExp, si.Expiration) {
+			if newExp <= si.CommitmentExpiration || withinTolerance(newExp, si.CommitmentExpiration) {
 				continue
 			}
 
@@ -1198,25 +1198,25 @@ var sectorsExtendCmd = &cli.Command{
 					continue
 				}
 
-				if si.Expiration < (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-ignore"))) {
+				if si.CommitmentExpiration < (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-ignore"))) {
 					continue
 				}
 
 				if cctx.IsSet("expiration-cutoff") {
-					if si.Expiration > (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-cutoff"))) {
+					if si.CommitmentExpiration > (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-cutoff"))) {
 						continue
 					}
 				}
 
 				ml := policy.GetSectorMaxLifetime(si.SealProof, nv)
 				// if the sector's missing less than "tolerance" of its maximum possible lifetime, don't bother extending it
-				if withinTolerance(si.Expiration-si.Activation, ml) {
+				if withinTolerance(si.CommitmentExpiration-si.Activation, ml) {
 					continue
 				}
 
 				// Set the new expiration to 48 hours less than the theoretical maximum lifetime
 				newExp := ml - (miner.WPoStProvingPeriod * 2) + si.Activation
-				if withinTolerance(si.Expiration, newExp) || si.Expiration >= newExp {
+				if withinTolerance(si.CommitmentExpiration, newExp) || si.CommitmentExpiration >= newExp {
 					continue
 				}
 
@@ -1237,7 +1237,7 @@ var sectorsExtendCmd = &cli.Command{
 				} else {
 					added := false
 					for exp := range es {
-						if withinTolerance(exp, newExp) && newExp >= exp && exp > si.Expiration {
+						if withinTolerance(exp, newExp) && newExp >= exp && exp > si.CommitmentExpiration {
 							es[exp] = append(es[exp], uint64(si.SectorNumber))
 							added = true
 							break

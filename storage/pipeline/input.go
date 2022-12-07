@@ -455,8 +455,8 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		memo[sn] = struct {
 			e abi.ChainEpoch
 			p abi.TokenAmount
-		}{e: onChainInfo.Expiration, p: onChainInfo.InitialPledge}
-		return onChainInfo.Expiration, onChainInfo.InitialPledge, nil
+		}{e: onChainInfo.CommitmentExpiration, p: onChainInfo.InitialPledge}
+		return onChainInfo.CommitmentExpiration, onChainInfo.InitialPledge, nil
 	}
 
 	ssize, err := sp.SectorSize()

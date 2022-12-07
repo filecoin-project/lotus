@@ -361,7 +361,7 @@ func TestMinerSectorChange(t *testing.T) {
 	// 2 same
 	// 3 added
 	si1Ext := si1
-	si1Ext.Expiration++
+	si1Ext.CommitmentExpiration++
 	newMinerC := createMinerState(ctx, t, store, owner, worker, []miner.SectorOnChainInfo{si1Ext, si2, si3})
 
 	minerAddr := nextIDAddrF()
@@ -526,7 +526,7 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, secto
 			SealedCID:             sector.SealedCID,
 			DealIDs:               sector.DealIDs,
 			Activation:            sector.Activation,
-			Expiration:            sector.Expiration,
+			Expiration:            sector.CommitmentExpiration,
 			DealWeight:            sector.DealWeight,
 			VerifiedDealWeight:    sector.VerifiedDealWeight,
 			InitialPledge:         sector.InitialPledge,
@@ -547,11 +547,11 @@ func createSectorsAMT(ctx context.Context, t *testing.T, store adt2.Store, secto
 func newSectorOnChainInfo(sectorNo abi.SectorNumber, sealed cid.Cid, weight big.Int, activation, expiration abi.ChainEpoch) miner.SectorOnChainInfo {
 	info := newSectorPreCommitInfo(sectorNo, sealed, expiration)
 	return miner.SectorOnChainInfo{
-		SectorNumber: info.SectorNumber,
-		SealProof:    info.SealProof,
-		SealedCID:    info.SealedCID,
-		DealIDs:      info.DealIDs,
-		Expiration:   info.Expiration,
+		SectorNumber:         info.SectorNumber,
+		SealProof:            info.SealProof,
+		SealedCID:            info.SealedCID,
+		DealIDs:              info.DealIDs,
+		CommitmentExpiration: info.Expiration,
 
 		Activation:            activation,
 		DealWeight:            weight,

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -326,11 +327,11 @@ func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMin
 	return sp.OnActorStateChanged(minerAddr, func(ctx context.Context, oldActorState, newActorState *types.Actor) (changed bool, user UserData, err error) {
 		oldState, err := miner.Load(adt.WrapStore(ctx, sp.cst), oldActorState)
 		if err != nil {
-			return false, nil, err
+			return false, nil, xerrors.Errorf("loading old state: %w", err)
 		}
 		newState, err := miner.Load(adt.WrapStore(ctx, sp.cst), newActorState)
 		if err != nil {
-			return false, nil, err
+			return false, nil, xerrors.Errorf("loading new state: %w", err)
 		}
 		return diffMinerActorState(ctx, oldState, newState)
 	})
@@ -340,7 +341,7 @@ func (sp *StatePredicates) OnMinerSectorChange() DiffMinerActorStateFunc {
 	return func(ctx context.Context, oldState, newState miner.State) (changed bool, user UserData, err error) {
 		sectorChanges, err := miner.DiffSectors(oldState, newState)
 		if err != nil {
-			return false, nil, err
+			return false, nil, xerrors.Errorf("diffing sectors: %x", err)
 		}
 		// nothing changed
 		if len(sectorChanges.Added)+len(sectorChanges.Extended)+len(sectorChanges.Removed) == 0 {

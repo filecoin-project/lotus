@@ -532,7 +532,7 @@ func fromV5SectorOnChainInfo(v5 miner5.SectorOnChainInfo) SectorOnChainInfo {
 		SealedCID:             v5.SealedCID,
 		DealIDs:               v5.DealIDs,
 		Activation:            v5.Activation,
-		Expiration:            v5.Expiration,
+		CommitmentExpiration:  v5.Expiration,
 		DealWeight:            v5.DealWeight,
 		VerifiedDealWeight:    v5.VerifiedDealWeight,
 		InitialPledge:         v5.InitialPledge,

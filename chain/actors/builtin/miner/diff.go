@@ -1,7 +1,10 @@
 package miner
 
 import (
+	"fmt"
+
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -69,17 +72,17 @@ func DiffSectors(pre, cur State) (*SectorChanges, error) {
 
 	pres, err := pre.sectors()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting previous sectors: %x", err)
 	}
 
 	curs, err := cur.sectors()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting current sectors: %x", err)
 	}
 
 	err = adt.DiffAdtArray(pres, curs, &sectorDiffer{results, pre, cur})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("diffing arrays: %x", err)
 	}
 
 	return results, nil
@@ -93,7 +96,7 @@ type sectorDiffer struct {
 func (m *sectorDiffer) Add(key uint64, val *cbg.Deferred) error {
 	si, err := m.after.decodeSectorOnChainInfo(val)
 	if err != nil {
-		return err
+		return xerrors.Errorf("decoding sector info: %x", err)
 	}
 	m.Results.Added = append(m.Results.Added, si)
 	return nil
@@ -102,15 +105,15 @@ func (m *sectorDiffer) Add(key uint64, val *cbg.Deferred) error {
 func (m *sectorDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
 	siFrom, err := m.pre.decodeSectorOnChainInfo(from)
 	if err != nil {
-		return err
+		return xerrors.Errorf("decoding from info: %x", err)
 	}
 
 	siTo, err := m.after.decodeSectorOnChainInfo(to)
 	if err != nil {
-		return err
+		return xerrors.Errorf("decoding to info: %x", err)
 	}
 
-	if siFrom.Expiration != siTo.Expiration {
+	if siFrom.CommitmentExpiration != siTo.CommitmentExpiration {
 		m.Results.Extended = append(m.Results.Extended, SectorExtensions{
 			From: siFrom,
 			To:   siTo,
@@ -122,7 +125,8 @@ func (m *sectorDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
 func (m *sectorDiffer) Remove(key uint64, val *cbg.Deferred) error {
 	si, err := m.pre.decodeSectorOnChainInfo(val)
 	if err != nil {
-		return err
+		fmt.Printf("%x\n", val.Raw)
+		return xerrors.Errorf("decoding sector info: %x", err)
 	}
 	m.Results.Removed = append(m.Results.Removed, si)
 	return nil
