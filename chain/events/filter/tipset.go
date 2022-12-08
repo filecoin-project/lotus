@@ -5,14 +5,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type TipSetFilter struct {
-	id         string
+	id         types.FilterID
 	maxResults int // maximum number of results to collect, 0 is unlimited
 	ch         chan<- interface{}
 
@@ -23,7 +22,7 @@ type TipSetFilter struct {
 
 var _ Filter = (*TipSetFilter)(nil)
 
-func (f *TipSetFilter) ID() string {
+func (f *TipSetFilter) ID() types.FilterID {
 	return f.id
 }
 
@@ -77,7 +76,7 @@ type TipSetFilterManager struct {
 	MaxFilterResults int
 
 	mu      sync.Mutex // guards mutations to filters
-	filters map[string]*TipSetFilter
+	filters map[types.FilterID]*TipSetFilter
 }
 
 func (m *TipSetFilterManager) Apply(ctx context.Context, from, to *types.TipSet) error {
@@ -100,27 +99,27 @@ func (m *TipSetFilterManager) Revert(ctx context.Context, from, to *types.TipSet
 }
 
 func (m *TipSetFilterManager) Install(ctx context.Context) (*TipSetFilter, error) {
-	id, err := uuid.NewRandom()
+	id, err := newFilterID()
 	if err != nil {
-		return nil, xerrors.Errorf("new uuid: %w", err)
+		return nil, xerrors.Errorf("new filter id: %w", err)
 	}
 
 	f := &TipSetFilter{
-		id:         id.String(),
+		id:         id,
 		maxResults: m.MaxFilterResults,
 	}
 
 	m.mu.Lock()
 	if m.filters == nil {
-		m.filters = make(map[string]*TipSetFilter)
+		m.filters = make(map[types.FilterID]*TipSetFilter)
 	}
-	m.filters[id.String()] = f
+	m.filters[id] = f
 	m.mu.Unlock()
 
 	return f, nil
 }
 
-func (m *TipSetFilterManager) Remove(ctx context.Context, id string) error {
+func (m *TipSetFilterManager) Remove(ctx context.Context, id types.FilterID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, found := m.filters[id]; !found {

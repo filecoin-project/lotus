@@ -383,10 +383,14 @@ func init() {
 
 	ethFeeHistoryReward := [][]api.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
+
 	addExample(&uuid.UUID{})
 
-	addExample(api.EthFilterID("c5564560217c43e4bc0484df655e9019"))
-	addExample(api.EthSubscriptionID("b62df77831484129adf6682332ad0725"))
+	filterid, _ := api.EthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
+	addExample(api.EthFilterID(filterid))
+
+	subid, _ := api.EthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
+	addExample(api.EthSubscriptionID(subid))
 
 	pstring := func(s string) *string { return &s }
 	addExample(&api.EthFilterSpec{

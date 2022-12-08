@@ -715,7 +715,7 @@ func (e *EthEvent) EthGetFilterChanges(ctx context.Context, id api.EthFilterID) 
 		return nil, api.ErrNotSupported
 	}
 
-	f, err := e.FilterStore.Get(ctx, string(id))
+	f, err := e.FilterStore.Get(ctx, types.FilterID(id))
 	if err != nil {
 		return nil, err
 	}
@@ -737,7 +737,7 @@ func (e *EthEvent) EthGetFilterLogs(ctx context.Context, id api.EthFilterID) (*a
 		return nil, api.ErrNotSupported
 	}
 
-	f, err := e.FilterStore.Get(ctx, string(id))
+	f, err := e.FilterStore.Get(ctx, types.FilterID(id))
 	if err != nil {
 		return nil, err
 	}
@@ -842,22 +842,22 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *api.Eth
 
 func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *api.EthFilterSpec) (api.EthFilterID, error) {
 	if e.FilterStore == nil || e.EventFilterManager == nil {
-		return "", api.ErrNotSupported
+		return api.EthFilterID{}, api.ErrNotSupported
 	}
 
 	f, err := e.installEthFilterSpec(ctx, filterSpec)
 	if err != nil {
-		return "", err
+		return api.EthFilterID{}, err
 	}
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {
 		// Could not record in store, attempt to delete filter to clean up
 		err2 := e.TipSetFilterManager.Remove(ctx, f.ID())
 		if err2 != nil {
-			return "", xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
+			return api.EthFilterID{}, xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
 		}
 
-		return "", err
+		return api.EthFilterID{}, err
 	}
 
 	return api.EthFilterID(f.ID()), nil
@@ -865,22 +865,22 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *api.EthFilterSp
 
 func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, error) {
 	if e.FilterStore == nil || e.TipSetFilterManager == nil {
-		return "", api.ErrNotSupported
+		return api.EthFilterID{}, api.ErrNotSupported
 	}
 
 	f, err := e.TipSetFilterManager.Install(ctx)
 	if err != nil {
-		return "", err
+		return api.EthFilterID{}, err
 	}
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {
 		// Could not record in store, attempt to delete filter to clean up
 		err2 := e.TipSetFilterManager.Remove(ctx, f.ID())
 		if err2 != nil {
-			return "", xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
+			return api.EthFilterID{}, xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
 		}
 
-		return "", err
+		return api.EthFilterID{}, err
 	}
 
 	return api.EthFilterID(f.ID()), nil
@@ -888,22 +888,22 @@ func (e *EthEvent) EthNewBlockFilter(ctx context.Context) (api.EthFilterID, erro
 
 func (e *EthEvent) EthNewPendingTransactionFilter(ctx context.Context) (api.EthFilterID, error) {
 	if e.FilterStore == nil || e.MemPoolFilterManager == nil {
-		return "", api.ErrNotSupported
+		return api.EthFilterID{}, api.ErrNotSupported
 	}
 
 	f, err := e.MemPoolFilterManager.Install(ctx)
 	if err != nil {
-		return "", err
+		return api.EthFilterID{}, err
 	}
 
 	if err := e.FilterStore.Add(ctx, f); err != nil {
 		// Could not record in store, attempt to delete filter to clean up
 		err2 := e.MemPoolFilterManager.Remove(ctx, f.ID())
 		if err2 != nil {
-			return "", xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
+			return api.EthFilterID{}, xerrors.Errorf("encountered error %v while removing new filter due to %v", err2, err)
 		}
 
-		return "", err
+		return api.EthFilterID{}, err
 	}
 
 	return api.EthFilterID(f.ID()), nil
@@ -914,7 +914,7 @@ func (e *EthEvent) EthUninstallFilter(ctx context.Context, id api.EthFilterID) (
 		return false, api.ErrNotSupported
 	}
 
-	f, err := e.FilterStore.Get(ctx, string(id))
+	f, err := e.FilterStore.Get(ctx, types.FilterID(id))
 	if err != nil {
 		if errors.Is(err, filter.ErrFilterNotFound) {
 			return false, nil
@@ -975,7 +975,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *a
 		f, err := e.TipSetFilterManager.Install(ctx)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
-			_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+			_, _ = e.EthUnsubscribe(ctx, sub.id)
 			return nil, err
 		}
 		sub.addFilter(ctx, f)
@@ -997,7 +997,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *a
 		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
-			_, _ = e.EthUnsubscribe(ctx, api.EthSubscriptionID(sub.id))
+			_, _ = e.EthUnsubscribe(ctx, sub.id)
 			return nil, err
 		}
 		sub.addFilter(ctx, f)
@@ -1013,7 +1013,7 @@ func (e *EthEvent) EthUnsubscribe(ctx context.Context, id api.EthSubscriptionID)
 		return false, api.ErrNotSupported
 	}
 
-	filters, err := e.SubManager.StopSubscription(ctx, string(id))
+	filters, err := e.SubManager.StopSubscription(ctx, id)
 	if err != nil {
 		return false, nil
 	}
@@ -1149,14 +1149,16 @@ type EthSubscriptionManager struct {
 	StateAPI StateAPI
 	ChainAPI ChainAPI
 	mu       sync.Mutex
-	subs     map[string]*ethSubscription
+	subs     map[api.EthSubscriptionID]*ethSubscription
 }
 
 func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSubscription, error) { // nolint
-	id, err := uuid.NewRandom()
+	rawid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, xerrors.Errorf("new uuid: %w", err)
 	}
+	id := api.EthSubscriptionID{}
+	copy(id[:], rawid[:]) // uuid is 16 bytes
 
 	ctx, quit := context.WithCancel(ctx)
 
@@ -1164,7 +1166,7 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSub
 		Chain:    e.Chain,
 		StateAPI: e.StateAPI,
 		ChainAPI: e.ChainAPI,
-		id:       id.String(),
+		id:       id,
 		in:       make(chan interface{}, 200),
 		out:      make(chan api.EthSubscriptionResponse, 20),
 		quit:     quit,
@@ -1172,7 +1174,7 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSub
 
 	e.mu.Lock()
 	if e.subs == nil {
-		e.subs = make(map[string]*ethSubscription)
+		e.subs = make(map[api.EthSubscriptionID]*ethSubscription)
 	}
 	e.subs[sub.id] = sub
 	e.mu.Unlock()
@@ -1182,7 +1184,7 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSub
 	return sub, nil
 }
 
-func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id string) ([]filter.Filter, error) {
+func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id api.EthSubscriptionID) ([]filter.Filter, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -1200,7 +1202,7 @@ type ethSubscription struct {
 	Chain    *store.ChainStore
 	StateAPI StateAPI
 	ChainAPI ChainAPI
-	id       string
+	id       api.EthSubscriptionID
 	in       chan interface{}
 	out      chan api.EthSubscriptionResponse
 
@@ -1224,7 +1226,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 			return
 		case v := <-e.in:
 			resp := api.EthSubscriptionResponse{
-				SubscriptionID: api.EthSubscriptionID(e.id),
+				SubscriptionID: e.id,
 			}
 
 			var err error

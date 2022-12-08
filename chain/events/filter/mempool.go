@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -14,7 +13,7 @@ import (
 )
 
 type MemPoolFilter struct {
-	id         string
+	id         types.FilterID
 	maxResults int // maximum number of results to collect, 0 is unlimited
 	ch         chan<- interface{}
 
@@ -25,7 +24,7 @@ type MemPoolFilter struct {
 
 var _ Filter = (*MemPoolFilter)(nil)
 
-func (f *MemPoolFilter) ID() string {
+func (f *MemPoolFilter) ID() types.FilterID {
 	return f.id
 }
 
@@ -79,7 +78,7 @@ type MemPoolFilterManager struct {
 	MaxFilterResults int
 
 	mu      sync.Mutex // guards mutations to filters
-	filters map[string]*MemPoolFilter
+	filters map[types.FilterID]*MemPoolFilter
 }
 
 func (m *MemPoolFilterManager) WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate) {
@@ -113,27 +112,27 @@ func (m *MemPoolFilterManager) processUpdate(ctx context.Context, u api.MpoolUpd
 }
 
 func (m *MemPoolFilterManager) Install(ctx context.Context) (*MemPoolFilter, error) {
-	id, err := uuid.NewRandom()
+	id, err := newFilterID()
 	if err != nil {
-		return nil, xerrors.Errorf("new uuid: %w", err)
+		return nil, xerrors.Errorf("new filter id: %w", err)
 	}
 
 	f := &MemPoolFilter{
-		id:         id.String(),
+		id:         id,
 		maxResults: m.MaxFilterResults,
 	}
 
 	m.mu.Lock()
 	if m.filters == nil {
-		m.filters = make(map[string]*MemPoolFilter)
+		m.filters = make(map[types.FilterID]*MemPoolFilter)
 	}
-	m.filters[id.String()] = f
+	m.filters[id] = f
 	m.mu.Unlock()
 
 	return f, nil
 }
 
-func (m *MemPoolFilterManager) Remove(ctx context.Context, id string) error {
+func (m *MemPoolFilterManager) Remove(ctx context.Context, id types.FilterID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, found := m.filters[id]; !found {
