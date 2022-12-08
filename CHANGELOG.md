@@ -21,13 +21,13 @@ Numerous SnapDeals related improvements and fixes made it into this release befo
 
 ## New features
 - feat:splitstore:single compaction that can handle prune aka two marksets one compaction (#9571) ([filecoin-project/lotus#9571](https://github.com/filecoin-project/lotus/pull/9571))
-   - Introduces a new SplitStore-mode, `messages`, which will only store on-chain messages. Fixes previously issues with regards to `AutoPrune` not compacting the coldstore.
+   - Introduces a new SplitStore-mode, `messages`, which will only store on-chain messages. Fixes previously issues with regards to `AutoPrune` not compacting the coldstore. [Link to documentation](https://lotus.filecoin.io/lotus/configure/splitstore/)
 - feat: Raft consensus for lotus nodes in a cluster ([filecoin-project/lotus#9294](https://github.com/filecoin-project/lotus/pull/9294))
    - Adds the experimental node cluster feature.
 - feat: storage: Force exit GenerateSingleVanillaProof on cancelled context ([filecoin-project/lotus#9613](https://github.com/filecoin-project/lotus/pull/9613))
    - `GenerateSingleVanillaProof` now respects context, which means that it will skip slow to read sectors :snail: and return a context error. Instead of being blocked forever if storage reads where blocked (e.g disconnected NFS).
 - feat: wdpost: Configurable pre-check timeouts ([filecoin-project/lotus#9680](https://github.com/filecoin-project/lotus/pull/9680))
-   - Adds configuration knobs for setting custom amount of time a proving pre-check can take before a sector and partition will be skipped.
+   - Adds configuration knobs for setting custom amount of time a proving pre-check can take before a sector and partition will be skipped. [Link to documentation](https://lotus.filecoin.io/storage-providers/advanced-configurations/proving/#pre-check-sector-timeout)
 - feat: chain: future proof the from & to address protocols ([filecoin-project/lotus#9515](https://github.com/filecoin-project/lotus/pull/9515))
    - This lets us add new address protocols to go-address without implicitly accepting them in messages on the network.
 - feat: Retrieval into remote blockstores ([filecoin-project/lotus#9565](https://github.com/filecoin-project/lotus/pull/9565))
