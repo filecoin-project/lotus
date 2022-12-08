@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -24,7 +23,7 @@ import (
 	market9 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
-	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
+	mutil "github.com/filecoin-project/go-state-types/migration"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -45,7 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
-var migrationsCmd = &cli.Command{
+var migrateNv17Cmd = &cli.Command{
 	Name:        "migrate-nv17",
 	Description: "Run the nv17 migration",
 	ArgsUsage:   "[block to look back from]",
@@ -63,11 +62,6 @@ var migrationsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
-
-		err := logging.SetLogLevelRegex("badger*", "ERROR")
-		if err != nil {
-			return err
-		}
 
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
@@ -128,7 +122,7 @@ var migrationsCmd = &cli.Command{
 
 		startTime := time.Now()
 
-		newCid2, err := filcns.UpgradeActorsV9(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+		newCid2, err := filcns.UpgradeActorsV9(ctx, sm, mutil.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}
@@ -141,7 +135,7 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
 
 		if !cctx.IsSet("skip-pre-migration") {
-			cache := nv15.NewMemMigrationCache()
+			cache := mutil.NewMemMigrationCache()
 
 			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
 			if err != nil {
@@ -190,7 +184,7 @@ var migrationsCmd = &cli.Command{
 		}
 
 		if cctx.Bool("check-invariants") {
-			err = checkMigrationInvariants(ctx, blk.ParentStateRoot, newCid2, bs, blk.Height-1)
+			err = checkNv17Invariants(ctx, blk.ParentStateRoot, newCid2, bs, blk.Height-1)
 			if err != nil {
 				return err
 			}
@@ -200,7 +194,158 @@ var migrationsCmd = &cli.Command{
 	},
 }
 
-func checkMigrationInvariants(ctx context.Context, v8StateRootCid cid.Cid, v9StateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+var migrateNv18Cmd = &cli.Command{
+	Name:        "migrate-nv18",
+	Description: "Run the nv18 migration",
+	ArgsUsage:   "[block to look back from]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Value: "~/.lotus",
+		},
+		&cli.BoolFlag{
+			Name: "skip-pre-migration",
+		},
+		&cli.BoolFlag{
+			Name: "check-invariants",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := context.TODO()
+
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		blkCid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to parse input: %w", err)
+		}
+
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		if err != nil {
+			return fmt.Errorf("failed to open blockstore: %w", err)
+		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
+
+		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
+		if err != nil {
+			return err
+		}
+
+		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+		defer cs.Close() //nolint:errcheck
+
+		sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil)
+		if err != nil {
+			return err
+		}
+
+		blk, err := cs.GetBlock(ctx, blkCid)
+		if err != nil {
+			return err
+		}
+
+		migrationTs, err := cs.LoadTipSet(ctx, types.NewTipSetKey(blk.Parents...))
+		if err != nil {
+			return err
+		}
+
+		startTime := time.Now()
+
+		newCid2, err := filcns.UpgradeActorsV10(ctx, sm, mutil.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+		if err != nil {
+			return err
+		}
+
+		uncachedMigrationTime := time.Since(startTime)
+
+		fmt.Println("migration height ", blk.Height-1)
+		fmt.Println("old cid ", blk.ParentStateRoot)
+		fmt.Println("new cid ", newCid2)
+		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
+
+		if !cctx.IsSet("skip-pre-migration") {
+			cache := mutil.NewMemMigrationCache()
+
+			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
+			if err != nil {
+				return err
+			}
+
+			startTime = time.Now()
+
+			err = filcns.PreUpgradeActorsV10(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
+			if err != nil {
+				return err
+			}
+
+			preMigration1Time := time.Since(startTime)
+
+			ts2, err := cs.GetTipsetByHeight(ctx, blk.Height-15, migrationTs, false)
+			if err != nil {
+				return err
+			}
+
+			startTime = time.Now()
+
+			err = filcns.PreUpgradeActorsV10(ctx, sm, cache, ts2.ParentState(), ts2.Height()-1, ts2)
+			if err != nil {
+				return err
+			}
+
+			preMigration2Time := time.Since(startTime)
+
+			startTime = time.Now()
+
+			newCid1, err := filcns.UpgradeActorsV10(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+			if err != nil {
+				return err
+			}
+
+			cachedMigrationTime := time.Since(startTime)
+
+			if newCid1 != newCid2 {
+				return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
+					newCid2)
+			}
+			fmt.Println("completed premigration 1, took ", preMigration1Time)
+			fmt.Println("completed premigration 2, took ", preMigration2Time)
+			fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
+		}
+
+		if cctx.Bool("check-invariants") {
+			// TODO update invariants for nv18
+			err = checkNv17Invariants(ctx, blk.ParentStateRoot, newCid2, bs, blk.Height-1)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+}
+
+func checkNv17Invariants(ctx context.Context, v8StateRootCid cid.Cid, v9StateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 	actorStore := store.ActorStore(ctx, bs)
 	startTime := time.Now()
 
