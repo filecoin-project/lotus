@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -781,15 +782,15 @@ type FullNode interface {
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthUint64) (EthTx, error)    //perm:read
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthUint64, txIndex EthUint64) (EthTx, error) //perm:read
 
-	EthGetCode(ctx context.Context, address EthAddress, blkOpt string) (EthBytes, error)                                       //perm:read
-	EthGetStorageAt(ctx context.Context, address EthAddress, position EthBytes, blkParam string) (EthBytes, error)             //perm:read
-	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                                 //perm:read
-	EthChainId(ctx context.Context) (EthUint64, error)                                                                         //perm:read
-	NetVersion(ctx context.Context) (string, error)                                                                            //perm:read
-	NetListening(ctx context.Context) (bool, error)                                                                            //perm:read
-	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                                 //perm:read
-	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                                        //perm:read
-	EthFeeHistory(ctx context.Context, blkCount EthUint64, newestBlk string, rewardPercentiles []int64) (EthFeeHistory, error) //perm:read
+	EthGetCode(ctx context.Context, address EthAddress, blkOpt string) (EthBytes, error)                                         //perm:read
+	EthGetStorageAt(ctx context.Context, address EthAddress, position EthBytes, blkParam string) (EthBytes, error)               //perm:read
+	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                                   //perm:read
+	EthChainId(ctx context.Context) (EthUint64, error)                                                                           //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                              //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                              //perm:read
+	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                                   //perm:read
+	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                                          //perm:read
+	EthFeeHistory(ctx context.Context, blkCount EthUint64, newestBlk string, rewardPercentiles []float64) (EthFeeHistory, error) //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)             //perm:read
 	EthEstimateGas(ctx context.Context, tx EthCall) (EthUint64, error)          //perm:read
@@ -837,6 +838,9 @@ type FullNode interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
+
+	RaftState(ctx context.Context) (*RaftStateData, error) //perm:read
+	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
 }
 
 type StorageAsk struct {
@@ -1086,7 +1090,11 @@ type RetrievalOrder struct {
 	Client                  address.Address
 	Miner                   address.Address
 	MinerPeer               *retrievalmarket.RetrievalPeer
+
+	RemoteStore *RemoteStoreID `json:"RemoteStore,omitempty"`
 }
+
+type RemoteStoreID = uuid.UUID
 
 type InvocResult struct {
 	MsgCid         cid.Cid

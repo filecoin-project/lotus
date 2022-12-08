@@ -16,6 +16,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -157,4 +158,13 @@ func (pb *proxyingBlockstore) PutMany(ctx context.Context, blocks []blocks.Block
 	}
 	pb.lk.Unlock()
 	return pb.Blockstore.PutMany(ctx, blocks)
+}
+
+func (pb *proxyingBlockstore) View(ctx context.Context, c cid.Cid, callback func([]byte) error) error {
+	blk, err := pb.Get(ctx, c)
+	if err != nil {
+		return xerrors.Errorf("failed to Get cid %s: %w", c, err)
+	}
+
+	return callback(blk.RawData())
 }

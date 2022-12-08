@@ -14,13 +14,15 @@ import (
 )
 
 // Distribution
-var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100000)
+var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100_000, 250_000, 500_000, 1000_000)
 var workMillisecondsDistribution = view.Distribution(
 	250, 500, 1000, 2000, 5000, 10_000, 30_000, 60_000, 2*60_000, 5*60_000, 10*60_000, 15*60_000, 30*60_000, // short sealing tasks
 	40*60_000, 45*60_000, 50*60_000, 55*60_000, 60*60_000, 65*60_000, 70*60_000, 75*60_000, 80*60_000, 85*60_000, 100*60_000, 120*60_000, // PC2 / C2 range
 	130*60_000, 140*60_000, 150*60_000, 160*60_000, 180*60_000, 200*60_000, 220*60_000, 260*60_000, 300*60_000, // PC1 range
 	350*60_000, 400*60_000, 600*60_000, 800*60_000, 1000*60_000, 1300*60_000, 1800*60_000, 4000*60_000, 10000*60_000, // intel PC1 range
 )
+
+var queueSizeDistribution = view.Distribution(0, 1, 2, 3, 5, 7, 10, 15, 25, 35, 50, 70, 90, 130, 200, 300, 500, 1000, 2000, 5000, 10000)
 
 // Global Tags
 var (
@@ -47,6 +49,9 @@ var (
 	WorkerHostname, _ = tag.NewKey("worker_hostname")
 	StorageID, _      = tag.NewKey("storage_id")
 	SectorState, _    = tag.NewKey("sector_state")
+
+	PathSeal, _    = tag.NewKey("path_seal")
+	PathStorage, _ = tag.NewKey("path_storage")
 
 	// rcmgr
 	ServiceID, _  = tag.NewKey("svc")
@@ -135,6 +140,13 @@ var (
 	StorageReservedBytes    = stats.Int64("storage/path_reserved_bytes", "reserved storage bytes", stats.UnitBytes)
 	StorageLimitUsedBytes   = stats.Int64("storage/path_limit_used_bytes", "used optional storage limit bytes", stats.UnitBytes)
 	StorageLimitMaxBytes    = stats.Int64("storage/path_limit_max_bytes", "optional storage limit", stats.UnitBytes)
+
+	SchedAssignerCycleDuration           = stats.Float64("sched/assigner_cycle_ms", "Duration of scheduler assigner cycle", stats.UnitMilliseconds)
+	SchedAssignerCandidatesDuration      = stats.Float64("sched/assigner_cycle_candidates_ms", "Duration of scheduler assigner candidate matching step", stats.UnitMilliseconds)
+	SchedAssignerWindowSelectionDuration = stats.Float64("sched/assigner_cycle_window_select_ms", "Duration of scheduler window selection step", stats.UnitMilliseconds)
+	SchedAssignerSubmitDuration          = stats.Float64("sched/assigner_cycle_submit_ms", "Duration of scheduler window submit step", stats.UnitMilliseconds)
+	SchedCycleOpenWindows                = stats.Int64("sched/assigner_cycle_open_window", "Number of open windows in scheduling cycles", stats.UnitDimensionless)
+	SchedCycleQueueSize                  = stats.Int64("sched/assigner_cycle_task_queue_entry", "Number of task queue entries in scheduling cycles", stats.UnitDimensionless)
 
 	DagStorePRInitCount        = stats.Int64("dagstore/pr_init_count", "PieceReader init count", stats.UnitDimensionless)
 	DagStorePRBytesRequested   = stats.Int64("dagstore/pr_requested_bytes", "PieceReader requested bytes", stats.UnitBytes)
@@ -380,52 +392,77 @@ var (
 	StorageFSAvailableView = &view.View{
 		Measure:     StorageFSAvailable,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageAvailableView = &view.View{
 		Measure:     StorageAvailable,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageReservedView = &view.View{
 		Measure:     StorageReserved,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageLimitUsedView = &view.View{
 		Measure:     StorageLimitUsed,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageCapacityBytesView = &view.View{
 		Measure:     StorageCapacityBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageFSAvailableBytesView = &view.View{
 		Measure:     StorageFSAvailableBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageAvailableBytesView = &view.View{
 		Measure:     StorageAvailableBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageReservedBytesView = &view.View{
 		Measure:     StorageReservedBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageLimitUsedBytesView = &view.View{
 		Measure:     StorageLimitUsedBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
 	}
 	StorageLimitMaxBytesView = &view.View{
 		Measure:     StorageLimitMaxBytes,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{StorageID},
+		TagKeys:     []tag.Key{StorageID, PathStorage, PathSeal},
+	}
+
+	SchedAssignerCycleDurationView = &view.View{
+		Measure:     SchedAssignerCycleDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	SchedAssignerCandidatesDurationView = &view.View{
+		Measure:     SchedAssignerCandidatesDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	SchedAssignerWindowSelectionDurationView = &view.View{
+		Measure:     SchedAssignerWindowSelectionDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	SchedAssignerSubmitDurationView = &view.View{
+		Measure:     SchedAssignerSubmitDuration,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	SchedCycleOpenWindowsView = &view.View{
+		Measure:     SchedCycleOpenWindows,
+		Aggregation: queueSizeDistribution,
+	}
+	SchedCycleQueueSizeView = &view.View{
+		Measure:     SchedCycleQueueSize,
+		Aggregation: queueSizeDistribution,
 	}
 
 	DagStorePRInitCountView = &view.View{
@@ -697,6 +734,7 @@ var MinerNodeViews = append([]*view.View{
 	WorkerCallsReturnedCountView,
 	WorkerUntrackedCallsReturnedView,
 	WorkerCallsReturnedDurationView,
+
 	SectorStatesView,
 	StorageFSAvailableView,
 	StorageAvailableView,
@@ -708,6 +746,14 @@ var MinerNodeViews = append([]*view.View{
 	StorageReservedBytesView,
 	StorageLimitUsedBytesView,
 	StorageLimitMaxBytesView,
+
+	SchedAssignerCycleDurationView,
+	SchedAssignerCandidatesDurationView,
+	SchedAssignerWindowSelectionDurationView,
+	SchedAssignerSubmitDurationView,
+	SchedCycleOpenWindowsView,
+	SchedCycleQueueSizeView,
+
 	DagStorePRInitCountView,
 	DagStorePRBytesRequestedView,
 	DagStorePRBytesDiscardedView,

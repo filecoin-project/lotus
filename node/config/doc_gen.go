@@ -424,6 +424,12 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 		{
+			Name: "Cluster",
+			Type: "UserRaftConfig",
+
+			Comment: ``,
+		},
+		{
 			Name: "ActorEvent",
 			Type: "ActorEventConfig",
 
@@ -695,6 +701,29 @@ After changing this option, confirm that the new value works in your setup by in
 'lotus-miner proving compute window-post 0'`,
 		},
 		{
+			Name: "SingleCheckTimeout",
+			Type: "Duration",
+
+			Comment: `Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
+
+WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+test challenge took longer than this timeout
+WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this sector are
+blocked (e.g. in case of disconnected NFS mount)`,
+		},
+		{
+			Name: "PartitionCheckTimeout",
+			Type: "Duration",
+
+			Comment: `Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
+the partition which didn't get checked on time will be skipped
+
+WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+test challenge took longer than this timeout
+WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this partition are
+blocked or slow`,
+		},
+		{
 			Name: "DisableBuiltinWindowPoSt",
 			Type: "bool",
 
@@ -949,7 +978,7 @@ If you see stuck Finalize tasks after enabling this setting, check
 		},
 		{
 			Name: "ResourceFiltering",
-			Type: "sealer.ResourceFilteringStrategy",
+			Type: "ResourceFilteringStrategy",
 
 			Comment: `ResourceFiltering instructs the system which resource filtering strategy
 to use when evaluating tasks against this worker. An empty value defaults
@@ -1257,6 +1286,68 @@ Default is 20 (about once a week).`,
 			Type: "DAGStoreConfig",
 
 			Comment: ``,
+		},
+	},
+	"UserRaftConfig": []DocField{
+		{
+			Name: "ClusterModeEnabled",
+			Type: "bool",
+
+			Comment: `EXPERIMENTAL. config to enabled node cluster with raft consensus`,
+		},
+		{
+			Name: "DataFolder",
+			Type: "string",
+
+			Comment: `A folder to store Raft's data.`,
+		},
+		{
+			Name: "InitPeersetMultiAddr",
+			Type: "[]string",
+
+			Comment: `InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
+peers (with no prior state). It is ignored when Raft was already
+initialized or when starting in staging mode.`,
+		},
+		{
+			Name: "WaitForLeaderTimeout",
+			Type: "Duration",
+
+			Comment: `LeaderTimeout specifies how long to wait for a leader before
+failing an operation.`,
+		},
+		{
+			Name: "NetworkTimeout",
+			Type: "Duration",
+
+			Comment: `NetworkTimeout specifies how long before a Raft network
+operation is timed out`,
+		},
+		{
+			Name: "CommitRetries",
+			Type: "int",
+
+			Comment: `CommitRetries specifies how many times we retry a failed commit until
+we give up.`,
+		},
+		{
+			Name: "CommitRetryDelay",
+			Type: "Duration",
+
+			Comment: `How long to wait between retries`,
+		},
+		{
+			Name: "BackupsRotate",
+			Type: "int",
+
+			Comment: `BackupsRotate specifies the maximum number of Raft's DataFolder
+copies that we keep as backups (renaming) after cleanup.`,
+		},
+		{
+			Name: "Tracing",
+			Type: "bool",
+
+			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
 		},
 	},
 	"Wallet": []DocField{

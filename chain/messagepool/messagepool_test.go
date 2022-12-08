@@ -545,7 +545,7 @@ func TestLoadLocal(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		//stm: @CHAIN_MEMPOOL_PUSH_001
-		cid, err := mp.Push(context.TODO(), m)
+		cid, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -618,7 +618,7 @@ func TestClearAll(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		//stm: @CHAIN_MEMPOOL_PUSH_001
-		_, err := mp.Push(context.TODO(), m)
+		_, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -676,7 +676,7 @@ func TestClearNonLocal(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		//stm: @CHAIN_MEMPOOL_PUSH_001
-		_, err := mp.Push(context.TODO(), m)
+		_, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -749,7 +749,7 @@ func TestUpdates(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 		//stm: @CHAIN_MEMPOOL_PUSH_001
-		_, err := mp.Push(context.TODO(), m)
+		_, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1080,4 +1080,41 @@ func TestRemoveMessage(t *testing.T) {
 		msgs := mp.pendingFor(context.TODO(), from)
 		assert.Len(t, msgs, 0)
 	}
+}
+
+func TestCapGasFee(t *testing.T) {
+	t.Run("use default maxfee", func(t *testing.T) {
+		msg := &types.Message{
+			GasLimit:   100_000_000,
+			GasFeeCap:  abi.NewTokenAmount(100_000_000),
+			GasPremium: abi.NewTokenAmount(100_000),
+		}
+		CapGasFee(func() (abi.TokenAmount, error) {
+			return abi.NewTokenAmount(100_000_000_000), nil
+		}, msg, nil)
+		assert.Equal(t, msg.GasFeeCap.Int64(), int64(1000))
+		assert.Equal(t, msg.GasPremium.Int.Int64(), int64(1000))
+	})
+
+	t.Run("use spec maxfee", func(t *testing.T) {
+		msg := &types.Message{
+			GasLimit:   100_000_000,
+			GasFeeCap:  abi.NewTokenAmount(100_000_000),
+			GasPremium: abi.NewTokenAmount(100_000),
+		}
+		CapGasFee(nil, msg, &api.MessageSendSpec{MaxFee: abi.NewTokenAmount(100_000_000_000)})
+		assert.Equal(t, msg.GasFeeCap.Int64(), int64(1000))
+		assert.Equal(t, msg.GasPremium.Int.Int64(), int64(1000))
+	})
+
+	t.Run("use smaller feecap value when fee is enough", func(t *testing.T) {
+		msg := &types.Message{
+			GasLimit:   100_000_000,
+			GasFeeCap:  abi.NewTokenAmount(100_000),
+			GasPremium: abi.NewTokenAmount(100_000_000),
+		}
+		CapGasFee(nil, msg, &api.MessageSendSpec{MaxFee: abi.NewTokenAmount(100_000_000_000_000)})
+		assert.Equal(t, msg.GasFeeCap.Int64(), int64(100_000))
+		assert.Equal(t, msg.GasPremium.Int.Int64(), int64(100_000))
+	})
 }

@@ -110,7 +110,7 @@ func TestChainExportImport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewMemory()
+	nbs := blockstore.NewMemorySync()
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
@@ -148,7 +148,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewMemory()
+	nbs := blockstore.NewMemorySync()
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 

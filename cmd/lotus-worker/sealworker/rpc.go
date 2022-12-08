@@ -92,8 +92,8 @@ func (w *Worker) StorageAddLocal(ctx context.Context, path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	if err := w.Storage.SetStorage(func(sc *paths.StorageConfig) {
-		sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: path})
+	if err := w.Storage.SetStorage(func(sc *storiface.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, storiface.LocalPath{Path: path})
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}
@@ -127,8 +127,8 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 
 	// drop from the persisted storage.json
 	var found bool
-	if err := w.Storage.SetStorage(func(sc *paths.StorageConfig) {
-		out := make([]paths.LocalPath, 0, len(sc.StoragePaths))
+	if err := w.Storage.SetStorage(func(sc *storiface.StorageConfig) {
+		out := make([]storiface.LocalPath, 0, len(sc.StoragePaths))
 		for _, storagePath := range sc.StoragePaths {
 			if storagePath.Path != path {
 				out = append(out, storagePath)

@@ -585,9 +585,16 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
 
+	// setup Storage Miners
 	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
+	}
+
+	// setup FEVM
+	stateroot, err = SetupFEVM(ctx, cs, sys, stateroot, template.NetworkVersion)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to setup FEVM functionality: %w", err)
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
@@ -694,6 +701,7 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 		Code:    codecid,
 		Head:    vm.EmptyObjectCid,
 		Balance: big.Zero(),
+		Address: &builtintypes.EthereumAddressManagerActorAddr, // so that it can create ETH0
 	}
 	return nst.SetActor(builtintypes.EthereumAddressManagerActorAddr, header)
 }

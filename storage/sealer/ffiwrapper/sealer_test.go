@@ -327,7 +327,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	post(t, sb, nil, s)
 
-	if err := sb.FinalizeSector(context.TODO(), si, nil); err != nil {
+	if err := sb.FinalizeSector(context.TODO(), si); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
@@ -390,7 +390,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 
 	precommit := time.Now()
 
-	if err := sb.FinalizeSector(context.TODO(), si, nil); err != nil {
+	if err := sb.FinalizeSector(context.TODO(), si); err != nil {
 		t.Fatal(err)
 	}
 

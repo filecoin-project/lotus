@@ -1,12 +1,13 @@
 version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@1.3.2
+  docker: circleci/docker@2.1.4
 
 executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.18.1
+      - image: cimg/go:1.18.8
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -23,11 +24,6 @@ executors:
 
 
 commands:
-  install-deps:
-    steps:
-      - run: |
-          sudo apt update
-          sudo apt install python-is-python3
   prepare:
     parameters:
       linux:
@@ -41,9 +37,8 @@ commands:
     steps:
       - checkout
       - git_fetch_all_tags
-      - checkout
       - when:
-          condition: << parameters.linux >>
+          condition: <<parameters.linux>>
           steps:
             - run:
                 name: Check Go Version
@@ -56,6 +51,8 @@ commands:
                   fi
             - run: sudo apt-get update
             - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+            - run: sudo apt-get install python-is-python3
+
       - when:
           condition: <<parameters.darwin>>
           steps:
@@ -70,21 +67,12 @@ commands:
                   echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
             - run: go version
             - run:
-                name: Install pkg-config, goreleaser, and sha512sum
-                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config goreleaser/tap/goreleaser coreutils
+                name: Install dependencies with Homebrew
+                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config coreutils jq hwloc
             - run:
                 name: Install Rust
                 command: |
                   curl https://sh.rustup.rs -sSf | sh -s -- -y
-            - run:
-                name: Install hwloc
-                command: |
-                  mkdir ~/hwloc
-                  curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
-                  cd ~/hwloc
-                  tar -xvzpf hwloc-2.4.1.tar.gz
-                  cd hwloc-2.4.1
-                  ./configure && make && sudo make install
       - run: git submodule sync
       - run: git submodule update --init
   download-params:
@@ -104,28 +92,13 @@ commands:
   install_ipfs:
     steps:
       - run: |
-          apt update
-          apt install -y wget
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512
-          if [ "$(sha512sum go-ipfs_v0.12.2_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512)" ]
-          then
-            echo "ipfs failed checksum check"
-            exit 1
-          fi
-          tar -xf go-ipfs_v0.12.2_linux-amd64.tar.gz
-          mv go-ipfs/ipfs /usr/local/bin/ipfs
-          chmod +x /usr/local/bin/ipfs
-  install_ipfs_macos:
-    steps:
-      - run: |
-          curl -O https://dist.ipfs.io/kubo/v0.14.0/kubo_v0.14.0_darwin-amd64.tar.gz
-          tar -xvzf kubo_v0.14.0_darwin-amd64.tar.gz
+          curl -O https://dist.ipfs.tech/kubo/v0.16.0/kubo_v0.16.0_linux-amd64.tar.gz
+          tar -xvzf kubo_v0.16.0_linux-amd64.tar.gz
           pushd kubo
           sudo bash install.sh
           popd
-          rm -rf kubo/
-          rm kubo_v0.14.0_darwin-amd64.tar.gz
+          rm -rf kubo
+          rm kubo_v0.16.0_linux-amd64.tar.gz
   git_fetch_all_tags:
     steps:
       - run:
@@ -156,7 +129,6 @@ jobs:
   mod-tidy-check:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run: go mod tidy -v
       - run:
@@ -164,37 +136,6 @@ jobs:
           command: |
             git --no-pager diff go.mod go.sum
             git --no-pager diff --quiet go.mod go.sum
-  build-linux:
-    executor: golang
-    steps:
-      - install-deps
-      - prepare
-      - run: sudo apt-get update
-      - run: sudo apt-get install npm
-      - run:
-          command: make buildall
-      - run:
-          name: check tag and version output match
-          command: ./scripts/version-check.sh ./lotus
-      - store_artifacts:
-          path: lotus
-      - store_artifacts:
-          path: lotus-miner
-      - store_artifacts:
-          path: lotus-worker
-      - run: mkdir linux && mv lotus lotus-miner lotus-worker linux/
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - linux
-
-  build-debug:
-    executor: golang
-    steps:
-      - install-deps
-      - prepare
-      - run:
-          command: make debug
 
   test:
     description: |
@@ -224,7 +165,6 @@ jobs:
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
     executor: << parameters.executor >>
     steps:
-      - install-deps
       - prepare
       - run:
           command: make deps lotus
@@ -268,7 +208,6 @@ jobs:
           submodule is used.
     executor: << parameters.executor >>
     steps:
-      - install-deps
       - prepare
       - run:
           command: make deps lotus
@@ -311,121 +250,104 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
-  build-ntwk-calibration:
-    description: |
-      Compile lotus binaries for the calibration network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
+
+  build-linux-amd64:
+    executor: golang
     steps:
-      - install-deps
       - prepare
-      - run: make calibnet
-      - run: mkdir linux-calibrationnet && mv lotus lotus-miner lotus-worker linux-calibrationnet
+      - run: make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
+      - run: |
+          mkdir -p /tmp/workspace/linux_amd64_v1 && \
+          mv lotus lotus-miner lotus-worker /tmp/workspace/linux_amd64_v1/
       - persist_to_workspace:
-          root: "."
+          root: /tmp/workspace
           paths:
-            - linux-calibrationnet
-  build-ntwk-butterfly:
-    description: |
-      Compile lotus binaries for the butterfly network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: make butterflynet
-      - run: mkdir linux-butterflynet && mv lotus lotus-miner lotus-worker linux-butterflynet
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - linux-butterflynet
-  build-lotus-soup:
-    description: |
-      Compile `lotus-soup` Testground test plan
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: cd extern/filecoin-ffi && make
-      - run:
-          name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../.. && go mod tidy
-      - run:
-          name: "build lotus-soup testplan"
-          command: pushd testplans/lotus-soup && go build -tags=testground .
-  trigger-testplans:
-    description: |
-      Trigger `lotus-soup` test cases on TaaS
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run:
-          name: "download testground"
-          command: wget https://gist.github.com/nonsense/5fbf3167cac79945f658771aed32fc44/raw/2e17eb0debf7ec6bdf027c1bdafc2c92dd97273b/testground-d3e9603 -O ~/testground-cli && chmod +x ~/testground-cli
-      - run:
-          name: "prepare .env.toml"
-          command: pushd testplans/lotus-soup && mkdir -p $HOME/testground && cp env-ci.toml $HOME/testground/.env.toml && echo 'endpoint="https://ci.testground.ipfs.team"' >> $HOME/testground/.env.toml && echo 'user="circleci"' >> $HOME/testground/.env.toml
-      - run:
-          name: "prepare testground home dir and link test plans"
-          command: mkdir -p $HOME/testground/plans && ln -s $(pwd)/testplans/lotus-soup $HOME/testground/plans/lotus-soup
-      - run:
-          name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go get github.com/filecoin-project/lotus@master
-      - run:
-          name: "trigger deals baseline testplan on taas"
-          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-      - run:
-          name: "trigger payment channel stress testplan on taas"
-          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-  build-macos:
+            - linux_amd64_v1
+
+  build-darwin-amd64:
     description: build darwin lotus binary
-    parameters:
-      publish:
-        default: false
-        description: publish github release and homebrew?
-        type: boolean
+    working_directory: ~/go/src/github.com/filecoin-project/lotus
     macos:
       xcode: "13.4.1"
-    working_directory: ~/go/src/github.com/filecoin-project/lotus
     steps:
       - prepare:
           linux: false
           darwin: true
-      - install_ipfs_macos
-      - restore_cache:
-          name: restore cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
+      - run: make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
+      - run: |
+          mkdir -p /tmp/workspace/darwin_amd64_v1 && \
+          mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_amd64_v1/
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - darwin_amd64_v1
+
+  build-darwin-arm64:
+    description: self-hosted m1 runner
+    working_directory: ~/go/src/github.com/filecoin-project/lotus
+    machine: true
+    resource_class: filecoin-project/self-hosted-m1
+    steps:
+      - run: echo 'export PATH=/opt/homebrew/bin:"$PATH"' >> "$BASH_ENV"
+      - prepare:
+          linux: false
+          darwin: true
+      - run: |
+          export CPATH=$(brew --prefix)/include
+          export LIBRARY_PATH=$(brew --prefix)/lib
+          make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
+      - run: |
+          mkdir -p /tmp/workspace/darwin_arm64 && \
+          mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_arm64/
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - darwin_arm64
+      - run:
+          command: make clean
+          when: always
+      - run:
+          name: cleanup homebrew
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall pkg-config coreutils jq hwloc
+          when: always
+
+  release:
+    executor: golang
+    parameters:
+      dry-run:
+        default: false
+        description: should this release actually publish it's artifacts?
+        type: boolean
+    steps:
+      - checkout
+      - run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt update
+          sudo apt install goreleaser-pro
+      - install_ipfs
+      - attach_workspace:
+          at: /tmp/workspace
       - when:
-          condition: << parameters.publish >>
+          condition: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist
+            - run: goreleaser release --rm-dist --snapshot --debug
             - run: ./scripts/generate-checksums.sh
-            - run: ./scripts/publish-checksums.sh
       - when:
           condition:
-            not: << parameters.publish >>
+            not: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist --snapshot
+            - run: goreleaser release --rm-dist --debug
             - run: ./scripts/generate-checksums.sh
-      - store_artifacts:
-          path: dist
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - dist
-      - save_cache:
-          name: save cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-          paths:
-            - "~/.rustup"
-            - "~/.cargo"
+            - run: ./scripts/publish-checksums.sh
 
   build-appimage:
     machine:
@@ -433,7 +355,7 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: "."
+          at: /tmp/workspace
       - run:
           name: Update Go
           command: |
@@ -468,13 +390,11 @@ jobs:
           command: |
             sed -i "s/version: latest/version: ${CIRCLE_TAG:-latest}/" AppImageBuilder.yml
             make appimage
-      - run:
-          name: prepare workspace
-          command: |
-            mkdir appimage
-            mv Lotus-*.AppImage appimage
+      - run: |
+            mkdir -p /tmp/workspace/appimage && \
+            mv Lotus-*.AppImage /tmp/workspace/appimage/
       - persist_to_workspace:
-          root: "."
+          root: /tmp/workspace
           paths:
             - appimage
 
@@ -482,7 +402,6 @@ jobs:
   gofmt:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run:
           command: "! go fmt ./... 2>&1 | read"
@@ -490,7 +409,6 @@ jobs:
   gen-check:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
@@ -505,7 +423,6 @@ jobs:
   docs-check:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run: go install golang.org/x/tools/cmd/goimports
       - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
@@ -542,7 +459,6 @@ jobs:
           Arguments to pass to golangci-lint
     executor: << parameters.executor >>
     steps:
-      - install-deps
       - prepare
       - run:
           command: make deps
@@ -570,13 +486,13 @@ jobs:
     steps:
       - run:
           name: Install git jq curl
-          command: apt update && apt install -y git jq curl
+          command: apt update && apt install -y git jq curl sudo
       - checkout
       - git_fetch_all_tags
       - checkout
       - install_ipfs
       - attach_workspace:
-          at: "."
+          at: /tmp/workspace
       - when:
           condition: << parameters.linux >>
           steps:
@@ -621,129 +537,92 @@ jobs:
           shell: /bin/bash -o pipefail
           command: |
             snapcraft upload *.snap --release << parameters.channel >>
-
-  build-and-push-image:
-    description: build and push docker images to public AWS ECR registry
-    executor: aws-cli/default
+  build-docker:
+    description: >
+      Publish to Dockerhub
+    executor: docker/docker
     parameters:
-      profile-name:
+      image:
         type: string
-        default: "default"
-        description: AWS profile name to be configured.
-
-      aws-access-key-id:
-        type: env_var_name
-        default: AWS_ACCESS_KEY_ID
+        default: lotus
         description: >
-          AWS access key id for IAM role. Set this to the name of
-          the environment variable you will set to hold this
-          value, i.e. AWS_ACCESS_KEY.
-
-      aws-secret-access-key:
-        type: env_var_name
-        default: AWS_SECRET_ACCESS_KEY
-        description: >
-          AWS secret key for IAM role. Set this to the name of
-          the environment variable you will set to hold this
-          value, i.e. AWS_SECRET_ACCESS_KEY.
-
-      region:
-        type: env_var_name
-        default: AWS_REGION
-        description: >
-          Name of env var storing your AWS region information,
-          defaults to AWS_REGION
-
-      account-url:
-        type: env_var_name
-        default: AWS_ECR_ACCOUNT_URL
-        description: >
-          Env var storing Amazon ECR account URL that maps to an AWS account,
-          e.g. {awsAccountNum}.dkr.ecr.us-west-2.amazonaws.com
-          defaults to AWS_ECR_ACCOUNT_URL
-
-      dockerfile:
+          Passed to the docker build process to determine which image in the
+          Dockerfile should be built. Expected values are `lotus`,
+          `lotus-all-in-one`
+      network:
         type: string
-        default: Dockerfile
-        description: Name of dockerfile to use. Defaults to Dockerfile.
-
-      path:
-        type: string
-        default: .
-        description: Path to the directory containing your Dockerfile and build context. Defaults to . (working directory).
-
-      extra-build-args:
+        default: "mainnet"
+        description: >
+          Passed to the docker build process using GOFLAGS+=-tags=<<network>>.
+          Expected values are `debug`, `2k`, `calibnet`, `butterflynet`,
+          `interopnet`.
+      channel:
         type: string
         default: ""
         description: >
-          Extra flags to pass to docker build. For examples, see
-          https://docs.docker.com/engine/reference/commandline/build
-
-      repo:
-        type: string
-        description: Name of an Amazon ECR repository
-
-      tag:
-        type: string
-        default: "latest"
-        description: A comma-separated string containing docker image tags to build and push (default = latest)
-
-      target:
-        type: string
-        default: "lotus-all-in-one"
-        description: Docker target to build
-
+          The release channel to use for this image.
+      push:
+        type: boolean
+        default: false
+        description: >
+          When true, pushes the image to Dockerhub
     steps:
-      - run:
-          name: Confirm that environment variables are set
-          command: |
-            if [ -z "$AWS_ACCESS_KEY_ID" ]; then
-              echo "No AWS_ACCESS_KEY_ID is set. Skipping build-and-push job ..."
-              circleci-agent step halt
-            fi
-
-      - aws-cli/setup:
-          profile-name: <<parameters.profile-name>>
-          aws-access-key-id: <<parameters.aws-access-key-id>>
-          aws-secret-access-key: <<parameters.aws-secret-access-key>>
-          aws-region: <<parameters.region>>
-
-      - run:
-          name: Log into Amazon ECR
-          command: |
-            aws ecr-public get-login-password --region $<<parameters.region>> --profile <<parameters.profile-name>> | docker login --username AWS --password-stdin $<<parameters.account-url>>
-
+      - setup_remote_docker
       - checkout
-
-      - setup_remote_docker:
-          version: 19.03.13
-          docker_layer_caching: false
-
-      - run:
-          name: Build docker image
-          command: |
-            registry_id=$(echo $<<parameters.account-url>> | sed "s;\..*;;g")
-
-            docker_tag_args=""
-            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
-            for tag in "${DOCKER_TAGS[@]}"; do
-              docker_tag_args="$docker_tag_args -t $<<parameters.account-url>>/<<parameters.repo>>:$tag"
-            done
-
-            docker build \
-              <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
-              --target <<parameters.target>> \
-              -f <<parameters.path>>/<<parameters.dockerfile>> \
-              $docker_tag_args \
-              <<parameters.path>>
-
-      - run:
-          name: Push image to Amazon ECR
-          command: |
-            IFS="," read -ra DOCKER_TAGS \<<< "<< parameters.tag >>"
-            for tag in "${DOCKER_TAGS[@]}"; do
-              docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
-            done
+      - docker/check:
+          docker-username: DOCKERHUB_USERNAME
+          docker-password: DOCKERHUB_PASSWORD
+      - when:
+          condition:
+            equal: [ mainnet, <<parameters.network>> ]
+          steps:
+            - when:
+                condition: <parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>>
+                      tag: <<parameters.channel>>
+                  - run:
+                      name: Docker push
+                      command: |
+                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        if [[ ! -z $CIRCLE_TAG ]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
+                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
+                        fi
+            - unless:
+                condition: <<parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>>
+      - when:
+          condition:
+            not:
+              equal: [ mainnet, <<parameters.network>> ]
+          steps:
+            - when:
+                condition: <<parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
+                      tag: <<parameters.channel>>-<<parameters.network>>
+                  - run:
+                      name: Docker push
+                      command: |
+                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
+                        if [[ ! -z $CIRCLE_TAG ]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
+                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
+                        fi
+            - unless:
+                condition: <<parameters.push>>
+                steps:
+                  - docker/build:
+                      image: filecoin/<<parameters.image>>
+                      extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
 
   publish-packer-snap:
     description: build packer image with snap. mainnet only.
@@ -751,55 +630,8 @@ jobs:
       name: packer
     steps:
       - checkout
-      - attach_workspace:
-          at: "."
       - packer_build:
           template: tools/packer/lotus-snap.pkr.hcl
-  publish-dockerhub:
-    description: publish to dockerhub
-    machine:
-      image: ubuntu-2004:202010-01
-    parameters:
-      tag:
-        type: string
-        default: latest
-    steps:
-      - checkout
-      - run:
-          name: dockerhub login
-          command: echo $DOCKERHUB_PASSWORD | docker login --username $DOCKERHUB_USERNAME --password-stdin
-      - run:
-          name: docker build
-          command: |
-            docker build --target lotus -t filecoin/lotus:<< parameters.tag >> -f Dockerfile.lotus .
-            docker build --target lotus-gateway -t filecoin/lotus-gateway:<< parameters.tag >> -f Dockerfile.lotus .
-            docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:<< parameters.tag >> -f Dockerfile.lotus .
-            if [[ ! -z $CIRCLE_SHA1 ]]; then
-              docker build --target lotus -t filecoin/lotus:$CIRCLE_SHA1 -f Dockerfile.lotus .
-              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_SHA1 -f Dockerfile.lotus .
-              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_SHA1 -f Dockerfile.lotus .
-            fi
-            if [[ ! -z $CIRCLE_TAG ]]; then
-              docker build --target lotus -t filecoin/lotus:$CIRCLE_TAG -f Dockerfile.lotus .
-              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_TAG -f Dockerfile.lotus .
-              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_TAG -f Dockerfile.lotus .
-            fi
-      - run:
-          name: docker push
-          command: |
-            docker push filecoin/lotus:<< parameters.tag >>
-            docker push filecoin/lotus-gateway:<< parameters.tag >>
-            docker push filecoin/lotus-all-in-one:<< parameters.tag >>
-            if [[ ! -z $CIRCLE_SHA1 ]]; then
-              docker push filecoin/lotus:$CIRCLE_SHA1
-              docker push filecoin/lotus-gateway:$CIRCLE_SHA1
-              docker push filecoin/lotus-all-in-one:$CIRCLE_SHA1
-            fi
-            if [[ ! -z $CIRCLE_TAG ]]; then
-              docker push filecoin/lotus:$CIRCLE_TAG
-              docker push filecoin/lotus-gateway:$CIRCLE_TAG
-              docker push filecoin/lotus-all-in-one:$CIRCLE_TAG
-            fi
 
 workflows:
   version: 2.1
@@ -897,6 +729,11 @@ workflows:
           target: "./itests/deals_publish_test.go"
       
       - test:
+          name: test-itest-deals_remote_retrieval
+          suite: itest-deals_remote_retrieval
+          target: "./itests/deals_remote_retrieval_test.go"
+      
+      - test:
           name: test-itest-deals_retry_deal_no_funds
           suite: itest-deals_retry_deal_no_funds
           target: "./itests/deals_retry_deal_no_funds_test.go"
@@ -967,6 +804,11 @@ workflows:
           target: "./itests/mpool_msg_uuid_test.go"
       
       - test:
+          name: test-itest-mpool_push_with_uuid
+          suite: itest-mpool_push_with_uuid
+          target: "./itests/mpool_push_with_uuid_test.go"
+      
+      - test:
           name: test-itest-multisig
           suite: itest-multisig
           target: "./itests/multisig_test.go"
@@ -1005,6 +847,11 @@ workflows:
           name: test-itest-pending_deal_allocation
           suite: itest-pending_deal_allocation
           target: "./itests/pending_deal_allocation_test.go"
+      
+      - test:
+          name: test-itest-raft_messagesigner
+          suite: itest-raft_messagesigner
+          target: "./itests/raft_messagesigner_test.go"
       
       - test:
           name: test-itest-remove_verifreg_datacap
@@ -1067,6 +914,11 @@ workflows:
           target: "./itests/sector_terminate_test.go"
       
       - test:
+          name: test-itest-sector_unseal
+          suite: itest-sector_unseal
+          target: "./itests/sector_unseal_test.go"
+      
+      - test:
           name: test-itest-self_sent_txn
           suite: itest-self_sent_txn
           target: "./itests/self_sent_txn_test.go"
@@ -1117,6 +969,11 @@ workflows:
           target: "./itests/worker_test.go"
       
       - test:
+          name: test-itest-worker_upgrade
+          suite: itest-worker_upgrade
+          target: "./itests/worker_upgrade_test.go"
+      
+      - test:
           name: test-unit-cli
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
@@ -1145,47 +1002,11 @@ workflows:
           suite: conformance-bleeding-edge
           target: "./conformance"
           vectors-branch: specs-actors-v7
-      - trigger-testplans:
-          filters:
-            branches:
-              only:
-                - master
-      - build-debug
-      - build-linux:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-ntwk-calibration:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-ntwk-butterfly:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-lotus-soup
-      - build-macos:
-          name: publish-macos
-          publish: true
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
-      - build-macos:
-          filters:
-            branches:
-              only:
-                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+-rc\d+$/
-      - build-appimage:
+
+  release:
+    jobs:
+      - build-linux-amd64:
+          name: "Build ( linux / amd64 )"
           filters:
             branches:
               only:
@@ -1193,11 +1014,30 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish:
-          name: publish-linux
-          linux: true
+      - build-darwin-amd64:
+          name: "Build ( darwin / amd64 )"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-darwin-arm64:
+          name: "Build ( darwin / arm64 )"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - release:
+          name: "Release"
           requires:
-            - build-linux
+            - "Build ( darwin / amd64 )"
+            - "Build ( linux / amd64 )"
+            - "Build ( darwin / arm64 )"
           filters:
             branches:
               ignore:
@@ -1205,11 +1045,31 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - release:
+          name: "Release (dry-run)"
+          dry-run: true
+          requires:
+            - "Build ( darwin / amd64 )"
+            - "Build ( linux / amd64 )"
+            - "Build ( darwin / arm64 )"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage:
+          name: "Build AppImage"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
-          name: publish-appimage
+          name: "Publish AppImage"
           appimage: true
           requires:
-            - build-appimage
+            - "Build AppImage"
           filters:
             branches:
               ignore:
@@ -1217,42 +1077,6 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-and-push-image:
-          name: build-and-push/lotus-all-in-one
-          dockerfile: Dockerfile.lotus
-          path: .
-          repo: lotus-dev
-          tag: '${CIRCLE_SHA1:0:8}'
-          target: lotus-all-in-one
-      - build-and-push-image:
-          name: build-and-push/lotus-test
-          dockerfile: Dockerfile.lotus
-          path: .
-          repo: lotus-test
-          tag: '${CIRCLE_SHA1:0:8}'
-          target: lotus-test
-      - publish-snapcraft:
-          name: "Publish Snapcraft (lotus-filecoin / candidate)"
-          channel: stable
-          snap-name: lotus-filecoin
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
-      - publish-snapcraft:
-          name: "Publish Snapcraft (lotus-filecoin / candidate)"
-          channel: candidate
-          snap-name: lotus-filecoin
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+-rc\d+$/
       - publish-snapcraft:
           name: "Publish Snapcraft (lotus / stable)"
           channel: stable
@@ -1275,16 +1099,168 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
-      - publish-dockerhub:
-          name: publish-dockerhub
-          tag: stable
+      - publish-snapcraft:
+          name: "Publish Snapcraft (lotus-filecoin / stable)"
+          channel: stable
+          snap-name: lotus-filecoin
           filters:
             branches:
               ignore:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^v\d+\.\d+\.\d+$/
+      - publish-snapcraft:
+          name: "Publish Snapcraft (lotus-filecoin / candidate)"
+          channel: candidate
+          snap-name: lotus-filecoin
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / mainnet)"
+          image: lotus-all-in-one
+          channel: stable
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / mainnet)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / mainnet)"
+          image: lotus-all-in-one
+          network: mainnet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / butterflynet)"
+          image: lotus-all-in-one
+          channel: stable
+          network: butterflynet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / butterflynet)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: butterflynet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / butterflynet)"
+          image: lotus-all-in-one
+          network: butterflynet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / calibnet)"
+          image: lotus-all-in-one
+          channel: stable
+          network: calibnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / calibnet)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: calibnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / calibnet)"
+          image: lotus-all-in-one
+          network: calibnet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / debug)"
+          image: lotus-all-in-one
+          channel: stable
+          network: debug
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / debug)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: debug
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / debug)"
+          image: lotus-all-in-one
+          network: debug
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
 
   nightly:
     triggers:
@@ -1296,16 +1272,37 @@ workflows:
                 - master
     jobs:
       - publish-snapcraft:
-          name: "Publish Snapcraft Nightly (lotus-filecoin / edge)"
-          channel: edge
-          snap-name: lotus-filecoin
-      - publish-snapcraft:
-          name: "Publish Snapcraft Nightly (lotus / edge)"
+          name: "Publish Snapcraft (lotus / edge)"
           channel: edge
           snap-name: lotus
-      - publish-dockerhub:
-          name: publish-dockerhub-nightly
-          tag: nightly
+      - publish-snapcraft:
+          name: "Publish Snapcraft (lotus-filecoin / edge)"
+          channel: edge
+          snap-name: lotus-filecoin
+      - build-docker:
+          name: "Docker (lotus-all-in-one / nightly / mainnet)"
+          image: lotus-all-in-one
+          channel: nightly
+          network: mainnet
+          push: true
+      - build-docker:
+          name: "Docker (lotus-all-in-one / nightly / butterflynet)"
+          image: lotus-all-in-one
+          channel: nightly
+          network: butterflynet
+          push: true
+      - build-docker:
+          name: "Docker (lotus-all-in-one / nightly / calibnet)"
+          image: lotus-all-in-one
+          channel: nightly
+          network: calibnet
+          push: true
+      - build-docker:
+          name: "Docker (lotus-all-in-one / nightly / debug)"
+          image: lotus-all-in-one
+          channel: nightly
+          network: debug
+          push: true
   biweekly:
     triggers:
       - schedule:

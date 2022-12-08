@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,12 +12,14 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
 	market10 "github.com/filecoin-project/go-state-types/builtin/v10/market"
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -183,9 +186,16 @@ func (s *dealStates10) array() adt.Array {
 }
 
 func fromV10DealState(v10 market10.DealState) DealState {
+	ret := DealState{
+		SectorStartEpoch: v10.SectorStartEpoch,
+		LastUpdatedEpoch: v10.LastUpdatedEpoch,
+		SlashEpoch:       v10.SlashEpoch,
+		VerifiedClaim:    0,
+	}
 
-	return (DealState)(v10)
+	ret.VerifiedClaim = verifregtypes.AllocationId(v10.VerifiedClaim)
 
+	return ret
 }
 
 type dealProposals10 struct {
@@ -346,4 +356,21 @@ func (s *state10) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtype
 
 	return verifregtypes.AllocationId(allocationId), nil
 
+}
+
+func (s *state10) ActorKey() string {
+	return actors.MarketKey
+}
+
+func (s *state10) ActorVersion() actorstypes.Version {
+	return actorstypes.Version10
+}
+
+func (s *state10) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

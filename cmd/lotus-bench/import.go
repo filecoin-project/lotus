@@ -150,7 +150,7 @@ var importBenchCmd = &cli.Command{
 
 			http.Handle("/debug/metrics", exporter)
 
-			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
+			_ = http.ListenAndServe("localhost:6060", nil)
 		}()
 
 		var tdir string
@@ -772,7 +772,7 @@ var importAnalyzeCmd = &cli.Command{
 		}
 
 		go func() {
-			http.ListenAndServe("localhost:6060", nil) //nolint:errcheck
+			_ = http.ListenAndServe("localhost:6060", nil)
 		}()
 
 		fi, err := os.Open(cctx.Args().First())

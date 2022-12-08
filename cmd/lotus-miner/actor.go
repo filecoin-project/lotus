@@ -290,7 +290,7 @@ var actorWithdrawCmd = &cli.Command{
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")))
 		if err != nil {
-			return xerrors.Errorf("Timeout waiting for withdrawal message %s", wait.Message)
+			return xerrors.Errorf("Timeout waiting for withdrawal message %s", res)
 		}
 
 		if wait.Receipt.ExitCode.IsError() {
@@ -595,6 +595,7 @@ var actorControlList = &cli.Command{
 
 		printKey("owner", mi.Owner)
 		printKey("worker", mi.Worker)
+		printKey("beneficiary", mi.Beneficiary)
 		for i, ca := range mi.ControlAddresses {
 			printKey(fmt.Sprintf("control-%d", i), ca)
 		}
