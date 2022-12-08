@@ -2454,7 +2454,8 @@ USAGE:
    lotus chain invoke-evm-actor [command options] address contract-entry-point [input-data]
 
 OPTIONS:
-   --from value  optionally specify the account to use for sending the exec message
+   --from value   optionally specify the account to use for sending the exec message
+   --value value  optionally specify the value to be sent with the invokation message (default: 0)
    
 ```
 
