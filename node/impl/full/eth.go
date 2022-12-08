@@ -783,7 +783,7 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *api.Eth
 		} else if *filterSpec.ToBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
-			epoch, err := api.EthUint64FromHex(*filterSpec.FromBlock)
+			epoch, err := api.EthUint64FromHex(*filterSpec.ToBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")
 			}
