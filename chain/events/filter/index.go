@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -151,6 +153,10 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return xerrors.Errorf("prepare insert entry: %w", err)
 	}
 
+	isIndexedValue := func(b uint8) bool {
+		return b&types.EventFlagIndexedValue == types.EventFlagIndexedValue
+	}
+
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
 			addr, found := addressLookups[ev.Emitter]
@@ -189,12 +195,13 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			}
 
 			for _, entry := range ev.Entries {
+				value := decodeLogBytes(entry.Value)
 				_, err := stmtEntry.Exec(
-					lastID,                         // event_id
-					entry.Flags&indexed == indexed, // indexed
-					[]byte{entry.Flags},            // flags
-					entry.Key,                      // key
-					entry.Value,                    // value
+					lastID,                      // event_id
+					isIndexedValue(entry.Flags), // indexed
+					[]byte{entry.Flags},         // flags
+					entry.Key,                   // key
+					value,                       // value
 				)
 				if err != nil {
 					return xerrors.Errorf("exec insert entry: %w", err)
@@ -208,6 +215,21 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	return nil
+}
+
+// decodeLogBytes decodes a CBOR-serialized array into its original form.
+//
+// This function swallows errors and returns the original array if it failed
+// to decode.
+func decodeLogBytes(orig []byte) []byte {
+	if orig == nil {
+		return orig
+	}
+	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
+	if err != nil {
+		return orig
+	}
+	return decoded
 }
 
 // PrefillFilter fills a filter's collection of events from the historic index
@@ -242,18 +264,19 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 	if len(f.keys) > 0 {
 		join := 0
 		for key, vals := range f.keys {
-			join++
-			joinAlias := fmt.Sprintf("ee%d", join)
-			joins = append(joins, fmt.Sprintf("event_entry %s on event.id=%[1]s.event_id", joinAlias))
-			clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
-			values = append(values, key)
-			subclauses := []string{}
-			for _, val := range vals {
-				subclauses = append(subclauses, fmt.Sprintf("%s.value=?", joinAlias))
-				values = append(values, val)
+			if len(vals) > 0 {
+				join++
+				joinAlias := fmt.Sprintf("ee%d", join)
+				joins = append(joins, fmt.Sprintf("event_entry %s on event.id=%[1]s.event_id", joinAlias))
+				clauses = append(clauses, fmt.Sprintf("%s.indexed=1 AND %[1]s.key=?", joinAlias))
+				values = append(values, key)
+				subclauses := []string{}
+				for _, val := range vals {
+					subclauses = append(subclauses, fmt.Sprintf("%s.value=?", joinAlias))
+					values = append(values, trimLeadingZeros(val))
+				}
+				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 			}
-			clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
-
 		}
 	}
 
@@ -396,4 +419,13 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 	f.setCollectedEvents(ces)
 
 	return nil
+}
+
+func trimLeadingZeros(b []byte) []byte {
+	for i := range b {
+		if b[i] != 0 {
+			return b[i:]
+		}
+	}
+	return []byte{}
 }
