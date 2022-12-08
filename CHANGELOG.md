@@ -5,13 +5,19 @@
 This is an optional feature release of Lotus. This feature release includes the official release of SplitStore, the experimental Lotus node cluster feature, as well as numerous enhancments and bugfixes.
 
 ## Highlights
-#### ✅ SplitStore ✅
+#### 🟢 SplitStore 🟢
 Splitstore aims to reduce the node performance impact that's caused by the Filecoin's very large, and continuously growing datastore. In this release we consider the Splitstore-V2 to be production ready. It has a more simplified setup, with three modes: `messages`, `discard` and `universal`. The `EnableColdStoreAutoPrune=` configuration is being depriciated in this release, as there is only ever one compaction running.
 
 You can read the full documentation about the SplitStoreV2 here: https://lotus.filecoin.io/lotus/configure/splitstore/
 
 #### 🧪 Node Cluster 🧪
 *EXPERIMENTAL.* The Lotus node cluster feature allows you to run multiple Lotus daemons for the same lotus-miner increasing resiliency. We welcome all Lotus users to join the early testing for this feature and provide your feedback. Please note that this feature is targeted towards more enterprise users of Lotus and requires at least 3 lotus nodes to be set up in a cluster.
+
+### ⭐️ SnapDeals ⭐️
+Numerous SnapDeals related improvements and fixes made it into this release before the code freeze. Some the highlights of the issues that has been fixed in this feature release are:
+
+- *Unable to snap-up a sector again if something went wrong.* - This has now been fixed ✅
+- *Error messages on loop during an open deadline.* - This has now been fixed ✅
 
 ## New features
 - feat:splitstore:single compaction that can handle prune aka two marksets one compaction (#9571) ([filecoin-project/lotus#9571](https://github.com/filecoin-project/lotus/pull/9571))
