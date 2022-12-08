@@ -4,6 +4,7 @@ package itests
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -446,16 +447,14 @@ func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
 	return el, err
 }
 
-func TestEthGetLogsAll(t *testing.T) {
+type msgInTipset struct {
+	msg      api.Message
+	ts       *types.TipSet
+	reverted bool
+}
+
+func invokeContractAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, iterations int) (api.EthAddress, map[api.EthHash]msgInTipset) {
 	require := require.New(t)
-
-	kit.QuietMiningLogs()
-
-	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
-
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
-	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -475,13 +474,6 @@ func TestEthGetLogsAll(t *testing.T) {
 	idAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(err)
 	t.Logf("actor ID address is %s", idAddr)
-
-	const iterations = 10
-
-	type msgInTipset struct {
-		msg api.Message
-		ts  *types.TipSet
-	}
 
 	msgChan := make(chan msgInTipset, iterations)
 
@@ -503,7 +495,7 @@ func TestEthGetLogsAll(t *testing.T) {
 						count += len(msgs)
 						for _, m := range msgs {
 							select {
-							case msgChan <- msgInTipset{msg: m, ts: change.Val}:
+							case msgChan <- msgInTipset{msg: m, ts: change.Val, reverted: change.Type == store.HCRevert}:
 							default:
 							}
 						}
@@ -550,6 +542,22 @@ func TestEthGetLogsAll(t *testing.T) {
 	ethContractAddr, err := api.EthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
+	return ethContractAddr, received
+}
+
+func TestEthGetLogsAll(t *testing.T) {
+	require := require.New(t)
+
+	kit.QuietMiningLogs()
+
+	blockTime := 100 * time.Millisecond
+	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ethContractAddr, received := invokeContractAndWaitUntilAllOnChain(t, client, 10)
+
 	topic1 := api.EthBytes(leftpad32([]byte{0x11, 0x11}))
 	topic2 := api.EthBytes(leftpad32([]byte{0x22, 0x22}))
 	topic3 := api.EthBytes(leftpad32([]byte{0x33, 0x33}))
@@ -558,14 +566,78 @@ func TestEthGetLogsAll(t *testing.T) {
 
 	pstring := func(s string) *string { return &s }
 
-	// get logs
-	res, err := client.EthGetLogs(ctx, &api.EthFilterSpec{
+	// get all logs
+	res, err := client.EthGetLogs(context.Background(), &api.EthFilterSpec{
 		FromBlock: pstring("0x0"),
 	})
 	require.NoError(err)
 
 	// expect to have all messages sent
 	require.Equal(len(received), len(res.Results))
+
+	for _, r := range res.Results {
+		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results
+		rc, ok := r.(map[string]interface{})
+		require.True(ok, "result type")
+
+		elog, err := ParseEthLog(rc)
+		require.NoError(err)
+
+		require.Equal(ethContractAddr, elog.Address, "event address")
+		require.Equal(api.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
+
+		msg, exists := received[elog.TransactionHash]
+		require.True(exists, "message seen on chain")
+
+		tsCid, err := msg.ts.Key().Cid()
+		require.NoError(err)
+
+		tsCidHash, err := api.NewEthHashFromCid(tsCid)
+		require.NoError(err)
+
+		require.Equal(tsCidHash, elog.BlockHash, "block hash")
+
+		require.Equal(4, len(elog.Topics), "number of topics")
+		require.Equal(topic1, elog.Topics[0], "topic1")
+		require.Equal(topic2, elog.Topics[1], "topic2")
+		require.Equal(topic3, elog.Topics[2], "topic3")
+		require.Equal(topic4, elog.Topics[3], "topic4")
+
+		require.Equal(data1, elog.Data, "data1")
+
+	}
+}
+
+func TestEthGetLogsByTopic(t *testing.T) {
+	require := require.New(t)
+
+	kit.QuietMiningLogs()
+
+	blockTime := 100 * time.Millisecond
+	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	invocations := 1
+
+	ethContractAddr, received := invokeContractAndWaitUntilAllOnChain(t, client, invocations)
+
+	topic1 := api.EthBytes(leftpad32([]byte{0x11, 0x11}))
+	topic2 := api.EthBytes(leftpad32([]byte{0x22, 0x22}))
+	topic3 := api.EthBytes(leftpad32([]byte{0x33, 0x33}))
+	topic4 := api.EthBytes(leftpad32([]byte{0x44, 0x44}))
+	data1 := api.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
+
+	// find log by known topic1
+	var spec api.EthFilterSpec
+	err := json.Unmarshal([]byte(`{"fromBlock":"0x0","topics":["0x0000000000000000000000000000000000000000000000000000000000001111"]}`), &spec)
+	require.NoError(err)
+
+	res, err := client.EthGetLogs(context.Background(), &spec)
+	require.NoError(err)
+
+	require.Equal(invocations, len(res.Results))
 
 	for _, r := range res.Results {
 		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results

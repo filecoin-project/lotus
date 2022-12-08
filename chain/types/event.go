@@ -24,3 +24,9 @@ type EventEntry struct {
 }
 
 type FilterID [32]byte // compatible with EthHash
+
+// EventEntry flags defined in fvm_shared
+const (
+	EventFlagIndexedKey   = 0b00000001
+	EventFlagIndexedValue = 0b00000010
+)
