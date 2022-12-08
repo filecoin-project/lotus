@@ -1667,7 +1667,7 @@ var ChainInvokeEVMCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "optionally specify the account to use for sending the exec message",
-		},&cli.IntFlag{
+		}, &cli.IntFlag{
 			Name:  "value",
 			Usage: "optionally specify the value to be sent with the invokation message",
 		},
@@ -1729,7 +1729,7 @@ var ChainInvokeEVMCmd = &cli.Command{
 
 			fromAddr = addr
 		}
-		
+
 		val := abi.NewTokenAmount(cctx.Int64("value"))
 		msg := &types.Message{
 			To:     addr,
