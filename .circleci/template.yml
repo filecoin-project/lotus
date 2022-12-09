@@ -586,10 +586,10 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
-                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>
                         if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
-                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
                         fi
             - unless:
                 condition: <<parameters.push>>
@@ -612,10 +612,10 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
-                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
+                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
                         if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
-                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
                         fi
             - unless:
                 condition: <<parameters.push>>
