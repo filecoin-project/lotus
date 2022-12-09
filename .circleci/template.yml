@@ -799,6 +799,16 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
       - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / [[.]])"
+          image: lotus-all-in-one
+          channel: master
+          network: [[.]]
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
           name: "Docker build (lotus-all-in-one / [[.]])"
           image: lotus-all-in-one
           network: [[.]]

@@ -1133,6 +1133,16 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
       - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / mainnet)"
+          image: lotus-all-in-one
+          channel: master
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
           name: "Docker build (lotus-all-in-one / mainnet)"
           image: lotus-all-in-one
           network: mainnet
@@ -1167,6 +1177,16 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / butterflynet)"
+          image: lotus-all-in-one
+          channel: master
+          network: butterflynet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
       - build-docker:
           name: "Docker build (lotus-all-in-one / butterflynet)"
           image: lotus-all-in-one
@@ -1203,6 +1223,16 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
       - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / calibnet)"
+          image: lotus-all-in-one
+          channel: master
+          network: calibnet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
           name: "Docker build (lotus-all-in-one / calibnet)"
           image: lotus-all-in-one
           network: calibnet
@@ -1237,6 +1267,16 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / debug)"
+          image: lotus-all-in-one
+          channel: master
+          network: debug
+          push: true
+          filters:
+            branches:
+              only:
+                - master
       - build-docker:
           name: "Docker build (lotus-all-in-one / debug)"
           image: lotus-all-in-one
