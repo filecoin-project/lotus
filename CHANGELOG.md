@@ -13,6 +13,8 @@ You can read the full documentation about the SplitStoreV2 here: https://lotus.f
 #### 🧪 Node Cluster 🧪
 *EXPERIMENTAL.* The Lotus node cluster feature allows you to run multiple Lotus daemons for the same lotus-miner increasing resiliency. We welcome all Lotus users to join the early testing for this feature and provide your feedback. Please note that this feature is targeted towards more enterprise users of Lotus and requires at least 3 lotus nodes to be set up in a cluster.
 
+Check out the documentation here: https://lotus.filecoin.io/lotus/configure/clusters/
+
 ### ⭐️ SnapDeals ⭐️
 Numerous SnapDeals related improvements and fixes made it into this release before the code freeze. Some the highlights of the issues that has been fixed in this feature release are:
 
