@@ -1235,6 +1235,187 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / mainnet)"
+          image: lotus-all-in-one
+          channel: stable
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / mainnet)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / mainnet)"
+          image: lotus-all-in-one
+          channel: master
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / mainnet)"
+          image: lotus-all-in-one
+          network: mainnet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / butterflynet)"
+          image: lotus-all-in-one
+          channel: stable
+          network: butterflynet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / butterflynet)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: butterflynet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / butterflynet)"
+          image: lotus-all-in-one
+          channel: master
+          network: butterflynet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / butterflynet)"
+          image: lotus-all-in-one
+          network: butterflynet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / calibnet)"
+          image: lotus-all-in-one
+          channel: stable
+          network: calibnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / calibnet)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: calibnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / calibnet)"
+          image: lotus-all-in-one
+          channel: master
+          network: calibnet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / calibnet)"
+          image: lotus-all-in-one
+          network: calibnet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / stable / debug)"
+          image: lotus-all-in-one
+          channel: stable
+          network: debug
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / candidate / debug)"
+          image: lotus-all-in-one
+          channel: candidate
+          network: debug
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / debug)"
+          image: lotus-all-in-one
+          channel: master
+          network: debug
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / debug)"
+          image: lotus-all-in-one
+          network: debug
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+>>>>>>> 3b9b688c9 (Deploy lotus-all-in-one:master on all master merges)
 
   nightly:
     triggers:
