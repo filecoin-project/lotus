@@ -449,6 +449,9 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		if err != nil {
 			return 0, big.Zero(), err
 		}
+		if onChainInfo == nil {
+			return 0, big.Zero(), xerrors.Errorf("sector info for sector %d not found", sn)
+		}
 		memo[sn] = struct {
 			e abi.ChainEpoch
 			p abi.TokenAmount
