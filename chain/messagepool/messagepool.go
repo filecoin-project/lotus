@@ -806,7 +806,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	if m.Signature.Type == crypto.SigTypeDelegated {
 		txArgs, err := eth.NewEthTxArgsFromMessage(&m.Message)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to convert to eth tx args: %w", err)
 		}
 		msg, err := txArgs.OriginalRlpMsg()
 		if err != nil {
