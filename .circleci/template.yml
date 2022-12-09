@@ -818,6 +818,51 @@ workflows:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
       [[- end]]
+      - build-docker:
+          name: "Docker push (lotus / stable / mainnet)"
+          image: lotus
+          channel: stable
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus / candidate / mainnet)"
+          image: lotus
+          channel: candidate
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus / master / mainnet)"
+          image: lotus
+          channel: master
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
+          name: "Docker build (lotus / mainnet)"
+          image: lotus
+          network: mainnet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
 
   nightly:
     triggers:
