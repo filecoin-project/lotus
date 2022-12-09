@@ -587,6 +587,10 @@ jobs:
                       name: Docker push
                       command: |
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        if [[ ! -z $CIRCLE_SHA ]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA}"
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA}"
+                        fi
                         if [[ ! -z $CIRCLE_TAG ]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
                           docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
@@ -613,6 +617,10 @@ jobs:
                       name: Docker push
                       command: |
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
+                        if [[ ! -z $CIRCLE_SHA ]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA}"-<<parameters.network>>
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA}"-<<parameters.network>>
+                        fi
                         if [[ ! -z $CIRCLE_TAG ]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
                           docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
