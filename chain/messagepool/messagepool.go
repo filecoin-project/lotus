@@ -3,7 +3,6 @@ package messagepool
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -774,17 +773,9 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 
 		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
-		return string(m.Cid().Bytes()), nil
+		fallthrough
 	case crypto.SigTypeDelegated:
-		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
-		if err != nil {
-			return "", err
-		}
-		msg, err := txArgs.HashedOriginalRlpMsg()
-		if err != nil {
-			return "", err
-		}
-		return hex.EncodeToString(msg), nil
+		return string(m.Cid().Bytes()), nil
 	default:
 		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
 	}
