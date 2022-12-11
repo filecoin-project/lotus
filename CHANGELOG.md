@@ -2,20 +2,25 @@
 
 # 1.19.0 / 2022-12-07
 
-This is an optional feature release of Lotus. This feature release includes the official release of SplitStore, the experimental Lotus node cluster feature, as well as numerous enhancments and bugfixes.
+This is an optional feature release of Lotus. This feature release includes the production ready SplitStore feature, the experimental Lotus node cluster feature, as well as numerous enhancments and bugfixes.
 
 ## Highlights
-#### 🟢 SplitStore 🟢
-Splitstore aims to reduce the node performance impact that's caused by the Filecoin's very large, and continuously growing datastore. In this release we consider the Splitstore-V2 to be production ready. It has a more simplified setup, with three modes: `messages`, `discard` and `universal`. The `EnableColdStoreAutoPrune=` configuration is being depriciated in this release, as there is only ever one compaction running.
+### 🟢 SplitStore v2（Production Ready!!) 🟢
 
-You can read the full documentation about the SplitStoreV2 here: https://lotus.filecoin.io/lotus/configure/splitstore/
+Splitstore aims to reduce the node performance impact that's caused by the Filecoin's very large, and continuously growing chain datastore by having a hot and cold blockstore. You can find more about the Splitstore implementation [here](https://github.com/filecoin-project/lotus/blob/master/blockstore/splitstore/README.md).
+Splitstore has three basic modes for node operators to configure according to your needs: 
+- `discard`: hotstore only, automatically archive out-of-scope objects that are beyond 4 finalities(3600 epochs).
+- `universal`:  stores all chain data that's beyond 4 finalities into coldstore.
+- `messages`: only stores on-chain messages into coldstore.
 
-#### 🧪 Node Cluster 🧪
-*EXPERIMENTAL.* The Lotus node cluster feature allows you to run multiple Lotus daemons for the same lotus-miner increasing resiliency. We welcome all Lotus users to join the early testing for this feature and provide your feedback. Please note that this feature is targeted towards more enterprise users of Lotus and requires at least 3 lotus nodes to be set up in a cluster.
+In this release, splitstore is enabled by default with `discard` mode. The `EnableColdStoreAutoPrune=` configuration is being deprecated in this release, as there is only ever one compaction running.
+There are more configuration one may set, you can read the full documentation about the SplitStoreV2 here: https://lotus.filecoin.io/lotus/configure/splitstore/.
 
+### 🧪 Node Cluster (*EXPERIMENTAL.*) 🧪
+The Lotus HA node cluster feature allows you to run multiple Lotus daemons for the same lotus-miner increasing resiliency. We welcome all Lotus users to join the early testing for this feature and provide your feedback. Please note that this feature is targeted towards more enterprise users of Lotus and requires at least 3 lotus nodes to be set up in a cluster.
 Check out the documentation here: https://lotus.filecoin.io/lotus/configure/clusters/
 
-### ⭐️ SnapDeals ⭐️
+### ⭐️ SnapDeals Enhancements ⭐️
 Numerous SnapDeals related improvements and fixes made it into this release before the code freeze. Some the highlights of the issues that has been fixed in this feature release are:
 
 - *Unable to snap-up a sector again if something went wrong.* - This has now been fixed ✅
