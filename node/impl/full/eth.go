@@ -172,22 +172,37 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.ChainAPI, a.StateAPI)
 }
 
-func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	typ, num, err := ethtypes.ParseBlkNumOption(blkNum)
-	if err != nil {
-		return ethtypes.EthBlock{}, fmt.Errorf("cannot parse block number: %v", err)
+func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string) (tipset *types.TipSet, err error) {
+	head := a.Chain.GetHeaviestTipSet()
+	switch blkParam {
+	case "earliest":
+		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+	case "pending":
+		return head, nil
+	case "latest":
+		parent, err := a.Chain.GetTipSetFromKey(ctx, head.Parents())
+		if err != nil {
+			return nil, fmt.Errorf("cannot get parent tipset")
+		}
+		return parent, nil
+	default:
+		var num ethtypes.EthUint64
+		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse block number: %v", err)
+		}
+		ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), nil, false)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
+		}
+		return ts, nil
 	}
+}
 
-	switch typ {
-	case ethtypes.BlkNumLatest:
-		num = ethtypes.EthUint64(a.Chain.GetHeaviestTipSet().Height()) - 1
-	case ethtypes.BlkNumPending:
-		num = ethtypes.EthUint64(a.Chain.GetHeaviestTipSet().Height())
-	}
-
-	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), nil, false)
+func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
+	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("error loading tipset %s: %w", ts, err)
+		return ethtypes.EthBlock{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.ChainAPI, a.StateAPI)
 }
@@ -217,7 +232,13 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 	if err != nil {
 		return ethtypes.EthUint64(0), nil
 	}
-	nonce, err := a.Mpool.GetNonce(ctx, addr, types.EmptyTSK)
+
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return ethtypes.EthUint64(0), xerrors.Errorf("cannot parse block param: %s", blkParam)
+	}
+
+	nonce, err := a.Mpool.GetNonce(ctx, addr, ts.Key())
 	if err != nil {
 		return ethtypes.EthUint64(0), nil
 	}
@@ -267,7 +288,7 @@ func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, 
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {
+func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress, blkParam string) (ethtypes.EthBytes, error) {
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
@@ -289,7 +310,10 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		GasPremium: big.Zero(),
 	}
 
-	ts := a.Chain.GetHeaviestTipSet()
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+	}
 
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
@@ -411,7 +435,12 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 		return ethtypes.EthBigInt{}, err
 	}
 
-	actor, err := a.StateGetActor(ctx, filAddr, types.EmptyTSK)
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return ethtypes.EthBigInt{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
+	}
+
+	actor, err := a.StateGetActor(ctx, filAddr, ts.Key())
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return ethtypes.EthBigIntZero, nil
 	} else if err != nil {
@@ -631,8 +660,11 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 	}, nil
 }
 
-func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message) (res *api.InvocResult, err error) {
-	ts := a.Chain.GetHeaviestTipSet()
+func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get tipset: %w", err)
+	}
 
 	// Try calling until we find a height with no migration.
 	for {
@@ -677,8 +709,12 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 	if err != nil {
 		return nil, err
 	}
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+	}
 
-	invokeResult, err := a.applyMessage(ctx, msg)
+	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
 		return nil, err
 	}
