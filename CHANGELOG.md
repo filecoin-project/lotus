@@ -1,5 +1,10 @@
 # Lotus changelog
 
+# 1.18.2 / 2022-12-10
+
+This is an OPTIONAL patch release that fixes a recently reported bug, where the miner process crashes due to a panic during an AddPiece process. More details can be found [here](https://github.com/filecoin-project/lotus/pull/9822).
+
+
 # 1.18.1 / 2022-11-28
 
 This is a small OPTIONAL patch release for the mandatory v1.18.0 release that supports the Filecoin nv17 Shark Upgrade. 
