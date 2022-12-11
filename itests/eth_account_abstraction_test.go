@@ -2,22 +2,18 @@ package itests
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
-	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -54,7 +50,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	embryoActor, err := client.StateGetActor(ctx, embryoAddress, types.EmptyTSK)
 	require.NoError(t, err)
 
-	require.True(t, builtin.IsEmbryo(embryoActor.Code))
+	require.True(t, builtin.IsEmbryoActor(embryoActor.Code))
 
 	// send a message from the embryo address
 	msgFromEmbryo := &types.Message{
@@ -70,9 +66,8 @@ func TestEthAccountAbstraction(t *testing.T) {
 		Signature: crypto.Signature{Type: crypto.SigTypeDelegated},
 	}
 
-	// TODO: Hack delegated verification to always be true
+	// TODO: Unhack delegated verification to always be true
 
-	fmt.Println(smFromEmbryo.Message.From)
 	_, err = client.MpoolPush(ctx, smFromEmbryo)
 	require.NoError(t, err)
 
@@ -80,12 +75,41 @@ func TestEthAccountAbstraction(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	// confirm ugly embryo duckling has turned into a beautiful EOA swan
+	// confirm ugly Embryo duckling has turned into a beautiful EthAccount swan
 
 	eoaActor, err := client.StateGetActor(ctx, embryoAddress, types.EmptyTSK)
 	require.NoError(t, err)
 
-	require.False(t, builtin.IsEmbryo(eoaActor.Code))
-	// TODO: Uncomment when method exists
-	//require.True(t, builtin.IsEOAActor(embryoActor.Code))
+	require.False(t, builtin.IsEmbryoActor(eoaActor.Code))
+	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
+
+	// Send another message, it should succeed without any code CID changes
+
+	msgFromEmbryo = &types.Message{
+		From: embryoAddress,
+		To:   embryoAddress,
+	}
+
+	msgFromEmbryo, err = client.GasEstimateMessageGas(ctx, msgFromEmbryo, nil, types.EmptyTSK)
+	require.NoError(t, err)
+
+	smFromEmbryo = &types.SignedMessage{
+		Message:   *msgFromEmbryo,
+		Signature: crypto.Signature{Type: crypto.SigTypeDelegated},
+	}
+
+	_, err = client.MpoolPush(ctx, smFromEmbryo)
+	require.NoError(t, err)
+
+	mLookup, err = client.StateWaitMsg(ctx, smFromEmbryo.Cid(), 3, api.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
+
+	// confirm no changes in code CID
+
+	eoaActor, err = client.StateGetActor(ctx, embryoAddress, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.False(t, builtin.IsEmbryoActor(eoaActor.Code))
+	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
 }
