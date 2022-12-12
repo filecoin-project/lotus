@@ -143,6 +143,10 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
+	if onChainInfo == nil {
+		return xerrors.Errorf("sector not found %d", sector.SectorNumber)
+	}
+
 	sp, err := m.currentSealProof(ctx.Context())
 	if err != nil {
 		log.Errorf("sealer failed to return current seal proof not proceeding: %+v", err)

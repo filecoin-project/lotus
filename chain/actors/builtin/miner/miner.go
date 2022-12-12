@@ -127,6 +127,7 @@ type State interface {
 	LockedFunds() (LockedFunds, error)
 	FeeDebt() (abi.TokenAmount, error)
 
+	// Returns nil, nil if sector is not found
 	GetSector(abi.SectorNumber) (*SectorOnChainInfo, error)
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
