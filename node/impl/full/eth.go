@@ -215,16 +215,31 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 
 	cid := txHash.ToCid()
 
+	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
-	if err != nil {
-		return nil, nil
+	if err == nil {
+		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, a.Chain, a.ChainAPI, a.StateAPI)
+		if err == nil {
+			return &tx, nil
+		}
 	}
 
-	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, a.Chain, a.ChainAPI, a.StateAPI)
+	// if not found, try to get it from the mempool
+	pending, err := a.MpoolAPI.MpoolPending(ctx, types.EmptyTSK)
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("cannot get pending txs from mpool: %v", err)
 	}
-	return &tx, nil
+
+	for _, p := range pending {
+		if p.Cid() == cid {
+			tx, err := newEthTxFromFilecoinMessage(ctx, &p.Message, a.StateAPI)
+			if err != nil {
+				return nil, fmt.Errorf("cannot get parse message into tx: %v", err)
+			}
+			return &tx, nil
+		}
+	}
+	return nil, fmt.Errorf("cannot find cid %v from the mpool", cid)
 }
 
 func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam string) (ethtypes.EthUint64, error) {
@@ -1408,6 +1423,64 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
+func newEthTxFromFilecoinMessage(ctx context.Context, msg *types.Message, sa StateAPI) (ethtypes.EthTx, error) {
+	fromEthAddr, err := lookupEthAddress(ctx, msg.From, sa)
+	if err != nil {
+		return ethtypes.EthTx{}, err
+	}
+
+	toEthAddr, err := lookupEthAddress(ctx, msg.To, sa)
+	if err != nil {
+		return ethtypes.EthTx{}, err
+	}
+
+	toAddr := &toEthAddr
+	input := msg.Params
+	// Check to see if we need to decode as contract deployment.
+	// We don't need to resolve the to address, because there's only one form (an ID).
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		switch msg.Method {
+		case builtintypes.MethodsEAM.Create:
+			toAddr = nil
+			var params eam.CreateParams
+			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			input = params.Initcode
+		case builtintypes.MethodsEAM.Create2:
+			toAddr = nil
+			var params eam.Create2Params
+			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			input = params.Initcode
+		}
+		if err != nil {
+			return ethtypes.EthTx{}, err
+		}
+	}
+	// Otherwise, try to decode as a cbor byte array.
+	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
+	if toAddr != nil {
+		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(msg.Params), uint64(len(msg.Params))); err == nil {
+			input = decodedParams
+		}
+	}
+
+	tx := ethtypes.EthTx{
+		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
+		From:                 fromEthAddr,
+		To:                   toAddr,
+		Value:                ethtypes.EthBigInt(msg.Value),
+		Type:                 ethtypes.EthUint64(2),
+		Gas:                  ethtypes.EthUint64(msg.GasLimit),
+		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
+		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
+		V:                    ethtypes.EthBytes{},
+		R:                    ethtypes.EthBytes{},
+		S:                    ethtypes.EthBytes{},
+		Input:                input,
+	}
+
+	return tx, nil
+}
+
 func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, cs *store.ChainStore, ca ChainAPI, sa StateAPI) (ethtypes.EthTx, error) {
 	if msgLookup == nil {
 		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
@@ -1459,63 +1532,16 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		return ethtypes.EthTx{}, err
 	}
 
-	fromEthAddr, err := lookupEthAddress(ctx, msg.From, sa)
+	tx, err := newEthTxFromFilecoinMessage(ctx, msg, sa)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
 
-	toEthAddr, err := lookupEthAddress(ctx, msg.To, sa)
-	if err != nil {
-		return ethtypes.EthTx{}, err
-	}
-
-	toAddr := &toEthAddr
-	input := msg.Params
-	// Check to see if we need to decode as contract deployment.
-	// We don't need to resolve the to address, because there's only one form (an ID).
-	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		switch msg.Method {
-		case builtintypes.MethodsEAM.Create:
-			toAddr = nil
-			var params eam.CreateParams
-			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
-			input = params.Initcode
-		case builtintypes.MethodsEAM.Create2:
-			toAddr = nil
-			var params eam.Create2Params
-			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
-			input = params.Initcode
-		}
-		if err != nil {
-			return ethtypes.EthTx{}, err
-		}
-	}
-	// Otherwise, try to decode as a cbor byte array.
-	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
-	if toAddr != nil {
-		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(msg.Params), uint64(len(msg.Params))); err == nil {
-			input = decodedParams
-		}
-	}
-
-	tx := ethtypes.EthTx{
-		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
-		Hash:                 txHash,
-		BlockHash:            blkHash,
-		BlockNumber:          ethtypes.EthUint64(parentTs.Height()),
-		From:                 fromEthAddr,
-		To:                   toAddr,
-		Value:                ethtypes.EthBigInt(msg.Value),
-		Type:                 ethtypes.EthUint64(2),
-		TransactionIndex:     ethtypes.EthUint64(txIdx),
-		Gas:                  ethtypes.EthUint64(msg.GasLimit),
-		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
-		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
-		V:                    ethtypes.EthBytes{},
-		R:                    ethtypes.EthBytes{},
-		S:                    ethtypes.EthBytes{},
-		Input:                input,
-	}
+	tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
+	tx.Hash = txHash
+	tx.BlockHash = blkHash
+	tx.BlockNumber = ethtypes.EthUint64(parentTs.Height())
+	tx.TransactionIndex = ethtypes.EthUint64(txIdx)
 	return tx, nil
 }
 

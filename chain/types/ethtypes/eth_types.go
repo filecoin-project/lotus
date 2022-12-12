@@ -406,6 +406,7 @@ type EthFeeHistory struct {
 	GasUsedRatio  []float64      `json:"gasUsedRatio"`
 	Reward        *[][]EthBigInt `json:"reward,omitempty"`
 }
+<<<<<<< HEAD:chain/types/ethtypes/eth_types.go
 
 type BlkNumType int64
 
@@ -600,3 +601,5 @@ type EthSubscriptionResponse struct {
 	// The object matching the subscription. This may be a Block (tipset), a Transaction (message) or an EthLog
 	Result interface{} `json:"result"`
 }
+=======
+>>>>>>> 08d0dc9d6 (make gen):api/eth_types.go
