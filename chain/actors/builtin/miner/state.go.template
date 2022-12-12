@@ -189,7 +189,7 @@ func (s *state{{.v}}) GetSectorExpiration(num abi.SectorNumber) (*SectorExpirati
 			}
 			var exp miner{{.v}}.ExpirationSet
 			return q.ForEach(&exp, func(epoch int64) error {
-				if early, err := exp.EarlySectors.IsSet(uint64(num)); err != nil {
+				if early, err := exp.{{if (ge .v 10)}}FaultySectors{{else}}EarlySectors{{end}}.IsSet(uint64(num)); err != nil {
 					return err
 				} else if early {
 					out.Early = abi.ChainEpoch(epoch)
