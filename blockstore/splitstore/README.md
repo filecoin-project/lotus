@@ -7,7 +7,23 @@ With lotus v1.19.0, we introduce the next iteration in design and
 implementation, which we call SplitStore v2.
 
 The new design (see [#9056](https://github.com/filecoin-project/lotus/pull/9056) and [#9128](https://github.com/filecoin-project/lotus/discussions/9128))
-evolves the splitstore to be a freestanding compacting blockstore that allows you to keep a small 60 GiB to 275 GiB working set in a hot blockstore and reliably archive out-of-scope objects in a coldstore. The coldstore can also be a `discard` store, whereby out-of-scope objects are discarded, a `universal` store, which will store all chain data or a `messages` store which will only store on-chain messages. The `messaqges` badger blockstore is the default storage type.
+evolves the splitstore to be a freestanding compacting blockstore that allows you to keep a small 60 GiB to 275 GiB working set in a hot blockstore and reliably archive out-of-scope objects which are historical chain objects that are no onger needed for the vast majority of Lotus use cases into a coldstore. The coldstore can also be a `discard` store, whereby out-of-scope objects are discarded, a `universal` store, which will store all chain data or a `messages` store which will only store on-chain messages and message receipts. The `messages` badger blockstore is the default storage type.
+
+```
+CompactionThreshold is the number of epochs that need to have elapsed
+from the previously compacted epoch to trigger a new compaction.
+
+       |················· CompactionThreshold ··················|
+       |                                             |
+=======‖≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡‖------------------------»
+       |                    |  chain -->             ↑__ current epoch
+       | archived epochs ___↑
+                            ↑________ CompactionBoundary
+
+=== :: cold (already archived)
+≡≡≡ :: to be archived in this compaction
+--- :: hot
+```
 
 To enable the splitstore, edit `.lotus/config.toml` and add the following:
 ```
@@ -17,7 +33,7 @@ To enable the splitstore, edit `.lotus/config.toml` and add the following:
   EnableSplitstore = true
 ```
 
-If you intend to use the `discard` coldstore, your also need to add the following:
+If you intend to use the `discard` coldstore, you also need to add the following:
 ```
 [Chainstore.Splitstore]
   # ColdStoreType specifies the type of the coldstore.
@@ -27,46 +43,54 @@ If you intend to use the `discard` coldstore, your also need to add the followin
   # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTORETYPE
   ColdStoreType = "discard"
 ```
+For Storage Providers who have no need to perform historical chain quereis, the discard ColdStoreType can be utilised without issue. For users who do need to perform historical chain quesries both messages and universal options can be set depending on your specific use case. Further details can be found in the [Lotus docs](https://lotus.filecoin.io/lotus/configure/splitstore/).
+
 ## Configuration Options
 
 ```toml
-[Chainstore.Splitstore]
-  # ColdStoreType specifies the type of the coldstore.
-  # It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
-  #
-  # type: string
-  # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTORETYPE
-  ColdStoreType = "messages"
+[Chainstore]
+  # type: bool
+  # env var: LOTUS_CHAINSTORE_ENABLESPLITSTORE
+  EnableSplitstore = false
 
-  # HotStoreType specifies the type of the hotstore.
-  # Only currently supported value is "badger".
-  #
-  # type: string
-  # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTORETYPE
-  HotStoreType = "badger"
+  [Chainstore.Splitstore]
+    # ColdStoreType specifies the type of the coldstore.
+    # It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
+    #
+    # type: string
+    # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTORETYPE
+    ColdStoreType = "messages"
 
-  # MarkSetType specifies the type of the markset.
-  # It can be "map" for in memory marking or "badger" (default) for on-disk marking.
-  #
-  # type: string
-  # env var: LOTUS_CHAINSTORE_SPLITSTORE_MARKSETTYPE
-  MarkSetType = "badger"
+    # HotStoreType specifies the type of the hotstore.
+    # Only currently supported value is "badger".
+    #
+    # type: string
+    # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTORETYPE
+    HotStoreType = "badger"
 
-  # HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
-  # the compaction boundary; default is 0.
-  #
-  # type: uint64
-  # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREMESSAGERETENTION
-  HotStoreMessageRetention = 0
+    # MarkSetType specifies the type of the markset.
+    # It can be "map" for in memory marking or "badger" (default) for on-disk marking.
+    #
+    # type: string
+    # env var: LOTUS_CHAINSTORE_SPLITSTORE_MARKSETTYPE
+    MarkSetType = "badger"
 
-  # HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
-  # A value of 0 disables, while a value 1 will do full GC in every compaction.
-  # Default is 20 (about once a week).
-  #
-  # type: uint64
-  # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREFULLGCFREQUENCY
-  HotStoreFullGCFrequency = 20
-  ```
+    # HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
+    # the compaction boundary; default is 0.
+    #
+    # type: uint64
+    # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREMESSAGERETENTION
+    HotStoreMessageRetention = 0
+
+    # HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
+    # A value of 0 disables, while a value 1 will do full GC in every compaction.
+    # Default is 20 (about once a week).
+    #
+    # type: uint64
+    # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREFULLGCFREQUENCY
+    HotStoreFullGCFrequency = 20
+```
+The `HotStoreFullGCFrequency` value referes to finalities
 
 ## Operation
 
@@ -76,7 +100,7 @@ The hotstore is warmed up on the first startup to load all chain headers and sta
 
 All new writes are directed to the hotstore, while reads first hit the hotstore with fallback to the coldstore.
 
-Once five finalities have elapsed and every subsequent finality, the blockstore _compacts_. Compaction is the process of moving all unreachable objects within the last four finalities from the hotstore to the coldstore. These objects are discarded if the system is configured with a discard coldstore. Chain headers are considered reachable all the way to the genesis block. Stateroots and messages are considered reachable only within the last four finalities unless there is a live reference to them.
+Once five finalities (4500 epochs) have elapsed and every subsequent finality, the blockstore _compacts_. Compaction is the process of moving all unreachable objects within the last four finalities from the hotstore to the coldstore. These objects are discarded if the system is configured with a discard coldstore. Chain headers are considered reachable all the way to the genesis block. Stateroots and messages are considered reachable only within the last four finalities unless there is a live reference to them.
 
 ## Compaction
 
@@ -89,6 +113,7 @@ Compaction works transactionally with the following algorithm:
 - When running with a coldstore, we next copy all cold objects to the coldstore.
 - At this point, we are ready to begin purging
 - We then end the transaction and compact/garbage collect the hotstore.
+- We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 
 ## Cold Store Garbage Collection
 
