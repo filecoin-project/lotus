@@ -980,9 +980,9 @@ type WorkerStruct struct {
 
 		Fetch func(p0 context.Context, p1 storiface.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) `perm:"admin"`
 
-		FinalizeReplicaUpdate func(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) `perm:"admin"`
+		FinalizeReplicaUpdate func(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) `perm:"admin"`
 
-		FinalizeSector func(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) `perm:"admin"`
+		FinalizeSector func(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) `perm:"admin"`
 
 		GenerateSectorKeyFromData func(p0 context.Context, p1 storiface.SectorRef, p2 cid.Cid) (storiface.CallID, error) `perm:"admin"`
 
@@ -5702,25 +5702,25 @@ func (s *WorkerStub) Fetch(p0 context.Context, p1 storiface.SectorRef, p2 storif
 	return *new(storiface.CallID), ErrNotSupported
 }
 
-func (s *WorkerStruct) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStruct) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	if s.Internal.FinalizeReplicaUpdate == nil {
 		return *new(storiface.CallID), ErrNotSupported
 	}
-	return s.Internal.FinalizeReplicaUpdate(p0, p1, p2)
+	return s.Internal.FinalizeReplicaUpdate(p0, p1)
 }
 
-func (s *WorkerStub) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStub) FinalizeReplicaUpdate(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 
-func (s *WorkerStruct) FinalizeSector(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStruct) FinalizeSector(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	if s.Internal.FinalizeSector == nil {
 		return *new(storiface.CallID), ErrNotSupported
 	}
-	return s.Internal.FinalizeSector(p0, p1, p2)
+	return s.Internal.FinalizeSector(p0, p1)
 }
 
-func (s *WorkerStub) FinalizeSector(p0 context.Context, p1 storiface.SectorRef, p2 []storiface.Range) (storiface.CallID, error) {
+func (s *WorkerStub) FinalizeSector(p0 context.Context, p1 storiface.SectorRef) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

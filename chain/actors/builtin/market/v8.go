@@ -185,14 +185,14 @@ func (s *dealStates8) array() adt.Array {
 }
 
 func fromV8DealState(v8 market8.DealState) DealState {
-
-	return DealState{
+	ret := DealState{
 		SectorStartEpoch: v8.SectorStartEpoch,
 		LastUpdatedEpoch: v8.LastUpdatedEpoch,
 		SlashEpoch:       v8.SlashEpoch,
 		VerifiedClaim:    0,
 	}
 
+	return ret
 }
 
 type dealProposals8 struct {

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Generate lotus command lines documents as text and markdown in folder "lotus/documentation/en".
-# Python 2.7
+# Python 3
 
 import os
 

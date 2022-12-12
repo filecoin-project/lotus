@@ -770,7 +770,7 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
-func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -797,7 +797,7 @@ func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId 
 	return a.StateGetAllocation(ctx, dealState.Proposal.Client, allocationId, tsk)
 }
 
-func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifreg.AllocationId, tsk types.TipSetKey) (*verifreg.Allocation, error) {
 	idAddr, err := a.StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -824,7 +824,7 @@ func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Ad
 	return allocation, nil
 }
 
-func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
 	idAddr, err := a.StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -848,7 +848,7 @@ func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.A
 	return allocations, nil
 }
 
-func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) {
+func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifreg.ClaimId, tsk types.TipSetKey) (*verifreg.Claim, error) {
 	idAddr, err := a.StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -875,7 +875,7 @@ func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Addre
 	return claim, nil
 }
 
-func (a *StateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+func (a *StateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
 	idAddr, err := a.StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
 		return nil, err

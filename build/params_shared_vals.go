@@ -33,7 +33,7 @@ const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 
 /* inline-gen start */
 
-const TestNetworkVersion = network.Version17
+const TestNetworkVersion = network.Version18
 
 /* inline-gen end */
 

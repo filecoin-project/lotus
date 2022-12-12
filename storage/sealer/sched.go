@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -42,15 +43,23 @@ const mib = 1 << 20
 
 type WorkerAction func(ctx context.Context, w Worker) error
 
+type SchedWorker interface {
+	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
+	Paths(context.Context) ([]storiface.StoragePath, error)
+	Utilization() float64
+}
+
 type WorkerSelector interface {
 	// Ok is true if worker is acceptable for performing a task.
 	// If any worker is preferred for a task, other workers won't be considered for that task.
-	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *WorkerHandle) (ok, preferred bool, err error)
+	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a SchedWorker) (ok, preferred bool, err error)
 
-	Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) // true if a is preferred over b
+	Cmp(ctx context.Context, task sealtasks.TaskType, a, b SchedWorker) (bool, error) // true if a is preferred over b
 }
 
 type Scheduler struct {
+	mctx context.Context // metrics context
+
 	assigner Assigner
 
 	workersLk sync.RWMutex
@@ -78,10 +87,6 @@ type Scheduler struct {
 
 type WorkerHandle struct {
 	workerRpc Worker
-
-	tasksCache  map[sealtasks.TaskType]struct{}
-	tasksUpdate time.Time
-	tasksLk     sync.Mutex
 
 	Info storiface.WorkerInfo
 
@@ -146,7 +151,7 @@ type rmRequest struct {
 	res chan error
 }
 
-func newScheduler(assigner string) (*Scheduler, error) {
+func newScheduler(ctx context.Context, assigner string) (*Scheduler, error) {
 	var a Assigner
 	switch assigner {
 	case "", "utilization":
@@ -158,6 +163,7 @@ func newScheduler(assigner string) (*Scheduler, error) {
 	}
 
 	return &Scheduler{
+		mctx:     ctx,
 		assigner: a,
 
 		Workers: map[storiface.WorkerID]*WorkerHandle{},
@@ -365,6 +371,9 @@ type Assigner interface {
 func (sh *Scheduler) trySched() {
 	sh.workersLk.RLock()
 	defer sh.workersLk.RUnlock()
+
+	done := metrics.Timer(sh.mctx, metrics.SchedAssignerCycleDuration)
+	defer done()
 
 	sh.assigner.TrySched(sh)
 }
