@@ -282,6 +282,7 @@ jobs:
           darwin: true
           darwin-architecture: amd64
       - run: make lotus lotus-miner lotus-worker
+      - run: otool -hv lotus
       - run:
           name: check tag and version output match
           command: ./scripts/version-check.sh ./lotus
@@ -308,6 +309,7 @@ jobs:
           export CPATH=$(brew --prefix)/include
           export LIBRARY_PATH=$(brew --prefix)/lib
           make lotus lotus-miner lotus-worker
+      - run: otool -hv lotus
       - run:
           name: check tag and version output match
           command: ./scripts/version-check.sh ./lotus
