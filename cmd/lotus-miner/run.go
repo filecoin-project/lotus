@@ -54,12 +54,12 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "wdpost",
 			Usage: "enable windowPoSt",
-			Value: true,
+			Value: false,
 		},
 		&cli.BoolFlag{
 			Name:  "wnpost",
 			Usage: "enable winningPoSt",
-			Value: true,
+			Value: false,
 		},
 		&cli.StringFlag{
 			Name:  "sctype",

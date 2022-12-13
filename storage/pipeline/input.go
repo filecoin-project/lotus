@@ -5,6 +5,9 @@ import (
 	"os"
 	"sort"
 	"time"
+	"strings"
+	"path/filepath"
+	"io/ioutil"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -200,12 +203,41 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		return xerrors.Errorf("getting per-sector deal limit: %w", err)
 	}
 
+	log.Errorw("zlin: handleAddPiece 1")
+
 	for i, piece := range pending {
+		log.Errorw("zlin: handleAddPiece 2")
 		m.inputLk.Lock()
 		deal, ok := m.pendingPieces[piece]
 		m.inputLk.Unlock()
 		if !ok {
 			return xerrors.Errorf("piece %s assigned to sector %d not found", piece, sector.SectorNumber)
+		}
+
+		minerpath := os.Getenv("LOTUS_MINER_PATH")
+		workerpath := filepath.Join(minerpath, "worker", deal.deal.DealProposal.PieceCID.String())
+		log.Errorw("assign wrker workerpath " + workerpath)
+		_, workererr := os.Stat(workerpath)
+		if workererr == nil {
+			sectorspath := filepath.Join(minerpath, "sectors")
+			_, sectorerr := os.Stat(sectorspath)
+			if sectorerr != nil {
+				os.Mkdir(sectorspath, 0755)
+			}
+			minerSector := m.minerSectorID(sector.SectorNumber)
+			sectorspath = filepath.Join(sectorspath, storiface.SectorName(minerSector))
+			log.Errorw("assign wrker sectorspath " + sectorspath)
+			_, sectorerr = os.Stat(sectorspath)
+			if sectorerr != nil {
+				buffer, fileerr := ioutil.ReadFile(workerpath)
+				if fileerr == nil {
+					os.WriteFile(sectorspath, buffer, 0666)
+				}
+			}
+			err := os.Remove(workerpath)
+			if err != nil {
+				log.Errorw("can't delete worker path :%+v", err)
+			}
 		}
 
 		if len(sector.dealIDs())+(i+1) > maxDeals {
@@ -249,16 +281,46 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			})
 		}
 
-		ppi, err := m.sealer.AddPiece(sealer.WithPriority(ctx.Context(), DealSectorPriority),
-			m.minerSector(sector.SectorType, sector.SectorNumber),
-			pieceSizes,
-			deal.size,
-			deal.data)
-		if err != nil {
-			err = xerrors.Errorf("writing piece: %w", err)
-			deal.accepted(sector.SectorNumber, offset, err)
-			return ctx.Send(SectorAddPieceFailed{err})
+		// change by lin
+		var ppi abi.PieceInfo
+		if os.Getenv("LOTUS_OF_SXX") == "1" && deal.deal.RemoteFilepath != "" {
+			if !strings.HasPrefix(string(deal.deal.RemoteFilepath), "/") {
+				ppi, err = m.sealer.AddPiece(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+					m.minerSector(sector.SectorType, sector.SectorNumber),
+					pieceSizes,
+					deal.size,
+					deal.data)
+				if err != nil {
+					err = xerrors.Errorf("writing piece: %w", err)
+					deal.accepted(sector.SectorNumber, offset, err)
+					return ctx.Send(SectorAddPieceFailed{err})
+				}
+			} else {
+				log.Errorf("zlin: remotefilepath is : %w", deal.deal.RemoteFilepath)
+				ppi, err = m.sealer.AddPieceOfSxx(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+					m.minerSector(sector.SectorType, sector.SectorNumber),
+					pieceSizes,
+					deal.size,
+					deal.deal.RemoteFilepath)
+				if err != nil {
+					err = xerrors.Errorf("writing piece: %w", err)
+					deal.accepted(sector.SectorNumber, offset, err)
+					return ctx.Send(SectorAddPieceFailed{err})
+				}
+			}
+		} else {
+			ppi, err = m.sealer.AddPiece(sealer.WithPriority(ctx.Context(), DealSectorPriority),
+				m.minerSector(sector.SectorType, sector.SectorNumber),
+				pieceSizes,
+				deal.size,
+				deal.data)
+			if err != nil {
+				err = xerrors.Errorf("writing piece: %w", err)
+				deal.accepted(sector.SectorNumber, offset, err)
+				return ctx.Send(SectorAddPieceFailed{err})
+			}
 		}
+		// end
 		if !ppi.PieceCID.Equals(deal.deal.DealProposal.PieceCID) {
 			err = xerrors.Errorf("got unexpected piece CID: expected:%s, got:%s", deal.deal.DealProposal.PieceCID, ppi.PieceCID)
 			deal.accepted(sector.SectorNumber, offset, err)

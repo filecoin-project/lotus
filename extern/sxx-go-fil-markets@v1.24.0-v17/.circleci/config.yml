@@ -1,0 +1,198 @@
+version: 2.1
+orbs:
+  go: gotest/tools@0.0.9
+  codecov: codecov/codecov@1.0.2
+
+executors:
+  golang:
+    docker:
+      - image: cimg/go:1.17.9
+    resource_class: large
+
+commands:
+  install-deps:
+    steps:
+      - go/install-ssh
+      - go/install: {package: git}
+  prepare:
+    parameters:
+      linux:
+        default: true
+        description: is a linux build environment?
+        type: boolean
+    steps:
+      - checkout
+      - when:
+          condition: << parameters.linux >>
+          steps:
+            - run: sudo apt-get update
+            - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+      - run: git submodule sync
+      - run: git submodule update --init
+  build-all:
+
+
+jobs:
+  mod-tidy-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - go/mod-tidy-check
+
+  cbor-gen-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: go install github.com/hannahhoward/cbor-gen-for
+      - run: go generate ./...
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+
+  docs-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: make docsgen
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+  imports-check:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - run: go install golang.org/x/tools/cmd/goimports
+      - run: scripts/fiximports
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+
+  build-all:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - run: sudo apt-get update
+      - restore_cache:
+          name: restore go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go-fil-markets/go.mod" }}
+      - run:
+          command: make build
+      - store_artifacts:
+          path: go-fil-markets
+      - store_artifacts:
+          path: go-fil-markets
+
+  test: &test
+    description: |
+      Run tests with gotestsum.
+    parameters:
+      executor:
+        type: executor
+        default: golang
+      test-suite-name:
+        type: string
+        default: unit
+        description: Test suite name to report to CircleCI.
+      codecov-upload:
+        type: boolean
+        default: true
+        description: |
+          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
+          set as an environment variable for private projects.
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - restore_cache:
+          name: restore go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+      - go/install-gotestsum:
+          gobin: $HOME/.local/bin
+      - run:
+          name: make test
+          environment:
+            GOTESTSUM_JUNITFILE: /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml
+          command: |
+            mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
+            make test
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - when:
+          condition: << parameters.codecov-upload >>
+          steps:
+            - go/install: {package: bash}
+            - go/install: {package: curl}
+            - run:
+                shell: /bin/bash -eo pipefail
+                command: |
+                  bash <(curl -s https://codecov.io/bash)
+      - save_cache:
+          name: save go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+          paths:
+            - "~/go/pkg"
+            - "~/go/src/github.com"
+            - "~/go/src/golang.org"
+
+  lint: &lint
+    description: |
+      Run golangci-lint.
+    parameters:
+      executor:
+        type: executor
+        default: golang
+      golangci-lint-version:
+        type: string
+        default: 1.21.0
+      concurrency:
+        type: string
+        default: '2'
+        description: |
+          Concurrency used to run linters. Defaults to 2 because NumCPU is not
+          aware of container CPU limits.
+      args:
+        type: string
+        default: ''
+        description: |
+          Arguments to pass to golangci-lint
+    executor: << parameters.executor >>
+    steps:
+      - install-deps
+      - prepare
+      - run:
+          command: make build
+      - go/install-golangci-lint:
+          gobin: $HOME/.local/bin
+          version: << parameters.golangci-lint-version >>
+      - run:
+          name: Lint
+          command: |
+            $HOME/.local/bin/golangci-lint run -v \
+              --concurrency << parameters.concurrency >> << parameters.args >>
+  lint-changes:
+    <<: *lint
+
+  lint-all:
+    <<: *lint
+
+workflows:
+  version: 2.1
+  ci:
+    jobs:
+      - lint-changes:
+          args: "--new-from-rev origin/master"
+      - test
+      - mod-tidy-check
+      - cbor-gen-check
+      - docs-check
+      - imports-check
+      - build-all

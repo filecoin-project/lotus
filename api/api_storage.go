@@ -293,6 +293,7 @@ type StorageMiner interface {
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
+	DealsImportDataOfSxx(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
 	DealsList(ctx context.Context) ([]*MarketDeal, error)                        //perm:admin
 	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
 	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
@@ -460,6 +461,7 @@ type PieceDealInfo struct {
 	DealProposal *market.DealProposal
 	DealSchedule DealSchedule
 	KeepUnsealed bool
+	RemoteFilepath string
 }
 
 // DealSchedule communicates the time interval of a storage deal. The deal must

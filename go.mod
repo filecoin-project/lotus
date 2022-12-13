@@ -338,3 +338,5 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/filecoin-project/go-fil-markets => ./extern/sxx-go-fil-markets@v1.24.0-v17

@@ -2,10 +2,13 @@ package sealer
 
 import (
 	"context"
-	"sync"
-	"time"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/xerrors"
@@ -455,11 +458,63 @@ func (sh *Scheduler) findWorker(task *WorkerRequest) int {
 	if task.TaskType == sealtasks.TTPreCommit2 {
 		i = sh.findStorageWorker(task)
 	} else {
+		// if task.TaskType == sealtasks.TTAddPiece {
+		// 	sh.assignWorker(task)
+		// }
 		i = sh.findFileWorker(task)
 	}
 	return i
 }
+func (sh *Scheduler) assignWorker(task *WorkerRequest) error {
+	minerpath := os.Getenv("LOTUS_MINER_PATH")
+	sectorspath := filepath.Join(minerpath, "./sectors")
 
+	_, err := os.Stat(sectorspath + "/" + storiface.SectorName(task.Sector.ID))
+	if err == nil {
+		return nil
+	}
+
+	workerpath := filepath.Join(minerpath, "./worker")
+
+	files, err := ioutil.ReadDir(workerpath)
+	if err != nil {
+		return err
+	}
+	tmp := map[int64]string{}
+	for _, file := range files {
+
+		buffer, err := ioutil.ReadFile(workerpath + "/" + file.Name())
+		if err != nil {
+			continue
+		}
+		value := string(buffer)
+
+		key, err := strconv.ParseInt(file.Name(), 10, 64)
+
+		tmp[key] = value
+	}
+
+	var workename string
+	var t int64
+	t = -1
+	for key, value := range tmp {
+		if t == -1 || key < t {
+			workename = value
+			t = key
+		}
+	}
+	if t > -1 {
+		file := fmt.Sprintf("%s/%d", workerpath, t)
+		os.Remove(file)
+		_, err := os.Stat(sectorspath)
+		if err != nil {
+			err = os.Mkdir(sectorspath, 0755)
+		}
+		path := sectorspath + "/" + storiface.SectorName(task.Sector.ID)
+		err = os.WriteFile(path, []byte(workename), 0666)
+	}
+	return nil
+}
 func (sh *Scheduler) findStorageWorker(task *WorkerRequest) int {
 	ctx := task.Ctx
 	sel, ok := task.Sel.(*existingSelector)
@@ -529,4 +584,5 @@ func (sh *Scheduler) findFileWorker(task *WorkerRequest) int {
 
 	return -1
 }
+
 // end

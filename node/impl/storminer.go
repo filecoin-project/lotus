@@ -1224,6 +1224,13 @@ func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context,
 	return sm.SetExpectedSealDurationFunc(d)
 }
 
+// add by lin
+func (sm *StorageMinerAPI) DealsImportDataOfSxx(ctx context.Context, deal cid.Cid, fname string) error {
+
+	return sm.StorageProvider.ImportDataForDealOfSxx(ctx, deal, fname)
+}
+// end
+
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
 	fi, err := os.Open(fname)
 	if err != nil {

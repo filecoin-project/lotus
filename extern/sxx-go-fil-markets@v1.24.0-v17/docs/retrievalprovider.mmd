@@ -1,0 +1,72 @@
+stateDiagram-v2
+	state "DealStatusNew" as DealStatusNew
+	state "DealStatusUnsealing" as DealStatusUnsealing
+	state "DealStatusUnsealed" as DealStatusUnsealed
+	state "DealStatusFundsNeededUnseal" as DealStatusFundsNeededUnseal
+	state "DealStatusFailing" as DealStatusFailing
+	state "DealStatusFundsNeeded" as DealStatusFundsNeeded
+	state "DealStatusOngoing" as DealStatusOngoing
+	state "DealStatusFundsNeededLastPayment" as DealStatusFundsNeededLastPayment
+	state "DealStatusCompleted" as DealStatusCompleted
+	state "DealStatusErrored" as DealStatusErrored
+	state "DealStatusBlocksComplete" as DealStatusBlocksComplete
+	state "DealStatusFinalizing" as DealStatusFinalizing
+	state "DealStatusCompleting" as DealStatusCompleting
+	state "DealStatusCancelling" as DealStatusCancelling
+	state "DealStatusCancelled" as DealStatusCancelled
+	DealStatusUnsealing : On entry runs UnsealData
+	DealStatusUnsealed : On entry runs UnpauseDeal
+	DealStatusFundsNeededUnseal : On entry runs TrackTransfer
+	DealStatusFailing : On entry runs CancelDeal
+	DealStatusCompleting : On entry runs CleanupDeal
+	DealStatusCancelling : On entry runs CancelDeal
+	[*] --> DealStatusNew
+	note right of DealStatusNew
+		The following events are not shown cause they can trigger from any state.
+
+		ProviderEventDataTransferError - transitions state to DealStatusErrored
+		ProviderEventMultiStoreError - transitions state to DealStatusErrored
+		ProviderEventClientCancelled - transitions state to DealStatusCancelling
+	end note
+	DealStatusNew --> DealStatusNew : ProviderEventOpen
+	DealStatusNew --> DealStatusUnsealing : ProviderEventDealAccepted
+	DealStatusFundsNeededUnseal --> DealStatusFundsNeededUnseal : ProviderEventDealAccepted
+	DealStatusUnsealing --> DealStatusFailing : ProviderEventUnsealError
+	DealStatusUnsealing --> DealStatusUnsealed : ProviderEventUnsealComplete
+	DealStatusUnsealed --> DealStatusOngoing : ProviderEventBlockSent
+	DealStatusOngoing --> DealStatusOngoing : ProviderEventBlockSent
+	DealStatusOngoing --> DealStatusBlocksComplete : ProviderEventBlocksCompleted
+	DealStatusNew --> DealStatusFundsNeededUnseal : ProviderEventPaymentRequested
+	DealStatusUnsealed --> DealStatusFundsNeeded : ProviderEventPaymentRequested
+	DealStatusOngoing --> DealStatusFundsNeeded : ProviderEventPaymentRequested
+	DealStatusBlocksComplete --> DealStatusFundsNeededLastPayment : ProviderEventPaymentRequested
+	DealStatusFundsNeeded --> DealStatusFailing : ProviderEventSaveVoucherFailed
+	DealStatusFundsNeededLastPayment --> DealStatusFailing : ProviderEventSaveVoucherFailed
+	DealStatusFundsNeeded --> DealStatusFundsNeeded : ProviderEventPartialPaymentReceived
+	DealStatusFundsNeededLastPayment --> DealStatusFundsNeededLastPayment : ProviderEventPartialPaymentReceived
+	DealStatusFundsNeededUnseal --> DealStatusUnsealing : ProviderEventPaymentReceived
+	DealStatusFundsNeeded --> DealStatusOngoing : ProviderEventPaymentReceived
+	DealStatusFundsNeededLastPayment --> DealStatusFinalizing : ProviderEventPaymentReceived
+	DealStatusBlocksComplete --> DealStatusCompleting : ProviderEventComplete
+	DealStatusFinalizing --> DealStatusCompleting : ProviderEventComplete
+	DealStatusCompleting --> DealStatusCompleted : ProviderEventCleanupComplete
+	DealStatusFailing --> DealStatusErrored : ProviderEventCancelComplete
+	DealStatusCancelling --> DealStatusCancelled : ProviderEventCancelComplete
+
+	note left of DealStatusFailing : The following events only record in this state.<br><br>ProviderEventClientCancelled
+
+
+	note left of DealStatusFundsNeeded : The following events only record in this state.<br><br>ProviderEventPaymentRequested
+
+
+	note left of DealStatusOngoing : The following events only record in this state.<br><br>ProviderEventPaymentReceived
+
+
+	note left of DealStatusBlocksComplete : The following events only record in this state.<br><br>ProviderEventPaymentReceived
+
+
+	note left of DealStatusFinalizing : The following events only record in this state.<br><br>ProviderEventPaymentReceived
+
+
+	note left of DealStatusCancelling : The following events only record in this state.<br><br>ProviderEventClientCancelled
+

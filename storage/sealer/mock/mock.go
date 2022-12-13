@@ -22,6 +22,12 @@ import (
 
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"os"
+	"path/filepath"
+	"encoding/json"
+
+	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
 var log = logging.Logger("sbmock")
@@ -34,6 +40,12 @@ type SectorMgr struct {
 
 	lk sync.Mutex
 }
+
+// add by lin
+type CarPath struct {
+	Path []string
+}
+// end
 
 type mockVerifProver struct {
 	aggregates map[string]prooftypes.AggregateSealVerifyProofAndInfos // used for logging bad verifies
@@ -85,6 +97,86 @@ func (mgr *SectorMgr) DataCid(ctx context.Context, size abi.UnpaddedPieceSize, r
 
 func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
+
+	var b bytes.Buffer
+	tr := io.TeeReader(r, &b)
+
+	c, err := commpffi.GeneratePieceCIDFromFile(sectorID.ProofType, tr, size)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
+	}
+
+	log.Warn("Generated Piece CID: ", c)
+
+	mgr.lk.Lock()
+	mgr.pieces[c] = b.Bytes()
+
+	ss, ok := mgr.sectors[sectorID.ID]
+	if !ok {
+		ss = &sectorState{
+			state: statePacking,
+		}
+		mgr.sectors[sectorID.ID] = ss
+	}
+	mgr.lk.Unlock()
+
+	ss.lk.Lock()
+	ss.pieces = append(ss.pieces, c)
+	ss.lk.Unlock()
+
+	return abi.PieceInfo{
+
+		Size:     size.Padded(),
+		PieceCID: c,
+	}, nil
+}
+
+func (mgr *SectorMgr) AddPieceOfSxx(ctx context.Context, sectorID storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, path string) (abi.PieceInfo, error) {
+	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
+
+	// file, err := filestore.FileStore.Open(filepath.Join(curpath, carfile))
+	worker_car_json_file := filepath.Join(os.Getenv("LOTUS_WORKER_PATH"), "./car_path.json")
+	_, err := os.Stat(worker_car_json_file)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("don't have json file of car path")
+	}
+	byteValue, err := ioutil.ReadFile(worker_car_json_file)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("can't read %+v, err: %+v", worker_car_json_file, err)
+	}
+	var car_path CarPath
+	json.Unmarshal(byteValue, &car_path)
+	worker_car_path := ""
+	for _, v := range car_path.Path {
+		worker_car_path = ""
+		dir := path
+		cur := ""
+		for {
+			dir, cur = filepath.Split(dir)
+			dir = filepath.Dir(dir)
+			if filepath.Base(dir) == "/" {
+				worker_car_path = filepath.Join(v, worker_car_path)
+				break
+			} else {
+				worker_car_path = filepath.Join(cur, worker_car_path)
+			}
+		}
+		_, err = os.Stat(worker_car_path)
+		if err == nil {
+			break
+		}
+	}
+	log.Errorf("zlin: AddPieceOfSxx file name: %+v", worker_car_path)
+	file, err := os.Open(worker_car_path)
+	defer file.Close()
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("can't add piece to sector with get car fail: %w", err)
+	}
+	filestat, _ := file.Stat()
+	r, err := shared.NewInflatorReader(file, uint64(filestat.Size()), size)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("can't add piece to sector with read car fail: %w", err)
+	}
 
 	var b bytes.Buffer
 	tr := io.TeeReader(r, &b)

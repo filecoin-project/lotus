@@ -413,6 +413,7 @@ func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
 		storagemarket.StorageDealTransferring:         {},
 		storagemarket.StorageDealValidating:           {},
 		storagemarket.StorageDealStaged:               {},
+		storagemarket.StorageDealStagedOfSxx:          {},
 		storagemarket.StorageDealAwaitingPreCommit:    {},
 		storagemarket.StorageDealSealing:              {},
 		storagemarket.StorageDealPublish:              {},

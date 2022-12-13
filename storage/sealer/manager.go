@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sort"
 	"sync"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -26,10 +25,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
-	"os"
-	"encoding/json"
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
+	"os"
 )
 
 var log = logging.Logger("advmgr")
@@ -432,68 +431,43 @@ func (m *Manager) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 	return out, err
 }
 
-func (m *Manager) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+// add by lin
+func (m *Manager) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, carpath string) (abi.PieceInfo, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// add by lin
-	isRealData := true
-	sectortype := os.Getenv("LOTUS_SECTOR_TYPE_SXX")
-	if sectortype == "1" {
-		isRealData = false
+	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTUnsealed); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
-	if isRealData {
-		// add by pan
-		tmp := map[uuid.UUID]int{}
-		jobs := m.WorkerJobs()
-		for wid, jobs := range jobs {
-			for _, job := range jobs {
-				t := job.Task.Short()
-				if t != "PC1" && t != "AP" {
-					continue
-				}
-				count, ok := tmp[wid]
-				if ok {
-					count = count + 1
-				} else {
-					count = 1
-				}
-				tmp[wid] = count
-			}
-		}
-		workers := m.WorkerStats(ctx)
-		for wid, worker := range workers {
-			if strings.HasSuffix(worker.Info.Hostname, "pc1") {
-				count, ok := tmp[wid]
-				if !ok {
-					count = 0
-					tmp[wid] = count
-				}
-			}
-		}
-		var workeid uuid.UUID
-		i := -1
-		for wid, count := range tmp {
-			if i == -1 || count < i {
-				workeid = wid
-				i = count
-			}
-		}
 
-		worker, ok := workers[workeid]
-		if ok {
-			minerpath := os.Getenv("LOTUS_MINER_PATH")
-			path := minerpath + "/sectors"
-			_, err := os.Stat(path)
-			if os.IsNotExist(err) {
-				err = os.Mkdir(path, 0755)
-			}
-			path = path + "/" + storiface.SectorName(sector.ID)
-			err = os.WriteFile(path, []byte(worker.Info.Hostname), 0666)
-		}
-		// end
+	var selector WorkerSelector
+	var err error
+	if len(existingPieces) == 0 { // new
+		selector = newAllocSelector(m.index, storiface.FTUnsealed, storiface.PathSealing)
+	} else { // use existing
+		selector = newExistingSelector(m.index, sector.ID, storiface.FTUnsealed, false)
 	}
-	// end
+
+	var out abi.PieceInfo
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
+		p, err := m.waitSimpleCall(ctx)(w.AddPieceOfSxx(ctx, sector, existingPieces, sz, carpath))
+		if err != nil {
+			return err
+		}
+		if p != nil {
+			out = p.(abi.PieceInfo)
+		}
+		return nil
+	})
+
+	return out, err
+}
+
+// end
+
+func (m *Manager) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTUnsealed); err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("acquiring sector lock: %w", err)
@@ -782,7 +756,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	} else {
 		fetchSel = newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
 	}
-    // end
+	// end
 
 	// only move the unsealed file if it still exists and needs moving
 	moveUnsealed := unsealed
@@ -1460,14 +1434,14 @@ func (m *Manager) StorageDeclareSector(ctx context.Context, sector storiface.Sec
 	parameters["jsonrpc"] = "2.0"
 	parameters["method"] = "Filecoin.StorageDeclareSector"
 	parameters["params"] = []interface{}{
-				storageID,
-				map[string]interface{}{
-					"Miner":  sector.ID.Miner,
-					"Number": sector.ID.Number,
-				},
-				sectorFileType,
-				true,
-			}
+		storageID,
+		map[string]interface{}{
+			"Miner":  sector.ID.Miner,
+			"Number": sector.ID.Number,
+		},
+		sectorFileType,
+		true,
+	}
 	parameters["id"] = 1
 	data, err := json.Marshal(parameters)
 	if err != nil {
@@ -1496,6 +1470,7 @@ func (m *Manager) StorageDeclareSector(ctx context.Context, sector storiface.Sec
 	}
 	log.Info("SectorId(" + sector.ID.Number.String() + ") declare " + string(buffer))
 }
+
 // end
 
 var _ Unsealer = &Manager{}
