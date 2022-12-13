@@ -7,11 +7,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multihash"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var log = logging.Logger("sub-cb")
 
 const (
 	// GcSanityCheck determines the number of epochs that in the past
@@ -86,14 +91,14 @@ func cidExists(cids []cid.Cid, c cid.Cid) bool {
 
 func (bInfo *blksInfo) eqErr() error {
 	bInfo.cancel()
-	return fmt.Errorf("equivocation error detected. Different block with the same ticket already seen")
+	return fmt.Errorf("different blocks with the same ticket already seen")
 }
 
 func (cb *ConsistentBCast) Len() int {
 	return len(cb.m)
 }
 
-func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) error {
+func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) {
 	cb.lk.Lock()
 	bcastDict, ok := cb.m[blk.Header.Height]
 	if !ok {
@@ -103,26 +108,28 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) er
 	cb.lk.Unlock()
 	key, err := BCastKey(blk.Header)
 	if err != nil {
-		return err
+		log.Errorf("couldn't hash blk info for height %d: %s", blk.Header.Height, err)
+		return
 	}
 	blkCid := blk.Cid()
 
 	bInfo, ok := bcastDict.load(key)
 	if ok {
 		if len(bInfo.blks) > 1 {
-			return bInfo.eqErr()
+			log.Errorf("equivocation detected for height %d: %s", blk.Header.Height, bInfo.eqErr())
+			return
 		}
 
 		if !cidExists(bInfo.blks, blkCid) {
 			bInfo.blks = append(bInfo.blks, blkCid)
-			return bInfo.eqErr()
+			log.Errorf("equivocation detected for height %d: %s", blk.Header.Height, bInfo.eqErr())
+			return
 		}
-		return nil
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, cb.delay)
 	bcastDict.store(key, &blksInfo{ctx, cancel, []cid.Cid{blkCid}})
-	return nil
 }
 
 func (cb *ConsistentBCast) WaitForDelivery(bh *types.BlockHeader) error {

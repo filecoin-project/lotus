@@ -134,5 +134,5 @@ const BootstrapPeerThreshold = 1
 var WhitelistedBlock = cid.Undef
 
 // Reducing the delivery delay for equivocation of
-// consistent broadcast to just one second.
-const CBDeliveryDelay = 1 * time.Second
+// consistent broadcast to just half a second.
+const CBDeliveryDelay = 500 * time.Milisecond

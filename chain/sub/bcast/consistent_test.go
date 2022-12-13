@@ -10,13 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/sub/bcast"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/chain/sub/bcast"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 const TEST_DELAY = 1 * time.Second
