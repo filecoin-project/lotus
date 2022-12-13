@@ -2,10 +2,10 @@
 
 # 1.19.0 / 2022-12-07
 
-This is an optional feature release of Lotus. This feature release includes the production ready SplitStore feature, the experimental Lotus node cluster feature, as well as numerous enhancments and bugfixes.
+This is an optional feature release of Lotus. This feature release includes the SplitStore beta, the experimental Lotus node cluster feature, as well as numerous enhancments and bugfixes.
 
 ## Highlights
-### 🟢 SplitStore v2（Production Ready!!) 🟢
+### 🟢 SplitStore v2（Beta) 🟢
 
 Splitstore aims to reduce the node performance impact that's caused by the Filecoin's very large, and continuously growing chain datastore by having a hot and cold blockstore. You can find more about the Splitstore implementation [here](https://github.com/filecoin-project/lotus/blob/master/blockstore/splitstore/README.md).
 Splitstore has three basic modes for node operators to configure according to your needs: 
@@ -13,7 +13,7 @@ Splitstore has three basic modes for node operators to configure according to yo
 - `universal`:  stores all chain data that's beyond 4 finalities into coldstore.
 - `messages`: only stores on-chain messages into coldstore.
 
-In this release, splitstore is enabled by default with `discard` mode. The `EnableColdStoreAutoPrune=` configuration is being deprecated in this release, as there is only ever one compaction running.
+The `EnableColdStoreAutoPrune=` configuration is being deprecated in this release, as there is only ever one compaction running. We welcome all node operators to try the new feature and let us know [here](https://github.com/filecoin-project/lotus/discussions/9179) if you have any feedback! 
 There are more configuration one may set, you can read the full documentation about the SplitStoreV2 here: https://lotus.filecoin.io/lotus/configure/splitstore/.
 
 ### 🧪 Node Cluster (*EXPERIMENTAL.*) 🧪
