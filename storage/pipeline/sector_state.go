@@ -53,6 +53,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	UpdateReplica:               {},
 	ProveReplicaUpdate:          {},
 	SubmitReplicaUpdate:         {},
+	WaitMutable:                 {},
 	ReplicaUpdateWait:           {},
 	UpdateActivating:            {},
 	ReleaseSectorKey:            {},
@@ -110,6 +111,7 @@ const (
 	UpdateReplica         SectorState = "UpdateReplica"
 	ProveReplicaUpdate    SectorState = "ProveReplicaUpdate"
 	SubmitReplicaUpdate   SectorState = "SubmitReplicaUpdate"
+	WaitMutable           SectorState = "WaitMutable"
 	ReplicaUpdateWait     SectorState = "ReplicaUpdateWait"
 	FinalizeReplicaUpdate SectorState = "FinalizeReplicaUpdate"
 	UpdateActivating      SectorState = "UpdateActivating"
@@ -161,7 +163,7 @@ func toStatState(st SectorState, finEarly bool) statSectorState {
 		return sstStaging
 	case Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, SubmitPreCommitBatch, PreCommitBatchWait, WaitSeed, Committing, CommitFinalize, FinalizeSector, SnapDealsPacking, UpdateReplica, ProveReplicaUpdate, FinalizeReplicaUpdate, ReceiveSector:
 		return sstSealing
-	case SubmitCommit, CommitWait, SubmitCommitAggregate, CommitAggregateWait, SubmitReplicaUpdate, ReplicaUpdateWait:
+	case SubmitCommit, CommitWait, SubmitCommitAggregate, CommitAggregateWait, WaitMutable, SubmitReplicaUpdate, ReplicaUpdateWait:
 		if finEarly {
 			// we use statSectorState for throttling storage use. With FinalizeEarly
 			// we can consider sectors in states after CommitFinalize as finalized, so
@@ -184,6 +186,7 @@ func IsUpgradeState(st SectorState) bool {
 		UpdateReplica,
 		ProveReplicaUpdate,
 		SubmitReplicaUpdate,
+		WaitMutable,
 
 		SnapDealsAddPieceFailed,
 		SnapDealsDealsExpired,

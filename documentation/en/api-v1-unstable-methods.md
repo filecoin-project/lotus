@@ -164,6 +164,11 @@
   * [PaychVoucherCreate](#PaychVoucherCreate)
   * [PaychVoucherList](#PaychVoucherList)
   * [PaychVoucherSubmit](#PaychVoucherSubmit)
+* [Raft](#Raft)
+  * [RaftLeader](#RaftLeader)
+  * [RaftState](#RaftState)
+* [Start](#Start)
+  * [StartTime](#StartTime)
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
   * [StateActorCodeCIDs](#StateActorCodeCIDs)
@@ -1990,7 +1995,8 @@ Inputs:
       "Address": "f01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
-    }
+    },
+    "RemoteStore": "00000000-0000-0000-0000-000000000000"
   }
 ]
 ```
@@ -5051,6 +5057,45 @@ Response:
   "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
+
+## Raft
+
+
+### RaftLeader
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
+
+### RaftState
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "NonceMap": {},
+  "MsgUuids": {}
+}
+```
+
+## Start
+
+
+### StartTime
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"0001-01-01T00:00:00Z"`
 
 ## State
 The State methods are used to query, inspect, and interact with chain state.

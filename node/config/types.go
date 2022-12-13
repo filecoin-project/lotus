@@ -4,7 +4,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
@@ -27,6 +26,7 @@ type FullNode struct {
 	Wallet     Wallet
 	Fees       FeeConfig
 	Chainstore Chainstore
+	Cluster    UserRaftConfig
 }
 
 // // Common
@@ -229,6 +229,23 @@ type ProvingConfig struct {
 	// After changing this option, confirm that the new value works in your setup by invoking
 	// 'lotus-miner proving compute window-post 0'
 	ParallelCheckLimit int
+
+	// Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
+	//
+	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+	// test challenge took longer than this timeout
+	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this sector are
+	// blocked (e.g. in case of disconnected NFS mount)
+	SingleCheckTimeout Duration
+
+	// Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
+	// the partition which didn't get checked on time will be skipped
+	//
+	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+	// test challenge took longer than this timeout
+	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this partition are
+	// blocked or slow
+	PartitionCheckTimeout Duration
 
 	// Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
 	//
@@ -452,7 +469,7 @@ type SealerConfig struct {
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
 	// to "hardware".
-	ResourceFiltering sealer.ResourceFilteringStrategy
+	ResourceFiltering ResourceFilteringStrategy
 }
 
 type BatchFeeConfig struct {
@@ -555,7 +572,7 @@ type Chainstore struct {
 
 type Splitstore struct {
 	// ColdStoreType specifies the type of the coldstore.
-	// It can be "universal" (default) or "discard" for discarding cold blocks.
+	// It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
 	ColdStoreType string
 	// HotStoreType specifies the type of the hotstore.
 	// Only currently supported value is "badger".
@@ -571,21 +588,6 @@ type Splitstore struct {
 	// A value of 0 disables, while a value 1 will do full GC in every compaction.
 	// Default is 20 (about once a week).
 	HotStoreFullGCFrequency uint64
-
-	// EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
-	// where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
-	// Default is false
-	EnableColdStoreAutoPrune bool
-
-	// ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
-	// Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
-	// full GC in every prune.
-	// Default is 7 (about once every a week)
-	ColdStoreFullGCFrequency uint64
-
-	// ColdStoreRetention specifies the retention policy for data reachable from the chain, in
-	// finalities beyond the compaction boundary, default is 0, -1 retains everything
-	ColdStoreRetention int64
 }
 
 // // Full Node
@@ -615,4 +617,31 @@ type Wallet struct {
 
 type FeeConfig struct {
 	DefaultMaxFee types.FIL
+}
+
+type UserRaftConfig struct {
+	// EXPERIMENTAL. config to enabled node cluster with raft consensus
+	ClusterModeEnabled bool
+	// A folder to store Raft's data.
+	DataFolder string
+	// InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
+	// peers (with no prior state). It is ignored when Raft was already
+	// initialized or when starting in staging mode.
+	InitPeersetMultiAddr []string
+	// LeaderTimeout specifies how long to wait for a leader before
+	// failing an operation.
+	WaitForLeaderTimeout Duration
+	// NetworkTimeout specifies how long before a Raft network
+	// operation is timed out
+	NetworkTimeout Duration
+	// CommitRetries specifies how many times we retry a failed commit until
+	// we give up.
+	CommitRetries int
+	// How long to wait between retries
+	CommitRetryDelay Duration
+	// BackupsRotate specifies the maximum number of Raft's DataFolder
+	// copies that we keep as backups (renaming) after cleanup.
+	BackupsRotate int
+	// Tracing enables propagation of contexts across binary boundaries.
+	Tracing bool
 }

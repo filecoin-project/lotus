@@ -160,7 +160,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 			return big.Zero(), nil
 		}
 
-		return vm.NewLegacyVM(ctx, vmopt)
+		return vm.NewVM(ctx, vmopt)
 	})
 
 	postcid, receiptsroot, err := tse.ApplyBlocks(context.Background(),
@@ -242,23 +242,38 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		LookbackState:  lookback,
 	}
 
-	lvm, err := vm.NewLegacyVM(context.TODO(), vmOpts)
-	if err != nil {
-		return nil, cid.Undef, err
-	}
-
-	invoker := filcns.NewActorRegistry()
-
-	// register the chaos actor if required by the vector.
+	var vmi vm.Interface
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
+		lvm, err := vm.NewLegacyVM(context.TODO(), vmOpts)
+		if err != nil {
+			return nil, cid.Undef, err
+		}
+
+		invoker := filcns.NewActorRegistry()
 		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
 		registry := builtin.MakeRegistryLegacy([]rtt.VMActor{chaos.Actor{}})
 		invoker.Register(av, nil, registry)
+		lvm.SetInvoker(invoker)
+		vmi = lvm
+	} else {
+		if vmOpts.NetworkVersion >= network.Version16 {
+			fvm, err := vm.NewFVM(context.TODO(), vmOpts)
+			if err != nil {
+				return nil, cid.Undef, err
+			}
+			vmi = fvm
+		} else {
+			lvm, err := vm.NewLegacyVM(context.TODO(), vmOpts)
+			if err != nil {
+				return nil, cid.Undef, err
+			}
+			invoker := filcns.NewActorRegistry()
+			lvm.SetInvoker(invoker)
+			vmi = lvm
+		}
 	}
 
-	lvm.SetInvoker(invoker)
-
-	ret, err := lvm.ApplyMessage(d.ctx, toChainMsg(params.Message))
+	ret, err := vmi.ApplyMessage(d.ctx, toChainMsg(params.Message))
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -266,10 +281,10 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	var root cid.Cid
 	if d.vmFlush {
 		// flush the VM, committing the state tree changes and forcing a
-		// recursive copoy from the temporary blcokstore to the real blockstore.
-		root, err = lvm.Flush(d.ctx)
+		// recursive copy from the temporary blockstore to the real blockstore.
+		root, err = vmi.Flush(d.ctx)
 	} else {
-		root, err = lvm.StateTree().(*state.StateTree).Flush(d.ctx)
+		root, err = vmi.(*vm.LegacyVM).StateTree().(*state.StateTree).Flush(d.ctx)
 	}
 
 	return ret, root, err

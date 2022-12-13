@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
@@ -22,7 +23,7 @@ type mockMpool struct {
 	nonces map[address.Address]uint64
 }
 
-var _ MpoolNonceAPI = (*mockMpool)(nil)
+var _ messagepool.MpoolNonceAPI = (*mockMpool)(nil)
 
 func newMockMpool() *mockMpool {
 	return &mockMpool{nonces: make(map[address.Address]uint64)}
@@ -187,7 +188,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 					mpool.setNonce(m.msg.From, m.mpoolNonce[0])
 				}
 				merr := m.cbErr
-				smsg, err := ms.SignMessage(ctx, m.msg, func(message *types.SignedMessage) error {
+				smsg, err := ms.SignMessage(ctx, m.msg, nil, func(message *types.SignedMessage) error {
 					return merr
 				})
 

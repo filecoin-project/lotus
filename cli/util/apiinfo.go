@@ -24,6 +24,7 @@ type APIInfo struct {
 
 func ParseApiInfo(s string) APIInfo {
 	var tok []byte
+
 	if infoWithToken.Match([]byte(s)) {
 		sp := strings.SplitN(s, ":", 2)
 		tok = []byte(sp[0])
@@ -34,6 +35,18 @@ func ParseApiInfo(s string) APIInfo {
 		Addr:  s,
 		Token: tok,
 	}
+}
+
+func ParseApiInfoMulti(s string) []APIInfo {
+	var apiInfos []APIInfo
+
+	allAddrs := strings.SplitN(s, ",", -1)
+
+	for _, addr := range allAddrs {
+		apiInfos = append(apiInfos, ParseApiInfo(addr))
+	}
+
+	return apiInfos
 }
 
 func (a APIInfo) DialArgs(version string) (string, error) {

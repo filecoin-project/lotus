@@ -1295,20 +1295,17 @@ func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error
 	return backup(ctx, sm.DS, fpath)
 }
 
-func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
-	var rg storiface.RGetter
-	if expensive {
-		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
-			si, err := sm.Miner.SectorsStatus(ctx, id.Number, false)
-			if err != nil {
-				return cid.Undef, false, err
-			}
-			if si.CommR == nil {
-				return cid.Undef, false, xerrors.Errorf("commr is nil")
-			}
-
-			return *si.CommR, si.ReplicaUpdateMessage != nil, nil
+func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef) (map[abi.SectorNumber]string, error) {
+	rg := func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+		si, err := sm.Miner.SectorsStatus(ctx, id.Number, false)
+		if err != nil {
+			return cid.Undef, false, err
 		}
+		if si.CommR == nil {
+			return cid.Undef, false, xerrors.Errorf("commr is nil")
+		}
+
+		return *si.CommR, si.ReplicaUpdateMessage != nil, nil
 	}
 
 	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, rg)

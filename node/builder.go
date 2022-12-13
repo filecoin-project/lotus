@@ -121,6 +121,7 @@ const (
 	SettlePaymentChannelsKey
 	RunPeerTaggerKey
 	SetupFallbackBlockstoresKey
+	GoRPCServer
 
 	SetApiEndpointKey
 
@@ -155,6 +156,7 @@ func defaults() []Option {
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
 		Override(new(*alerting.Alerting), alerting.NewAlertingSystem),
+		Override(new(dtypes.NodeStartTime), FromVal(dtypes.NodeStartTime(time.Now()))),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
 

@@ -23,11 +23,6 @@ executors:
 
 
 commands:
-  install-deps:
-    steps:
-      - run: |
-          sudo apt update
-          sudo apt install python-is-python3
   prepare:
     parameters:
       linux:
@@ -41,9 +36,8 @@ commands:
     steps:
       - checkout
       - git_fetch_all_tags
-      - checkout
       - when:
-          condition: << parameters.linux >>
+          condition: <<parameters.linux>>
           steps:
             - run:
                 name: Check Go Version
@@ -56,6 +50,8 @@ commands:
                   fi
             - run: sudo apt-get update
             - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+            - run: sudo apt-get install python-is-python3
+
       - when:
           condition: <<parameters.darwin>>
           steps:
@@ -70,21 +66,12 @@ commands:
                   echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
             - run: go version
             - run:
-                name: Install pkg-config, goreleaser, and sha512sum
-                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config goreleaser/tap/goreleaser coreutils
+                name: Install dependencies with Homebrew
+                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config coreutils jq hwloc
             - run:
                 name: Install Rust
                 command: |
                   curl https://sh.rustup.rs -sSf | sh -s -- -y
-            - run:
-                name: Install hwloc
-                command: |
-                  mkdir ~/hwloc
-                  curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
-                  cd ~/hwloc
-                  tar -xvzpf hwloc-2.4.1.tar.gz
-                  cd hwloc-2.4.1
-                  ./configure && make && sudo make install
       - run: git submodule sync
       - run: git submodule update --init
   download-params:
@@ -104,28 +91,13 @@ commands:
   install_ipfs:
     steps:
       - run: |
-          apt update
-          apt install -y wget
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512
-          if [ "$(sha512sum go-ipfs_v0.12.2_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512)" ]
-          then
-            echo "ipfs failed checksum check"
-            exit 1
-          fi
-          tar -xf go-ipfs_v0.12.2_linux-amd64.tar.gz
-          mv go-ipfs/ipfs /usr/local/bin/ipfs
-          chmod +x /usr/local/bin/ipfs
-  install_ipfs_macos:
-    steps:
-      - run: |
-          curl -O https://dist.ipfs.io/kubo/v0.14.0/kubo_v0.14.0_darwin-amd64.tar.gz
-          tar -xvzf kubo_v0.14.0_darwin-amd64.tar.gz
+          curl -O https://dist.ipfs.tech/kubo/v0.16.0/kubo_v0.16.0_linux-amd64.tar.gz
+          tar -xvzf kubo_v0.16.0_linux-amd64.tar.gz
           pushd kubo
           sudo bash install.sh
           popd
-          rm -rf kubo/
-          rm kubo_v0.14.0_darwin-amd64.tar.gz
+          rm -rf kubo
+          rm kubo_v0.16.0_linux-amd64.tar.gz
   git_fetch_all_tags:
     steps:
       - run:
@@ -150,13 +122,12 @@ commands:
       - run:
           name: "Run a packer build"
           command: packer build << parameters.args >> << parameters.template >>
-          no_output_timeout: 30m
+          no_output_timeout: 1h
 
 jobs:
   mod-tidy-check:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run: go mod tidy -v
       - run:
@@ -164,37 +135,6 @@ jobs:
           command: |
             git --no-pager diff go.mod go.sum
             git --no-pager diff --quiet go.mod go.sum
-  build-linux:
-    executor: golang
-    steps:
-      - install-deps
-      - prepare
-      - run: sudo apt-get update
-      - run: sudo apt-get install npm
-      - run:
-          command: make buildall
-      - run:
-          name: check tag and version output match
-          command: ./scripts/version-check.sh ./lotus
-      - store_artifacts:
-          path: lotus
-      - store_artifacts:
-          path: lotus-miner
-      - store_artifacts:
-          path: lotus-worker
-      - run: mkdir linux && mv lotus lotus-miner lotus-worker linux/
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - linux
-
-  build-debug:
-    executor: golang
-    steps:
-      - install-deps
-      - prepare
-      - run:
-          command: make debug
 
   test:
     description: |
@@ -224,7 +164,6 @@ jobs:
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
     executor: << parameters.executor >>
     steps:
-      - install-deps
       - prepare
       - run:
           command: make deps lotus
@@ -268,7 +207,6 @@ jobs:
           submodule is used.
     executor: << parameters.executor >>
     steps:
-      - install-deps
       - prepare
       - run:
           command: make deps lotus
@@ -311,121 +249,104 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
-  build-ntwk-calibration:
-    description: |
-      Compile lotus binaries for the calibration network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
+
+  build-linux-amd64:
+    executor: golang
     steps:
-      - install-deps
       - prepare
-      - run: make calibnet
-      - run: mkdir linux-calibrationnet && mv lotus lotus-miner lotus-worker linux-calibrationnet
+      - run: make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
+      - run: |
+          mkdir -p /tmp/workspace/linux_amd64_v1 && \
+          mv lotus lotus-miner lotus-worker /tmp/workspace/linux_amd64_v1/
       - persist_to_workspace:
-          root: "."
+          root: /tmp/workspace
           paths:
-            - linux-calibrationnet
-  build-ntwk-butterfly:
-    description: |
-      Compile lotus binaries for the butterfly network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: make butterflynet
-      - run: mkdir linux-butterflynet && mv lotus lotus-miner lotus-worker linux-butterflynet
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - linux-butterflynet
-  build-lotus-soup:
-    description: |
-      Compile `lotus-soup` Testground test plan
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: cd extern/filecoin-ffi && make
-      - run:
-          name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../.. && go mod tidy
-      - run:
-          name: "build lotus-soup testplan"
-          command: pushd testplans/lotus-soup && go build -tags=testground .
-  trigger-testplans:
-    description: |
-      Trigger `lotus-soup` test cases on TaaS
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run:
-          name: "download testground"
-          command: wget https://gist.github.com/nonsense/5fbf3167cac79945f658771aed32fc44/raw/2e17eb0debf7ec6bdf027c1bdafc2c92dd97273b/testground-d3e9603 -O ~/testground-cli && chmod +x ~/testground-cli
-      - run:
-          name: "prepare .env.toml"
-          command: pushd testplans/lotus-soup && mkdir -p $HOME/testground && cp env-ci.toml $HOME/testground/.env.toml && echo 'endpoint="https://ci.testground.ipfs.team"' >> $HOME/testground/.env.toml && echo 'user="circleci"' >> $HOME/testground/.env.toml
-      - run:
-          name: "prepare testground home dir and link test plans"
-          command: mkdir -p $HOME/testground/plans && ln -s $(pwd)/testplans/lotus-soup $HOME/testground/plans/lotus-soup
-      - run:
-          name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go get github.com/filecoin-project/lotus@master
-      - run:
-          name: "trigger deals baseline testplan on taas"
-          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/baseline-k8s-3-1.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-      - run:
-          name: "trigger payment channel stress testplan on taas"
-          command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-  build-macos:
+            - linux_amd64_v1
+
+  build-darwin-amd64:
     description: build darwin lotus binary
-    parameters:
-      publish:
-        default: false
-        description: publish github release and homebrew?
-        type: boolean
+    working_directory: ~/go/src/github.com/filecoin-project/lotus
     macos:
       xcode: "13.4.1"
-    working_directory: ~/go/src/github.com/filecoin-project/lotus
     steps:
       - prepare:
           linux: false
           darwin: true
-      - install_ipfs_macos
-      - restore_cache:
-          name: restore cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
+      - run: make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
+      - run: |
+          mkdir -p /tmp/workspace/darwin_amd64_v1 && \
+          mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_amd64_v1/
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - darwin_amd64_v1
+
+  build-darwin-arm64:
+    description: self-hosted m1 runner
+    working_directory: ~/go/src/github.com/filecoin-project/lotus
+    machine: true
+    resource_class: filecoin-project/self-hosted-m1
+    steps:
+      - run: echo 'export PATH=/opt/homebrew/bin:"$PATH"' >> "$BASH_ENV"
+      - prepare:
+          linux: false
+          darwin: true
+      - run: |
+          export CPATH=$(brew --prefix)/include
+          export LIBRARY_PATH=$(brew --prefix)/lib
+          make lotus lotus-miner lotus-worker
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
+      - run: |
+          mkdir -p /tmp/workspace/darwin_arm64 && \
+          mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_arm64/
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - darwin_arm64
+      - run:
+          command: make clean
+          when: always
+      - run:
+          name: cleanup homebrew
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall pkg-config coreutils jq hwloc
+          when: always
+
+  release:
+    executor: golang
+    parameters:
+      dry-run:
+        default: false
+        description: should this release actually publish it's artifacts?
+        type: boolean
+    steps:
+      - checkout
+      - run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt update
+          sudo apt install goreleaser-pro
+      - install_ipfs
+      - attach_workspace:
+          at: /tmp/workspace
       - when:
-          condition: << parameters.publish >>
+          condition: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist
+            - run: goreleaser release --rm-dist --snapshot --debug
             - run: ./scripts/generate-checksums.sh
-            - run: ./scripts/publish-checksums.sh
       - when:
           condition:
-            not: << parameters.publish >>
+            not: << parameters.dry-run >>
           steps:
-            - run: goreleaser release --rm-dist --snapshot
+            - run: goreleaser release --rm-dist --debug
             - run: ./scripts/generate-checksums.sh
-      - store_artifacts:
-          path: dist
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - dist
-      - save_cache:
-          name: save cargo cache
-          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-          paths:
-            - "~/.rustup"
-            - "~/.cargo"
+            - run: ./scripts/publish-checksums.sh
 
   build-appimage:
     machine:
@@ -433,7 +354,7 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: "."
+          at: /tmp/workspace
       - run:
           name: Update Go
           command: |
@@ -468,13 +389,11 @@ jobs:
           command: |
             sed -i "s/version: latest/version: ${CIRCLE_TAG:-latest}/" AppImageBuilder.yml
             make appimage
-      - run:
-          name: prepare workspace
-          command: |
-            mkdir appimage
-            mv Lotus-*.AppImage appimage
+      - run: |
+            mkdir -p /tmp/workspace/appimage && \
+            mv Lotus-*.AppImage /tmp/workspace/appimage/
       - persist_to_workspace:
-          root: "."
+          root: /tmp/workspace
           paths:
             - appimage
 
@@ -482,7 +401,6 @@ jobs:
   gofmt:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run:
           command: "! go fmt ./... 2>&1 | read"
@@ -490,7 +408,6 @@ jobs:
   gen-check:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
@@ -505,7 +422,6 @@ jobs:
   docs-check:
     executor: golang
     steps:
-      - install-deps
       - prepare
       - run: go install golang.org/x/tools/cmd/goimports
       - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
@@ -542,7 +458,6 @@ jobs:
           Arguments to pass to golangci-lint
     executor: << parameters.executor >>
     steps:
-      - install-deps
       - prepare
       - run:
           command: make deps
@@ -570,13 +485,13 @@ jobs:
     steps:
       - run:
           name: Install git jq curl
-          command: apt update && apt install -y git jq curl
+          command: apt update && apt install -y git jq curl sudo
       - checkout
       - git_fetch_all_tags
       - checkout
       - install_ipfs
       - attach_workspace:
-          at: "."
+          at: /tmp/workspace
       - when:
           condition: << parameters.linux >>
           steps:
@@ -751,8 +666,6 @@ jobs:
       name: packer
     steps:
       - checkout
-      - attach_workspace:
-          at: "."
       - packer_build:
           template: tools/packer/lotus-snap.pkr.hcl
   publish-dockerhub:
@@ -840,47 +753,11 @@ workflows:
           suite: conformance-bleeding-edge
           target: "./conformance"
           vectors-branch: specs-actors-v7
-      - trigger-testplans:
-          filters:
-            branches:
-              only:
-                - master
-      - build-debug
-      - build-linux:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-ntwk-calibration:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-ntwk-butterfly:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-lotus-soup
-      - build-macos:
-          name: publish-macos
-          publish: true
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+$/
-      - build-macos:
-          filters:
-            branches:
-              only:
-                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+-rc\d+$/
-      - build-appimage:
+
+  release:
+    jobs:
+      - build-linux-amd64:
+          name: "Build ( linux / amd64 )"
           filters:
             branches:
               only:
@@ -888,11 +765,30 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish:
-          name: publish-linux
-          linux: true
+      - build-darwin-amd64:
+          name: "Build ( darwin / amd64 )"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-darwin-arm64:
+          name: "Build ( darwin / arm64 )"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - release:
+          name: "Release"
           requires:
-            - build-linux
+            - "Build ( darwin / amd64 )"
+            - "Build ( linux / amd64 )"
+            - "Build ( darwin / arm64 )"
           filters:
             branches:
               ignore:
@@ -900,11 +796,31 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - release:
+          name: "Release (dry-run)"
+          dry-run: true
+          requires:
+            - "Build ( darwin / amd64 )"
+            - "Build ( linux / amd64 )"
+            - "Build ( darwin / arm64 )"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage:
+          name: "Build AppImage"
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
-          name: publish-appimage
+          name: "Publish AppImage"
           appimage: true
           requires:
-            - build-appimage
+            - "Build AppImage"
           filters:
             branches:
               ignore:
@@ -913,14 +829,14 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
-          name: build-and-push/lotus-all-in-one
+          name: "Publish ECR (lotus-all-in-one)"
           dockerfile: Dockerfile.lotus
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
           target: lotus-all-in-one
       - build-and-push-image:
-          name: build-and-push/lotus-test
+          name: "Publish ECR (lotus-test)"
           dockerfile: Dockerfile.lotus
           path: .
           repo: lotus-test
@@ -971,7 +887,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
       - publish-dockerhub:
-          name: publish-dockerhub
+          name: "Publish Dockerhub (stable)"
           tag: stable
           filters:
             branches:
@@ -979,7 +895,17 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^v\d+\.\d+\.\d+$/
+      - publish-dockerhub:
+          name: "Publish Dockerhub (candidate)"
+          tag: candidate
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
 
   nightly:
     triggers:
@@ -1001,10 +927,10 @@ workflows:
       - publish-dockerhub:
           name: publish-dockerhub-nightly
           tag: nightly
-  monthly:
+  biweekly:
     triggers:
       - schedule:
-          cron: "0 0 1 * *"
+          cron: "0 0 1,15 * *"
           filters:
             branches:
               only:

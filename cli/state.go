@@ -44,7 +44,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var StateCmd = &cli.Command{
@@ -229,7 +231,7 @@ var StateMinerInfo = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		fmt.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart))
+		fmt.Printf("Proving Period Start:\t%s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.PeriodStart))
 
 		return nil
 	},
@@ -292,6 +294,28 @@ func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types
 	}
 
 	return ts, nil
+}
+
+func ParseTipSetRefOffline(ctx context.Context, cs *store.ChainStore, tss string) (*types.TipSet, error) {
+	switch {
+
+	case tss == "" || tss == "@head":
+		return cs.GetHeaviestTipSet(), nil
+
+	case tss[0] != '@':
+		cids, err := ParseTipSetString(tss)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse tipset (%q): %w", tss, err)
+		}
+		return cs.LoadTipSet(ctx, types.NewTipSetKey(cids...))
+
+	default:
+		var h uint64
+		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
+			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
+		}
+		return cs.GetTipsetByHeight(ctx, abi.ChainEpoch(h), cs.GetHeaviestTipSet(), true)
+	}
 }
 
 var StatePowerCmd = &cli.Command{
@@ -1793,8 +1817,8 @@ var StateSectorCmd = &cli.Command{
 		}
 		fmt.Println("DealIDs: ", si.DealIDs)
 		fmt.Println()
-		fmt.Println("Activation: ", EpochTimeTs(ts.Height(), si.Activation, ts))
-		fmt.Println("Expiration: ", EpochTimeTs(ts.Height(), si.Expiration, ts))
+		fmt.Println("Activation: ", cliutil.EpochTimeTs(ts.Height(), si.Activation, ts))
+		fmt.Println("Expiration: ", cliutil.EpochTimeTs(ts.Height(), si.Expiration, ts))
 		fmt.Println()
 		fmt.Println("DealWeight: ", si.DealWeight)
 		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)

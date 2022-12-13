@@ -37,7 +37,6 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -56,7 +55,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/retry"
 	"github.com/filecoin-project/lotus/markets"
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/idxprov"
@@ -89,12 +87,7 @@ func (a *UuidWrapper) MpoolPushMessage(ctx context.Context, msg *types.Message, 
 		spec = new(api.MessageSendSpec)
 	}
 	spec.MsgUuid = uuid.New()
-	errorsToRetry := []error{&jsonrpc.RPCConnectionError{}}
-	initialBackoff, err := time.ParseDuration("1s")
-	if err != nil {
-		return nil, err
-	}
-	return retry.Retry(5, initialBackoff, errorsToRetry, func() (*types.SignedMessage, error) { return a.FullNode.MpoolPushMessage(ctx, msg, spec) })
+	return a.FullNode.MpoolPushMessage(ctx, msg, spec)
 }
 
 func MakeUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
@@ -110,24 +103,31 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func GetParams(spt abi.RegisteredSealProof) error {
-	ssize, err := spt.SectorSize()
-	if err != nil {
-		return err
-	}
+func GetParams(prover bool) func(spt abi.RegisteredSealProof) error {
+	return func(spt abi.RegisteredSealProof) error {
+		ssize, err := spt.SectorSize()
+		if err != nil {
+			return err
+		}
 
-	// If built-in assets are disabled, we expect the user to have placed the right
-	// parameters in the right location on the filesystem (/var/tmp/filecoin-proof-parameters).
-	if build.DisableBuiltinAssets {
+		// If built-in assets are disabled, we expect the user to have placed the right
+		// parameters in the right location on the filesystem (/var/tmp/filecoin-proof-parameters).
+		if build.DisableBuiltinAssets {
+			return nil
+		}
+
+		var provingSize uint64
+		if prover {
+			provingSize = uint64(ssize)
+		}
+
+		// TODO: We should fetch the params for the actual proof type, not just based on the size.
+		if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), provingSize); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+
 		return nil
 	}
-
-	// TODO: We should fetch the params for the actual proof type, not just based on the size.
-	if err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
-		return xerrors.Errorf("fetching proof parameters: %w", err)
-	}
-
-	return nil
 }
 
 func MinerAddress(ds dtypes.MetadataDS) (dtypes.MinerAddress, error) {
@@ -787,17 +787,17 @@ func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls paths.LocalStorag
 	return paths.NewLocal(ctx, ls, si, urls)
 }
 
-func RemoteStorage(lstor *paths.Local, si paths.SectorIndex, sa sealer.StorageAuth, sc sealer.Config) *paths.Remote {
+func RemoteStorage(lstor *paths.Local, si paths.SectorIndex, sa sealer.StorageAuth, sc config.SealerConfig) *paths.Remote {
 	return paths.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &paths.DefaultPartialFileHandler{})
 }
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc sealer.Config, ds dtypes.MetadataDS) (*sealer.Manager, error) {
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc config.SealerConfig, pc config.ProvingConfig, ds dtypes.MetadataDS) (*sealer.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sealer.New(ctx, lstor, stor, ls, si, sc, wsts, smsts)
+	sst, err := sealer.New(ctx, lstor, stor, ls, si, sc, pc, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}

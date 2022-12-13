@@ -138,6 +138,12 @@ func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInf
 	delete(m.available, m.minerSectorID(sector.SectorNumber))
 	m.inputLk.Unlock()
 
+	// guard against manual state updates from snap-deals states into Proving
+	// note: normally snap deals should be aborted through the abort command, but
+	// apparently sometimes some SPs would use update-state to force the sector back
+	// into the Proving state, breaking the deal input pipeline in the process.
+	m.cleanupAssignedDeals(sector)
+
 	// TODO: Watch termination
 	// TODO: Auto-extend if set
 
