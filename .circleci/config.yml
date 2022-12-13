@@ -34,6 +34,10 @@ commands:
         default: false
         description: is a darwin build environment?
         type: boolean
+      darwin-architecture:
+        default: "amd64"
+        description: which darwin architecture is being used?
+        type: string
     steps:
       - checkout
       - git_fetch_all_tags
@@ -59,7 +63,7 @@ commands:
             - run:
                 name: Install Go
                 command: |
-                  curl https://dl.google.com/go/go`cat GO_VERSION_MIN`.darwin-amd64.pkg -o /tmp/go.pkg && \
+                  curl https://dl.google.com/go/go`cat GO_VERSION_MIN`.darwin-<<parameters.darwin-architecture>>.pkg -o /tmp/go.pkg && \
                   sudo installer -pkg /tmp/go.pkg -target /
             - run:
                 name: Export Go
@@ -276,6 +280,7 @@ jobs:
       - prepare:
           linux: false
           darwin: true
+          darwin-architecture: amd64
       - run: make lotus lotus-miner lotus-worker
       - run:
           name: check tag and version output match
@@ -298,6 +303,7 @@ jobs:
       - prepare:
           linux: false
           darwin: true
+          darwin-architecture: arm64
       - run: |
           export CPATH=$(brew --prefix)/include
           export LIBRARY_PATH=$(brew --prefix)/lib
