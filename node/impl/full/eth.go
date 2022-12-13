@@ -232,7 +232,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 
 	for _, p := range pending {
 		if p.Cid() == cid {
-			tx, err := newEthTxFromFilecoinMessage(ctx, &p.Message, a.StateAPI)
+			tx, err := newEthTxFromFilecoinMessage(ctx, p, a.StateAPI)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get parse message into tx: %v", err)
 			}
@@ -1423,32 +1423,32 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
-func newEthTxFromFilecoinMessage(ctx context.Context, msg *types.Message, sa StateAPI) (ethtypes.EthTx, error) {
-	fromEthAddr, err := lookupEthAddress(ctx, msg.From, sa)
+func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
+	fromEthAddr, err := lookupEthAddress(ctx, smsg.Message.From, sa)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
 
-	toEthAddr, err := lookupEthAddress(ctx, msg.To, sa)
+	toEthAddr, err := lookupEthAddress(ctx, smsg.Message.To, sa)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
 
 	toAddr := &toEthAddr
-	input := msg.Params
+	input := smsg.Message.Params
 	// Check to see if we need to decode as contract deployment.
 	// We don't need to resolve the to address, because there's only one form (an ID).
-	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		switch msg.Method {
+	if smsg.Message.To == builtintypes.EthereumAddressManagerActorAddr {
+		switch smsg.Message.Method {
 		case builtintypes.MethodsEAM.Create:
 			toAddr = nil
 			var params eam.CreateParams
-			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
 			input = params.Initcode
 		case builtintypes.MethodsEAM.Create2:
 			toAddr = nil
 			var params eam.Create2Params
-			err = params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
 			input = params.Initcode
 		}
 		if err != nil {
@@ -1458,23 +1458,28 @@ func newEthTxFromFilecoinMessage(ctx context.Context, msg *types.Message, sa Sta
 	// Otherwise, try to decode as a cbor byte array.
 	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
 	if toAddr != nil {
-		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(msg.Params), uint64(len(msg.Params))); err == nil {
+		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(smsg.Message.Params), uint64(len(smsg.Message.Params))); err == nil {
 			input = decodedParams
 		}
+	}
+
+	r, s, v, err := ethtypes.RecoverSignature(smsg.Signature)
+	if err != nil {
+		return ethtypes.EthTx{}, err
 	}
 
 	tx := ethtypes.EthTx{
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		From:                 fromEthAddr,
 		To:                   toAddr,
-		Value:                ethtypes.EthBigInt(msg.Value),
+		Value:                ethtypes.EthBigInt(smsg.Message.Value),
 		Type:                 ethtypes.EthUint64(2),
-		Gas:                  ethtypes.EthUint64(msg.GasLimit),
-		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
-		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
-		V:                    ethtypes.EthBytes{},
-		R:                    ethtypes.EthBytes{},
-		S:                    ethtypes.EthBytes{},
+		Gas:                  ethtypes.EthUint64(smsg.Message.GasLimit),
+		MaxFeePerGas:         ethtypes.EthBigInt(smsg.Message.GasFeeCap),
+		MaxPriorityFeePerGas: ethtypes.EthBigInt(smsg.Message.GasPremium),
+		V:                    []byte{v},
+		R:                    r,
+		S:                    s,
 		Input:                input,
 	}
 
@@ -1527,12 +1532,12 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		return ethtypes.EthTx{}, err
 	}
 
-	msg, err := ca.ChainGetMessage(ctx, msgLookup.Message)
+	smsg, err := cs.GetSignedMessage(ctx, msgLookup.Message)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
 
-	tx, err := newEthTxFromFilecoinMessage(ctx, msg, sa)
+	tx, err := newEthTxFromFilecoinMessage(ctx, smsg, sa)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}

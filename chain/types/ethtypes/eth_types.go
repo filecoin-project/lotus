@@ -96,6 +96,9 @@ func (e EthBytes) MarshalJSON() ([]byte, error) {
 	if len(e) == 0 {
 		return json.Marshal("0x")
 	}
+	if len(e) == 1 && e[0] == 0 {
+		return json.Marshal("0x0")
+	}
 	s := hex.EncodeToString(e)
 	if len(s)%2 == 1 {
 		s = "0" + s
@@ -406,7 +409,6 @@ type EthFeeHistory struct {
 	GasUsedRatio  []float64      `json:"gasUsedRatio"`
 	Reward        *[][]EthBigInt `json:"reward,omitempty"`
 }
-<<<<<<< HEAD:chain/types/ethtypes/eth_types.go
 
 type BlkNumType int64
 
@@ -601,5 +603,3 @@ type EthSubscriptionResponse struct {
 	// The object matching the subscription. This may be a Block (tipset), a Transaction (message) or an EthLog
 	Result interface{} `json:"result"`
 }
-=======
->>>>>>> 08d0dc9d6 (make gen):api/eth_types.go

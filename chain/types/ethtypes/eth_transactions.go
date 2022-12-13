@@ -292,6 +292,18 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
 }
 
+func RecoverSignature(sig typescrypto.Signature) (r []byte, s []byte, v byte, err error) {
+	if sig.Type != typescrypto.SigTypeDelegated {
+		return nil, nil, 0, fmt.Errorf("RecoverSignature only supports Delegated signature")
+	}
+
+	if len(sig.Data) != 65 {
+		return nil, nil, 0, fmt.Errorf("signature should be 65 bytes long, but get %v", len(sig.Data))
+	}
+
+	return sig.Data[0:32], sig.Data[32:64], sig.Data[64], nil
+}
+
 func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 	if data[0] != 2 {
 		return nil, fmt.Errorf("not an EIP-1559 transaction: first byte is not 2")
