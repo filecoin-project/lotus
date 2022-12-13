@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
 	account10 "github.com/filecoin-project/go-state-types/builtin/v10/account"
@@ -53,14 +54,14 @@ import (
 type RegistryEntry struct {
 	state   cbor.Er
 	code    cid.Cid
-	methods map[uint64]builtin.MethodMeta
+	methods map[abi.MethodNum]builtin.MethodMeta
 }
 
 func (r RegistryEntry) State() cbor.Er {
 	return r.state
 }
 
-func (r RegistryEntry) Exports() map[uint64]builtin.MethodMeta {
+func (r RegistryEntry) Exports() map[abi.MethodNum]builtin.MethodMeta {
 	return r.methods
 }
 
@@ -72,10 +73,10 @@ func MakeRegistryLegacy(actors []rtt.VMActor) []RegistryEntry {
 	registry := make([]RegistryEntry, 0)
 
 	for _, actor := range actors {
-		methodMap := make(map[uint64]builtin.MethodMeta)
+		methodMap := make(map[abi.MethodNum]builtin.MethodMeta)
 		for methodNum, method := range actor.Exports() {
 			if method != nil {
-				methodMap[uint64(methodNum)] = makeMethodMeta(method)
+				methodMap[abi.MethodNum(methodNum)] = makeMethodMeta(method)
 			}
 		}
 		registry = append(registry, RegistryEntry{
