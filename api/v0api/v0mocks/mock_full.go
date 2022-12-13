@@ -2158,6 +2158,21 @@ func (mr *MockFullNodeMockRecorder) Shutdown(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockFullNode)(nil).Shutdown), arg0)
 }
 
+// StartTime mocks base method.
+func (m *MockFullNode) StartTime(arg0 context.Context) (time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartTime", arg0)
+	ret0, _ := ret[0].(time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StartTime indicates an expected call of StartTime.
+func (mr *MockFullNodeMockRecorder) StartTime(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartTime", reflect.TypeOf((*MockFullNode)(nil).StartTime), arg0)
+}
+
 // StateAccountKey mocks base method.
 func (m *MockFullNode) StateAccountKey(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (address.Address, error) {
 	m.ctrl.T.Helper()

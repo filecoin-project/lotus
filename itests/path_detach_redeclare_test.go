@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -74,7 +73,7 @@ func TestPathDetachRedeclare(t *testing.T) {
 	checkSectors(ctx, t, client, miner, 2, 2)
 
 	// attach a new path
-	newId := miner.AddStorage(ctx, t, func(cfg *paths.LocalStorageMeta) {
+	newId := miner.AddStorage(ctx, t, func(cfg *storiface.LocalStorageMeta) {
 		cfg.CanStore = true
 	})
 
@@ -194,7 +193,7 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	checkSectors(ctx, t, client, miner, 2, 2)
 
 	// attach a new path
-	newId := sealw.AddStorage(ctx, t, func(cfg *paths.LocalStorageMeta) {
+	newId := sealw.AddStorage(ctx, t, func(cfg *storiface.LocalStorageMeta) {
 		cfg.CanStore = true
 	})
 
@@ -239,7 +238,7 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.Len(t, local, 0)
 
 	// add a new one again, and move the sectors there
-	newId = sealw.AddStorage(ctx, t, func(cfg *paths.LocalStorageMeta) {
+	newId = sealw.AddStorage(ctx, t, func(cfg *storiface.LocalStorageMeta) {
 		cfg.CanStore = true
 	})
 
@@ -407,7 +406,7 @@ func checkSectors(ctx context.Context, t *testing.T, api kit.TestFullNode, miner
 
 	require.Len(t, tocheck, expectChecked)
 
-	bad, err := miner.CheckProvable(ctx, info.WindowPoStProofType, tocheck, true)
+	bad, err := miner.CheckProvable(ctx, info.WindowPoStProofType, tocheck)
 	require.NoError(t, err)
 	require.Len(t, bad, expectBad)
 }

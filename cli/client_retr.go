@@ -3,14 +3,9 @@ package cli
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
-	"path"
 	"sort"
 	"strings"
 	"time"
@@ -29,8 +24,6 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -40,6 +33,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -181,12 +175,14 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 				event = retrievalmarket.ClientEvents[*evt.Event]
 			}
 
-			printf("Recv %s, Paid %s, %s (%s), %s\n",
+			printf("Recv %s, Paid %s, %s (%s), %s [%d|%d]\n",
 				types.SizeStr(types.NewInt(evt.BytesReceived)),
 				types.FIL(evt.TotalPaid),
 				strings.TrimPrefix(event, "ClientEvent"),
 				strings.TrimPrefix(retrievalmarket.DealStatuses[evt.Status], "DealStatus"),
 				time.Now().Sub(start).Truncate(time.Millisecond),
+				evt.ID,
+				types.NewInt(evt.BytesReceived),
 			)
 
 			switch evt.Status {
@@ -335,60 +331,6 @@ Examples:
 	},
 }
 
-func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef, car bool) (io.ReadCloser, error) {
-	rj, err := json.Marshal(eref)
-	if err != nil {
-		return nil, xerrors.Errorf("marshaling export ref: %w", err)
-	}
-
-	ma, err := multiaddr.NewMultiaddr(apiAddr)
-	if err == nil {
-		_, addr, err := manet.DialArgs(ma)
-		if err != nil {
-			return nil, err
-		}
-
-		// todo: make cliutil helpers for this
-		apiAddr = "http://" + addr
-	}
-
-	aa, err := url.Parse(apiAddr)
-	if err != nil {
-		return nil, xerrors.Errorf("parsing api address: %w", err)
-	}
-	switch aa.Scheme {
-	case "ws":
-		aa.Scheme = "http"
-	case "wss":
-		aa.Scheme = "https"
-	}
-
-	aa.Path = path.Join(aa.Path, "rest/v0/export")
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s?car=%t&export=%s", aa, car, url.QueryEscape(string(rj))), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header = apiAuth
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		em, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, xerrors.Errorf("reading error body: %w", err)
-		}
-
-		resp.Body.Close() // nolint
-		return nil, xerrors.Errorf("getting root car: http %d: %s", resp.StatusCode, string(em))
-	}
-
-	return resp.Body, nil
-}
-
 var clientRetrieveCatCmd = &cli.Command{
 	Name:      "cat",
 	Usage:     "Show data from network",
@@ -438,7 +380,7 @@ var clientRetrieveCatCmd = &cli.Command{
 			eref.DAGs = append(eref.DAGs, lapi.DagSpec{DataSelector: &sel})
 		}
 
-		rc, err := ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, false)
+		rc, err := cliutil.ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, false)
 		if err != nil {
 			return err
 		}
@@ -526,7 +468,7 @@ var clientRetrieveLsCmd = &cli.Command{
 			DataSelector: &dataSelector,
 		})
 
-		rc, err := ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
+		rc, err := cliutil.ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
 		if err != nil {
 			return xerrors.Errorf("export: %w", err)
 		}
@@ -581,6 +523,7 @@ var clientRetrieveLsCmd = &cli.Command{
 				dserv,
 				roots[0],
 				sel,
+				nil,
 				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 					if r == traversal.VisitReason_SelectionMatch {
 						fmt.Println(p.Path)

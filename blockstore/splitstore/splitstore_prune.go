@@ -208,7 +208,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	log.Info("collecting dead objects")
 	startCollect := time.Now()
 
-	deadw, err := NewColdSetWriter(s.deadSetPath())
+	deadw, err := NewColdSetWriter(s.discardSetPath())
 	if err != nil {
 		return xerrors.Errorf("error creating coldset: %w", err)
 	}
@@ -267,7 +267,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		return err
 	}
 
-	deadr, err := NewColdSetReader(s.deadSetPath())
+	deadr, err := NewColdSetReader(s.discardSetPath())
 	if err != nil {
 		return xerrors.Errorf("error opening deadset: %w", err)
 	}
@@ -311,10 +311,10 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		log.Warnf("error removing checkpoint: %s", err)
 	}
 	if err := deadr.Close(); err != nil {
-		log.Warnf("error closing deadset: %s", err)
+		log.Warnf("error closing discard set: %s", err)
 	}
-	if err := os.Remove(s.deadSetPath()); err != nil {
-		log.Warnf("error removing deadset: %s", err)
+	if err := os.Remove(s.discardSetPath()); err != nil {
+		log.Warnf("error removing discard set: %s", err)
 	}
 
 	// we are done; do some housekeeping
@@ -344,7 +344,7 @@ func (s *SplitStore) completePrune() error {
 	}
 	defer checkpoint.Close() //nolint:errcheck
 
-	deadr, err := NewColdSetReader(s.deadSetPath())
+	deadr, err := NewColdSetReader(s.discardSetPath())
 	if err != nil {
 		return xerrors.Errorf("error opening deadset: %w", err)
 	}
@@ -378,7 +378,7 @@ func (s *SplitStore) completePrune() error {
 	if err := deadr.Close(); err != nil {
 		log.Warnf("error closing deadset: %s", err)
 	}
-	if err := os.Remove(s.deadSetPath()); err != nil {
+	if err := os.Remove(s.discardSetPath()); err != nil {
 		log.Warnf("error removing deadset: %s", err)
 	}
 

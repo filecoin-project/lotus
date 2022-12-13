@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.18.2
+   1.19.0
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -2087,6 +2087,7 @@ COMMANDS:
    decode                            decode various types
    encode                            encode various types
    disputer                          interact with the window post disputer
+   prune                             prune the stored chain state and perform garbage collection
    help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2409,6 +2410,22 @@ OPTIONS:
    
 ```
 
+### lotus chain prune
+```
+NAME:
+   lotus chain prune - prune the stored chain state and perform garbage collection
+
+USAGE:
+   lotus chain prune [command options] [arguments...]
+
+OPTIONS:
+   --move-to value    specify new path for coldstore during moving gc
+   --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
+   --online-gc        use online gc for garbage collecting the coldstore (default: false)
+   --retention value  specify state retention policy (default: -1)
+   
+```
+
 ## lotus log
 ```
 NAME:
@@ -2570,7 +2587,7 @@ NAME:
    lotus net ping - Ping peers
 
 USAGE:
-   lotus net ping [command options] [arguments...]
+   lotus net ping [command options] [peerMultiaddr]
 
 OPTIONS:
    --count value, -c value     specify the number of times it should ping (default: 10)

@@ -41,7 +41,13 @@ func infoCmdAct(cctx *cli.Context) error {
 		return err
 	}
 
+	start, err := fullapi.StartTime(ctx)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("Network: %s\n", network.NetworkName)
+	fmt.Printf("StartTime: %s (started at %s)\n", time.Now().Sub(start).Truncate(time.Second), start.Truncate(time.Second))
 	fmt.Print("Chain: ")
 	err = SyncBasefeeCheck(ctx, fullapi)
 	if err != nil {

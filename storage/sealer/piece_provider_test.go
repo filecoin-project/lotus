@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -30,7 +31,7 @@ import (
 // only uses miner and does NOT use any remote worker.
 func TestPieceProviderSimpleNoRemoteWorker(t *testing.T) {
 	// Set up sector storage manager
-	sealerCfg := Config{
+	sealerCfg := config.SealerConfig{
 		ParallelFetchLimit: 10,
 		AllowAddPiece:      true,
 		AllowPreCommit1:    true,
@@ -89,7 +90,7 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	// miner's worker can only add pieces to an unsealed sector.
-	sealerCfg := Config{
+	sealerCfg := config.SealerConfig{
 		ParallelFetchLimit: 10,
 		AllowAddPiece:      true,
 		AllowPreCommit1:    false,
@@ -198,7 +199,7 @@ func generatePieceData(size uint64) []byte {
 	return bz
 }
 
-func newPieceProviderTestHarness(t *testing.T, mgrConfig Config, sectorProofType abi.RegisteredSealProof) *pieceProviderTestHarness {
+func newPieceProviderTestHarness(t *testing.T, mgrConfig config.SealerConfig, sectorProofType abi.RegisteredSealProof) *pieceProviderTestHarness {
 	ctx := context.Background()
 	// listen on tcp socket to create an http server later
 	address := "0.0.0.0:0"
@@ -217,7 +218,7 @@ func newPieceProviderTestHarness(t *testing.T, mgrConfig Config, sectorProofType
 	wsts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/worker/calls")))
 	smsts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/stmgr/calls")))
 
-	mgr, err := New(ctx, localStore, remoteStore, storage, index, mgrConfig, wsts, smsts)
+	mgr, err := New(ctx, localStore, remoteStore, storage, index, mgrConfig, config.ProvingConfig{}, wsts, smsts)
 	require.NoError(t, err)
 
 	// start a http server on the manager to serve sector file requests.

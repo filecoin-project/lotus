@@ -256,9 +256,6 @@ type CfgOption func(cfg *config.FullNode) error
 
 func SplitstoreDiscard() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
-		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
-		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "discard"   // no cold store
@@ -268,9 +265,6 @@ func SplitstoreDiscard() NodeOpt {
 
 func SplitstoreUniversal() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
-		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
-		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "universal" // universal bs is coldstore
@@ -278,10 +272,11 @@ func SplitstoreUniversal() NodeOpt {
 	})
 }
 
-func SplitstoreAutoPrune() NodeOpt {
+func SplitstoreMessges() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.Chainstore.Splitstore.EnableColdStoreAutoPrune = true // turn on
-		cfg.Chainstore.Splitstore.ColdStoreFullGCFrequency = 0    // turn off full gc
+		cfg.Chainstore.EnableSplitstore = true
+		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
+		cfg.Chainstore.Splitstore.ColdStoreType = "messages"  // universal bs is coldstore, and it accepts messages
 		return nil
 	})
 }

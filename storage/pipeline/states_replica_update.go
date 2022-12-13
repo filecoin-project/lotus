@@ -57,8 +57,9 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 		return nil
 	}
 	if !active {
-		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
-		return ctx.Send(SectorAbortUpgrade{})
+		err := xerrors.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
+		log.Errorf(err.Error())
+		return ctx.Send(SectorAbortUpgrade{err})
 	}
 
 	vanillaProofs, err := m.sealer.ProveReplicaUpdate1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), *sector.CommR, *sector.UpdateSealed, *sector.UpdateUnsealed)
@@ -97,6 +98,17 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
+
+	dlinfo, err := m.Api.StateMinerProvingDeadline(ctx.Context(), m.maddr, ts.Key())
+	if err != nil {
+		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %w", err)
+	}
+	// if sector's deadline is immutable wait in a non error state
+	// sector's deadline is immutable if it is the current deadline or the next deadline
+	if sl.Deadline == dlinfo.Index || (dlinfo.Index+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline {
+		return ctx.Send(SectorDeadlineImmutable{})
+	}
+
 	updateProof, err := sector.SectorType.RegisteredUpdateProof()
 	if err != nil {
 		log.Errorf("failed to get update proof type from seal proof: %+v", err)
@@ -185,6 +197,67 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 	}
 
 	return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
+}
+
+func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo) error {
+	immutable := true
+	for immutable {
+		ts, err := m.Api.ChainHead(ctx.Context())
+		if err != nil {
+			log.Errorf("handleWaitMutable: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		sl, err := m.Api.StateSectorPartition(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
+		if err != nil {
+			log.Errorf("handleWaitMutable: api error, not proceeding: %+v", err)
+			return nil
+		}
+
+		dlinfo, err := m.Api.StateMinerProvingDeadline(ctx.Context(), m.maddr, ts.Key())
+		if err != nil {
+			log.Errorf("handleWaitMutable: api error, not proceeding: %w", err)
+			return nil
+		}
+
+		sectorDeadlineOpen := sl.Deadline == dlinfo.Index
+		sectorDeadlineNext := (dlinfo.Index+1)%dlinfo.WPoStPeriodDeadlines == sl.Deadline
+		immutable = sectorDeadlineOpen || sectorDeadlineNext
+
+		// Sleep for immutable epochs
+		if immutable {
+			dlineEpochsRemaining := dlinfo.NextOpen() - ts.Height()
+			var targetEpoch abi.ChainEpoch
+			if sectorDeadlineOpen {
+				// sleep for remainder of deadline
+				targetEpoch = ts.Height() + dlineEpochsRemaining
+			} else {
+				// sleep for remainder of deadline and next one
+				targetEpoch = ts.Height() + dlineEpochsRemaining + dlinfo.WPoStChallengeWindow
+			}
+
+			atHeight := make(chan struct{})
+			err := m.events.ChainAt(ctx.Context(), func(context.Context, *types.TipSet, abi.ChainEpoch) error {
+				close(atHeight)
+				return nil
+			}, func(ctx context.Context, ts *types.TipSet) error {
+				log.Warn("revert in handleWaitMutable")
+				return nil
+			}, 5, targetEpoch)
+			if err != nil {
+				log.Errorf("handleWaitMutalbe: events error: api error, not proceeding: %w", err)
+				return nil
+			}
+
+			select {
+			case <-atHeight:
+			case <-ctx.Context().Done():
+				return ctx.Context().Err()
+			}
+		}
+
+	}
+	return ctx.Send(SectorDeadlineMutable{})
 }
 
 func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector SectorInfo) error {

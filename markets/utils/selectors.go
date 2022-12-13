@@ -26,6 +26,7 @@ func TraverseDag(
 	ds mdagipld.DAGService,
 	startFrom cid.Cid,
 	optionalSelector ipld.Node,
+	onOpen func(node mdagipld.Node) error,
 	visitCallback traversal.AdvVisitFn,
 ) error {
 
@@ -59,6 +60,12 @@ func TraverseDag(
 		node, err := ds.Get(lctx.Ctx, cl.Cid)
 		if err != nil {
 			return nil, err
+		}
+
+		if onOpen != nil {
+			if err := onOpen(node); err != nil {
+				return nil, err
+			}
 		}
 
 		return bytes.NewBuffer(node.RawData()), nil
