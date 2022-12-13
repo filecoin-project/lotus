@@ -53,7 +53,7 @@ func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
 }
 
 type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
-type nativeCode map[uint64]invokeFunc
+type nativeCode map[abi.MethodNum]invokeFunc
 
 type actorInfo struct {
 	methods nativeCode
@@ -78,10 +78,10 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 	if err := act.predicate(rt, codeCid); err != nil {
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "unsupported actor: %s", err)
 	}
-	if act.methods[uint64(method)] == nil {
+	if act.methods[method] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	return act.methods[uint64(method)](rt, params)
+	return act.methods[method](rt, params)
 
 }
 
@@ -156,7 +156,7 @@ func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, v
 				mm.Params = et.In(0)
 			}
 
-			methods[abi.MethodNum(number)] = mm
+			methods[number] = mm
 		}
 		if realCode.Defined() {
 			ar.Methods[realCode] = methods
@@ -185,7 +185,7 @@ func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, 
 }
 
 type invokee interface {
-	Exports() map[uint64]builtinst.MethodMeta
+	Exports() map[abi.MethodNum]builtinst.MethodMeta
 }
 
 func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
