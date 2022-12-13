@@ -13,11 +13,13 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-// TODO: Take const out of here and make them build params.
 const (
-	DELAY           = 6 * time.Second
-	GC_SANITY_CHECK = 5
-	GC_LOOKBACK     = 2
+	// GcSanityCheck determines the number of epochs that in the past
+	// that will be garbage collected from the current epoch.
+	GcSanityCheck = 5
+	// GcLookback determines the number of epochs kept in the consistent
+	// broadcast cache.
+	GcLookback = 2
 )
 
 type blksInfo struct {
@@ -57,7 +59,8 @@ func newBcastDict() *bcastDict {
 	return &bcastDict{new(sync.Map)}
 }
 
-// TODO: What if the VRFProof is already small?? We don´t need the CID. Useless computation.
+// TODO: the VRFProof may already be small enough so we may not need to use a hash here.
+// we can maybe bypass the useless computation.
 func BCastKey(bh *types.BlockHeader) (multihash.Multihash, error) {
 	k := make([]byte, len(bh.Ticket.VRFProof))
 	copy(k, bh.Ticket.VRFProof)
@@ -150,9 +153,9 @@ func (cb *ConsistentBCast) GarbageCollect(currEpoch abi.ChainEpoch) {
 	// and we use the sanity-check in case there were a few rounds
 	// without delivery, and the garbage collection wasn't triggered
 	// for a few epochs.
-	for i := 0; i < GC_SANITY_CHECK; i++ {
-		if currEpoch > GC_LOOKBACK {
-			delete(cb.m, currEpoch-abi.ChainEpoch(GC_LOOKBACK+i))
+	for i := 0; i < GcSanityCheck; i++ {
+		if currEpoch > GcLookback {
+			delete(cb.m, currEpoch-abi.ChainEpoch(GcLookback+i))
 		}
 	}
 }

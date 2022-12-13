@@ -48,7 +48,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, self p
 	// Timeout after (block time + propagation delay). This is useless at
 	// this point.
 	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
-	cb := bcast.NewConsistentBCast(bcast.DELAY)
+	cb := bcast.NewConsistentBCast(build.CBDeliveryDelay)
 
 	for {
 		msg, err := bsub.Next(ctx)

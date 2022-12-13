@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -126,3 +127,7 @@ const BootstrapPeerThreshold = 4
 
 // we skip checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
+
+// CBDeliveryDelay is the delay before deliver in the synchronous consistent broadcast.
+// This determines the wait time for the detection of potential equivocations.
+const CBDeliveryDelay = 6 * time.Second

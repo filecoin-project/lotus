@@ -6,6 +6,7 @@ package build
 import (
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -131,3 +132,7 @@ const InteractivePoRepConfidence = 6
 const BootstrapPeerThreshold = 1
 
 var WhitelistedBlock = cid.Undef
+
+// Reducing the delivery delay for equivocation of
+// consistent broadcast to just one second.
+const CBDeliveryDelay = 1 * time.Second

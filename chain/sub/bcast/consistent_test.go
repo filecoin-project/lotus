@@ -81,7 +81,7 @@ func TestSeveralEpochs(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
-	require.Equal(t, cb.Len(), bcast.GC_LOOKBACK)
+	require.Equal(t, cb.Len(), bcast.GcLookback)
 }
 
 // bias is expected to be 0-1
