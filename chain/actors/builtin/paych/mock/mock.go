@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 )
 
@@ -27,7 +27,7 @@ func (ms *mockState) Code() cid.Cid {
 }
 
 func (ms *mockState) ActorKey() string {
-	return actors.PaychKey
+	return manifest.PaychKey
 }
 
 func (ms *mockState) ActorVersion() actorstypes.Version {

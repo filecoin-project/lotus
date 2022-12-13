@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	reward2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
 	smoothing2 "github.com/filecoin-project/specs-actors/v2/actors/util/smoothing"
@@ -102,7 +103,7 @@ func (s *state2) GetState() interface{} {
 }
 
 func (s *state2) ActorKey() string {
-	return actors.RewardKey
+	return manifest.RewardKey
 }
 
 func (s *state2) ActorVersion() actorstypes.Version {

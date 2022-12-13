@@ -14,6 +14,7 @@ import (
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
 	verifreg10 "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -134,7 +135,7 @@ func (s *state10) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, 
 }
 
 func (s *state10) ActorKey() string {
-	return actors.VerifregKey
+	return manifest.VerifregKey
 }
 
 func (s *state10) ActorVersion() actorstypes.Version {

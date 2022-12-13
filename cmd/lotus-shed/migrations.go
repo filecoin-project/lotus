@@ -24,6 +24,7 @@ import (
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -587,7 +588,7 @@ func checkAllMinersUnsealedCID(stateTreeV9 *state.StateTree, store adt.Store) er
 }
 
 func checkMinerUnsealedCID(act *types.Actor, stateTreeV9 *state.StateTree, store adt.Store) error {
-	minerCodeCid, found := actors.GetActorCodeID(actorstypes.Version9, actors.MinerKey)
+	minerCodeCid, found := actors.GetActorCodeID(actorstypes.Version9, manifest.MinerKey)
 	if !found {
 		return xerrors.Errorf("could not find code cid for miner actor")
 	}

@@ -48,7 +48,7 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.
 		return nil, err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.SystemKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.SystemKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get system actor code ID for actors version %d", av)
 	}
