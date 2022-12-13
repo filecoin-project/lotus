@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/gorilla/mux"
@@ -142,6 +143,10 @@ var runCmd = &cli.Command{
 			Usage:  "(insecure) disable api auth",
 			Hidden: true,
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "30s",
+		},
 	},
 	Description: "Needs FULLNODE_API_INFO env-var to be set before running (see lotus-wallet --help for setup instructions)",
 	Action: func(cctx *cli.Context) error {
@@ -209,7 +214,7 @@ var runCmd = &cli.Command{
 			rpcApi = api.PermissionedWalletAPI(rpcApi)
 		}
 
-		rpcServer := jsonrpc.NewServer()
+		rpcServer := jsonrpc.NewServer(jsonrpc.WithServerErrors(api.RPCErrors))
 		rpcServer.Register("Filecoin", rpcApi)
 
 		mux.Handle("/rpc/v0", rpcServer)
@@ -239,8 +244,14 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		srv := &http.Server{
-			Handler: handler,
+			Handler:           handler,
+			ReadHeaderTimeout: timeout,
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-wallet"))
 				return ctx

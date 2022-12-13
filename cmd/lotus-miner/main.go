@@ -177,13 +177,13 @@ func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Addr
 		return
 	}
 
-	nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 	if err != nil {
 		return address.Undef, err
 	}
 	defer closer()
 
-	maddr, err = nodeAPI.ActorAddress(ctx)
+	maddr, err = minerApi.ActorAddress(ctx)
 	if err != nil {
 		return maddr, xerrors.Errorf("getting actor address: %w", err)
 	}

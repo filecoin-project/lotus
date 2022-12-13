@@ -7,6 +7,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -53,7 +54,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 		return nil, address.Undef, aerrors.Escalate(err, "registering actor address")
 	}
 
-	av, err := actors.VersionForNetwork(rt.NetworkVersion())
+	av, err := actorstypes.VersionForNetwork(rt.NetworkVersion())
 	if err != nil {
 		return nil, address.Undef, aerrors.Escalate(err, "unsupported network version")
 	}
@@ -85,10 +86,10 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 	return act, addrID, nil
 }
 
-func makeAccountActor(ver actors.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
+func makeAccountActor(ver actorstypes.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
-		return newAccountActor(ver), nil
+		return newAccountActor(ver, addr), nil
 	case address.ID:
 		return nil, aerrors.Newf(exitcode.SysErrInvalidReceiver, "no actor with given ID: %s", addr)
 	case address.Actor:
@@ -98,23 +99,23 @@ func makeAccountActor(ver actors.Version, addr address.Address) (*types.Actor, a
 	}
 }
 
-func newAccountActor(ver actors.Version) *types.Actor {
+func newAccountActor(ver actorstypes.Version, addr address.Address) *types.Actor {
 	// TODO: ActorsUpgrade use a global actor registry?
 	var code cid.Cid
 	switch ver {
-	case actors.Version0:
+	case actorstypes.Version0:
 		code = builtin0.AccountActorCodeID
-	case actors.Version2:
+	case actorstypes.Version2:
 		code = builtin2.AccountActorCodeID
-	case actors.Version3:
+	case actorstypes.Version3:
 		code = builtin3.AccountActorCodeID
-	case actors.Version4:
+	case actorstypes.Version4:
 		code = builtin4.AccountActorCodeID
-	case actors.Version5:
+	case actorstypes.Version5:
 		code = builtin5.AccountActorCodeID
-	case actors.Version6:
+	case actorstypes.Version6:
 		code = builtin6.AccountActorCodeID
-	case actors.Version7:
+	case actorstypes.Version7:
 		code = builtin7.AccountActorCodeID
 	default:
 		panic("unsupported actors version")
@@ -123,6 +124,7 @@ func newAccountActor(ver actors.Version) *types.Actor {
 		Code:    code,
 		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
+		Address: &addr,
 	}
 
 	return nact

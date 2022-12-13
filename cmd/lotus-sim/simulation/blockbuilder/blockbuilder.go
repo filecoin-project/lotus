@@ -9,10 +9,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
@@ -31,11 +31,12 @@ const (
 	// has.
 	// 5 per tipset, but we effectively get 4 blocks worth of messages.
 	expectedBlocks = 4
-	// TODO: This will produce invalid blocks but it will accurately model the amount of gas
-	// we're willing to use per-tipset.
-	// A more correct approach would be to produce 5 blocks. We can do that later.
-	targetGas = build.BlockGasTarget * expectedBlocks
 )
+
+// TODO: This will produce invalid blocks but it will accurately model the amount of gas
+// we're willing to use per-tipset.
+// A more correct approach would be to produce 5 blocks. We can do that later.
+var targetGas = build.BlockGasTarget * expectedBlocks
 
 type BlockBuilder struct {
 	ctx    context.Context
@@ -273,8 +274,8 @@ func (bb *BlockBuilder) StateManager() *stmgr.StateManager {
 }
 
 // ActorsVersion returns the actors version for the target block.
-func (bb *BlockBuilder) ActorsVersion() (actors.Version, error) {
-	return actors.VersionForNetwork(bb.NetworkVersion())
+func (bb *BlockBuilder) ActorsVersion() (actorstypes.Version, error) {
+	return actorstypes.VersionForNetwork(bb.NetworkVersion())
 }
 
 func (bb *BlockBuilder) L() *zap.SugaredLogger {

@@ -4,7 +4,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/docker/go-units"
@@ -14,7 +16,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
@@ -50,6 +54,29 @@ import (
 
 //go:embed FVMLiftoff.txt
 var fvmLiftoffBanner string
+
+var (
+	MigrationMaxWorkerCount    int
+	EnvMigrationMaxWorkerCount = "LOTUS_MIGRATION_MAX_WORKER_COUNT"
+)
+
+func init() {
+	// the default calculation used for migration worker count
+	MigrationMaxWorkerCount = runtime.NumCPU()
+	// check if an alternative value was request by environment
+	if mwcs := os.Getenv(EnvMigrationMaxWorkerCount); mwcs != "" {
+		mwc, err := strconv.ParseInt(mwcs, 10, 32)
+		if err != nil {
+			log.Warnf("invalid value for %s (%s) defaulting to %d: %s", EnvMigrationMaxWorkerCount, mwcs, MigrationMaxWorkerCount, err)
+			return
+		}
+		// use value from environment
+		log.Infof("migration worker cound set from %s (%d)", EnvMigrationMaxWorkerCount, mwc)
+		MigrationMaxWorkerCount = int(mwc)
+		return
+	}
+	log.Infof("migration worker count: %d", MigrationMaxWorkerCount)
+}
 
 func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
@@ -189,7 +216,24 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			StopWithin:      5,
 		}},
 		Expensive: true,
+	}, {
+		Height:    build.UpgradeSharkHeight,
+		Network:   network.Version17,
+		Migration: UpgradeActorsV9,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV9,
+			StartWithin:     240,
+			DontStartWithin: 60,
+			StopWithin:      20,
+		}, {
+			PreMigration:    PreUpgradeActorsV9,
+			StartWithin:     15,
+			DontStartWithin: 10,
+			StopWithin:      5,
+		}},
+		Expensive: true,
 	},
+	// TODO v10 upgrade
 	}
 
 	for _, u := range updates {
@@ -872,7 +916,7 @@ func UpgradeCalico(ctx context.Context, sm *stmgr.StateManager, _ stmgr.Migratio
 
 func UpgradeActorsV3(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
-	workerCount := runtime.NumCPU() - 3
+	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
 		workerCount = 1
 	}
@@ -910,7 +954,7 @@ func UpgradeActorsV3(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 func PreUpgradeActorsV3(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
-	workerCount := runtime.NumCPU()
+	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
 		workerCount = 1
 	} else {
@@ -974,7 +1018,7 @@ func upgradeActorsV3Common(
 
 func UpgradeActorsV4(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
-	workerCount := runtime.NumCPU() - 3
+	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
 		workerCount = 1
 	}
@@ -996,7 +1040,7 @@ func UpgradeActorsV4(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 func PreUpgradeActorsV4(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
-	workerCount := runtime.NumCPU()
+	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
 		workerCount = 1
 	} else {
@@ -1060,7 +1104,7 @@ func upgradeActorsV4Common(
 
 func UpgradeActorsV5(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
-	workerCount := runtime.NumCPU() - 3
+	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
 		workerCount = 1
 	}
@@ -1082,7 +1126,7 @@ func UpgradeActorsV5(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 func PreUpgradeActorsV5(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
-	workerCount := runtime.NumCPU()
+	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
 		workerCount = 1
 	} else {
@@ -1146,7 +1190,7 @@ func upgradeActorsV5Common(
 
 func UpgradeActorsV6(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
-	workerCount := runtime.NumCPU() - 3
+	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
 		workerCount = 1
 	}
@@ -1168,7 +1212,7 @@ func UpgradeActorsV6(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 func PreUpgradeActorsV6(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
-	workerCount := runtime.NumCPU()
+	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
 		workerCount = 1
 	} else {
@@ -1232,7 +1276,7 @@ func upgradeActorsV6Common(
 
 func UpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
-	workerCount := runtime.NumCPU() - 3
+	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
 		workerCount = 1
 	}
@@ -1254,7 +1298,7 @@ func UpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 func PreUpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
-	workerCount := runtime.NumCPU()
+	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
 		workerCount = 1
 	} else {
@@ -1325,7 +1369,7 @@ func upgradeActorsV7Common(
 
 func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
-	workerCount := runtime.NumCPU() - 3
+	workerCount := MigrationMaxWorkerCount - 3
 	if workerCount <= 0 {
 		workerCount = 1
 	}
@@ -1349,7 +1393,7 @@ func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 func PreUpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
-	workerCount := runtime.NumCPU()
+	workerCount := MigrationMaxWorkerCount
 	if workerCount <= 4 {
 		workerCount = 1
 	} else {
@@ -1377,7 +1421,7 @@ func upgradeActorsV8Common(
 	store := store.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := bundle.LoadBundles(ctx, buf, actors.Version8); err != nil {
+	if err := bundle.LoadBundles(ctx, buf, actorstypes.Version8); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -1394,7 +1438,7 @@ func upgradeActorsV8Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actors.Version8)
+	manifest, ok := actors.GetManifest(actorstypes.Version8)
 	if !ok {
 		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
 	}
@@ -1429,6 +1473,120 @@ func upgradeActorsV8Common(
 	return newRoot, nil
 }
 
+func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv17.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := upgradeActorsV9Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v8 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func PreUpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid,
+	epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv17.Config{MaxWorkers: uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5}
+
+	_, err = upgradeActorsV9Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func upgradeActorsV9Common(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config nv17.Config,
+) (cid.Cid, error) {
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
+	store := store.ActorStore(ctx, writeStore)
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), actorstypes.Version9); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot types.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != types.StateTreeVersion4 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 4 for actors v9 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version9)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v9 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv17.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v9: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &types.StateRoot{
+		Version: types.StateTreeVersion4,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+
+	// TODO migration
+	// - the init actor state to include the (empty) installed actors field
+	// - state tree migration to v5
+	return cid.Undef, fmt.Errorf("IMPLEMENTME: v10 migration")
+}
+
 // Example upgrade function if upgrade requires only code changes
 //func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
 //	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
@@ -1453,7 +1611,7 @@ func upgradeActorsV8Common(
 //	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, types.StateTreeVersion4, newStateTreeVersion)
 //}
 
-func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
+func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, oldAv actorstypes.Version, newAv actorstypes.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(bstore, blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
 	adtStore := gstStore.WrapStore(ctx, store)
@@ -1493,10 +1651,10 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		return cid.Undef, xerrors.Errorf("error loading new manifest data: %w", err)
 	}
 
-	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
+	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys(oldAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete old manifest with %d code CIDs", len(oldManifestData.Entries))
 	}
-	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
+	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys(newAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete new manifest with %d code CIDs", len(newManifestData.Entries))
 	}
 
@@ -1528,7 +1686,7 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		}
 		var head cid.Cid
 		if addr == system.Address {
-			newSystemState, err := system.MakeState(store, av, newManifest.Data)
+			newSystemState, err := system.MakeState(store, newAv, newManifest.Data)
 			if err != nil {
 				return xerrors.Errorf("could not make system actor state: %w", err)
 			}

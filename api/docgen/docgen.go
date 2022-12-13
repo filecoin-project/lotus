@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"net/http"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -23,6 +24,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -31,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -136,7 +140,15 @@ func init() {
 	addExample(&textSelExample)
 	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
-	addExample(build.NewestNetworkVersion)
+	addExample(build.TestNetworkVersion)
+	allocationId := verifreg.AllocationId(0)
+	addExample(allocationId)
+	addExample(&allocationId)
+	addExample(map[verifreg.AllocationId]verifreg.Allocation{})
+	claimId := verifreg.ClaimId(0)
+	addExample(claimId)
+	addExample(&claimId)
+	addExample(map[verifreg.ClaimId]verifreg.Claim{})
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{
@@ -339,7 +351,23 @@ func init() {
 	addExample(map[string]bitfield.BitField{
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
+	addExample(&api.RaftStateData{
+		NonceMap: make(map[address.Address]uint64),
+		MsgUuids: make(map[uuid.UUID]*types.SignedMessage),
+	})
 
+	addExample(http.Header{
+		"Authorization": []string{"Bearer ey.."},
+	})
+
+	addExample(map[storiface.SectorFileType]storiface.SectorLocation{
+		storiface.FTSealed: {
+			Local:   false,
+			URL:     "https://example.com/sealingservice/sectors/s-f0123-12345",
+			Headers: nil,
+		},
+	})
+	addExample(&uuid.UUID{})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -430,7 +458,8 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 		if f.Type == parent {
 			continue
 		}
-		if strings.Title(f.Name) == f.Name {
+		caser := cases.Title(language.English)
+		if caser.String(f.Name) == f.Name {
 			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}

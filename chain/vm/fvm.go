@@ -21,6 +21,7 @@ import (
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -38,23 +39,30 @@ import (
 
 var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
-var debugBundleV8path = os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V8")
 
 type FvmExtern struct {
 	Rand
 	blockstore.Blockstore
 	epoch   abi.ChainEpoch
 	lbState LookbackStateGetter
+	tsGet   TipSetGetter
 	base    cid.Cid
+}
+
+type FvmGasCharge struct {
+	Name       string
+	TotalGas   int64
+	ComputeGas int64
+	StorageGas int64
 }
 
 // This may eventually become identical to ExecutionTrace, but we can make incremental progress towards that
 type FvmExecutionTrace struct {
-	Msg    *types.Message
-	MsgRct *types.MessageReceipt
-	Error  string
-
-	Subcalls []FvmExecutionTrace
+	Msg        *types.Message
+	MsgRct     *types.MessageReceipt
+	Error      string
+	GasCharges []FvmGasCharge      `cborgen:"maxlen=1000000000"`
+	Subcalls   []FvmExecutionTrace `cborgen:"maxlen=1000000000"`
 }
 
 func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
@@ -69,6 +77,18 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 		Subcalls: nil, // Should be nil when there are no subcalls for backwards compatibility
 	}
 
+	if len(t.GasCharges) > 0 {
+		ret.GasCharges = make([]*types.GasTrace, len(t.GasCharges))
+		for i, v := range t.GasCharges {
+			ret.GasCharges[i] = &types.GasTrace{
+				Name:       v.Name,
+				TotalGas:   v.TotalGas,
+				ComputeGas: v.ComputeGas,
+				StorageGas: v.StorageGas,
+			}
+		}
+	}
+
 	if len(t.Subcalls) > 0 {
 		ret.Subcalls = make([]types.ExecutionTrace, len(t.Subcalls))
 
@@ -78,6 +98,14 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 	}
 
 	return ret
+}
+
+func (x *FvmExtern) TipsetCid(ctx context.Context, epoch abi.ChainEpoch) (cid.Cid, error) {
+	tsk, err := x.tsGet(ctx, epoch)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return tsk.Cid()
 }
 
 // VerifyConsensusFault is similar to the one in syscalls.go used by the Lotus VM, except it never errors
@@ -275,6 +303,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 			Rand:       opts.Rand,
 			Blockstore: opts.Bstore,
 			lbState:    opts.LookbackState,
+			tsGet:      opts.TipSetGetter,
 			base:       opts.StateBase,
 			epoch:      opts.Epoch,
 		},
@@ -295,7 +324,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
-		av, err := actors.VersionForNetwork(opts.NetworkVersion)
+		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
 		if err != nil {
 			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
 		}
@@ -311,7 +340,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	fvm, err := ffi.CreateFVM(fvmOpts)
 
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to create FVM: %w", err)
 	}
 
 	return &FVM{
@@ -364,10 +393,15 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 			return xerrors.Errorf("loading debug manifest: %w", err)
 		}
 
+		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
+		if err != nil {
+			return xerrors.Errorf("getting actors version: %w", err)
+		}
+
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
-		for _, key := range actors.GetBuiltinActorsKeys() {
-			from, ok := actors.GetActorCodeID(actors.Version8, key)
+		for _, key := range actors.GetBuiltinActorsKeys(av) {
+			from, ok := actors.GetActorCodeID(av, key)
 			if !ok {
 				log.Warnf("actor missing in the from manifest %s", key)
 				continue
@@ -393,17 +427,15 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil
 	}
 
-	av, err := actors.VersionForNetwork(opts.NetworkVersion)
+	av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
 	}
 
-	switch av {
-	case actors.Version8:
-		if debugBundleV8path != "" {
-			if err := createMapping(debugBundleV8path); err != nil {
-				log.Errorf("failed to create v8 debug mapping")
-			}
+	debugBundlePath := os.Getenv(fmt.Sprintf("LOTUS_FVM_DEBUG_BUNDLE_V%d", av))
+	if debugBundlePath != "" {
+		if err := createMapping(debugBundlePath); err != nil {
+			log.Errorf("failed to create v%d debug mapping", av)
 		}
 	}
 

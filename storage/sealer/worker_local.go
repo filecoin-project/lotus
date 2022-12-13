@@ -202,6 +202,7 @@ const (
 	ReleaseUnsealed       ReturnType = "ReleaseUnsealed"
 	MoveStorage           ReturnType = "MoveStorage"
 	UnsealPiece           ReturnType = "UnsealPiece"
+	DownloadSector        ReturnType = "DownloadSector"
 	Fetch                 ReturnType = "Fetch"
 )
 
@@ -255,6 +256,7 @@ var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storifac
 	FinalizeReplicaUpdate: rfunc(storiface.WorkerReturn.ReturnFinalizeReplicaUpdate),
 	MoveStorage:           rfunc(storiface.WorkerReturn.ReturnMoveStorage),
 	UnsealPiece:           rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
+	DownloadSector:        rfunc(storiface.WorkerReturn.ReturnDownloadSector),
 	Fetch:                 rfunc(storiface.WorkerReturn.ReturnFetch),
 }
 
@@ -479,35 +481,36 @@ func (l *LocalWorker) GenerateSectorKeyFromData(ctx context.Context, sector stor
 	})
 }
 
-func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) (storiface.CallID, error) {
+func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storiface.SectorRef) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
 	}
 
 	return l.asyncCall(ctx, sector, FinalizeSector, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
-			return nil, xerrors.Errorf("finalizing sector: %w", err)
-		}
-
-		if len(keepUnsealed) == 0 {
-			if err := l.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil); err != nil {
-				return nil, xerrors.Errorf("removing unsealed data: %w", err)
-			}
-		}
-
-		return nil, err
+		return nil, sb.FinalizeSector(ctx, sector)
 	})
 }
 
-func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) (storiface.CallID, error) {
+func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
 	}
 
 	return l.asyncCall(ctx, sector, FinalizeReplicaUpdate, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		if err := sb.FinalizeReplicaUpdate(ctx, sector, keepUnsealed); err != nil {
+		return nil, sb.FinalizeReplicaUpdate(ctx, sector)
+	})
+}
+
+func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) (storiface.CallID, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, sector, ReleaseUnsealed, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		if err := sb.ReleaseUnsealed(ctx, sector, keepUnsealed); err != nil {
 			return nil, xerrors.Errorf("finalizing sector: %w", err)
 		}
 
@@ -519,10 +522,6 @@ func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storifac
 
 		return nil, err
 	})
-}
-
-func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) (storiface.CallID, error) {
-	return storiface.UndefCall, xerrors.Errorf("implement me")
 }
 
 func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
@@ -583,6 +582,17 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storiface.SectorRe
 		log.Debugf("worker has unsealed piece, sector=%+v", sector.ID)
 
 		return nil, nil
+	})
+}
+
+func (l *LocalWorker) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) (storiface.CallID, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, sector, DownloadSector, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		return nil, sb.DownloadSectorData(ctx, sector, finalized, src)
 	})
 }
 

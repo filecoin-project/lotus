@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
@@ -40,11 +43,17 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 }
 
 var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) (uint64, error){
+	// external import
+	ReceiveSector: planOne(
+		onReturning(SectorReceived{}),
+	),
+
 	// Sealing
 
 	UndefinedSectorState: planOne(
 		on(SectorStart{}, WaitDeals),
 		on(SectorStartCC{}, Packing),
+		on(SectorReceive{}, ReceiveSector),
 	),
 	Empty: planOne( // deprecated
 		on(SectorAddPiece{}, AddPiece),
@@ -136,8 +145,8 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 
 	FinalizeSector: planOne(
-		on(SectorFinalized{}, Proving),
-		on(SectorFinalizedAvailable{}, Available),
+		onWithCB(SectorFinalized{}, Proving, maybeNotifyRemoteDone(true, "Proving")),
+		onWithCB(SectorFinalizedAvailable{}, Available, maybeNotifyRemoteDone(true, "Available")),
 		on(SectorFinalizeFailed{}, FinalizeFailed),
 	),
 
@@ -179,6 +188,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	SubmitReplicaUpdate: planOne(
 		on(SectorReplicaUpdateSubmitted{}, ReplicaUpdateWait),
 		on(SectorSubmitReplicaUpdateFailed{}, ReplicaUpdateFailed),
+		on(SectorDeadlineImmutable{}, WaitMutable),
+	),
+	WaitMutable: planOne(
+		on(SectorDeadlineMutable{}, SubmitReplicaUpdate),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	ReplicaUpdateWait: planOne(
 		on(SectorReplicaUpdateLanded{}, UpdateActivating),
@@ -212,12 +226,15 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryWaitSeed{}, WaitSeed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorPreCommitLanded{}, WaitSeed),
-		on(SectorDealsExpired{}, DealsExpired),
+		onWithCB(SectorDealsExpired{}, DealsExpired, maybeNotifyRemoteDone(false, "DealsExpired")),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
 	),
 	ComputeProofFailed: planOne(
 		on(SectorRetryComputeProof{}, Committing),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
+	),
+	RemoteCommitFailed: planOne(
+		on(SectorRetryComputeProof{}, Committing),
 	),
 	CommitFinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, CommitFinalize),
@@ -232,9 +249,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryPreCommit{}, PreCommitting),
 		on(SectorRetryCommitWait{}, CommitWait),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
-		on(SectorDealsExpired{}, DealsExpired),
+		onWithCB(SectorDealsExpired{}, DealsExpired, maybeNotifyRemoteDone(false, "DealsExpired")),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
-		on(SectorTicketExpired{}, Removing),
+		onWithCB(SectorTicketExpired{}, Removing, maybeNotifyRemoteDone(false, "Removing")),
 	),
 	FinalizeFailed: planOne(
 		on(SectorRetryFinalize{}, FinalizeSector),
@@ -457,6 +474,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	}
 
 	switch state.State {
+	case ReceiveSector:
+		return m.handleReceiveSector, processed, nil
+
 	// Happy path
 	case Empty:
 		fallthrough
@@ -510,6 +530,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleProveReplicaUpdate, processed, nil
 	case SubmitReplicaUpdate:
 		return m.handleSubmitReplicaUpdate, processed, nil
+	case WaitMutable:
+		return m.handleWaitMutable, processed, nil
 	case ReplicaUpdateWait:
 		return m.handleReplicaUpdateWait, processed, nil
 	case FinalizeReplicaUpdate:
@@ -530,6 +552,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommitFailed, processed, nil
 	case ComputeProofFailed:
 		return m.handleComputeProofFailed, processed, nil
+	case RemoteCommitFailed:
+		return m.handleRemoteCommitFailed, processed, nil
 	case CommitFailed:
 		return m.handleCommitFailed, processed, nil
 	case CommitFinalizeFailed:
@@ -657,6 +681,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			return uint64(i + 1), nil
 		case SectorComputeProofFailed:
 			state.State = ComputeProofFailed
+		case SectorRemoteCommit1Failed, SectorRemoteCommit2Failed:
+			state.State = RemoteCommitFailed
 		case SectorSealPreCommit1Failed:
 			state.State = SealPreCommit1Failed
 		case SectorCommitFailed:
@@ -714,6 +740,16 @@ func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 func on(mut mutator, next SectorState) func() (mutator, func(*SectorInfo) (bool, error)) {
 	return func() (mutator, func(*SectorInfo) (bool, error)) {
 		return mut, func(state *SectorInfo) (bool, error) {
+			state.State = next
+			return false, nil
+		}
+	}
+}
+
+func onWithCB(mut mutator, next SectorState, cb func(info *SectorInfo)) func() (mutator, func(*SectorInfo) (bool, error)) {
+	return func() (mutator, func(*SectorInfo) (bool, error)) {
+		return mut, func(state *SectorInfo) (bool, error) {
+			cb(state)
 			state.State = next
 			return false, nil
 		}
@@ -794,5 +830,46 @@ func planOneOrIgnore(ts ...func() (mut mutator, next func(*SectorInfo) (more boo
 			log.Warnf("planOneOrIgnore: ignoring error from planOne: %s", err)
 		}
 		return cnt, nil
+	}
+}
+
+// maybeNotifyRemoteDone will send sealing-done notification to the RemoteSealingDone
+// if the RemoteSealingDoneEndpoint is set. If RemoteSealingDoneEndpoint is not set,
+// this is no-op
+func maybeNotifyRemoteDone(success bool, state string) func(*SectorInfo) {
+	return func(sector *SectorInfo) {
+		if sector.RemoteSealingDoneEndpoint == "" {
+			return
+		}
+
+		reqData := api.RemoteSealingDoneParams{
+			Successful:    success,
+			State:         state,
+			CommitMessage: sector.CommitMessage,
+		}
+		reqBody, err := json.Marshal(&reqData)
+		if err != nil {
+			log.Errorf("marshaling remote done notification request params: %s", err)
+			return
+		}
+
+		req, err := http.NewRequest("POST", sector.RemoteSealingDoneEndpoint, bytes.NewReader(reqBody))
+		if err != nil {
+			log.Errorf("creating new remote done notification request: %s", err)
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Errorf("sending remote done notification: %s", err)
+			return
+		}
+
+		defer resp.Body.Close() //nolint:errcheck
+
+		if resp.StatusCode != http.StatusOK {
+			log.Errorf("remote done notification received non-200 http response %s", resp.Status)
+			return
+		}
 	}
 }

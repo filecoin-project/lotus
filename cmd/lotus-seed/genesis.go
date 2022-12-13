@@ -93,7 +93,7 @@ var genesisAddMinerCmd = &cli.Command{
 	Description: "add genesis miner",
 	Flags:       []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
+		if cctx.NArg() != 2 {
 			return xerrors.New("seed genesis add-miner [genesis.json] [preseal.json]")
 		}
 
@@ -181,7 +181,7 @@ type GenAccountEntry struct {
 var genesisAddMsigsCmd = &cli.Command{
 	Name: "add-msigs",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
+		if cctx.NArg() < 2 {
 			return fmt.Errorf("must specify template file and csv file with accounts")
 		}
 
@@ -329,7 +329,7 @@ var genesisSetVRKCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify template file")
 		}
 
@@ -425,7 +425,7 @@ var genesisSetRemainderCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify template file")
 		}
 
@@ -519,7 +519,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 	},
 	ArgsUsage: "<genesisFile>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify genesis file")
 		}
 
@@ -539,7 +539,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 		}
 
 		nv := network.Version(cctx.Int("network-version"))
-		if nv > build.NewestNetworkVersion {
+		if nv > build.TestNetworkVersion {
 			return xerrors.Errorf("invalid network version: %d", nv)
 		}
 
@@ -597,7 +597,7 @@ var genesisSetVRKSignersCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return fmt.Errorf("must specify template file")
 		}
 

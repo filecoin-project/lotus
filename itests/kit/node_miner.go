@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -97,6 +96,10 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 }
 
 func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.SectorNumber]struct{}) {
+	tm.WaitSectorsProvingAllowFails(ctx, toCheck, map[api.SectorState]struct{}{})
+}
+
+func (tm *TestMiner) WaitSectorsProvingAllowFails(ctx context.Context, toCheck map[abi.SectorNumber]struct{}, okFails map[api.SectorState]struct{}) {
 	for len(toCheck) > 0 {
 		tm.FlushSealingBatches(ctx)
 
@@ -105,11 +108,13 @@ func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.Sec
 			st, err := tm.StorageMiner.SectorsStatus(ctx, n, false)
 			require.NoError(tm.t, err)
 			states[st.State]++
-			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) {
+			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) || st.State == api.SectorState(sealing.Removed) {
 				delete(toCheck, n)
 			}
 			if strings.Contains(string(st.State), "Fail") {
-				tm.t.Fatal("sector in a failed state", st.State)
+				if _, ok := okFails[st.State]; !ok {
+					tm.t.Fatal("sector in a failed state", st.State)
+				}
 			}
 		}
 
@@ -169,7 +174,7 @@ func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
 
 const metaFile = "sectorstore.json"
 
-func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*paths.LocalStorageMeta)) storiface.ID {
+func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*storiface.LocalStorageMeta)) storiface.ID {
 	p := t.TempDir()
 
 	if err := os.MkdirAll(p, 0755); err != nil {
@@ -183,7 +188,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*pa
 		require.NoError(t, err)
 	}
 
-	cfg := &paths.LocalStorageMeta{
+	cfg := &storiface.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   10,
 		CanSeal:  false,
@@ -218,4 +223,39 @@ func (tm *TestMiner) SectorsListNonGenesis(ctx context.Context) ([]abi.SectorNum
 	})
 
 	return l[tm.PresealSectors:], nil
+}
+
+// comes from https://github.com/filecoin-project/lotus/blob/8ba4355cabd25e5f65261aaa561ff676321ffbd8/storage/sealer/manager.go#L1226
+// todo: have this defined in one place
+type SchedInfo struct {
+	CallToWork   struct{}
+	EarlyRet     interface{}
+	ReturnedWork interface{}
+	SchedInfo    struct {
+		OpenWindows []string
+		Requests    []struct {
+			Priority int
+			SchedId  uuid.UUID
+			Sector   struct {
+				Miner  int
+				Number int
+			}
+			TaskType string
+		}
+	}
+	Waiting interface{}
+}
+
+func (tm *TestMiner) SchedInfo(ctx context.Context) SchedInfo {
+	schedb, err := tm.SealingSchedDiag(ctx, false)
+	require.NoError(tm.t, err)
+
+	j, err := json.MarshalIndent(&schedb, "", "  ")
+	require.NoError(tm.t, err)
+
+	var b SchedInfo
+	err = json.Unmarshal(j, &b)
+	require.NoError(tm.t, err)
+
+	return b
 }

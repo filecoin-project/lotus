@@ -21,6 +21,10 @@ type testExec struct {
 	apch chan chan apres
 }
 
+func (t *testExec) DownloadSectorData(ctx context.Context, sector storiface.SectorRef, finalized bool, src map[storiface.SectorFileType]storiface.SectorLocation) error {
+	panic("implement me")
+}
+
 func (t *testExec) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
 	panic("implement me")
 }
@@ -57,11 +61,11 @@ func (t *testExec) SealCommit2(ctx context.Context, sector storiface.SectorRef, 
 	panic("implement me")
 }
 
-func (t *testExec) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (t *testExec) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
 	panic("implement me")
 }
 
-func (t *testExec) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
+func (t *testExec) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	panic("implement me")
 }
 
@@ -97,7 +101,7 @@ func (t *testExec) GenerateSectorKeyFromData(ctx context.Context, sector storifa
 	panic("implement me")
 }
 
-func (t *testExec) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (t *testExec) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef) error {
 	panic("implement me")
 }
 

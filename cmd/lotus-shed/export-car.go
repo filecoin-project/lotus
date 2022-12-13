@@ -14,6 +14,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -30,18 +32,18 @@ func carWalkFunc(nd format.Node) (out []*format.Link, err error) {
 
 var exportCarCmd = &cli.Command{
 	Name:        "export-car",
-	Description: "Export a car from repo (requires node to be offline)",
+	Description: "Export a car from repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
 			Value: "~/.lotus",
 		},
 	},
+	ArgsUsage: "[outfile] [root cid]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return lcli.ShowHelp(cctx, fmt.Errorf("must specify file name and object"))
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
-
 		outfile := cctx.Args().First()
 		var roots []cid.Cid
 		for _, arg := range cctx.Args().Tail() {
@@ -51,14 +53,11 @@ var exportCarCmd = &cli.Command{
 			}
 			roots = append(roots, c)
 		}
-
 		ctx := lcli.ReqContext(cctx)
-
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
-
 		exists, err := r.Exists()
 		if err != nil {
 			return err
@@ -67,11 +66,25 @@ var exportCarCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
+		var bs blockstore.Blockstore
+
 		lr, err := r.Lock(repo.FullNode)
-		if err != nil {
-			return err
+		if err == nil {
+			bs, err = lr.Blockstore(ctx, repo.UniversalBlockstore)
+			if err != nil {
+				return fmt.Errorf("failed to open blockstore: %w", err)
+			}
+			defer lr.Close() //nolint:errcheck
+		} else {
+			api, closer, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return err
+			}
+
+			defer closer()
+
+			bs = blockstore.NewAPIBlockstore(api)
 		}
-		defer lr.Close() //nolint:errcheck
 
 		fi, err := os.Create(outfile)
 		if err != nil {
@@ -79,11 +92,6 @@ var exportCarCmd = &cli.Command{
 		}
 
 		defer fi.Close() //nolint:errcheck
-
-		bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
-		if err != nil {
-			return fmt.Errorf("failed to open blockstore: %w", err)
-		}
 
 		defer func() {
 			if c, ok := bs.(io.Closer); ok {
@@ -98,6 +106,14 @@ var exportCarCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		sz, err := fi.Seek(0, io.SeekEnd)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("done %s\n", types.SizeStr(types.NewInt(uint64(sz))))
+
 		return nil
 	},
 }

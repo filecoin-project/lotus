@@ -1,10 +1,12 @@
 package reward
 
 import (
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
@@ -22,8 +24,8 @@ import (
 )
 
 var (
-	Address = builtin8.RewardActorAddr
-	Methods = builtin8.MethodsReward
+	Address = builtin10.RewardActorAddr
+	Methods = builtin10.MethodsReward
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -34,8 +36,14 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -68,32 +76,38 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.StoragePower) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, currRealizedPower abi.StoragePower) (State, error) {
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return make0(store, currRealizedPower)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return make2(store, currRealizedPower)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return make3(store, currRealizedPower)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return make4(store, currRealizedPower)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return make5(store, currRealizedPower)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return make6(store, currRealizedPower)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return make7(store, currRealizedPower)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return make8(store, currRealizedPower)
+
+	case actorstypes.Version9:
+		return make9(store, currRealizedPower)
+
+	case actorstypes.Version10:
+		return make10(store, currRealizedPower)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -101,6 +115,10 @@ func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.Storage
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
 
 	ThisEpochBaselinePower() (abi.StoragePower, error)
 	ThisEpochReward() (abi.StoragePower, error)
@@ -120,3 +138,18 @@ type State interface {
 }
 
 type AwardBlockRewardParams = reward0.AwardBlockRewardParams
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
+}

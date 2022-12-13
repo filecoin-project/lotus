@@ -15,7 +15,7 @@
 #    docker swarm init (if you haven't already)
 #    docker stack deploy -c docker-compose.yaml mylotuscluster
 #
-# for more information, please visit docs.filecoin.io
+# for more information, please visit lotus.filecoin.io
 
 version: "3.8"
 

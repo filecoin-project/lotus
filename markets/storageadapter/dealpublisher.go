@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
@@ -202,6 +202,26 @@ func (p *DealPublisher) processNewDeal(pdeal *pendingDeal) {
 	// Make sure the new deal hasn't been cancelled
 	if pdeal.ctx.Err() != nil {
 		return
+	}
+
+	pdealPropCid, err := pdeal.deal.Proposal.Cid()
+	if err != nil {
+		log.Warn("failed to calculate proposal CID for new pending Deal with piece cid %s", pdeal.deal.Proposal.PieceCID)
+		return
+	}
+
+	// Sanity check that new deal isn't already in the queue
+	for _, pd := range p.pending {
+		pdPropCid, err := pd.deal.Proposal.Cid()
+		if err != nil {
+			log.Warn("failed to calculate proposal CID for pending Deal already in publish queue with piece cid %s", pd.deal.Proposal.PieceCID)
+			return
+		}
+
+		if pdPropCid.Equals(pdealPropCid) {
+			log.Warn("tried to process new pending deal with piece CID %s that is already in publish queue; returning", pdeal.deal.Proposal.PieceCID)
+			return
+		}
 	}
 
 	// Add the new deal to the queue

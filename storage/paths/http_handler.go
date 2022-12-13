@@ -95,7 +95,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ft, err := ftFromString(vars["type"])
+	ft, err := FileTypeFromString(vars["type"])
 	if err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
@@ -167,7 +167,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	ft, err := ftFromString(vars["type"])
+	ft, err := FileTypeFromString(vars["type"])
 	if err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
@@ -195,9 +195,9 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	ft, err := ftFromString(vars["type"])
+	ft, err := FileTypeFromString(vars["type"])
 	if err != nil {
-		log.Errorf("ftFromString: %+v", err)
+		log.Errorf("FileTypeFromString: %+v", err)
 		w.WriteHeader(500)
 		return
 	}
@@ -311,7 +311,7 @@ func (handler *FetchHandler) generateSingleVanillaProof(w http.ResponseWriter, r
 	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(vanilla))
 }
 
-func ftFromString(t string) (storiface.SectorFileType, error) {
+func FileTypeFromString(t string) (storiface.SectorFileType, error) {
 	switch t {
 	case storiface.FTUnsealed.String():
 		return storiface.FTUnsealed, nil

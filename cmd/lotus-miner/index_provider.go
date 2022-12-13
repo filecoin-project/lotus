@@ -36,7 +36,7 @@ var indexProvAnnounceCmd = &cli.Command{
 		}
 
 		if cctx.NArg() != 1 {
-			return fmt.Errorf("must provide the deal proposal CID")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		proposalCidStr := cctx.Args().First()

@@ -44,7 +44,7 @@ func fakeConfigGetter(stub *fakeConfigStub) dtypes.GetSealingConfigFunc {
 }
 
 func (f *fakeChain) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	return build.NewestNetworkVersion, nil
+	return build.TestNetworkVersion, nil
 }
 
 func (f *fakeChain) ChainHead(ctx context.Context) (*types.TipSet, error) {
@@ -95,7 +95,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 2)
 	longestDealEpochEnd := abi.ChainEpoch(547300)
-	pieces := []pipeline.Piece{
+	pieces := []api.SectorPiece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -136,7 +136,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []pipeline.Piece{
+	pieces := []api.SectorPiece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -165,7 +165,7 @@ func TestMissingDealIsIgnored(t *testing.T) {
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []pipeline.Piece{
+	pieces := []api.SectorPiece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),

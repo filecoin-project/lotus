@@ -3,14 +3,17 @@ package market
 import (
 	"unicode/utf8"
 
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
@@ -27,8 +30,8 @@ import (
 )
 
 var (
-	Address = builtin8.StorageMarketActorAddr
-	Methods = builtin8.MethodsMarket
+	Address = builtintypes.StorageMarketActorAddr
+	Methods = builtintypes.MethodsMarket
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -39,8 +42,14 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -73,32 +82,38 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return make0(store)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return make2(store)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return make3(store)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return make4(store)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return make5(store)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return make6(store)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return make7(store)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return make8(store)
+
+	case actorstypes.Version9:
+		return make9(store)
+
+	case actorstypes.Version10:
+		return make10(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -106,6 +121,11 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
+
 	BalancesChanged(State) (bool, error)
 	EscrowTable() (BalanceTable, error)
 	LockedTable() (BalanceTable, error)
@@ -119,6 +139,7 @@ type State interface {
 	) (weight, verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
+	GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error)
 }
 
 type BalanceTable interface {
@@ -135,11 +156,11 @@ type DealStates interface {
 }
 
 type DealProposals interface {
-	ForEach(cb func(id abi.DealID, dp market8.DealProposal) error) error
-	Get(id abi.DealID) (*market8.DealProposal, bool, error)
+	ForEach(cb func(id abi.DealID, dp markettypes.DealProposal) error) error
+	Get(id abi.DealID) (*markettypes.DealProposal, bool, error)
 
 	array() adt.Array
-	decode(*cbg.Deferred) (*market8.DealProposal, error)
+	decode(*cbg.Deferred) (*markettypes.DealProposal, error)
 }
 
 type PublishStorageDealsReturn interface {
@@ -149,44 +170,51 @@ type PublishStorageDealsReturn interface {
 }
 
 func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStorageDealsReturn, error) {
-	av, err := actors.VersionForNetwork(nv)
+	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
 		return nil, err
 	}
 
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return decodePublishStorageDealsReturn0(b)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return decodePublishStorageDealsReturn2(b)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return decodePublishStorageDealsReturn3(b)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return decodePublishStorageDealsReturn4(b)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return decodePublishStorageDealsReturn5(b)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return decodePublishStorageDealsReturn6(b)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return decodePublishStorageDealsReturn7(b)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return decodePublishStorageDealsReturn8(b)
+
+	case actorstypes.Version9:
+		return decodePublishStorageDealsReturn9(b)
+
+	case actorstypes.Version10:
+		return decodePublishStorageDealsReturn10(b)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-type DealProposal = market8.DealProposal
+type DealProposal = markettypes.DealProposal
+type DealLabel = markettypes.DealLabel
 
-type DealState = market8.DealState
+type DealState = markettypes.DealState
 
 type DealStateChanges struct {
 	Added    []DealIDState
@@ -213,7 +241,7 @@ type DealProposalChanges struct {
 
 type ProposalIDState struct {
 	ID       abi.DealID
-	Proposal market8.DealProposal
+	Proposal markettypes.DealProposal
 }
 
 func EmptyDealState() *DealState {
@@ -225,7 +253,7 @@ func EmptyDealState() *DealState {
 }
 
 // returns the earned fees and pending fees for a given deal
-func GetDealFees(deal market8.DealProposal, height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
+func GetDealFees(deal markettypes.DealProposal, height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
 	tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
 
 	ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
@@ -240,14 +268,29 @@ func GetDealFees(deal market8.DealProposal, height abi.ChainEpoch) (abi.TokenAmo
 	return ef, big.Sub(tf, ef)
 }
 
-func IsDealActive(state market8.DealState) bool {
+func IsDealActive(state markettypes.DealState) bool {
 	return state.SectorStartEpoch > -1 && state.SlashEpoch == -1
 }
 
-func labelFromGoString(s string) (market8.DealLabel, error) {
+func labelFromGoString(s string) (markettypes.DealLabel, error) {
 	if utf8.ValidString(s) {
-		return market8.NewLabelFromString(s)
+		return markettypes.NewLabelFromString(s)
 	} else {
-		return market8.NewLabelFromBytes([]byte(s))
+		return markettypes.NewLabelFromBytes([]byte(s))
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
 	}
 }

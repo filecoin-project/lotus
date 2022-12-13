@@ -17,71 +17,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
+	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-// LocalStorageMeta [path]/sectorstore.json
-type LocalStorageMeta struct {
-	ID storiface.ID
-
-	// A high weight means data is more likely to be stored in this path
-	Weight uint64 // 0 = readonly
-
-	// Intermediate data for the sealing process will be stored here
-	CanSeal bool
-
-	// Finalized sectors that will be proved over time will be stored here
-	CanStore bool
-
-	// MaxStorage specifies the maximum number of bytes to use for sector storage
-	// (0 = unlimited)
-	MaxStorage uint64
-
-	// List of storage groups this path belongs to
-	Groups []string
-
-	// List of storage groups to which data from this path can be moved. If none
-	// are specified, allow to all
-	AllowTo []string
-
-	// AllowTypes lists sector file types which are allowed to be put into this
-	// path. If empty, all file types are allowed.
-	//
-	// Valid values:
-	// - "unsealed"
-	// - "sealed"
-	// - "cache"
-	// - "update"
-	// - "update-cache"
-	// Any other value will generate a warning and be ignored.
-	AllowTypes []string
-
-	// DenyTypes lists sector file types which aren't allowed to be put into this
-	// path.
-	//
-	// Valid values:
-	// - "unsealed"
-	// - "sealed"
-	// - "cache"
-	// - "update"
-	// - "update-cache"
-	// Any other value will generate a warning and be ignored.
-	DenyTypes []string
-}
-
-// StorageConfig .lotusstorage/storage.json
-type StorageConfig struct {
-	StoragePaths []LocalPath
-}
-
-type LocalPath struct {
-	Path string
-}
-
 type LocalStorage interface {
-	GetStorage() (StorageConfig, error)
-	SetStorage(func(*StorageConfig)) error
+	GetStorage() (storiface.StorageConfig, error)
+	SetStorage(func(*storiface.StorageConfig)) error
 
 	Stat(path string) (fsutil.FsStat, error)
 
@@ -213,7 +156,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
 	}
 
-	var meta LocalStorageMeta
+	var meta storiface.LocalStorageMeta
 	if err := json.Unmarshal(mb, &meta); err != nil {
 		return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
 	}
@@ -309,7 +252,7 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 			return xerrors.Errorf("reading storage metadata for %s: %w", p.local, err)
 		}
 
-		var meta LocalStorageMeta
+		var meta storiface.LocalStorageMeta
 		if err := json.Unmarshal(mb, &meta); err != nil {
 			return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p.local, err)
 		}
@@ -370,7 +313,7 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 	}
 
 	for _, t := range storiface.PathTypes {
-		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
+		ents, err := os.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil { // nolint
@@ -816,20 +759,22 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		ProofType: si.SealProof,
 	}
 
-	var cache string
-	var sealed string
+	var cache, sealed, cacheID, sealedID string
+
 	if si.Update {
-		src, _, err := st.AcquireSector(ctx, sr, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+		src, si, err := st.AcquireSector(ctx, sr, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 		if err != nil {
 			return nil, xerrors.Errorf("acquire sector: %w", err)
 		}
 		cache, sealed = src.UpdateCache, src.Update
+		cacheID, sealedID = si.UpdateCache, si.Update
 	} else {
-		src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+		src, si, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 		if err != nil {
 			return nil, xerrors.Errorf("acquire sector: %w", err)
 		}
 		cache, sealed = src.Cache, src.Sealed
+		cacheID, sealedID = si.Cache, si.Sealed
 	}
 
 	if sealed == "" || cache == "" {
@@ -847,7 +792,22 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		SealedSectorPath: sealed,
 	}
 
-	return ffi.GenerateSingleVanillaProof(psi, si.Challenge)
+	start := time.Now()
+
+	resCh := make(chan result.Result[[]byte], 1)
+	go func() {
+		resCh <- result.Wrap(ffi.GenerateSingleVanillaProof(psi, si.Challenge))
+	}()
+
+	select {
+	case r := <-resCh:
+		return r.Unwrap()
+	case <-ctx.Done():
+		log.Errorw("failed to generate valilla PoSt proof before context cancellation", "err", ctx.Err(), "duration", time.Now().Sub(start), "cache-id", cacheID, "sealed-id", sealedID, "cache", cache, "sealed", sealed)
+
+		// this will leave the GenerateSingleVanillaProof goroutine hanging, but that's still less bad than failing PoSt
+		return nil, xerrors.Errorf("failed to generate vanilla proof before context cancellation: %w", ctx.Err())
+	}
 }
 
 var _ Store = &Local{}

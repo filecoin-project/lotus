@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -418,10 +418,24 @@ var runCmd = &cli.Command{
 			Usage:   "messages with a prove cap larger than this will be skipped when processing pre commit messages",
 			Value:   "0.000000001",
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "30s",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		timeout, err := time.ParseDuration(cctx.String("http-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-timeout"), err)
+		}
+
 		go func() {
-			http.ListenAndServe(":6060", nil) //nolint:errcheck
+			server := &http.Server{
+				Addr:              ":6060",
+				ReadHeaderTimeout: timeout,
+			}
+
+			_ = server.ListenAndServe()
 		}()
 
 		ctx := context.Background()
@@ -898,7 +912,7 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
 
 	m := msg.Message
-	refundValue := types.NewInt(0)
+	var refundValue types.BigInt
 	var messageMethod string
 
 	switch m.Method {
@@ -925,7 +939,7 @@ func (r *refunder) processTipsetStorageMarketActor(ctx context.Context, tipset *
 func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *types.TipSet, msg api.Message, recp *types.MessageReceipt) (bool, string, types.BigInt, error) {
 
 	m := msg.Message
-	refundValue := types.NewInt(0)
+	var refundValue types.BigInt
 	var messageMethod string
 
 	if _, found := r.blockmap[m.To]; found {

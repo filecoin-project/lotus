@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/lotus/build"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -72,7 +72,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 			// Note: the error returned from here will end up being returned
 			// from OnDealSectorPreCommitted so no need to call the callback
 			// with the error
-			return false, false, err
+			return false, false, xerrors.Errorf("failed to check deal activity: %w", err)
 		}
 
 		if isActive {
@@ -89,7 +89,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 
 		diff, err := mgr.dpc.diffPreCommits(ctx, provider, dealInfo.PublishMsgTipSet, ts.Key())
 		if err != nil {
-			return false, false, err
+			return false, false, xerrors.Errorf("failed to diff precommits: %w", err)
 		}
 
 		for _, info := range diff.Added {
@@ -139,7 +139,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		// current deal ID from the publish message CID
 		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key(), &proposal, publishCid)
 		if err != nil {
-			return false, err
+			return false, xerrors.Errorf("failed to get dealinfo: %w", err)
 		}
 
 		// If this is a replica update method that succeeded the deal is active
@@ -159,7 +159,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		// Extract the message parameters
 		sn, err := dealSectorInPreCommitMsg(msg, res)
 		if err != nil {
-			return false, err
+			return false, xerrors.Errorf("failed to extract message params: %w", err)
 		}
 
 		if sn != nil {

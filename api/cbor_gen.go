@@ -13,8 +13,8 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
-	market "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	market "github.com/filecoin-project/go-state-types/builtin/v9/market"
 )
 
 var _ = xerrors.Errorf
@@ -995,6 +995,129 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.KeepUnsealed = true
 			default:
 				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
+func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.Piece (abi.PieceInfo) (struct)
+	if len("Piece") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Piece\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Piece"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Piece")); err != nil {
+		return err
+	}
+
+	if err := t.Piece.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.DealInfo (api.PieceDealInfo) (struct)
+	if len("DealInfo") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"DealInfo\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DealInfo"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("DealInfo")); err != nil {
+		return err
+	}
+
+	if err := t.DealInfo.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = SectorPiece{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("SectorPiece: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Piece (abi.PieceInfo) (struct)
+		case "Piece":
+
+			{
+
+				if err := t.Piece.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.Piece: %w", err)
+				}
+
+			}
+			// t.DealInfo (api.PieceDealInfo) (struct)
+		case "DealInfo":
+
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.DealInfo = new(PieceDealInfo)
+					if err := t.DealInfo.UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.DealInfo pointer: %w", err)
+					}
+				}
+
 			}
 
 		default:

@@ -13,6 +13,7 @@ var (
 	b0 = blocks.NewBlock([]byte("abc"))
 	b1 = blocks.NewBlock([]byte("foo"))
 	b2 = blocks.NewBlock([]byte("bar"))
+	b3 = blocks.NewBlock([]byte("baz"))
 )
 
 func TestUnionBlockstore_Get(t *testing.T) {

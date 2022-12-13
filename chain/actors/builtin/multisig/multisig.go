@@ -3,14 +3,16 @@ package multisig
 import (
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
-	msig8 "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	msig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -33,8 +35,14 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -67,32 +75,38 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return make0(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return make2(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return make3(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return make4(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return make5(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return make6(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return make7(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return make8(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actorstypes.Version9:
+		return make9(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actorstypes.Version10:
+		return make10(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -100,6 +114,10 @@ func MakeState(store adt.Store, av actors.Version, signers []address.Address, th
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
 
 	LockedBalance(epoch abi.ChainEpoch) (abi.TokenAmount, error)
 	StartEpoch() (abi.ChainEpoch, error)
@@ -116,36 +134,42 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig8.Transaction
+type Transaction = msig10.Transaction
 
-var Methods = builtin8.MethodsMultisig
+var Methods = builtintypes.MethodsMultisig
 
-func Message(version actors.Version, from address.Address) MessageBuilder {
+func Message(version actorstypes.Version, from address.Address) MessageBuilder {
 	switch version {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return message0{from}
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return message2{message0{from}}
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return message3{message0{from}}
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return message4{message0{from}}
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return message5{message0{from}}
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return message6{message0{from}}
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return message7{message0{from}}
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return message8{message0{from}}
+
+	case actorstypes.Version9:
+		return message9{message0{from}}
+
+	case actorstypes.Version10:
+		return message10{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -169,13 +193,13 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig8.ProposalHashData
-type ProposeReturn = msig8.ProposeReturn
-type ProposeParams = msig8.ProposeParams
-type ApproveReturn = msig8.ApproveReturn
+type ProposalHashData = msig10.ProposalHashData
+type ProposeReturn = msig10.ProposeReturn
+type ProposeParams = msig10.ProposeParams
+type ApproveReturn = msig10.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig8.TxnIDParams{ID: msig8.TxnID(id)}
+	params := msig10.TxnIDParams{ID: msig10.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)
@@ -195,4 +219,19 @@ func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	}
 
 	return actors.SerializeParams(&params)
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
 }

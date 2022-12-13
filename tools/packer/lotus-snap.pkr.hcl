@@ -56,6 +56,11 @@ source "amazon-ebs" "lotus" {
     owners = ["099720109477"]
   }
   ssh_username = "ubuntu"
+
+  aws_polling {
+    delay_seconds = 60
+    max_attempts  = 60
+  }
 }
 
 source "digitalocean" "lotus" {
@@ -82,3 +87,4 @@ build {
     script = "./tools/packer/setup-snap.sh"
   }
 }
+

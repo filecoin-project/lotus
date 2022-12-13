@@ -1,20 +1,177 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io"
 
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var diffCmd = &cli.Command{
-	Name:        "diff",
-	Usage:       "diff state objects",
-	Subcommands: []*cli.Command{diffStateTrees},
+	Name:  "diff",
+	Usage: "diff state objects",
+	Subcommands: []*cli.Command{
+		diffStateTrees,
+		diffMinerStates,
+	},
+}
+
+var diffMinerStates = &cli.Command{
+	Name:      "miner-states",
+	Usage:     "diff two miner-states",
+	ArgsUsage: "<stateCidA> <stateCidB>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Value: "~/.lotus",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := context.TODO()
+
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		stCidA, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to parse input: %w", err)
+		}
+
+		stCidB, err := cid.Decode(cctx.Args().Get(1))
+		if err != nil {
+			return fmt.Errorf("failed to parse input: %w", err)
+		}
+
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		if err != nil {
+			return fmt.Errorf("failed to open blockstore: %w", err)
+		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
+
+		actorStore := store.ActorStore(ctx, bs)
+
+		var minerStA miner9.State
+		if err = actorStore.Get(ctx, stCidA, &minerStA); err != nil {
+			return err
+		}
+
+		var minerStB miner9.State
+		if err = actorStore.Get(ctx, stCidB, &minerStB); err != nil {
+			return err
+		}
+
+		fmt.Println(minerStA.Deadlines)
+		fmt.Println(minerStB.Deadlines)
+
+		minerDeadlinesA, err := minerStA.LoadDeadlines(actorStore)
+		if err != nil {
+			return err
+		}
+
+		minerDeadlinesB, err := minerStB.LoadDeadlines(actorStore)
+		if err != nil {
+			return err
+		}
+
+		for i, dACid := range minerDeadlinesA.Due {
+			dBCid := minerDeadlinesB.Due[i]
+			if dACid != dBCid {
+				fmt.Println("Difference at index ", i, dACid, " != ", dBCid)
+				dA, err := minerDeadlinesA.LoadDeadline(actorStore, uint64(i))
+				if err != nil {
+					return err
+				}
+
+				dB, err := minerDeadlinesB.LoadDeadline(actorStore, uint64(i))
+				if err != nil {
+					return err
+				}
+
+				if dA.SectorsSnapshot != dB.SectorsSnapshot {
+					fmt.Println("They differ at Sectors snapshot ", dA.SectorsSnapshot, " != ", dB.SectorsSnapshot)
+
+					sectorsSnapshotA, err := miner9.LoadSectors(actorStore, dA.SectorsSnapshot)
+					if err != nil {
+						return err
+					}
+					sectorsSnapshotB, err := miner9.LoadSectors(actorStore, dB.SectorsSnapshot)
+					if err != nil {
+						return err
+					}
+
+					if sectorsSnapshotA.Length() != sectorsSnapshotB.Length() {
+						fmt.Println("sector snapshots have different lengts!")
+					}
+
+					var infoA miner9.SectorOnChainInfo
+					err = sectorsSnapshotA.ForEach(&infoA, func(i int64) error {
+						infoB, ok, err := sectorsSnapshotB.Get(abi.SectorNumber(i))
+						if err != nil {
+							return err
+						}
+
+						if !ok {
+							fmt.Println(i, "isn't found in infoB!!")
+						}
+
+						if !infoA.DealWeight.Equals(infoB.DealWeight) {
+							fmt.Println("Deal Weights differ! ", infoA.DealWeight, infoB.DealWeight)
+						}
+
+						if !infoA.VerifiedDealWeight.Equals(infoB.VerifiedDealWeight) {
+							fmt.Println("Verified Deal Weights differ! ", infoA.VerifiedDealWeight, infoB.VerifiedDealWeight)
+						}
+
+						infoStrA := fmt.Sprint(infoA)
+						infoStrB := fmt.Sprint(*infoB)
+						if infoStrA != infoStrB {
+							fmt.Println(infoStrA)
+							fmt.Println(infoStrB)
+						}
+
+						return nil
+					})
+					if err != nil {
+						return err
+					}
+
+				}
+			}
+		}
+
+		return nil
+	},
 }
 
 var diffStateTrees = &cli.Command{
@@ -31,7 +188,7 @@ var diffStateTrees = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		if cctx.NArg() != 2 {
-			return xerrors.Errorf("expected two state-tree roots")
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		argA := cctx.Args().Get(0)

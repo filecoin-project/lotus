@@ -24,7 +24,7 @@ var base32Cmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		var input io.Reader
 
-		if cctx.Args().Len() == 0 {
+		if cctx.NArg() == 0 {
 			input = os.Stdin
 		} else {
 			input = strings.NewReader(cctx.Args().First())

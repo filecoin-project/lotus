@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,9 +12,13 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -180,7 +185,14 @@ func (s *dealStates8) array() adt.Array {
 }
 
 func fromV8DealState(v8 market8.DealState) DealState {
-	return (DealState)(v8)
+	ret := DealState{
+		SectorStartEpoch: v8.SectorStartEpoch,
+		LastUpdatedEpoch: v8.LastUpdatedEpoch,
+		SlashEpoch:       v8.SlashEpoch,
+		VerifiedClaim:    0,
+	}
+
+	return ret
 }
 
 type dealProposals8 struct {
@@ -237,7 +249,11 @@ func (s *dealProposals8) array() adt.Array {
 
 func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
 
-	label := v8.Label
+	label, err := fromV8Label(v8.Label)
+
+	if err != nil {
+		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+	}
 
 	return DealProposal{
 		PieceCID:     v8.PieceCID,
@@ -255,6 +271,22 @@ func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
 		ProviderCollateral: v8.ProviderCollateral,
 		ClientCollateral:   v8.ClientCollateral,
 	}, nil
+}
+
+func fromV8Label(v8 market8.DealLabel) (DealLabel, error) {
+	if v8.IsString() {
+		str, err := v8.ToString()
+		if err != nil {
+			return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+		}
+		return markettypes.NewLabelFromString(str)
+	}
+
+	bs, err := v8.ToBytes()
+	if err != nil {
+		return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+	}
+	return markettypes.NewLabelFromBytes(bs)
 }
 
 func (s *state8) GetState() interface{} {
@@ -301,4 +333,27 @@ func (r *publishStorageDealsReturn8) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn8) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state8) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+
+	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
+
+}
+
+func (s *state8) ActorKey() string {
+	return actors.MarketKey
+}
+
+func (s *state8) ActorVersion() actorstypes.Version {
+	return actorstypes.Version8
+}
+
+func (s *state8) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

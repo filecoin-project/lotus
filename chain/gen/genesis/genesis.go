@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
@@ -28,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -137,7 +139,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
 
-	av, err := actors.VersionForNetwork(template.NetworkVersion)
+	av, err := actorstypes.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("getting network version: %w", err)
 	}
@@ -212,6 +214,17 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 	if err := state.SetActor(verifreg.Address, verifact); err != nil {
 		return nil, nil, xerrors.Errorf("set verified registry actor: %w", err)
+	}
+
+	// Create datacap actor
+	if av >= 9 {
+		dcapact, err := SetupDatacapActor(ctx, bs, av)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("setup datacap actor: %w", err)
+		}
+		if err := state.SetActor(datacap.Address, dcapact); err != nil {
+			return nil, nil, xerrors.Errorf("set datacap actor: %w", err)
+		}
 	}
 
 	bact, err := MakeAccountActor(ctx, cst, av, builtin.BurntFundsActorAddr, big.Zero())
@@ -356,7 +369,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	return state, keyIDs, nil
 }
 
-func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
+func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
 	ast, err := account.MakeState(adt.WrapStore(ctx, cst), av, addr)
 	if err != nil {
 		return nil, err
@@ -376,12 +389,13 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 		Code:    actcid,
 		Head:    statecid,
 		Balance: bal,
+		Address: &addr,
 	}
 
 	return act, nil
 }
 
-func CreateAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, info genesis.Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
+func CreateAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, info genesis.Actor, keyIDs map[address.Address]address.Address, av actorstypes.Version) error {
 	var ainfo genesis.AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
@@ -404,7 +418,7 @@ func CreateAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.St
 	return nil
 }
 
-func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
+func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address, av actorstypes.Version) error {
 	if info.Type != genesis.TMultisig {
 		return fmt.Errorf("can only call CreateMultisigAccount with multisig Actor info")
 	}

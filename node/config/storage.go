@@ -8,11 +8,10 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-func StorageFromFile(path string, def *paths.StorageConfig) (*paths.StorageConfig, error) {
+func StorageFromFile(path string, def *storiface.StorageConfig) (*storiface.StorageConfig, error) {
 	file, err := os.Open(path)
 	switch {
 	case os.IsNotExist(err):
@@ -28,8 +27,8 @@ func StorageFromFile(path string, def *paths.StorageConfig) (*paths.StorageConfi
 	return StorageFromReader(file)
 }
 
-func StorageFromReader(reader io.Reader) (*paths.StorageConfig, error) {
-	var cfg paths.StorageConfig
+func StorageFromReader(reader io.Reader) (*storiface.StorageConfig, error) {
+	var cfg storiface.StorageConfig
 	err := json.NewDecoder(reader).Decode(&cfg)
 	if err != nil {
 		return nil, err
@@ -38,7 +37,7 @@ func StorageFromReader(reader io.Reader) (*paths.StorageConfig, error) {
 	return &cfg, nil
 }
 
-func WriteStorageFile(path string, config paths.StorageConfig) error {
+func WriteStorageFile(path string, config storiface.StorageConfig) error {
 	b, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return xerrors.Errorf("marshaling storage config: %w", err)
@@ -49,28 +48,4 @@ func WriteStorageFile(path string, config paths.StorageConfig) error {
 	}
 
 	return nil
-}
-
-func (c *StorageMiner) StorageManager() sealer.Config {
-	return sealer.Config{
-		ParallelFetchLimit:       c.Storage.ParallelFetchLimit,
-		AllowAddPiece:            c.Storage.AllowAddPiece,
-		AllowPreCommit1:          c.Storage.AllowPreCommit1,
-		AllowPreCommit2:          c.Storage.AllowPreCommit2,
-		AllowCommit:              c.Storage.AllowCommit,
-		AllowUnseal:              c.Storage.AllowUnseal,
-		AllowReplicaUpdate:       c.Storage.AllowReplicaUpdate,
-		AllowProveReplicaUpdate2: c.Storage.AllowProveReplicaUpdate2,
-		AllowRegenSectorKey:      c.Storage.AllowRegenSectorKey,
-		ResourceFiltering:        c.Storage.ResourceFiltering,
-		DisallowRemoteFinalize:   c.Storage.DisallowRemoteFinalize,
-
-		LocalWorkerName: c.Storage.LocalWorkerName,
-
-		Assigner: c.Storage.Assigner,
-
-		ParallelCheckLimit:        c.Proving.ParallelCheckLimit,
-		DisableBuiltinWindowPoSt:  c.Proving.DisableBuiltinWindowPoSt,
-		DisableBuiltinWinningPoSt: c.Proving.DisableBuiltinWinningPoSt,
-	}
 }

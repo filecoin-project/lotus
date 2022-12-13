@@ -225,6 +225,12 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_WORKER_REGEN_SECTOR_KEY"},
 		},
 		&cli.BoolFlag{
+			Name:    "sector-download",
+			Usage:   "enable external sector data download",
+			Value:   false,
+			EnvVars: []string{"LOTUS_WORKER_SECTOR_DOWNLOAD"},
+		},
+		&cli.BoolFlag{
 			Name:    "windowpost",
 			Usage:   "enable window post",
 			Value:   false,
@@ -265,6 +271,10 @@ var runCmd = &cli.Command{
 			Usage:   "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
 			Value:   "30m",
 			EnvVars: []string{"LOTUS_WORKER_TIMEOUT"},
+		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "30s",
 		},
 	},
 	Before: func(cctx *cli.Context) error {
@@ -363,7 +373,7 @@ var runCmd = &cli.Command{
 		}
 
 		if workerType == "" {
-			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed, sealtasks.TTFinalizeReplicaUpdate)
 
 			if !cctx.Bool("no-default") {
 				workerType = sealtasks.WorkerSealing
@@ -372,6 +382,9 @@ var runCmd = &cli.Command{
 
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
 			taskTypes = append(taskTypes, sealtasks.TTAddPiece, sealtasks.TTDataCid)
+		}
+		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("sector-download")) && cctx.Bool("sector-download") {
+			taskTypes = append(taskTypes, sealtasks.TTDownloadSector)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("precommit1")) && cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
@@ -438,10 +451,10 @@ var runCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []paths.LocalPath
+			var localPaths []storiface.LocalPath
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&paths.LocalStorageMeta{
+				b, err := json.MarshalIndent(&storiface.LocalStorageMeta{
 					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -455,12 +468,12 @@ var runCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, paths.LocalPath{
+				localPaths = append(localPaths, storiface.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *paths.StorageConfig) {
+			if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -553,8 +566,14 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up control endpoint at " + address)
 
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		srv := &http.Server{
-			Handler: sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			Handler:           sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			ReadHeaderTimeout: timeout,
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
 				return ctx

@@ -31,6 +31,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	SealPreCommit2Failed:        {},
 	PreCommitFailed:             {},
 	ComputeProofFailed:          {},
+	RemoteCommitFailed:          {},
 	CommitFailed:                {},
 	PackingFailed:               {},
 	FinalizeFailed:              {},
@@ -52,6 +53,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	UpdateReplica:               {},
 	ProveReplicaUpdate:          {},
 	SubmitReplicaUpdate:         {},
+	WaitMutable:                 {},
 	ReplicaUpdateWait:           {},
 	UpdateActivating:            {},
 	ReleaseSectorKey:            {},
@@ -63,6 +65,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	ReleaseSectorKeyFailed:      {},
 	FinalizeReplicaUpdateFailed: {},
 	AbortUpgrade:                {},
+	ReceiveSector:               {},
 }
 
 // cmd/lotus-miner/info.go defines CLI colors corresponding to these states
@@ -108,10 +111,14 @@ const (
 	UpdateReplica         SectorState = "UpdateReplica"
 	ProveReplicaUpdate    SectorState = "ProveReplicaUpdate"
 	SubmitReplicaUpdate   SectorState = "SubmitReplicaUpdate"
+	WaitMutable           SectorState = "WaitMutable"
 	ReplicaUpdateWait     SectorState = "ReplicaUpdateWait"
 	FinalizeReplicaUpdate SectorState = "FinalizeReplicaUpdate"
 	UpdateActivating      SectorState = "UpdateActivating"
 	ReleaseSectorKey      SectorState = "ReleaseSectorKey"
+
+	// external import
+	ReceiveSector SectorState = "ReceiveSector"
 
 	// error modes
 	FailedUnrecoverable  SectorState = "FailedUnrecoverable"
@@ -120,6 +127,7 @@ const (
 	SealPreCommit2Failed SectorState = "SealPreCommit2Failed"
 	PreCommitFailed      SectorState = "PreCommitFailed"
 	ComputeProofFailed   SectorState = "ComputeProofFailed"
+	RemoteCommitFailed   SectorState = "RemoteCommitFailed"
 	CommitFailed         SectorState = "CommitFailed"
 	PackingFailed        SectorState = "PackingFailed" // TODO: deprecated, remove
 	FinalizeFailed       SectorState = "FinalizeFailed"
@@ -153,9 +161,9 @@ func toStatState(st SectorState, finEarly bool) statSectorState {
 	switch st {
 	case UndefinedSectorState, Empty, WaitDeals, AddPiece, AddPieceFailed, SnapDealsWaitDeals, SnapDealsAddPiece:
 		return sstStaging
-	case Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, SubmitPreCommitBatch, PreCommitBatchWait, WaitSeed, Committing, CommitFinalize, FinalizeSector, SnapDealsPacking, UpdateReplica, ProveReplicaUpdate, FinalizeReplicaUpdate:
+	case Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, SubmitPreCommitBatch, PreCommitBatchWait, WaitSeed, Committing, CommitFinalize, FinalizeSector, SnapDealsPacking, UpdateReplica, ProveReplicaUpdate, FinalizeReplicaUpdate, ReceiveSector:
 		return sstSealing
-	case SubmitCommit, CommitWait, SubmitCommitAggregate, CommitAggregateWait, SubmitReplicaUpdate, ReplicaUpdateWait:
+	case SubmitCommit, CommitWait, SubmitCommitAggregate, CommitAggregateWait, WaitMutable, SubmitReplicaUpdate, ReplicaUpdateWait:
 		if finEarly {
 			// we use statSectorState for throttling storage use. With FinalizeEarly
 			// we can consider sectors in states after CommitFinalize as finalized, so
@@ -178,6 +186,7 @@ func IsUpgradeState(st SectorState) bool {
 		UpdateReplica,
 		ProveReplicaUpdate,
 		SubmitReplicaUpdate,
+		WaitMutable,
 
 		SnapDealsAddPieceFailed,
 		SnapDealsDealsExpired,

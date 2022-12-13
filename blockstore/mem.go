@@ -47,6 +47,9 @@ func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error)
 	if !ok {
 		return nil, ipld.ErrNotFound{Cid: k}
 	}
+	if b.Cid().Prefix().Codec != k.Prefix().Codec {
+		return blocks.NewBlockWithCid(b.RawData(), k)
+	}
 	return b, nil
 }
 

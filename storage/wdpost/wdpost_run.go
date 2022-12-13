@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
+	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -14,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -253,6 +254,14 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 	ctx, span := trace.StartSpan(ctx, "storage.runPoStCycle")
 	defer span.End()
 
+	start := time.Now()
+
+	log := log.WithOptions(zap.Fields(zap.Time("cycle", start)))
+	log.Infow("starting PoSt cycle", "manual", manual, "ts", ts, "deadline", di.Index)
+	defer func() {
+		log.Infow("post cycle done", "took", time.Now().Sub(start))
+	}()
+
 	if !manual {
 		// TODO: extract from runPoStCycle, run on fault cutoff boundaries
 		s.asyncFaultRecover(di, ts)
@@ -286,7 +295,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 
 	// Split partitions into batches, so as not to exceed the number of sectors
 	// allowed in a single message
-	partitionBatches, err := s.batchPartitions(partitions, nv)
+	partitionBatches, err := s.BatchPartitions(partitions, nv)
 	if err != nil {
 		return nil, err
 	}
@@ -492,7 +501,9 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 	return posts, nil
 }
 
-func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition, nv network.Version) ([][]api.Partition, error) {
+// Note: Partition order within batches must match original partition order in order
+// for code following the user code to work
+func (s *WindowPoStScheduler) BatchPartitions(partitions []api.Partition, nv network.Version) ([][]api.Partition, error) {
 	// We don't want to exceed the number of sectors allowed in a message.
 	// So given the number of sectors in a partition, work out the number of
 	// partitions that can be in a message without exceeding sectors per
@@ -524,21 +535,33 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition, nv net
 		}
 	}
 
-	// The number of messages will be:
-	// ceiling(number of partitions / partitions per message)
-	batchCount := len(partitions) / partitionsPerMsg
-	if len(partitions)%partitionsPerMsg != 0 {
-		batchCount++
-	}
+	batches := [][]api.Partition{}
 
-	// Split the partitions into batches
-	batches := make([][]api.Partition, 0, batchCount)
-	for i := 0; i < len(partitions); i += partitionsPerMsg {
-		end := i + partitionsPerMsg
-		if end > len(partitions) {
-			end = len(partitions)
+	currBatch := []api.Partition{}
+	for _, partition := range partitions {
+		recSectors, err := partition.RecoveringSectors.Count()
+		if err != nil {
+			return nil, err
 		}
-		batches = append(batches, partitions[i:end])
+
+		// Only add single partition to a batch if it contains recovery sectors
+		// and has the below user config set
+		if s.singleRecoveringPartitionPerPostMessage && recSectors > 0 {
+			if len(currBatch) > 0 {
+				batches = append(batches, currBatch)
+				currBatch = []api.Partition{}
+			}
+			batches = append(batches, []api.Partition{partition})
+		} else {
+			if len(currBatch) >= partitionsPerMsg {
+				batches = append(batches, currBatch)
+				currBatch = []api.Partition{}
+			}
+			currBatch = append(currBatch, partition)
+		}
+	}
+	if len(currBatch) > 0 {
+		batches = append(batches, currBatch)
 	}
 
 	return batches, nil

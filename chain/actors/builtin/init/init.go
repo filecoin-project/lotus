@@ -6,7 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -23,8 +24,8 @@ import (
 )
 
 var (
-	Address = builtin8.InitActorAddr
-	Methods = builtin8.MethodsInit
+	Address = builtin10.InitActorAddr
+	Methods = builtin10.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -35,8 +36,14 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		switch av {
 
-		case actors.Version8:
+		case actorstypes.Version8:
 			return load8(store, act.Head)
+
+		case actorstypes.Version9:
+			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
 
 		}
 	}
@@ -69,32 +76,38 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version, networkName string) (State, error) {
+func MakeState(store adt.Store, av actorstypes.Version, networkName string) (State, error) {
 	switch av {
 
-	case actors.Version0:
+	case actorstypes.Version0:
 		return make0(store, networkName)
 
-	case actors.Version2:
+	case actorstypes.Version2:
 		return make2(store, networkName)
 
-	case actors.Version3:
+	case actorstypes.Version3:
 		return make3(store, networkName)
 
-	case actors.Version4:
+	case actorstypes.Version4:
 		return make4(store, networkName)
 
-	case actors.Version5:
+	case actorstypes.Version5:
 		return make5(store, networkName)
 
-	case actors.Version6:
+	case actorstypes.Version6:
 		return make6(store, networkName)
 
-	case actors.Version7:
+	case actorstypes.Version7:
 		return make7(store, networkName)
 
-	case actors.Version8:
+	case actorstypes.Version8:
 		return make8(store, networkName)
+
+	case actorstypes.Version9:
+		return make9(store, networkName)
+
+	case actorstypes.Version10:
+		return make10(store, networkName)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -102,6 +115,10 @@ func MakeState(store adt.Store, av actors.Version, networkName string) (State, e
 
 type State interface {
 	cbor.Marshaler
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actorstypes.Version
 
 	ResolveAddress(address address.Address) (address.Address, bool, error)
 	MapAddressToNewID(address address.Address) (address.Address, error)
@@ -123,6 +140,24 @@ type State interface {
 	// Sets the address map for the init actor. This should only be used for testing.
 	SetAddressMap(mcid cid.Cid) error
 
-	AddressMap() (adt.Map, error)
 	GetState() interface{}
+
+	AddressMap() (adt.Map, error)
+	AddressMapBitWidth() int
+	AddressMapHashFunction() func(input []byte) []byte
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+		(&state9{}).Code(),
+		(&state10{}).Code(),
+	}
 }

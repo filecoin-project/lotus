@@ -112,8 +112,8 @@ var rpcCmd = &cli.Command{
 		}
 
 		if cctx.Args().Present() {
-			if cctx.Args().Len() > 2 {
-				return xerrors.Errorf("expected 1 or 2 arguments: method [params]")
+			if cctx.NArg() > 2 {
+				return lcli.ShowHelp(cctx, xerrors.Errorf("expected 1 or 2 arguments: method [params]"))
 			}
 
 			params := cctx.Args().Get(1)

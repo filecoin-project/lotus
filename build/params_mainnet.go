@@ -6,13 +6,13 @@ package build
 import (
 	"math"
 	"os"
+	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -23,7 +23,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 var NetworkBundle = "mainnet"
 
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
-var BundleOverrides map[actors.Version]string
+var BundleOverrides map[actorstypes.Version]string
 
 const GenesisNetworkVersion = network.Version0
 
@@ -77,23 +77,41 @@ const UpgradeChocolateHeight = 1231620
 const UpgradeOhSnapHeight = 1594680
 
 // 2022-07-06T14:00:00Z
-var UpgradeSkyrHeight = abi.ChainEpoch(1960320)
+const UpgradeSkyrHeight = 1960320
+
+// 2022-11-30T14:00:00Z
+var UpgradeSharkHeight = abi.ChainEpoch(2383680)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
-var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
+var PropagationDelaySecs = uint64(10)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_SKYR") == "1" {
-		UpgradeSkyrHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SHARK") == "1" {
+		UpgradeSharkHeight = math.MaxInt64
+	}
+
+	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
+	//set this value too high may impacts your block submission; set this value too low may cause you miss
+	//parent tipsets for blocking forming and mining.
+	if len(os.Getenv("PROPAGATION_DELAY_SECS")) != 0 {
+		pds, err := strconv.ParseUint(os.Getenv("PROPAGATION_DELAY_SECS"), 10, 64)
+		if err != nil {
+			log.Warnw("Error setting PROPAGATION_DELAY_SECS, %v, proceed with default value %s", err,
+				PropagationDelaySecs)
+		} else {
+			PropagationDelaySecs = pds
+			log.Warnw(" !!WARNING!! propagation delay is set to be %s second, "+
+				"this value impacts your message republish interval and block forming - monitor with caution!!", PropagationDelaySecs)
+		}
 	}
 
 	Devnet = false
@@ -102,8 +120,6 @@ func init() {
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
-
-const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4

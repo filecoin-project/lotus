@@ -20,6 +20,7 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -171,8 +172,8 @@ var datastoreBackupStatCmd = &cli.Command{
 	Description: "validate and print info about datastore backup",
 	ArgsUsage:   "[file]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("expected 1 argument")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		f, err := os.Open(cctx.Args().First())
@@ -220,8 +221,8 @@ var datastoreBackupListCmd = &cli.Command{
 	},
 	ArgsUsage: "[file]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("expected 1 argument")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		f, err := os.Open(cctx.Args().First())
@@ -308,7 +309,7 @@ var datastoreRewriteCmd = &cli.Command{
 	ArgsUsage:   "source destination",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
-			return xerrors.Errorf("expected 2 arguments, got %d", cctx.NArg())
+			return lcli.IncorrectNumArgs(cctx)
 		}
 		fromPath, err := homedir.Expand(cctx.Args().Get(0))
 		if err != nil {

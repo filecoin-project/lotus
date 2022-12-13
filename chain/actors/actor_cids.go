@@ -4,6 +4,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -14,10 +15,10 @@ import (
 )
 
 // GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name.
-func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
+func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
 
 	// Actors V8 and above
-	if av >= Version8 {
+	if av >= actorstypes.Version8 {
 		if cids, ok := GetActorCodeIDsFromManifest(av); ok {
 			c, ok := cids[name]
 			return c, ok
@@ -30,275 +31,275 @@ func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 	case AccountKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.AccountActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.AccountActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.AccountActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.AccountActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.AccountActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.AccountActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.AccountActorCodeID, true
 		}
 
 	case CronKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.CronActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.CronActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.CronActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.CronActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.CronActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.CronActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.CronActorCodeID, true
 		}
 
 	case InitKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.InitActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.InitActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.InitActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.InitActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.InitActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.InitActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.InitActorCodeID, true
 		}
 
 	case MarketKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.StorageMarketActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.StorageMarketActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.StorageMarketActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.StorageMarketActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.StorageMarketActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.StorageMarketActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.StorageMarketActorCodeID, true
 		}
 
 	case MinerKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.StorageMinerActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.StorageMinerActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.StorageMinerActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.StorageMinerActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.StorageMinerActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.StorageMinerActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.StorageMinerActorCodeID, true
 		}
 
 	case MultisigKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.MultisigActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.MultisigActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.MultisigActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.MultisigActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.MultisigActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.MultisigActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.MultisigActorCodeID, true
 		}
 
 	case PaychKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.PaymentChannelActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.PaymentChannelActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.PaymentChannelActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.PaymentChannelActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.PaymentChannelActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.PaymentChannelActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.PaymentChannelActorCodeID, true
 		}
 
 	case PowerKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.StoragePowerActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.StoragePowerActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.StoragePowerActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.StoragePowerActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.StoragePowerActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.StoragePowerActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.StoragePowerActorCodeID, true
 		}
 
 	case RewardKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.RewardActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.RewardActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.RewardActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.RewardActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.RewardActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.RewardActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.RewardActorCodeID, true
 		}
 
 	case SystemKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.SystemActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.SystemActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.SystemActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.SystemActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.SystemActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.SystemActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.SystemActorCodeID, true
 		}
 
 	case VerifregKey:
 		switch av {
 
-		case Version0:
+		case actorstypes.Version0:
 			return builtin0.VerifiedRegistryActorCodeID, true
 
-		case Version2:
+		case actorstypes.Version2:
 			return builtin2.VerifiedRegistryActorCodeID, true
 
-		case Version3:
+		case actorstypes.Version3:
 			return builtin3.VerifiedRegistryActorCodeID, true
 
-		case Version4:
+		case actorstypes.Version4:
 			return builtin4.VerifiedRegistryActorCodeID, true
 
-		case Version5:
+		case actorstypes.Version5:
 			return builtin5.VerifiedRegistryActorCodeID, true
 
-		case Version6:
+		case actorstypes.Version6:
 			return builtin6.VerifiedRegistryActorCodeID, true
 
-		case Version7:
+		case actorstypes.Version7:
 			return builtin7.VerifiedRegistryActorCodeID, true
 		}
 	}
@@ -307,13 +308,13 @@ func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 }
 
 // GetActorCodeIDs looks up all builtin actor's code CIDs by actor version.
-func GetActorCodeIDs(av Version) (map[string]cid.Cid, error) {
+func GetActorCodeIDs(av actorstypes.Version) (map[string]cid.Cid, error) {
 	cids, ok := GetActorCodeIDsFromManifest(av)
 	if ok {
 		return cids, nil
 	}
 
-	actorsKeys := GetBuiltinActorsKeys()
+	actorsKeys := GetBuiltinActorsKeys(av)
 	synthCids := make(map[string]cid.Cid)
 
 	for _, key := range actorsKeys {

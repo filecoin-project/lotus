@@ -34,7 +34,6 @@ var verifRegCmd = &cli.Command{
 		verifRegAddVerifierFromAccountCmd,
 		verifRegVerifyClientCmd,
 		verifRegListVerifiersCmd,
-		verifRegListClientsCmd,
 		verifRegCheckClientCmd,
 		verifRegCheckVerifierCmd,
 		verifRegRemoveVerifiedClientDataCapCmd,
@@ -46,8 +45,8 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 	Usage:     "make a given account a verifier",
 	ArgsUsage: "<message sender> <new verifier> <allowance>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must specify three arguments: sender, verifier, and allowance")
+		if cctx.NArg() != 3 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		sender, err := address.NewFromString(cctx.Args().Get(0))
@@ -104,7 +103,7 @@ var verifRegAddVerifierFromMsigCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verifier: %d", mwait.Receipt.ExitCode)
 		}
 
@@ -119,8 +118,8 @@ var verifRegAddVerifierFromAccountCmd = &cli.Command{
 	Usage:     "make a given account a verifier",
 	ArgsUsage: "<verifier root key> <new verifier> <allowance>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must specify three arguments: sender, verifier, and allowance")
+		if cctx.NArg() != 3 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		sender, err := address.NewFromString(cctx.Args().Get(0))
@@ -170,7 +169,7 @@ var verifRegAddVerifierFromAccountCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
 		}
 
@@ -201,8 +200,8 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must specify two arguments: address and allowance")
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		target, err := address.NewFromString(cctx.Args().Get(0))
@@ -246,7 +245,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
 		}
 
@@ -280,38 +279,6 @@ var verifRegListVerifiersCmd = &cli.Command{
 			return err
 		}
 		return st.ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error {
-			_, err := fmt.Printf("%s: %s\n", addr, dcap)
-			return err
-		})
-	},
-}
-
-var verifRegListClientsCmd = &cli.Command{
-	Name:   "list-clients",
-	Usage:  "list all verified clients",
-	Hidden: true,
-	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
-
-		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		apibs := blockstore.NewAPIBlockstore(api)
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
-
-		st, err := verifreg.Load(store, act)
-		if err != nil {
-			return err
-		}
-		return st.ForEachClient(func(addr address.Address, dcap abi.StoragePower) error {
 			_, err := fmt.Printf("%s: %s\n", addr, dcap)
 			return err
 		})
@@ -418,8 +385,8 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 	Usage:     "Remove data cap from verified client",
 	ArgsUsage: "<message sender> <client address> <allowance to remove> <verifier 1 address> <verifier 1 signature> <verifier 2 address> <verifier 2 signature>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 7 {
-			return fmt.Errorf("must specify seven arguments: sender, client, allowance to remove, verifier 1 address, verifier 1 signature, verifier 2 address, verifier 2 signature")
+		if cctx.NArg() != 7 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		srv, err := lcli.GetFullNodeServices(cctx)
@@ -555,7 +522,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 			return err
 		}
 
-		if mwait.Receipt.ExitCode != 0 {
+		if mwait.Receipt.ExitCode.IsError() {
 			return fmt.Errorf("failed to removed verified data cap: %d", mwait.Receipt.ExitCode)
 		}
 

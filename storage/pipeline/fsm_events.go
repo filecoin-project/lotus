@@ -8,8 +8,9 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -87,7 +88,7 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 }
 
 type SectorPieceAdded struct {
-	NewPieces []Piece
+	NewPieces []api.SectorPiece
 }
 
 func (evt SectorPieceAdded) apply(state *SectorInfo) {
@@ -113,7 +114,7 @@ type SectorPacked struct{ FillerPieces []abi.PieceInfo }
 
 func (evt SectorPacked) apply(state *SectorInfo) {
 	for idx := range evt.FillerPieces {
-		state.Pieces = append(state.Pieces, Piece{
+		state.Pieces = append(state.Pieces, api.SectorPiece{
 			Piece:    evt.FillerPieces[idx],
 			DealInfo: nil, // filler pieces don't have deals associated with them
 		})
@@ -205,7 +206,6 @@ type SectorPreCommitted struct {
 func (evt SectorPreCommitted) apply(state *SectorInfo) {
 	state.PreCommitMessage = &evt.Message
 	state.PreCommitDeposit = evt.PreCommitDeposit
-	state.PreCommitInfo = &evt.PreCommitInfo
 }
 
 type SectorSeedReady struct {
@@ -217,6 +217,16 @@ func (evt SectorSeedReady) apply(state *SectorInfo) {
 	state.SeedEpoch = evt.SeedEpoch
 	state.SeedValue = evt.SeedValue
 }
+
+type SectorRemoteCommit1Failed struct{ error }
+
+func (evt SectorRemoteCommit1Failed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorRemoteCommit1Failed) apply(*SectorInfo)                        {}
+
+type SectorRemoteCommit2Failed struct{ error }
+
+func (evt SectorRemoteCommit2Failed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorRemoteCommit2Failed) apply(*SectorInfo)                        {}
 
 type SectorComputeProofFailed struct{ error }
 
@@ -313,6 +323,9 @@ func (evt SectorStartCCUpdate) apply(state *SectorInfo) {
 	// Clear filler piece but remember in case of abort
 	state.CCPieces = state.Pieces
 	state.Pieces = nil
+
+	// Clear CreationTime in case this sector was accepting piece data previously
+	state.CreationTime = 0
 }
 
 type SectorReplicaUpdate struct {
@@ -448,6 +461,7 @@ func (evt SectorRevertUpgradeToProving) apply(state *SectorInfo) {
 	state.ReplicaUpdateMessage = nil
 	state.Pieces = state.CCPieces
 	state.CCPieces = nil
+	state.CreationTime = 0
 }
 
 type SectorRetrySubmitReplicaUpdateWait struct{}
@@ -461,6 +475,14 @@ func (evt SectorRetrySubmitReplicaUpdate) apply(state *SectorInfo) {}
 type SectorSubmitReplicaUpdateFailed struct{}
 
 func (evt SectorSubmitReplicaUpdateFailed) apply(state *SectorInfo) {}
+
+type SectorDeadlineImmutable struct{}
+
+func (evt SectorDeadlineImmutable) apply(state *SectorInfo) {}
+
+type SectorDeadlineMutable struct{}
+
+func (evt SectorDeadlineMutable) apply(state *SectorInfo) {}
 
 type SectorReleaseKeyFailed struct{ error }
 
@@ -514,6 +536,9 @@ func (evt SectorTerminateFailed) apply(*SectorInfo)                        {}
 type SectorRemove struct{}
 
 func (evt SectorRemove) applyGlobal(state *SectorInfo) bool {
+	// because this event is global we need to send the notification here instead through an fsm callback
+	maybeNotifyRemoteDone(false, "Removing")(state)
+
 	state.State = Removing
 	return true
 }
@@ -526,3 +551,15 @@ type SectorRemoveFailed struct{ error }
 
 func (evt SectorRemoveFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
 func (evt SectorRemoveFailed) apply(*SectorInfo)                        {}
+
+type SectorReceive struct {
+	State SectorInfo
+}
+
+func (evt SectorReceive) apply(state *SectorInfo) {
+	*state = evt.State
+}
+
+type SectorReceived struct{}
+
+func (evt SectorReceived) apply(state *SectorInfo) {}

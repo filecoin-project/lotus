@@ -9,7 +9,7 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	"github.com/filecoin-project/lotus/api"
@@ -43,7 +43,7 @@ func TestSectorInfoSerialization(t *testing.T) {
 	si := &SectorInfo{
 		State:        "stateful",
 		SectorNumber: 234,
-		Pieces: []Piece{{
+		Pieces: []api.SectorPiece{{
 			Piece: abi.PieceInfo{
 				Size:     5,
 				PieceCID: dummyCid,

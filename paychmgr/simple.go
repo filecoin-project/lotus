@@ -537,7 +537,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 	}
 
 	// If channel creation failed
-	if mwait.Receipt.ExitCode != 0 {
+	if mwait.Receipt.ExitCode.IsError() {
 		ca.lk.Lock()
 		defer ca.lk.Unlock()
 
@@ -651,7 +651,7 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 		return err
 	}
 
-	if mwait.Receipt.ExitCode != 0 {
+	if mwait.Receipt.ExitCode.IsError() {
 		err := xerrors.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
 		log.Error(err)
 

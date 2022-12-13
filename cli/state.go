@@ -29,6 +29,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -43,7 +44,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var StateCmd = &cli.Command{
@@ -168,6 +171,22 @@ var StateMinerInfo = &cli.Command{
 		for i, controlAddress := range mi.ControlAddresses {
 			fmt.Printf("Control %d: \t%s\n", i, controlAddress)
 		}
+		if mi.Beneficiary != address.Undef {
+			fmt.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
+			if mi.Beneficiary != mi.Owner {
+				fmt.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
+				fmt.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
+				fmt.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
+			}
+		}
+		if mi.PendingBeneficiaryTerm != nil {
+			fmt.Printf("Pending Beneficiary Term:\n")
+			fmt.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
+			fmt.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
+			fmt.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
+			fmt.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
+			fmt.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
+		}
 
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("Multiaddrs:\t")
@@ -212,7 +231,7 @@ var StateMinerInfo = &cli.Command{
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		fmt.Printf("Proving Period Start:\t%s\n", EpochTime(cd.CurrentEpoch, cd.PeriodStart))
+		fmt.Printf("Proving Period Start:\t%s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.PeriodStart))
 
 		return nil
 	},
@@ -275,6 +294,28 @@ func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types
 	}
 
 	return ts, nil
+}
+
+func ParseTipSetRefOffline(ctx context.Context, cs *store.ChainStore, tss string) (*types.TipSet, error) {
+	switch {
+
+	case tss == "" || tss == "@head":
+		return cs.GetHeaviestTipSet(), nil
+
+	case tss[0] != '@':
+		cids, err := ParseTipSetString(tss)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to parse tipset (%q): %w", tss, err)
+		}
+		return cs.LoadTipSet(ctx, types.NewTipSetKey(cids...))
+
+	default:
+		var h uint64
+		if _, err := fmt.Sscanf(tss, "@%d", &h); err != nil {
+			return nil, xerrors.Errorf("parsing height tipset ref: %w", err)
+		}
+		return cs.GetTipsetByHeight(ctx, abi.ChainEpoch(h), cs.GetHeaviestTipSet(), true)
+	}
 }
 
 var StatePowerCmd = &cli.Command{
@@ -503,9 +544,8 @@ var StateReplayCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			fmt.Println("must provide cid of message to replay")
-			return nil
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		mcid, err := cid.Decode(cctx.Args().First())
@@ -1281,7 +1321,7 @@ var compStateMsg = `
   {{end}}
   </td></tr>
   {{end}}
-  {{with SumGas .GasCharges}}
+  {{with sumGas .GasCharges}}
   <tr class="sum"><td><b>Sum</b></td>
   {{template "gasC" .}}
   <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
@@ -1315,7 +1355,7 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"IsSlow":      isSlow,
 		"IsVerySlow":  isVerySlow,
 		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
-		"SumGas":      sumGas,
+		"sumGas":      types.SumGas,
 		"CodeStr":     codeStr,
 		"Call":        call,
 		"PrintTiming": func() bool { return printTiming },
@@ -1381,21 +1421,6 @@ func isSlow(t time.Duration) bool {
 
 func isVerySlow(t time.Duration) bool {
 	return t > 50*time.Millisecond
-}
-
-func sumGas(changes []*types.GasTrace) types.GasTrace {
-	var out types.GasTrace
-	for _, gc := range changes {
-		out.TotalGas += gc.TotalGas
-		out.ComputeGas += gc.ComputeGas
-		out.StorageGas += gc.StorageGas
-
-		out.TotalVirtualGas += gc.TotalVirtualGas
-		out.VirtualComputeGas += gc.VirtualComputeGas
-		out.VirtualStorageGas += gc.VirtualStorageGas
-	}
-
-	return out
 }
 
 func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
@@ -1579,8 +1604,8 @@ var StateCallCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
-			return fmt.Errorf("must specify at least actor and method to invoke")
+		if cctx.NArg() < 2 {
+			return ShowHelp(cctx, fmt.Errorf("must specify at least actor and method to invoke"))
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1618,7 +1643,7 @@ var StateCallCmd = &cli.Command{
 
 		var params []byte
 		// If params were passed in, decode them
-		if cctx.Args().Len() > 2 {
+		if cctx.NArg() > 2 {
 			switch cctx.String("encoding") {
 			case "base64":
 				params, err = base64.StdEncoding.DecodeString(cctx.Args().Get(2))
@@ -1742,8 +1767,8 @@ var StateSectorCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 2 {
-			return xerrors.Errorf("expected 2 params: minerAddress and sectorNumber")
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		ts, err := LoadTipSet(ctx, cctx, api)
@@ -1777,8 +1802,8 @@ var StateSectorCmd = &cli.Command{
 		}
 		fmt.Println("DealIDs: ", si.DealIDs)
 		fmt.Println()
-		fmt.Println("Activation: ", EpochTimeTs(ts.Height(), si.Activation, ts))
-		fmt.Println("Expiration: ", EpochTimeTs(ts.Height(), si.Expiration, ts))
+		fmt.Println("Activation: ", cliutil.EpochTimeTs(ts.Height(), si.Activation, ts))
+		fmt.Println("Expiration: ", cliutil.EpochTimeTs(ts.Height(), si.Expiration, ts))
 		fmt.Println()
 		fmt.Println("DealWeight: ", si.DealWeight)
 		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
@@ -1884,7 +1909,6 @@ var StateSysActorCIDsCmd = &cli.Command{
 		&cli.UintFlag{
 			Name:  "network-version",
 			Usage: "specify network version",
-			Value: uint(build.NewestNetworkVersion),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1900,11 +1924,19 @@ var StateSysActorCIDsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		nv := network.Version(cctx.Uint64("network-version"))
+		var nv network.Version
+		if cctx.IsSet("network-version") {
+			nv = network.Version(cctx.Uint64("network-version"))
+		} else {
+			nv, err = api.StateNetworkVersion(ctx, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+		}
 
 		fmt.Printf("Network Version: %d\n", nv)
 
-		actorVersion, err := actors.VersionForNetwork(nv)
+		actorVersion, err := actorstypes.VersionForNetwork(nv)
 		if err != nil {
 			return err
 		}

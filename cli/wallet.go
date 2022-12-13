@@ -260,6 +260,7 @@ var walletSetDefault = &cli.Command{
 			return err
 		}
 
+		fmt.Println("Default address set to:", addr)
 		return api.WalletSetDefault(ctx, addr)
 	},
 }
@@ -517,6 +518,8 @@ var walletDelete = &cli.Command{
 			return err
 		}
 
+		fmt.Println("Soft deleting address:", addr)
+		fmt.Println("Hard deletion of the address in `~/.lotus/keystore` is needed for permanent removal")
 		return api.WalletDelete(ctx, addr)
 	},
 }
@@ -645,7 +648,7 @@ var walletMarketWithdraw = &cli.Command{
 		}
 
 		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
+		if wait.Receipt.ExitCode.IsError() {
 			afmt.Println(cctx.App.Writer, "withdrawal failed!")
 			return err
 		}

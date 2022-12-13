@@ -169,6 +169,12 @@ func (ps *poStScheduler) watch(wid storiface.WorkerID, worker *WorkerHandle) {
 	}()
 
 	for {
+		select {
+		case <-heartbeatTimer.C:
+		case <-worker.closingMgr:
+			return
+		}
+
 		sctx, scancel := context.WithTimeout(ctx, paths.HeartbeatInterval/2)
 		curSes, err := worker.workerRpc.Session(sctx)
 		scancel()
@@ -177,12 +183,7 @@ func (ps *poStScheduler) watch(wid storiface.WorkerID, worker *WorkerHandle) {
 			log.Warnw("failed to check worker session", "error", err)
 			ps.disable(wid)
 
-			select {
-			case <-heartbeatTimer.C:
-				continue
-			case <-worker.closingMgr:
-				return
-			}
+			continue
 		}
 
 		if storiface.WorkerID(curSes) != wid {

@@ -4,7 +4,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
@@ -27,6 +26,7 @@ type FullNode struct {
 	Wallet     Wallet
 	Fees       FeeConfig
 	Chainstore Chainstore
+	Cluster    UserRaftConfig
 }
 
 // // Common
@@ -158,10 +158,10 @@ type DealmakingConfig struct {
 	StartEpochSealingBuffer uint64
 
 	// A command used for fine-grained evaluation of storage deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	Filter string
 	// A command used for fine-grained evaluation of retrieval deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+	// see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	RetrievalFilter string
 
 	RetrievalPricing *RetrievalPricing
@@ -230,6 +230,23 @@ type ProvingConfig struct {
 	// 'lotus-miner proving compute window-post 0'
 	ParallelCheckLimit int
 
+	// Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
+	//
+	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+	// test challenge took longer than this timeout
+	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this sector are
+	// blocked (e.g. in case of disconnected NFS mount)
+	SingleCheckTimeout Duration
+
+	// Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
+	// the partition which didn't get checked on time will be skipped
+	//
+	// WARNING: Setting this value too low risks in sectors being skipped even though they are accessible, just reading the
+	// test challenge took longer than this timeout
+	// WARNING: Setting this value too high risks missing PoSt deadline in case IO operations related to this partition are
+	// blocked or slow
+	PartitionCheckTimeout Duration
+
 	// Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
 	//
 	// WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
@@ -276,11 +293,9 @@ type ProvingConfig struct {
 	// A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
 	//
 	// The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
-	// means that a single message can prove at most 10 partinions
+	// means that a single message can prove at most 10 partitions
 	//
-	// In some cases when submitting PoSt messages which are recovering sectors, the default network limit may still be
-	// too high to fit in the block gas limit; In those cases it may be necessary to set this value to something lower
-	// than 10; Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
 	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 	//
 	// Setting this value above the network limit has no effect
@@ -294,6 +309,16 @@ type ProvingConfig struct {
 	// Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
 	// resulting in more total gas use (but each message will have lower gas limit)
 	MaxPartitionsPerRecoveryMessage int
+
+	// Enable single partition per PoSt Message for partitions containing recovery sectors
+	//
+	// In cases when submitting PoSt messages which contain recovering sectors, the default network limit may still be
+	// too high to fit in the block gas limit. In those cases, it becomes useful to only house the single partition
+	// with recovering sectors in the post message
+	//
+	// Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
+	SingleRecoveringPartitionPerPostMessage bool
 }
 
 type SealingConfig struct {
@@ -318,6 +343,24 @@ type SealingConfig struct {
 
 	// Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)
 	MaxUpgradingSectors uint64
+
+	// When set to a non-zero value, minimum number of epochs until sector expiration required for sectors to be considered
+	// for upgrades (0 = DealMinDuration = 180 days = 518400 epochs)
+	//
+	// Note that if all deals waiting in the input queue have lifetimes longer than this value, upgrade sectors will be
+	// required to have expiration of at least the soonest-ending deal
+	MinUpgradeSectorExpiration uint64
+
+	// When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
+	// be selected based on lowest initial pledge.
+	//
+	// Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
+	// selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
+	// where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
+	//
+	// Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
+	// initial pledge - upgrade sectors will always be chosen based on longest expiration
+	MinTargetUpgradeSectorExpiration uint64
 
 	// CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 	// live before it must be extended or converted into sector containing deals before it is
@@ -391,7 +434,7 @@ type SealingConfig struct {
 type SealerConfig struct {
 	ParallelFetchLimit int
 
-	// Local worker config
+	AllowSectorDownload      bool
 	AllowAddPiece            bool
 	AllowPreCommit1          bool
 	AllowPreCommit2          bool
@@ -426,7 +469,7 @@ type SealerConfig struct {
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
 	// to "hardware".
-	ResourceFiltering sealer.ResourceFilteringStrategy
+	ResourceFiltering ResourceFilteringStrategy
 }
 
 type BatchFeeConfig struct {
@@ -520,6 +563,19 @@ type Pubsub struct {
 	DirectPeers           []string
 	IPColocationWhitelist []string
 	RemoteTracer          string
+	// Path to file that will be used to output tracer content in JSON format.
+	// If present tracer will save data to defined file.
+	// Format: file path
+	JsonTracer string
+	// Connection string for elasticsearch instance.
+	// If present tracer will save data to elasticsearch.
+	// Format: https://<username>:<password>@<elasticsearch_url>:<port>/
+	ElasticSearchTracer string
+	// Name of elasticsearch index that will be used to save tracer data.
+	// This property is used only if ElasticSearchTracer propery is set.
+	ElasticSearchIndex string
+	// Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
+	TracerSourceAuth string
 }
 
 type Chainstore struct {
@@ -529,7 +585,7 @@ type Chainstore struct {
 
 type Splitstore struct {
 	// ColdStoreType specifies the type of the coldstore.
-	// It can be "universal" (default) or "discard" for discarding cold blocks.
+	// It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
 	ColdStoreType string
 	// HotStoreType specifies the type of the hotstore.
 	// Only currently supported value is "badger".
@@ -545,21 +601,6 @@ type Splitstore struct {
 	// A value of 0 disables, while a value 1 will do full GC in every compaction.
 	// Default is 20 (about once a week).
 	HotStoreFullGCFrequency uint64
-
-	// EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
-	// where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
-	// Default is false
-	EnableColdStoreAutoPrune bool
-
-	// ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
-	// Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
-	// full GC in every prune.
-	// Default is 7 (about once every a week)
-	ColdStoreFullGCFrequency uint64
-
-	// ColdStoreRetention specifies the retention policy for data reachable from the chain, in
-	// finalities beyond the compaction boundary, default is 0, -1 retains everything
-	ColdStoreRetention int64
 }
 
 // // Full Node
@@ -589,4 +630,31 @@ type Wallet struct {
 
 type FeeConfig struct {
 	DefaultMaxFee types.FIL
+}
+
+type UserRaftConfig struct {
+	// EXPERIMENTAL. config to enabled node cluster with raft consensus
+	ClusterModeEnabled bool
+	// A folder to store Raft's data.
+	DataFolder string
+	// InitPeersetMultiAddr provides the list of initial cluster peers for new Raft
+	// peers (with no prior state). It is ignored when Raft was already
+	// initialized or when starting in staging mode.
+	InitPeersetMultiAddr []string
+	// LeaderTimeout specifies how long to wait for a leader before
+	// failing an operation.
+	WaitForLeaderTimeout Duration
+	// NetworkTimeout specifies how long before a Raft network
+	// operation is timed out
+	NetworkTimeout Duration
+	// CommitRetries specifies how many times we retry a failed commit until
+	// we give up.
+	CommitRetries int
+	// How long to wait between retries
+	CommitRetryDelay Duration
+	// BackupsRotate specifies the maximum number of Raft's DataFolder
+	// copies that we keep as backups (renaming) after cleanup.
+	BackupsRotate int
+	// Tracing enables propagation of contexts across binary boundaries.
+	Tracing bool
 }

@@ -10,21 +10,22 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-const minRetryTime = 1 * time.Minute
+var MinRetryTime = 1 * time.Minute
 
 func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: Exponential backoff when we see consecutive failures
 
-	retryStart := time.Unix(int64(sector.Log[len(sector.Log)-1].Timestamp), 0).Add(minRetryTime)
+	retryStart := time.Unix(int64(sector.Log[len(sector.Log)-1].Timestamp), 0).Add(MinRetryTime)
 	if len(sector.Log) > 0 && !time.Now().After(retryStart) {
 		log.Infof("%s(%d), waiting %s before retrying", sector.State, sector.SectorNumber, time.Until(retryStart))
 		select {
@@ -184,6 +185,18 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 	return ctx.Send(SectorRetryComputeProof{})
 }
 
+func (m *Sealing) handleRemoteCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	if sector.InvalidProofs > 1 {
+		log.Errorw("consecutive remote commit fails", "sector", sector.SectorNumber, "c1url", sector.RemoteCommit1Endpoint, "c2url", sector.RemoteCommit2Endpoint)
+	}
+
+	return ctx.Send(SectorRetryComputeProof{})
+}
+
 func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sector SectorInfo) error {
 	if err := failedCooldown(ctx, sector); err != nil {
 		return err
@@ -245,8 +258,9 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 		return nil
 	}
 	if !active {
-		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
-		return ctx.Send(SectorAbortUpgrade{})
+		err := xerrors.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
+		log.Errorf(err.Error())
+		return ctx.Send(SectorAbortUpgrade{err})
 	}
 
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
@@ -391,11 +405,6 @@ func (m *Sealing) handleDealsExpired(ctx statemachine.Context, sector SectorInfo
 		return xerrors.Errorf("sector is committed on-chain, but we're in DealsExpired")
 	}
 
-	if sector.PreCommitInfo == nil {
-		// TODO: Create a separate state which will remove those pieces, and go back to PC1
-		log.Errorf("non-precommitted sector with expired deals, can't recover from this yet")
-	}
-
 	// Not much to do here, we can't go back in time to commit this sector
 	return ctx.Send(SectorRemove{})
 }
@@ -414,17 +423,22 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 		return xerrors.Errorf("should never reach AbortUpgrade as a non-CCUpdate sector")
 	}
 
+	m.cleanupAssignedDeals(sector)
+
 	// Remove snap deals replica if any
+	// This removes update / update-cache from all storage
 	if err := m.sealer.ReleaseReplicaUpgrade(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return xerrors.Errorf("removing CC update files from sector storage")
 	}
 
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting sealing config: %w", err)
+	// This removes the unsealed file from all storage
+	// note: we're not keeping anything unsealed because we're reverting to CC
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), []storiface.Range{}); err != nil {
+		log.Error(err)
 	}
 
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.CCPieces, true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+	// and makes sure sealed/cache files only exist in long-term-storage
+	if err := m.sealer.FinalizeSector(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		log.Error(err)
 	}
 

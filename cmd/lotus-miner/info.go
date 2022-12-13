@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -91,6 +92,12 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 
 	fmt.Println("Enabled subsystems (from markets API):", subsystems)
+
+	start, err := minerApi.StartTime(ctx)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("StartTime: %s (started at %s)\n", time.Now().Sub(start).Truncate(time.Second), start.Truncate(time.Second))
 
 	fmt.Print("Chain: ")
 
@@ -313,6 +320,23 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 	}
 	colorTokenAmount("Total Spendable:  %s\n", spendable)
 
+	if mi.Beneficiary != address.Undef {
+		fmt.Println()
+		fmt.Printf("Beneficiary:\t%s\n", mi.Beneficiary)
+		if mi.Beneficiary != mi.Owner {
+			fmt.Printf("Beneficiary Quota:\t%s\n", mi.BeneficiaryTerm.Quota)
+			fmt.Printf("Beneficiary Used Quota:\t%s\n", mi.BeneficiaryTerm.UsedQuota)
+			fmt.Printf("Beneficiary Expiration:\t%s\n", mi.BeneficiaryTerm.Expiration)
+		}
+	}
+	if mi.PendingBeneficiaryTerm != nil {
+		fmt.Printf("Pending Beneficiary Term:\n")
+		fmt.Printf("New Beneficiary:\t%s\n", mi.PendingBeneficiaryTerm.NewBeneficiary)
+		fmt.Printf("New Quota:\t%s\n", mi.PendingBeneficiaryTerm.NewQuota)
+		fmt.Printf("New Expiration:\t%s\n", mi.PendingBeneficiaryTerm.NewExpiration)
+		fmt.Printf("Approved By Beneficiary:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByBeneficiary)
+		fmt.Printf("Approved By Nominee:\t%t\n", mi.PendingBeneficiaryTerm.ApprovedByNominee)
+	}
 	fmt.Println()
 
 	if !cctx.Bool("hide-sectors-info") {
@@ -481,6 +505,8 @@ var stateList = []stateMeta{
 	{col: color.FgGreen, state: sealing.Available},
 	{col: color.FgGreen, state: sealing.UpdateActivating},
 
+	{col: color.FgMagenta, state: sealing.ReceiveSector},
+
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
 	{col: color.FgBlue, state: sealing.AddPiece},
@@ -509,6 +535,7 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.ProveReplicaUpdate},
 	{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
 	{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
+	{col: color.FgYellow, state: sealing.WaitMutable},
 	{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
 	{col: color.FgYellow, state: sealing.ReleaseSectorKey},
 
@@ -526,6 +553,7 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.SealPreCommit2Failed},
 	{col: color.FgRed, state: sealing.PreCommitFailed},
 	{col: color.FgRed, state: sealing.ComputeProofFailed},
+	{col: color.FgRed, state: sealing.RemoteCommitFailed},
 	{col: color.FgRed, state: sealing.CommitFailed},
 	{col: color.FgRed, state: sealing.CommitFinalizeFailed},
 	{col: color.FgRed, state: sealing.PackingFailed},
@@ -638,7 +666,7 @@ func producedBlocks(ctx context.Context, count int, maddr address.Address, napi 
 				fmt.Printf("%8d | %s | %s\n", ts.Height(), bh.Cid(), types.FIL(minerReward))
 				count--
 			} else if tty && bh.Height%120 == 0 {
-				_, _ = fmt.Fprintf(os.Stderr, "\r\x1b[0KChecking epoch %s", lcli.EpochTime(head.Height(), bh.Height))
+				_, _ = fmt.Fprintf(os.Stderr, "\r\x1b[0KChecking epoch %s", cliutil.EpochTime(head.Height(), bh.Height))
 			}
 		}
 		tsk = ts.Parents()

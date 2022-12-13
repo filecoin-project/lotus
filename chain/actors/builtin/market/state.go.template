@@ -1,6 +1,7 @@
 package market
 
 import (
+    "fmt"
 	"bytes"
 
 	"github.com/filecoin-project/go-address"
@@ -14,15 +15,22 @@ import (
 	{{end}}
 
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 {{if (le .v 7)}}
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 {{else}}
 	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
-	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+{{end}}
+{{if (ge .v 9)}}
+	"github.com/filecoin-project/go-state-types/builtin"
 {{end}}
 )
 
@@ -200,7 +208,17 @@ func (s *dealStates{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-        return (DealState)(v{{.v}})
+    ret := DealState{
+        SectorStartEpoch: v{{.v}}.SectorStartEpoch,
+        LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
+        SlashEpoch: v{{.v}}.SlashEpoch,
+        VerifiedClaim: 0,
+    }
+    {{if (ge .v 9)}}
+        ret.VerifiedClaim = verifregtypes.AllocationId(v{{.v}}.VerifiedClaim)
+    {{end}}
+
+    return ret
 }
 
 type dealProposals{{.v}} struct {
@@ -258,12 +276,12 @@ func (s *dealProposals{{.v}}) array() adt.Array {
 func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, error) {
     {{if (le .v 7)}}
         label, err := labelFromGoString(v{{.v}}.Label)
-        if err != nil {
-            return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
-        }
     {{else}}
-        label := v{{.v}}.Label
+        label, err := fromV{{.v}}Label(v{{.v}}.Label)
     {{end}}
+    if err != nil {
+        return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+    }
 
     return DealProposal{
         PieceCID: v{{.v}}.PieceCID,
@@ -282,6 +300,25 @@ func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, e
         ClientCollateral: v{{.v}}.ClientCollateral,
     }, nil
 }
+
+{{if (ge .v 8)}}
+    func fromV{{.v}}Label(v{{.v}} market{{.v}}.DealLabel) (DealLabel, error) {
+        if v{{.v}}.IsString() {
+            str, err := v{{.v}}.ToString()
+            if err != nil {
+                return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+            }
+            return markettypes.NewLabelFromString(str)
+        }
+
+        bs, err := v{{.v}}.ToBytes()
+        if err != nil {
+            return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+        }
+        return markettypes.NewLabelFromBytes(bs)
+    }
+{{end}}
+
 
 
 func (s *state{{.v}}) GetState() interface{} {
@@ -331,4 +368,44 @@ func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, int, 
 
 func (r *publishStorageDealsReturn{{.v}}) DealIDs() ([]abi.DealID, error) {
     return r.IDs, nil
+}
+
+func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+{{if (le .v 8)}}
+    	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
+{{else}}
+	allocations, err := adt{{.v}}.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+    if err != nil {
+        return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+    }
+
+	var allocationId cbg.CborInt
+	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
+	if err != nil {
+		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+	}
+	if !found {
+		return verifregtypes.NoAllocationID, nil
+	}
+
+	return verifregtypes.AllocationId(allocationId), nil
+{{end}}
+}
+
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.MarketKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

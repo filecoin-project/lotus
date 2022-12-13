@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -185,18 +186,18 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 
 		fmt.Printf("Proving Period Boundary: %d\n", cd.PeriodStart%cd.WPoStProvingPeriod)
-		fmt.Printf("Proving Period Start:    %s\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart, head))
-		fmt.Printf("Next Period Start:       %s\n\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, head))
+		fmt.Printf("Proving Period Start:    %s\n", cliutil.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart, head))
+		fmt.Printf("Next Period Start:       %s\n\n", cliutil.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, head))
 
 		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
 		fmt.Printf("Recovering:  %d\n", recovering)
 
 		fmt.Printf("Deadline Index:       %d\n", cd.Index)
 		fmt.Printf("Deadline Sectors:     %d\n", curDeadlineSectors)
-		fmt.Printf("Deadline Open:        %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Open))
-		fmt.Printf("Deadline Close:       %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Close))
-		fmt.Printf("Deadline Challenge:   %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.Challenge))
-		fmt.Printf("Deadline FaultCutoff: %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.FaultCutoff))
+		fmt.Printf("Deadline Open:        %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.Open))
+		fmt.Printf("Deadline Close:       %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.Close))
+		fmt.Printf("Deadline Challenge:   %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.Challenge))
+		fmt.Printf("Deadline FaultCutoff: %s\n", cliutil.EpochTime(cd.CurrentEpoch, cd.FaultCutoff))
 		return nil
 	},
 }
@@ -314,8 +315,8 @@ var provingDeadlineInfoCmd = &cli.Command{
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
 
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -461,8 +462,8 @@ var provingCheckProvableCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -476,7 +477,7 @@ var provingCheckProvableCmd = &cli.Command{
 		}
 		defer closer()
 
-		sapi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, scloser, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -484,7 +485,7 @@ var provingCheckProvableCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		addr, err := sapi.ActorAddress(ctx)
+		addr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -510,7 +511,7 @@ var provingCheckProvableCmd = &cli.Command{
 		var filter map[abi.SectorID]struct{}
 
 		if cctx.IsSet("storage-id") {
-			sl, err := sapi.StorageList(ctx)
+			sl, err := minerApi.StorageList(ctx)
 			if err != nil {
 				return err
 			}
@@ -582,7 +583,7 @@ var provingCheckProvableCmd = &cli.Command{
 				})
 			}
 
-			bad, err := sapi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
+			bad, err := minerApi.CheckProvable(ctx, info.WindowPoStProofType, tocheck)
 			if err != nil {
 				return err
 			}
@@ -616,8 +617,8 @@ var provingComputeWindowPoStCmd = &cli.Command{
 It will not send any messages to the chain.`,
 	ArgsUsage: "[deadline index]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass deadline index")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -625,7 +626,7 @@ It will not send any messages to the chain.`,
 			return xerrors.Errorf("could not parse deadline index: %w", err)
 		}
 
-		sapi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, scloser, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -634,7 +635,7 @@ It will not send any messages to the chain.`,
 		ctx := lcli.ReqContext(cctx)
 
 		start := time.Now()
-		res, err := sapi.ComputeWindowPoSt(ctx, dlIdx, types.EmptyTSK)
+		res, err := minerApi.ComputeWindowPoSt(ctx, dlIdx, types.EmptyTSK)
 		fmt.Printf("Took %s\n", time.Now().Sub(start))
 		if err != nil {
 			return err
@@ -661,8 +662,8 @@ var provingRecoverFaultsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 1 {
-			return xerrors.Errorf("must pass at least 1 sector number")
+		if cctx.NArg() < 1 {
+			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass at least 1 sector number"))
 		}
 
 		arglist := cctx.Args().Slice()
@@ -675,7 +676,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 			sectors = append(sectors, abi.SectorNumber(s))
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -689,7 +690,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		msgs, err := nodeApi.RecoverFault(ctx, sectors)
+		msgs, err := minerApi.RecoverFault(ctx, sectors)
 		if err != nil {
 			return err
 		}
@@ -707,7 +708,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 					return
 				}
 
-				if wait.Receipt.ExitCode != 0 {
+				if wait.Receipt.ExitCode.IsError() {
 					results <- xerrors.Errorf("Failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
 					return
 				}

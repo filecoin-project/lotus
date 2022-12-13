@@ -20,7 +20,7 @@ var _ = cid.Undef
 var _ = math.E
 var _ = sort.Sort
 
-var lengthBufFvmExecutionTrace = []byte{132}
+var lengthBufFvmExecutionTrace = []byte{133}
 
 func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -56,8 +56,22 @@ func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.GasCharges ([]vm.FvmGasCharge) (slice)
+	if len(t.GasCharges) > 1000000000 {
+		return xerrors.Errorf("Slice value in field t.GasCharges was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.GasCharges))); err != nil {
+		return err
+	}
+	for _, v := range t.GasCharges {
+		if err := v.MarshalCBOR(cw); err != nil {
+			return err
+		}
+	}
+
 	// t.Subcalls ([]vm.FvmExecutionTrace) (slice)
-	if len(t.Subcalls) > cbg.MaxLength {
+	if len(t.Subcalls) > 1000000000 {
 		return xerrors.Errorf("Slice value in field t.Subcalls was too long")
 	}
 
@@ -91,7 +105,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -143,6 +157,35 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 
 		t.Error = string(sval)
 	}
+	// t.GasCharges ([]vm.FvmGasCharge) (slice)
+
+	maj, extra, err = cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+
+	if extra > 1000000000 {
+		return fmt.Errorf("t.GasCharges: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+
+	if extra > 0 {
+		t.GasCharges = make([]FvmGasCharge, extra)
+	}
+
+	for i := 0; i < int(extra); i++ {
+
+		var v FvmGasCharge
+		if err := v.UnmarshalCBOR(cr); err != nil {
+			return err
+		}
+
+		t.GasCharges[i] = v
+	}
+
 	// t.Subcalls ([]vm.FvmExecutionTrace) (slice)
 
 	maj, extra, err = cr.ReadHeader()
@@ -150,7 +193,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		return err
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > 1000000000 {
 		return fmt.Errorf("t.Subcalls: array too large (%d)", extra)
 	}
 
@@ -172,5 +215,177 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		t.Subcalls[i] = v
 	}
 
+	return nil
+}
+
+var lengthBufFvmGasCharge = []byte{132}
+
+func (t *FvmGasCharge) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufFvmGasCharge); err != nil {
+		return err
+	}
+
+	// t.Name (string) (string)
+	if len(t.Name) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Name was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Name))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Name)); err != nil {
+		return err
+	}
+
+	// t.TotalGas (int64) (int64)
+	if t.TotalGas >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.TotalGas)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.TotalGas-1)); err != nil {
+			return err
+		}
+	}
+
+	// t.ComputeGas (int64) (int64)
+	if t.ComputeGas >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ComputeGas)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.ComputeGas-1)); err != nil {
+			return err
+		}
+	}
+
+	// t.StorageGas (int64) (int64)
+	if t.StorageGas >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.StorageGas)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.StorageGas-1)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *FvmGasCharge) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = FvmGasCharge{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 4 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.Name (string) (string)
+
+	{
+		sval, err := cbg.ReadString(cr)
+		if err != nil {
+			return err
+		}
+
+		t.Name = string(sval)
+	}
+	// t.TotalGas (int64) (int64)
+	{
+		maj, extra, err := cr.ReadHeader()
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.TotalGas = int64(extraI)
+	}
+	// t.ComputeGas (int64) (int64)
+	{
+		maj, extra, err := cr.ReadHeader()
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.ComputeGas = int64(extraI)
+	}
+	// t.StorageGas (int64) (int64)
+	{
+		maj, extra, err := cr.ReadHeader()
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
+
+		t.StorageGas = int64(extraI)
+	}
 	return nil
 }
