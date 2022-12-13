@@ -1,0 +1,5 @@
+commit 2f35a39e435c52270a2d6a4c376325569f3de06a
+Author: Łukasz Magiera <magik6k@gmail.com>
+Date:   Tue Oct 11 10:59:27 2022 +0200
+
+    cli docsgen
