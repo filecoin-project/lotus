@@ -38,7 +38,7 @@ func newFilterID() (types.FilterID, error) {
 		return types.FilterID{}, xerrors.Errorf("new uuid: %w", err)
 	}
 	id := types.FilterID{}
-	copy(id[:], rawid[:]) // uuid is 16 bytes, the last 16 bytes are zeroed
+	copy(id[:], rawid[:]) // uuid is also 16 bytes
 	return id, nil
 }
 

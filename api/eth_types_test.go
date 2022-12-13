@@ -383,3 +383,77 @@ func TestEthHashListUnmarshalJSON(t *testing.T) {
 		require.Equal(t, tc.want, got)
 	}
 }
+
+func TestEthSubscriptionIDMarshaling(t *testing.T) {
+	testcases := []struct {
+		in       string
+		encoding string
+	}{
+		{
+			in:       `"0x00"`,
+			encoding: `"0x00000000000000000000000000000000"`,
+		},
+
+		{
+			in:       `"0x013dbb9442ca"`,
+			encoding: `"0x00000000000000000000013dbb9442ca"`,
+		},
+		{
+			in:       `"0x013dbb9442ca9667baccc6230fcd5c1c"`,
+			encoding: `"0x013dbb9442ca9667baccc6230fcd5c1c"`,
+		},
+		{
+			in:       `"0x4b2d4d2870f4bd20681d4d47cfd15184"`,
+			encoding: `"0x4b2d4d2870f4bd20681d4d47cfd15184"`,
+		},
+	}
+
+	for _, tc := range testcases {
+		var id EthSubscriptionID
+		err := id.UnmarshalJSON([]byte(tc.in))
+		require.NoError(t, err)
+
+		require.Equal(t, strings.Replace(tc.encoding, `"`, "", -1), id.String())
+
+		data, err := id.MarshalJSON()
+		require.Nil(t, err)
+		require.Equal(t, tc.encoding, string(data))
+	}
+}
+
+func TestEthFilterIDMarshaling(t *testing.T) {
+	testcases := []struct {
+		in       string
+		encoding string
+	}{
+		{
+			in:       `"0x00"`,
+			encoding: `"0x00000000000000000000000000000000"`,
+		},
+
+		{
+			in:       `"0x013dbb9442ca"`,
+			encoding: `"0x00000000000000000000013dbb9442ca"`,
+		},
+		{
+			in:       `"0x013dbb9442ca9667baccc6230fcd5c1c"`,
+			encoding: `"0x013dbb9442ca9667baccc6230fcd5c1c"`,
+		},
+		{
+			in:       `"0x4b2d4d2870f4bd20681d4d47cfd15184"`,
+			encoding: `"0x4b2d4d2870f4bd20681d4d47cfd15184"`,
+		},
+	}
+
+	for _, tc := range testcases {
+		var id EthFilterID
+		err := id.UnmarshalJSON([]byte(tc.in))
+		require.NoError(t, err)
+
+		require.Equal(t, strings.Replace(tc.encoding, `"`, "", -1), id.String())
+
+		data, err := id.MarshalJSON()
+		require.Nil(t, err)
+		require.Equal(t, tc.encoding, string(data))
+	}
+}

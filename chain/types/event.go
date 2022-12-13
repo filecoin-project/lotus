@@ -23,7 +23,7 @@ type EventEntry struct {
 	Value []byte
 }
 
-type FilterID [32]byte // compatible with EthHash
+type FilterID [16]byte
 
 // EventEntry flags defined in fvm_shared
 const (
