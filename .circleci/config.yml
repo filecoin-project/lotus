@@ -1468,7 +1468,6 @@ workflows:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
->>>>>>> 0635c1c3b (Also build / push lotus images)
 
   nightly:
     triggers:
