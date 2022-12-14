@@ -30,7 +30,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -763,37 +765,37 @@ type FullNode interface {
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//
 	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
-	EthAccounts(ctx context.Context) ([]EthAddress, error) //perm:read
+	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) //perm:read
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
-	EthBlockNumber(ctx context.Context) (EthUint64, error) //perm:read
+	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthUint64) (EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) //perm:read
 
-	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                      //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (EthBlock, error)                      //perm:read
-	EthGetTransactionByHash(ctx context.Context, txHash *EthHash) (*EthTx, error)                                   //perm:read
-	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthUint64, error)                //perm:read
-	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (*EthTxReceipt, error)                            //perm:read
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthUint64) (EthTx, error)    //perm:read
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthUint64, txIndex EthUint64) (EthTx, error) //perm:read
+	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)                          //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)                                   //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*eth.EthTx, error)                                            //perm:read
+	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error)                    //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*EthTxReceipt, error)                                         //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (eth.EthTx, error)    //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (eth.EthTx, error) //perm:read
 
-	EthGetCode(ctx context.Context, address EthAddress, blkOpt string) (EthBytes, error)                                         //perm:read
-	EthGetStorageAt(ctx context.Context, address EthAddress, position EthBytes, blkParam string) (EthBytes, error)               //perm:read
-	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                                   //perm:read
-	EthChainId(ctx context.Context) (EthUint64, error)                                                                           //perm:read
-	NetVersion(ctx context.Context) (string, error)                                                                              //perm:read
-	NetListening(ctx context.Context) (bool, error)                                                                              //perm:read
-	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                                   //perm:read
-	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                                          //perm:read
-	EthFeeHistory(ctx context.Context, blkCount EthUint64, newestBlk string, rewardPercentiles []float64) (EthFeeHistory, error) //perm:read
+	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error)                                         //perm:read
+	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error)      //perm:read
+	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)                                   //perm:read
+	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)                                                                                    //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                                                //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                                                //perm:read
+	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                            //perm:read
+	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                                                                                   //perm:read
+	EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error) //perm:read
 
-	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)             //perm:read
-	EthEstimateGas(ctx context.Context, tx EthCall) (EthUint64, error)          //perm:read
-	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error) //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)                      //perm:read
+	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error)          //perm:read
+	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) //perm:read
 
-	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read
+	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
@@ -1287,4 +1289,23 @@ type MsigTransaction struct {
 type PruneOpts struct {
 	MovingGC    bool
 	RetainState int64
+}
+
+type EthTxReceipt struct {
+	TransactionHash  ethtypes.EthHash     `json:"transactionHash"`
+	TransactionIndex ethtypes.EthUint64   `json:"transactionIndex"`
+	BlockHash        ethtypes.EthHash     `json:"blockHash"`
+	BlockNumber      ethtypes.EthUint64   `json:"blockNumber"`
+	From             ethtypes.EthAddress  `json:"from"`
+	To               *ethtypes.EthAddress `json:"to"`
+	// Logs
+	// LogsBloom
+	StateRoot         ethtypes.EthHash     `json:"root"`
+	Status            ethtypes.EthUint64   `json:"status"`
+	ContractAddress   *ethtypes.EthAddress `json:"contractAddress"`
+	CumulativeGasUsed ethtypes.EthUint64   `json:"cumulativeGasUsed"`
+	GasUsed           ethtypes.EthUint64   `json:"gasUsed"`
+	EffectiveGasPrice ethtypes.EthBigInt   `json:"effectiveGasPrice"`
+	LogsBloom         ethtypes.EthBytes    `json:"logsBloom"`
+	Logs              []string             `json:"logs"`
 }

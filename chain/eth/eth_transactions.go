@@ -1,4 +1,4 @@
-package api
+package eth
 
 import (
 	"bytes"
@@ -20,47 +20,48 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 const Eip1559TxType = 2
 
 type EthTx struct {
-	ChainID              EthUint64   `json:"chainId"`
-	Nonce                EthUint64   `json:"nonce"`
-	Hash                 EthHash     `json:"hash"`
-	BlockHash            EthHash     `json:"blockHash"`
-	BlockNumber          EthUint64   `json:"blockNumber"`
-	TransactionIndex     EthUint64   `json:"transactionIndex"`
-	From                 EthAddress  `json:"from"`
-	To                   *EthAddress `json:"to"`
-	Value                EthBigInt   `json:"value"`
-	Type                 EthUint64   `json:"type"`
-	Input                EthBytes    `json:"input"`
-	Gas                  EthUint64   `json:"gas"`
-	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
-	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
-	V                    EthBytes    `json:"v"`
-	R                    EthBytes    `json:"r"`
-	S                    EthBytes    `json:"s"`
+	ChainID              ethtypes.EthUint64   `json:"chainId"`
+	Nonce                ethtypes.EthUint64   `json:"nonce"`
+	Hash                 ethtypes.EthHash     `json:"hash"`
+	BlockHash            ethtypes.EthHash     `json:"blockHash"`
+	BlockNumber          ethtypes.EthUint64   `json:"blockNumber"`
+	TransactionIndex     ethtypes.EthUint64   `json:"transactionIndex"`
+	From                 ethtypes.EthAddress  `json:"from"`
+	To                   *ethtypes.EthAddress `json:"to"`
+	Value                ethtypes.EthBigInt   `json:"value"`
+	Type                 ethtypes.EthUint64   `json:"type"`
+	Input                ethtypes.EthBytes    `json:"input"`
+	Gas                  ethtypes.EthUint64   `json:"gas"`
+	MaxFeePerGas         ethtypes.EthBigInt   `json:"maxFeePerGas"`
+	MaxPriorityFeePerGas ethtypes.EthBigInt   `json:"maxPriorityFeePerGas"`
+	V                    ethtypes.EthBytes    `json:"v"`
+	R                    ethtypes.EthBytes    `json:"r"`
+	S                    ethtypes.EthBytes    `json:"s"`
 }
 
 type EthTxArgs struct {
-	ChainID              int         `json:"chainId"`
-	Nonce                int         `json:"nonce"`
-	To                   *EthAddress `json:"to"`
-	Value                big.Int     `json:"value"`
-	MaxFeePerGas         big.Int     `json:"maxFeePerGas"`
-	MaxPriorityFeePerGas big.Int     `json:"maxPriorityFeePerGas"`
-	GasLimit             int         `json:"gasLimit"`
-	Input                []byte      `json:"input"`
-	V                    []byte      `json:"v"`
-	R                    []byte      `json:"r"`
-	S                    []byte      `json:"s"`
+	ChainID              int                  `json:"chainId"`
+	Nonce                int                  `json:"nonce"`
+	To                   *ethtypes.EthAddress `json:"to"`
+	Value                big.Int              `json:"value"`
+	MaxFeePerGas         big.Int              `json:"maxFeePerGas"`
+	MaxPriorityFeePerGas big.Int              `json:"maxPriorityFeePerGas"`
+	GasLimit             int                  `json:"gasLimit"`
+	Input                []byte               `json:"input"`
+	V                    []byte               `json:"v"`
+	R                    []byte               `json:"r"`
+	S                    []byte               `json:"s"`
 }
 
 func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
-		to            *EthAddress
+		to            *ethtypes.EthAddress
 		decodedParams []byte
 		paramsReader  = bytes.NewReader(msg.Params)
 	)
@@ -83,7 +84,7 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
 	} else {
-		addr, err := EthAddressFromFilecoinAddress(msg.To)
+		addr, err := ethtypes.EthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, err
 		}
@@ -441,7 +442,7 @@ func formatInt(val int) ([]byte, error) {
 	return removeLeadingZeros(buf.Bytes()), nil
 }
 
-func formatEthAddr(addr *EthAddress) []byte {
+func formatEthAddr(addr *ethtypes.EthAddress) []byte {
 	if addr == nil {
 		return nil
 	}
@@ -496,7 +497,7 @@ func parseBytes(v interface{}) ([]byte, error) {
 	return val, nil
 }
 
-func parseEthAddr(v interface{}) (*EthAddress, error) {
+func parseEthAddr(v interface{}) (*ethtypes.EthAddress, error) {
 	b, err := parseBytes(v)
 	if err != nil {
 		return nil, err
@@ -504,7 +505,7 @@ func parseEthAddr(v interface{}) (*EthAddress, error) {
 	if len(b) == 0 {
 		return nil, nil
 	}
-	addr, err := EthAddressFromBytes(b)
+	addr, err := ethtypes.EthAddressFromBytes(b)
 	if err != nil {
 		return nil, err
 	}

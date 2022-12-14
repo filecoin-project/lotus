@@ -34,6 +34,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -776,7 +777,7 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
 	case crypto.SigTypeDelegated:
-		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		txArgs, err := eth.NewEthTxArgsFromMessage(&m.Message)
 		if err != nil {
 			return "", err
 		}
@@ -803,7 +804,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	}
 
 	if m.Signature.Type == crypto.SigTypeDelegated {
-		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		txArgs, err := eth.NewEthTxArgsFromMessage(&m.Message)
 		if err != nil {
 			return err
 		}
