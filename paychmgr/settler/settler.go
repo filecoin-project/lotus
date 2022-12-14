@@ -40,7 +40,7 @@ type settlerAPI interface {
 	PaychVoucherCheckSpendable(context.Context, address.Address, *paychtypes.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paychtypes.SignedVoucher, error)
 	PaychVoucherSubmit(context.Context, address.Address, *paychtypes.SignedVoucher, []byte, []byte) (cid.Cid, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 }
 
 type paymentChannelSettler struct {

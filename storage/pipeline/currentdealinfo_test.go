@@ -23,7 +23,6 @@ import (
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	evtmock "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -101,7 +100,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 	}
 
 	type testCaseData struct {
-		searchMessageLookup *api.MsgLookup
+		searchMessageLookup *types.MsgLookup
 		searchMessageErr    error
 		marketDeals         map[abi.DealID]*types.MarketDeal
 		publishCid          cid.Cid
@@ -114,7 +113,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 	testCases := map[string]testCaseData{
 		"deal lookup succeeds": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{successDealID}),
@@ -129,7 +128,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		},
 		"deal lookup succeeds two return values": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID, successDealID}),
@@ -145,7 +144,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		},
 		"deal lookup fails proposal mis-match": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID}),
@@ -160,7 +159,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		},
 		"deal lookup handles invalid actor output with mismatched count of deals and return values": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID}),
@@ -177,7 +176,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 
 		"deal lookup fails when deal was not valid and index exceeds output array": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturn(t, []abi.DealID{earlierDealID}, []uint64{0}),
@@ -195,7 +194,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 
 		"deal lookup succeeds when theres a separate deal failure": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturn(t, []abi.DealID{anotherDealID, successDealID}, []uint64{0, 2}),
@@ -214,7 +213,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 
 		"deal lookup succeeds, target proposal nil, single deal in message": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{successDealID}),
@@ -229,7 +228,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		},
 		"deal lookup fails, multiple deals in return value but target proposal nil": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID, successDealID}),
@@ -258,7 +257,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		},
 		"return code not ok": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.ErrIllegalState,
 				},
@@ -269,7 +268,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		},
 		"unable to unmarshal params": {
 			publishCid: dummyCid,
-			searchMessageLookup: &api.MsgLookup{
+			searchMessageLookup: &types.MsgLookup{
 				Receipt: types.MessageReceipt{
 					ExitCode: exitcode.Ok,
 					Return:   []byte("applesauce"),
@@ -319,7 +318,7 @@ type marketDealKey struct {
 }
 
 type CurrentDealInfoMockAPI struct {
-	SearchMessageLookup *api.MsgLookup
+	SearchMessageLookup *types.MsgLookup
 	SearchMessageErr    error
 
 	MarketDeals map[marketDealKey]*types.MarketDeal
@@ -371,7 +370,7 @@ func (mapi *CurrentDealInfoMockAPI) StateMarketStorageDeal(ctx context.Context, 
 	return deal, nil
 }
 
-func (mapi *CurrentDealInfoMockAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+func (mapi *CurrentDealInfoMockAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	if mapi.SearchMessageLookup == nil {
 		return mapi.SearchMessageLookup, mapi.SearchMessageErr
 	}

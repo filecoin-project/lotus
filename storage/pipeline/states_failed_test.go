@@ -56,7 +56,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	// expect GetCurrentDealInfo
 	{
-		api.EXPECT().StateSearchMsg(ctx, gomock.Any(), pc, gomock.Any(), gomock.Any()).Return(&api2.MsgLookup{
+		api.EXPECT().StateSearchMsg(ctx, gomock.Any(), pc, gomock.Any(), gomock.Any()).Return(&types.MsgLookup{
 			Receipt: types.MessageReceipt{
 				ExitCode: exitcode.Ok,
 				Return: cborRet(&market0.PublishStorageDealsReturn{

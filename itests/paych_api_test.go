@@ -238,7 +238,7 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymen
 	}
 }
 
-func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
+func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *types.MsgLookup {
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 

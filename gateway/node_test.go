@@ -227,7 +227,7 @@ func (m *mockGatewayDepsAPI) StateLookupID(ctx context.Context, addr address.Add
 	panic("implement me")
 }
 
-func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*api.MsgLookup, error) {
+func (m *mockGatewayDepsAPI) StateWaitMsgLimited(ctx context.Context, msg cid.Cid, confidence uint64, h abi.ChainEpoch) (*types.MsgLookup, error) {
 	panic("implement me")
 }
 

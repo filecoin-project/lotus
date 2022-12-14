@@ -415,7 +415,7 @@ func (g *Garbager) createMiner4Data(ctx context.Context) {
 	g.maddr4Data = retval.IDAddress
 }
 
-func (g *Garbager) createMiner(ctx context.Context) *lapi.MsgLookup {
+func (g *Garbager) createMiner(ctx context.Context) *types.MsgLookup {
 	owner, err := g.node.WalletDefaultAddress(ctx)
 	require.NoError(g.t, err)
 	worker := owner

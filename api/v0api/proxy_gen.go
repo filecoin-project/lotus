@@ -349,9 +349,9 @@ type FullNodeStruct struct {
 
 		StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) `perm:"read"`
 
-		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) `perm:"read"`
+		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) `perm:"read"`
 
-		StateSearchMsgLimited func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*api.MsgLookup, error) `perm:"read"`
+		StateSearchMsgLimited func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*types.MsgLookup, error) `perm:"read"`
 
 		StateSectorExpiration func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorExpiration, error) `perm:"read"`
 
@@ -369,9 +369,9 @@ type FullNodeStruct struct {
 
 		StateVerifierStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) `perm:"read"`
 
-		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) `perm:"read"`
+		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) `perm:"read"`
 
-		StateWaitMsgLimited func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*api.MsgLookup, error) `perm:"read"`
+		StateWaitMsgLimited func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*types.MsgLookup, error) `perm:"read"`
 
 		SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
@@ -479,13 +479,13 @@ type GatewayStruct struct {
 
 		StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (abinetwork.Version, error) ``
 
-		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) ``
+		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) ``
 
 		StateSectorGetInfo func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) ``
 
 		StateVerifiedClientStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
-		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) ``
+		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) ``
 
 		Version func(p0 context.Context) (api.APIVersion, error) ``
 
@@ -2190,25 +2190,25 @@ func (s *FullNodeStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 ci
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	if s.Internal.StateSearchMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateSearchMsg(p0, p1)
 }
 
-func (s *FullNodeStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*types.MsgLookup, error) {
 	if s.Internal.StateSearchMsgLimited == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateSearchMsgLimited(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2300,25 +2300,25 @@ func (s *FullNodeStub) StateVerifierStatus(p0 context.Context, p1 address.Addres
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	if s.Internal.StateWaitMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateWaitMsg(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*types.MsgLookup, error) {
 	if s.Internal.StateWaitMsgLimited == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateWaitMsgLimited(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2850,14 +2850,14 @@ func (s *GatewayStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey
 	return *new(abinetwork.Version), ErrNotSupported
 }
 
-func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	if s.Internal.StateSearchMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateSearchMsg(p0, p1)
 }
 
-func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2883,14 +2883,14 @@ func (s *GatewayStub) StateVerifiedClientStatus(p0 context.Context, p1 address.A
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	if s.Internal.StateWaitMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateWaitMsg(p0, p1, p2)
 }
 
-func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 

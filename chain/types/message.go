@@ -216,3 +216,11 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 }
 
 const TestGasLimit = 100e6
+
+type MsgLookup struct {
+	Message   cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
+	Receipt   MessageReceipt
+	ReturnDec interface{}
+	TipSet    TipSetKey
+	Height    abi.ChainEpoch
+}

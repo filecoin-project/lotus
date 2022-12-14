@@ -199,7 +199,7 @@ type EthTxReceipt struct {
 	Logs              []string    `json:"logs"`
 }
 
-func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *types.InvocResult) (EthTxReceipt, error) {
+func NewEthTxReceipt(tx EthTx, lookup *types.MsgLookup, replay *types.InvocResult) (EthTxReceipt, error) {
 	receipt := EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		TransactionIndex: tx.TransactionIndex,

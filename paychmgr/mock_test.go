@@ -133,7 +133,7 @@ func newMockPaychAPI() *mockPaychAPI {
 	}
 }
 
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	pchapi.lk.Lock()
 
 	response := make(chan types.MessageReceipt, 1)
@@ -145,7 +145,7 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 		}()
 
 		delete(pchapi.waitingResponses, mcid)
-		return &api.MsgLookup{Receipt: response.receipt}, nil
+		return &types.MsgLookup{Receipt: response.receipt}, nil
 	}
 
 	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
@@ -153,7 +153,7 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 
 	select {
 	case receipt := <-response:
-		return &api.MsgLookup{Receipt: receipt}, nil
+		return &types.MsgLookup{Receipt: receipt}, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

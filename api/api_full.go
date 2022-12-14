@@ -496,7 +496,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error) //perm:read
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) //perm:read
 	// StateWaitMsg looks back up to limit epochs in the chain for a message.
 	// If not found, it blocks until the message arrives on chain, and gets to the
 	// indicated confidence depth.
@@ -515,7 +515,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error) //perm:read
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) //perm:read
 	// StateListMiners returns the addresses of every miner that has claimed power in the Power Actor
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error) //perm:read
 	// StateListActors returns the addresses of every actor in the state
@@ -871,14 +871,6 @@ type DealInfo struct {
 
 	TransferChannelID *datatransfer.ChannelID
 	DataTransfer      *DataTransferChannel
-}
-
-type MsgLookup struct {
-	Message   cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
-	Receipt   types.MessageReceipt
-	ReturnDec interface{}
-	TipSet    types.TipSetKey
-	Height    abi.ChainEpoch
 }
 
 // BlsMessages[x].cid = Cids[x]

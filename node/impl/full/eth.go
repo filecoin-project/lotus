@@ -754,7 +754,7 @@ func (a *EthModule) lookupEthAddress(ctx context.Context, addr address.Address) 
 	return api.EthAddressFromFilecoinAddress(idAddr)
 }
 
-func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (api.EthTx, error) {
+func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *types.MsgLookup) (api.EthTx, error) {
 	if msgLookup == nil {
 		return api.EthTx{}, fmt.Errorf("msg does not exist")
 	}
