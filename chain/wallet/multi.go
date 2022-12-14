@@ -114,7 +114,7 @@ func (m MultiWallet) WalletList(ctx context.Context) ([]address.Address, error) 
 	return out, nil
 }
 
-func (m MultiWallet) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta api.MsgMeta) (*crypto.Signature, error) {
+func (m MultiWallet) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgSigningMeta) (*crypto.Signature, error) {
 	w, err := m.find(ctx, signer, m.Remote, m.Ledger, m.Local)
 	if err != nil {
 		return nil, err

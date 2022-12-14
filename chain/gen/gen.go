@@ -387,8 +387,8 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 	}
 
 	sf := func(ctx context.Context, a address.Address, i []byte) (*crypto.Signature, error) {
-		return cg.w.WalletSign(ctx, a, i, api.MsgMeta{
-			Type: api.MTUnknown,
+		return cg.w.WalletSign(ctx, a, i, types.MsgSigningMeta{
+			Type: types.MTUnknown,
 		})
 	}
 
@@ -558,8 +558,8 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := cg.w.WalletSign(context.TODO(), cg.banker, msg.Cid().Bytes(), api.MsgMeta{
-			Type: api.MTUnknown, // testing
+		sig, err := cg.w.WalletSign(context.TODO(), cg.banker, msg.Cid().Bytes(), types.MsgSigningMeta{
+			Type: types.MTUnknown, // testing
 		})
 		if err != nil {
 			return nil, err
@@ -610,8 +610,8 @@ func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoc
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*crypto.Signature, error) {
-	return mca.w.WalletSign(ctx, a, v, api.MsgMeta{
-		Type: api.MTUnknown,
+	return mca.w.WalletSign(ctx, a, v, types.MsgSigningMeta{
+		Type: types.MTUnknown,
 	})
 }
 

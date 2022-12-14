@@ -71,8 +71,8 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, sp
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := ms.wallet.WalletSign(ctx, msg.From, mb.Cid().Bytes(), api.MsgMeta{
-		Type:  api.MTChainMsg,
+	sig, err := ms.wallet.WalletSign(ctx, msg.From, mb.Cid().Bytes(), types.MsgSigningMeta{
+		Type:  types.MTChainMsg,
 		Extra: mb.RawData(),
 	})
 	if err != nil {

@@ -6,7 +6,9 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/net/context"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 )
@@ -105,4 +107,33 @@ func (sm *SignedMessage) Size() int {
 
 func (sm *SignedMessage) VMMessage() *Message {
 	return &sm.Message
+}
+
+type Signer interface {
+	WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta MsgSigningMeta) (*crypto.Signature, error)
+}
+
+type MsgType string
+
+const (
+	MTUnknown = "unknown"
+
+	// Signing message CID. MsgSigningMeta.Extra contains raw cbor message bytes
+	MTChainMsg = "message"
+
+	// Signing a blockheader. signing raw cbor block bytes (MsgSigningMeta.Extra is empty)
+	MTBlock = "block"
+
+	// Signing a deal proposal. signing raw cbor proposal bytes (MsgSigningMeta.Extra is empty)
+	MTDealProposal = "dealproposal"
+
+	// TODO: Deals, Vouchers, VRF
+)
+
+type MsgSigningMeta struct {
+	Type MsgType
+
+	// Additional data related to what is signed. Should be verifiable with the
+	// signed bytes (e.g. CID(Extra).Bytes() == toSign)
+	Extra []byte
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -28,7 +27,7 @@ func Address(i uint64) address.Address {
 func MkMessage(from, to address.Address, nonce uint64, w *wallet.LocalWallet) *types.SignedMessage {
 	msg := UnsignedMessage(from, to, nonce)
 
-	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), types.MsgSigningMeta{})
 	if err != nil {
 		panic(err)
 	}

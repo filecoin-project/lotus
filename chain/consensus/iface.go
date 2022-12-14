@@ -16,5 +16,5 @@ type Consensus interface {
 	ValidateBlockPubsub(ctx context.Context, self bool, msg *pubsub.Message) (pubsub.ValidationResult, string)
 	IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool
 
-	CreateBlock(ctx context.Context, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error)
+	CreateBlock(ctx context.Context, s types.Signer, bt *api.BlockTemplate) (*types.FullBlock, error)
 }

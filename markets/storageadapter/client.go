@@ -379,8 +379,8 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	sig, err := c.Wallet.WalletSign(ctx, signer, buf, api.MsgMeta{
-		Type: api.MTDealProposal,
+	sig, err := c.Wallet.WalletSign(ctx, signer, buf, types.MsgSigningMeta{
+		Type: types.MTDealProposal,
 	})
 	if err != nil {
 		return nil, err
@@ -434,8 +434,8 @@ func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Addres
 		return nil, err
 	}
 
-	localSignature, err := c.Wallet.WalletSign(ctx, signer, b, api.MsgMeta{
-		Type: api.MTUnknown, // TODO: pass type here
+	localSignature, err := c.Wallet.WalletSign(ctx, signer, b, types.MsgSigningMeta{
+		Type: types.MTUnknown, // TODO: pass type here
 	})
 	if err != nil {
 		return nil, err

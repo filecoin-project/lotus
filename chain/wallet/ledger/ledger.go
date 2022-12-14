@@ -38,7 +38,7 @@ type LedgerKeyInfo struct {
 
 var _ api.Wallet = (*LedgerWallet)(nil)
 
-func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta api.MsgMeta) (*crypto.Signature, error) {
+func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta types.MsgSigningMeta) (*crypto.Signature, error) {
 	ki, err := lw.getKeyInfo(ctx, signer)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (lw LedgerWallet) WalletSign(ctx context.Context, signer address.Address, t
 		return nil, err
 	}
 	defer fl.Close() // nolint:errcheck
-	if meta.Type != api.MTChainMsg {
+	if meta.Type != types.MTChainMsg {
 		return nil, fmt.Errorf("ledger can only sign chain messages")
 	}
 

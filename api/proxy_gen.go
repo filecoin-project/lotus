@@ -1008,7 +1008,7 @@ type WalletStruct struct {
 
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
-		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) `perm:"admin"`
+		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 types.MsgSigningMeta) (*crypto.Signature, error) `perm:"admin"`
 	}
 }
 
@@ -5936,14 +5936,14 @@ func (s *WalletStub) WalletNew(p0 context.Context, p1 types.KeyType) (address.Ad
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
+func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 types.MsgSigningMeta) (*crypto.Signature, error) {
 	if s.Internal.WalletSign == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.WalletSign(p0, p1, p2, p3)
 }
 
-func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
+func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 types.MsgSigningMeta) (*crypto.Signature, error) {
 	return nil, ErrNotSupported
 }
 

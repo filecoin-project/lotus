@@ -25,7 +25,6 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -198,7 +197,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		Params:   enc,
 		GasLimit: types.TestGasLimit,
 	}
-	sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes(), api.MsgMeta{})
+	sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes(), types.MsgSigningMeta{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +225,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		}
 		nonce++
 
-		sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes(), api.MsgMeta{})
+		sig, err := cg.Wallet().WalletSign(ctx, cg.Banker(), m.Cid().Bytes(), types.MsgSigningMeta{})
 		if err != nil {
 			return nil, err
 		}

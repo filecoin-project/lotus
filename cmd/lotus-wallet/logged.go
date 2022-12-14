@@ -37,9 +37,9 @@ func (c *LoggedWallet) WalletList(ctx context.Context) ([]address.Address, error
 	return c.under.WalletList(ctx)
 }
 
-func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
+func (c *LoggedWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgSigningMeta) (*crypto.Signature, error) {
 	switch meta.Type {
-	case api.MTChainMsg:
+	case types.MTChainMsg:
 		var cmsg types.Message
 		if err := cmsg.UnmarshalCBOR(bytes.NewReader(meta.Extra)); err != nil {
 			return nil, xerrors.Errorf("unmarshalling message: %w", err)

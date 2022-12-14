@@ -701,7 +701,7 @@ func TestDuplicateNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -800,7 +800,7 @@ func TestBadNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -858,7 +858,7 @@ func TestMismatchedNoncesRobustID(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -916,7 +916,7 @@ func TestMatchedNoncesRobustID(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{

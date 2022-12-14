@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
+func (filec *FilecoinEC) CreateBlock(ctx context.Context, w types.Signer, bt *api.BlockTemplate) (*types.FullBlock, error) {
 	pts, err := filec.sm.ChainStore().LoadTipSet(ctx, bt.Parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
@@ -121,8 +121,8 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 		return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
 	}
 
-	sig, err := w.WalletSign(ctx, worker, nosigbytes, api.MsgMeta{
-		Type: api.MTBlock,
+	sig, err := w.WalletSign(ctx, worker, nosigbytes, types.MsgSigningMeta{
+		Type: types.MTBlock,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign new block: %w", err)

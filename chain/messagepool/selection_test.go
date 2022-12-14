@@ -51,7 +51,7 @@ func makeTestMessage(w *wallet.LocalWallet, from, to address.Address, nonce uint
 		GasFeeCap:  types.NewInt(100 + gasPrice),
 		GasPremium: types.NewInt(gasPrice),
 	}
-	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), types.MsgSigningMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -1587,7 +1587,7 @@ readLoop:
 		m.Message.From = localActor
 		m.Message.Nonce -= baseNonce
 
-		sig, err := w.WalletSign(context.TODO(), localActor, m.Message.Cid().Bytes(), api.MsgMeta{})
+		sig, err := w.WalletSign(context.TODO(), localActor, m.Message.Cid().Bytes(), types.MsgSigningMeta{})
 		if err != nil {
 			t.Fatal(err)
 		}
