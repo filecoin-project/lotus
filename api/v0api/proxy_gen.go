@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -62,7 +63,7 @@ type FullNodeStruct struct {
 
 		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) `perm:"read"`
 
-		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) `perm:"read"`
+		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) `perm:"read"`
 
 		ChainGetRandomnessFromBeacon func(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 
@@ -76,7 +77,7 @@ type FullNodeStruct struct {
 
 		ChainHead func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
-		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) `perm:"read"`
+		ChainNotify func(p0 context.Context) (<-chan []*store.HeadChange, error) `perm:"read"`
 
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
@@ -438,7 +439,7 @@ type GatewayStruct struct {
 
 		ChainHead func(p0 context.Context) (*types.TipSet, error) ``
 
-		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) ``
+		ChainNotify func(p0 context.Context) (<-chan []*store.HeadChange, error) ``
 
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
@@ -616,15 +617,15 @@ func (s *FullNodeStub) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([
 	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) {
+func (s *FullNodeStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) {
 	if s.Internal.ChainGetPath == nil {
-		return *new([]*api.HeadChange), ErrNotSupported
+		return *new([]*store.HeadChange), ErrNotSupported
 	}
 	return s.Internal.ChainGetPath(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) {
-	return *new([]*api.HeadChange), ErrNotSupported
+func (s *FullNodeStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) {
+	return *new([]*store.HeadChange), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetRandomnessFromBeacon(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
@@ -693,14 +694,14 @@ func (s *FullNodeStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
 	if s.Internal.ChainNotify == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ChainNotify(p0)
 }
 
-func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2629,14 +2630,14 @@ func (s *GatewayStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
 	if s.Internal.ChainNotify == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ChainNotify(p0)
 }
 
-func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
 	return nil, ErrNotSupported
 }
 

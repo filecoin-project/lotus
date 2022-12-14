@@ -13,6 +13,7 @@ import (
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -41,7 +42,7 @@ type Gateway interface {
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)

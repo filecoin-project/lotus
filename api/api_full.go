@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
@@ -71,7 +72,7 @@ type FullNode interface {
 
 	// ChainNotify returns channel with chain head updates.
 	// First message is guaranteed to be of len == 1, and type == 'current'.
-	ChainNotify(context.Context) (<-chan []*HeadChange, error) //perm:read
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error) //perm:read
 
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error) //perm:read
@@ -162,7 +163,7 @@ type FullNode interface {
 	//     tRR
 	// ```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error) //perm:read
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) //perm:read
 
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	// The exported chain data includes the header chain from the given tipset
@@ -1205,10 +1206,6 @@ type DataCIDSize struct {
 type CommPRet struct {
 	Root cid.Cid
 	Size abi.UnpaddedPieceSize
-}
-type HeadChange struct {
-	Type string
-	Val  *types.TipSet
 }
 
 type MsigProposeResponse int

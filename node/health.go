@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/store"
 )
 
 var healthlog = logging.Logger("healthcheck")
@@ -47,7 +48,7 @@ func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 		)
 		var (
 			countdown int32
-			headCh    <-chan []*lapi.HeadChange
+			headCh    <-chan []*store.HeadChange
 			backoff   time.Duration = minbackoff
 			err       error
 		)

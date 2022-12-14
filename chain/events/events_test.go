@@ -45,7 +45,7 @@ type fakeCS struct {
 
 	mu         sync.Mutex
 	waitSub    chan struct{}
-	subCh      chan<- []*api.HeadChange
+	subCh      chan<- []*store.HeadChange
 	callNumber map[string]int
 }
 
@@ -71,7 +71,7 @@ func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	panic("implement me")
 }
 
-func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
+func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*store.HeadChange, error) {
 	fcs.mu.Lock()
 	fcs.callNumber["ChainGetPath"] = fcs.callNumber["ChainGetPath"] + 1
 	fcs.mu.Unlock()
@@ -94,12 +94,12 @@ func (fcs *fakeCS) ChainGetPath(ctx context.Context, from, to types.TipSetKey) (
 		return nil, err
 	}
 
-	path := make([]*api.HeadChange, len(revert)+len(apply))
+	path := make([]*store.HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &api.HeadChange{Type: store.HCRevert, Val: r}
+		path[i] = &store.HeadChange{Type: store.HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &api.HeadChange{Type: store.HCApply, Val: apply[i]}
+		path[j+len(revert)] = &store.HeadChange{Type: store.HCApply, Val: apply[i]}
 	}
 	return path, nil
 }
@@ -184,12 +184,12 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 	return ts
 }
 
-func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
+func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
 	fcs.mu.Lock()
 	defer fcs.mu.Unlock()
 	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
 
-	out := make(chan []*api.HeadChange, 1)
+	out := make(chan []*store.HeadChange, 1)
 	if fcs.subCh != nil {
 		close(out)
 		fcs.t.Error("already subscribed to notifications")
@@ -201,7 +201,7 @@ func (fcs *fakeCS) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, e
 		return nil, err
 	}
 
-	out <- []*api.HeadChange{{Type: store.HCCurrent, Val: best}}
+	out <- []*store.HeadChange{{Type: store.HCCurrent, Val: best}}
 	fcs.subCh = out
 	close(fcs.waitSub)
 
@@ -266,16 +266,16 @@ func (fcs *fakeCS) dropSub() {
 
 func (fcs *fakeCS) sub(rev, app []*types.TipSet) {
 	<-fcs.waitSub
-	notif := make([]*api.HeadChange, len(rev)+len(app))
+	notif := make([]*store.HeadChange, len(rev)+len(app))
 
 	for i, r := range rev {
-		notif[i] = &api.HeadChange{
+		notif[i] = &store.HeadChange{
 			Type: store.HCRevert,
 			Val:  r,
 		}
 	}
 	for i, r := range app {
-		notif[i+len(rev)] = &api.HeadChange{
+		notif[i+len(rev)] = &store.HeadChange{
 			Type: store.HCApply,
 			Val:  r,
 		}

@@ -85,7 +85,7 @@ func SyncWait(ctx context.Context, napi SyncWaitApi) error {
 }
 
 type BufferedTipsetChannelApi interface {
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	Version(context.Context) (api.APIVersion, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 }

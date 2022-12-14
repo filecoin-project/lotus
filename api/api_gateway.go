@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -37,11 +38,11 @@ type Gateway interface {
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
-	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*HeadChange, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*store.HeadChange, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
-	ChainNotify(context.Context) (<-chan []*HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)

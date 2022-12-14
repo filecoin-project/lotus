@@ -18,6 +18,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -244,7 +245,7 @@ func (ts *apiSuite) testSlowNotify(t *testing.T) {
 	full, miner, _ := kit.EnsembleMinimal(t, ts.opts...)
 
 	// Subscribe a bunch of times to make sure we fill up any RPC buffers.
-	var newHeadsChans []<-chan []*lapi.HeadChange
+	var newHeadsChans []<-chan []*store.HeadChange
 	for i := 0; i < 100; i++ {
 		newHeads, err := full.ChainNotify(ctx)
 		require.NoError(t, err)

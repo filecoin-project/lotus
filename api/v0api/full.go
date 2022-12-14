@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -60,7 +61,7 @@ type FullNode interface {
 
 	// ChainNotify returns channel with chain head updates.
 	// First message is guaranteed to be of len == 1, and type == 'current'.
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error) //perm:read
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error) //perm:read
 
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error) //perm:read
@@ -152,7 +153,7 @@ type FullNode interface {
 	//     tRR
 	// ```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) //perm:read
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) //perm:read
 
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	// The exported chain data includes the header chain from the given tipset

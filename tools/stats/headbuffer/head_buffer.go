@@ -3,7 +3,7 @@ package headbuffer
 import (
 	"container/list"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/store"
 )
 
 type HeadChangeStackBuffer struct {
@@ -27,12 +27,12 @@ func NewHeadChangeStackBuffer(size int) *HeadChangeStackBuffer {
 // Push adds a HeadChange to stack buffer. If the length of
 // the stack buffer grows larger than the initizlized size, the
 // oldest HeadChange is returned.
-func (h *HeadChangeStackBuffer) Push(hc *api.HeadChange) (rethc *api.HeadChange) {
+func (h *HeadChangeStackBuffer) Push(hc *store.HeadChange) (rethc *store.HeadChange) {
 	if h.buffer.Len() >= h.size {
 		var ok bool
 
 		el := h.buffer.Front()
-		rethc, ok = el.Value.(*api.HeadChange)
+		rethc, ok = el.Value.(*store.HeadChange)
 		if !ok {
 			// This shouldn't be possible, this method is typed and is the only place data
 			// pushed to the buffer.

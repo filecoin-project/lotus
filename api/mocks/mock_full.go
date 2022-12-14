@@ -36,6 +36,7 @@ import (
 	api "github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	store "github.com/filecoin-project/lotus/chain/store"
 	types "github.com/filecoin-project/lotus/chain/types"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -274,10 +275,10 @@ func (mr *MockFullNodeMockRecorder) ChainGetParentReceipts(arg0, arg1 interface{
 }
 
 // ChainGetPath mocks base method.
-func (m *MockFullNode) ChainGetPath(arg0 context.Context, arg1, arg2 types.TipSetKey) ([]*api.HeadChange, error) {
+func (m *MockFullNode) ChainGetPath(arg0 context.Context, arg1, arg2 types.TipSetKey) ([]*store.HeadChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainGetPath", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*api.HeadChange)
+	ret0, _ := ret[0].([]*store.HeadChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -364,10 +365,10 @@ func (mr *MockFullNodeMockRecorder) ChainHead(arg0 interface{}) *gomock.Call {
 }
 
 // ChainNotify mocks base method.
-func (m *MockFullNode) ChainNotify(arg0 context.Context) (<-chan []*api.HeadChange, error) {
+func (m *MockFullNode) ChainNotify(arg0 context.Context) (<-chan []*store.HeadChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainNotify", arg0)
-	ret0, _ := ret[0].(<-chan []*api.HeadChange)
+	ret0, _ := ret[0].(<-chan []*store.HeadChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/pubsub"
 
-	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -167,16 +166,16 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		cs.pubLk.Lock()
 		defer cs.pubLk.Unlock()
 
-		notif := make([]*api.HeadChange, len(rev)+len(app))
+		notif := make([]*HeadChange, len(rev)+len(app))
 
 		for i, r := range rev {
-			notif[i] = &api.HeadChange{
+			notif[i] = &HeadChange{
 				Type: HCRevert,
 				Val:  r,
 			}
 		}
 		for i, r := range app {
-			notif[i+len(rev)] = &api.HeadChange{
+			notif[i+len(rev)] = &HeadChange{
 				Type: HCApply,
 				Val:  r,
 			}
@@ -283,14 +282,14 @@ const (
 	HCCurrent = "current"
 )
 
-func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange {
+func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 	cs.pubLk.Lock()
 	subch := cs.bestTips.Sub("headchange")
 	head := cs.GetHeaviestTipSet()
 	cs.pubLk.Unlock()
 
-	out := make(chan []*api.HeadChange, 16)
-	out <- []*api.HeadChange{{
+	out := make(chan []*HeadChange, 16)
+	out <- []*HeadChange{{
 		Type: HCCurrent,
 		Val:  head,
 	}}
@@ -316,7 +315,7 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 					return
 				}
 				select {
-				case out <- val.([]*api.HeadChange):
+				case out <- val.([]*HeadChange):
 				default:
 					log.Errorf("closing head change subscription due to slow reader")
 					return
@@ -1073,7 +1072,7 @@ func (cs *ChainStore) GetGenesis(ctx context.Context) (*types.BlockHeader, error
 // GetPath returns the sequence of atomic head change operations that
 // need to be applied in order to switch the head of the chain from the `from`
 // tipset to the `to` tipset.
-func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
+func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error) {
 	fts, err := cs.LoadTipSet(ctx, from)
 	if err != nil {
 		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
@@ -1087,12 +1086,12 @@ func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to type
 		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
 	}
 
-	path := make([]*api.HeadChange, len(revert)+len(apply))
+	path := make([]*HeadChange, len(revert)+len(apply))
 	for i, r := range revert {
-		path[i] = &api.HeadChange{Type: HCRevert, Val: r}
+		path[i] = &HeadChange{Type: HCRevert, Val: r}
 	}
 	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
-		path[j+len(revert)] = &api.HeadChange{Type: HCApply, Val: apply[i]}
+		path[j+len(revert)] = &HeadChange{Type: HCApply, Val: apply[i]}
 	}
 	return path, nil
 }
@@ -1252,4 +1251,9 @@ func (cs *ChainStore) GetLatestBeaconEntry(ctx context.Context, ts *types.TipSet
 	}
 
 	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
+}
+
+type HeadChange struct {
+	Type string
+	Val  *types.TipSet
 }

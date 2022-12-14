@@ -117,7 +117,7 @@ Supported roles:
 
 		const confidence = 16
 
-		var notifs <-chan []*lapi.HeadChange
+		var notifs <-chan []*store.HeadChange
 		for {
 			if notifs == nil {
 				notifs, err = api.ChainNotify(ctx)
