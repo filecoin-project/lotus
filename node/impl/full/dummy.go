@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/eth"
 )
 
@@ -43,7 +44,7 @@ func (e *EthModuleDummy) EthGetTransactionCount(ctx context.Context, sender eth.
 	return 0, ErrImplementMe
 }
 
-func (e *EthModuleDummy) EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*eth.EthTxReceipt, error) {
+func (e *EthModuleDummy) EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*api.EthTxReceipt, error) {
 	return nil, ErrImplementMe
 }
 

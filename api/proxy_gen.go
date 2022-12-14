@@ -255,7 +255,7 @@ type FullNodeStruct struct {
 
 		EthGetTransactionCount func(p0 context.Context, p1 eth.EthAddress, p2 string) (eth.EthUint64, error) `perm:"read"`
 
-		EthGetTransactionReceipt func(p0 context.Context, p1 eth.EthHash) (*eth.EthTxReceipt, error) `perm:"read"`
+		EthGetTransactionReceipt func(p0 context.Context, p1 eth.EthHash) (*EthTxReceipt, error) `perm:"read"`
 
 		EthMaxPriorityFeePerGas func(p0 context.Context) (eth.EthBigInt, error) `perm:"read"`
 
@@ -2042,14 +2042,14 @@ func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 eth.EthAddr
 	return *new(eth.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 eth.EthHash) (*eth.EthTxReceipt, error) {
+func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 eth.EthHash) (*EthTxReceipt, error) {
 	if s.Internal.EthGetTransactionReceipt == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionReceipt(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 eth.EthHash) (*eth.EthTxReceipt, error) {
+func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 eth.EthHash) (*EthTxReceipt, error) {
 	return nil, ErrNotSupported
 }
 

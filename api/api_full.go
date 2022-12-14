@@ -776,7 +776,7 @@ type FullNode interface {
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (eth.EthBlock, error)                              //perm:read
 	EthGetTransactionByHash(ctx context.Context, txHash *eth.EthHash) (*eth.EthTx, error)                                       //perm:read
 	EthGetTransactionCount(ctx context.Context, sender eth.EthAddress, blkOpt string) (eth.EthUint64, error)                    //perm:read
-	EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*eth.EthTxReceipt, error)                                //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*EthTxReceipt, error)                                    //perm:read
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash eth.EthHash, txIndex eth.EthUint64) (eth.EthTx, error)    //perm:read
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum eth.EthUint64, txIndex eth.EthUint64) (eth.EthTx, error) //perm:read
 
@@ -1288,4 +1288,23 @@ type MsigTransaction struct {
 type PruneOpts struct {
 	MovingGC    bool
 	RetainState int64
+}
+
+type EthTxReceipt struct {
+	TransactionHash  eth.EthHash     `json:"transactionHash"`
+	TransactionIndex eth.EthUint64   `json:"transactionIndex"`
+	BlockHash        eth.EthHash     `json:"blockHash"`
+	BlockNumber      eth.EthUint64   `json:"blockNumber"`
+	From             eth.EthAddress  `json:"from"`
+	To               *eth.EthAddress `json:"to"`
+	// Logs
+	// LogsBloom
+	StateRoot         eth.EthHash     `json:"root"`
+	Status            eth.EthUint64   `json:"status"`
+	ContractAddress   *eth.EthAddress `json:"contractAddress"`
+	CumulativeGasUsed eth.EthUint64   `json:"cumulativeGasUsed"`
+	GasUsed           eth.EthUint64   `json:"gasUsed"`
+	EffectiveGasPrice eth.EthBigInt   `json:"effectiveGasPrice"`
+	LogsBloom         eth.EthBytes    `json:"logsBloom"`
+	Logs              []string        `json:"logs"`
 }

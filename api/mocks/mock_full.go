@@ -1193,10 +1193,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionCount(arg0, arg1, arg2 inte
 }
 
 // EthGetTransactionReceipt mocks base method.
-func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 eth.EthHash) (*eth.EthTxReceipt, error) {
+func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 eth.EthHash) (*api.EthTxReceipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionReceipt", arg0, arg1)
-	ret0, _ := ret[0].(*eth.EthTxReceipt)
+	ret0, _ := ret[0].(*api.EthTxReceipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -39,7 +39,7 @@ type EthModuleAPI interface {
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (eth.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash *eth.EthHash) (*eth.EthTx, error)
 	EthGetTransactionCount(ctx context.Context, sender eth.EthAddress, blkOpt string) (eth.EthUint64, error)
-	EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*eth.EthTxReceipt, error)
+	EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*api.EthTxReceipt, error)
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash eth.EthHash, txIndex eth.EthUint64) (eth.EthTx, error)
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum eth.EthUint64, txIndex eth.EthUint64) (eth.EthTx, error)
 	EthGetCode(ctx context.Context, address eth.EthAddress, blkOpt string) (eth.EthBytes, error)
@@ -191,7 +191,7 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender eth.EthAd
 	return eth.EthUint64(nonce), nil
 }
 
-func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*eth.EthTxReceipt, error) {
+func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*api.EthTxReceipt, error) {
 	cid := txHash.ToCid()
 
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
@@ -866,8 +866,8 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 	return tx, nil
 }
 
-func NewEthTxReceipt(tx eth.EthTx, lookup *api.MsgLookup, replay *api.InvocResult) (eth.EthTxReceipt, error) {
-	receipt := eth.EthTxReceipt{
+func NewEthTxReceipt(tx eth.EthTx, lookup *api.MsgLookup, replay *api.InvocResult) (api.EthTxReceipt, error) {
+	receipt := api.EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		TransactionIndex: tx.TransactionIndex,
 		BlockHash:        tx.BlockHash,
@@ -883,7 +883,7 @@ func NewEthTxReceipt(tx eth.EthTx, lookup *api.MsgLookup, replay *api.InvocResul
 		// Create and Create2 return the same things.
 		var ret eam.CreateReturn
 		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
-			return eth.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
+			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := eth.EthAddress(ret.EthAddress)
 		receipt.ContractAddress = &addr
