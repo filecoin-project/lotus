@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 {{if (le .v 7)}}
     {{if (ge .v 3)}}
@@ -614,7 +615,7 @@ func (s *state{{.v}}) GetState() interface{} {
 }
 
 func (s *state{{.v}}) ActorKey() string {
-    return actors.MinerKey
+    return manifest.MinerKey
 }
 
 func (s *state{{.v}}) ActorVersion() actorstypes.Version {

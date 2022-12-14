@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 {{if (le .v 7)}}
 	paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
@@ -122,7 +123,7 @@ func (ls *laneState{{.v}}) Nonce() (uint64, error) {
 }
 
 func (s *state{{.v}}) ActorKey() string {
-    return actors.PaychKey
+    return manifest.PaychKey
 }
 
 func (s *state{{.v}}) ActorVersion() actorstypes.Version {

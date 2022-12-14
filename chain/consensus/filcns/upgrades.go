@@ -1651,10 +1651,10 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		return cid.Undef, xerrors.Errorf("error loading new manifest data: %w", err)
 	}
 
-	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys(oldAv)) {
+	if len(oldManifestData.Entries) != len(manifest.GetBuiltinActorsKeys(oldAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete old manifest with %d code CIDs", len(oldManifestData.Entries))
 	}
-	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys(newAv)) {
+	if len(newManifestData.Entries) != len(manifest.GetBuiltinActorsKeys(newAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete new manifest with %d code CIDs", len(newManifestData.Entries))
 	}
 
