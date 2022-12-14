@@ -158,15 +158,15 @@ func init() {
 	addExample(map[string]types.Actor{
 		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
-	addExample(map[string]api.MarketDeal{
-		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
+	addExample(map[string]types.MarketDeal{
+		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketDeal{}), nil).(types.MarketDeal),
 	})
-	addExample(map[string]*api.MarketDeal{
-		"t026363": ExampleValue("init", reflect.TypeOf(&api.MarketDeal{}), nil).(*api.MarketDeal),
+	addExample(map[string]*types.MarketDeal{
+		"t026363": ExampleValue("init", reflect.TypeOf(&types.MarketDeal{}), nil).(*types.MarketDeal),
 	})
 
-	addExample(map[string]api.MarketBalance{
-		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketBalance{}), nil).(api.MarketBalance),
+	addExample(map[string]types.MarketBalance{
+		"t026363": ExampleValue("init", reflect.TypeOf(types.MarketBalance{}), nil).(types.MarketBalance),
 	})
 	addExample(map[string]*pubsub.TopicScoreSnapshot{
 		"/blocks": {

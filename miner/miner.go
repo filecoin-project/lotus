@@ -428,7 +428,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 
 	// always write out a log
 	var winner *types.ElectionProof
-	var mbi *api.MiningBaseInfo
+	var mbi *types.MiningBaseInfo
 	var rbase types.BeaconEntry
 	defer func() {
 
@@ -438,7 +438,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		// in the current deadline. If this case - put together a dummy one for reporting
 		// https://github.com/filecoin-project/lotus/blob/v1.9.0/chain/stmgr/utils.go#L500-L502
 		if mbi == nil {
-			mbi = &api.MiningBaseInfo{
+			mbi = &types.MiningBaseInfo{
 				NetworkPower:      big.NewInt(-1), // we do not know how big the network is at this point
 				EligibleForMining: false,
 				MinerPower:        big.NewInt(0), // but we do know we do not have anything eligible
@@ -583,7 +583,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	return minedBlock, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *types.MiningBaseInfo) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := m.address.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)

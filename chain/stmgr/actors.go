@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -239,7 +238,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 	return false, nil
 }
 
-func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
+func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts *types.TipSet) (*types.MarketDeal, error) {
 	act, err := sm.LoadActor(ctx, market.Address, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load market actor: %w", err)
@@ -281,7 +280,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealID abi.DealID, ts
 		st = market.EmptyDealState()
 	}
 
-	return &api.MarketDeal{
+	return &types.MarketDeal{
 		Proposal: *proposal,
 		State:    *st,
 	}, nil
@@ -301,7 +300,7 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 	return powState.ListAllMiners()
 }
 
-func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv storiface.Verifier) (*api.MiningBaseInfo, error) {
+func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule, tsk types.TipSetKey, round abi.ChainEpoch, maddr address.Address, pv storiface.Verifier) (*types.MiningBaseInfo, error) {
 	ts, err := sm.ChainStore().LoadTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset for mining base: %w", err)
@@ -391,7 +390,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("determining miner eligibility: %w", err)
 	}
 
-	return &api.MiningBaseInfo{
+	return &types.MiningBaseInfo{
 		MinerPower:        mpow.QualityAdjPower,
 		NetworkPower:      tpow.QualityAdjPower,
 		Sectors:           sectors,
@@ -535,35 +534,35 @@ func (sm *StateManager) GetVerifregState(ctx context.Context, ts *types.TipSet) 
 	return actState, nil
 }
 
-func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MarketBalance, error) {
+func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (types.MarketBalance, error) {
 	mstate, err := sm.GetMarketState(ctx, ts)
 	if err != nil {
-		return api.MarketBalance{}, err
+		return types.MarketBalance{}, err
 	}
 
 	addr, err = sm.LookupID(ctx, addr, ts)
 	if err != nil {
-		return api.MarketBalance{}, err
+		return types.MarketBalance{}, err
 	}
 
-	var out api.MarketBalance
+	var out types.MarketBalance
 
 	et, err := mstate.EscrowTable()
 	if err != nil {
-		return api.MarketBalance{}, err
+		return types.MarketBalance{}, err
 	}
 	out.Escrow, err = et.Get(addr)
 	if err != nil {
-		return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
+		return types.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
 	}
 
 	lt, err := mstate.LockedTable()
 	if err != nil {
-		return api.MarketBalance{}, err
+		return types.MarketBalance{}, err
 	}
 	out.Locked, err = lt.Get(addr)
 	if err != nil {
-		return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
+		return types.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
 	}
 
 	return out, nil

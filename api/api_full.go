@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -289,8 +288,8 @@ type FullNode interface {
 
 	// MethodGroup: Miner
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) //perm:read
-	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*types.MiningBaseInfo, error) //perm:read
+	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                         //perm:write
 
 	// // UX ?
 
@@ -523,13 +522,13 @@ type FullNode interface {
 	// StateListActors returns the addresses of every actor in the state
 	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error) //perm:read
 	// StateMarketBalance looks up the Escrow and Locked balances of the given address in the Storage Market
-	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (MarketBalance, error) //perm:read
+	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (types.MarketBalance, error) //perm:read
 	// StateMarketParticipants returns the Escrow and Locked balances of every participant in the Storage Market
-	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]MarketBalance, error) //perm:read
+	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]types.MarketBalance, error) //perm:read
 	// StateMarketDeals returns information about every deal in the Storage Market
-	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*MarketDeal, error) //perm:read
+	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*types.MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
+	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*types.MarketDeal, error) //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 	// pending allocation is not found.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
@@ -608,7 +607,7 @@ type FullNode interface {
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error) //perm:read
 	// StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 	// This is the value reported by the runtime interface to actors code.
-	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error) //perm:read
+	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (types.CirculatingSupply, error) //perm:read
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
 	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
@@ -1017,16 +1016,6 @@ func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	}
 }
 
-type MarketBalance struct {
-	Escrow big.Int
-	Locked big.Int
-}
-
-type MarketDeal struct {
-	Proposal market.DealProposal
-	State    market.DealState
-}
-
 type RetrievalOrder struct {
 	Root         cid.Cid
 	Piece        *cid.Cid
@@ -1158,26 +1147,6 @@ type ComputeStateOutput struct {
 type DealCollateralBounds struct {
 	Min abi.TokenAmount
 	Max abi.TokenAmount
-}
-
-type CirculatingSupply struct {
-	FilVested           abi.TokenAmount
-	FilMined            abi.TokenAmount
-	FilBurnt            abi.TokenAmount
-	FilLocked           abi.TokenAmount
-	FilCirculating      abi.TokenAmount
-	FilReserveDisbursed abi.TokenAmount
-}
-
-type MiningBaseInfo struct {
-	MinerPower        types.BigInt
-	NetworkPower      types.BigInt
-	Sectors           []builtin.ExtendedSectorInfo
-	WorkerKey         address.Address
-	SectorSize        abi.SectorSize
-	PrevBeaconEntry   types.BeaconEntry
-	BeaconEntries     []types.BeaconEntry
-	EligibleForMining bool
 }
 
 type BlockTemplate struct {

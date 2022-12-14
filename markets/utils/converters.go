@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 
@@ -8,8 +9,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/lotus/api"
 )
 
 func NewStorageProviderInfo(address address.Address, miner address.Address, sectorSize abi.SectorSize, peer peer.ID, addrs []abi.Multiaddrs) storagemarket.StorageProviderInfo {
@@ -31,7 +30,7 @@ func NewStorageProviderInfo(address address.Address, miner address.Address, sect
 	}
 }
 
-func ToSharedBalance(bal api.MarketBalance) storagemarket.Balance {
+func ToSharedBalance(bal types.MarketBalance) storagemarket.Balance {
 	return storagemarket.Balance{
 		Locked:    bal.Locked,
 		Available: big.Sub(bal.Escrow, bal.Locked),

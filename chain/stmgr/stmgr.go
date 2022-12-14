@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -32,7 +31,7 @@ import (
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
-const LookbackNoLimit = api.LookbackNoLimit
+const LookbackNoLimit = abi.ChainEpoch(-1)
 const ReceiptAmtBitwidth = 3
 
 var log = logging.Logger("statemgr")

@@ -50,7 +50,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 	}
 
 	//stm: @CHAIN_STATE_MARKET_STORAGE_DEAL_001, @CHAIN_STATE_NETWORK_VERSION_001
-	api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(&api2.MarketDeal{Proposal: dealProposal}, nil)
+	api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(&types.MarketDeal{Proposal: dealProposal}, nil)
 
 	pc := idCid("publishCID")
 
@@ -65,7 +65,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 			},
 		}, nil)
 		api.EXPECT().StateNetworkVersion(ctx, nil).Return(network.Version0, nil)
-		api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(&api2.MarketDeal{
+		api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(&types.MarketDeal{
 			Proposal: dealProposal,
 		}, nil)
 

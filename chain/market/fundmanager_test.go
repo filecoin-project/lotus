@@ -771,11 +771,11 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 	}
 }
 
-func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, a address.Address, key types.TipSetKey) (api.MarketBalance, error) {
+func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, a address.Address, key types.TipSetKey) (types.MarketBalance, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
-	return api.MarketBalance{
+	return types.MarketBalance{
 		Locked: abi.NewTokenAmount(0),
 		Escrow: mapi.getEscrow(a),
 	}, nil

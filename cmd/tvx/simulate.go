@@ -102,7 +102,7 @@ func runSimulateCmd(_ *cli.Context) error {
 		preroot    = ts.ParentState()
 		epoch      = ts.Height()
 		baseFee    = ts.Blocks()[0].ParentBaseFee
-		circSupply api.CirculatingSupply
+		circSupply types.CirculatingSupply
 	)
 
 	// Get circulating supply.

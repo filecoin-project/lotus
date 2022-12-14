@@ -103,7 +103,7 @@ func TestWalletList(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		balance := api.MarketBalance{
+		balance := types.MarketBalance{
 			Escrow: big.NewInt(1234),
 			Locked: big.NewInt(123),
 		}
@@ -281,7 +281,7 @@ func TestWalletMarketWithdraw(t *testing.T) {
 	addr, err := address.NewIDAddress(1234)
 	assert.NoError(t, err)
 
-	balance := api.MarketBalance{
+	balance := types.MarketBalance{
 		Escrow: big.NewInt(100),
 		Locked: big.NewInt(10),
 	}

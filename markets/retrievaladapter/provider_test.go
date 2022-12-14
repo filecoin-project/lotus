@@ -14,7 +14,6 @@ import (
 	testnet "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/mocks"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -49,12 +48,12 @@ func TestGetPricingInput(t *testing.T) {
 
 		"error when no piece matches": {
 			fFnc: func(n *mocks.MockFullNode) {
-				out1 := &api.MarketDeal{
+				out1 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID: testnet.GenerateCids(1)[0],
 					},
 				}
-				out2 := &api.MarketDeal{
+				out2 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID: testnet.GenerateCids(1)[0],
 					},
@@ -72,13 +71,13 @@ func TestGetPricingInput(t *testing.T) {
 
 		"error when fails to fetch deal state": {
 			fFnc: func(n *mocks.MockFullNode) {
-				out1 := &api.MarketDeal{
+				out1 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID:  pcid,
 						PieceSize: paddedSize,
 					},
 				}
-				out2 := &api.MarketDeal{
+				out2 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID:     testnet.GenerateCids(1)[0],
 						VerifiedDeal: true,
@@ -97,13 +96,13 @@ func TestGetPricingInput(t *testing.T) {
 
 		"verified is true even if one deal is verified and we get the correct piecesize": {
 			fFnc: func(n *mocks.MockFullNode) {
-				out1 := &api.MarketDeal{
+				out1 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID:  pcid,
 						PieceSize: paddedSize,
 					},
 				}
-				out2 := &api.MarketDeal{
+				out2 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID:     testnet.GenerateCids(1)[0],
 						VerifiedDeal: true,
@@ -123,12 +122,12 @@ func TestGetPricingInput(t *testing.T) {
 
 		"success even if one deal state fetch errors out but the other deal is verified and has the required piececid": {
 			fFnc: func(n *mocks.MockFullNode) {
-				out1 := &api.MarketDeal{
+				out1 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID: testnet.GenerateCids(1)[0],
 					},
 				}
-				out2 := &api.MarketDeal{
+				out2 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID:     pcid,
 						PieceSize:    paddedSize,
@@ -149,14 +148,14 @@ func TestGetPricingInput(t *testing.T) {
 
 		"verified is false if both deals are unverified and we get the correct piece size": {
 			fFnc: func(n *mocks.MockFullNode) {
-				out1 := &api.MarketDeal{
+				out1 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID:     pcid,
 						PieceSize:    paddedSize,
 						VerifiedDeal: false,
 					},
 				}
-				out2 := &api.MarketDeal{
+				out2 := &types.MarketDeal{
 					Proposal: market.DealProposal{
 						PieceCID:     testnet.GenerateCids(1)[0],
 						VerifiedDeal: false,

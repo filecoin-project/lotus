@@ -134,11 +134,11 @@ func (m *mockGatewayDepsAPI) StateListMiners(ctx context.Context, tsk types.TipS
 	panic("implement me")
 }
 
-func (m *mockGatewayDepsAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+func (m *mockGatewayDepsAPI) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error) {
 	panic("implement me")
 }
 
-func (m *mockGatewayDepsAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+func (m *mockGatewayDepsAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error) {
 	panic("implement me")
 }
 

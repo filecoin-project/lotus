@@ -38,7 +38,7 @@ type FundManagerAPI struct {
 // (used by the tests)
 type fundManagerAPI interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
-	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error)
+	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (types.MarketBalance, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 }
 
