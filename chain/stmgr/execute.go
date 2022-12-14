@@ -7,7 +7,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -73,8 +72,8 @@ func (sm *StateManager) ExecutionTraceWithMonitor(ctx context.Context, ts *types
 	return st, err
 }
 
-func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
-	var invocTrace []*api.InvocResult
+func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*types.InvocResult, error) {
+	var invocTrace []*types.InvocResult
 	st, err := sm.ExecutionTraceWithMonitor(ctx, ts, &InvocationTracer{trace: &invocTrace})
 	if err != nil {
 		return cid.Undef, nil, err

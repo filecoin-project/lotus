@@ -31,7 +31,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -50,7 +49,7 @@ import (
 
 type TipSetExec struct {
 	TipSet   types.TipSetKey
-	Trace    []*api.InvocResult
+	Trace    []*types.InvocResult
 	Duration time.Duration
 }
 
@@ -501,7 +500,7 @@ func walkExecutionTrace(et *types.ExecutionTrace) {
 	}
 }
 
-func stripCallers(trace []*api.InvocResult) {
+func stripCallers(trace []*types.InvocResult) {
 	for _, t := range trace {
 		walkExecutionTrace(&t.ExecutionTrace)
 	}
@@ -509,7 +508,7 @@ func stripCallers(trace []*api.InvocResult) {
 
 type Invocation struct {
 	TipSet types.TipSetKey
-	Invoc  *api.InvocResult
+	Invoc  *types.InvocResult
 }
 
 const GasPerNs = 10

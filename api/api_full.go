@@ -405,7 +405,7 @@ type FullNode interface {
 	// StateCall applies the message to the tipset's parent state. The
 	// message is not applied on-top-of the messages in the passed-in
 	// tipset.
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error) //perm:read
+	StateCall(context.Context, *types.Message, types.TipSetKey) (*types.InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
 	// If a tipset key is provided, and a replacing message is not found on chain,
@@ -423,7 +423,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error) //perm:read
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) //perm:read
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	// StateReadState returns the indicated actor's state.
@@ -882,17 +882,6 @@ type MsgLookup struct {
 	Height    abi.ChainEpoch
 }
 
-type MsgGasCost struct {
-	Message            cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
-	GasUsed            abi.TokenAmount
-	BaseFeeBurn        abi.TokenAmount
-	OverEstimationBurn abi.TokenAmount
-	MinerPenalty       abi.TokenAmount
-	MinerTip           abi.TokenAmount
-	Refund             abi.TokenAmount
-	TotalCost          abi.TokenAmount
-}
-
 // BlsMessages[x].cid = Cids[x]
 // SecpkMessages[y].cid = Cids[BlsMessages.length + y]
 type BlockMessages struct {
@@ -1058,16 +1047,6 @@ type RetrievalOrder struct {
 
 type RemoteStoreID = uuid.UUID
 
-type InvocResult struct {
-	MsgCid         cid.Cid
-	Msg            *types.Message
-	MsgRct         *types.MessageReceipt
-	GasCost        MsgGasCost
-	ExecutionTrace types.ExecutionTrace
-	Error          string
-	Duration       time.Duration
-}
-
 type MethodCall struct {
 	types.MessageReceipt
 	Error string
@@ -1172,7 +1151,7 @@ type MpoolUpdate struct {
 
 type ComputeStateOutput struct {
 	Root  cid.Cid
-	Trace []*InvocResult
+	Trace []*types.InvocResult
 }
 
 type DealCollateralBounds struct {

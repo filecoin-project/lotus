@@ -384,7 +384,7 @@ type FullNode interface {
 	// StateCall applies the message to the tipset's parent state. The
 	// message is not applied on-top-of the messages in the passed-in
 	// tipset.
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error) //perm:read
+	StateCall(context.Context, *types.Message, types.TipSetKey) (*types.InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
 	// If a tipset key is provided, and a replacing message is not found on chain,
@@ -402,7 +402,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error) //perm:read
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) //perm:read
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	// StateReadState returns the indicated actor's state.

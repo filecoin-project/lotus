@@ -508,7 +508,7 @@ var StateExecTraceCmd = &cli.Command{
 			return err
 		}
 
-		var trace *api.InvocResult
+		var trace *types.InvocResult
 		for _, t := range cso.Trace {
 			if t.Msg.From == msg.From && t.Msg.Nonce == msg.Nonce {
 				trace = t

@@ -249,7 +249,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr api.EthAddress, blkO
 	ts := a.Chain.GetHeaviestTipSet()
 
 	// Try calling until we find a height with no migration.
-	var res *api.InvocResult
+	var res *types.InvocResult
 	for {
 		res, err = a.StateManager.Call(ctx, msg, ts)
 		if err != stmgr.ErrExpensiveFork {
@@ -339,7 +339,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr api.EthAddress,
 	ts := a.Chain.GetHeaviestTipSet()
 
 	// Try calling until we find a height with no migration.
-	var res *api.InvocResult
+	var res *types.InvocResult
 	for {
 		res, err = a.StateManager.Call(ctx, msg, ts)
 		if err != stmgr.ErrExpensiveFork {
@@ -588,7 +588,7 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx api.EthCall
 	}, nil
 }
 
-func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message) (res *api.InvocResult, err error) {
+func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message) (res *types.InvocResult, err error) {
 	ts := a.Chain.GetHeaviestTipSet()
 
 	// Try calling until we find a height with no migration.

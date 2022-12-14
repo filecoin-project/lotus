@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
-	"github.com/filecoin-project/lotus/api"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -65,7 +64,7 @@ func GetNetworkName(ctx context.Context, sm *StateManager, st cid.Cid) (dtypes.N
 	return ias.NetworkName()
 }
 
-func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
+func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, []*types.InvocResult, error) {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}
@@ -201,8 +200,8 @@ func CheckTotalFIL(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) 
 	return sum, nil
 }
 
-func MakeMsgGasCost(msg *types.Message, ret *vm.ApplyRet) api.MsgGasCost {
-	return api.MsgGasCost{
+func MakeMsgGasCost(msg *types.Message, ret *vm.ApplyRet) types.MsgGasCost {
+	return types.MsgGasCost{
 		Message:            msg.Cid(),
 		GasUsed:            big.NewInt(ret.GasUsed),
 		BaseFeeBurn:        ret.GasCosts.BaseFeeBurn,

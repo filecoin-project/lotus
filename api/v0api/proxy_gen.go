@@ -264,7 +264,7 @@ type FullNodeStruct struct {
 
 		StateAllMinerFaults func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*api.Fault, error) `perm:"read"`
 
-		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*api.InvocResult, error) `perm:"read"`
+		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) `perm:"read"`
 
 		StateChangedActors func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) `perm:"read"`
 
@@ -346,7 +346,7 @@ type FullNodeStruct struct {
 
 		StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.ActorState, error) `perm:"read"`
 
-		StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) `perm:"read"`
+		StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) `perm:"read"`
 
 		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) `perm:"read"`
 
@@ -1727,14 +1727,14 @@ func (s *FullNodeStub) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch
 	return *new([]*api.Fault), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*api.InvocResult, error) {
+func (s *FullNodeStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) {
 	if s.Internal.StateCall == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateCall(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*api.InvocResult, error) {
+func (s *FullNodeStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2178,14 +2178,14 @@ func (s *FullNodeStub) StateReadState(p0 context.Context, p1 address.Address, p2
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) {
+func (s *FullNodeStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) {
 	if s.Internal.StateReplay == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateReplay(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) {
+func (s *FullNodeStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) {
 	return nil, ErrNotSupported
 }
 

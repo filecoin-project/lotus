@@ -7,6 +7,10 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type ExecutionTrace struct {
@@ -17,6 +21,16 @@ type ExecutionTrace struct {
 	GasCharges []*GasTrace
 
 	Subcalls []ExecutionTrace
+}
+
+type InvocResult struct {
+	MsgCid         cid.Cid
+	Msg            *Message
+	MsgRct         *MessageReceipt
+	GasCost        MsgGasCost
+	ExecutionTrace ExecutionTrace
+	Error          string
+	Duration       time.Duration
 }
 
 type GasTrace struct {
@@ -34,6 +48,17 @@ type GasTrace struct {
 	Extra     interface{}   `json:"ex,omitempty"`
 
 	Callers []uintptr `json:"-"`
+}
+
+type MsgGasCost struct {
+	Message            cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
+	GasUsed            abi.TokenAmount
+	BaseFeeBurn        abi.TokenAmount
+	OverEstimationBurn abi.TokenAmount
+	MinerPenalty       abi.TokenAmount
+	MinerTip           abi.TokenAmount
+	Refund             abi.TokenAmount
+	TotalCost          abi.TokenAmount
 }
 
 type Loc struct {

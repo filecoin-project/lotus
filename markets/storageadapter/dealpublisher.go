@@ -35,7 +35,7 @@ type dealPublisherAPI interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
+	StateCall(context.Context, *types.Message, types.TipSetKey) (*types.InvocResult, error)
 }
 
 // DealPublisher batches deal publishing so that many deals can be included in

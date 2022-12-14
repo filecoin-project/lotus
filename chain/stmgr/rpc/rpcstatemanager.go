@@ -52,7 +52,7 @@ func (s *RPCStateManager) ResolveToKeyAddress(ctx context.Context, addr address.
 	return s.gapi.StateAccountKey(ctx, addr, ts.Key())
 }
 
-func (s *RPCStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (s *RPCStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
 	return nil, xerrors.Errorf("RPCStateManager does not implement StateManager.Call")
 }
 

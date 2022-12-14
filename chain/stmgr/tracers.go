@@ -5,7 +5,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -18,11 +17,11 @@ type ExecMonitor interface {
 var _ ExecMonitor = (*InvocationTracer)(nil)
 
 type InvocationTracer struct {
-	trace *[]*api.InvocResult
+	trace *[]*types.InvocResult
 }
 
 func (i *InvocationTracer) MessageApplied(ctx context.Context, ts *types.TipSet, mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet, implicit bool) error {
-	ir := &api.InvocResult{
+	ir := &types.InvocResult{
 		MsgCid:         mcid,
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,

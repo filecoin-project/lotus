@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type EthUint64 uint64
@@ -198,7 +199,7 @@ type EthTxReceipt struct {
 	Logs              []string    `json:"logs"`
 }
 
-func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxReceipt, error) {
+func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *types.InvocResult) (EthTxReceipt, error) {
 	receipt := EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		TransactionIndex: tx.TransactionIndex,

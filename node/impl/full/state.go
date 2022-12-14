@@ -401,7 +401,7 @@ func (m *StateModule) StateMinerPower(ctx context.Context, addr address.Address,
 	}, nil
 }
 
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
+func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *types.InvocResult, err error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -419,7 +419,7 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 	return res, err
 }
 
-func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
+func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*types.InvocResult, error) {
 	msgToReplay := mc
 	var ts *types.TipSet
 	var err error
@@ -460,7 +460,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		errstr = r.ActorErr.Error()
 	}
 
-	return &api.InvocResult{
+	return &types.InvocResult{
 		MsgCid:         msgToReplay,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
