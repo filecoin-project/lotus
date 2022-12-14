@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -16,5 +15,5 @@ type Consensus interface {
 	ValidateBlockPubsub(ctx context.Context, self bool, msg *pubsub.Message) (pubsub.ValidationResult, string)
 	IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool
 
-	CreateBlock(ctx context.Context, s types.Signer, bt *api.BlockTemplate) (*types.FullBlock, error)
+	CreateBlock(ctx context.Context, s types.Signer, bt *types.BlockTemplate) (*types.FullBlock, error)
 }

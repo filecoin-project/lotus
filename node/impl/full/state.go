@@ -580,7 +580,7 @@ func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, 
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, a.Beacon, tsk, epoch, maddr, a.ProofVerifier)
 }
 
-func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
+func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := a.Consensus.CreateBlock(ctx, a.Wallet, bt)
 	if err != nil {
 		return nil, err

@@ -26,7 +26,6 @@ import (
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -1147,18 +1146,6 @@ type ComputeStateOutput struct {
 type DealCollateralBounds struct {
 	Min abi.TokenAmount
 	Max abi.TokenAmount
-}
-
-type BlockTemplate struct {
-	Miner            address.Address
-	Parents          types.TipSetKey
-	Ticket           *types.Ticket
-	Eproof           *types.ElectionProof
-	BeaconValues     []types.BeaconEntry
-	Messages         []*types.SignedMessage
-	Epoch            abi.ChainEpoch
-	Timestamp        uint64
-	WinningPoStProof []builtin.PoStProof
 }
 
 type DataSize struct {

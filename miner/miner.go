@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -616,7 +615,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 	nheight := base.TipSet.Height() + base.NullRounds + 1
 
 	// why even return this? that api call could just submit it for us
-	return m.api.MinerCreateBlock(context.TODO(), &api.BlockTemplate{
+	return m.api.MinerCreateBlock(context.TODO(), &types.BlockTemplate{
 		Miner:            addr,
 		Parents:          base.TipSet.Key(),
 		Ticket:           ticket,

@@ -8,13 +8,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (filec *FilecoinEC) CreateBlock(ctx context.Context, w types.Signer, bt *api.BlockTemplate) (*types.FullBlock, error) {
+func (filec *FilecoinEC) CreateBlock(ctx context.Context, w types.Signer, bt *types.BlockTemplate) (*types.FullBlock, error) {
 	pts, err := filec.sm.ChainStore().LoadTipSet(ctx, bt.Parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)

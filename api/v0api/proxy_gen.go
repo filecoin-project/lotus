@@ -163,7 +163,7 @@ type FullNodeStruct struct {
 
 		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
-		MinerCreateBlock func(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) `perm:"write"`
+		MinerCreateBlock func(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error) `perm:"write"`
 
 		MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*types.MiningBaseInfo, error) `perm:"read"`
 
@@ -1167,14 +1167,14 @@ func (s *FullNodeStub) MarketWithdraw(p0 context.Context, p1 address.Address, p2
 	return *new(cid.Cid), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MinerCreateBlock(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
+func (s *FullNodeStruct) MinerCreateBlock(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	if s.Internal.MinerCreateBlock == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.MinerCreateBlock(p0, p1)
 }
 
-func (s *FullNodeStub) MinerCreateBlock(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
+func (s *FullNodeStub) MinerCreateBlock(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	return nil, ErrNotSupported
 }
 

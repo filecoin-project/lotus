@@ -1446,7 +1446,7 @@ func (mr *MockFullNodeMockRecorder) MarketWithdraw(arg0, arg1, arg2, arg3 interf
 }
 
 // MinerCreateBlock mocks base method.
-func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *api.BlockTemplate) (*types.BlockMsg, error) {
+func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MinerCreateBlock", arg0, arg1)
 	ret0, _ := ret[0].(*types.BlockMsg)

@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -498,7 +497,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 		ts = parents.MinTimestamp() + uint64(height-parents.Height())*build.BlockDelaySecs
 	}
 
-	fblk, err := filcns.NewFilecoinExpectedConsensus(cg.sm, nil, nil, nil).CreateBlock(context.TODO(), cg.w, &api.BlockTemplate{
+	fblk, err := filcns.NewFilecoinExpectedConsensus(cg.sm, nil, nil, nil).CreateBlock(context.TODO(), cg.w, &types.BlockTemplate{
 		Miner:            m,
 		Parents:          parents.Key(),
 		Ticket:           vrfticket,
