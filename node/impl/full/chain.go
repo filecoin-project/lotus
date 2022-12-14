@@ -41,7 +41,7 @@ import (
 var log = logging.Logger("fullnode")
 
 type ChainModuleAPI interface {
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(context.Context) (*types.TipSet, error)
@@ -50,7 +50,7 @@ type ChainModuleAPI interface {
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
-	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error)
 }
 
 var _ ChainModuleAPI = *new(api.FullNode)
@@ -89,7 +89,7 @@ type ChainAPI struct {
 	BaseBlockstore dtypes.BaseBlockstore
 }
 
-func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
+func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
 	return m.Chain.SubHeadChanges(ctx), nil
 }
 
@@ -105,7 +105,7 @@ func (m *ChainModule) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (
 	return m.Chain.LoadTipSet(ctx, key)
 }
 
-func (m *ChainModule) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
+func (m *ChainModule) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error) {
 	return m.Chain.GetPath(ctx, from, to)
 }
 
@@ -137,7 +137,7 @@ func (m *ChainModule) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*
 	}, nil
 }
 
-func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
+func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) {
 	return a.Chain.GetPath(ctx, from, to)
 }
 

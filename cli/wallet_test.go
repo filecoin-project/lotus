@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -103,7 +102,7 @@ func TestWalletList(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		balance := api.MarketBalance{
+		balance := types.MarketBalance{
 			Escrow: big.NewInt(1234),
 			Locked: big.NewInt(123),
 		}
@@ -281,7 +280,7 @@ func TestWalletMarketWithdraw(t *testing.T) {
 	addr, err := address.NewIDAddress(1234)
 	assert.NoError(t, err)
 
-	balance := api.MarketBalance{
+	balance := types.MarketBalance{
 		Escrow: big.NewInt(100),
 		Locked: big.NewInt(10),
 	}
@@ -289,7 +288,7 @@ func TestWalletMarketWithdraw(t *testing.T) {
 	h, err := hex.DecodeString("12209cbc07c3f991725836a3aa2a581ca2029198aa420b9d99bc0e131d9f3e2cbe47")
 	assert.NoError(t, err)
 	cid := cid.NewCidV0(multihash.Multihash(h))
-	msgLookup := api.MsgLookup{}
+	msgLookup := types.MsgLookup{}
 
 	var networkVers apitypes.NetworkVersion
 

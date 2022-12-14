@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -92,7 +91,7 @@ func TestChainGetMessagesInTs(t *testing.T) {
 
 	for _, sm := range sms {
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		msgLookup, err := client.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
+		msgLookup, err := client.StateWaitMsg(ctx, sm.Cid(), 3, types.LookbackNoLimit, true)
 		require.NoError(t, err)
 
 		ts, err := client.ChainGetTipSet(ctx, msgLookup.TipSet)

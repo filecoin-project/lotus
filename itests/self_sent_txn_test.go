@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -40,7 +39,7 @@ func TestSelfSentTxnV15(t *testing.T) {
 	}
 	smHalfBal, err := client15.MpoolPushMessage(ctx, msgHalfBal, nil)
 	require.NoError(t, err)
-	mLookup, err := client15.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := client15.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -57,7 +56,7 @@ func TestSelfSentTxnV15(t *testing.T) {
 	require.NoError(t, err)
 	smcid, err := client15.MpoolPush(ctx, smOverBal)
 	require.NoError(t, err)
-	mLookup, err = client15.StateWaitMsg(ctx, smcid, 3, api.LookbackNoLimit, true)
+	mLookup, err = client15.StateWaitMsg(ctx, smcid, 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.SysErrInsufficientFunds, mLookup.Receipt.ExitCode)
 }
@@ -82,7 +81,7 @@ func TestSelfSentTxnV14(t *testing.T) {
 	}
 	smHalfBal, err := client14.MpoolPushMessage(ctx, msgHalfBal, nil)
 	require.NoError(t, err)
-	mLookup, err := client14.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := client14.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -99,7 +98,7 @@ func TestSelfSentTxnV14(t *testing.T) {
 	require.NoError(t, err)
 	smcid, err := client14.MpoolPush(ctx, smOverBal)
 	require.NoError(t, err)
-	mLookup, err = client14.StateWaitMsg(ctx, smcid, 3, api.LookbackNoLimit, true)
+	mLookup, err = client14.StateWaitMsg(ctx, smcid, 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 }

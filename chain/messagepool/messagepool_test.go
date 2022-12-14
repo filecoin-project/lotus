@@ -305,7 +305,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 41<<10), // 41KiB payload
 		}
 
-		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), types.MsgSigningMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -328,7 +328,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Params:     make([]byte, 64<<10), // 64KiB payload
 		}
 
-		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), types.MsgSigningMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -804,7 +804,7 @@ func TestMessageBelowMinGasFee(t *testing.T) {
 			Params:     make([]byte, 32<<10),
 		}
 
-		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), types.MsgSigningMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -852,7 +852,7 @@ func TestMessageValueTooHigh(t *testing.T) {
 			Params:     make([]byte, 32<<10),
 		}
 
-		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), types.MsgSigningMeta{})
 		if err != nil {
 			panic(err)
 		}
@@ -941,7 +941,7 @@ func TestAddMessageTwice(t *testing.T) {
 			Params:     make([]byte, 32<<10),
 		}
 
-		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), types.MsgSigningMeta{})
 		if err != nil {
 			panic(err)
 		}

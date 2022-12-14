@@ -200,10 +200,10 @@ func (mr *MockSealingAPIMockRecorder) StateLookupID(arg0, arg1, arg2 interface{}
 }
 
 // StateMarketStorageDeal mocks base method.
-func (m *MockSealingAPI) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*api.MarketDeal, error) {
+func (m *MockSealingAPI) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*types.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketStorageDeal", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.MarketDeal)
+	ret0, _ := ret[0].(*types.MarketDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -365,10 +365,10 @@ func (mr *MockSealingAPIMockRecorder) StateNetworkVersion(arg0, arg1 interface{}
 }
 
 // StateSearchMsg mocks base method.
-func (m *MockSealingAPI) StateSearchMsg(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
+func (m *MockSealingAPI) StateSearchMsg(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid, arg3 abi.ChainEpoch, arg4 bool) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -425,10 +425,10 @@ func (mr *MockSealingAPIMockRecorder) StateSectorPreCommitInfo(arg0, arg1, arg2,
 }
 
 // StateWaitMsg mocks base method.
-func (m *MockSealingAPI) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
+func (m *MockSealingAPI) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch, arg4 bool) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

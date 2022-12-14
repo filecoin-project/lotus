@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -27,9 +25,10 @@ import (
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
@@ -43,8 +42,6 @@ type ChainIO interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainPutObj(context.Context, blocks.Block) error
 }
-
-const LookbackNoLimit = abi.ChainEpoch(-1)
 
 //                       MODIFYING THE API INTERFACE
 //
@@ -71,7 +68,7 @@ type FullNode interface {
 
 	// ChainNotify returns channel with chain head updates.
 	// First message is guaranteed to be of len == 1, and type == 'current'.
-	ChainNotify(context.Context) (<-chan []*HeadChange, error) //perm:read
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error) //perm:read
 
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error) //perm:read
@@ -162,7 +159,7 @@ type FullNode interface {
 	//     tRR
 	// ```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error) //perm:read
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) //perm:read
 
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	// The exported chain data includes the header chain from the given tipset
@@ -288,8 +285,8 @@ type FullNode interface {
 
 	// MethodGroup: Miner
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*MiningBaseInfo, error) //perm:read
-	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*types.MiningBaseInfo, error) //perm:read
+	MinerCreateBlock(context.Context, *types.BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
 
 	// // UX ?
 
@@ -405,7 +402,7 @@ type FullNode interface {
 	// StateCall applies the message to the tipset's parent state. The
 	// message is not applied on-top-of the messages in the passed-in
 	// tipset.
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error) //perm:read
+	StateCall(context.Context, *types.Message, types.TipSetKey) (*types.InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
 	// If a tipset key is provided, and a replacing message is not found on chain,
@@ -423,7 +420,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error) //perm:read
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) //perm:read
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	// StateReadState returns the indicated actor's state.
@@ -497,7 +494,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error) //perm:read
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) //perm:read
 	// StateWaitMsg looks back up to limit epochs in the chain for a message.
 	// If not found, it blocks until the message arrives on chain, and gets to the
 	// indicated confidence depth.
@@ -516,19 +513,19 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error) //perm:read
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) //perm:read
 	// StateListMiners returns the addresses of every miner that has claimed power in the Power Actor
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error) //perm:read
 	// StateListActors returns the addresses of every actor in the state
 	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error) //perm:read
 	// StateMarketBalance looks up the Escrow and Locked balances of the given address in the Storage Market
-	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (MarketBalance, error) //perm:read
+	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (types.MarketBalance, error) //perm:read
 	// StateMarketParticipants returns the Escrow and Locked balances of every participant in the Storage Market
-	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]MarketBalance, error) //perm:read
+	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]types.MarketBalance, error) //perm:read
 	// StateMarketDeals returns information about every deal in the Storage Market
-	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*MarketDeal, error) //perm:read
+	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*types.MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
+	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*types.MarketDeal, error) //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal. Returns nil if
 	// pending allocation is not found.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
@@ -607,7 +604,7 @@ type FullNode interface {
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error) //perm:read
 	// StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 	// This is the value reported by the runtime interface to actors code.
-	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error) //perm:read
+	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (types.CirculatingSupply, error) //perm:read
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
 	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
@@ -763,37 +760,37 @@ type FullNode interface {
 	// These methods are used for Ethereum-compatible JSON-RPC calls
 	//
 	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
-	EthAccounts(ctx context.Context) ([]EthAddress, error) //perm:read
+	EthAccounts(ctx context.Context) ([]eth.EthAddress, error) //perm:read
 	// EthBlockNumber returns the height of the latest (heaviest) TipSet
-	EthBlockNumber(ctx context.Context) (EthUint64, error) //perm:read
+	EthBlockNumber(ctx context.Context) (eth.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum EthUint64) (EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum eth.EthUint64) (eth.EthUint64, error) //perm:read
 	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
-	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash EthHash) (EthUint64, error) //perm:read
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash eth.EthHash) (eth.EthUint64, error) //perm:read
 
-	EthGetBlockByHash(ctx context.Context, blkHash EthHash, fullTxInfo bool) (EthBlock, error)                      //perm:read
-	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (EthBlock, error)                      //perm:read
-	EthGetTransactionByHash(ctx context.Context, txHash *EthHash) (*EthTx, error)                                   //perm:read
-	EthGetTransactionCount(ctx context.Context, sender EthAddress, blkOpt string) (EthUint64, error)                //perm:read
-	EthGetTransactionReceipt(ctx context.Context, txHash EthHash) (*EthTxReceipt, error)                            //perm:read
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash EthHash, txIndex EthUint64) (EthTx, error)    //perm:read
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum EthUint64, txIndex EthUint64) (EthTx, error) //perm:read
+	EthGetBlockByHash(ctx context.Context, blkHash eth.EthHash, fullTxInfo bool) (eth.EthBlock, error)                          //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (eth.EthBlock, error)                              //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *eth.EthHash) (*eth.EthTx, error)                                       //perm:read
+	EthGetTransactionCount(ctx context.Context, sender eth.EthAddress, blkOpt string) (eth.EthUint64, error)                    //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash eth.EthHash) (*eth.EthTxReceipt, error)                                //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash eth.EthHash, txIndex eth.EthUint64) (eth.EthTx, error)    //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum eth.EthUint64, txIndex eth.EthUint64) (eth.EthTx, error) //perm:read
 
-	EthGetCode(ctx context.Context, address EthAddress, blkOpt string) (EthBytes, error)                                         //perm:read
-	EthGetStorageAt(ctx context.Context, address EthAddress, position EthBytes, blkParam string) (EthBytes, error)               //perm:read
-	EthGetBalance(ctx context.Context, address EthAddress, blkParam string) (EthBigInt, error)                                   //perm:read
-	EthChainId(ctx context.Context) (EthUint64, error)                                                                           //perm:read
-	NetVersion(ctx context.Context) (string, error)                                                                              //perm:read
-	NetListening(ctx context.Context) (bool, error)                                                                              //perm:read
-	EthProtocolVersion(ctx context.Context) (EthUint64, error)                                                                   //perm:read
-	EthGasPrice(ctx context.Context) (EthBigInt, error)                                                                          //perm:read
-	EthFeeHistory(ctx context.Context, blkCount EthUint64, newestBlk string, rewardPercentiles []float64) (EthFeeHistory, error) //perm:read
+	EthGetCode(ctx context.Context, address eth.EthAddress, blkOpt string) (eth.EthBytes, error)                                         //perm:read
+	EthGetStorageAt(ctx context.Context, address eth.EthAddress, position eth.EthBytes, blkParam string) (eth.EthBytes, error)           //perm:read
+	EthGetBalance(ctx context.Context, address eth.EthAddress, blkParam string) (eth.EthBigInt, error)                                   //perm:read
+	EthChainId(ctx context.Context) (eth.EthUint64, error)                                                                               //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                                      //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                                      //perm:read
+	EthProtocolVersion(ctx context.Context) (eth.EthUint64, error)                                                                       //perm:read
+	EthGasPrice(ctx context.Context) (eth.EthBigInt, error)                                                                              //perm:read
+	EthFeeHistory(ctx context.Context, blkCount eth.EthUint64, newestBlk string, rewardPercentiles []float64) (eth.EthFeeHistory, error) //perm:read
 
-	EthMaxPriorityFeePerGas(ctx context.Context) (EthBigInt, error)             //perm:read
-	EthEstimateGas(ctx context.Context, tx EthCall) (EthUint64, error)          //perm:read
-	EthCall(ctx context.Context, tx EthCall, blkParam string) (EthBytes, error) //perm:read
+	EthMaxPriorityFeePerGas(ctx context.Context) (eth.EthBigInt, error)                 //perm:read
+	EthEstimateGas(ctx context.Context, tx eth.EthCall) (eth.EthUint64, error)          //perm:read
+	EthCall(ctx context.Context, tx eth.EthCall, blkParam string) (eth.EthBytes, error) //perm:read
 
-	EthSendRawTransaction(ctx context.Context, rawTx EthBytes) (EthHash, error) //perm:read
+	EthSendRawTransaction(ctx context.Context, rawTx eth.EthBytes) (eth.EthHash, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
@@ -872,25 +869,6 @@ type DealInfo struct {
 
 	TransferChannelID *datatransfer.ChannelID
 	DataTransfer      *DataTransferChannel
-}
-
-type MsgLookup struct {
-	Message   cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
-	Receipt   types.MessageReceipt
-	ReturnDec interface{}
-	TipSet    types.TipSetKey
-	Height    abi.ChainEpoch
-}
-
-type MsgGasCost struct {
-	Message            cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
-	GasUsed            abi.TokenAmount
-	BaseFeeBurn        abi.TokenAmount
-	OverEstimationBurn abi.TokenAmount
-	MinerPenalty       abi.TokenAmount
-	MinerTip           abi.TokenAmount
-	Refund             abi.TokenAmount
-	TotalCost          abi.TokenAmount
 }
 
 // BlsMessages[x].cid = Cids[x]
@@ -1027,16 +1005,6 @@ func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	}
 }
 
-type MarketBalance struct {
-	Escrow big.Int
-	Locked big.Int
-}
-
-type MarketDeal struct {
-	Proposal market.DealProposal
-	State    market.DealState
-}
-
 type RetrievalOrder struct {
 	Root         cid.Cid
 	Piece        *cid.Cid
@@ -1057,16 +1025,6 @@ type RetrievalOrder struct {
 }
 
 type RemoteStoreID = uuid.UUID
-
-type InvocResult struct {
-	MsgCid         cid.Cid
-	Msg            *types.Message
-	MsgRct         *types.MessageReceipt
-	GasCost        MsgGasCost
-	ExecutionTrace types.ExecutionTrace
-	Error          string
-	Duration       time.Duration
-}
 
 type MethodCall struct {
 	types.MessageReceipt
@@ -1111,7 +1069,7 @@ type ActiveSync struct {
 	Base     *types.TipSet
 	Target   *types.TipSet
 
-	Stage  SyncStateStage
+	Stage  chain.SyncStateStage
 	Height abi.ChainEpoch
 
 	Start   time.Time
@@ -1123,39 +1081,6 @@ type SyncState struct {
 	ActiveSyncs []ActiveSync
 
 	VMApplied uint64
-}
-
-type SyncStateStage int
-
-const (
-	StageIdle = SyncStateStage(iota)
-	StageHeaders
-	StagePersistHeaders
-	StageMessages
-	StageSyncComplete
-	StageSyncErrored
-	StageFetchingMessages
-)
-
-func (v SyncStateStage) String() string {
-	switch v {
-	case StageIdle:
-		return "idle"
-	case StageHeaders:
-		return "header sync"
-	case StagePersistHeaders:
-		return "persisting headers"
-	case StageMessages:
-		return "message sync"
-	case StageSyncComplete:
-		return "complete"
-	case StageSyncErrored:
-		return "error"
-	case StageFetchingMessages:
-		return "fetching messages"
-	default:
-		return fmt.Sprintf("<unknown: %d>", v)
-	}
 }
 
 type MpoolChange int
@@ -1172,44 +1097,12 @@ type MpoolUpdate struct {
 
 type ComputeStateOutput struct {
 	Root  cid.Cid
-	Trace []*InvocResult
+	Trace []*types.InvocResult
 }
 
 type DealCollateralBounds struct {
 	Min abi.TokenAmount
 	Max abi.TokenAmount
-}
-
-type CirculatingSupply struct {
-	FilVested           abi.TokenAmount
-	FilMined            abi.TokenAmount
-	FilBurnt            abi.TokenAmount
-	FilLocked           abi.TokenAmount
-	FilCirculating      abi.TokenAmount
-	FilReserveDisbursed abi.TokenAmount
-}
-
-type MiningBaseInfo struct {
-	MinerPower        types.BigInt
-	NetworkPower      types.BigInt
-	Sectors           []builtin.ExtendedSectorInfo
-	WorkerKey         address.Address
-	SectorSize        abi.SectorSize
-	PrevBeaconEntry   types.BeaconEntry
-	BeaconEntries     []types.BeaconEntry
-	EligibleForMining bool
-}
-
-type BlockTemplate struct {
-	Miner            address.Address
-	Parents          types.TipSetKey
-	Ticket           *types.Ticket
-	Eproof           *types.ElectionProof
-	BeaconValues     []types.BeaconEntry
-	Messages         []*types.SignedMessage
-	Epoch            abi.ChainEpoch
-	Timestamp        uint64
-	WinningPoStProof []builtin.PoStProof
 }
 
 type DataSize struct {
@@ -1226,10 +1119,6 @@ type DataCIDSize struct {
 type CommPRet struct {
 	Root cid.Cid
 	Size abi.UnpaddedPieceSize
-}
-type HeadChange struct {
-	Type string
-	Val  *types.TipSet
 }
 
 type MsigProposeResponse int

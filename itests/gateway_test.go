@@ -22,7 +22,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/gateway"
@@ -33,7 +32,7 @@ import (
 
 const (
 	maxLookbackCap            = time.Duration(math.MaxInt64)
-	maxStateWaitLookbackLimit = stmgr.LookbackNoLimit
+	maxStateWaitLookbackLimit = types.LookbackNoLimit
 )
 
 // TestGatewayWalletMsig tests that API calls to wallet and msig can be made on a lite
@@ -124,7 +123,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err := lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
+	res, err := lite.StateWaitMsg(ctx, addProposal, 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -149,7 +148,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
+	res, err = lite.StateWaitMsg(ctx, addProposal, 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -167,7 +166,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = lite.StateWaitMsg(ctx, approval1, 1, api.LookbackNoLimit, true)
+	res, err = lite.StateWaitMsg(ctx, approval1, 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -328,7 +327,7 @@ func sendFunds(ctx context.Context, fromNode *kit.TestFullNode, fromAddr address
 		return err
 	}
 
-	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
+	res, err := fromNode.StateWaitMsg(ctx, sm.Cid(), 3, types.LookbackNoLimit, true)
 	if err != nil {
 		return err
 	}

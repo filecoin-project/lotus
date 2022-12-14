@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -207,7 +206,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence, api.LookbackNoLimit, true)
+	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -379,8 +378,8 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	sig, err := c.Wallet.WalletSign(ctx, signer, buf, api.MsgMeta{
-		Type: api.MTDealProposal,
+	sig, err := c.Wallet.WalletSign(ctx, signer, buf, types.MsgSigningMeta{
+		Type: types.MTDealProposal,
 	})
 	if err != nil {
 		return nil, err
@@ -407,7 +406,7 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
+	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
@@ -434,8 +433,8 @@ func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Addres
 		return nil, err
 	}
 
-	localSignature, err := c.Wallet.WalletSign(ctx, signer, b, api.MsgMeta{
-		Type: api.MTUnknown, // TODO: pass type here
+	localSignature, err := c.Wallet.WalletSign(ctx, signer, b, types.MsgSigningMeta{
+		Type: types.MTUnknown, // TODO: pass type here
 	})
 	if err != nil {
 		return nil, err

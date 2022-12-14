@@ -167,7 +167,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 // - LookbackNoLimit then there is no limit
 func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m types.ChainMsg, limit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 	limitHeight := from.Height() - limit
-	noLimit := limit == LookbackNoLimit
+	noLimit := limit == types.LookbackNoLimit
 
 	cur := from
 	curActor, err := sm.LoadActor(ctx, m.VMMessage().From, cur)

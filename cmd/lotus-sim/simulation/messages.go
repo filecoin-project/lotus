@@ -23,7 +23,7 @@ func toArray(store blockadt.Store, cids []cid.Cid) (cid.Cid, error) {
 	return arr.Root()
 }
 
-// storeMessages packs a set of messages into a types.MsgMeta and returns the resulting CID. The
+// storeMessages packs a set of messages into a types.MsgSigningMeta and returns the resulting CID. The
 // resulting CID is valid for the BlocKHeader's Messages field.
 func (sim *Simulation) storeMessages(ctx context.Context, messages []*types.Message) (cid.Cid, error) {
 	// We store all messages as "bls" messages so they're executed in-order. This ensures

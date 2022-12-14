@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -540,7 +539,7 @@ func (me *messageEvents) Called(ctx context.Context, check CheckFunc, msgHnd Msg
 			panic("expected msg")
 		}
 
-		ml, err := me.cs.StateSearchMsg(ctx, ts.Key(), msg.Cid(), stmgr.LookbackNoLimit, true)
+		ml, err := me.cs.StateSearchMsg(ctx, ts.Key(), msg.Cid(), types.LookbackNoLimit, true)
 		if err != nil {
 			return false, err
 		}

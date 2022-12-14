@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -93,7 +92,7 @@ func TestMemPoolPushSingleNode(t *testing.T) {
 		if len(pending) == 0 {
 			// all messages should be added to the chain
 			for _, lookMsg := range sms {
-				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, types.LookbackNoLimit, true)
 				require.NoError(t, err)
 				require.NotNil(t, msgLookup)
 			}
@@ -167,11 +166,11 @@ func TestMemPoolPushTwoNodes(t *testing.T) {
 		if len(pending1) == 0 && len(pending2) == 0 {
 			// Check messages on both nodes
 			for _, lookMsg := range sms {
-				msgLookup1, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+				msgLookup1, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, types.LookbackNoLimit, true)
 				require.NoError(t, err)
 				require.NotNil(t, msgLookup1)
 
-				msgLookup2, err := secondNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+				msgLookup2, err := secondNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, types.LookbackNoLimit, true)
 				require.NoError(t, err)
 				require.NotNil(t, msgLookup2)
 			}
@@ -234,7 +233,7 @@ func TestMemPoolClearPending(t *testing.T) {
 	time.Sleep(5 * blockTime)
 
 	// make sure that the cleared message wasn't picked up and mined
-	_, err = firstNode.StateWaitMsg(ctx, msg.Cid(), 3, api.LookbackNoLimit, true)
+	_, err = firstNode.StateWaitMsg(ctx, msg.Cid(), 3, types.LookbackNoLimit, true)
 	require.Error(t, err)
 }
 
@@ -322,7 +321,7 @@ func TestMemPoolBatchPush(t *testing.T) {
 		if len(pending) == 0 {
 			// all messages should be added to the chain
 			for _, lookMsg := range sms {
-				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, types.LookbackNoLimit, true)
 				require.NoError(t, err)
 				require.NotNil(t, msgLookup)
 			}
@@ -416,7 +415,7 @@ func TestMemPoolPushSingleNodeUntrusted(t *testing.T) {
 		if len(pending) == 0 {
 			// all messages should be added to the chain
 			for _, lookMsg := range sms {
-				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, types.LookbackNoLimit, true)
 				require.NoError(t, err)
 				require.NotNil(t, msgLookup)
 			}
@@ -511,7 +510,7 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 		if len(pending) == 0 {
 			// all messages should be added to the chain
 			for _, lookMsg := range sms {
-				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, types.LookbackNoLimit, true)
 				require.NoError(t, err)
 				require.NotNil(t, msgLookup)
 			}

@@ -5,7 +5,6 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -23,7 +22,7 @@ func (me *messageEvents) CheckMsg(smsg types.ChainMsg, hnd MsgHandler) CheckFunc
 			return false, true, nil
 		}
 
-		ml, err := me.cs.StateSearchMsg(ctx, ts.Key(), msg.Cid(), stmgr.LookbackNoLimit, true)
+		ml, err := me.cs.StateSearchMsg(ctx, ts.Key(), msg.Cid(), types.LookbackNoLimit, true)
 		if err != nil {
 			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
 		}

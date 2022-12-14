@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -249,7 +248,7 @@ func TestDeadlineToggling(t *testing.T) {
 		require.NoError(t, err)
 
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		r, err := client.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+		r, err := client.StateWaitMsg(ctx, m.Cid(), 2, types.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 	}
@@ -334,7 +333,7 @@ func TestDeadlineToggling(t *testing.T) {
 		t.Log("sent termination message:", smsg.Cid())
 
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		r, err := client.StateWaitMsg(ctx, smsg.Cid(), 2, api.LookbackNoLimit, true)
+		r, err := client.StateWaitMsg(ctx, smsg.Cid(), 2, types.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 

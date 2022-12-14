@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -117,7 +116,7 @@ Supported roles:
 
 		const confidence = 16
 
-		var notifs <-chan []*lapi.HeadChange
+		var notifs <-chan []*types.HeadChange
 		for {
 			if notifs == nil {
 				notifs, err = api.ChainNotify(ctx)
@@ -209,7 +208,7 @@ Supported roles:
 			}
 
 			for _, msg := range msgs {
-				ml, err := api.StateWaitMsg(ctx, msg, confidence, lapi.LookbackNoLimit, true)
+				ml, err := api.StateWaitMsg(ctx, msg, confidence, types.LookbackNoLimit, true)
 				if err != nil {
 					return err
 				}

@@ -60,7 +60,7 @@ type FullNode interface {
 
 	// ChainNotify returns channel with chain head updates.
 	// First message is guaranteed to be of len == 1, and type == 'current'.
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error) //perm:read
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error) //perm:read
 
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error) //perm:read
@@ -152,7 +152,7 @@ type FullNode interface {
 	//     tRR
 	// ```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) //perm:read
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) //perm:read
 
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	// The exported chain data includes the header chain from the given tipset
@@ -268,8 +268,8 @@ type FullNode interface {
 
 	// MethodGroup: Miner
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) //perm:read
-	MinerCreateBlock(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*types.MiningBaseInfo, error) //perm:read
+	MinerCreateBlock(context.Context, *types.BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
 
 	// // UX ?
 
@@ -384,7 +384,7 @@ type FullNode interface {
 	// StateCall applies the message to the tipset's parent state. The
 	// message is not applied on-top-of the messages in the passed-in
 	// tipset.
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error) //perm:read
+	StateCall(context.Context, *types.Message, types.TipSetKey) (*types.InvocResult, error) //perm:read
 	// StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 	//
 	// If a tipset key is provided, and a replacing message is not found on chain,
@@ -402,7 +402,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error) //perm:read
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*types.InvocResult, error) //perm:read
 	// StateGetActor returns the indicated actor's nonce and balance.
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) //perm:read
 	// StateReadState returns the indicated actor's state.
@@ -468,7 +468,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateSearchMsg(context.Context, cid.Cid) (*api.MsgLookup, error) //perm:read
+	StateSearchMsg(context.Context, cid.Cid) (*types.MsgLookup, error) //perm:read
 	// StateSearchMsgLimited looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
 	//
 	// NOTE: If a replacing message is found on chain, this method will return
@@ -484,7 +484,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateSearchMsgLimited(ctx context.Context, msg cid.Cid, limit abi.ChainEpoch) (*api.MsgLookup, error) //perm:read
+	StateSearchMsgLimited(ctx context.Context, msg cid.Cid, limit abi.ChainEpoch) (*types.MsgLookup, error) //perm:read
 	// StateWaitMsg looks back in the chain for a message. If not found, it blocks until the
 	// message arrives on chain, and gets to the indicated confidence depth.
 	//
@@ -501,7 +501,7 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*api.MsgLookup, error) //perm:read
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64) (*types.MsgLookup, error) //perm:read
 	// StateWaitMsgLimited looks back up to limit epochs in the chain for a message.
 	// If not found, it blocks until the message arrives on chain, and gets to the
 	// indicated confidence depth.
@@ -519,19 +519,19 @@ type FullNode interface {
 	// A replacing message is a message with a different CID, any of Gas values, and
 	// different signature, but with all other parameters matching (source/destination,
 	// nonce, params, etc.)
-	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*api.MsgLookup, error) //perm:read
+	StateWaitMsgLimited(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch) (*types.MsgLookup, error) //perm:read
 	// StateListMiners returns the addresses of every miner that has claimed power in the Power Actor
 	StateListMiners(context.Context, types.TipSetKey) ([]address.Address, error) //perm:read
 	// StateListActors returns the addresses of every actor in the state
 	StateListActors(context.Context, types.TipSetKey) ([]address.Address, error) //perm:read
 	// StateMarketBalance looks up the Escrow and Locked balances of the given address in the Storage Market
-	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error) //perm:read
+	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (types.MarketBalance, error) //perm:read
 	// StateMarketParticipants returns the Escrow and Locked balances of every participant in the Storage Market
-	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]api.MarketBalance, error) //perm:read
+	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]types.MarketBalance, error) //perm:read
 	// StateMarketDeals returns information about every deal in the Storage Market
-	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*api.MarketDeal, error) //perm:read
+	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*types.MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error) //perm:read
+	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*types.MarketDeal, error) //perm:read
 	// StateGetAllocationForPendingDeal returns the allocation for a given deal ID of a pending deal.
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) //perm:read
 	// StateGetAllocation returns the allocation for a given address and allocation ID.
@@ -613,7 +613,7 @@ type FullNode interface {
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error) //perm:read
 	// StateVMCirculatingSupplyInternal returns an approximation of the circulating supply of Filecoin at the given tipset.
 	// This is the value reported by the runtime interface to actors code.
-	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error) //perm:read
+	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (types.CirculatingSupply, error) //perm:read
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
 	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version

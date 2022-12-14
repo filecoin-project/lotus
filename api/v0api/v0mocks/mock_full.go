@@ -262,10 +262,10 @@ func (mr *MockFullNodeMockRecorder) ChainGetParentReceipts(arg0, arg1 interface{
 }
 
 // ChainGetPath mocks base method.
-func (m *MockFullNode) ChainGetPath(arg0 context.Context, arg1, arg2 types.TipSetKey) ([]*api.HeadChange, error) {
+func (m *MockFullNode) ChainGetPath(arg0 context.Context, arg1, arg2 types.TipSetKey) ([]*types.HeadChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainGetPath", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*api.HeadChange)
+	ret0, _ := ret[0].([]*types.HeadChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -367,10 +367,10 @@ func (mr *MockFullNodeMockRecorder) ChainHead(arg0 interface{}) *gomock.Call {
 }
 
 // ChainNotify mocks base method.
-func (m *MockFullNode) ChainNotify(arg0 context.Context) (<-chan []*api.HeadChange, error) {
+func (m *MockFullNode) ChainNotify(arg0 context.Context) (<-chan []*types.HeadChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainNotify", arg0)
-	ret0, _ := ret[0].(<-chan []*api.HeadChange)
+	ret0, _ := ret[0].(<-chan []*types.HeadChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1090,7 +1090,7 @@ func (mr *MockFullNodeMockRecorder) MarketWithdraw(arg0, arg1, arg2, arg3 interf
 }
 
 // MinerCreateBlock mocks base method.
-func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *api.BlockTemplate) (*types.BlockMsg, error) {
+func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MinerCreateBlock", arg0, arg1)
 	ret0, _ := ret[0].(*types.BlockMsg)
@@ -1105,10 +1105,10 @@ func (mr *MockFullNodeMockRecorder) MinerCreateBlock(arg0, arg1 interface{}) *go
 }
 
 // MinerGetBaseInfo mocks base method.
-func (m *MockFullNode) MinerGetBaseInfo(arg0 context.Context, arg1 address.Address, arg2 abi.ChainEpoch, arg3 types.TipSetKey) (*api.MiningBaseInfo, error) {
+func (m *MockFullNode) MinerGetBaseInfo(arg0 context.Context, arg1 address.Address, arg2 abi.ChainEpoch, arg3 types.TipSetKey) (*types.MiningBaseInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MinerGetBaseInfo", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*api.MiningBaseInfo)
+	ret0, _ := ret[0].(*types.MiningBaseInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2234,10 +2234,10 @@ func (mr *MockFullNodeMockRecorder) StateAllMinerFaults(arg0, arg1, arg2 interfa
 }
 
 // StateCall mocks base method.
-func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *types.Message, arg2 types.TipSetKey) (*api.InvocResult, error) {
+func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *types.Message, arg2 types.TipSetKey) (*types.InvocResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateCall", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.InvocResult)
+	ret0, _ := ret[0].(*types.InvocResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2534,10 +2534,10 @@ func (mr *MockFullNodeMockRecorder) StateLookupID(arg0, arg1, arg2 interface{}) 
 }
 
 // StateMarketBalance mocks base method.
-func (m *MockFullNode) StateMarketBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (api.MarketBalance, error) {
+func (m *MockFullNode) StateMarketBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (types.MarketBalance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketBalance", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.MarketBalance)
+	ret0, _ := ret[0].(types.MarketBalance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2549,10 +2549,10 @@ func (mr *MockFullNodeMockRecorder) StateMarketBalance(arg0, arg1, arg2 interfac
 }
 
 // StateMarketDeals mocks base method.
-func (m *MockFullNode) StateMarketDeals(arg0 context.Context, arg1 types.TipSetKey) (map[string]*api.MarketDeal, error) {
+func (m *MockFullNode) StateMarketDeals(arg0 context.Context, arg1 types.TipSetKey) (map[string]*types.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketDeals", arg0, arg1)
-	ret0, _ := ret[0].(map[string]*api.MarketDeal)
+	ret0, _ := ret[0].(map[string]*types.MarketDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2564,10 +2564,10 @@ func (mr *MockFullNodeMockRecorder) StateMarketDeals(arg0, arg1 interface{}) *go
 }
 
 // StateMarketParticipants mocks base method.
-func (m *MockFullNode) StateMarketParticipants(arg0 context.Context, arg1 types.TipSetKey) (map[string]api.MarketBalance, error) {
+func (m *MockFullNode) StateMarketParticipants(arg0 context.Context, arg1 types.TipSetKey) (map[string]types.MarketBalance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketParticipants", arg0, arg1)
-	ret0, _ := ret[0].(map[string]api.MarketBalance)
+	ret0, _ := ret[0].(map[string]types.MarketBalance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2579,10 +2579,10 @@ func (mr *MockFullNodeMockRecorder) StateMarketParticipants(arg0, arg1 interface
 }
 
 // StateMarketStorageDeal mocks base method.
-func (m *MockFullNode) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*api.MarketDeal, error) {
+func (m *MockFullNode) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*types.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketStorageDeal", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.MarketDeal)
+	ret0, _ := ret[0].(*types.MarketDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2849,10 +2849,10 @@ func (mr *MockFullNodeMockRecorder) StateReadState(arg0, arg1, arg2 interface{})
 }
 
 // StateReplay mocks base method.
-func (m *MockFullNode) StateReplay(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid) (*api.InvocResult, error) {
+func (m *MockFullNode) StateReplay(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid) (*types.InvocResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateReplay", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.InvocResult)
+	ret0, _ := ret[0].(*types.InvocResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2864,10 +2864,10 @@ func (mr *MockFullNodeMockRecorder) StateReplay(arg0, arg1, arg2 interface{}) *g
 }
 
 // StateSearchMsg mocks base method.
-func (m *MockFullNode) StateSearchMsg(arg0 context.Context, arg1 cid.Cid) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateSearchMsg(arg0 context.Context, arg1 cid.Cid) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2879,10 +2879,10 @@ func (mr *MockFullNodeMockRecorder) StateSearchMsg(arg0, arg1 interface{}) *gomo
 }
 
 // StateSearchMsgLimited mocks base method.
-func (m *MockFullNode) StateSearchMsgLimited(arg0 context.Context, arg1 cid.Cid, arg2 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateSearchMsgLimited(arg0 context.Context, arg1 cid.Cid, arg2 abi.ChainEpoch) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSearchMsgLimited", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2954,10 +2954,10 @@ func (mr *MockFullNodeMockRecorder) StateSectorPreCommitInfo(arg0, arg1, arg2, a
 }
 
 // StateVMCirculatingSupplyInternal mocks base method.
-func (m *MockFullNode) StateVMCirculatingSupplyInternal(arg0 context.Context, arg1 types.TipSetKey) (api.CirculatingSupply, error) {
+func (m *MockFullNode) StateVMCirculatingSupplyInternal(arg0 context.Context, arg1 types.TipSetKey) (types.CirculatingSupply, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateVMCirculatingSupplyInternal", arg0, arg1)
-	ret0, _ := ret[0].(api.CirculatingSupply)
+	ret0, _ := ret[0].(types.CirculatingSupply)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3014,10 +3014,10 @@ func (mr *MockFullNodeMockRecorder) StateVerifierStatus(arg0, arg1, arg2 interfa
 }
 
 // StateWaitMsg mocks base method.
-func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3029,10 +3029,10 @@ func (mr *MockFullNodeMockRecorder) StateWaitMsg(arg0, arg1, arg2 interface{}) *
 }
 
 // StateWaitMsgLimited mocks base method.
-func (m *MockFullNode) StateWaitMsgLimited(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateWaitMsgLimited(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateWaitMsgLimited", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -22,14 +21,14 @@ import (
 type CurrentDealInfoAPI interface {
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*types.MarketDeal, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 }
 
 type CurrentDealInfo struct {
 	DealID           abi.DealID
-	MarketDeal       *api.MarketDeal
+	MarketDeal       *types.MarketDeal
 	PublishMsgTipSet types.TipSetKey
 }
 
@@ -69,7 +68,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	dealID := abi.DealID(0)
 
 	// Get the return value of the publish deals message
-	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, tsk, publishCid, api.LookbackNoLimit, true)
+	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, tsk, publishCid, types.LookbackNoLimit, true)
 	if err != nil {
 		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: search msg failed: %w", publishCid, err)
 	}

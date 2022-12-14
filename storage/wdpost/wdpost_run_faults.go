@@ -182,7 +182,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 	}
 
 	for _, msg := range msgs {
-		rec, err := s.api.StateWaitMsg(context.TODO(), msg.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := s.api.StateWaitMsg(context.TODO(), msg.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 		if err != nil {
 			return batchedRecoveryDecls, msgs, xerrors.Errorf("declare faults recovered wait error: %w", err)
 		}
@@ -283,7 +283,7 @@ func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, p
 
 	log.Warnw("declare faults Message CID", "cid", sm.Cid())
 
-	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		return faults, sm, xerrors.Errorf("declare faults wait error: %w", err)
 	}

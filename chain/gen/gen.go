@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -387,8 +386,8 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 	}
 
 	sf := func(ctx context.Context, a address.Address, i []byte) (*crypto.Signature, error) {
-		return cg.w.WalletSign(ctx, a, i, api.MsgMeta{
-			Type: api.MTUnknown,
+		return cg.w.WalletSign(ctx, a, i, types.MsgSigningMeta{
+			Type: types.MTUnknown,
 		})
 	}
 
@@ -498,7 +497,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 		ts = parents.MinTimestamp() + uint64(height-parents.Height())*build.BlockDelaySecs
 	}
 
-	fblk, err := filcns.NewFilecoinExpectedConsensus(cg.sm, nil, nil, nil).CreateBlock(context.TODO(), cg.w, &api.BlockTemplate{
+	fblk, err := filcns.NewFilecoinExpectedConsensus(cg.sm, nil, nil, nil).CreateBlock(context.TODO(), cg.w, &types.BlockTemplate{
 		Miner:            m,
 		Parents:          parents.Key(),
 		Ticket:           vrfticket,
@@ -558,8 +557,8 @@ func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := cg.w.WalletSign(context.TODO(), cg.banker, msg.Cid().Bytes(), api.MsgMeta{
-			Type: api.MTUnknown, // testing
+		sig, err := cg.w.WalletSign(context.TODO(), cg.banker, msg.Cid().Bytes(), types.MsgSigningMeta{
+			Type: types.MTUnknown, // testing
 		})
 		if err != nil {
 			return nil, err
@@ -585,7 +584,7 @@ type MiningCheckAPI interface {
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 
-	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error)
+	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*types.MiningBaseInfo, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
@@ -605,13 +604,13 @@ func (mca mca) StateGetRandomnessFromBeacon(ctx context.Context, personalization
 	return mca.sm.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 }
 
-func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*types.MiningBaseInfo, error) {
 	return stmgr.MinerGetBaseInfo(ctx, mca.sm, mca.bcn, tsk, epoch, maddr, mca.pv)
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*crypto.Signature, error) {
-	return mca.w.WalletSign(ctx, a, v, api.MsgMeta{
-		Type: api.MTUnknown,
+	return mca.w.WalletSign(ctx, a, v, types.MsgSigningMeta{
+		Type: types.MTUnknown,
 	})
 }
 
@@ -631,7 +630,7 @@ func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInf
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
-	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
+	miner address.Address, brand types.BeaconEntry, mbi *types.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
 	if err := miner.MarshalCBOR(buf); err != nil {

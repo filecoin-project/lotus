@@ -397,7 +397,7 @@ func (d *dpAPI) StateLookupID(ctx context.Context, a address.Address, key types.
 	panic("don't call me")
 }
 
-func (d *dpAPI) StateCall(ctx context.Context, message *types.Message, key types.TipSetKey) (*api.InvocResult, error) {
+func (d *dpAPI) StateCall(ctx context.Context, message *types.Message, key types.TipSetKey) (*types.InvocResult, error) {
 	var p markettypes.PublishStorageDealsParams
 	if err := p.UnmarshalCBOR(bytes.NewReader(message.Params)); err != nil {
 		return nil, xerrors.Errorf("unmarshal market params: %w", err)
@@ -407,7 +407,7 @@ func (d *dpAPI) StateCall(ctx context.Context, message *types.Message, key types
 	if p.Deals[0].Proposal.PieceSize == 1 {
 		exit = exitcode.ErrIllegalState
 	}
-	return &api.InvocResult{MsgRct: &types.MessageReceipt{ExitCode: exit}}, nil
+	return &types.InvocResult{MsgRct: &types.MessageReceipt{ExitCode: exit}}, nil
 }
 
 func getClientActor(t *testing.T) address.Address {

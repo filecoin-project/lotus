@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -33,7 +32,7 @@ func SendFunds(ctx context.Context, t *testing.T, sender *TestFullNode, recipien
 }
 
 func (f *TestFullNode) WaitMsg(ctx context.Context, msg cid.Cid) {
-	res, err := f.StateWaitMsg(ctx, msg, 3, api.LookbackNoLimit, true)
+	res, err := f.StateWaitMsg(ctx, msg, 3, types.LookbackNoLimit, true)
 	require.NoError(f.t, err)
 
 	require.EqualValues(f.t, 0, res.Receipt.ExitCode, "message did not successfully execute")

@@ -143,7 +143,7 @@ func TestRaftState(t *testing.T) {
 		MsgUuid: mu,
 	})
 	require.NoError(t, err)
-	mLookup, err := node0.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := node0.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -189,7 +189,7 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 		MsgUuid: mu,
 	})
 	require.NoError(t, err)
-	mLookup, err := node0.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := node0.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -232,7 +232,7 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 		MsgUuid: mu2,
 	})
 	require.NoError(t, err)
-	mLookup, err = leaderNode.StateWaitMsg(ctx, signedMsg2.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err = leaderNode.StateWaitMsg(ctx, signedMsg2.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -277,7 +277,7 @@ func TestRaftStateMiner(t *testing.T) {
 		MsgUuid: mu,
 	})
 	require.NoError(t, err)
-	mLookup, err := node0.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := node0.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -346,7 +346,7 @@ func TestRaftStateLeaderDisconnectsMiner(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mLookup, err := leaderNode.StateWaitMsg(ctx, signedMsg2.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := leaderNode.StateWaitMsg(ctx, signedMsg2.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -422,7 +422,7 @@ func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 	require.NotEqual(t, newLeader, leader)
 	leaderNode = peerToNode[newLeader]
 
-	mLookup, err := leaderNode.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := leaderNode.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -479,7 +479,7 @@ func TestChainStoreSync(t *testing.T) {
 	for _, n := range nodes {
 		fmt.Println(n != leaderNode)
 		if n != leaderNode {
-			mLookup, err := n.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+			mLookup, err := n.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 			//break

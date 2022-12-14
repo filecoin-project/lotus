@@ -62,7 +62,7 @@ type FullNodeStruct struct {
 
 		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) `perm:"read"`
 
-		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) `perm:"read"`
+		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) `perm:"read"`
 
 		ChainGetRandomnessFromBeacon func(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) `perm:"read"`
 
@@ -76,7 +76,7 @@ type FullNodeStruct struct {
 
 		ChainHead func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
-		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) `perm:"read"`
+		ChainNotify func(p0 context.Context) (<-chan []*types.HeadChange, error) `perm:"read"`
 
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
@@ -162,9 +162,9 @@ type FullNodeStruct struct {
 
 		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
-		MinerCreateBlock func(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) `perm:"write"`
+		MinerCreateBlock func(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error) `perm:"write"`
 
-		MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
+		MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*types.MiningBaseInfo, error) `perm:"read"`
 
 		MpoolBatchPush func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
@@ -264,7 +264,7 @@ type FullNodeStruct struct {
 
 		StateAllMinerFaults func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*api.Fault, error) `perm:"read"`
 
-		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*api.InvocResult, error) `perm:"read"`
+		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) `perm:"read"`
 
 		StateChangedActors func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) `perm:"read"`
 
@@ -304,13 +304,13 @@ type FullNodeStruct struct {
 
 		StateLookupID func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
-		StateMarketBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) `perm:"read"`
+		StateMarketBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) `perm:"read"`
 
-		StateMarketDeals func(p0 context.Context, p1 types.TipSetKey) (map[string]*api.MarketDeal, error) `perm:"read"`
+		StateMarketDeals func(p0 context.Context, p1 types.TipSetKey) (map[string]*types.MarketDeal, error) `perm:"read"`
 
-		StateMarketParticipants func(p0 context.Context, p1 types.TipSetKey) (map[string]api.MarketBalance, error) `perm:"read"`
+		StateMarketParticipants func(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketBalance, error) `perm:"read"`
 
-		StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) `perm:"read"`
+		StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) `perm:"read"`
 
 		StateMinerActiveSectors func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
 
@@ -346,11 +346,11 @@ type FullNodeStruct struct {
 
 		StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.ActorState, error) `perm:"read"`
 
-		StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) `perm:"read"`
+		StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) `perm:"read"`
 
-		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) `perm:"read"`
+		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) `perm:"read"`
 
-		StateSearchMsgLimited func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*api.MsgLookup, error) `perm:"read"`
+		StateSearchMsgLimited func(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*types.MsgLookup, error) `perm:"read"`
 
 		StateSectorExpiration func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorExpiration, error) `perm:"read"`
 
@@ -360,7 +360,7 @@ type FullNodeStruct struct {
 
 		StateSectorPreCommitInfo func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
 
-		StateVMCirculatingSupplyInternal func(p0 context.Context, p1 types.TipSetKey) (api.CirculatingSupply, error) `perm:"read"`
+		StateVMCirculatingSupplyInternal func(p0 context.Context, p1 types.TipSetKey) (types.CirculatingSupply, error) `perm:"read"`
 
 		StateVerifiedClientStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) `perm:"read"`
 
@@ -368,9 +368,9 @@ type FullNodeStruct struct {
 
 		StateVerifierStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) `perm:"read"`
 
-		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) `perm:"read"`
+		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) `perm:"read"`
 
-		StateWaitMsgLimited func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*api.MsgLookup, error) `perm:"read"`
+		StateWaitMsgLimited func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*types.MsgLookup, error) `perm:"read"`
 
 		SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
@@ -438,7 +438,7 @@ type GatewayStruct struct {
 
 		ChainHead func(p0 context.Context) (*types.TipSet, error) ``
 
-		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) ``
+		ChainNotify func(p0 context.Context) (<-chan []*types.HeadChange, error) ``
 
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
@@ -466,9 +466,9 @@ type GatewayStruct struct {
 
 		StateLookupID func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
 
-		StateMarketBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) ``
+		StateMarketBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) ``
 
-		StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) ``
+		StateMarketStorageDeal func(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) ``
 
 		StateMinerInfo func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MinerInfo, error) ``
 
@@ -478,13 +478,13 @@ type GatewayStruct struct {
 
 		StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (abinetwork.Version, error) ``
 
-		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) ``
+		StateSearchMsg func(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) ``
 
 		StateSectorGetInfo func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) ``
 
 		StateVerifiedClientStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
-		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) ``
+		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) ``
 
 		Version func(p0 context.Context) (api.APIVersion, error) ``
 
@@ -616,15 +616,15 @@ func (s *FullNodeStub) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([
 	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) {
+func (s *FullNodeStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
 	if s.Internal.ChainGetPath == nil {
-		return *new([]*api.HeadChange), ErrNotSupported
+		return *new([]*types.HeadChange), ErrNotSupported
 	}
 	return s.Internal.ChainGetPath(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*api.HeadChange, error) {
-	return *new([]*api.HeadChange), ErrNotSupported
+func (s *FullNodeStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
+	return *new([]*types.HeadChange), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetRandomnessFromBeacon(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
@@ -693,14 +693,14 @@ func (s *FullNodeStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	if s.Internal.ChainNotify == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ChainNotify(p0)
 }
 
-func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	return nil, ErrNotSupported
 }
 
@@ -1166,25 +1166,25 @@ func (s *FullNodeStub) MarketWithdraw(p0 context.Context, p1 address.Address, p2
 	return *new(cid.Cid), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MinerCreateBlock(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
+func (s *FullNodeStruct) MinerCreateBlock(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	if s.Internal.MinerCreateBlock == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.MinerCreateBlock(p0, p1)
 }
 
-func (s *FullNodeStub) MinerCreateBlock(p0 context.Context, p1 *api.BlockTemplate) (*types.BlockMsg, error) {
+func (s *FullNodeStub) MinerCreateBlock(p0 context.Context, p1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*api.MiningBaseInfo, error) {
+func (s *FullNodeStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*types.MiningBaseInfo, error) {
 	if s.Internal.MinerGetBaseInfo == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.MinerGetBaseInfo(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*api.MiningBaseInfo, error) {
+func (s *FullNodeStub) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*types.MiningBaseInfo, error) {
 	return nil, ErrNotSupported
 }
 
@@ -1727,14 +1727,14 @@ func (s *FullNodeStub) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch
 	return *new([]*api.Fault), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*api.InvocResult, error) {
+func (s *FullNodeStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) {
 	if s.Internal.StateCall == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateCall(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*api.InvocResult, error) {
+func (s *FullNodeStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*types.InvocResult, error) {
 	return nil, ErrNotSupported
 }
 
@@ -1947,47 +1947,47 @@ func (s *FullNodeStub) StateLookupID(p0 context.Context, p1 address.Address, p2 
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
+func (s *FullNodeStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) {
 	if s.Internal.StateMarketBalance == nil {
-		return *new(api.MarketBalance), ErrNotSupported
+		return *new(types.MarketBalance), ErrNotSupported
 	}
 	return s.Internal.StateMarketBalance(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
-	return *new(api.MarketBalance), ErrNotSupported
+func (s *FullNodeStub) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) {
+	return *new(types.MarketBalance), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]*api.MarketDeal, error) {
+func (s *FullNodeStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]*types.MarketDeal, error) {
 	if s.Internal.StateMarketDeals == nil {
-		return *new(map[string]*api.MarketDeal), ErrNotSupported
+		return *new(map[string]*types.MarketDeal), ErrNotSupported
 	}
 	return s.Internal.StateMarketDeals(p0, p1)
 }
 
-func (s *FullNodeStub) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]*api.MarketDeal, error) {
-	return *new(map[string]*api.MarketDeal), ErrNotSupported
+func (s *FullNodeStub) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]*types.MarketDeal, error) {
+	return *new(map[string]*types.MarketDeal), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]api.MarketBalance, error) {
+func (s *FullNodeStruct) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketBalance, error) {
 	if s.Internal.StateMarketParticipants == nil {
-		return *new(map[string]api.MarketBalance), ErrNotSupported
+		return *new(map[string]types.MarketBalance), ErrNotSupported
 	}
 	return s.Internal.StateMarketParticipants(p0, p1)
 }
 
-func (s *FullNodeStub) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]api.MarketBalance, error) {
-	return *new(map[string]api.MarketBalance), ErrNotSupported
+func (s *FullNodeStub) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]types.MarketBalance, error) {
+	return *new(map[string]types.MarketBalance), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
+func (s *FullNodeStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {
 	if s.Internal.StateMarketStorageDeal == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
+func (s *FullNodeStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2178,36 +2178,36 @@ func (s *FullNodeStub) StateReadState(p0 context.Context, p1 address.Address, p2
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) {
+func (s *FullNodeStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) {
 	if s.Internal.StateReplay == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateReplay(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*api.InvocResult, error) {
+func (s *FullNodeStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*types.InvocResult, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	if s.Internal.StateSearchMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateSearchMsg(p0, p1)
 }
 
-func (s *FullNodeStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*types.MsgLookup, error) {
 	if s.Internal.StateSearchMsgLimited == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateSearchMsgLimited(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateSearchMsgLimited(p0 context.Context, p1 cid.Cid, p2 abi.ChainEpoch) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2255,15 +2255,15 @@ func (s *FullNodeStub) StateSectorPreCommitInfo(p0 context.Context, p1 address.A
 	return *new(miner.SectorPreCommitOnChainInfo), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (api.CirculatingSupply, error) {
+func (s *FullNodeStruct) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (types.CirculatingSupply, error) {
 	if s.Internal.StateVMCirculatingSupplyInternal == nil {
-		return *new(api.CirculatingSupply), ErrNotSupported
+		return *new(types.CirculatingSupply), ErrNotSupported
 	}
 	return s.Internal.StateVMCirculatingSupplyInternal(p0, p1)
 }
 
-func (s *FullNodeStub) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (api.CirculatingSupply, error) {
-	return *new(api.CirculatingSupply), ErrNotSupported
+func (s *FullNodeStub) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (types.CirculatingSupply, error) {
+	return *new(types.CirculatingSupply), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
@@ -2299,25 +2299,25 @@ func (s *FullNodeStub) StateVerifierStatus(p0 context.Context, p1 address.Addres
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	if s.Internal.StateWaitMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateWaitMsg(p0, p1, p2)
 }
 
-func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStruct) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*types.MsgLookup, error) {
 	if s.Internal.StateWaitMsgLimited == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateWaitMsgLimited(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*api.MsgLookup, error) {
+func (s *FullNodeStub) StateWaitMsgLimited(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2629,14 +2629,14 @@ func (s *GatewayStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	if s.Internal.ChainNotify == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ChainNotify(p0)
 }
 
-func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
+func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2783,25 +2783,25 @@ func (s *GatewayStub) StateLookupID(p0 context.Context, p1 address.Address, p2 t
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *GatewayStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
+func (s *GatewayStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) {
 	if s.Internal.StateMarketBalance == nil {
-		return *new(api.MarketBalance), ErrNotSupported
+		return *new(types.MarketBalance), ErrNotSupported
 	}
 	return s.Internal.StateMarketBalance(p0, p1, p2)
 }
 
-func (s *GatewayStub) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (api.MarketBalance, error) {
-	return *new(api.MarketBalance), ErrNotSupported
+func (s *GatewayStub) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.MarketBalance, error) {
+	return *new(types.MarketBalance), ErrNotSupported
 }
 
-func (s *GatewayStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
+func (s *GatewayStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {
 	if s.Internal.StateMarketStorageDeal == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
 
-func (s *GatewayStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*api.MarketDeal, error) {
+func (s *GatewayStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*types.MarketDeal, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2849,14 +2849,14 @@ func (s *GatewayStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey
 	return *new(abinetwork.Version), ErrNotSupported
 }
 
-func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	if s.Internal.StateSearchMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateSearchMsg(p0, p1)
 }
 
-func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*api.MsgLookup, error) {
+func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 cid.Cid) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2882,14 +2882,14 @@ func (s *GatewayStub) StateVerifiedClientStatus(p0 context.Context, p1 address.A
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	if s.Internal.StateWaitMsg == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.StateWaitMsg(p0, p1, p2)
 }
 
-func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
+func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*types.MsgLookup, error) {
 	return nil, ErrNotSupported
 }
 

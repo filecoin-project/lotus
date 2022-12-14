@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -82,7 +81,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	}
 
 	if sector.PreCommitMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), ts.Key(), *sector.PreCommitMessage, api.LookbackNoLimit, true)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), ts.Key(), *sector.PreCommitMessage, types.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			if err := failedCooldown(ctx, sector); err != nil {
@@ -203,7 +202,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 
 	if sector.ReplicaUpdateMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), types.EmptyTSK, *sector.ReplicaUpdateMessage, api.LookbackNoLimit, true)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), types.EmptyTSK, *sector.ReplicaUpdateMessage, types.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			return ctx.Send(SectorRetrySubmitReplicaUpdateWait{})
@@ -284,7 +283,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 	}
 
 	if sector.CommitMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), ts.Key(), *sector.CommitMessage, api.LookbackNoLimit, true)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), ts.Key(), *sector.CommitMessage, types.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			if err := failedCooldown(ctx, sector); err != nil {

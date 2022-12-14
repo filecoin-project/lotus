@@ -123,7 +123,7 @@ func TestCheckPendingMessages(t *testing.T) {
 		Params:     make([]byte, 2<<10),
 	}
 
-	sig, err := w.WalletSign(context.TODO(), sender, msg.Cid().Bytes(), api.MsgMeta{})
+	sig, err := w.WalletSign(context.TODO(), sender, msg.Cid().Bytes(), types.MsgSigningMeta{})
 	if err != nil {
 		panic(err)
 	}
@@ -180,7 +180,7 @@ func TestCheckReplaceMessages(t *testing.T) {
 		Params:     make([]byte, 2<<10),
 	}
 
-	sig, err := w.WalletSign(context.TODO(), sender, msg.Cid().Bytes(), api.MsgMeta{})
+	sig, err := w.WalletSign(context.TODO(), sender, msg.Cid().Bytes(), types.MsgSigningMeta{})
 	if err != nil {
 		panic(err)
 	}

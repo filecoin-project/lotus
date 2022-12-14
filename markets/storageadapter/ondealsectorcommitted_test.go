@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -53,21 +52,21 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		ClientCollateral:     abi.NewTokenAmount(1),
 		Label:                label,
 	}
-	unfinishedDeal := &api.MarketDeal{
+	unfinishedDeal := &types.MarketDeal{
 		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: -1,
 			LastUpdatedEpoch: 2,
 		},
 	}
-	activeDeal := &api.MarketDeal{
+	activeDeal := &types.MarketDeal{
 		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
 		},
 	}
-	slashedDeal := &api.MarketDeal{
+	slashedDeal := &types.MarketDeal{
 		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: 1,
@@ -275,21 +274,21 @@ func TestOnDealSectorCommitted(t *testing.T) {
 		ClientCollateral:     abi.NewTokenAmount(1),
 		Label:                label,
 	}
-	unfinishedDeal := &api.MarketDeal{
+	unfinishedDeal := &types.MarketDeal{
 		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: -1,
 			LastUpdatedEpoch: 2,
 		},
 	}
-	activeDeal := &api.MarketDeal{
+	activeDeal := &types.MarketDeal{
 		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
 		},
 	}
-	slashedDeal := &api.MarketDeal{
+	slashedDeal := &types.MarketDeal{
 		Proposal: proposal,
 		State: market.DealState{
 			SectorStartEpoch: 1,

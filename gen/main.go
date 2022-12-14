@@ -26,6 +26,7 @@ func main() {
 		types.ElectionProof{},
 		types.Message{},
 		types.SignedMessage{},
+		types.MsgSigningMeta{},
 		types.MsgMeta{},
 		types.ActorV4{},
 		types.ActorV5{},

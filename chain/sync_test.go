@@ -22,6 +22,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -701,7 +702,7 @@ func TestDuplicateNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -728,8 +729,8 @@ func TestDuplicateNonce(t *testing.T) {
 	var includedMsg cid.Cid
 	var skippedMsg cid.Cid
 	//stm: @CHAIN_STATE_SEARCH_MSG_001
-	r0, err0 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[0][0].Cid(), api.LookbackNoLimit, true)
-	r1, err1 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[1][0].Cid(), api.LookbackNoLimit, true)
+	r0, err0 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[0][0].Cid(), types.LookbackNoLimit, true)
+	r1, err1 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[1][0].Cid(), types.LookbackNoLimit, true)
 
 	if err0 == nil {
 		require.Error(t, err1, "at least one of the StateGetReceipt calls should fail")
@@ -800,7 +801,7 @@ func TestBadNonce(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -858,7 +859,7 @@ func TestMismatchedNoncesRobustID(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -916,7 +917,7 @@ func TestMatchedNoncesRobustID(t *testing.T) {
 			GasPremium: types.NewInt(0),
 		}
 
-		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), api.MsgMeta{})
+		sig, err := tu.g.Wallet().WalletSign(context.TODO(), tu.g.Banker(), msg.Cid().Bytes(), types.MsgSigningMeta{})
 		require.NoError(t, err)
 
 		return &types.SignedMessage{
@@ -1259,5 +1260,5 @@ func TestSyncState(t *testing.T) {
 	state, err = clientNode.SyncState(tu.ctx)
 	require.NoError(tu.t, err)
 	require.Equal(tu.t, len(state.ActiveSyncs), 1)
-	require.Equal(tu.t, state.ActiveSyncs[0].Stage, api.StageSyncComplete)
+	require.Equal(tu.t, state.ActiveSyncs[0].Stage, chain.StageSyncComplete)
 }

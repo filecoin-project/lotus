@@ -508,7 +508,7 @@ var StateExecTraceCmd = &cli.Command{
 			return err
 		}
 
-		var trace *api.InvocResult
+		var trace *types.InvocResult
 		for _, t := range cso.Trace {
 			if t.Msg.From == msg.From && t.Msg.Nonce == msg.Nonce {
 				trace = t
@@ -1557,7 +1557,7 @@ func printReceiptReturn(ctx context.Context, api v0api.FullNode, m *types.Messag
 	return nil
 }
 
-func printMsg(ctx context.Context, api v0api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
+func printMsg(ctx context.Context, api v0api.FullNode, msg cid.Cid, mw *types.MsgLookup, m *types.Message) error {
 	if mw == nil {
 		fmt.Println("message was not found on chain")
 		return nil

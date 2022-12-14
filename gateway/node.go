@@ -55,8 +55,8 @@ type TargetAPI interface {
 	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
-	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainPutObj(context.Context, blocks.Block) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
@@ -71,11 +71,11 @@ type TargetAPI interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
-	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
-	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
+	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)
+	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 	StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
@@ -87,7 +87,7 @@ type TargetAPI interface {
 	StateCirculatingSupply(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
-	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (api.CirculatingSupply, error)
+	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (types.CirculatingSupply, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error) //perm:read
 }
 
@@ -302,14 +302,14 @@ func (gw *Node) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, er
 	return gw.target.ChainGetNode(ctx, p)
 }
 
-func (gw *Node) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
+func (gw *Node) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}
 	return gw.target.ChainNotify(ctx)
 }
 
-func (gw *Node) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
+func (gw *Node) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}
@@ -451,17 +451,17 @@ func (gw *Node) StateLookupID(ctx context.Context, addr address.Address, tsk typ
 	return gw.target.StateLookupID(ctx, addr, tsk)
 }
 
-func (gw *Node) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+func (gw *Node) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return api.MarketBalance{}, err
+		return types.MarketBalance{}, err
 	}
 	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
-		return api.MarketBalance{}, err
+		return types.MarketBalance{}, err
 	}
 	return gw.target.StateMarketBalance(ctx, addr, tsk)
 }
 
-func (gw *Node) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+func (gw *Node) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
@@ -481,14 +481,14 @@ func (gw *Node) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (n
 	return gw.target.StateNetworkVersion(ctx, tsk)
 }
 
-func (gw *Node) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+func (gw *Node) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	if limit == api.LookbackNoLimit {
+	if limit == types.LookbackNoLimit {
 		limit = gw.stateWaitLookbackLimit
 	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
+	if gw.stateWaitLookbackLimit != types.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
 		limit = gw.stateWaitLookbackLimit
 	}
 	if err := gw.checkTipsetKey(ctx, from); err != nil {
@@ -497,14 +497,14 @@ func (gw *Node) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg ci
 	return gw.target.StateSearchMsg(ctx, from, msg, limit, allowReplaced)
 }
 
-func (gw *Node) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+func (gw *Node) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
-	if limit == api.LookbackNoLimit {
+	if limit == types.LookbackNoLimit {
 		limit = gw.stateWaitLookbackLimit
 	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
+	if gw.stateWaitLookbackLimit != types.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
 		limit = gw.stateWaitLookbackLimit
 	}
 	return gw.target.StateWaitMsg(ctx, msg, confidence, limit, allowReplaced)
@@ -620,12 +620,12 @@ func (gw *Node) StateVerifiedClientStatus(ctx context.Context, addr address.Addr
 	return gw.target.StateVerifiedClientStatus(ctx, addr, tsk)
 }
 
-func (gw *Node) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+func (gw *Node) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return api.CirculatingSupply{}, err
+		return types.CirculatingSupply{}, err
 	}
 	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
-		return api.CirculatingSupply{}, err
+		return types.CirculatingSupply{}, err
 	}
 	return gw.target.StateVMCirculatingSupplyInternal(ctx, tsk)
 }

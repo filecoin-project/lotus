@@ -33,7 +33,6 @@ import (
 	// messages, regardless of specs-actors version.
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -983,10 +982,10 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 			batchSize = i + 1
 		}
 
-		ss.SetStage(api.StageFetchingMessages)
+		ss.SetStage(StageFetchingMessages)
 		startOffset := i + 1 - batchSize
 		bstout, batchErr := syncer.fetchMessages(ctx, headers[startOffset:startOffset+batchSize], startOffset)
-		ss.SetStage(api.StageMessages)
+		ss.SetStage(StageMessages)
 
 		if batchErr != nil {
 			return xerrors.Errorf("failed to fetch messages: %w", batchErr)
@@ -1196,7 +1195,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())
 	}
 
-	ss.SetStage(api.StagePersistHeaders)
+	ss.SetStage(StagePersistHeaders)
 
 	toPersist := make([]*types.BlockHeader, 0, len(headers)*int(build.BlocksPerEpoch))
 	for _, ts := range headers {
@@ -1209,7 +1208,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 	}
 	toPersist = nil
 
-	ss.SetStage(api.StageMessages)
+	ss.SetStage(StageMessages)
 
 	if err := syncer.syncMessagesAndCheckState(ctx, headers); err != nil {
 		err = xerrors.Errorf("collectChain syncMessages: %w", err)
@@ -1217,7 +1216,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 		return err
 	}
 
-	ss.SetStage(api.StageSyncComplete)
+	ss.SetStage(StageSyncComplete)
 	log.Debugw("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
 
 	return nil
@@ -1244,4 +1243,37 @@ func (syncer *Syncer) UnmarkAllBad() {
 func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
 	bbr, ok := syncer.bad.Has(blk)
 	return bbr.String(), ok
+}
+
+type SyncStateStage int
+
+const (
+	StageIdle = SyncStateStage(iota)
+	StageHeaders
+	StagePersistHeaders
+	StageMessages
+	StageSyncComplete
+	StageSyncErrored
+	StageFetchingMessages
+)
+
+func (v SyncStateStage) String() string {
+	switch v {
+	case StageIdle:
+		return "idle"
+	case StageHeaders:
+		return "header sync"
+	case StagePersistHeaders:
+		return "persisting headers"
+	case StageMessages:
+		return "message sync"
+	case StageSyncComplete:
+		return "complete"
+	case StageSyncErrored:
+		return "error"
+	case StageFetchingMessages:
+		return "fetching messages"
+	default:
+		return fmt.Sprintf("<unknown: %d>", v)
+	}
 }

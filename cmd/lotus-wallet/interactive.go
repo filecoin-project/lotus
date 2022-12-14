@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
@@ -57,7 +56,7 @@ func (c *InteractiveWallet) WalletList(ctx context.Context) ([]address.Address, 
 	return c.under.WalletList(ctx)
 }
 
-func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
+func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgSigningMeta) (*crypto.Signature, error) {
 	err := c.accept(func() error {
 		fmt.Println("-----")
 		fmt.Println("ACTION: WalletSign - Sign a message/deal")
@@ -65,7 +64,7 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 		fmt.Printf("TYPE: %s\n", meta.Type)
 
 		switch meta.Type {
-		case api.MTChainMsg:
+		case types.MTChainMsg:
 			var cmsg types.Message
 			if err := cmsg.UnmarshalCBOR(bytes.NewReader(meta.Extra)); err != nil {
 				return xerrors.Errorf("unmarshalling message: %w", err)
@@ -137,7 +136,7 @@ func (c *InteractiveWallet) WalletSign(ctx context.Context, k address.Address, m
 				fmt.Println("Params: No chain node connection, can't decode params")
 			}
 
-		case api.MTDealProposal:
+		case types.MTDealProposal:
 			return xerrors.Errorf("TODO") // TODO
 		default:
 			log.Infow("WalletSign", "address", k, "type", meta.Type)

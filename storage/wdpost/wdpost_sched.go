@@ -33,7 +33,7 @@ var log = logging.Logger("wdpost")
 
 type NodeAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
-	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
 
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -41,7 +41,7 @@ type NodeAPI interface {
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]api.Partition, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
@@ -140,7 +140,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	s.ch.start()
 
 	var (
-		notifs <-chan []*api.HeadChange
+		notifs <-chan []*types.HeadChange
 		err    error
 		gotCur bool
 	)

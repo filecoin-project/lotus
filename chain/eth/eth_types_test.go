@@ -1,5 +1,5 @@
 // stm: #unit
-package api
+package eth
 
 import (
 	"strings"

@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
@@ -126,7 +125,7 @@ func TestMigrationNV17(t *testing.T) {
 	require.NoError(t, err, "AddVerifier failed")
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err := clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
+	res, err := clientApi.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
 
@@ -145,7 +144,7 @@ func TestMigrationNV17(t *testing.T) {
 	require.NoError(t, err, "AddVerifier failed")
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
+	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
 
@@ -167,7 +166,7 @@ func TestMigrationNV17(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, api.LookbackNoLimit, true)
+	res, err = clientApi.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, res.Receipt.ExitCode.IsSuccess())
 
@@ -223,7 +222,7 @@ func TestMigrationNV17(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 
-	r, err := clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+	r, err := clientApi.StateWaitMsg(ctx, m.Cid(), 2, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, r.Receipt.ExitCode.IsSuccess())
 
@@ -316,7 +315,7 @@ func TestMigrationNV17(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 
-	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, r.Receipt.ExitCode.IsSuccess())
 
@@ -339,7 +338,7 @@ func TestMigrationNV17(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 
-	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, r.Receipt.ExitCode.IsSuccess())
 
@@ -430,7 +429,7 @@ func TestMigrationNV17(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 
-	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, r.Receipt.ExitCode.IsSuccess())
 
@@ -511,7 +510,7 @@ func TestMigrationNV17(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 
-	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
+	r, err = clientApi.StateWaitMsg(ctx, m.Cid(), 2, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.True(t, r.Receipt.ExitCode.IsSuccess())
 

@@ -17,7 +17,6 @@ import (
 	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
 
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -93,7 +92,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			require.NoError(t, err, "AddVerifier failed")
 
 			//stm: @CHAIN_STATE_WAIT_MSG_001
-			res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+			res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -115,7 +114,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			require.NoError(t, err)
 
 			//stm: @CHAIN_STATE_WAIT_MSG_001
-			res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+			res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -242,7 +241,7 @@ func TestRemoveDataCap(t *testing.T) {
 		require.NoError(t, err, "AddVerifier failed")
 
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+		res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -274,7 +273,7 @@ func TestRemoveDataCap(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -345,7 +344,7 @@ func TestRemoveDataCap(t *testing.T) {
 	require.NoError(t, err, "RemoveDataCap failed")
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -364,7 +363,7 @@ func TestRemoveDataCap(t *testing.T) {
 	require.NoError(t, err, "RemoveDataCap failed")
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 

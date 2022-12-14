@@ -642,7 +642,7 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 	log.Infof("Submitted window post: %s (deadline %d)", sm.Cid(), proof.Deadline)
 
 	go func() {
-		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 		if err != nil {
 			log.Error(err)
 			return

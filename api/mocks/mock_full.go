@@ -36,6 +36,7 @@ import (
 	api "github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	eth "github.com/filecoin-project/lotus/chain/eth"
 	types "github.com/filecoin-project/lotus/chain/types"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -274,10 +275,10 @@ func (mr *MockFullNodeMockRecorder) ChainGetParentReceipts(arg0, arg1 interface{
 }
 
 // ChainGetPath mocks base method.
-func (m *MockFullNode) ChainGetPath(arg0 context.Context, arg1, arg2 types.TipSetKey) ([]*api.HeadChange, error) {
+func (m *MockFullNode) ChainGetPath(arg0 context.Context, arg1, arg2 types.TipSetKey) ([]*types.HeadChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainGetPath", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*api.HeadChange)
+	ret0, _ := ret[0].([]*types.HeadChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -364,10 +365,10 @@ func (mr *MockFullNodeMockRecorder) ChainHead(arg0 interface{}) *gomock.Call {
 }
 
 // ChainNotify mocks base method.
-func (m *MockFullNode) ChainNotify(arg0 context.Context) (<-chan []*api.HeadChange, error) {
+func (m *MockFullNode) ChainNotify(arg0 context.Context) (<-chan []*types.HeadChange, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainNotify", arg0)
-	ret0, _ := ret[0].(<-chan []*api.HeadChange)
+	ret0, _ := ret[0].(<-chan []*types.HeadChange)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -922,10 +923,10 @@ func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
 }
 
 // EthAccounts mocks base method.
-func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]api.EthAddress, error) {
+func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]eth.EthAddress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthAccounts", arg0)
-	ret0, _ := ret[0].([]api.EthAddress)
+	ret0, _ := ret[0].([]eth.EthAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -937,10 +938,10 @@ func (mr *MockFullNodeMockRecorder) EthAccounts(arg0 interface{}) *gomock.Call {
 }
 
 // EthBlockNumber mocks base method.
-func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (api.EthUint64, error) {
+func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (eth.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthBlockNumber", arg0)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(eth.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -952,10 +953,10 @@ func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Cal
 }
 
 // EthCall mocks base method.
-func (m *MockFullNode) EthCall(arg0 context.Context, arg1 api.EthCall, arg2 string) (api.EthBytes, error) {
+func (m *MockFullNode) EthCall(arg0 context.Context, arg1 eth.EthCall, arg2 string) (eth.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthCall", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBytes)
+	ret0, _ := ret[0].(eth.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -967,10 +968,10 @@ func (mr *MockFullNodeMockRecorder) EthCall(arg0, arg1, arg2 interface{}) *gomoc
 }
 
 // EthChainId mocks base method.
-func (m *MockFullNode) EthChainId(arg0 context.Context) (api.EthUint64, error) {
+func (m *MockFullNode) EthChainId(arg0 context.Context) (eth.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthChainId", arg0)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(eth.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -982,10 +983,10 @@ func (mr *MockFullNodeMockRecorder) EthChainId(arg0 interface{}) *gomock.Call {
 }
 
 // EthEstimateGas mocks base method.
-func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 api.EthCall) (api.EthUint64, error) {
+func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 eth.EthCall) (eth.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(eth.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -997,10 +998,10 @@ func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1 interface{}) *gomo
 }
 
 // EthFeeHistory mocks base method.
-func (m *MockFullNode) EthFeeHistory(arg0 context.Context, arg1 api.EthUint64, arg2 string, arg3 []float64) (api.EthFeeHistory, error) {
+func (m *MockFullNode) EthFeeHistory(arg0 context.Context, arg1 eth.EthUint64, arg2 string, arg3 []float64) (eth.EthFeeHistory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthFeeHistory", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(api.EthFeeHistory)
+	ret0, _ := ret[0].(eth.EthFeeHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1012,10 +1013,10 @@ func (mr *MockFullNodeMockRecorder) EthFeeHistory(arg0, arg1, arg2, arg3 interfa
 }
 
 // EthGasPrice mocks base method.
-func (m *MockFullNode) EthGasPrice(arg0 context.Context) (api.EthBigInt, error) {
+func (m *MockFullNode) EthGasPrice(arg0 context.Context) (eth.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGasPrice", arg0)
-	ret0, _ := ret[0].(api.EthBigInt)
+	ret0, _ := ret[0].(eth.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1027,10 +1028,10 @@ func (mr *MockFullNodeMockRecorder) EthGasPrice(arg0 interface{}) *gomock.Call {
 }
 
 // EthGetBalance mocks base method.
-func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthBigInt, error) {
+func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 eth.EthAddress, arg2 string) (eth.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBalance", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBigInt)
+	ret0, _ := ret[0].(eth.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1042,10 +1043,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBalance(arg0, arg1, arg2 interface{}) 
 }
 
 // EthGetBlockByHash mocks base method.
-func (m *MockFullNode) EthGetBlockByHash(arg0 context.Context, arg1 api.EthHash, arg2 bool) (api.EthBlock, error) {
+func (m *MockFullNode) EthGetBlockByHash(arg0 context.Context, arg1 eth.EthHash, arg2 bool) (eth.EthBlock, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockByHash", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBlock)
+	ret0, _ := ret[0].(eth.EthBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1057,10 +1058,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockByHash(arg0, arg1, arg2 interface
 }
 
 // EthGetBlockByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string, arg2 bool) (api.EthBlock, error) {
+func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string, arg2 bool) (eth.EthBlock, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockByNumber", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBlock)
+	ret0, _ := ret[0].(eth.EthBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1072,10 +1073,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockByNumber(arg0, arg1, arg2 interfa
 }
 
 // EthGetBlockTransactionCountByHash mocks base method.
-func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 api.EthHash) (api.EthUint64, error) {
+func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 eth.EthHash) (eth.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByHash", arg0, arg1)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(eth.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1087,10 +1088,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByHash(arg0, arg1
 }
 
 // EthGetBlockTransactionCountByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 api.EthUint64) (api.EthUint64, error) {
+func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 eth.EthUint64) (eth.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByNumber", arg0, arg1)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(eth.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1102,10 +1103,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByNumber(arg0, ar
 }
 
 // EthGetCode mocks base method.
-func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthBytes, error) {
+func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 eth.EthAddress, arg2 string) (eth.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetCode", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBytes)
+	ret0, _ := ret[0].(eth.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1117,10 +1118,10 @@ func (mr *MockFullNodeMockRecorder) EthGetCode(arg0, arg1, arg2 interface{}) *go
 }
 
 // EthGetStorageAt mocks base method.
-func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 api.EthAddress, arg2 api.EthBytes, arg3 string) (api.EthBytes, error) {
+func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 eth.EthAddress, arg2 eth.EthBytes, arg3 string) (eth.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetStorageAt", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(api.EthBytes)
+	ret0, _ := ret[0].(eth.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1132,10 +1133,10 @@ func (mr *MockFullNodeMockRecorder) EthGetStorageAt(arg0, arg1, arg2, arg3 inter
 }
 
 // EthGetTransactionByBlockHashAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 api.EthHash, arg2 api.EthUint64) (api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 eth.EthHash, arg2 eth.EthUint64) (eth.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockHashAndIndex", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthTx)
+	ret0, _ := ret[0].(eth.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1147,10 +1148,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockHashAndIndex(arg0, a
 }
 
 // EthGetTransactionByBlockNumberAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 api.EthUint64) (api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 eth.EthUint64) (eth.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockNumberAndIndex", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthTx)
+	ret0, _ := ret[0].(eth.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1162,10 +1163,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockNumberAndIndex(arg0,
 }
 
 // EthGetTransactionByHash mocks base method.
-func (m *MockFullNode) EthGetTransactionByHash(arg0 context.Context, arg1 *api.EthHash) (*api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByHash(arg0 context.Context, arg1 *eth.EthHash) (*eth.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByHash", arg0, arg1)
-	ret0, _ := ret[0].(*api.EthTx)
+	ret0, _ := ret[0].(*eth.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1177,10 +1178,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByHash(arg0, arg1 interface
 }
 
 // EthGetTransactionCount mocks base method.
-func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthUint64, error) {
+func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 eth.EthAddress, arg2 string) (eth.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionCount", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(eth.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1192,10 +1193,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionCount(arg0, arg1, arg2 inte
 }
 
 // EthGetTransactionReceipt mocks base method.
-func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 api.EthHash) (*api.EthTxReceipt, error) {
+func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 eth.EthHash) (*eth.EthTxReceipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionReceipt", arg0, arg1)
-	ret0, _ := ret[0].(*api.EthTxReceipt)
+	ret0, _ := ret[0].(*eth.EthTxReceipt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1207,10 +1208,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionReceipt(arg0, arg1 interfac
 }
 
 // EthMaxPriorityFeePerGas mocks base method.
-func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (api.EthBigInt, error) {
+func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (eth.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthMaxPriorityFeePerGas", arg0)
-	ret0, _ := ret[0].(api.EthBigInt)
+	ret0, _ := ret[0].(eth.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1222,10 +1223,10 @@ func (mr *MockFullNodeMockRecorder) EthMaxPriorityFeePerGas(arg0 interface{}) *g
 }
 
 // EthProtocolVersion mocks base method.
-func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (api.EthUint64, error) {
+func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (eth.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthProtocolVersion", arg0)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(eth.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1237,10 +1238,10 @@ func (mr *MockFullNodeMockRecorder) EthProtocolVersion(arg0 interface{}) *gomock
 }
 
 // EthSendRawTransaction mocks base method.
-func (m *MockFullNode) EthSendRawTransaction(arg0 context.Context, arg1 api.EthBytes) (api.EthHash, error) {
+func (m *MockFullNode) EthSendRawTransaction(arg0 context.Context, arg1 eth.EthBytes) (eth.EthHash, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthSendRawTransaction", arg0, arg1)
-	ret0, _ := ret[0].(api.EthHash)
+	ret0, _ := ret[0].(eth.EthHash)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1445,7 +1446,7 @@ func (mr *MockFullNodeMockRecorder) MarketWithdraw(arg0, arg1, arg2, arg3 interf
 }
 
 // MinerCreateBlock mocks base method.
-func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *api.BlockTemplate) (*types.BlockMsg, error) {
+func (m *MockFullNode) MinerCreateBlock(arg0 context.Context, arg1 *types.BlockTemplate) (*types.BlockMsg, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MinerCreateBlock", arg0, arg1)
 	ret0, _ := ret[0].(*types.BlockMsg)
@@ -1460,10 +1461,10 @@ func (mr *MockFullNodeMockRecorder) MinerCreateBlock(arg0, arg1 interface{}) *go
 }
 
 // MinerGetBaseInfo mocks base method.
-func (m *MockFullNode) MinerGetBaseInfo(arg0 context.Context, arg1 address.Address, arg2 abi.ChainEpoch, arg3 types.TipSetKey) (*api.MiningBaseInfo, error) {
+func (m *MockFullNode) MinerGetBaseInfo(arg0 context.Context, arg1 address.Address, arg2 abi.ChainEpoch, arg3 types.TipSetKey) (*types.MiningBaseInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MinerGetBaseInfo", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*api.MiningBaseInfo)
+	ret0, _ := ret[0].(*types.MiningBaseInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2739,10 +2740,10 @@ func (mr *MockFullNodeMockRecorder) StateAllMinerFaults(arg0, arg1, arg2 interfa
 }
 
 // StateCall mocks base method.
-func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *types.Message, arg2 types.TipSetKey) (*api.InvocResult, error) {
+func (m *MockFullNode) StateCall(arg0 context.Context, arg1 *types.Message, arg2 types.TipSetKey) (*types.InvocResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateCall", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.InvocResult)
+	ret0, _ := ret[0].(*types.InvocResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3084,10 +3085,10 @@ func (mr *MockFullNodeMockRecorder) StateLookupRobustAddress(arg0, arg1, arg2 in
 }
 
 // StateMarketBalance mocks base method.
-func (m *MockFullNode) StateMarketBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (api.MarketBalance, error) {
+func (m *MockFullNode) StateMarketBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (types.MarketBalance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketBalance", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.MarketBalance)
+	ret0, _ := ret[0].(types.MarketBalance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3099,10 +3100,10 @@ func (mr *MockFullNodeMockRecorder) StateMarketBalance(arg0, arg1, arg2 interfac
 }
 
 // StateMarketDeals mocks base method.
-func (m *MockFullNode) StateMarketDeals(arg0 context.Context, arg1 types.TipSetKey) (map[string]*api.MarketDeal, error) {
+func (m *MockFullNode) StateMarketDeals(arg0 context.Context, arg1 types.TipSetKey) (map[string]*types.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketDeals", arg0, arg1)
-	ret0, _ := ret[0].(map[string]*api.MarketDeal)
+	ret0, _ := ret[0].(map[string]*types.MarketDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3114,10 +3115,10 @@ func (mr *MockFullNodeMockRecorder) StateMarketDeals(arg0, arg1 interface{}) *go
 }
 
 // StateMarketParticipants mocks base method.
-func (m *MockFullNode) StateMarketParticipants(arg0 context.Context, arg1 types.TipSetKey) (map[string]api.MarketBalance, error) {
+func (m *MockFullNode) StateMarketParticipants(arg0 context.Context, arg1 types.TipSetKey) (map[string]types.MarketBalance, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketParticipants", arg0, arg1)
-	ret0, _ := ret[0].(map[string]api.MarketBalance)
+	ret0, _ := ret[0].(map[string]types.MarketBalance)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3129,10 +3130,10 @@ func (mr *MockFullNodeMockRecorder) StateMarketParticipants(arg0, arg1 interface
 }
 
 // StateMarketStorageDeal mocks base method.
-func (m *MockFullNode) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*api.MarketDeal, error) {
+func (m *MockFullNode) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*types.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketStorageDeal", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.MarketDeal)
+	ret0, _ := ret[0].(*types.MarketDeal)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3414,10 +3415,10 @@ func (mr *MockFullNodeMockRecorder) StateReadState(arg0, arg1, arg2 interface{})
 }
 
 // StateReplay mocks base method.
-func (m *MockFullNode) StateReplay(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid) (*api.InvocResult, error) {
+func (m *MockFullNode) StateReplay(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid) (*types.InvocResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateReplay", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*api.InvocResult)
+	ret0, _ := ret[0].(*types.InvocResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3429,10 +3430,10 @@ func (mr *MockFullNodeMockRecorder) StateReplay(arg0, arg1, arg2 interface{}) *g
 }
 
 // StateSearchMsg mocks base method.
-func (m *MockFullNode) StateSearchMsg(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateSearchMsg(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid, arg3 abi.ChainEpoch, arg4 bool) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3504,10 +3505,10 @@ func (mr *MockFullNodeMockRecorder) StateSectorPreCommitInfo(arg0, arg1, arg2, a
 }
 
 // StateVMCirculatingSupplyInternal mocks base method.
-func (m *MockFullNode) StateVMCirculatingSupplyInternal(arg0 context.Context, arg1 types.TipSetKey) (api.CirculatingSupply, error) {
+func (m *MockFullNode) StateVMCirculatingSupplyInternal(arg0 context.Context, arg1 types.TipSetKey) (types.CirculatingSupply, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateVMCirculatingSupplyInternal", arg0, arg1)
-	ret0, _ := ret[0].(api.CirculatingSupply)
+	ret0, _ := ret[0].(types.CirculatingSupply)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3564,10 +3565,10 @@ func (mr *MockFullNodeMockRecorder) StateVerifierStatus(arg0, arg1, arg2 interfa
 }
 
 // StateWaitMsg mocks base method.
-func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
+func (m *MockFullNode) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch, arg4 bool) (*types.MsgLookup, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(*api.MsgLookup)
+	ret0, _ := ret[0].(*types.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

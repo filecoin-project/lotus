@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -32,13 +31,12 @@ import (
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
-const LookbackNoLimit = api.LookbackNoLimit
 const ReceiptAmtBitwidth = 3
 
 var log = logging.Logger("statemgr")
 
 type StateManagerAPI interface {
-	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
+	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)

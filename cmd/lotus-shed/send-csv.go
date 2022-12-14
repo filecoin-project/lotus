@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -125,7 +124,7 @@ var sendCsvCmd = &cli.Command{
 
 			if i > 0 && i%100 == 0 {
 				fmt.Printf("catching up until latest message lands")
-				_, err := api.StateWaitMsg(ctx, smsg.Cid(), 1, lapi.LookbackNoLimit, true)
+				_, err := api.StateWaitMsg(ctx, smsg.Cid(), 1, types.LookbackNoLimit, true)
 				if err != nil {
 					return err
 				}
@@ -137,7 +136,7 @@ var sendCsvCmd = &cli.Command{
 		fmt.Println("waiting on messages...")
 
 		for _, msgCid := range msgCids {
-			ml, err := api.StateWaitMsg(ctx, msgCid, 5, lapi.LookbackNoLimit, true)
+			ml, err := api.StateWaitMsg(ctx, msgCid, 5, types.LookbackNoLimit, true)
 			if err != nil {
 				return err
 			}

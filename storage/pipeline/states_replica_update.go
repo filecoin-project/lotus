@@ -266,7 +266,7 @@ func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector Secto
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
-	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.ReplicaUpdateMessage, build.MessageConfidence, api.LookbackNoLimit, true)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.ReplicaUpdateMessage, build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		log.Errorf("handleReplicaUpdateWait: failed to wait for message: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
@@ -322,7 +322,7 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 	}
 
 	try := func() error {
-		mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.ReplicaUpdateMessage, build.MessageConfidence, api.LookbackNoLimit, true)
+		mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.ReplicaUpdateMessage, build.MessageConfidence, types.LookbackNoLimit, true)
 		if err != nil {
 			return err
 		}

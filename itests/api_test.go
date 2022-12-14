@@ -139,13 +139,13 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err := full.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err := full.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 
 	require.Equal(t, exitcode.Ok, res.Receipt.ExitCode, "message not successful")
 
 	//stm: @CHAIN_STATE_SEARCH_MSG_001
-	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
+	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.NotNil(t, searchRes)
 
@@ -244,7 +244,7 @@ func (ts *apiSuite) testSlowNotify(t *testing.T) {
 	full, miner, _ := kit.EnsembleMinimal(t, ts.opts...)
 
 	// Subscribe a bunch of times to make sure we fill up any RPC buffers.
-	var newHeadsChans []<-chan []*lapi.HeadChange
+	var newHeadsChans []<-chan []*types.HeadChange
 	for i := 0; i < 100; i++ {
 		newHeads, err := full.ChainNotify(ctx)
 		require.NoError(t, err)

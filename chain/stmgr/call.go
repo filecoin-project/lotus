@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/rand"
@@ -30,7 +29,7 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // Call applies the given message to the given tipset's parent state, at the epoch following the
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
-func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
 	if msg.GasLimit == 0 {
 		msg.GasLimit = build.BlockGasLimit
 	}
@@ -48,7 +47,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
-func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {
+func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*types.InvocResult, error) {
 	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true)
 }
 
@@ -56,7 +55,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 // This should mostly be used for gas modelling on a migrated state.
 // Tipset here is not needed because stateCid and network version fully describe execution we want. The internal function
 // will get the heaviest tipset for use for things like basefee, which we don't really care about here.
-func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Message, stateCid cid.Cid, v network.Version) (*api.InvocResult, error) {
+func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Message, stateCid cid.Cid, v network.Version) (*types.InvocResult, error) {
 	nvGetter := func(context.Context, abi.ChainEpoch) network.Version {
 		return v
 	}
@@ -67,7 +66,7 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
-func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid, nvGetter rand.NetworkVersionGetter, checkGas bool) (*api.InvocResult, error) {
+func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid, nvGetter rand.NetworkVersionGetter, checkGas bool) (*types.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -198,7 +197,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	}
 
 	var ret *vm.ApplyRet
-	var gasInfo api.MsgGasCost
+	var gasInfo types.MsgGasCost
 	if checkGas {
 		fromKey, err := sm.ResolveToKeyAddress(ctx, msg.From, ts)
 		if err != nil {
@@ -245,7 +244,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		errs = ret.ActorErr.Error()
 	}
 
-	return &api.InvocResult{
+	return &types.InvocResult{
 		MsgCid:         msg.Cid(),
 		Msg:            msg,
 		MsgRct:         &ret.MessageReceipt,

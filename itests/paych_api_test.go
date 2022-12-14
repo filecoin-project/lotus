@@ -194,7 +194,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 3, api.LookbackNoLimit, true)
+	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode, "unable to collect on payment channel")
 
@@ -233,18 +233,18 @@ func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymen
 		}, nil)
 		require.NoError(t, err)
 
-		_, err = paymentReceiver.StateWaitMsg(ctx, m.Cid(), 1, api.LookbackNoLimit, true)
+		_, err = paymentReceiver.StateWaitMsg(ctx, m.Cid(), 1, types.LookbackNoLimit, true)
 		require.NoError(t, err)
 	}
 }
 
-func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {
+func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *types.MsgLookup {
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 
 	t.Log("Waiting for", desc)
 
-	res, err := paymentCreator.StateWaitMsg(ctx, msgCid, 1, api.LookbackNoLimit, true)
+	res, err := paymentCreator.StateWaitMsg(ctx, msgCid, 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode, "did not successfully send %s", desc)
 

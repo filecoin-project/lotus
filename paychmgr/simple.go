@@ -530,7 +530,7 @@ func (ca *channelAccessor) waitForPaychCreateMsg(ctx context.Context, channelID 
 }
 
 func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		log.Errorf("wait msg: %v", err)
 		return err
@@ -645,7 +645,7 @@ func (ca *channelAccessor) waitForAddFundsMsg(ctx context.Context, channelID str
 }
 
 func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		log.Error(err)
 		return err

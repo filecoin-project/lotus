@@ -40,7 +40,7 @@ type mockStateManager struct {
 	lk           sync.Mutex
 	accountState map[address.Address]address.Address
 	paychState   map[address.Address]mockPchState
-	response     *api.InvocResult
+	response     *types.InvocResult
 	lastCall     *types.Message
 }
 
@@ -83,7 +83,7 @@ func (sm *mockStateManager) GetPaychState(ctx context.Context, addr address.Addr
 	return info.actor, info.state, nil
 }
 
-func (sm *mockStateManager) setCallResponse(response *api.InvocResult) {
+func (sm *mockStateManager) setCallResponse(response *types.InvocResult) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 
@@ -97,7 +97,7 @@ func (sm *mockStateManager) getLastCall() *types.Message {
 	return sm.lastCall
 }
 
-func (sm *mockStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+func (sm *mockStateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.InvocResult, error) {
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 
@@ -133,7 +133,7 @@ func newMockPaychAPI() *mockPaychAPI {
 	}
 }
 
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	pchapi.lk.Lock()
 
 	response := make(chan types.MessageReceipt, 1)
@@ -145,7 +145,7 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 		}()
 
 		delete(pchapi.waitingResponses, mcid)
-		return &api.MsgLookup{Receipt: response.receipt}, nil
+		return &types.MsgLookup{Receipt: response.receipt}, nil
 	}
 
 	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
@@ -153,7 +153,7 @@ func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, conf
 
 	select {
 	case receipt := <-response:
-		return &api.MsgLookup{Receipt: receipt}, nil
+		return &types.MsgLookup{Receipt: receipt}, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -224,7 +224,7 @@ func (pchapi *mockPaychAPI) WalletHas(ctx context.Context, addr address.Address)
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
 
-	_, ok := pchapi.wallet[addr]
+	_, ok := pchapi.Wallet[addr]
 	return ok, nil
 }
 
@@ -232,7 +232,7 @@ func (pchapi *mockPaychAPI) addWalletAddress(addr address.Address) {
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
 
-	pchapi.wallet[addr] = struct{}{}
+	pchapi.Wallet[addr] = struct{}{}
 }
 
 func (pchapi *mockPaychAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {

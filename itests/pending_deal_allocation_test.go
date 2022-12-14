@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -88,7 +87,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	require.NoError(t, err, "AddVerifier failed")
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -110,7 +109,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	require.NoError(t, err)
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
 
@@ -168,7 +167,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	}, nil)
 	require.NoError(t, err)
 
-	r, err := node.StateWaitMsg(ctx, m.Cid(), 2, lapi.LookbackNoLimit, true)
+	r, err := node.StateWaitMsg(ctx, m.Cid(), 2, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 

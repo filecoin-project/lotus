@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -338,33 +337,33 @@ func (sm *StateManager) GetVMCirculatingSupply(ctx context.Context, height abi.C
 	return cs.FilCirculating, err
 }
 
-func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
+func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (types.CirculatingSupply, error) {
 	filVested, err := sm.GetFilVested(ctx, height)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
 	}
 
 	filReserveDisbursed := big.Zero()
 	if height > build.UpgradeAssemblyHeight {
 		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st)
 		if err != nil {
-			return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
+			return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)
 		}
 	}
 
 	filMined, err := GetFilMined(ctx, st)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filMined: %w", err)
 	}
 
 	filBurnt, err := GetFilBurnt(ctx, st)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
 	filLocked, err := GetFilLocked(ctx, st)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
+		return types.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}
 
 	ret := types.BigAdd(filVested, filMined)
@@ -376,7 +375,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 		ret = big.Zero()
 	}
 
-	return api.CirculatingSupply{
+	return types.CirculatingSupply{
 		FilVested:           filVested,
 		FilMined:            filMined,
 		FilBurnt:            filBurnt,

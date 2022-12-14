@@ -771,11 +771,11 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 	}
 }
 
-func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, a address.Address, key types.TipSetKey) (api.MarketBalance, error) {
+func (mapi *mockFundManagerAPI) StateMarketBalance(ctx context.Context, a address.Address, key types.TipSetKey) (types.MarketBalance, error) {
 	mapi.lk.Lock()
 	defer mapi.lk.Unlock()
 
-	return api.MarketBalance{
+	return types.MarketBalance{
 		Locked: abi.NewTokenAmount(0),
 		Escrow: mapi.getEscrow(a),
 	}, nil
@@ -804,8 +804,8 @@ func (mapi *mockFundManagerAPI) publish(addr address.Address, amt abi.TokenAmoun
 	mapi.escrow[addr] = escrow
 }
 
-func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
-	res := &api.MsgLookup{
+func (mapi *mockFundManagerAPI) StateWaitMsg(ctx context.Context, c cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
+	res := &types.MsgLookup{
 		Message: c,
 		Receipt: types.MessageReceipt{
 			ExitCode: 0,

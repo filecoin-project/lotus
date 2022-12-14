@@ -61,16 +61,16 @@ type StateModuleAPI interface {
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error)
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
-	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
-	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
+	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error)
+	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error)
 	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 }
 
 var _ StateModuleAPI = *new(api.FullNode)
@@ -401,7 +401,7 @@ func (m *StateModule) StateMinerPower(ctx context.Context, addr address.Address,
 	}, nil
 }
 
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
+func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *types.InvocResult, err error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -419,12 +419,12 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 	return res, err
 }
 
-func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
+func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*types.InvocResult, error) {
 	msgToReplay := mc
 	var ts *types.TipSet
 	var err error
 	if tsk == types.EmptyTSK {
-		mlkp, err := a.StateSearchMsg(ctx, types.EmptyTSK, mc, stmgr.LookbackNoLimit, true)
+		mlkp, err := a.StateSearchMsg(ctx, types.EmptyTSK, mc, types.LookbackNoLimit, true)
 		if err != nil {
 			return nil, xerrors.Errorf("searching for msg %s: %w", mc, err)
 		}
@@ -460,7 +460,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		errstr = r.ActorErr.Error()
 	}
 
-	return &api.InvocResult{
+	return &types.InvocResult{
 		MsgCid:         msgToReplay,
 		Msg:            m,
 		MsgRct:         &r.MessageReceipt,
@@ -575,12 +575,12 @@ func (a *StateAPI) StateEncodeParams(ctx context.Context, toActCode cid.Cid, met
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
-func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*types.MiningBaseInfo, error) {
 	// XXX: Gets the state by computing the tipset state, instead of looking at the parent.
 	return stmgr.MinerGetBaseInfo(ctx, a.StateManager, a.Beacon, tsk, epoch, maddr, a.ProofVerifier)
 }
 
-func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
+func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error) {
 	fblk, err := a.Consensus.CreateBlock(ctx, a.Wallet, bt)
 	if err != nil {
 		return nil, err
@@ -601,7 +601,7 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) 
 	return &out, nil
 }
 
-func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	ts, recpt, found, err := m.StateManager.WaitForMessage(ctx, msg, confidence, lookbackLimit, allowReplaced)
 	if err != nil {
 		return nil, err
@@ -636,7 +636,7 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 		}
 	}
 
-	return &api.MsgLookup{
+	return &types.MsgLookup{
 		Message:   found,
 		Receipt:   *recpt,
 		ReturnDec: returndec,
@@ -645,7 +645,7 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 	}, nil
 }
 
-func (m *StateModule) StateSearchMsg(ctx context.Context, tsk types.TipSetKey, msg cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+func (m *StateModule) StateSearchMsg(ctx context.Context, tsk types.TipSetKey, msg cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	fromTs, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -657,7 +657,7 @@ func (m *StateModule) StateSearchMsg(ctx context.Context, tsk types.TipSetKey, m
 	}
 
 	if ts != nil {
-		return &api.MsgLookup{
+		return &types.MsgLookup{
 			Message: found,
 			Receipt: *recpt,
 			TipSet:  ts.Key(),
@@ -683,16 +683,16 @@ func (a *StateAPI) StateListActors(ctx context.Context, tsk types.TipSetKey) ([]
 	return a.StateManager.ListAllActors(ctx, ts)
 }
 
-func (m *StateModule) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error) {
+func (m *StateModule) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return api.MarketBalance{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return types.MarketBalance{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return m.StateManager.MarketBalance(ctx, addr, ts)
 }
 
-func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketBalance, error) {
-	out := map[string]api.MarketBalance{}
+func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketBalance, error) {
+	out := map[string]types.MarketBalance{}
 
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -719,7 +719,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 			return err
 		}
 
-		out[a.String()] = api.MarketBalance{
+		out[a.String()] = types.MarketBalance{
 			Escrow: es,
 			Locked: lk,
 		}
@@ -731,8 +731,8 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	return out, nil
 }
 
-func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*api.MarketDeal, error) {
-	out := map[string]*api.MarketDeal{}
+func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error) {
+	out := map[string]*types.MarketDeal{}
 
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -761,7 +761,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		} else if !found {
 			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(int64(dealID), 10)] = &api.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = &types.MarketDeal{
 			Proposal: d,
 			State:    *s,
 		}
@@ -772,7 +772,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 	return out, nil
 }
 
-func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
+func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1685,7 +1685,7 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 	return a.StateManager.GetCirculatingSupply(ctx, ts.Height()-1, sTree)
 }
 
-func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
+func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error) {
 	return stateVMCirculatingSupplyInternal(ctx, tsk, a.Chain, a.StateManager)
 }
 func stateVMCirculatingSupplyInternal(
@@ -1693,15 +1693,15 @@ func stateVMCirculatingSupplyInternal(
 	tsk types.TipSetKey,
 	cstore *store.ChainStore,
 	smgr *stmgr.StateManager,
-) (api.CirculatingSupply, error) {
+) (types.CirculatingSupply, error) {
 	ts, err := cstore.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return api.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return types.CirculatingSupply{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	sTree, err := smgr.ParentState(ts)
 	if err != nil {
-		return api.CirculatingSupply{}, err
+		return types.CirculatingSupply{}, err
 	}
 
 	return smgr.GetVMCirculatingSupplyDetailed(ctx, ts.Height(), sTree)

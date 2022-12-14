@@ -616,7 +616,7 @@ func configureStorageMiner(ctx context.Context, api v1api.FullNode, addr address
 	}
 
 	log.Info("Waiting for message: ", smsg.Cid())
-	ret, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence, lapi.LookbackNoLimit, true)
+	ret, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		return err
 	}
@@ -680,7 +680,7 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 		log.Infof("Initializing worker account %s, message: %s", worker, signed.Cid())
 		log.Infof("Waiting for confirmation")
 
-		mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, lapi.LookbackNoLimit, true)
+		mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 		if err != nil {
 			return address.Undef, xerrors.Errorf("waiting for worker init: %w", err)
 		}
@@ -704,7 +704,7 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 		log.Infof("Initializing owner account %s, message: %s", worker, signed.Cid())
 		log.Infof("Waiting for confirmation")
 
-		mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, lapi.LookbackNoLimit, true)
+		mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 		if err != nil {
 			return address.Undef, xerrors.Errorf("waiting for owner init: %w", err)
 		}
@@ -749,7 +749,7 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 	log.Infof("Pushed CreateMiner message: %s", signed.Cid())
 	log.Infof("Waiting for confirmation")
 
-	mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, lapi.LookbackNoLimit, true)
+	mw, err := api.StateWaitMsg(ctx, signed.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("waiting for createMiner message: %w", err)
 	}

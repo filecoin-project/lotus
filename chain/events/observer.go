@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -81,7 +80,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 		return xerrors.Errorf("listenHeadChanges ChainNotify call failed: %w", err)
 	}
 
-	var cur []*api.HeadChange
+	var cur []*types.HeadChange
 	var ok bool
 
 	// Wait for first tipset or bail
@@ -132,7 +131,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 	return nil
 }
 
-func (o *observer) applyChanges(ctx context.Context, changes []*api.HeadChange) error {
+func (o *observer) applyChanges(ctx context.Context, changes []*types.HeadChange) error {
 	// Used to wait for a prior notification round to finish (by tests)
 	if len(changes) == 0 {
 		return nil

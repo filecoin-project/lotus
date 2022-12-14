@@ -163,7 +163,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 		t.Log("waiting dispute")
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "dispute not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
@@ -207,7 +207,7 @@ func TestWindowPostDispute(t *testing.T) {
 		require.NoError(t, err)
 
 		//stm: @CHAIN_STATE_WAIT_MSG_001
-		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "recovery not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
@@ -390,7 +390,7 @@ func submitBadProof(
 	}
 
 	//stm: @CHAIN_STATE_WAIT_MSG_001
-	rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+	rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, types.LookbackNoLimit, true)
 	if err != nil {
 		return err
 	}

@@ -37,7 +37,7 @@ func TestMpoolPushWithoutUuidWithMaxFee(t *testing.T) {
 	}
 	smHalfBal, err := client15.MpoolPushMessage(ctx, msgHalfBal, &api.MessageSendSpec{MaxFee: abi.TokenAmount(config.DefaultDefaultMaxFee)})
 	require.NoError(t, err)
-	mLookup, err := client15.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := client15.StateWaitMsg(ctx, smHalfBal.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -48,7 +48,7 @@ func TestMpoolPushWithoutUuidWithMaxFee(t *testing.T) {
 	}
 	smcid, err := client15.MpoolPushMessage(ctx, msgQuarterBal, &api.MessageSendSpec{MaxFee: abi.TokenAmount(config.DefaultDefaultMaxFee)})
 	require.NoError(t, err)
-	mLookup, err = client15.StateWaitMsg(ctx, smcid.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err = client15.StateWaitMsg(ctx, smcid.Cid(), 3, types.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 }
