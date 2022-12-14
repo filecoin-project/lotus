@@ -370,16 +370,16 @@ func init() {
 		},
 	})
 
-	ethint := api.EthUint64(5)
+	ethint := eth.EthUint64(5)
 
 	addExample(ethint)
 	addExample(&ethint)
-	ethaddr, _ := api.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	ethaddr, _ := eth.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
 	addExample(&ethaddr)
-	ethhash, _ := api.NewEthHashFromCid(c)
+	ethhash, _ := eth.NewEthHashFromCid(c)
 	addExample(&ethhash)
 
-	ethFeeHistoryReward := [][]api.EthBigInt{}
+	ethFeeHistoryReward := [][]eth.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
 	addExample(&uuid.UUID{})
 }

@@ -28,7 +28,6 @@ import (
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -36,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -577,7 +577,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 		digest := m.Message.Cid().Bytes()
 		if m.Signature.Type == crypto.SigTypeDelegated {
-			txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+			txArgs, err := eth.NewEthTxArgsFromMessage(&m.Message)
 			if err != nil {
 				return err
 			}
