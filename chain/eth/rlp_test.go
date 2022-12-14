@@ -9,10 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 func TestEncode(t *testing.T) {
-	testcases := []TestCase{
+	testcases := []ethtypes.TestCase{
 		{[]byte(""), mustDecodeHex("0x80")},
 		{mustDecodeHex("0x01"), mustDecodeHex("0x01")},
 		{mustDecodeHex("0xaa"), mustDecodeHex("0x81aa")},
@@ -64,7 +66,7 @@ func TestEncode(t *testing.T) {
 }
 
 func TestDecodeString(t *testing.T) {
-	testcases := []TestCase{
+	testcases := []ethtypes.TestCase{
 		{"0x00", "0x00"},
 		{"0x80", "0x"},
 		{"0x0f", "0x0f"},
@@ -96,7 +98,7 @@ func mustDecodeHex(s string) []byte {
 }
 
 func TestDecodeList(t *testing.T) {
-	testcases := []TestCase{
+	testcases := []ethtypes.TestCase{
 		{"0xc0", []interface{}{}},
 		{"0xc100", []interface{}{[]byte{0}}},
 		{"0xc3000102", []interface{}{[]byte{0}, []byte{1}, []byte{2}}},

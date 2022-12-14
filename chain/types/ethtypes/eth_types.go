@@ -1,4 +1,4 @@
-package eth
+package ethtypes
 
 import (
 	"bytes"

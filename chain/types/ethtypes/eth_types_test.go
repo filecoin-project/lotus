@@ -1,5 +1,5 @@
 // stm: #unit
-package eth
+package ethtypes
 
 import (
 	"strings"
