@@ -44,6 +44,7 @@ var filplusCmd = &cli.Command{
 		filplusSignRemoveDataCapProposal,
 		filplusListAllocationsCmd,
 		filplusRemoveExpiredAllocationsCmd,
+		filplusRemoveExpiredClaimsCmd,
 	},
 }
 
@@ -380,6 +381,99 @@ var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 			To:     verifreg.Address,
 			From:   fromAddr,
 			Method: verifreg.Methods.RemoveExpiredAllocations,
+			Params: params,
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
+
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if mwait.Receipt.ExitCode.IsError() {
+			return fmt.Errorf("failed to remove expired allocations: %d", mwait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var filplusRemoveExpiredClaimsCmd = &cli.Command{
+	Name:      "remove-expired-claims",
+	Usage:     "remove expired claims (if no claims are specified all eligible claims are removed)",
+	ArgsUsage: "providerAddress Optional[...claimId]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to send the message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		args := cctx.Args().Slice()
+
+		providerAddr, err := address.NewFromString(args[0])
+		if err != nil {
+			return err
+		}
+
+		providerIdAddr, err := api.StateLookupID(ctx, providerAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		providerId, err := address.IDFromAddress(providerIdAddr)
+		if err != nil {
+			return err
+		}
+
+		fromAddr := providerIdAddr
+		if from := cctx.String("from"); from != "" {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		claimIDs := make([]verifregtypes9.ClaimId, len(args)-1)
+		for i, claimStr := range args[1:] {
+			id, err := strconv.ParseUint(claimStr, 10, 64)
+			if err != nil {
+				return err
+			}
+			claimIDs[i] = verifregtypes9.ClaimId(id)
+		}
+
+		params, err := actors.SerializeParams(&verifregtypes9.RemoveExpiredClaimsParams{
+			Provider: abi.ActorID(providerId),
+			ClaimIds: claimIDs,
+		})
+		if err != nil {
+			return err
+		}
+
+		msg := &types.Message{
+			To:     verifreg.Address,
+			From:   fromAddr,
+			Method: verifreg.Methods.RemoveExpiredClaims,
 			Params: params,
 		}
 
