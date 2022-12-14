@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -15,7 +14,7 @@ type SyncerStateSnapshot struct {
 	WorkerID uint64
 	Target   *types.TipSet
 	Base     *types.TipSet
-	Stage    api.SyncStateStage
+	Stage    types.SyncStateStage
 	Height   abi.ChainEpoch
 	Message  string
 	Start    time.Time
@@ -27,7 +26,7 @@ type SyncerState struct {
 	data SyncerStateSnapshot
 }
 
-func (ss *SyncerState) SetStage(v api.SyncStateStage) {
+func (ss *SyncerState) SetStage(v types.SyncStateStage) {
 	if ss == nil {
 		return
 	}
@@ -35,7 +34,7 @@ func (ss *SyncerState) SetStage(v api.SyncStateStage) {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 	ss.data.Stage = v
-	if v == api.StageSyncComplete {
+	if v == types.StageSyncComplete {
 		ss.data.End = build.Clock.Now()
 	}
 }
@@ -49,7 +48,7 @@ func (ss *SyncerState) Init(base, target *types.TipSet) {
 	defer ss.lk.Unlock()
 	ss.data.Target = target
 	ss.data.Base = base
-	ss.data.Stage = api.StageHeaders
+	ss.data.Stage = types.StageHeaders
 	ss.data.Height = 0
 	ss.data.Message = ""
 	ss.data.Start = build.Clock.Now()
@@ -74,7 +73,7 @@ func (ss *SyncerState) Error(err error) {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 	ss.data.Message = err.Error()
-	ss.data.Stage = api.StageSyncErrored
+	ss.data.Stage = types.StageSyncErrored
 	ss.data.End = build.Clock.Now()
 }
 

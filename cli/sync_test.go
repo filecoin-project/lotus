@@ -35,7 +35,7 @@ func TestSyncStatus(t *testing.T) {
 			WorkerID: 1,
 			Base:     ts1,
 			Target:   ts2,
-			Stage:    api.StageMessages,
+			Stage:    types.StageMessages,
 			Height:   abi.ChainEpoch(0),
 			Start:    start,
 			End:      end,

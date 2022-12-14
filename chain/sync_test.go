@@ -1259,5 +1259,5 @@ func TestSyncState(t *testing.T) {
 	state, err = clientNode.SyncState(tu.ctx)
 	require.NoError(tu.t, err)
 	require.Equal(tu.t, len(state.ActiveSyncs), 1)
-	require.Equal(tu.t, state.ActiveSyncs[0].Stage, api.StageSyncComplete)
+	require.Equal(tu.t, state.ActiveSyncs[0].Stage, types.StageSyncComplete)
 }

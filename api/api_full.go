@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,7 +27,6 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
@@ -70,7 +68,7 @@ type FullNode interface {
 
 	// ChainNotify returns channel with chain head updates.
 	// First message is guaranteed to be of len == 1, and type == 'current'.
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error) //perm:read
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error) //perm:read
 
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error) //perm:read
@@ -161,7 +159,7 @@ type FullNode interface {
 	//     tRR
 	// ```
 	// Would return `[revert(tBA), apply(tAB), apply(tAA)]`
-	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) //perm:read
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) //perm:read
 
 	// ChainExport returns a stream of bytes with CAR dump of chain data.
 	// The exported chain data includes the header chain from the given tipset
@@ -288,7 +286,7 @@ type FullNode interface {
 	// MethodGroup: Miner
 
 	MinerGetBaseInfo(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*types.MiningBaseInfo, error) //perm:read
-	MinerCreateBlock(context.Context, *BlockTemplate) (*types.BlockMsg, error)                                         //perm:write
+	MinerCreateBlock(context.Context, *types.BlockTemplate) (*types.BlockMsg, error)                                   //perm:write
 
 	// // UX ?
 
@@ -1071,7 +1069,7 @@ type ActiveSync struct {
 	Base     *types.TipSet
 	Target   *types.TipSet
 
-	Stage  SyncStateStage
+	Stage  types.SyncStateStage
 	Height abi.ChainEpoch
 
 	Start   time.Time
@@ -1083,39 +1081,6 @@ type SyncState struct {
 	ActiveSyncs []ActiveSync
 
 	VMApplied uint64
-}
-
-type SyncStateStage int
-
-const (
-	StageIdle = SyncStateStage(iota)
-	StageHeaders
-	StagePersistHeaders
-	StageMessages
-	StageSyncComplete
-	StageSyncErrored
-	StageFetchingMessages
-)
-
-func (v SyncStateStage) String() string {
-	switch v {
-	case StageIdle:
-		return "idle"
-	case StageHeaders:
-		return "header sync"
-	case StagePersistHeaders:
-		return "persisting headers"
-	case StageMessages:
-		return "message sync"
-	case StageSyncComplete:
-		return "complete"
-	case StageSyncErrored:
-		return "error"
-	case StageFetchingMessages:
-		return "fetching messages"
-	default:
-		return fmt.Sprintf("<unknown: %d>", v)
-	}
 }
 
 type MpoolChange int

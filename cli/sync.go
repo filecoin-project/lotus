@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -76,7 +75,7 @@ var SyncStatusCmd = &cli.Command{
 			} else {
 				afmt.Printf("\tElapsed: %s\n", ss.End.Sub(ss.Start))
 			}
-			if ss.Stage == api.StageSyncErrored {
+			if ss.Stage == types.StageSyncErrored {
 				afmt.Printf("\tError: %s\n", ss.Message)
 			}
 		}
@@ -281,10 +280,10 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 		working := -1
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
-			case api.StageSyncComplete:
+			case types.StageSyncComplete:
 			default:
 				working = i
-			case api.StageIdle:
+			case types.StageIdle:
 				// not complete, not actively working
 			}
 		}

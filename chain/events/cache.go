@@ -8,13 +8,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type uncachedAPI interface {
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
-	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*store.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) // optional / for CalledMsg

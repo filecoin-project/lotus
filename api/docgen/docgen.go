@@ -42,6 +42,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
@@ -124,7 +125,7 @@ func init() {
 	addExample(api.MpoolChange(0))
 	addExample(network.Connected)
 	addExample(dtypes.NetworkName("lotus"))
-	addExample(api.SyncStateStage(1))
+	addExample(types.SyncStateStage(1))
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)

@@ -33,7 +33,7 @@ var log = logging.Logger("wdpost")
 
 type NodeAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
 
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -140,7 +140,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	s.ch.start()
 
 	var (
-		notifs <-chan []*store.HeadChange
+		notifs <-chan []*types.HeadChange
 		err    error
 		gotCur bool
 	)

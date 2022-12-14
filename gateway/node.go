@@ -22,7 +22,6 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
@@ -56,8 +55,8 @@ type TargetAPI interface {
 	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
-	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*store.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainPutObj(context.Context, blocks.Block) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
@@ -303,14 +302,14 @@ func (gw *Node) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, er
 	return gw.target.ChainGetNode(ctx, p)
 }
 
-func (gw *Node) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
+func (gw *Node) ChainNotify(ctx context.Context) (<-chan []*types.HeadChange, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}
 	return gw.target.ChainNotify(ctx)
 }
 
-func (gw *Node) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*store.HeadChange, error) {
+func (gw *Node) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*types.HeadChange, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}

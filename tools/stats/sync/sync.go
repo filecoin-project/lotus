@@ -39,10 +39,10 @@ func SyncWait(ctx context.Context, napi SyncWaitApi) error {
 		working := -1
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
-			case api.StageSyncComplete:
+			case types.StageSyncComplete:
 			default:
 				working = i
-			case api.StageIdle:
+			case types.StageIdle:
 				// not complete, not actively working
 			}
 		}
@@ -85,7 +85,7 @@ func SyncWait(ctx context.Context, napi SyncWaitApi) error {
 }
 
 type BufferedTipsetChannelApi interface {
-	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*types.HeadChange, error)
 	Version(context.Context) (api.APIVersion, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 }

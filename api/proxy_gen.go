@@ -35,7 +35,6 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
@@ -136,7 +135,7 @@ type FullNodeStruct struct {
 
 		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) `perm:"read"`
 
-		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) `perm:"read"`
+		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) `perm:"read"`
 
 		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) `perm:"read"`
 
@@ -148,7 +147,7 @@ type FullNodeStruct struct {
 
 		ChainHead func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
-		ChainNotify func(p0 context.Context) (<-chan []*store.HeadChange, error) `perm:"read"`
+		ChainNotify func(p0 context.Context) (<-chan []*types.HeadChange, error) `perm:"read"`
 
 		ChainPrune func(p0 context.Context, p1 PruneOpts) error `perm:"admin"`
 
@@ -580,7 +579,7 @@ type GatewayStruct struct {
 
 		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) ``
 
-		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) ``
+		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) ``
 
 		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) ``
 
@@ -592,7 +591,7 @@ type GatewayStruct struct {
 
 		ChainHead func(p0 context.Context) (*types.TipSet, error) ``
 
-		ChainNotify func(p0 context.Context) (<-chan []*store.HeadChange, error) ``
+		ChainNotify func(p0 context.Context) (<-chan []*types.HeadChange, error) ``
 
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
@@ -1383,15 +1382,15 @@ func (s *FullNodeStub) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([
 	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) {
+func (s *FullNodeStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
 	if s.Internal.ChainGetPath == nil {
-		return *new([]*store.HeadChange), ErrNotSupported
+		return *new([]*types.HeadChange), ErrNotSupported
 	}
 	return s.Internal.ChainGetPath(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) {
-	return *new([]*store.HeadChange), ErrNotSupported
+func (s *FullNodeStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
+	return *new([]*types.HeadChange), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
@@ -1449,14 +1448,14 @@ func (s *FullNodeStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
+func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	if s.Internal.ChainNotify == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ChainNotify(p0)
 }
 
-func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
+func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	return nil, ErrNotSupported
 }
 
@@ -3770,15 +3769,15 @@ func (s *GatewayStub) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([]
 	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
-func (s *GatewayStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) {
+func (s *GatewayStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
 	if s.Internal.ChainGetPath == nil {
-		return *new([]*store.HeadChange), ErrNotSupported
+		return *new([]*types.HeadChange), ErrNotSupported
 	}
 	return s.Internal.ChainGetPath(p0, p1, p2)
 }
 
-func (s *GatewayStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*store.HeadChange, error) {
-	return *new([]*store.HeadChange), ErrNotSupported
+func (s *GatewayStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*types.HeadChange, error) {
+	return *new([]*types.HeadChange), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
@@ -3836,14 +3835,14 @@ func (s *GatewayStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
+func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	if s.Internal.ChainNotify == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ChainNotify(p0)
 }
 
-func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*store.HeadChange, error) {
+func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*types.HeadChange, error) {
 	return nil, ErrNotSupported
 }
 
