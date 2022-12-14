@@ -1,4 +1,3 @@
-// stm: #unit
 package ethtypes
 
 import (
