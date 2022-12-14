@@ -1,4 +1,4 @@
-package api
+package eth
 
 import (
 	"bytes"
@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/lotus/build"
 )
@@ -196,46 +195,6 @@ type EthTxReceipt struct {
 	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         EthBytes    `json:"logsBloom"`
 	Logs              []string    `json:"logs"`
-}
-
-func NewEthTxReceipt(tx EthTx, lookup *MsgLookup, replay *InvocResult) (EthTxReceipt, error) {
-	receipt := EthTxReceipt{
-		TransactionHash:  tx.Hash,
-		TransactionIndex: tx.TransactionIndex,
-		BlockHash:        tx.BlockHash,
-		BlockNumber:      tx.BlockNumber,
-		From:             tx.From,
-		To:               tx.To,
-		StateRoot:        EmptyEthHash,
-		LogsBloom:        []byte{0},
-		Logs:             []string{},
-	}
-
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
-		// Create and Create2 return the same things.
-		var ret eam.CreateReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
-			return EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
-		}
-		addr := EthAddress(ret.EthAddress)
-		receipt.ContractAddress = &addr
-	}
-
-	if lookup.Receipt.ExitCode.IsSuccess() {
-		receipt.Status = 1
-	}
-	if lookup.Receipt.ExitCode.IsError() {
-		receipt.Status = 0
-	}
-
-	receipt.GasUsed = EthUint64(lookup.Receipt.GasUsed)
-
-	// TODO: handle CumulativeGasUsed
-	receipt.CumulativeGasUsed = EmptyEthInt
-
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
-	receipt.EffectiveGasPrice = EthBigInt(effectiveGasPrice)
-	return receipt, nil
 }
 
 const (

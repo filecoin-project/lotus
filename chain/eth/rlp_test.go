@@ -1,4 +1,4 @@
-package api
+package eth
 
 import (
 	"encoding/hex"

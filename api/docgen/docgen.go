@@ -42,6 +42,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
@@ -369,16 +370,16 @@ func init() {
 		},
 	})
 
-	ethint := api.EthUint64(5)
+	ethint := eth.EthUint64(5)
 
 	addExample(ethint)
 	addExample(&ethint)
-	ethaddr, _ := api.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	ethaddr, _ := eth.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
 	addExample(&ethaddr)
-	ethhash, _ := api.NewEthHashFromCid(c)
+	ethhash, _ := eth.NewEthHashFromCid(c)
 	addExample(&ethhash)
 
-	ethFeeHistoryReward := [][]api.EthBigInt{}
+	ethFeeHistoryReward := [][]eth.EthBigInt{}
 	addExample(&ethFeeHistoryReward)
 	addExample(&uuid.UUID{})
 }
