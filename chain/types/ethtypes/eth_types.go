@@ -304,7 +304,7 @@ func EthAddressFromHex(s string) (EthAddress, error) {
 func EthAddressFromBytes(b []byte) (EthAddress, error) {
 	var a EthAddress
 	if len(b) != EthAddressLength {
-		return EthAddress{}, xerrors.Errorf("cannot parse bytes into anœ EthAddress: incorrect input length")
+		return EthAddress{}, xerrors.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
 	}
 	copy(a[:], b[:])
 	return a, nil
