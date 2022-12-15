@@ -25,8 +25,7 @@ together. It also implements scheduling logic.
 
 This package implements the sector storage subsystem. Fundamentally the storage
 is divided into `path`s, each path has it's UUID, and stores a set of sector
-'files'. There are currently 3 types of sector files - `unsealed`, `sealed`,
-and `cache`.
+'files'. There are currently 5 types of sector files - `unsealed`, `sealed`, `cache`, `update` and `update-cache`.
 
 Paths can be shared between nodes by sharing the underlying filesystem.
 
