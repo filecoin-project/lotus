@@ -778,7 +778,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ConfirmUpdateWorkerKey,
+			Method: builtin.MethodsMiner.ConfirmChangeWorkerAddress,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {
@@ -821,7 +821,7 @@ var actorGetMethodNum = &cli.Command{
 		}
 
 		methodName := cctx.Args().First()
-		methodNum, err := builtin.GenerateMethodNum(methodName)
+		methodNum, err := builtin.GenerateFRCMethodNum(methodName)
 		if err != nil {
 			return err
 		}
