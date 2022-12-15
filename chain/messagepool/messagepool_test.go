@@ -155,7 +155,7 @@ func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (
 	}
 
 	return &types.Actor{
-		Code:    builtin2.StorageMarketActorCodeID,
+		Code:    builtin2.AccountActorCodeID,
 		Nonce:   nonce,
 		Balance: balance,
 	}, nil

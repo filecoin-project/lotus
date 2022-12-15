@@ -2,19 +2,20 @@ package itests
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -31,8 +32,13 @@ func TestEthAccountAbstraction(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	embryoAddress, err := address.NewFromString("t410fhreuqiy6apawwjpysfdqo2typwbb3ssfqfapmca")
+	secpKey, err := key.GenerateKey(types.KTDelegated)
 	require.NoError(t, err)
+
+	embryoAddress, err := client.WalletImport(ctx, &secpKey.KeyInfo)
+	require.NoError(t, err)
+
+	fmt.Println(embryoAddress)
 
 	// create an embryo actor at the target address
 	msgCreateEmbryo := &types.Message{
@@ -61,17 +67,19 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromEmbryo, err = client.GasEstimateMessageGas(ctx, msgFromEmbryo, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	smFromEmbryo := &types.SignedMessage{
-		Message:   *msgFromEmbryo,
-		Signature: crypto.Signature{Type: crypto.SigTypeDelegated},
-	}
-
-	// TODO: Unhack delegated verification to always be true
-
-	_, err = client.MpoolPush(ctx, smFromEmbryo)
+	txArgs, err := eth.NewEthTxArgsFromMessage(msgFromEmbryo)
 	require.NoError(t, err)
 
-	mLookup, err = client.StateWaitMsg(ctx, smFromEmbryo.Cid(), 3, api.LookbackNoLimit, true)
+	digest, err := txArgs.OriginalRlpMsg()
+	require.NoError(t, err)
+
+	siggy, err := client.WalletSign(ctx, embryoAddress, digest)
+	require.NoError(t, err)
+
+	smFromEmbryoCid, err := client.MpoolPush(ctx, &types.SignedMessage{Message: *msgFromEmbryo, Signature: *siggy})
+	require.NoError(t, err)
+
+	mLookup, err = client.StateWaitMsg(ctx, smFromEmbryoCid, 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
@@ -93,15 +101,19 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromEmbryo, err = client.GasEstimateMessageGas(ctx, msgFromEmbryo, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	smFromEmbryo = &types.SignedMessage{
-		Message:   *msgFromEmbryo,
-		Signature: crypto.Signature{Type: crypto.SigTypeDelegated},
-	}
-
-	_, err = client.MpoolPush(ctx, smFromEmbryo)
+	txArgs, err = eth.NewEthTxArgsFromMessage(msgFromEmbryo)
 	require.NoError(t, err)
 
-	mLookup, err = client.StateWaitMsg(ctx, smFromEmbryo.Cid(), 3, api.LookbackNoLimit, true)
+	digest, err = txArgs.OriginalRlpMsg()
+	require.NoError(t, err)
+
+	siggy, err = client.WalletSign(ctx, embryoAddress, digest)
+	require.NoError(t, err)
+
+	smFromEmbryoCid, err = client.MpoolPush(ctx, &types.SignedMessage{Message: *msgFromEmbryo, Signature: *siggy})
+	require.NoError(t, err)
+
+	mLookup, err = client.StateWaitMsg(ctx, smFromEmbryoCid, 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
