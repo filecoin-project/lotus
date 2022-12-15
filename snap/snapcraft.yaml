@@ -36,7 +36,7 @@ parts:
       - libhwloc15
       - ocl-icd-libopencl1
     override-build: |
-      LDFLAGS="" make lotus lotus-miner lotus-worker
+      LDFLAGS="-z noexecstack" make lotus lotus-miner lotus-worker
       cp lotus lotus-miner lotus-worker $SNAPCRAFT_PART_INSTALL
       cp scripts/snap-lotus-entrypoint.sh $SNAPCRAFT_PART_INSTALL
 
