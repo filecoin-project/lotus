@@ -14,6 +14,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	msig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -29,7 +30,7 @@ import (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.MultisigKey {
+		if name != manifest.MultisigKey {
 			return nil, xerrors.Errorf("actor code is not multisig: %s", name)
 		}
 

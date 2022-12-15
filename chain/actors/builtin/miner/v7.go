@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
@@ -90,6 +91,7 @@ func (s *state7) PreCommitDeposits() (abi.TokenAmount, error) {
 	return s.State.PreCommitDeposits, nil
 }
 
+// Returns nil, nil if sector is not found
 func (s *state7) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 	info, ok, err := s.State.GetSector(s.store, num)
 	if !ok || err != nil {
@@ -566,7 +568,7 @@ func (s *state7) GetState() interface{} {
 }
 
 func (s *state7) ActorKey() string {
-	return actors.MinerKey
+	return manifest.MinerKey
 }
 
 func (s *state7) ActorVersion() actorstypes.Version {

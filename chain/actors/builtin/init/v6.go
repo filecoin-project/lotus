@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	init6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/init"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
@@ -129,7 +130,7 @@ func (s *state6) AddressMapHashFunction() func(input []byte) []byte {
 }
 
 func (s *state6) ActorKey() string {
-	return actors.InitKey
+	return manifest.InitKey
 }
 
 func (s *state6) ActorVersion() actorstypes.Version {

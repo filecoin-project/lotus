@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/tracer"
 )
 
 func init() {
@@ -47,6 +48,30 @@ const (
 
 func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
+}
+
+type PeerScoreTracker interface {
+	UpdatePeerScore(scores map[peer.ID]*pubsub.PeerScoreSnapshot)
+}
+
+type peerScoreTracker struct {
+	sk *dtypes.ScoreKeeper
+	lt tracer.LotusTracer
+}
+
+func newPeerScoreTracker(lt tracer.LotusTracer, sk *dtypes.ScoreKeeper) PeerScoreTracker {
+	return &peerScoreTracker{
+		sk: sk,
+		lt: lt,
+	}
+}
+
+func (pst *peerScoreTracker) UpdatePeerScore(scores map[peer.ID]*pubsub.PeerScoreSnapshot) {
+	if pst.lt != nil {
+		pst.lt.PeerScores(scores)
+	}
+
+	pst.sk.Update(scores)
 }
 
 type GossipIn struct {
@@ -291,7 +316,6 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				OpportunisticGraftThreshold: OpportunisticGraftScoreThreshold,
 			},
 		),
-		pubsub.WithPeerScoreInspect(in.Sk.Update, 10*time.Second),
 	}
 
 	// enable Peer eXchange on bootstrappers
@@ -361,6 +385,27 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
 				100)))
 
+	var transports []tracer.TracerTransport
+	if in.Cfg.JsonTracer != "" {
+		jsonTransport, err := tracer.NewJsonTracerTransport(in.Cfg.JsonTracer)
+		if err != nil {
+			return nil, err
+		}
+
+		transports = append(transports, jsonTransport)
+	}
+	if in.Cfg.ElasticSearchTracer != "" {
+		elasticSearchTransport, err := tracer.NewElasticSearchTransport(
+			in.Cfg.ElasticSearchTracer,
+			in.Cfg.ElasticSearchIndex,
+		)
+		if err != nil {
+			return nil, err
+		}
+		transports = append(transports, elasticSearchTransport)
+	}
+	lt := tracer.NewLotusTracer(transports, in.Host.ID(), in.Cfg.TracerSourceAuth)
+
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
 		a, err := ma.NewMultiaddr(in.Cfg.RemoteTracer)
@@ -378,12 +423,18 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 			return nil, err
 		}
 
-		trw := newTracerWrapper(tr, build.BlocksTopic(in.Nn))
+		pst := newPeerScoreTracker(lt, in.Sk)
+		trw := newTracerWrapper(tr, lt, build.BlocksTopic(in.Nn))
+
 		options = append(options, pubsub.WithEventTracer(trw))
+		options = append(options, pubsub.WithPeerScoreInspect(pst.UpdatePeerScore, 10*time.Second))
 	} else {
 		// still instantiate a tracer for collecting metrics
-		trw := newTracerWrapper(nil)
+		trw := newTracerWrapper(nil, lt)
 		options = append(options, pubsub.WithEventTracer(trw))
+
+		pst := newPeerScoreTracker(lt, in.Sk)
+		options = append(options, pubsub.WithPeerScoreInspect(pst.UpdatePeerScore, 10*time.Second))
 	}
 
 	return pubsub.NewGossipSub(helpers.LifecycleCtx(in.Mctx, in.Lc), in.Host, options...)
@@ -394,7 +445,11 @@ func HashMsgId(m *pubsub_pb.Message) string {
 	return string(hash[:])
 }
 
-func newTracerWrapper(tr pubsub.EventTracer, topics ...string) pubsub.EventTracer {
+func newTracerWrapper(
+	lp2pTracer pubsub.EventTracer,
+	lotusTracer pubsub.EventTracer,
+	topics ...string,
+) pubsub.EventTracer {
 	var topicsMap map[string]struct{}
 	if len(topics) > 0 {
 		topicsMap = make(map[string]struct{})
@@ -403,12 +458,13 @@ func newTracerWrapper(tr pubsub.EventTracer, topics ...string) pubsub.EventTrace
 		}
 	}
 
-	return &tracerWrapper{tr: tr, topics: topicsMap}
+	return &tracerWrapper{lp2pTracer: lp2pTracer, lotusTracer: lotusTracer, topics: topicsMap}
 }
 
 type tracerWrapper struct {
-	tr     pubsub.EventTracer
-	topics map[string]struct{}
+	lp2pTracer  pubsub.EventTracer
+	lotusTracer pubsub.EventTracer
+	topics      map[string]struct{}
 }
 
 func (trw *tracerWrapper) traceMessage(topic string) bool {
@@ -426,33 +482,70 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 	switch evt.GetType() {
 	case pubsub_pb.TraceEvent_PUBLISH_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubPublishMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetPublishMessage().GetTopic()) {
-			trw.tr.Trace(evt)
+		if trw.traceMessage(evt.GetPublishMessage().GetTopic()) {
+			if trw.lp2pTracer != nil {
+				trw.lp2pTracer.Trace(evt)
+			}
+
+			if trw.lotusTracer != nil {
+				trw.lotusTracer.Trace(evt)
+			}
 		}
 	case pubsub_pb.TraceEvent_DELIVER_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDeliverMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetDeliverMessage().GetTopic()) {
-			trw.tr.Trace(evt)
+		if trw.traceMessage(evt.GetDeliverMessage().GetTopic()) {
+			if trw.lp2pTracer != nil {
+				trw.lp2pTracer.Trace(evt)
+			}
+
+			if trw.lotusTracer != nil {
+				trw.lotusTracer.Trace(evt)
+			}
 		}
 	case pubsub_pb.TraceEvent_REJECT_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubRejectMessage.M(1))
+		if trw.traceMessage(evt.GetRejectMessage().GetTopic()) {
+			if trw.lp2pTracer != nil {
+				trw.lp2pTracer.Trace(evt)
+			}
+
+			if trw.lotusTracer != nil {
+				trw.lotusTracer.Trace(evt)
+			}
+		}
 	case pubsub_pb.TraceEvent_DUPLICATE_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDuplicateMessage.M(1))
 	case pubsub_pb.TraceEvent_JOIN:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_LEAVE:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_GRAFT:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_PRUNE:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_RECV_RPC:
 		stats.Record(context.TODO(), metrics.PubsubRecvRPC.M(1))

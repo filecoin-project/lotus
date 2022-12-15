@@ -7,6 +7,7 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -39,7 +40,7 @@ func (s *state8) GetState() interface{} {
 }
 
 func (s *state8) ActorKey() string {
-	return actors.CronKey
+	return manifest.CronKey
 }
 
 func (s *state8) ActorVersion() actorstypes.Version {

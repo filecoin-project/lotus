@@ -142,8 +142,21 @@ type openSector struct {
 }
 
 func (o *openSector) checkDealAssignable(piece *pendingPiece, expF expFn) (bool, error) {
+	log := log.With(
+		"sector", o.number,
+
+		"deal", piece.deal.DealID,
+		"dealEnd", piece.deal.DealProposal.EndEpoch,
+		"dealStart", piece.deal.DealProposal.StartEpoch,
+		"dealClaimEnd", piece.claimTerms.claimTermEnd,
+
+		"lastAssignedDealEnd", o.lastDealEnd,
+		"update", o.ccUpdate,
+	)
+
 	// if there are deals assigned, check that no assigned deal expires after termMax
 	if o.lastDealEnd > piece.claimTerms.claimTermEnd {
+		log.Debugw("deal not assignable to sector", "reason", "term end beyond last assigned deal end")
 		return false, nil
 	}
 
@@ -153,15 +166,26 @@ func (o *openSector) checkDealAssignable(piece *pendingPiece, expF expFn) (bool,
 	}
 	sectorExpiration, _, err := expF(o.number)
 	if err != nil {
+		log.Debugw("deal not assignable to sector", "reason", "error getting sector expiranion", "error", err)
 		return false, err
 	}
 
+	log = log.With(
+		"sectorExpiration", sectorExpiration,
+	)
+
 	// check that in case of upgrade sector, it's expiration isn't above deals claim TermMax
 	if sectorExpiration > piece.claimTerms.claimTermEnd {
+		log.Debugw("deal not assignable to sector", "reason", "term end beyond sector expiration")
 		return false, nil
 	}
 
-	return sectorExpiration >= piece.deal.DealProposal.EndEpoch, nil
+	if sectorExpiration < piece.deal.DealProposal.EndEpoch {
+		log.Debugw("deal not assignable to sector", "reason", "sector expiration less than deal expiration")
+		return false, nil
+	}
+
+	return true, nil
 }
 
 type pieceAcceptResp struct {

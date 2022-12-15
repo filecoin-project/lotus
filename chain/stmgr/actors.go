@@ -103,6 +103,7 @@ func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address,
 	return mas.GetPrecommittedSector(sid)
 }
 
+// Returns nil, nil if sector is not found
 func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorOnChainInfo, error) {
 	act, err := sm.LoadActor(ctx, maddr, ts)
 	if err != nil {

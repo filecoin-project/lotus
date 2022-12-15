@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -31,7 +32,7 @@ import (
 // Load returns an abstract copy of payment channel state, irregardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.PaychKey {
+		if name != manifest.PaychKey {
 			return nil, xerrors.Errorf("actor code is not paych: %s", name)
 		}
 

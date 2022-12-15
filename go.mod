@@ -23,6 +23,7 @@ require (
 	github.com/drand/drand v1.3.0
 	github.com/drand/kyber v1.1.7
 	github.com/dustin/go-humanize v1.0.0
+	github.com/elastic/go-elasticsearch/v7 v7.14.0
 	github.com/elastic/go-sysinfo v1.7.0
 	github.com/elastic/gosigar v0.14.2
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
@@ -42,7 +43,7 @@ require (
 	github.com/filecoin-project/go-legs v0.4.4
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.10.0-alpha-2
+	github.com/filecoin-project/go-state-types v0.10.0-alpha-4
 	github.com/filecoin-project/go-statemachine v1.0.2
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0

@@ -15,6 +15,7 @@ import (
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	msig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
 	adt10 "github.com/filecoin-project/go-state-types/builtin/v10/util/adt"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -120,7 +121,7 @@ func (s *state10) GetState() interface{} {
 }
 
 func (s *state10) ActorKey() string {
-	return actors.MultisigKey
+	return manifest.MultisigKey
 }
 
 func (s *state10) ActorVersion() actorstypes.Version {

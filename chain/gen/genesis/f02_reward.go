@@ -8,6 +8,7 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -29,7 +30,7 @@ func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int
 		return nil, err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.RewardKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.RewardKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get reward actor code ID for actors version %d", av)
 	}

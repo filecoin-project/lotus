@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
@@ -119,7 +120,7 @@ func (s *state4) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 }
 
 func (s *state4) ActorKey() string {
-	return actors.VerifregKey
+	return manifest.VerifregKey
 }
 
 func (s *state4) ActorVersion() actorstypes.Version {

@@ -449,6 +449,9 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		if err != nil {
 			return 0, big.Zero(), err
 		}
+		if onChainInfo == nil {
+			return 0, big.Zero(), xerrors.Errorf("sector info for sector %d not found", sn)
+		}
 		memo[sn] = struct {
 			e abi.ChainEpoch
 			p abi.TokenAmount
@@ -494,10 +497,6 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 				continue
 			}
 			if !ok {
-				exp, _, _ := getExpirationCached(sector.number)
-
-				// todo move this log into checkDealAssignable, make more detailed about the reason
-				log.Debugf("CC update sector %d cannot fit deal, expiration %d before deal end epoch %d", id, exp, piece.deal.DealProposal.EndEpoch)
 				continue
 			}
 
