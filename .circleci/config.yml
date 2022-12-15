@@ -588,7 +588,7 @@ jobs:
                       command: |
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>
                         if [[ ! -z $CIRCLE_SHA ]]; then
-                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA}"
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>> filecoin/<<parameters.image>>:"${CIRCLE_SHA}"
                           docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA}"
                         fi
                         if [[ ! -z $CIRCLE_TAG ]]; then
