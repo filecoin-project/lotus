@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/manifest"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,6 +13,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/chain/actors"
