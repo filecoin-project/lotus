@@ -42,7 +42,7 @@ func SetupDatacapActor(ctx context.Context, bs bstore.Blockstore, av actorstypes
 		return nil, err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, manifest.DataCapKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.DatacapKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get datacap actor code ID for actors version %d", av)
 	}

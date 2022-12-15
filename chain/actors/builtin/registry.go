@@ -259,7 +259,7 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: verifreg9.Methods,
 					state:   new(verifreg9.State),
 				})
-			case manifest.DataCapKey:
+			case manifest.DatacapKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: datacap9.Methods,
@@ -337,7 +337,7 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: verifreg10.Methods,
 					state:   new(verifreg10.State),
 				})
-			case manifest.DataCapKey:
+			case manifest.DatacapKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: datacap10.Methods,

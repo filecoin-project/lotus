@@ -23,7 +23,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != manifest.DataCapKey {
+		if name != manifest.DatacapKey {
 			return nil, xerrors.Errorf("actor code is not datacap: %s", name)
 		}
 

@@ -64,7 +64,7 @@ func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.Sto
 }
 
 func (s *state{{.v}}) ActorKey() string {
-    return manifest.DataCapKey
+    return manifest.DatacapKey
 }
 
 func (s *state{{.v}}) ActorVersion() actorstypes.Version {
