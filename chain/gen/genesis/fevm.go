@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/manifest"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -59,7 +61,7 @@ func SetupFEVM(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder,
 	}
 
 	// The ETH0 address is occupied by an empty contract EVM actor
-	evmCodeCid, ok := actors.GetActorCodeID(av, actors.EvmKey)
+	evmCodeCid, ok := actors.GetActorCodeID(av, manifest.EvmKey)
 	if !ok {
 		return cid.Undef, fmt.Errorf("failed to get CodeCID for EVM during genesis")
 	}

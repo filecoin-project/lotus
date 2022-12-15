@@ -693,7 +693,7 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 		return nil
 	}
 
-	codecid, ok := actors.GetActorCodeID(av, actors.EamKey)
+	codecid, ok := actors.GetActorCodeID(av, manifest.EamKey)
 	if !ok {
 		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
 	}

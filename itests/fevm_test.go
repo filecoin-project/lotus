@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/manifest"
+
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -114,7 +116,7 @@ func TestFEVMETH0(t *testing.T) {
 	av, err := actorstypes.VersionForNetwork(nv)
 	require.NoError(t, err)
 
-	evmCodeCid, ok := actors.GetActorCodeID(av, actors.EvmKey)
+	evmCodeCid, ok := actors.GetActorCodeID(av, manifest.EvmKey)
 	require.True(t, ok, "failed to get EVM code id")
 	require.Equal(t, act.Code, evmCodeCid)
 
