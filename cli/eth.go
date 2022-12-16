@@ -63,7 +63,7 @@ func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi
 var EthGetAddressCmd = &cli.Command{
 	Name:      "stat",
 	Usage:     "Print eth/filecoin addrs and code cid",
-	ArgsUsage: "[faddr]",
+	ArgsUsage: "",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "filaddr",

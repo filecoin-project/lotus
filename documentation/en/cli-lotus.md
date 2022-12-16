@@ -2594,7 +2594,7 @@ NAME:
    lotus eth stat - Print eth/filecoin addrs and code cid
 
 USAGE:
-   lotus eth stat [command options] [faddr]
+   lotus eth stat [command options] [arguments...]
 
 OPTIONS:
    --ethaddr value  Ethereum address
