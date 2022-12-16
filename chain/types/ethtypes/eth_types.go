@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/filecoin-project/lotus/build"
 )
 
@@ -189,24 +190,6 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 	}
 	*c = EthCall(params)
 	return nil
-}
-
-type EthTxReceipt struct {
-	TransactionHash   EthHash     `json:"transactionHash"`
-	TransactionIndex  EthUint64   `json:"transactionIndex"`
-	BlockHash         EthHash     `json:"blockHash"`
-	BlockNumber       EthUint64   `json:"blockNumber"`
-	From              EthAddress  `json:"from"`
-	To                *EthAddress `json:"to"`
-	StateRoot         EthHash     `json:"root"`
-	Status            EthUint64   `json:"status"`
-	ContractAddress   *EthAddress `json:"contractAddress"`
-	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
-	GasUsed           EthUint64   `json:"gasUsed"`
-	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
-	LogsBloom         EthBytes    `json:"logsBloom"`
-	Logs              []EthLog    `json:"logs"`
-	Type              EthUint64   `json:"type"`
 }
 
 const (

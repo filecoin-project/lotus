@@ -1344,6 +1344,6 @@ type EthTxReceipt struct {
 	GasUsed           ethtypes.EthUint64   `json:"gasUsed"`
 	EffectiveGasPrice ethtypes.EthBigInt   `json:"effectiveGasPrice"`
 	LogsBloom         ethtypes.EthBytes    `json:"logsBloom"`
-	Logs              []string             `json:"logs"`
+	Logs              []ethtypes.EthLog    `json:"logs"`
 	Type              ethtypes.EthUint64   `json:"type"`
 }

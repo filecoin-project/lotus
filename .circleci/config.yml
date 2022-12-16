@@ -765,20 +765,20 @@ workflows:
           target: "./itests/dup_mpool_messages_test.go"
       
       - test:
+          name: test-itest-eth_account_abstraction
+          suite: itest-eth_account_abstraction
+          target: "./itests/eth_account_abstraction_test.go"
+      
+      - test:
           name: test-itest-eth_filter
           suite: itest-eth_filter
           target: "./itests/eth_filter_test.go"
-
+      
       - test:
           name: test-itest-fevm_events
           suite: itest-fevm_events
           target: "./itests/fevm_events_test.go"
-
-      - test:
-          name: test-itest-eth_account_abstraction
-          suite: itest-eth_account_abstraction
-          target: "./itests/eth_account_abstraction_test.go"
-
+      
       - test:
           name: test-itest-fevm
           suite: itest-fevm

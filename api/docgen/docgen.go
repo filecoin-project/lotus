@@ -387,16 +387,16 @@ func init() {
 
 	addExample(&uuid.UUID{})
 
-	filterid, _ := api.EthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
-	addExample(api.EthFilterID(filterid))
+	filterid, _ := ethtypes.EthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
+	addExample(ethtypes.EthFilterID(filterid))
 
-	subid, _ := api.EthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
-	addExample(api.EthSubscriptionID(subid))
+	subid, _ := ethtypes.EthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
+	addExample(ethtypes.EthSubscriptionID(subid))
 
 	pstring := func(s string) *string { return &s }
-	addExample(&api.EthFilterSpec{
+	addExample(&ethtypes.EthFilterSpec{
 		FromBlock: pstring("2301220"),
-		Address:   []api.EthAddress{ethaddr},
+		Address:   []ethtypes.EthAddress{ethaddr},
 	})
 }
 

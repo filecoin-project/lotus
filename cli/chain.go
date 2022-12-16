@@ -1784,6 +1784,9 @@ var ChainInvokeEVMCmd = &cli.Command{
 				if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
 					return err
 				}
+				if err != nil {
+					return err
+				}
 				fmt.Printf("\tEmitter ID: %s\n", evt.Emitter)
 				for _, e := range evt.Entries {
 					value, err := cbg.ReadByteArray(bytes.NewBuffer(e.Value), uint64(len(e.Value)))
