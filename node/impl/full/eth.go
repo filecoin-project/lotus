@@ -608,7 +608,7 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message) (res *
 		return nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
+		return nil, xerrors.Errorf("message execution failed: exit %s, msg receipt: %s, reason: %s", res.MsgRct.ExitCode, res.MsgRct.Return, res.Error)
 	}
 	return res, nil
 }
