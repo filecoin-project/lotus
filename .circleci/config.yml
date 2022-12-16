@@ -65,10 +65,6 @@ commands:
                 command: |
                   curl https://dl.google.com/go/go`cat GO_VERSION_MIN`.darwin-<<parameters.darwin-architecture>>.pkg -o /tmp/go.pkg && \
                   sudo installer -pkg /tmp/go.pkg -target /
-            - run:
-                name: Export Go
-                command: |
-                  echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
             - run: go version
             - run:
                 name: Install dependencies with Homebrew
@@ -111,6 +107,9 @@ commands:
             git fetch --all
   install_go_dependencies:
     steps:
+      - run:
+          name: Set GOPATH
+          command: echo 'export GOPATH="/go"' >> $BASH_ENV
       - restore_cache:
           keys:
             - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
