@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var EthCmd = &cli.Command{
@@ -28,6 +31,9 @@ func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
 		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return ethtypes.EthAddress{}, addr, err
+		}
 	case address.Actor, address.ID:
 		f0addr, err := fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
 		if err != nil {
@@ -91,6 +97,9 @@ var EthGetAddressCmd = &cli.Command{
 				return err
 			}
 			eaddr, faddr, err = ethAddrFromFilecoinAddress(ctx, addr, api)
+			if err != nil {
+				return err
+			}
 		} else if ethaddr != "" {
 			addr, err := hex.DecodeString(ethaddr)
 			if err != nil {
