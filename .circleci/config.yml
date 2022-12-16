@@ -110,6 +110,7 @@ commands:
       - run:
           name: Set GOPATH
           command: |
+            mkdir /go
             chown -R $USER:$USER /go
             echo 'export GOPATH="/go"' >> $BASH_ENV
       - restore_cache:
