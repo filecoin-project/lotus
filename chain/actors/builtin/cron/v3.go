@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	cron3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/cron"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -39,7 +40,7 @@ func (s *state3) GetState() interface{} {
 }
 
 func (s *state3) ActorKey() string {
-	return actors.CronKey
+	return manifest.CronKey
 }
 
 func (s *state3) ActorVersion() actorstypes.Version {

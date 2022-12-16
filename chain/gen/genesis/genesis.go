@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -381,7 +382,7 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 		return nil, err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.AccountKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.AccountKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get account actor code ID for actors version %d", av)
 	}
@@ -464,7 +465,7 @@ func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state
 		return err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.MultisigKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.MultisigKey)
 	if !ok {
 		return xerrors.Errorf("failed to get multisig code ID for actors version %d", av)
 	}
@@ -692,7 +693,7 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 		return nil
 	}
 
-	codecid, ok := actors.GetActorCodeID(av, actors.EamKey)
+	codecid, ok := actors.GetActorCodeID(av, manifest.EamKey)
 	if !ok {
 		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
 	}

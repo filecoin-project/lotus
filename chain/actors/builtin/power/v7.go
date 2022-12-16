@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
@@ -189,7 +190,7 @@ func fromV7Claim(v7 power7.Claim) Claim {
 }
 
 func (s *state7) ActorKey() string {
-	return actors.PowerKey
+	return manifest.PowerKey
 }
 
 func (s *state7) ActorVersion() actorstypes.Version {

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -113,7 +114,7 @@ func TestFEVMETH0(t *testing.T) {
 	av, err := actorstypes.VersionForNetwork(nv)
 	require.NoError(t, err)
 
-	evmCodeCid, ok := actors.GetActorCodeID(av, actors.EvmKey)
+	evmCodeCid, ok := actors.GetActorCodeID(av, manifest.EvmKey)
 	require.True(t, ok, "failed to get EVM code id")
 	require.Equal(t, act.Code, evmCodeCid)
 

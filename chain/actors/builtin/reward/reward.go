@@ -8,6 +8,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -30,7 +31,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.RewardKey {
+		if name != manifest.RewardKey {
 			return nil, xerrors.Errorf("actor code is not reward: %s", name)
 		}
 

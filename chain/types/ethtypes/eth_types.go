@@ -1,4 +1,4 @@
-package api
+package ethtypes
 
 import (
 	"bytes"
@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-
 	"github.com/filecoin-project/lotus/build"
 )
 
@@ -199,6 +198,7 @@ type EthTxReceipt struct {
 	BlockNumber       EthUint64   `json:"blockNumber"`
 	From              EthAddress  `json:"from"`
 	To                *EthAddress `json:"to"`
+	StateRoot         EthHash     `json:"root"`
 	Status            EthUint64   `json:"status"`
 	ContractAddress   *EthAddress `json:"contractAddress"`
 	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
@@ -315,10 +315,15 @@ func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAd
 
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
-	if !ok && err == nil {
-		err = xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	if err != nil {
+		return EthAddress{}, xerrors.Errorf("failed to try converting filecoin to eth addr: %w", err)
 	}
-	return ethAddr, err
+
+	if !ok {
+		return EthAddress{}, xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	}
+
+	return ethAddr, nil
 }
 
 func EthAddressFromHex(s string) (EthAddress, error) {
@@ -335,7 +340,7 @@ func EthAddressFromHex(s string) (EthAddress, error) {
 func EthAddressFromBytes(b []byte) (EthAddress, error) {
 	var a EthAddress
 	if len(b) != EthAddressLength {
-		return EthAddress{}, xerrors.Errorf("cannot parse bytes into anœ EthAddress: incorrect input length")
+		return EthAddress{}, xerrors.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
 	}
 	copy(a[:], b[:])
 	return a, nil

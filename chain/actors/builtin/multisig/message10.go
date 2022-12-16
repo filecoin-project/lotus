@@ -9,6 +9,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	multisig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -50,7 +51,7 @@ func (m message10) Create(
 		return nil, actErr
 	}
 
-	code, ok := actors.GetActorCodeID(actorstypes.Version10, actors.MultisigKey)
+	code, ok := actors.GetActorCodeID(actorstypes.Version10, manifest.MultisigKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get multisig code ID")
 	}
