@@ -36,7 +36,6 @@ import (
 	api "github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	eth "github.com/filecoin-project/lotus/chain/eth"
 	types "github.com/filecoin-project/lotus/chain/types"
 	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
@@ -1134,10 +1133,10 @@ func (mr *MockFullNodeMockRecorder) EthGetStorageAt(arg0, arg1, arg2, arg3 inter
 }
 
 // EthGetTransactionByBlockHashAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 ethtypes.EthHash, arg2 ethtypes.EthUint64) (eth.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 ethtypes.EthHash, arg2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockHashAndIndex", arg0, arg1, arg2)
-	ret0, _ := ret[0].(eth.EthTx)
+	ret0, _ := ret[0].(ethtypes.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1149,10 +1148,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockHashAndIndex(arg0, a
 }
 
 // EthGetTransactionByBlockNumberAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 ethtypes.EthUint64) (eth.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockNumberAndIndex", arg0, arg1, arg2)
-	ret0, _ := ret[0].(eth.EthTx)
+	ret0, _ := ret[0].(ethtypes.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1164,10 +1163,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockNumberAndIndex(arg0,
 }
 
 // EthGetTransactionByHash mocks base method.
-func (m *MockFullNode) EthGetTransactionByHash(arg0 context.Context, arg1 *ethtypes.EthHash) (*eth.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByHash(arg0 context.Context, arg1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByHash", arg0, arg1)
-	ret0, _ := ret[0].(*eth.EthTx)
+	ret0, _ := ret[0].(*ethtypes.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
