@@ -13,8 +13,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -67,7 +67,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromEmbryo, err = client.GasEstimateMessageGas(ctx, msgFromEmbryo, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err := eth.NewEthTxArgsFromMessage(msgFromEmbryo)
+	txArgs, err := ethtypes.NewEthTxArgsFromMessage(msgFromEmbryo)
 	require.NoError(t, err)
 
 	digest, err := txArgs.OriginalRlpMsg()
@@ -101,7 +101,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromEmbryo, err = client.GasEstimateMessageGas(ctx, msgFromEmbryo, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err = eth.NewEthTxArgsFromMessage(msgFromEmbryo)
+	txArgs, err = ethtypes.NewEthTxArgsFromMessage(msgFromEmbryo)
 	require.NoError(t, err)
 
 	digest, err = txArgs.OriginalRlpMsg()

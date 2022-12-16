@@ -35,7 +35,6 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -248,11 +247,11 @@ type FullNodeStruct struct {
 
 		EthGetStorageAt func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) `perm:"read"`
 
-		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (eth.EthTx, error) `perm:"read"`
+		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) `perm:"read"`
 
-		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (eth.EthTx, error) `perm:"read"`
+		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) `perm:"read"`
 
-		EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*eth.EthTx, error) `perm:"read"`
+		EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) `perm:"read"`
 
 		EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) `perm:"read"`
 
@@ -1999,36 +1998,36 @@ func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddres
 	return *new(ethtypes.EthBytes), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (eth.EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByBlockHashAndIndex == nil {
-		return *new(eth.EthTx), ErrNotSupported
+		return *new(ethtypes.EthTx), ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (eth.EthTx, error) {
-	return *new(eth.EthTx), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return *new(ethtypes.EthTx), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (eth.EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {
-		return *new(eth.EthTx), ErrNotSupported
+		return *new(ethtypes.EthTx), ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (eth.EthTx, error) {
-	return *new(eth.EthTx), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return *new(ethtypes.EthTx), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*eth.EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByHash == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByHash(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*eth.EthTx, error) {
+func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return nil, ErrNotSupported
 }
 

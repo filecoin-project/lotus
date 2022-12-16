@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
@@ -37,7 +36,7 @@ func (e *EthModuleDummy) EthGetBlockByNumber(ctx context.Context, blkNum string,
 	return ethtypes.EthBlock{}, ErrImplementMe
 }
 
-func (e *EthModuleDummy) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*eth.EthTx, error) {
+func (e *EthModuleDummy) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return nil, ErrImplementMe
 }
 
@@ -49,12 +48,12 @@ func (e *EthModuleDummy) EthGetTransactionReceipt(ctx context.Context, txHash et
 	return nil, ErrImplementMe
 }
 
-func (e *EthModuleDummy) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (eth.EthTx, error) {
-	return eth.EthTx{}, ErrImplementMe
+func (e *EthModuleDummy) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return ethtypes.EthTx{}, ErrImplementMe
 }
 
-func (e *EthModuleDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (eth.EthTx, error) {
-	return eth.EthTx{}, ErrImplementMe
+func (e *EthModuleDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return ethtypes.EthTx{}, ErrImplementMe
 }
 
 func (e *EthModuleDummy) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {

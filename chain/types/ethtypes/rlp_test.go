@@ -1,4 +1,4 @@
-package eth
+package ethtypes
 
 import (
 	"encoding/hex"
@@ -10,11 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 )
-
-type TestCase struct {
-	Input  interface{}
-	Output interface{}
-}
 
 func TestEncode(t *testing.T) {
 	testcases := []TestCase{

@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/eth"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -38,11 +37,11 @@ type EthModuleAPI interface {
 	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error)
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)
-	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*eth.EthTx, error)
+	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)
 	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error)
 	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error)
-	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (eth.EthTx, error)
-	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (eth.EthTx, error)
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error)
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error)
 	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error)
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)
@@ -160,7 +159,7 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkNum string, full
 	return a.newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo)
 }
 
-func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*eth.EthTx, error) {
+func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
 	if txHash == nil {
 		return nil, nil
@@ -217,12 +216,12 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 	return &receipt, nil
 }
 
-func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (eth.EthTx, error) {
-	return eth.EthTx{}, nil
+func (a *EthModule) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return ethtypes.EthTx{}, nil
 }
 
-func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (eth.EthTx, error) {
-	return eth.EthTx{}, nil
+func (a *EthModule) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return ethtypes.EthTx{}, nil
 }
 
 // EthGetCode returns string value of the compiled bytecode
@@ -494,7 +493,7 @@ func (a *EthModule) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 }
 
 func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) {
-	txArgs, err := eth.ParseEthTxArgs(rawTx)
+	txArgs, err := ethtypes.ParseEthTxArgs(rawTx)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
@@ -756,37 +755,37 @@ func (a *EthModule) lookupEthAddress(ctx context.Context, addr address.Address) 
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
-func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (eth.EthTx, error) {
+func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup) (ethtypes.EthTx, error) {
 	if msgLookup == nil {
-		return eth.EthTx{}, fmt.Errorf("msg does not exist")
+		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
 	}
 	cid := msgLookup.Message
 	txHash, err := ethtypes.NewEthHashFromCid(cid)
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	ts, err := a.Chain.LoadTipSet(ctx, msgLookup.TipSet)
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	// This tx is located in the parent tipset
 	parentTs, err := a.Chain.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	parentTsCid, err := parentTs.Key().Cid()
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	// lookup the transactionIndex
 	txIdx := -1
 	msgs, err := a.Chain.MessagesForTipset(ctx, parentTs)
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 	for i, msg := range msgs {
 		if msg.Cid() == msgLookup.Message {
@@ -794,27 +793,27 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 		}
 	}
 	if txIdx == -1 {
-		return eth.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
+		return ethtypes.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
 	}
 
 	blkHash, err := ethtypes.NewEthHashFromCid(parentTsCid)
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	msg, err := a.ChainAPI.ChainGetMessage(ctx, msgLookup.Message)
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	fromEthAddr, err := a.lookupEthAddress(ctx, msg.From)
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	toEthAddr, err := a.lookupEthAddress(ctx, msg.To)
 	if err != nil {
-		return eth.EthTx{}, err
+		return ethtypes.EthTx{}, err
 	}
 
 	toAddr := &toEthAddr
@@ -835,7 +834,7 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 			input = params.Initcode
 		}
 		if err != nil {
-			return eth.EthTx{}, err
+			return ethtypes.EthTx{}, err
 		}
 	}
 	// Otherwise, try to decode as a cbor byte array.
@@ -846,7 +845,7 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 		}
 	}
 
-	tx := eth.EthTx{
+	tx := ethtypes.EthTx{
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		Hash:                 txHash,
 		BlockHash:            blkHash,
@@ -867,7 +866,7 @@ func (a *EthModule) newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLo
 	return tx, nil
 }
 
-func NewEthTxReceipt(tx eth.EthTx, lookup *api.MsgLookup, replay *api.InvocResult) (api.EthTxReceipt, error) {
+func NewEthTxReceipt(tx ethtypes.EthTx, lookup *api.MsgLookup, replay *api.InvocResult) (api.EthTxReceipt, error) {
 	receipt := api.EthTxReceipt{
 		TransactionHash:  tx.Hash,
 		TransactionIndex: tx.TransactionIndex,
