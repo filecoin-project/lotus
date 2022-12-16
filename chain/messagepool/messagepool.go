@@ -34,9 +34,11 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -776,7 +778,7 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
 	case crypto.SigTypeDelegated:
-		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
 		if err != nil {
 			return "", err
 		}
@@ -803,9 +805,9 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	}
 
 	if m.Signature.Type == crypto.SigTypeDelegated {
-		txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+		txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to convert to eth tx args: %w", err)
 		}
 		msg, err := txArgs.OriginalRlpMsg()
 		if err != nil {
@@ -872,18 +874,28 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	senderAct, err := mp.api.GetActorAfter(m.Message.From, curTs)
+	if err != nil {
+		return false, xerrors.Errorf("failed to get sender actor: %w", err)
+	}
+
+	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
+	if !filcns.IsValidForSending(senderAct) {
+		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
+	}
+
 	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTs, local)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("verify msg failed: %w", err)
 	}
 
 	if err := mp.checkBalance(ctx, m, curTs); err != nil {
-		return false, err
+		return false, xerrors.Errorf("failed to check balance: %w", err)
 	}
 
 	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("failed to add locked: %w", err)
 	}
 
 	if local {

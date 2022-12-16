@@ -7,6 +7,7 @@ import (
 	"golang.org/x/xerrors"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	system5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/system"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -52,7 +53,7 @@ func (s *state5) SetBuiltinActors(c cid.Cid) error {
 }
 
 func (s *state5) ActorKey() string {
-	return actors.SystemKey
+	return manifest.SystemKey
 }
 
 func (s *state5) ActorVersion() actorstypes.Version {

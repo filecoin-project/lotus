@@ -2443,6 +2443,7 @@ Response:
   "blockNumber": "0x0",
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "root": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "status": "0x5",
   "contractAddress": null,
   "cumulativeGasUsed": "0x0",

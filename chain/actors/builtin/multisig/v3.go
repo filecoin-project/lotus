@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	msig3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/multisig"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
@@ -120,7 +121,7 @@ func (s *state3) GetState() interface{} {
 }
 
 func (s *state3) ActorKey() string {
-	return actors.MultisigKey
+	return manifest.MultisigKey
 }
 
 func (s *state3) ActorVersion() actorstypes.Version {

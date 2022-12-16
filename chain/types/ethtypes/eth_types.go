@@ -1,4 +1,4 @@
-package api
+package ethtypes
 
 import (
 	"bytes"
@@ -192,23 +192,6 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type EthTxReceipt struct {
-	TransactionHash   EthHash     `json:"transactionHash"`
-	TransactionIndex  EthUint64   `json:"transactionIndex"`
-	BlockHash         EthHash     `json:"blockHash"`
-	BlockNumber       EthUint64   `json:"blockNumber"`
-	From              EthAddress  `json:"from"`
-	To                *EthAddress `json:"to"`
-	Status            EthUint64   `json:"status"`
-	ContractAddress   *EthAddress `json:"contractAddress"`
-	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
-	GasUsed           EthUint64   `json:"gasUsed"`
-	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
-	LogsBloom         EthBytes    `json:"logsBloom"`
-	Logs              []EthLog    `json:"logs"`
-	Type              EthUint64   `json:"type"`
-}
-
 const (
 	EthAddressLength = 20
 	EthHashLength    = 32
@@ -315,10 +298,15 @@ func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAd
 
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
-	if !ok && err == nil {
-		err = xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	if err != nil {
+		return EthAddress{}, xerrors.Errorf("failed to try converting filecoin to eth addr: %w", err)
 	}
-	return ethAddr, err
+
+	if !ok {
+		return EthAddress{}, xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	}
+
+	return ethAddr, nil
 }
 
 func EthAddressFromHex(s string) (EthAddress, error) {
@@ -335,7 +323,7 @@ func EthAddressFromHex(s string) (EthAddress, error) {
 func EthAddressFromBytes(b []byte) (EthAddress, error) {
 	var a EthAddress
 	if len(b) != EthAddressLength {
-		return EthAddress{}, xerrors.Errorf("cannot parse bytes into anœ EthAddress: incorrect input length")
+		return EthAddress{}, xerrors.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
 	}
 	copy(a[:], b[:])
 	return a, nil

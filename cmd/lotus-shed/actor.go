@@ -34,6 +34,7 @@ var actorCmd = &cli.Command{
 		actorControl,
 		actorProposeChangeWorker,
 		actorConfirmChangeWorker,
+		actorGetMethodNum,
 	},
 }
 
@@ -777,7 +778,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ConfirmUpdateWorkerKey,
+			Method: builtin.MethodsMiner.ConfirmChangeWorkerAddress,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {
@@ -805,6 +806,27 @@ var actorConfirmChangeWorker = &cli.Command{
 		if mi.Worker != newAddr {
 			return fmt.Errorf("Confirmed worker address change not reflected on chain: expected '%s', found '%s'", newAddr, mi.Worker)
 		}
+
+		return nil
+	},
+}
+
+var actorGetMethodNum = &cli.Command{
+	Name:      "generate-method-num",
+	Usage:     "Generate method number from method name",
+	ArgsUsage: "[methodName]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass methodNum")
+		}
+
+		methodName := cctx.Args().First()
+		methodNum, err := builtin.GenerateFRCMethodNum(methodName)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Method Num: ", methodNum)
 
 		return nil
 	},

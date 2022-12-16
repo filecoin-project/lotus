@@ -36,8 +36,8 @@ import (
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/journal/alerting"
-	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
@@ -221,67 +221,67 @@ type FullNodeStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		EthAccounts func(p0 context.Context) ([]EthAddress, error) `perm:"read"`
+		EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) `perm:"read"`
 
-		EthBlockNumber func(p0 context.Context) (EthUint64, error) `perm:"read"`
+		EthBlockNumber func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
-		EthCall func(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) `perm:"read"`
+		EthCall func(p0 context.Context, p1 ethtypes.EthCall, p2 string) (ethtypes.EthBytes, error) `perm:"read"`
 
-		EthChainId func(p0 context.Context) (EthUint64, error) `perm:"read"`
+		EthChainId func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
-		EthEstimateGas func(p0 context.Context, p1 EthCall) (EthUint64, error) `perm:"read"`
+		EthEstimateGas func(p0 context.Context, p1 ethtypes.EthCall) (ethtypes.EthUint64, error) `perm:"read"`
 
-		EthFeeHistory func(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) `perm:"read"`
+		EthFeeHistory func(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) `perm:"read"`
 
-		EthGasPrice func(p0 context.Context) (EthBigInt, error) `perm:"read"`
+		EthGasPrice func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
 
-		EthGetBalance func(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) `perm:"read"`
+		EthGetBalance func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBigInt, error) `perm:"read"`
 
-		EthGetBlockByHash func(p0 context.Context, p1 EthHash, p2 bool) (EthBlock, error) `perm:"read"`
+		EthGetBlockByHash func(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
 
-		EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (EthBlock, error) `perm:"read"`
+		EthGetBlockByNumber func(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) `perm:"read"`
 
-		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 EthHash) (EthUint64, error) `perm:"read"`
+		EthGetBlockTransactionCountByHash func(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) `perm:"read"`
 
-		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 EthUint64) (EthUint64, error) `perm:"read"`
+		EthGetBlockTransactionCountByNumber func(p0 context.Context, p1 ethtypes.EthUint64) (ethtypes.EthUint64, error) `perm:"read"`
 
-		EthGetCode func(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) `perm:"read"`
+		EthGetCode func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBytes, error) `perm:"read"`
 
-		EthGetFilterChanges func(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) `perm:"write"`
+		EthGetFilterChanges func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"write"`
 
-		EthGetFilterLogs func(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) `perm:"write"`
+		EthGetFilterLogs func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"write"`
 
-		EthGetLogs func(p0 context.Context, p1 *EthFilterSpec) (*EthFilterResult, error) `perm:"read"`
+		EthGetLogs func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
-		EthGetStorageAt func(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) `perm:"read"`
+		EthGetStorageAt func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) `perm:"read"`
 
-		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) `perm:"read"`
+		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) `perm:"read"`
 
-		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 EthUint64, p2 EthUint64) (EthTx, error) `perm:"read"`
+		EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) `perm:"read"`
 
-		EthGetTransactionByHash func(p0 context.Context, p1 *EthHash) (*EthTx, error) `perm:"read"`
+		EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) `perm:"read"`
 
-		EthGetTransactionCount func(p0 context.Context, p1 EthAddress, p2 string) (EthUint64, error) `perm:"read"`
+		EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) `perm:"read"`
 
-		EthGetTransactionReceipt func(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) `perm:"read"`
+		EthGetTransactionReceipt func(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) `perm:"read"`
 
-		EthMaxPriorityFeePerGas func(p0 context.Context) (EthBigInt, error) `perm:"read"`
+		EthMaxPriorityFeePerGas func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
 
-		EthNewBlockFilter func(p0 context.Context) (EthFilterID, error) `perm:"write"`
+		EthNewBlockFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"write"`
 
-		EthNewFilter func(p0 context.Context, p1 *EthFilterSpec) (EthFilterID, error) `perm:"write"`
+		EthNewFilter func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) `perm:"write"`
 
-		EthNewPendingTransactionFilter func(p0 context.Context) (EthFilterID, error) `perm:"write"`
+		EthNewPendingTransactionFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"write"`
 
-		EthProtocolVersion func(p0 context.Context) (EthUint64, error) `perm:"read"`
+		EthProtocolVersion func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
-		EthSendRawTransaction func(p0 context.Context, p1 EthBytes) (EthHash, error) `perm:"read"`
+		EthSendRawTransaction func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) `perm:"read"`
 
-		EthSubscribe func(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) `perm:"write"`
+		EthSubscribe func(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) `perm:"write"`
 
-		EthUninstallFilter func(p0 context.Context, p1 EthFilterID) (bool, error) `perm:"write"`
+		EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"write"`
 
-		EthUnsubscribe func(p0 context.Context, p1 EthSubscriptionID) (bool, error) `perm:"write"`
+		EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"write"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -1875,344 +1875,344 @@ func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]EthAddress, error) {
+func (s *FullNodeStruct) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, error) {
 	if s.Internal.EthAccounts == nil {
-		return *new([]EthAddress), ErrNotSupported
+		return *new([]ethtypes.EthAddress), ErrNotSupported
 	}
 	return s.Internal.EthAccounts(p0)
 }
 
-func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]EthAddress, error) {
-	return *new([]EthAddress), ErrNotSupported
+func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, error) {
+	return *new([]ethtypes.EthAddress), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (EthUint64, error) {
+func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthBlockNumber == nil {
-		return *new(EthUint64), ErrNotSupported
+		return *new(ethtypes.EthUint64), ErrNotSupported
 	}
 	return s.Internal.EthBlockNumber(p0)
 }
 
-func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {
+	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
+func (s *FullNodeStruct) EthCall(p0 context.Context, p1 ethtypes.EthCall, p2 string) (ethtypes.EthBytes, error) {
 	if s.Internal.EthCall == nil {
-		return *new(EthBytes), ErrNotSupported
+		return *new(ethtypes.EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthCall(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthCall(p0 context.Context, p1 EthCall, p2 string) (EthBytes, error) {
-	return *new(EthBytes), ErrNotSupported
+func (s *FullNodeStub) EthCall(p0 context.Context, p1 ethtypes.EthCall, p2 string) (ethtypes.EthBytes, error) {
+	return *new(ethtypes.EthBytes), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthChainId(p0 context.Context) (EthUint64, error) {
+func (s *FullNodeStruct) EthChainId(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthChainId == nil {
-		return *new(EthUint64), ErrNotSupported
+		return *new(ethtypes.EthUint64), ErrNotSupported
 	}
 	return s.Internal.EthChainId(p0)
 }
 
-func (s *FullNodeStub) EthChainId(p0 context.Context) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthChainId(p0 context.Context) (ethtypes.EthUint64, error) {
+	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64, error) {
+func (s *FullNodeStruct) EthEstimateGas(p0 context.Context, p1 ethtypes.EthCall) (ethtypes.EthUint64, error) {
 	if s.Internal.EthEstimateGas == nil {
-		return *new(EthUint64), ErrNotSupported
+		return *new(ethtypes.EthUint64), ErrNotSupported
 	}
 	return s.Internal.EthEstimateGas(p0, p1)
 }
 
-func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 EthCall) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 ethtypes.EthCall) (ethtypes.EthUint64, error) {
+	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) {
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
-		return *new(EthFeeHistory), ErrNotSupported
+		return *new(ethtypes.EthFeeHistory), ErrNotSupported
 	}
 	return s.Internal.EthFeeHistory(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 EthUint64, p2 string, p3 []float64) (EthFeeHistory, error) {
-	return *new(EthFeeHistory), ErrNotSupported
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) {
+	return *new(ethtypes.EthFeeHistory), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (EthBigInt, error) {
+func (s *FullNodeStruct) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {
 	if s.Internal.EthGasPrice == nil {
-		return *new(EthBigInt), ErrNotSupported
+		return *new(ethtypes.EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthGasPrice(p0)
 }
 
-func (s *FullNodeStub) EthGasPrice(p0 context.Context) (EthBigInt, error) {
-	return *new(EthBigInt), ErrNotSupported
+func (s *FullNodeStub) EthGasPrice(p0 context.Context) (ethtypes.EthBigInt, error) {
+	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) {
+func (s *FullNodeStruct) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBigInt, error) {
 	if s.Internal.EthGetBalance == nil {
-		return *new(EthBigInt), ErrNotSupported
+		return *new(ethtypes.EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthGetBalance(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 EthAddress, p2 string) (EthBigInt, error) {
-	return *new(EthBigInt), ErrNotSupported
+func (s *FullNodeStub) EthGetBalance(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBigInt, error) {
+	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 EthHash, p2 bool) (EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByHash == nil {
-		return *new(EthBlock), ErrNotSupported
+		return *new(ethtypes.EthBlock), ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByHash(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 EthHash, p2 bool) (EthBlock, error) {
-	return *new(EthBlock), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockByHash(p0 context.Context, p1 ethtypes.EthHash, p2 bool) (ethtypes.EthBlock, error) {
+	return *new(ethtypes.EthBlock), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
+func (s *FullNodeStruct) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
 	if s.Internal.EthGetBlockByNumber == nil {
-		return *new(EthBlock), ErrNotSupported
+		return *new(ethtypes.EthBlock), ErrNotSupported
 	}
 	return s.Internal.EthGetBlockByNumber(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (EthBlock, error) {
-	return *new(EthBlock), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockByNumber(p0 context.Context, p1 string, p2 bool) (ethtypes.EthBlock, error) {
+	return *new(ethtypes.EthBlock), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 EthHash) (EthUint64, error) {
+func (s *FullNodeStruct) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByHash == nil {
-		return *new(EthUint64), ErrNotSupported
+		return *new(ethtypes.EthUint64), ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByHash(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 EthHash) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockTransactionCountByHash(p0 context.Context, p1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
+	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 EthUint64) (EthUint64, error) {
+func (s *FullNodeStruct) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 ethtypes.EthUint64) (ethtypes.EthUint64, error) {
 	if s.Internal.EthGetBlockTransactionCountByNumber == nil {
-		return *new(EthUint64), ErrNotSupported
+		return *new(ethtypes.EthUint64), ErrNotSupported
 	}
 	return s.Internal.EthGetBlockTransactionCountByNumber(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 EthUint64) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthGetBlockTransactionCountByNumber(p0 context.Context, p1 ethtypes.EthUint64) (ethtypes.EthUint64, error) {
+	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) {
+func (s *FullNodeStruct) EthGetCode(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBytes, error) {
 	if s.Internal.EthGetCode == nil {
-		return *new(EthBytes), ErrNotSupported
+		return *new(ethtypes.EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthGetCode(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 EthAddress, p2 string) (EthBytes, error) {
-	return *new(EthBytes), ErrNotSupported
+func (s *FullNodeStub) EthGetCode(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBytes, error) {
+	return *new(ethtypes.EthBytes), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetFilterChanges(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+func (s *FullNodeStruct) EthGetFilterChanges(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	if s.Internal.EthGetFilterChanges == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetFilterChanges(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetFilterChanges(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+func (s *FullNodeStub) EthGetFilterChanges(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetFilterLogs(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+func (s *FullNodeStruct) EthGetFilterLogs(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	if s.Internal.EthGetFilterLogs == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetFilterLogs(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetFilterLogs(p0 context.Context, p1 EthFilterID) (*EthFilterResult, error) {
+func (s *FullNodeStub) EthGetFilterLogs(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetLogs(p0 context.Context, p1 *EthFilterSpec) (*EthFilterResult, error) {
+func (s *FullNodeStruct) EthGetLogs(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	if s.Internal.EthGetLogs == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetLogs(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetLogs(p0 context.Context, p1 *EthFilterSpec) (*EthFilterResult, error) {
+func (s *FullNodeStub) EthGetLogs(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) {
+func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) {
 	if s.Internal.EthGetStorageAt == nil {
-		return *new(EthBytes), ErrNotSupported
+		return *new(ethtypes.EthBytes), ErrNotSupported
 	}
 	return s.Internal.EthGetStorageAt(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 EthAddress, p2 EthBytes, p3 string) (EthBytes, error) {
-	return *new(EthBytes), ErrNotSupported
+func (s *FullNodeStub) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) {
+	return *new(ethtypes.EthBytes), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByBlockHashAndIndex == nil {
-		return *new(EthTx), ErrNotSupported
+		return *new(ethtypes.EthTx), ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 EthHash, p2 EthUint64) (EthTx, error) {
-	return *new(EthTx), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return *new(ethtypes.EthTx), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 EthUint64, p2 EthUint64) (EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {
-		return *new(EthTx), ErrNotSupported
+		return *new(ethtypes.EthTx), ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 EthUint64, p2 EthUint64) (EthTx, error) {
-	return *new(EthTx), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return *new(ethtypes.EthTx), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 *EthHash) (*EthTx, error) {
+func (s *FullNodeStruct) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByHash == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionByHash(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 *EthHash) (*EthTx, error) {
+func (s *FullNodeStub) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 EthAddress, p2 string) (EthUint64, error) {
+func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) {
 	if s.Internal.EthGetTransactionCount == nil {
-		return *new(EthUint64), ErrNotSupported
+		return *new(ethtypes.EthUint64), ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionCount(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 EthAddress, p2 string) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) {
+	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) {
+func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) {
 	if s.Internal.EthGetTransactionReceipt == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthGetTransactionReceipt(p0, p1)
 }
 
-func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 EthHash) (*EthTxReceipt, error) {
+func (s *FullNodeStub) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
+func (s *FullNodeStruct) EthMaxPriorityFeePerGas(p0 context.Context) (ethtypes.EthBigInt, error) {
 	if s.Internal.EthMaxPriorityFeePerGas == nil {
-		return *new(EthBigInt), ErrNotSupported
+		return *new(ethtypes.EthBigInt), ErrNotSupported
 	}
 	return s.Internal.EthMaxPriorityFeePerGas(p0)
 }
 
-func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (EthBigInt, error) {
-	return *new(EthBigInt), ErrNotSupported
+func (s *FullNodeStub) EthMaxPriorityFeePerGas(p0 context.Context) (ethtypes.EthBigInt, error) {
+	return *new(ethtypes.EthBigInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthNewBlockFilter(p0 context.Context) (EthFilterID, error) {
+func (s *FullNodeStruct) EthNewBlockFilter(p0 context.Context) (ethtypes.EthFilterID, error) {
 	if s.Internal.EthNewBlockFilter == nil {
-		return *new(EthFilterID), ErrNotSupported
+		return *new(ethtypes.EthFilterID), ErrNotSupported
 	}
 	return s.Internal.EthNewBlockFilter(p0)
 }
 
-func (s *FullNodeStub) EthNewBlockFilter(p0 context.Context) (EthFilterID, error) {
-	return *new(EthFilterID), ErrNotSupported
+func (s *FullNodeStub) EthNewBlockFilter(p0 context.Context) (ethtypes.EthFilterID, error) {
+	return *new(ethtypes.EthFilterID), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthNewFilter(p0 context.Context, p1 *EthFilterSpec) (EthFilterID, error) {
+func (s *FullNodeStruct) EthNewFilter(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
 	if s.Internal.EthNewFilter == nil {
-		return *new(EthFilterID), ErrNotSupported
+		return *new(ethtypes.EthFilterID), ErrNotSupported
 	}
 	return s.Internal.EthNewFilter(p0, p1)
 }
 
-func (s *FullNodeStub) EthNewFilter(p0 context.Context, p1 *EthFilterSpec) (EthFilterID, error) {
-	return *new(EthFilterID), ErrNotSupported
+func (s *FullNodeStub) EthNewFilter(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
+	return *new(ethtypes.EthFilterID), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthNewPendingTransactionFilter(p0 context.Context) (EthFilterID, error) {
+func (s *FullNodeStruct) EthNewPendingTransactionFilter(p0 context.Context) (ethtypes.EthFilterID, error) {
 	if s.Internal.EthNewPendingTransactionFilter == nil {
-		return *new(EthFilterID), ErrNotSupported
+		return *new(ethtypes.EthFilterID), ErrNotSupported
 	}
 	return s.Internal.EthNewPendingTransactionFilter(p0)
 }
 
-func (s *FullNodeStub) EthNewPendingTransactionFilter(p0 context.Context) (EthFilterID, error) {
-	return *new(EthFilterID), ErrNotSupported
+func (s *FullNodeStub) EthNewPendingTransactionFilter(p0 context.Context) (ethtypes.EthFilterID, error) {
+	return *new(ethtypes.EthFilterID), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (EthUint64, error) {
+func (s *FullNodeStruct) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthProtocolVersion == nil {
-		return *new(EthUint64), ErrNotSupported
+		return *new(ethtypes.EthUint64), ErrNotSupported
 	}
 	return s.Internal.EthProtocolVersion(p0)
 }
 
-func (s *FullNodeStub) EthProtocolVersion(p0 context.Context) (EthUint64, error) {
-	return *new(EthUint64), ErrNotSupported
+func (s *FullNodeStub) EthProtocolVersion(p0 context.Context) (ethtypes.EthUint64, error) {
+	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
+func (s *FullNodeStruct) EthSendRawTransaction(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {
 	if s.Internal.EthSendRawTransaction == nil {
-		return *new(EthHash), ErrNotSupported
+		return *new(ethtypes.EthHash), ErrNotSupported
 	}
 	return s.Internal.EthSendRawTransaction(p0, p1)
 }
 
-func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 EthBytes) (EthHash, error) {
-	return *new(EthHash), ErrNotSupported
+func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) {
+	return *new(ethtypes.EthHash), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
+func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) {
 	if s.Internal.EthSubscribe == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.EthSubscribe(p0, p1, p2)
 }
 
-func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 string, p2 *EthSubscriptionParams) (<-chan EthSubscriptionResponse, error) {
+func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthUninstallFilter(p0 context.Context, p1 EthFilterID) (bool, error) {
+func (s *FullNodeStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
 	if s.Internal.EthUninstallFilter == nil {
 		return false, ErrNotSupported
 	}
 	return s.Internal.EthUninstallFilter(p0, p1)
 }
 
-func (s *FullNodeStub) EthUninstallFilter(p0 context.Context, p1 EthFilterID) (bool, error) {
+func (s *FullNodeStub) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
 	return false, ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthUnsubscribe(p0 context.Context, p1 EthSubscriptionID) (bool, error) {
+func (s *FullNodeStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	if s.Internal.EthUnsubscribe == nil {
 		return false, ErrNotSupported
 	}
 	return s.Internal.EthUnsubscribe(p0, p1)
 }
 
-func (s *FullNodeStub) EthUnsubscribe(p0 context.Context, p1 EthSubscriptionID) (bool, error) {
+func (s *FullNodeStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	return false, ErrNotSupported
 }
 
