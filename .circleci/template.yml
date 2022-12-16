@@ -109,7 +109,9 @@ commands:
     steps:
       - run:
           name: Set GOPATH
-          command: echo 'export GOPATH="/opt/go"' >> $BASH_ENV
+          command: |
+            chown -R $USER:$USER /go
+            echo 'export GOPATH="/go"' >> $BASH_ENV
       - restore_cache:
           keys:
             - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
@@ -123,7 +125,7 @@ commands:
       - save_cache:
           key: v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
-            - "/opt/go/pkg/mod"
+            - "/go/pkg/mod"
 
   packer_build:
     description: "Run a packer build"
