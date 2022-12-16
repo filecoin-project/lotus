@@ -109,6 +109,23 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
+  install_go_dependencies:
+    steps:
+      - restore_cache:
+          keys:
+            - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+            - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}
+            - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}
+            - v1-go-mod-{{ arch }}
+            - v1-go-mod-
+      - run:
+          command: make deps
+          no_output_timeout: 30m
+      - save_cache:
+          key: v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+
   packer_build:
     description: "Run a packer build"
     parameters:
@@ -170,9 +187,8 @@ jobs:
     executor: << parameters.executor >>
     steps:
       - prepare
-      - run:
-          command: make deps lotus
-          no_output_timeout: 30m
+      - install_go_dependencies
+      - run: make lotus
       - download-params
       - run:
           name: go test
@@ -213,9 +229,8 @@ jobs:
     executor: << parameters.executor >>
     steps:
       - prepare
-      - run:
-          command: make deps lotus
-          no_output_timeout: 30m
+      - install_go_dependencies
+      - run: make lotus
       - download-params
       - when:
           condition:
@@ -259,6 +274,7 @@ jobs:
     executor: golang
     steps:
       - prepare
+      - install_go_dependencies
       - run: make lotus lotus-miner lotus-worker
       - run:
           name: check tag and version output match
@@ -281,6 +297,7 @@ jobs:
           linux: false
           darwin: true
           darwin-architecture: amd64
+      - install_go_dependencies
       - run: make lotus lotus-miner lotus-worker
       - run: otool -hv lotus
       - run:
@@ -305,6 +322,7 @@ jobs:
           linux: false
           darwin: true
           darwin-architecture: arm64
+      - install_go_dependencies
       - run: |
           export CPATH=$(brew --prefix)/include
           export LIBRARY_PATH=$(brew --prefix)/lib
@@ -418,7 +436,7 @@ jobs:
     executor: golang
     steps:
       - prepare
-      - run: make deps
+      - install_go_dependencies
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
       - run: make gen
@@ -432,11 +450,11 @@ jobs:
     executor: golang
     steps:
       - prepare
+      - install_go_dependencies
       - run: go install golang.org/x/tools/cmd/goimports
       - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
       - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
-      - run: make deps
       - run: make docsgen
       - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
@@ -468,9 +486,7 @@ jobs:
     executor: << parameters.executor >>
     steps:
       - prepare
-      - run:
-          command: make deps
-          no_output_timeout: 30m
+      - install_go_dependencies
       - run:
           name: Lint
           command: |
