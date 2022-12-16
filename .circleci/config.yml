@@ -110,9 +110,7 @@ commands:
       - run:
           name: Set GOPATH
           command: |
-            mkdir /go
-            chown -R $USER:$USER /go
-            echo 'export GOPATH="/go"' >> $BASH_ENV
+            echo 'export GOPATH=${HOME}/go' >> $BASH_ENV
       - restore_cache:
           keys:
             - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
@@ -126,7 +124,7 @@ commands:
       - save_cache:
           key: v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
-            - "/go/pkg/mod"
+            - "${HOME}/go/pkg/mod"
 
   packer_build:
     description: "Run a packer build"
