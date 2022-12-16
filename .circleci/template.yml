@@ -119,7 +119,10 @@ commands:
             - v1-go-mod-{{ arch }}
             - v1-go-mod-
       - run:
-          command: make deps
+          command: |
+            echo $GOPATH
+            ls $GOPATH/pkg/mod
+            make deps
           no_output_timeout: 30m
       - save_cache:
           key: v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
