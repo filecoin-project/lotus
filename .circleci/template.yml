@@ -194,6 +194,7 @@ jobs:
     steps:
       - prepare
       - install_go_dependencies
+      - run: make deps
       - run: make lotus
       - download-params
       - run:
@@ -236,6 +237,7 @@ jobs:
     steps:
       - prepare
       - install_go_dependencies
+      - run: make deps
       - run: make lotus
       - download-params
       - when:
@@ -281,6 +283,7 @@ jobs:
     steps:
       - prepare
       - install_go_dependencies
+      - run: make deps
       - run: make lotus lotus-miner lotus-worker
       - run:
           name: check tag and version output match
@@ -304,6 +307,7 @@ jobs:
           darwin: true
           darwin-architecture: amd64
       - install_go_dependencies
+      - run: make deps
       - run: make lotus lotus-miner lotus-worker
       - run: otool -hv lotus
       - run:
@@ -329,6 +333,7 @@ jobs:
           darwin: true
           darwin-architecture: arm64
       - install_go_dependencies
+      - run: make deps
       - run: |
           export CPATH=$(brew --prefix)/include
           export LIBRARY_PATH=$(brew --prefix)/lib
@@ -443,6 +448,7 @@ jobs:
     steps:
       - prepare
       - install_go_dependencies
+      - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
       - run: make gen
@@ -457,6 +463,7 @@ jobs:
     steps:
       - prepare
       - install_go_dependencies
+      - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
       - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
@@ -493,6 +500,7 @@ jobs:
     steps:
       - prepare
       - install_go_dependencies
+      - run: make deps
       - run:
           name: Lint
           command: |
