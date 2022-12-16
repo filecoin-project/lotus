@@ -13,6 +13,7 @@ func QuietMiningLogs() {
 	_ = logging.SetLogLevel("chainstore", "ERROR")
 	_ = logging.SetLogLevel("chain", "ERROR")
 	_ = logging.SetLogLevel("sub", "ERROR")
+	_ = logging.SetLogLevel("wdpost", "ERROR")
 	_ = logging.SetLogLevel("storageminer", "ERROR")
 	_ = logging.SetLogLevel("pubsub", "ERROR")
 	_ = logging.SetLogLevel("gen", "ERROR")
