@@ -113,19 +113,22 @@ commands:
             echo 'export GOPATH=${HOME}/go' >> $BASH_ENV
       - restore_cache:
           keys:
-            - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
-            - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}
-            - v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}
-            - v1-go-mod-{{ arch }}
-            - v1-go-mod-
+            - v2-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+            - v2-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}
+            - v2-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}
+            - v2-go-mod-{{ arch }}
+            - v2-go-mod-
       - run:
           command: |
             echo $GOPATH
-            ls $GOPATH/pkg/mod
-            make deps
-          no_output_timeout: 30m
+            if [["[[ -d $CIRCLE_SHA ]]"]]; then
+              ls $GOPATH/pkg/mod
+            else
+              echo No modules were loaded from the cache
+            fi
+            go mod download
       - save_cache:
-          key: v1-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+          key: v2-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
             - "${HOME}/go/pkg/mod"
 
