@@ -113,24 +113,24 @@ commands:
             echo 'export GOPATH=${HOME}/go' >> $BASH_ENV
       - restore_cache:
           keys:
-            - v2-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
-            - v2-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}
-            - v2-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}
-            - v2-test-go-mod-{{ arch }}
-            - v2-test-go-mod-
+            - v3-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+            - v3-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}
+            - v3-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}
+            - v3-test-go-mod-{{ arch }}
+            - v3-test-go-mod-
       - run:
           command: |
             echo $GOPATH
-            if [["[[ -d $CIRCLE_SHA ]]"]]; then
+            if [["[[ -d $GOPATH/pkg/mod ]]"]]; then
               ls $GOPATH/pkg/mod
             else
               echo No modules were loaded from the cache
             fi
             go mod download
       - save_cache:
-          key: v2-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
+          key: v3-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
-            - "${HOME}/go/pkg/mod"
+            - ~/go/pkg/mod
 
   packer_build:
     description: "Run a packer build"
