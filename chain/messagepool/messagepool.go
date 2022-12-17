@@ -443,8 +443,12 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	return mp, nil
 }
 
-func (mp *MessagePool) ForEachPendingMessage(f func(cid.Cid) error) error {
-	mp.lk.Lock()
+func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
+	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
+	// while holding the mpool lock
+	if !mp.lk.TryLock() {
+		return xerrors.Errorf("mpool TryForEachPendingMessage: could not acquire lock")
+	}
 	defer mp.lk.Unlock()
 
 	for _, mset := range mp.pending {
