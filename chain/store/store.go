@@ -376,10 +376,8 @@ func (cs *ChainStore) SetGenesis(ctx context.Context, b *types.BlockHeader) erro
 }
 
 func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
-	for _, b := range ts.Blocks() {
-		if err := cs.PersistBlockHeaders(ctx, b); err != nil {
-			return err
-		}
+	if err := cs.PersistTipset(ctx, ts); err != nil {
+		return xerrors.Errorf("failed to persist tipset: %w", err)
 	}
 
 	expanded, err := cs.expandTipset(ctx, ts.Blocks()[0])
@@ -647,18 +645,6 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 
 	if err := cs.writeHead(ctx, ts); err != nil {
 		log.Errorf("failed to write chain head: %s", err)
-		return err
-	}
-
-	tskBlk, err := ts.Key().ToStorageBlock()
-	if err != nil {
-		log.Errorf("failed to create a block from tsk: %s", ts.Key())
-		return err
-	}
-
-	err = cs.chainLocalBlockstore.Put(ctx, tskBlk)
-	if err != nil {
-		log.Errorf("failed to put block for tsk: %s", ts.Key())
 		return err
 	}
 
@@ -971,7 +957,24 @@ func (cs *ChainStore) AddToTipSetTracker(ctx context.Context, b *types.BlockHead
 	return nil
 }
 
-func (cs *ChainStore) PersistBlockHeaders(ctx context.Context, b ...*types.BlockHeader) error {
+func (cs *ChainStore) PersistTipset(ctx context.Context, ts *types.TipSet) error {
+	if err := cs.persistBlockHeaders(ctx, ts.Blocks()...); err != nil {
+		return xerrors.Errorf("failed to persist block headers: %w", err)
+	}
+
+	tsBlk, err := ts.Key().ToStorageBlock()
+	if err != nil {
+		return xerrors.Errorf("failed to get tipset key block: %w", err)
+	}
+
+	if err = cs.chainLocalBlockstore.Put(ctx, tsBlk); err != nil {
+		return xerrors.Errorf("failed to put tipset key block: %w", err)
+	}
+
+	return nil
+}
+
+func (cs *ChainStore) persistBlockHeaders(ctx context.Context, b ...*types.BlockHeader) error {
 	sbs := make([]block.Block, len(b))
 
 	for i, header := range b {
@@ -1037,23 +1040,6 @@ func (cs *ChainStore) expandTipset(ctx context.Context, b *types.BlockHeader) (*
 	// TODO: other validation...?
 
 	return types.NewTipSet(all)
-}
-
-func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error {
-	if err := cs.PersistBlockHeaders(ctx, b); err != nil {
-		return err
-	}
-
-	ts, err := cs.expandTipset(ctx, b)
-	if err != nil {
-		return err
-	}
-
-	if err := cs.MaybeTakeHeavierTipSet(ctx, ts); err != nil {
-		return xerrors.Errorf("MaybeTakeHeavierTipSet failed: %w", err)
-	}
-
-	return nil
 }
 
 func (cs *ChainStore) GetGenesis(ctx context.Context) (*types.BlockHeader, error) {

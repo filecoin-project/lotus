@@ -468,10 +468,6 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet,
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
 
-				if err := cg.cs.PersistBlockHeaders(context.TODO(), fblk.Header); err != nil {
-					return nil, xerrors.Errorf("chainstore AddBlock: %w", err)
-				}
-
 				blks = append(blks, fblk)
 			}
 		}
