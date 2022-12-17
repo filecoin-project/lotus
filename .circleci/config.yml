@@ -127,6 +127,7 @@ commands:
               echo No modules were loaded from the cache
             fi
             go mod download
+            ls $GOPATH/pkg/mod
       - save_cache:
           key: v3-test-go-mod-{{ arch }}-{{ checksum "GO_VERSION_MIN" }}-{{ checksum "go.mod" }}-{{ checksum "go.sum" }}
           paths:
