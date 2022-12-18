@@ -69,7 +69,7 @@ func TestNullRandomnessV1(t *testing.T) {
 		}
 
 		//stm: @BLOCKCHAIN_RAND_DRAW_RANDOMNESS_01
-		rand2, err := rand.DrawRandomness(resp.Entry.Data, pers, randEpoch, entropy)
+		rand2, err := rand.DrawRandomnessFromBase(resp.Entry.Data, pers, randEpoch, entropy)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -148,8 +148,8 @@ func TestNullRandomnessV2(t *testing.T) {
 		}
 
 		//stm: @BLOCKCHAIN_RAND_DRAW_RANDOMNESS_01, @BLOCKCHAIN_RAND_EXTRACT_BEACON_ENTRY_FOR_EPOCH_01, @BLOCKCHAIN_RAND_GET_BEACON_RANDOMNESS_TIPSET_03
-		// note that the randEpoch passed to DrawRandomness is still randEpoch (not the latest ts height)
-		rand2, err := rand.DrawRandomness(resp.Entry.Data, pers, randEpoch, entropy)
+		// note that the randEpoch passed to DrawRandomnessFromBase is still randEpoch (not the latest ts height)
+		rand2, err := rand.DrawRandomnessFromBase(resp.Entry.Data, pers, randEpoch, entropy)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -232,7 +232,7 @@ func TestNullRandomnessV3(t *testing.T) {
 		}
 
 		//stm: @BLOCKCHAIN_RAND_DRAW_RANDOMNESS_01
-		rand2, err := rand.DrawRandomness(resp.Entry.Data, pers, randEpoch, entropy)
+		rand2, err := rand.DrawRandomnessFromBase(resp.Entry.Data, pers, randEpoch, entropy)
 		if err != nil {
 			t.Fatal(err)
 		}

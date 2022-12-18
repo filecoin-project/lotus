@@ -238,7 +238,7 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 
-	ret, err := rand.DrawRandomness(randomnessBase, personalization, randEpoch, entropy)
+	ret, err := rand.DrawRandomnessFromBase(randomnessBase, personalization, randEpoch, entropy)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
@@ -254,7 +254,7 @@ func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparati
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 
-	ret, err := rand.DrawRandomness(randomnessBase, personalization, randEpoch, entropy)
+	ret, err := rand.DrawRandomnessFromBase(randomnessBase, personalization, randEpoch, entropy)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
