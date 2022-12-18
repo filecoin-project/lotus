@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
