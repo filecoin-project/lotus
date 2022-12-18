@@ -595,16 +595,16 @@ var _ vm.Rand = new(fakeRand)
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetChainRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
+	return *(*[32]byte)(out), nil
 }
 
-func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([]byte, error) {
+func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, randEpoch abi.ChainEpoch) ([32]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
+	return *(*[32]byte)(out), nil
 }
 
 func currentTotalPower(ctx context.Context, vm vm.Interface, maddr address.Address) (*power0.CurrentTotalPowerReturn, error) {
