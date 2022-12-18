@@ -72,6 +72,6 @@ func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 }
 
 type Rand interface {
-	GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([]byte, error)
+	GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
+	GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
 }
