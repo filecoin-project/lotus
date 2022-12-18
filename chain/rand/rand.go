@@ -22,12 +22,15 @@ import (
 var log = logging.Logger("rand")
 
 func DrawRandomnessFromBase(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return DrawRandomnessFromDigest(blake2b.Sum256(rbase), pers, round, entropy)
+}
+
+func DrawRandomnessFromDigest(digest [32]byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
-	VRFDigest := blake2b.Sum256(rbase)
-	_, err := h.Write(VRFDigest[:])
+	_, err := h.Write(digest[:])
 	if err != nil {
 		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
 	}
@@ -69,18 +72,18 @@ func (sr *stateRand) GetBeaconRandomnessTipset(ctx context.Context, round abi.Ch
 	return randTs, nil
 }
 
-func (sr *stateRand) getChainRandomness(ctx context.Context, round abi.ChainEpoch, lookback bool) ([]byte, error) {
+func (sr *stateRand) getChainRandomness(ctx context.Context, round abi.ChainEpoch, lookback bool) ([32]byte, error) {
 	_, span := trace.StartSpan(ctx, "store.GetChainRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
 	ts, err := sr.cs.LoadTipSet(ctx, types.NewTipSetKey(sr.blks...))
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	if round > ts.Height() {
-		return nil, xerrors.Errorf("cannot draw randomness from the future")
+		return [32]byte{}, xerrors.Errorf("cannot draw randomness from the future")
 	}
 
 	searchHeight := round
@@ -90,10 +93,10 @@ func (sr *stateRand) getChainRandomness(ctx context.Context, round abi.ChainEpoc
 
 	randTs, err := sr.cs.GetTipsetByHeight(ctx, searchHeight, ts, lookback)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	return randTs.MinTicketBlock().Ticket.VRFProof, nil
+	return blake2b.Sum256(randTs.MinTicketBlock().Ticket.VRFProof), nil
 }
 
 type NetworkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
@@ -115,37 +118,37 @@ func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule, netwo
 }
 
 // network v0-12
-func (sr *stateRand) getBeaconRandomnessV1(ctx context.Context, round abi.ChainEpoch) ([]byte, error) {
+func (sr *stateRand) getBeaconRandomnessV1(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	randTs, err := sr.GetBeaconRandomnessTipset(ctx, round, true)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	be, err := sr.cs.GetLatestBeaconEntry(ctx, randTs)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	return be.Data, nil
+	return blake2b.Sum256(be.Data), nil
 }
 
 // network v13
-func (sr *stateRand) getBeaconRandomnessV2(ctx context.Context, round abi.ChainEpoch) ([]byte, error) {
+func (sr *stateRand) getBeaconRandomnessV2(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	randTs, err := sr.GetBeaconRandomnessTipset(ctx, round, false)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
 	be, err := sr.cs.GetLatestBeaconEntry(ctx, randTs)
 	if err != nil {
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	return be.Data, nil
+	return blake2b.Sum256(be.Data), nil
 }
 
 // network v14 and on
-func (sr *stateRand) getBeaconRandomnessV3(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([]byte, error) {
+func (sr *stateRand) getBeaconRandomnessV3(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([32]byte, error) {
 	if filecoinEpoch < 0 {
 		return sr.getBeaconRandomnessV2(ctx, filecoinEpoch)
 	}
@@ -153,13 +156,13 @@ func (sr *stateRand) getBeaconRandomnessV3(ctx context.Context, filecoinEpoch ab
 	be, err := sr.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
 	if err != nil {
 		log.Errorf("failed to get beacon entry as expected: %s", err)
-		return nil, err
+		return [32]byte{}, err
 	}
 
-	return be.Data, nil
+	return blake2b.Sum256(be.Data), nil
 }
 
-func (sr *stateRand) GetChainRandomness(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([]byte, error) {
+func (sr *stateRand) GetChainRandomness(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([32]byte, error) {
 	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
 
 	if nv >= network.Version13 {
@@ -169,7 +172,7 @@ func (sr *stateRand) GetChainRandomness(ctx context.Context, filecoinEpoch abi.C
 	return sr.getChainRandomness(ctx, filecoinEpoch, true)
 }
 
-func (sr *stateRand) GetBeaconRandomness(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([]byte, error) {
+func (sr *stateRand) GetBeaconRandomness(ctx context.Context, filecoinEpoch abi.ChainEpoch) ([32]byte, error) {
 	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
 
 	if nv >= network.Version14 {
@@ -182,13 +185,13 @@ func (sr *stateRand) GetBeaconRandomness(ctx context.Context, filecoinEpoch abi.
 }
 
 func (sr *stateRand) DrawChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	rbase, err := sr.GetChainRandomness(ctx, filecoinEpoch)
+	digest, err := sr.GetChainRandomness(ctx, filecoinEpoch)
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness: %w", err)
 	}
 
-	ret, err := DrawRandomnessFromBase(rbase, pers, filecoinEpoch, entropy)
+	ret, err := DrawRandomnessFromDigest(digest, pers, filecoinEpoch, entropy)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to draw chain randomness: %w", err)
 	}
@@ -197,13 +200,13 @@ func (sr *stateRand) DrawChainRandomness(ctx context.Context, pers crypto.Domain
 }
 
 func (sr *stateRand) DrawBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	rbase, err := sr.GetBeaconRandomness(ctx, filecoinEpoch)
+	digest, err := sr.GetBeaconRandomness(ctx, filecoinEpoch)
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness: %w", err)
 	}
 
-	ret, err := DrawRandomnessFromBase(rbase, pers, filecoinEpoch, entropy)
+	ret, err := DrawRandomnessFromDigest(digest, pers, filecoinEpoch, entropy)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to draw chain randomness: %w", err)
 	}

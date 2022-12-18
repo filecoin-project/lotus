@@ -231,13 +231,13 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 }
 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	randomnessBase, err := rt.vm.rand.GetChainRandomness(rt.ctx, randEpoch)
+	digest, err := rt.vm.rand.GetChainRandomness(rt.ctx, randEpoch)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 
-	ret, err := rand.DrawRandomnessFromBase(randomnessBase, personalization, randEpoch, entropy)
+	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
@@ -247,13 +247,13 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 }
 
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	randomnessBase, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, randEpoch)
+	digest, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, randEpoch)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 
-	ret, err := rand.DrawRandomnessFromBase(randomnessBase, personalization, randEpoch, entropy)
+	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
