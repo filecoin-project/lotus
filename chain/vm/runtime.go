@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -229,21 +231,35 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 }
 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetChainRandomness(rt.ctx, personalization, randEpoch, entropy)
+	randomnessBase, err := rt.vm.rand.GetChainRandomness(rt.ctx, randEpoch)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
-	return res
+
+	ret, err := rand.DrawRandomness(randomnessBase, personalization, randEpoch, entropy)
+
+	if err != nil {
+		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
+	}
+
+	return ret
 }
 
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, personalization, randEpoch, entropy)
+	randomnessBase, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, randEpoch)
 
 	if err != nil {
-		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
+		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
-	return res
+
+	ret, err := rand.DrawRandomness(randomnessBase, personalization, randEpoch, entropy)
+
+	if err != nil {
+		panic(aerrors.Fatalf("could not draw ticket randomness: %s", err))
+	}
+
+	return ret
 }
 
 func (rt *Runtime) NewActorAddress() address.Address {
