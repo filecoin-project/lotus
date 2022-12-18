@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtin_types "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -284,11 +283,6 @@ func NewLegacyVM(ctx context.Context, opts *VMOpts) (*LegacyVM, error) {
 		baseCircSupply: baseCirc,
 		lbStateGet:     opts.LookbackState,
 	}, nil
-}
-
-type Rand interface {
-	GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
