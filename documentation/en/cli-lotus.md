@@ -2597,8 +2597,8 @@ USAGE:
    lotus eth stat [command options] [arguments...]
 
 OPTIONS:
-   --ethaddr value  Ethereum address
-   --filaddr value  Filecoin address
+   --ethAddr value  Ethereum address
+   --filAddr value  Filecoin address
    
 ```
 
