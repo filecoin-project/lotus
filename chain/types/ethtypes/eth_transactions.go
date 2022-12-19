@@ -39,9 +39,9 @@ type EthTx struct {
 	Gas                  EthUint64   `json:"gas"`
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
-	V                    EthBytes    `json:"v"`
-	R                    EthBytes    `json:"r"`
-	S                    EthBytes    `json:"s"`
+	V                    EthBigInt   `json:"v"`
+	R                    EthBigInt   `json:"r"`
+	S                    EthBigInt   `json:"s"`
 }
 
 type EthTxArgs struct {
@@ -53,9 +53,9 @@ type EthTxArgs struct {
 	MaxPriorityFeePerGas big.Int     `json:"maxPriorityFeePerGas"`
 	GasLimit             int         `json:"gasLimit"`
 	Input                []byte      `json:"input"`
-	V                    []byte      `json:"v"`
-	R                    []byte      `json:"r"`
-	S                    []byte      `json:"s"`
+	V                    big.Int     `json:"v"`
+	R                    big.Int     `json:"r"`
+	S                    big.Int     `json:"s"`
 }
 
 func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
@@ -246,9 +246,17 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 }
 
 func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
-	sig := append([]byte{}, tx.R...)
-	sig = append(sig, tx.S...)
-	sig = append(sig, tx.V...)
+	r := tx.R.Int.Bytes()
+	s := tx.S.Int.Bytes()
+	v := tx.V.Int.Bytes()
+
+	sig := append([]byte{}, padLeadingZeros(r, 32)...)
+	sig = append(sig, padLeadingZeros(s, 32)...)
+	if len(v) == 0 {
+		sig = append(sig, 0)
+	} else {
+		sig = append(sig, v[0])
+	}
 
 	if len(sig) != 65 {
 		return nil, fmt.Errorf("signature is not 65 bytes")
@@ -290,6 +298,33 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 	ethAddr := hasher.Sum(nil)[12:]
 
 	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
+}
+
+func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) {
+	if sig.Type != typescrypto.SigTypeDelegated {
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("RecoverSignature only supports Delegated signature")
+	}
+
+	if len(sig.Data) != 65 {
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("signature should be 65 bytes long, but got %d bytes", len(sig.Data))
+	}
+
+	r_, err := parseBigInt(sig.Data[0:32])
+	if err != nil {
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("cannot parse r into EthBigInt")
+	}
+
+	s_, err := parseBigInt(sig.Data[32:64])
+	if err != nil {
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("cannot parse s into EthBigInt")
+	}
+
+	v_, err := parseBigInt([]byte{sig.Data[64]})
+	if err != nil {
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("cannot parse v into EthBigInt")
+	}
+
+	return EthBigInt(r_), EthBigInt(s_), EthBigInt(v_), nil
 }
 
 func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
@@ -355,21 +390,17 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		return nil, fmt.Errorf("access list should be an empty list")
 	}
 
-	V, err := parseBytes(decoded[9])
+	r, err := parseBigInt(decoded[10])
 	if err != nil {
 		return nil, err
 	}
 
-	if len(V) == 0 {
-		V = []byte{0}
-	}
-
-	R, err := parseBytes(decoded[10])
+	s, err := parseBigInt(decoded[11])
 	if err != nil {
 		return nil, err
 	}
 
-	S, err := parseBytes(decoded[11])
+	v, err := parseBigInt(decoded[9])
 	if err != nil {
 		return nil, err
 	}
@@ -383,9 +414,9 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		GasLimit:             gasLimit,
 		Value:                value,
 		Input:                input,
-		R:                    padLeadingZeros(R, 32),
-		S:                    padLeadingZeros(S, 32),
-		V:                    V,
+		R:                    r,
+		S:                    s,
+		V:                    v,
 	}
 	return &args, nil
 }
