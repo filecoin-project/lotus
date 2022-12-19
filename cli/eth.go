@@ -19,12 +19,12 @@ var EthCmd = &cli.Command{
 	Name:  "eth",
 	Usage: "Query eth contract state",
 	Subcommands: []*cli.Command{
-		EthGetAddressCmd,
+		EthGetInfoCmd,
 		EthCallSimulateCmd,
 	},
 }
 
-var EthGetAddressCmd = &cli.Command{
+var EthGetInfoCmd = &cli.Command{
 	Name:  "stat",
 	Usage: "Print eth/filecoin addrs and code cid",
 	Flags: []cli.Flag{
@@ -98,19 +98,19 @@ var EthCallSimulateCmd = &cli.Command{
 	ArgsUsage: "[from] [to] [params]",
 	Action: func(cctx *cli.Context) error {
 
-		var fromEthAddr ethtypes.EthAddress
-		fromAddr, err := hex.DecodeString(cctx.Args().Get(0))
-		if err != nil {
-			return err
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
 		}
-		copy(fromEthAddr[:], fromAddr)
 
-		var toEthAddr ethtypes.EthAddress
-		toAddr, err := hex.DecodeString(cctx.Args().Get(1))
+		fromEthAddr, err := ethtypes.EthAddressFromHex(cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}
-		copy(toEthAddr[:], toAddr)
+
+		toEthAddr, err := ethtypes.EthAddressFromHex(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
 
 		params, err := hex.DecodeString(cctx.Args().Get(2))
 		if err != nil {
