@@ -97,9 +97,6 @@ func (e EthBytes) MarshalJSON() ([]byte, error) {
 		return json.Marshal("0x")
 	}
 	s := hex.EncodeToString(e)
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
 	return json.Marshal("0x" + s)
 }
 
