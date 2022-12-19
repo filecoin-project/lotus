@@ -35,16 +35,16 @@ func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi
 			return ethtypes.EthAddress{}, addr, err
 		}
 	case address.Actor, address.ID:
-		f0addr, err := fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
+		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
 		if err != nil {
 			return ethtypes.EthAddress{}, addr, err
 		}
-		faddr, err = fnapi.StateAccountKey(ctx, f0addr, types.EmptyTSK)
+		fAct, err := fnapi.StateGetActor(ctx, faddr, types.EmptyTSK)
 		if err != nil {
 			return ethtypes.EthAddress{}, addr, err
 		}
-		if faddr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
-			faddr = f0addr
+		if fAct.Address != nil && (*fAct.Address).Protocol() == address.Delegated {
+			faddr = *fAct.Address
 		}
 	case address.Delegated:
 		faddr = addr
