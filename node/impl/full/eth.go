@@ -228,7 +228,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
 	if err == nil {
-		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, a.Chain, a.ChainAPI, a.StateAPI)
+		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.ChainAPI, a.StateAPI)
 		if err == nil {
 			return &tx, nil
 		}
@@ -278,7 +278,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 		return nil, nil
 	}
 
-	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, a.Chain, a.ChainAPI, a.StateAPI)
+	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.ChainAPI, a.StateAPI)
 	if err != nil {
 		return nil, nil
 	}
@@ -1347,7 +1347,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, err
 	}
 
-	blkMsgs, err := cs.BlockMsgsForTipset(ctx, ts)
+	msgs, err := cs.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
@@ -1356,27 +1356,25 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 
 	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
 	gasUsed := int64(0)
-	for _, blkMsg := range blkMsgs {
-		for _, msg := range append(blkMsg.BlsMessages, blkMsg.SecpkMessages...) {
-			msgLookup, err := sa.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), api.LookbackNoLimit, true)
-			if err != nil || msgLookup == nil {
+	for txIdx, msg := range msgs {
+		msgLookup, err := sa.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), api.LookbackNoLimit, false)
+		if err != nil || msgLookup == nil {
+			return ethtypes.EthBlock{}, nil
+		}
+		gasUsed += msgLookup.Receipt.GasUsed
+
+		if fullTxInfo {
+			tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, cs, ca, sa)
+			if err != nil {
 				return ethtypes.EthBlock{}, nil
 			}
-			gasUsed += msgLookup.Receipt.GasUsed
-
-			if fullTxInfo {
-				tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, cs, ca, sa)
-				if err != nil {
-					return ethtypes.EthBlock{}, nil
-				}
-				block.Transactions = append(block.Transactions, tx)
-			} else {
-				hash, err := ethtypes.NewEthHashFromCid(msg.Cid())
-				if err != nil {
-					return ethtypes.EthBlock{}, err
-				}
-				block.Transactions = append(block.Transactions, hash.String())
+			block.Transactions = append(block.Transactions, tx)
+		} else {
+			hash, err := ethtypes.NewEthHashFromCid(msg.Cid())
+			if err != nil {
+				return ethtypes.EthBlock{}, err
 			}
+			block.Transactions = append(block.Transactions, hash.String())
 		}
 	}
 
@@ -1497,7 +1495,10 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 	return tx, nil
 }
 
-func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, cs *store.ChainStore, ca ChainAPI, sa StateAPI) (ethtypes.EthTx, error) {
+// newEthTxFromFilecoinMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
+// into the function, it looksup the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
+// function
+func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, ca ChainAPI, sa StateAPI) (ethtypes.EthTx, error) {
 	if msgLookup == nil {
 		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
 	}
@@ -1524,18 +1525,19 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 	}
 
 	// lookup the transactionIndex
-	txIdx := -1
-	msgs, err := cs.MessagesForTipset(ctx, parentTs)
-	if err != nil {
-		return ethtypes.EthTx{}, err
-	}
-	for i, msg := range msgs {
-		if msg.Cid() == msgLookup.Message {
-			txIdx = i
+	if txIdx < 0 {
+		msgs, err := cs.MessagesForTipset(ctx, parentTs)
+		if err != nil {
+			return ethtypes.EthTx{}, err
 		}
-	}
-	if txIdx == -1 {
-		return ethtypes.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
+		for i, msg := range msgs {
+			if msg.Cid() == msgLookup.Message {
+				txIdx = i
+			}
+		}
+		if txIdx < 0 {
+			return ethtypes.EthTx{}, fmt.Errorf("cannot find the msg in the tipset")
+		}
 	}
 
 	blkHash, err := ethtypes.NewEthHashFromCid(parentTsCid)
