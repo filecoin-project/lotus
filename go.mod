@@ -353,4 +353,5 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 
 replace (
 	hlm-ipfs/x => github.com/hlm-ipfs/x v0.0.0-20220822090136-cd7ed4c0f24a
+	github.com/filecoin-project/go-jsonrpc => github.com/hlm-filecoin/go-jsonrpc v0.0.0-20221205104357-4dad8b22d134
 )
