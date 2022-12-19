@@ -24,62 +24,23 @@ var EthCmd = &cli.Command{
 	},
 }
 
-func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi v0api.FullNode) (ethtypes.EthAddress, address.Address, error) {
-	var faddr address.Address
-	var err error
-
-	switch addr.Protocol() {
-	case address.BLS, address.SECP256K1:
-		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
-		if err != nil {
-			return ethtypes.EthAddress{}, addr, err
-		}
-	case address.Actor, address.ID:
-		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
-		if err != nil {
-			return ethtypes.EthAddress{}, addr, err
-		}
-		fAct, err := fnapi.StateGetActor(ctx, faddr, types.EmptyTSK)
-		if err != nil {
-			return ethtypes.EthAddress{}, addr, err
-		}
-		if fAct.Address != nil && (*fAct.Address).Protocol() == address.Delegated {
-			faddr = *fAct.Address
-		}
-	case address.Delegated:
-		faddr = addr
-	default:
-		return ethtypes.EthAddress{}, addr, xerrors.Errorf("Filecoin address doesn't match known protocols")
-	}
-
-	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(faddr)
-	if err != nil {
-		return ethtypes.EthAddress{}, addr, err
-	}
-
-	return ethAddr, faddr, nil
-}
-
 var EthGetAddressCmd = &cli.Command{
-	Name:      "stat",
-	Usage:     "Print eth/filecoin addrs and code cid",
-	ArgsUsage: "",
+	Name:  "stat",
+	Usage: "Print eth/filecoin addrs and code cid",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "filaddr",
-			Value: "",
+			Name:  "filAddr",
 			Usage: "Filecoin address",
 		},
 		&cli.StringFlag{
-			Name:  "ethaddr",
-			Value: "",
+			Name:  "ethAddr",
 			Usage: "Ethereum address",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 
-		filaddr := cctx.String("filaddr")
-		ethaddr := cctx.String("ethaddr")
+		filAddr := cctx.String("filAddr")
+		ethAddr := cctx.String("ethAddr")
 
 		var faddr address.Address
 		var eaddr ethtypes.EthAddress
@@ -91,8 +52,8 @@ var EthGetAddressCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if filaddr != "" {
-			addr, err := address.NewFromString(filaddr)
+		if filAddr != "" {
+			addr, err := address.NewFromString(filAddr)
 			if err != nil {
 				return err
 			}
@@ -100,8 +61,11 @@ var EthGetAddressCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-		} else if ethaddr != "" {
-			addr, err := hex.DecodeString(ethaddr)
+		} else if ethAddr != "" {
+			if ethAddr[:2] == "0x" {
+				ethAddr = ethAddr[2:]
+			}
+			addr, err := hex.DecodeString(ethAddr)
 			if err != nil {
 				return err
 			}
@@ -111,7 +75,7 @@ var EthGetAddressCmd = &cli.Command{
 				return err
 			}
 		} else {
-			return xerrors.Errorf("Neither filaddr or ethaddr specified")
+			return xerrors.Errorf("Neither filAddr nor ethAddr specified")
 		}
 
 		actor, err := api.StateGetActor(ctx, faddr, types.EmptyTSK)
@@ -175,4 +139,40 @@ var EthCallSimulateCmd = &cli.Command{
 		return nil
 
 	},
+}
+
+func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi v0api.FullNode) (ethtypes.EthAddress, address.Address, error) {
+	var faddr address.Address
+	var err error
+
+	switch addr.Protocol() {
+	case address.BLS, address.SECP256K1:
+		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return ethtypes.EthAddress{}, addr, err
+		}
+	case address.Actor, address.ID:
+		faddr, err = fnapi.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return ethtypes.EthAddress{}, addr, err
+		}
+		fAct, err := fnapi.StateGetActor(ctx, faddr, types.EmptyTSK)
+		if err != nil {
+			return ethtypes.EthAddress{}, addr, err
+		}
+		if fAct.Address != nil && (*fAct.Address).Protocol() == address.Delegated {
+			faddr = *fAct.Address
+		}
+	case address.Delegated:
+		faddr = addr
+	default:
+		return ethtypes.EthAddress{}, addr, xerrors.Errorf("Filecoin address doesn't match known protocols")
+	}
+
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(faddr)
+	if err != nil {
+		return ethtypes.EthAddress{}, addr, err
+	}
+
+	return ethAddr, faddr, nil
 }
