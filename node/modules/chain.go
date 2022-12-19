@@ -69,7 +69,7 @@ func MessagePool(lc fx.Lifecycle, mctx helpers.MetricsCtx, us stmgr.UpgradeSched
 			return mp.Close()
 		},
 	})
-	protector.AddProtector(mp.ForEachPendingMessage)
+	protector.AddProtector(mp.TryForEachPendingMessage)
 	return mp, nil
 }
 
