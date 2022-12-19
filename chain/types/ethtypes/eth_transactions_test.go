@@ -69,23 +69,37 @@ func TestSignatures(t *testing.T) {
 		ExpectedR string
 		ExpectedS string
 		ExpectedV string
+		ExpectErr bool
 	}{
 		{
 			"0x02f8598401df5e76028301d69083086a5e835532dd808080c080a0457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595a02d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc",
 			`"0x457e33227ac7ceee2ef121755e26b872b6fb04221993f9939349bb7b0a3e1595"`,
 			`"0x2d8ef379e1d2a9e30fa61c92623cc9ed72d80cf6a48cfea341cb916bcc0a81bc"`,
 			`"0x0"`,
+			false,
 		},
 		{
 			"0x02f8598401df5e76038301d69083086a5e835532dd808080c001a012a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddfa052a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1",
 			`"0x12a232866dcb0671eb0ddc01fb9c01d6ef384ec892bb29691ed0d2d293052ddf"`,
 			`"0x52a6ae38c6139930db21a00eee2a4caced9a6500991b823d64ec664d003bc4b1"`,
 			`"0x1"`,
+			false,
+		},
+		{
+			"0x00",
+			`""`,
+			`""`,
+			`""`,
+			true,
 		},
 	}
 
 	for _, tc := range testcases {
 		tx, err := ParseEthTxArgs(mustDecodeHex(tc.RawTx))
+		if tc.ExpectErr {
+			require.Error(t, err)
+			continue
+		}
 		require.Nil(t, err)
 
 		sig, err := tx.Signature()

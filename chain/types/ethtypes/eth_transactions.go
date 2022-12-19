@@ -390,17 +390,17 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		return nil, fmt.Errorf("access list should be an empty list")
 	}
 
-	R, err := parseBigInt(decoded[10])
+	r, err := parseBigInt(decoded[10])
 	if err != nil {
 		return nil, err
 	}
 
-	S, err := parseBigInt(decoded[11])
+	s, err := parseBigInt(decoded[11])
 	if err != nil {
 		return nil, err
 	}
 
-	V, err := parseBigInt(decoded[9])
+	v, err := parseBigInt(decoded[9])
 	if err != nil {
 		return nil, err
 	}
@@ -414,9 +414,9 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		GasLimit:             gasLimit,
 		Value:                value,
 		Input:                input,
-		R:                    R,
-		S:                    S,
-		V:                    V,
+		R:                    r,
+		S:                    s,
+		V:                    v,
 	}
 	return &args, nil
 }

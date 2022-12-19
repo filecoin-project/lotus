@@ -61,6 +61,7 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 	return EthUint64(parsedInt), nil
 }
 
+// EthBigInt represents a large integer whose zero value serializes to "0x0".
 type EthBigInt big.Int
 
 var EthBigIntZero = EthBigInt{Int: big.Zero().Int}
@@ -90,6 +91,7 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// EthBytes represent arbitrary bytes. A nil or empty slice serializes to "0x".
 type EthBytes []byte
 
 func (e EthBytes) MarshalJSON() ([]byte, error) {
