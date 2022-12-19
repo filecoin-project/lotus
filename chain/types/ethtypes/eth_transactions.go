@@ -306,7 +306,7 @@ func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) 
 	}
 
 	if len(sig.Data) != 65 {
-		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("signature should be 65 bytes long, but get %v", len(sig.Data))
+		return EthBigIntZero, EthBigIntZero, EthBigIntZero, fmt.Errorf("signature should be 65 bytes long, but got %d bytes", len(sig.Data))
 	}
 
 	r_, err := parseBigInt(sig.Data[0:32])
