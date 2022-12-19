@@ -266,6 +266,8 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 	return addr, nil
 }
 
+// This API assumes that if an ID address is passed in, it doesn't have an equivalent
+// delegated address
 func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
 	switch addr.Protocol() {
 	case address.ID:
