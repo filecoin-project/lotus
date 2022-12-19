@@ -66,7 +66,7 @@ type EthBigInt big.Int
 var EthBigIntZero = EthBigInt{Int: big.Zero().Int}
 
 func (e EthBigInt) MarshalJSON() ([]byte, error) {
-	if e.Int == nil {
+	if e.Int == nil || e.Int.BitLen() == 0 {
 		return json.Marshal("0x0")
 	}
 	return json.Marshal(fmt.Sprintf("0x%x", e.Int))
@@ -95,9 +95,6 @@ type EthBytes []byte
 func (e EthBytes) MarshalJSON() ([]byte, error) {
 	if len(e) == 0 {
 		return json.Marshal("0x")
-	}
-	if len(e) == 1 && e[0] == 0 {
-		return json.Marshal("0x0")
 	}
 	s := hex.EncodeToString(e)
 	if len(s)%2 == 1 {

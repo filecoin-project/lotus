@@ -1468,7 +1468,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 	r, s, v, err := ethtypes.RecoverSignature(smsg.Signature)
 	if err != nil {
 		// we don't want to return error if the message is not an Eth tx
-		r, s, v = []byte{}, []byte{}, 0
+		r, s, v = ethtypes.EthBigIntZero, ethtypes.EthBigIntZero, ethtypes.EthBigIntZero
 	}
 
 	tx := ethtypes.EthTx{
@@ -1480,7 +1480,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 		Gas:                  ethtypes.EthUint64(smsg.Message.GasLimit),
 		MaxFeePerGas:         ethtypes.EthBigInt(smsg.Message.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(smsg.Message.GasPremium),
-		V:                    []byte{v},
+		V:                    v,
 		R:                    r,
 		S:                    s,
 		Input:                input,
