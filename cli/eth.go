@@ -62,14 +62,10 @@ var EthGetInfoCmd = &cli.Command{
 				return err
 			}
 		} else if ethAddr != "" {
-			if ethAddr[:2] == "0x" {
-				ethAddr = ethAddr[2:]
-			}
-			addr, err := hex.DecodeString(ethAddr)
+			eaddr, err = ethtypes.EthAddressFromHex(ethAddr)
 			if err != nil {
 				return err
 			}
-			copy(eaddr[:], addr)
 			faddr, err = eaddr.ToFilecoinAddress()
 			if err != nil {
 				return err
