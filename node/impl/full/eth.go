@@ -122,7 +122,15 @@ func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, e
 }
 
 func (a *EthModule) EthBlockNumber(context.Context) (ethtypes.EthUint64, error) {
-	height := a.Chain.GetHeaviestTipSet().Height()
+	// eth_blockNumber needs to return the height of the latest committed tipset.
+	// Ethereum clients expect all transactions included in this block to have execution outputs.
+	// This is the parent of the head tipset. The head tipset is speculative, has not been
+	// recognized by the network, and its messages are only included, not executed.
+	// See https://github.com/filecoin-project/ref-fvm/issues/1135.
+	height := a.Chain.GetHeaviestTipSet().Height() - 1
+	if height < 0 {
+		height = 0 // genesis is the first ever committed tipset.
+	}
 	return ethtypes.EthUint64(height), nil
 }
 
