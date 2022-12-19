@@ -405,7 +405,6 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		return nil, err
 	}
 
-
 	args := EthTxArgs{
 		ChainID:              chainId,
 		Nonce:                nonce,
