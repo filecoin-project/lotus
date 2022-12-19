@@ -173,10 +173,12 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 }
 
 func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string) (tipset *types.TipSet, err error) {
+	if blkParam == "earliest" {
+		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+	}
+
 	head := a.Chain.GetHeaviestTipSet()
 	switch blkParam {
-	case "earliest":
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
 	case "pending":
 		return head, nil
 	case "latest":
@@ -202,7 +204,7 @@ func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string) (tipset 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
 	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthBlock{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return ethtypes.EthBlock{}, err
 	}
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.ChainAPI, a.StateAPI)
 }
@@ -1465,7 +1467,8 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 
 	r, s, v, err := ethtypes.RecoverSignature(smsg.Signature)
 	if err != nil {
-		return ethtypes.EthTx{}, err
+		// we don't want to return error if the message is not an Eth tx
+		r, s, v = []byte{}, []byte{}, 0
 	}
 
 	tx := ethtypes.EthTx{
