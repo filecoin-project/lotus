@@ -161,6 +161,8 @@ require (
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gotest.tools v2.2.0+incompatible
+	hlm-ipfs/x v0.0.0
+	github.com/go-redis/redis/v7 v7.4.1
 )
 
 require (
@@ -348,3 +350,7 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace (
+	hlm-ipfs/x => github.com/hlm-ipfs/x v0.0.0-20220822090136-cd7ed4c0f24a
+)
