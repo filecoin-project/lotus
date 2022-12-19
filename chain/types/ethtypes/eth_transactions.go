@@ -246,25 +246,16 @@ func (tx *EthTxArgs) OriginalRlpMsg() ([]byte, error) {
 }
 
 func (tx *EthTxArgs) Signature() (*typescrypto.Signature, error) {
-	r, err := tx.R.Bytes()
-	if err != nil {
-		return nil, err
-	}
-	s, err := tx.S.Bytes()
-	if err != nil {
-		return nil, err
-	}
-	v, err := tx.V.Bytes()
-	if err != nil {
-		return nil, err
-	}
+	r := tx.R.Int.Bytes()
+	s := tx.S.Int.Bytes()
+	v := tx.V.Int.Bytes()
 
-	sig := append([]byte{}, padLeadingZeros(r[1:], 32)...)
-	sig = append(sig, padLeadingZeros(s[1:], 32)...)
+	sig := append([]byte{}, padLeadingZeros(r, 32)...)
+	sig = append(sig, padLeadingZeros(s, 32)...)
 	if len(v) == 0 {
 		sig = append(sig, 0)
 	} else {
-		sig = append(sig, v[1])
+		sig = append(sig, v[0])
 	}
 
 	if len(sig) != 65 {
