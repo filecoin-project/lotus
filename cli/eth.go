@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -21,6 +22,7 @@ var EthCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		EthGetInfoCmd,
 		EthCallSimulateCmd,
+		EthGetContractAddress,
 	},
 }
 
@@ -134,6 +136,56 @@ var EthCallSimulateCmd = &cli.Command{
 
 		return nil
 
+	},
+}
+
+var EthGetContractAddress = &cli.Command{
+	Name:      "contract-address",
+	Usage:     "Generate contract address from smart contract code",
+	ArgsUsage: "[senderEthAddr] [salt] [code binary]",
+	Action: func(cctx *cli.Context) error {
+
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		sender, err := ethtypes.EthAddressFromHex(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		salt, err := hex.DecodeString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+		if len(salt) > 32 {
+			return xerrors.Errorf("Len of salt bytes greater than 32")
+		}
+		var fsalt [32]byte
+		copy(fsalt[:], salt[:])
+
+		contractBin := cctx.Args().Get(2)
+		if err != nil {
+			return err
+		}
+		contractHex, err := os.ReadFile(contractBin)
+		if err != nil {
+
+			return err
+		}
+		contract, err := hex.DecodeString(string(contractHex))
+		if err != nil {
+			return err
+		}
+
+		contractAddr, err := ethtypes.GetContractEthAddressFromCode(sender, fsalt, contract)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Contract Eth address: ", contractAddr)
+
+		return nil
 	},
 }
 
