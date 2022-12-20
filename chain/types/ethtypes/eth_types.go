@@ -1,4 +1,4 @@
-package api
+package ethtypes
 
 import (
 	"bytes"
@@ -61,12 +61,13 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 	return EthUint64(parsedInt), nil
 }
 
+// EthBigInt represents a large integer whose zero value serializes to "0x0".
 type EthBigInt big.Int
 
 var EthBigIntZero = EthBigInt{Int: big.Zero().Int}
 
 func (e EthBigInt) MarshalJSON() ([]byte, error) {
-	if e.Int == nil {
+	if e.Int == nil || e.Int.BitLen() == 0 {
 		return json.Marshal("0x0")
 	}
 	return json.Marshal(fmt.Sprintf("0x%x", e.Int))
@@ -90,6 +91,7 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// EthBytes represent arbitrary bytes. A nil or empty slice serializes to "0x".
 type EthBytes []byte
 
 func (e EthBytes) MarshalJSON() ([]byte, error) {
@@ -97,9 +99,6 @@ func (e EthBytes) MarshalJSON() ([]byte, error) {
 		return json.Marshal("0x")
 	}
 	s := hex.EncodeToString(e)
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
 	return json.Marshal("0x" + s)
 }
 
@@ -192,23 +191,6 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type EthTxReceipt struct {
-	TransactionHash   EthHash     `json:"transactionHash"`
-	TransactionIndex  EthUint64   `json:"transactionIndex"`
-	BlockHash         EthHash     `json:"blockHash"`
-	BlockNumber       EthUint64   `json:"blockNumber"`
-	From              EthAddress  `json:"from"`
-	To                *EthAddress `json:"to"`
-	Status            EthUint64   `json:"status"`
-	ContractAddress   *EthAddress `json:"contractAddress"`
-	CumulativeGasUsed EthUint64   `json:"cumulativeGasUsed"`
-	GasUsed           EthUint64   `json:"gasUsed"`
-	EffectiveGasPrice EthBigInt   `json:"effectiveGasPrice"`
-	LogsBloom         EthBytes    `json:"logsBloom"`
-	Logs              []EthLog    `json:"logs"`
-	Type              EthUint64   `json:"type"`
-}
-
 const (
 	EthAddressLength = 20
 	EthHashLength    = 32
@@ -284,6 +266,8 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 	return addr, nil
 }
 
+// This API assumes that if an ID address is passed in, it doesn't have an equivalent
+// delegated address
 func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
 	switch addr.Protocol() {
 	case address.ID:
@@ -315,10 +299,15 @@ func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAd
 
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
-	if !ok && err == nil {
-		err = xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	if err != nil {
+		return EthAddress{}, xerrors.Errorf("failed to try converting filecoin to eth addr: %w", err)
 	}
-	return ethAddr, err
+
+	if !ok {
+		return EthAddress{}, xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	}
+
+	return ethAddr, nil
 }
 
 func EthAddressFromHex(s string) (EthAddress, error) {
@@ -335,7 +324,7 @@ func EthAddressFromHex(s string) (EthAddress, error) {
 func EthAddressFromBytes(b []byte) (EthAddress, error) {
 	var a EthAddress
 	if len(b) != EthAddressLength {
-		return EthAddress{}, xerrors.Errorf("cannot parse bytes into anœ EthAddress: incorrect input length")
+		return EthAddress{}, xerrors.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
 	}
 	copy(a[:], b[:])
 	return a, nil

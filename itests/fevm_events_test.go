@@ -29,6 +29,7 @@ func TestFEVMEvents(t *testing.T) {
 	defer cancel()
 
 	// install contract
+	// See https://github.com/filecoin-project/builtin-actors/blob/next/actors/evm/tests/events.rs#L12
 	contractHex, err := os.ReadFile("contracts/events.bin")
 	require.NoError(err)
 
@@ -65,17 +66,18 @@ func TestFEVMEvents(t *testing.T) {
 	ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x00}, nil)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	require.NotNil(ret.Receipt.EventsRoot)
-	fmt.Println(client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
+	fmt.Println(ret)
+	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
 
 	// log a zero topic event with no data
 	ret = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x01}, nil)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	fmt.Println(ret)
-	fmt.Println(client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
+	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
 
 	// log a four topic event with data
 	ret = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	fmt.Println(ret)
-	fmt.Println(client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
+	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
 }

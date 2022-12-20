@@ -10,6 +10,7 @@ import (
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	reward8 "github.com/filecoin-project/go-state-types/builtin/v8/reward"
 	smoothing8 "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -102,7 +103,7 @@ func (s *state8) GetState() interface{} {
 }
 
 func (s *state8) ActorKey() string {
-	return actors.RewardKey
+	return manifest.RewardKey
 }
 
 func (s *state8) ActorVersion() actorstypes.Version {

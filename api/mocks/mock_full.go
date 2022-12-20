@@ -37,6 +37,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
+	ethtypes "github.com/filecoin-project/lotus/chain/types/ethtypes"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
 	imports "github.com/filecoin-project/lotus/node/repo/imports"
@@ -937,10 +938,10 @@ func (mr *MockFullNodeMockRecorder) Discover(arg0 interface{}) *gomock.Call {
 }
 
 // EthAccounts mocks base method.
-func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]api.EthAddress, error) {
+func (m *MockFullNode) EthAccounts(arg0 context.Context) ([]ethtypes.EthAddress, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthAccounts", arg0)
-	ret0, _ := ret[0].([]api.EthAddress)
+	ret0, _ := ret[0].([]ethtypes.EthAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -952,10 +953,10 @@ func (mr *MockFullNodeMockRecorder) EthAccounts(arg0 interface{}) *gomock.Call {
 }
 
 // EthBlockNumber mocks base method.
-func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (api.EthUint64, error) {
+func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthBlockNumber", arg0)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -967,10 +968,10 @@ func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Cal
 }
 
 // EthCall mocks base method.
-func (m *MockFullNode) EthCall(arg0 context.Context, arg1 api.EthCall, arg2 string) (api.EthBytes, error) {
+func (m *MockFullNode) EthCall(arg0 context.Context, arg1 ethtypes.EthCall, arg2 string) (ethtypes.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthCall", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBytes)
+	ret0, _ := ret[0].(ethtypes.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -982,10 +983,10 @@ func (mr *MockFullNodeMockRecorder) EthCall(arg0, arg1, arg2 interface{}) *gomoc
 }
 
 // EthChainId mocks base method.
-func (m *MockFullNode) EthChainId(arg0 context.Context) (api.EthUint64, error) {
+func (m *MockFullNode) EthChainId(arg0 context.Context) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthChainId", arg0)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -997,10 +998,10 @@ func (mr *MockFullNodeMockRecorder) EthChainId(arg0 interface{}) *gomock.Call {
 }
 
 // EthEstimateGas mocks base method.
-func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 api.EthCall) (api.EthUint64, error) {
+func (m *MockFullNode) EthEstimateGas(arg0 context.Context, arg1 ethtypes.EthCall) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthEstimateGas", arg0, arg1)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1012,10 +1013,10 @@ func (mr *MockFullNodeMockRecorder) EthEstimateGas(arg0, arg1 interface{}) *gomo
 }
 
 // EthFeeHistory mocks base method.
-func (m *MockFullNode) EthFeeHistory(arg0 context.Context, arg1 api.EthUint64, arg2 string, arg3 []float64) (api.EthFeeHistory, error) {
+func (m *MockFullNode) EthFeeHistory(arg0 context.Context, arg1 ethtypes.EthUint64, arg2 string, arg3 []float64) (ethtypes.EthFeeHistory, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthFeeHistory", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(api.EthFeeHistory)
+	ret0, _ := ret[0].(ethtypes.EthFeeHistory)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1027,10 +1028,10 @@ func (mr *MockFullNodeMockRecorder) EthFeeHistory(arg0, arg1, arg2, arg3 interfa
 }
 
 // EthGasPrice mocks base method.
-func (m *MockFullNode) EthGasPrice(arg0 context.Context) (api.EthBigInt, error) {
+func (m *MockFullNode) EthGasPrice(arg0 context.Context) (ethtypes.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGasPrice", arg0)
-	ret0, _ := ret[0].(api.EthBigInt)
+	ret0, _ := ret[0].(ethtypes.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1042,10 +1043,10 @@ func (mr *MockFullNodeMockRecorder) EthGasPrice(arg0 interface{}) *gomock.Call {
 }
 
 // EthGetBalance mocks base method.
-func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthBigInt, error) {
+func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 string) (ethtypes.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBalance", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBigInt)
+	ret0, _ := ret[0].(ethtypes.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1057,10 +1058,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBalance(arg0, arg1, arg2 interface{}) 
 }
 
 // EthGetBlockByHash mocks base method.
-func (m *MockFullNode) EthGetBlockByHash(arg0 context.Context, arg1 api.EthHash, arg2 bool) (api.EthBlock, error) {
+func (m *MockFullNode) EthGetBlockByHash(arg0 context.Context, arg1 ethtypes.EthHash, arg2 bool) (ethtypes.EthBlock, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockByHash", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBlock)
+	ret0, _ := ret[0].(ethtypes.EthBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1072,10 +1073,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockByHash(arg0, arg1, arg2 interface
 }
 
 // EthGetBlockByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string, arg2 bool) (api.EthBlock, error) {
+func (m *MockFullNode) EthGetBlockByNumber(arg0 context.Context, arg1 string, arg2 bool) (ethtypes.EthBlock, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockByNumber", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBlock)
+	ret0, _ := ret[0].(ethtypes.EthBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1087,10 +1088,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockByNumber(arg0, arg1, arg2 interfa
 }
 
 // EthGetBlockTransactionCountByHash mocks base method.
-func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 api.EthHash) (api.EthUint64, error) {
+func (m *MockFullNode) EthGetBlockTransactionCountByHash(arg0 context.Context, arg1 ethtypes.EthHash) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByHash", arg0, arg1)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1102,10 +1103,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByHash(arg0, arg1
 }
 
 // EthGetBlockTransactionCountByNumber mocks base method.
-func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 api.EthUint64) (api.EthUint64, error) {
+func (m *MockFullNode) EthGetBlockTransactionCountByNumber(arg0 context.Context, arg1 ethtypes.EthUint64) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBlockTransactionCountByNumber", arg0, arg1)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1117,10 +1118,10 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByNumber(arg0, ar
 }
 
 // EthGetCode mocks base method.
-func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthBytes, error) {
+func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 string) (ethtypes.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetCode", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthBytes)
+	ret0, _ := ret[0].(ethtypes.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1132,10 +1133,10 @@ func (mr *MockFullNodeMockRecorder) EthGetCode(arg0, arg1, arg2 interface{}) *go
 }
 
 // EthGetFilterChanges mocks base method.
-func (m *MockFullNode) EthGetFilterChanges(arg0 context.Context, arg1 api.EthFilterID) (*api.EthFilterResult, error) {
+func (m *MockFullNode) EthGetFilterChanges(arg0 context.Context, arg1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetFilterChanges", arg0, arg1)
-	ret0, _ := ret[0].(*api.EthFilterResult)
+	ret0, _ := ret[0].(*ethtypes.EthFilterResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1147,10 +1148,10 @@ func (mr *MockFullNodeMockRecorder) EthGetFilterChanges(arg0, arg1 interface{}) 
 }
 
 // EthGetFilterLogs mocks base method.
-func (m *MockFullNode) EthGetFilterLogs(arg0 context.Context, arg1 api.EthFilterID) (*api.EthFilterResult, error) {
+func (m *MockFullNode) EthGetFilterLogs(arg0 context.Context, arg1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetFilterLogs", arg0, arg1)
-	ret0, _ := ret[0].(*api.EthFilterResult)
+	ret0, _ := ret[0].(*ethtypes.EthFilterResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1162,10 +1163,10 @@ func (mr *MockFullNodeMockRecorder) EthGetFilterLogs(arg0, arg1 interface{}) *go
 }
 
 // EthGetLogs mocks base method.
-func (m *MockFullNode) EthGetLogs(arg0 context.Context, arg1 *api.EthFilterSpec) (*api.EthFilterResult, error) {
+func (m *MockFullNode) EthGetLogs(arg0 context.Context, arg1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetLogs", arg0, arg1)
-	ret0, _ := ret[0].(*api.EthFilterResult)
+	ret0, _ := ret[0].(*ethtypes.EthFilterResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1177,10 +1178,10 @@ func (mr *MockFullNodeMockRecorder) EthGetLogs(arg0, arg1 interface{}) *gomock.C
 }
 
 // EthGetStorageAt mocks base method.
-func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 api.EthAddress, arg2 api.EthBytes, arg3 string) (api.EthBytes, error) {
+func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBytes, arg3 string) (ethtypes.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetStorageAt", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(api.EthBytes)
+	ret0, _ := ret[0].(ethtypes.EthBytes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1192,10 +1193,10 @@ func (mr *MockFullNodeMockRecorder) EthGetStorageAt(arg0, arg1, arg2, arg3 inter
 }
 
 // EthGetTransactionByBlockHashAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 api.EthHash, arg2 api.EthUint64) (api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockHashAndIndex(arg0 context.Context, arg1 ethtypes.EthHash, arg2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockHashAndIndex", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthTx)
+	ret0, _ := ret[0].(ethtypes.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1207,10 +1208,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockHashAndIndex(arg0, a
 }
 
 // EthGetTransactionByBlockNumberAndIndex mocks base method.
-func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 api.EthUint64) (api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByBlockNumberAndIndex(arg0 context.Context, arg1, arg2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByBlockNumberAndIndex", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthTx)
+	ret0, _ := ret[0].(ethtypes.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1222,10 +1223,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByBlockNumberAndIndex(arg0,
 }
 
 // EthGetTransactionByHash mocks base method.
-func (m *MockFullNode) EthGetTransactionByHash(arg0 context.Context, arg1 *api.EthHash) (*api.EthTx, error) {
+func (m *MockFullNode) EthGetTransactionByHash(arg0 context.Context, arg1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionByHash", arg0, arg1)
-	ret0, _ := ret[0].(*api.EthTx)
+	ret0, _ := ret[0].(*ethtypes.EthTx)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1237,10 +1238,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByHash(arg0, arg1 interface
 }
 
 // EthGetTransactionCount mocks base method.
-func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 api.EthAddress, arg2 string) (api.EthUint64, error) {
+func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 string) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionCount", arg0, arg1, arg2)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1252,7 +1253,7 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionCount(arg0, arg1, arg2 inte
 }
 
 // EthGetTransactionReceipt mocks base method.
-func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 api.EthHash) (*api.EthTxReceipt, error) {
+func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 ethtypes.EthHash) (*api.EthTxReceipt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionReceipt", arg0, arg1)
 	ret0, _ := ret[0].(*api.EthTxReceipt)
@@ -1267,10 +1268,10 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionReceipt(arg0, arg1 interfac
 }
 
 // EthMaxPriorityFeePerGas mocks base method.
-func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (api.EthBigInt, error) {
+func (m *MockFullNode) EthMaxPriorityFeePerGas(arg0 context.Context) (ethtypes.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthMaxPriorityFeePerGas", arg0)
-	ret0, _ := ret[0].(api.EthBigInt)
+	ret0, _ := ret[0].(ethtypes.EthBigInt)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1282,10 +1283,10 @@ func (mr *MockFullNodeMockRecorder) EthMaxPriorityFeePerGas(arg0 interface{}) *g
 }
 
 // EthNewBlockFilter mocks base method.
-func (m *MockFullNode) EthNewBlockFilter(arg0 context.Context) (api.EthFilterID, error) {
+func (m *MockFullNode) EthNewBlockFilter(arg0 context.Context) (ethtypes.EthFilterID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthNewBlockFilter", arg0)
-	ret0, _ := ret[0].(api.EthFilterID)
+	ret0, _ := ret[0].(ethtypes.EthFilterID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1297,10 +1298,10 @@ func (mr *MockFullNodeMockRecorder) EthNewBlockFilter(arg0 interface{}) *gomock.
 }
 
 // EthNewFilter mocks base method.
-func (m *MockFullNode) EthNewFilter(arg0 context.Context, arg1 *api.EthFilterSpec) (api.EthFilterID, error) {
+func (m *MockFullNode) EthNewFilter(arg0 context.Context, arg1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthNewFilter", arg0, arg1)
-	ret0, _ := ret[0].(api.EthFilterID)
+	ret0, _ := ret[0].(ethtypes.EthFilterID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1312,10 +1313,10 @@ func (mr *MockFullNodeMockRecorder) EthNewFilter(arg0, arg1 interface{}) *gomock
 }
 
 // EthNewPendingTransactionFilter mocks base method.
-func (m *MockFullNode) EthNewPendingTransactionFilter(arg0 context.Context) (api.EthFilterID, error) {
+func (m *MockFullNode) EthNewPendingTransactionFilter(arg0 context.Context) (ethtypes.EthFilterID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthNewPendingTransactionFilter", arg0)
-	ret0, _ := ret[0].(api.EthFilterID)
+	ret0, _ := ret[0].(ethtypes.EthFilterID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1327,10 +1328,10 @@ func (mr *MockFullNodeMockRecorder) EthNewPendingTransactionFilter(arg0 interfac
 }
 
 // EthProtocolVersion mocks base method.
-func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (api.EthUint64, error) {
+func (m *MockFullNode) EthProtocolVersion(arg0 context.Context) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthProtocolVersion", arg0)
-	ret0, _ := ret[0].(api.EthUint64)
+	ret0, _ := ret[0].(ethtypes.EthUint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1342,10 +1343,10 @@ func (mr *MockFullNodeMockRecorder) EthProtocolVersion(arg0 interface{}) *gomock
 }
 
 // EthSendRawTransaction mocks base method.
-func (m *MockFullNode) EthSendRawTransaction(arg0 context.Context, arg1 api.EthBytes) (api.EthHash, error) {
+func (m *MockFullNode) EthSendRawTransaction(arg0 context.Context, arg1 ethtypes.EthBytes) (ethtypes.EthHash, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthSendRawTransaction", arg0, arg1)
-	ret0, _ := ret[0].(api.EthHash)
+	ret0, _ := ret[0].(ethtypes.EthHash)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1357,10 +1358,10 @@ func (mr *MockFullNodeMockRecorder) EthSendRawTransaction(arg0, arg1 interface{}
 }
 
 // EthSubscribe mocks base method.
-func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 string, arg2 *api.EthSubscriptionParams) (<-chan api.EthSubscriptionResponse, error) {
+func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 string, arg2 *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthSubscribe", arg0, arg1, arg2)
-	ret0, _ := ret[0].(<-chan api.EthSubscriptionResponse)
+	ret0, _ := ret[0].(<-chan ethtypes.EthSubscriptionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1372,7 +1373,7 @@ func (mr *MockFullNodeMockRecorder) EthSubscribe(arg0, arg1, arg2 interface{}) *
 }
 
 // EthUninstallFilter mocks base method.
-func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 api.EthFilterID) (bool, error) {
+func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 ethtypes.EthFilterID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthUninstallFilter", arg0, arg1)
 	ret0, _ := ret[0].(bool)
@@ -1387,7 +1388,7 @@ func (mr *MockFullNodeMockRecorder) EthUninstallFilter(arg0, arg1 interface{}) *
 }
 
 // EthUnsubscribe mocks base method.
-func (m *MockFullNode) EthUnsubscribe(arg0 context.Context, arg1 api.EthSubscriptionID) (bool, error) {
+func (m *MockFullNode) EthUnsubscribe(arg0 context.Context, arg1 ethtypes.EthSubscriptionID) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthUnsubscribe", arg0, arg1)
 	ret0, _ := ret[0].(bool)

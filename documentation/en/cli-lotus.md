@@ -31,6 +31,7 @@ COMMANDS:
      log           Manage logging
      wait-api      Wait for lotus api to come online
      fetch-params  Fetch proving parameters
+     eth           Query eth contract state
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
@@ -2454,7 +2455,8 @@ USAGE:
    lotus chain invoke-evm-actor [command options] address contract-entry-point [input-data]
 
 OPTIONS:
-   --from value  optionally specify the account to use for sending the exec message
+   --from value   optionally specify the account to use for sending the exec message
+   --value value  optionally specify the value to be sent with the invokation message (default: 0)
    
 ```
 
@@ -2562,6 +2564,51 @@ USAGE:
 
 CATEGORY:
    DEVELOPER
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+## lotus eth
+```
+NAME:
+   lotus eth - Query eth contract state
+
+USAGE:
+   lotus eth command [command options] [arguments...]
+
+COMMANDS:
+     stat     Print eth/filecoin addrs and code cid
+     call     Simulate an eth contract call
+     help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus eth stat
+```
+NAME:
+   lotus eth stat - Print eth/filecoin addrs and code cid
+
+USAGE:
+   lotus eth stat [command options] [arguments...]
+
+OPTIONS:
+   --ethAddr value  Ethereum address
+   --filAddr value  Filecoin address
+   
+```
+
+### lotus eth call
+```
+NAME:
+   lotus eth call - Simulate an eth contract call
+
+USAGE:
+   lotus eth call [command options] [from] [to] [params]
 
 OPTIONS:
    --help, -h  show help (default: false)

@@ -2330,9 +2330,9 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
 }
 ```
 
@@ -2366,9 +2366,9 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
 }
 ```
 
@@ -2401,9 +2401,9 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x07",
-  "r": "0x07",
-  "s": "0x07"
+  "v": "0x0",
+  "r": "0x0",
+  "s": "0x0"
 }
 ```
 
@@ -2443,6 +2443,7 @@ Response:
   "blockNumber": "0x0",
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+  "root": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "status": "0x5",
   "contractAddress": null,
   "cumulativeGasUsed": "0x0",

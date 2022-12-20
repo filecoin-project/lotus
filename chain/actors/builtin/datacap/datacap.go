@@ -9,6 +9,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -22,7 +23,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.DatacapKey {
+		if name != manifest.DatacapKey {
 			return nil, xerrors.Errorf("actor code is not datacap: %s", name)
 		}
 

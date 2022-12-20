@@ -1668,6 +1668,9 @@ var ChainInvokeEVMCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "optionally specify the account to use for sending the exec message",
+		}, &cli.IntFlag{
+			Name:  "value",
+			Usage: "optionally specify the value to be sent with the invokation message",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1728,10 +1731,11 @@ var ChainInvokeEVMCmd = &cli.Command{
 			fromAddr = addr
 		}
 
+		val := abi.NewTokenAmount(cctx.Int64("value"))
 		msg := &types.Message{
 			To:     addr,
 			From:   fromAddr,
-			Value:  big.Zero(),
+			Value:  val,
 			Method: abi.MethodNum(2),
 			Params: params,
 		}
@@ -1778,6 +1782,9 @@ var ChainInvokeEVMCmd = &cli.Command{
 			err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
 				fmt.Printf("%x\n", deferred.Raw)
 				if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+					return err
+				}
+				if err != nil {
 					return err
 				}
 				fmt.Printf("\tEmitter ID: %s\n", evt.Emitter)

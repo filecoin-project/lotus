@@ -28,7 +28,6 @@ import (
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -41,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -436,15 +436,15 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 	return nil
 }
 
-func isValidForSending(act *types.Actor) bool {
-	if builtin.IsAccountActor(act.Code) {
+func IsValidForSending(act *types.Actor) bool {
+	if builtin.IsAccountActor(act.Code) || builtin.IsEthAccountActor(act.Code) {
 		return true
 	}
 
-	// HACK: Allow Eth embryos to send messages
-	if !builtin.IsEmbryo(act.Code) || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	if !builtin.IsEmbryoActor(act.Code) || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
+
 	id, _, err := varint.FromUvarint(act.Address.Payload())
 	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
@@ -521,7 +521,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 
-			if !isValidForSending(act) {
+			if !IsValidForSending(act) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
@@ -577,7 +577,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 		digest := m.Message.Cid().Bytes()
 		if m.Signature.Type == crypto.SigTypeDelegated {
-			txArgs, err := api.NewEthTxArgsFromMessage(&m.Message)
+			txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
 			if err != nil {
 				return err
 			}

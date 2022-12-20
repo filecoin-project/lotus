@@ -1,5 +1,4 @@
-// stm: #unit
-package api
+package ethtypes
 
 import (
 	"encoding/json"

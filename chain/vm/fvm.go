@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -311,6 +312,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		},
 		Epoch:          opts.Epoch,
 		Timestamp:      opts.Timestamp,
+		ChainID:        build.Eip155ChainId,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
@@ -325,20 +327,6 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	fvmOpts, err := defaultFVMOpts(ctx, opts)
 	if err != nil {
 		return nil, xerrors.Errorf("creating fvm opts: %w", err)
-	}
-
-	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
-		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
-		if err != nil {
-			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
-		}
-
-		c, ok := actors.GetManifest(av)
-		if !ok {
-			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
-		}
-
-		fvmOpts.Manifest = c
 	}
 
 	fvm, err := ffi.CreateFVM(fvmOpts)
@@ -405,7 +393,7 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 
 		// create actor redirect mapping
 		actorRedirect := make(map[cid.Cid]cid.Cid)
-		for _, key := range actors.GetBuiltinActorsKeys(av) {
+		for _, key := range manifest.GetBuiltinActorsKeys(av) {
 			from, ok := actors.GetActorCodeID(av, key)
 			if !ok {
 				log.Warnf("actor missing in the from manifest %s", key)

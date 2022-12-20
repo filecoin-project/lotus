@@ -4,6 +4,7 @@ package itests
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -74,7 +76,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 		}
 	}()
 
-	var sms []*types.SignedMessage
+	// var sms []*types.SignedMessage
 	for i := 0; i < iterations; i++ {
 		msg := &types.Message{
 			From:  client.DefaultKey.Address,
@@ -86,7 +88,8 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, i, sm.Message.Nonce)
 
-		sms = append(sms, sm)
+		// FIXME this was here and unused. Use or remove.
+		// sms = append(sms, sm)
 	}
 
 	select {
@@ -152,7 +155,7 @@ func TestEthNewBlockFilter(t *testing.T) {
 		}
 	}()
 
-	var sms []*types.SignedMessage
+	// var sms []*types.SignedMessage
 	for i := 0; i < iterations; i++ {
 		msg := &types.Message{
 			From:  client.DefaultKey.Address,
@@ -164,7 +167,8 @@ func TestEthNewBlockFilter(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, i, sm.Message.Nonce)
 
-		sms = append(sms, sm)
+		// FIXME this was here and unused. Use or remove.
+		// sms = append(sms, sm)
 	}
 
 	select {
@@ -210,7 +214,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	t.Logf("actor ID address is %s", idAddr)
 
 	// install filter
-	filterID, err := client.EthNewFilter(ctx, &api.EthFilterSpec{})
+	filterID, err := client.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
 	require.NoError(err)
 
 	const iterations = 10
@@ -270,9 +274,9 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 		t.Errorf("timeout to wait for pack messages")
 	}
 
-	received := make(map[api.EthHash]msgInTipset)
+	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		eh, err := api.NewEthHashFromCid(m.msg.Cid)
+		eh, err := ethtypes.NewEthHashFromCid(m.msg.Cid)
 		require.NoError(err)
 		received[eh] = m
 	}
@@ -284,7 +288,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	actor, err := client.StateGetActor(ctx, idAddr, ts.Key())
 	require.NoError(err)
 	require.NotNil(actor.Address)
-	ethContractAddr, err := api.EthAddressFromFilecoinAddress(*actor.Address)
+	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
 	// collect filter results
@@ -294,11 +298,11 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	// expect to have seen iteration number of events
 	require.Equal(iterations, len(res.Results))
 
-	topic1 := api.EthBytes(leftpad32([]byte{0x11, 0x11}))
-	topic2 := api.EthBytes(leftpad32([]byte{0x22, 0x22}))
-	topic3 := api.EthBytes(leftpad32([]byte{0x33, 0x33}))
-	topic4 := api.EthBytes(leftpad32([]byte{0x44, 0x44}))
-	data1 := api.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
+	topic1 := ethtypes.EthBytes(leftpad32([]byte{0x11, 0x11}))
+	topic2 := ethtypes.EthBytes(leftpad32([]byte{0x22, 0x22}))
+	topic3 := ethtypes.EthBytes(leftpad32([]byte{0x33, 0x33}))
+	topic4 := ethtypes.EthBytes(leftpad32([]byte{0x44, 0x44}))
+	data1 := ethtypes.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
 
 	for _, r := range res.Results {
 		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results
@@ -309,7 +313,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 		require.NoError(err)
 
 		require.Equal(ethContractAddr, elog.Address, "event address")
-		require.Equal(api.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
+		require.Equal(ethtypes.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
 
 		msg, exists := received[elog.TransactionHash]
 		require.True(exists, "message seen on chain")
@@ -317,7 +321,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 		tsCid, err := msg.ts.Key().Cid()
 		require.NoError(err)
 
-		tsCidHash, err := api.NewEthHashFromCid(tsCid)
+		tsCidHash, err := ethtypes.NewEthHashFromCid(tsCid)
 		require.NoError(err)
 
 		require.Equal(tsCidHash, elog.BlockHash, "block hash")
@@ -333,18 +337,18 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	}
 }
 
-func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
-	el := &api.EthLog{}
+func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
+	el := &ethtypes.EthLog{}
 
-	ethHash := func(k string, v interface{}) (api.EthHash, error) {
+	ethHash := func(k string, v interface{}) (ethtypes.EthHash, error) {
 		s, ok := v.(string)
 		if !ok {
-			return api.EthHash{}, xerrors.Errorf(k + " not a string")
+			return ethtypes.EthHash{}, xerrors.Errorf(k + " not a string")
 		}
-		return api.EthHashFromHex(s)
+		return ethtypes.EthHashFromHex(s)
 	}
 
-	ethUint64 := func(k string, v interface{}) (api.EthUint64, error) {
+	ethUint64 := func(k string, v interface{}) (ethtypes.EthUint64, error) {
 		s, ok := v.(string)
 		if !ok {
 			return 0, xerrors.Errorf(k + " not a string")
@@ -353,7 +357,7 @@ func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
 		if err != nil {
 			return 0, err
 		}
-		return api.EthUint64(parsedInt), nil
+		return ethtypes.EthUint64(parsedInt), nil
 	}
 
 	var err error
@@ -378,7 +382,7 @@ func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
 			if !ok {
 				return nil, xerrors.Errorf(k + ": not a string")
 			}
-			el.Address, err = api.EthAddressFromHex(s)
+			el.Address, err = ethtypes.EthAddressFromHex(s)
 			if err != nil {
 				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
@@ -446,19 +450,19 @@ func ParseEthLog(in map[string]interface{}) (*api.EthLog, error) {
 	return el, err
 }
 
-func TestEthGetLogsAll(t *testing.T) {
+type msgInTipset struct {
+	msg      api.Message
+	ts       *types.TipSet
+	reverted bool
+}
+
+func invokeContractAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, iterations int) (ethtypes.EthAddress, map[ethtypes.EthHash]msgInTipset) {
 	require := require.New(t)
-
-	kit.QuietMiningLogs()
-
-	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
-
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
-	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
+
+	blockTime := 100 * time.Millisecond
 
 	// install contract
 	contractHex, err := os.ReadFile("contracts/events.bin")
@@ -475,13 +479,6 @@ func TestEthGetLogsAll(t *testing.T) {
 	idAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(err)
 	t.Logf("actor ID address is %s", idAddr)
-
-	const iterations = 10
-
-	type msgInTipset struct {
-		msg api.Message
-		ts  *types.TipSet
-	}
 
 	msgChan := make(chan msgInTipset, iterations)
 
@@ -503,7 +500,7 @@ func TestEthGetLogsAll(t *testing.T) {
 						count += len(msgs)
 						for _, m := range msgs {
 							select {
-							case msgChan <- msgInTipset{msg: m, ts: change.Val}:
+							case msgChan <- msgInTipset{msg: m, ts: change.Val, reverted: change.Type == store.HCRevert}:
 							default:
 							}
 						}
@@ -533,9 +530,9 @@ func TestEthGetLogsAll(t *testing.T) {
 		t.Errorf("timeout to wait for pack messages")
 	}
 
-	received := make(map[api.EthHash]msgInTipset)
+	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		eh, err := api.NewEthHashFromCid(m.msg.Cid)
+		eh, err := ethtypes.NewEthHashFromCid(m.msg.Cid)
 		require.NoError(err)
 		received[eh] = m
 	}
@@ -547,19 +544,35 @@ func TestEthGetLogsAll(t *testing.T) {
 	actor, err := client.StateGetActor(ctx, idAddr, head.Key())
 	require.NoError(err)
 	require.NotNil(actor.Address)
-	ethContractAddr, err := api.EthAddressFromFilecoinAddress(*actor.Address)
+	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
-	topic1 := api.EthBytes(leftpad32([]byte{0x11, 0x11}))
-	topic2 := api.EthBytes(leftpad32([]byte{0x22, 0x22}))
-	topic3 := api.EthBytes(leftpad32([]byte{0x33, 0x33}))
-	topic4 := api.EthBytes(leftpad32([]byte{0x44, 0x44}))
-	data1 := api.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
+	return ethContractAddr, received
+}
+
+func TestEthGetLogsAll(t *testing.T) {
+	require := require.New(t)
+
+	kit.QuietMiningLogs()
+
+	blockTime := 100 * time.Millisecond
+	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ethContractAddr, received := invokeContractAndWaitUntilAllOnChain(t, client, 10)
+
+	topic1 := ethtypes.EthBytes(leftpad32([]byte{0x11, 0x11}))
+	topic2 := ethtypes.EthBytes(leftpad32([]byte{0x22, 0x22}))
+	topic3 := ethtypes.EthBytes(leftpad32([]byte{0x33, 0x33}))
+	topic4 := ethtypes.EthBytes(leftpad32([]byte{0x44, 0x44}))
+	data1 := ethtypes.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
 
 	pstring := func(s string) *string { return &s }
 
-	// get logs
-	res, err := client.EthGetLogs(ctx, &api.EthFilterSpec{
+	// get all logs
+	res, err := client.EthGetLogs(context.Background(), &ethtypes.EthFilterSpec{
 		FromBlock: pstring("0x0"),
 	})
 	require.NoError(err)
@@ -576,7 +589,7 @@ func TestEthGetLogsAll(t *testing.T) {
 		require.NoError(err)
 
 		require.Equal(ethContractAddr, elog.Address, "event address")
-		require.Equal(api.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
+		require.Equal(ethtypes.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
 
 		msg, exists := received[elog.TransactionHash]
 		require.True(exists, "message seen on chain")
@@ -584,7 +597,71 @@ func TestEthGetLogsAll(t *testing.T) {
 		tsCid, err := msg.ts.Key().Cid()
 		require.NoError(err)
 
-		tsCidHash, err := api.NewEthHashFromCid(tsCid)
+		tsCidHash, err := ethtypes.NewEthHashFromCid(tsCid)
+		require.NoError(err)
+
+		require.Equal(tsCidHash, elog.BlockHash, "block hash")
+
+		require.Equal(4, len(elog.Topics), "number of topics")
+		require.Equal(topic1, elog.Topics[0], "topic1")
+		require.Equal(topic2, elog.Topics[1], "topic2")
+		require.Equal(topic3, elog.Topics[2], "topic3")
+		require.Equal(topic4, elog.Topics[3], "topic4")
+
+		require.Equal(data1, elog.Data, "data1")
+
+	}
+}
+
+func TestEthGetLogsByTopic(t *testing.T) {
+	require := require.New(t)
+
+	kit.QuietMiningLogs()
+
+	blockTime := 100 * time.Millisecond
+	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	invocations := 1
+
+	ethContractAddr, received := invokeContractAndWaitUntilAllOnChain(t, client, invocations)
+
+	topic1 := ethtypes.EthBytes(leftpad32([]byte{0x11, 0x11}))
+	topic2 := ethtypes.EthBytes(leftpad32([]byte{0x22, 0x22}))
+	topic3 := ethtypes.EthBytes(leftpad32([]byte{0x33, 0x33}))
+	topic4 := ethtypes.EthBytes(leftpad32([]byte{0x44, 0x44}))
+	data1 := ethtypes.EthBytes(leftpad32([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}))
+
+	// find log by known topic1
+	var spec ethtypes.EthFilterSpec
+	err := json.Unmarshal([]byte(`{"fromBlock":"0x0","topics":["0x0000000000000000000000000000000000000000000000000000000000001111"]}`), &spec)
+	require.NoError(err)
+
+	res, err := client.EthGetLogs(context.Background(), &spec)
+	require.NoError(err)
+
+	require.Equal(invocations, len(res.Results))
+
+	for _, r := range res.Results {
+		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results
+		rc, ok := r.(map[string]interface{})
+		require.True(ok, "result type")
+
+		elog, err := ParseEthLog(rc)
+		require.NoError(err)
+
+		require.Equal(ethContractAddr, elog.Address, "event address")
+		require.Equal(ethtypes.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
+
+		msg, exists := received[elog.TransactionHash]
+		require.True(exists, "message seen on chain")
+
+		tsCid, err := msg.ts.Key().Cid()
+		require.NoError(err)
+
+		tsCidHash, err := ethtypes.NewEthHashFromCid(tsCid)
 		require.NoError(err)
 
 		require.Equal(tsCidHash, elog.BlockHash, "block hash")
@@ -632,7 +709,7 @@ func TestEthSubscribeLogs(t *testing.T) {
 	respCh, err := client.EthSubscribe(ctx, "logs", nil)
 	require.NoError(err)
 
-	subResponses := []api.EthSubscriptionResponse{}
+	subResponses := []ethtypes.EthSubscriptionResponse{}
 	go func() {
 		for resp := range respCh {
 			subResponses = append(subResponses, resp)
@@ -702,9 +779,9 @@ func TestEthSubscribeLogs(t *testing.T) {
 		require.True(ok, "unsubscribed")
 	}
 
-	received := make(map[api.EthHash]msgInTipset)
+	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		eh, err := api.NewEthHashFromCid(m.msg.Cid)
+		eh, err := ethtypes.NewEthHashFromCid(m.msg.Cid)
 		require.NoError(err)
 		received[eh] = m
 	}

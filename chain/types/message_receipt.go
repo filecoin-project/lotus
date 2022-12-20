@@ -54,6 +54,6 @@ func (mr *MessageReceipt) Version() MessageReceiptVersion {
 }
 
 func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
-	return mr.version == mr.version && mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed &&
+	return mr.version == o.version && mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed &&
 		(mr.EventsRoot == o.EventsRoot || (mr.EventsRoot != nil && o.EventsRoot != nil && *mr.EventsRoot == *o.EventsRoot))
 }

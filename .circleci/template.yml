@@ -34,6 +34,10 @@ commands:
         default: false
         description: is a darwin build environment?
         type: boolean
+      darwin-architecture:
+        default: "amd64"
+        description: which darwin architecture is being used?
+        type: string
     steps:
       - checkout
       - git_fetch_all_tags
@@ -59,7 +63,7 @@ commands:
             - run:
                 name: Install Go
                 command: |
-                  curl https://dl.google.com/go/go`cat GO_VERSION_MIN`.darwin-amd64.pkg -o /tmp/go.pkg && \
+                  curl https://dl.google.com/go/go`cat GO_VERSION_MIN`.darwin-<<parameters.darwin-architecture>>.pkg -o /tmp/go.pkg && \
                   sudo installer -pkg /tmp/go.pkg -target /
             - run:
                 name: Export Go
@@ -276,7 +280,9 @@ jobs:
       - prepare:
           linux: false
           darwin: true
+          darwin-architecture: amd64
       - run: make lotus lotus-miner lotus-worker
+      - run: otool -hv lotus
       - run:
           name: check tag and version output match
           command: ./scripts/version-check.sh ./lotus
@@ -298,10 +304,12 @@ jobs:
       - prepare:
           linux: false
           darwin: true
+          darwin-architecture: arm64
       - run: |
           export CPATH=$(brew --prefix)/include
           export LIBRARY_PATH=$(brew --prefix)/lib
           make lotus lotus-miner lotus-worker
+      - run: otool -hv lotus
       - run:
           name: check tag and version output match
           command: ./scripts/version-check.sh ./lotus
@@ -586,10 +594,14 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
-                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        if [["[[ ! -z $CIRCLE_SHA ]]"]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
+                        fi
                         if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
-                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
                         fi
             - unless:
                 condition: <<parameters.push>>
@@ -612,10 +624,14 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
-                        echo docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
+                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
+                        if [["[[ ! -z $CIRCLE_SHA ]]"]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
+                        fi
                         if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
-                          echo docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
                         fi
             - unless:
                 condition: <<parameters.push>>
@@ -799,6 +815,16 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+-rc\d+$/
       - build-docker:
+          name: "Docker push (lotus-all-in-one / edge / [[.]])"
+          image: lotus-all-in-one
+          channel: master
+          network: [[.]]
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
           name: "Docker build (lotus-all-in-one / [[.]])"
           image: lotus-all-in-one
           network: [[.]]
@@ -808,6 +834,51 @@ workflows:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
       [[- end]]
+      - build-docker:
+          name: "Docker push (lotus / stable / mainnet)"
+          image: lotus
+          channel: stable
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-docker:
+          name: "Docker push (lotus / candidate / mainnet)"
+          image: lotus
+          channel: candidate
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - build-docker:
+          name: "Docker push (lotus / master / mainnet)"
+          image: lotus
+          channel: master
+          network: mainnet
+          push: true
+          filters:
+            branches:
+              only:
+                - master
+      - build-docker:
+          name: "Docker build (lotus / mainnet)"
+          image: lotus
+          network: mainnet
+          push: false
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
 
   nightly:
     triggers:

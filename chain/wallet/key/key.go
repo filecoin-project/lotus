@@ -1,9 +1,11 @@
 package key
 
 import (
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -45,10 +47,26 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	switch k.Type {
-	case types.KTSecp256k1, types.KTDelegated:
+	case types.KTSecp256k1:
 		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
+		}
+	case types.KTDelegated:
+		// Assume eth for now
+		hasher := sha3.NewLegacyKeccak256()
+		pubk := k.PublicKey
+		// if we get an uncompressed public key (that's what we get from the library,
+		// but putting this check here for defensiveness), strip the prefix
+		if pubk[0] == 0x04 {
+			pubk = pubk[1:]
+		}
+
+		hasher.Write(pubk)
+
+		k.Address, err = address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, hasher.Sum(nil)[12:])
+		if err != nil {
+			return nil, xerrors.Errorf("converting Delegated to address: %w", err)
 		}
 	case types.KTBLS:
 		k.Address, err = address.NewBLSAddress(k.PublicKey)
@@ -58,6 +76,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	default:
 		return nil, xerrors.Errorf("unsupported key type: %s", k.Type)
 	}
+
 	return k, nil
 
 }

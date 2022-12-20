@@ -488,6 +488,8 @@ func TestChainStoreSync(t *testing.T) {
 }
 
 func TestGoRPCAuth(t *testing.T) {
+	// TODO Fix Raft, then enable this test. https://github.com/filecoin-project/lotus/issues/9888
+	t.SkipNow()
 
 	blockTime := 1 * time.Second
 

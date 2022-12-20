@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
 	account10 "github.com/filecoin-project/go-state-types/builtin/v10/account"
@@ -45,6 +46,7 @@ import (
 	system9 "github.com/filecoin-project/go-state-types/builtin/v9/system"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -53,14 +55,14 @@ import (
 type RegistryEntry struct {
 	state   cbor.Er
 	code    cid.Cid
-	methods map[uint64]builtin.MethodMeta
+	methods map[abi.MethodNum]builtin.MethodMeta
 }
 
 func (r RegistryEntry) State() cbor.Er {
 	return r.state
 }
 
-func (r RegistryEntry) Exports() map[uint64]builtin.MethodMeta {
+func (r RegistryEntry) Exports() map[abi.MethodNum]builtin.MethodMeta {
 	return r.methods
 }
 
@@ -72,10 +74,10 @@ func MakeRegistryLegacy(actors []rtt.VMActor) []RegistryEntry {
 	registry := make([]RegistryEntry, 0)
 
 	for _, actor := range actors {
-		methodMap := make(map[uint64]builtin.MethodMeta)
+		methodMap := make(map[abi.MethodNum]builtin.MethodMeta)
 		for methodNum, method := range actor.Exports() {
 			if method != nil {
-				methodMap[uint64(methodNum)] = makeMethodMeta(method)
+				methodMap[abi.MethodNum(methodNum)] = makeMethodMeta(method)
 			}
 		}
 		registry = append(registry, RegistryEntry{
@@ -118,67 +120,67 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 	case actorstypes.Version8:
 		for key, codeID := range codeIDs {
 			switch key {
-			case actors.AccountKey:
+			case manifest.AccountKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: account8.Methods,
 					state:   new(account8.State),
 				})
-			case actors.CronKey:
+			case manifest.CronKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: cron8.Methods,
 					state:   new(cron8.State),
 				})
-			case actors.InitKey:
+			case manifest.InitKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: _init8.Methods,
 					state:   new(_init8.State),
 				})
-			case actors.MarketKey:
+			case manifest.MarketKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: market8.Methods,
 					state:   new(market8.State),
 				})
-			case actors.MinerKey:
+			case manifest.MinerKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: miner8.Methods,
 					state:   new(miner8.State),
 				})
-			case actors.MultisigKey:
+			case manifest.MultisigKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: multisig8.Methods,
 					state:   new(multisig8.State),
 				})
-			case actors.PaychKey:
+			case manifest.PaychKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: paych8.Methods,
 					state:   new(paych8.State),
 				})
-			case actors.PowerKey:
+			case manifest.PowerKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: power8.Methods,
 					state:   new(power8.State),
 				})
-			case actors.RewardKey:
+			case manifest.RewardKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: reward8.Methods,
 					state:   new(reward8.State),
 				})
-			case actors.SystemKey:
+			case manifest.SystemKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: system8.Methods,
 					state:   new(system8.State),
 				})
-			case actors.VerifregKey:
+			case manifest.VerifregKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: verifreg8.Methods,
@@ -191,73 +193,73 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 	case actorstypes.Version9:
 		for key, codeID := range codeIDs {
 			switch key {
-			case actors.AccountKey:
+			case manifest.AccountKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: account9.Methods,
 					state:   new(account9.State),
 				})
-			case actors.CronKey:
+			case manifest.CronKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: cron9.Methods,
 					state:   new(cron9.State),
 				})
-			case actors.InitKey:
+			case manifest.InitKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: _init9.Methods,
 					state:   new(_init9.State),
 				})
-			case actors.MarketKey:
+			case manifest.MarketKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: market9.Methods,
 					state:   new(market9.State),
 				})
-			case actors.MinerKey:
+			case manifest.MinerKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: miner9.Methods,
 					state:   new(miner9.State),
 				})
-			case actors.MultisigKey:
+			case manifest.MultisigKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: multisig9.Methods,
 					state:   new(multisig9.State),
 				})
-			case actors.PaychKey:
+			case manifest.PaychKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: paych9.Methods,
 					state:   new(paych9.State),
 				})
-			case actors.PowerKey:
+			case manifest.PowerKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: power9.Methods,
 					state:   new(power9.State),
 				})
-			case actors.RewardKey:
+			case manifest.RewardKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: reward9.Methods,
 					state:   new(reward9.State),
 				})
-			case actors.SystemKey:
+			case manifest.SystemKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: system9.Methods,
 					state:   new(system9.State),
 				})
-			case actors.VerifregKey:
+			case manifest.VerifregKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: verifreg9.Methods,
 					state:   new(verifreg9.State),
 				})
-			case actors.DatacapKey:
+			case manifest.DatacapKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: datacap9.Methods,
@@ -269,73 +271,73 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 	case actorstypes.Version10:
 		for key, codeID := range codeIDs {
 			switch key {
-			case actors.AccountKey:
+			case manifest.AccountKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: account10.Methods,
 					state:   new(account10.State),
 				})
-			case actors.CronKey:
+			case manifest.CronKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: cron10.Methods,
 					state:   new(cron10.State),
 				})
-			case actors.InitKey:
+			case manifest.InitKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: _init10.Methods,
 					state:   new(_init10.State),
 				})
-			case actors.MarketKey:
+			case manifest.MarketKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: market10.Methods,
 					state:   new(market10.State),
 				})
-			case actors.MinerKey:
+			case manifest.MinerKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: miner10.Methods,
 					state:   new(miner10.State),
 				})
-			case actors.MultisigKey:
+			case manifest.MultisigKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: multisig10.Methods,
 					state:   new(multisig10.State),
 				})
-			case actors.PaychKey:
+			case manifest.PaychKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: paych10.Methods,
 					state:   new(paych10.State),
 				})
-			case actors.PowerKey:
+			case manifest.PowerKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: power10.Methods,
 					state:   new(power10.State),
 				})
-			case actors.RewardKey:
+			case manifest.RewardKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: reward10.Methods,
 					state:   new(reward10.State),
 				})
-			case actors.SystemKey:
+			case manifest.SystemKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: system10.Methods,
 					state:   new(system10.State),
 				})
-			case actors.VerifregKey:
+			case manifest.VerifregKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: verifreg10.Methods,
 					state:   new(verifreg10.State),
 				})
-			case actors.DatacapKey:
+			case manifest.DatacapKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
 					methods: datacap10.Methods,

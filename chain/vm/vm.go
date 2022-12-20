@@ -57,10 +57,10 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 	}
 
 	if state.Version() >= types.StateTreeVersion5 {
-		if act.Address == nil {
-			return address.Undef, xerrors.Errorf("actor at %s doesn't have a predictable address", addr)
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
 		}
-		return *act.Address, nil
 	}
 
 	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
