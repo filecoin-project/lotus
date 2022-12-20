@@ -581,7 +581,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			if err != nil {
 				return err
 			}
-			msg, err := txArgs.OriginalRlpMsg()
+			msg, err := txArgs.ToRlpUnsignedMsg()
 			if err != nil {
 				return err
 			}

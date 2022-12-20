@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 
@@ -42,7 +43,7 @@ func TestTxArgs(t *testing.T) {
 		txArgs, err := ParseEthTxArgs(tc.Input)
 		require.NoError(t, err)
 
-		msgRecovered, err := txArgs.OriginalRlpMsg()
+		msgRecovered, err := txArgs.ToRlpUnsignedMsg()
 		require.NoError(t, err)
 		require.Equal(t, tc.NosigTx, "0x"+hex.EncodeToString(msgRecovered), comment)
 
@@ -198,14 +199,8 @@ func TestDelegatedSigner(t *testing.T) {
 	r := mustDecodeHex(rHex)
 	s := mustDecodeHex(sHex)
 
-	if pubk[0] == 0x04 {
-		pubk = pubk[1:]
-	}
-
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Reset()
-	hasher.Write(pubk)
-	addrHash := hasher.Sum(nil)
+	addrHash, err := delegated.EthAddressFromPubKey(pubk)
+	require.NoError(t, err)
 
 	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[12:])
 	require.NoError(t, err)

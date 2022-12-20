@@ -71,7 +71,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	txArgs, err := ethtypes.NewEthTxArgsFromMessage(msgFromEmbryo)
 	require.NoError(t, err)
 
-	digest, err := txArgs.OriginalRlpMsg()
+	digest, err := txArgs.ToRlpUnsignedMsg()
 	require.NoError(t, err)
 
 	siggy, err := client.WalletSign(ctx, embryoAddress, digest)
@@ -107,7 +107,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	txArgs, err = ethtypes.NewEthTxArgsFromMessage(msgFromEmbryo)
 	require.NoError(t, err)
 
-	digest, err = txArgs.OriginalRlpMsg()
+	digest, err = txArgs.ToRlpUnsignedMsg()
 	require.NoError(t, err)
 
 	siggy, err = client.WalletSign(ctx, embryoAddress, digest)
