@@ -228,7 +228,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
 	if err == nil {
-		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.ChainAPI, a.StateAPI)
+		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 		if err == nil {
 			return &tx, nil
 		}
@@ -1364,7 +1364,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		gasUsed += msgLookup.Receipt.GasUsed
 
 		if fullTxInfo {
-			tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, cs, ca, sa)
+			tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, cs, sa)
 			if err != nil {
 				return ethtypes.EthBlock{}, nil
 			}
@@ -1498,7 +1498,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 // newEthTxFromFilecoinMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
 // into the function, it looksup the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
 // function
-func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, ca ChainAPI, sa StateAPI) (ethtypes.EthTx, error) {
+func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, sa StateAPI) (ethtypes.EthTx, error) {
 	if msgLookup == nil {
 		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
 	}
