@@ -56,6 +56,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	embryoActor, err := client.StateGetActor(ctx, embryoAddress, types.EmptyTSK)
 	require.NoError(t, err)
 
+	require.Equal(t, uint64(0), embryoActor.Nonce)
 	require.True(t, builtin.IsEmbryoActor(embryoActor.Code))
 
 	// send a message from the embryo address
@@ -90,12 +91,14 @@ func TestEthAccountAbstraction(t *testing.T) {
 
 	require.False(t, builtin.IsEmbryoActor(eoaActor.Code))
 	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
+	require.Equal(t, uint64(1), eoaActor.Nonce)
 
 	// Send another message, it should succeed without any code CID changes
 
 	msgFromEmbryo = &types.Message{
-		From: embryoAddress,
-		To:   embryoAddress,
+		From:  embryoAddress,
+		To:    embryoAddress,
+		Nonce: 1,
 	}
 
 	msgFromEmbryo, err = client.GasEstimateMessageGas(ctx, msgFromEmbryo, nil, types.EmptyTSK)
@@ -121,6 +124,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 
 	eoaActor, err = client.StateGetActor(ctx, embryoAddress, types.EmptyTSK)
 	require.NoError(t, err)
+	require.Equal(t, uint64(2), eoaActor.Nonce)
 
 	require.False(t, builtin.IsEmbryoActor(eoaActor.Code))
 	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
