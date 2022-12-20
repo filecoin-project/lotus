@@ -6,6 +6,12 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-varint"
+	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/crypto/sha3"
+
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -13,19 +19,14 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-varint"
-	"github.com/stretchr/testify/require"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 // EVM groups EVM-related actions.
@@ -240,14 +241,6 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 
 func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 	panic("No mutations allowed")
-}
-
-func formatBigInt(val big.Int) ([]byte, error) {
-	b, err := val.Bytes()
-	if err != nil {
-		return nil, err
-	}
-	return removeLeadingZeros(b), nil
 }
 
 func formatInt(val int) ([]byte, error) {

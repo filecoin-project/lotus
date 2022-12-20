@@ -1,7 +1,6 @@
 package key
 
 import (
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 func GenerateKey(typ types.KeyType) (*Key, error) {

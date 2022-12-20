@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 
@@ -21,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 

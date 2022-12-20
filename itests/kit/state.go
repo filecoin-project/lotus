@@ -3,11 +3,13 @@ package kit
 import (
 	"context"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/stretchr/testify/require"
 )
 
 // AssertActorType verifies that the supplied address is an actor of the

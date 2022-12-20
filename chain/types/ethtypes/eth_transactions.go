@@ -6,7 +6,6 @@ import (
 	"fmt"
 	mathbig "math/big"
 
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 const Eip1559TxType = 2
