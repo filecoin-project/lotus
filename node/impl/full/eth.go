@@ -1533,6 +1533,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		for i, msg := range msgs {
 			if msg.Cid() == msgLookup.Message {
 				txIdx = i
+				break
 			}
 		}
 		if txIdx < 0 {
