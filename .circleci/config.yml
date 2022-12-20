@@ -770,14 +770,14 @@ workflows:
           target: "./itests/eth_account_abstraction_test.go"
       
       - test:
-          name: test-itest-fevm_address
-          suite: itest-fevm_address
-          target: "./itests/fevm_address_test.go"
-      
-      - test:
           name: test-itest-eth_filter
           suite: itest-eth_filter
           target: "./itests/eth_filter_test.go"
+      
+      - test:
+          name: test-itest-fevm_address
+          suite: itest-fevm_address
+          target: "./itests/fevm_address_test.go"
       
       - test:
           name: test-itest-fevm_events
