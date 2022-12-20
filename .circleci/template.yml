@@ -36,19 +36,13 @@ commands:
     steps:
       - checkout
       - git_fetch_all_tags
+      - run: git submodule sync
+      - run: git submodule update --init
       - when:
           condition: <<parameters.linux>>
           steps:
-            - prepare
-            - run:
-                name: Check Go Version
-                command: |
-                  v=`go version | { read _ _ v _; echo ${v#go}; }`
-                  if [["[[ $v != `cat GO_VERSION_MIN` ]]"]]; then
-                    echo "GO_VERSION_MIN file does not match the go version being used."
-                    echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
-                    exit 1
-                  fi
+            - install-ubuntu-deps
+            - check-go-version
       - when:
           condition: <<parameters.darwin>>
           steps:
@@ -69,8 +63,6 @@ commands:
                 name: Install Rust
                 command: |
                   curl https://sh.rustup.rs -sSf | sh -s -- -y
-      - run: git submodule sync
-      - run: git submodule update --init
       - run: make deps lotus
   download-params:
     steps:
@@ -102,10 +94,19 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
-  prepare:
+  install-ubuntu-deps:
     steps:
       - run: sudo apt-get update
       - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+  check-go-version:
+    steps:
+      - run: |
+          v=`go version | { read _ _ v _; echo ${v#go}; }`
+          if [["[[ $v != `cat GO_VERSION_MIN` ]]"]]; then
+            echo "GO_VERSION_MIN file does not match the go version being used."
+            echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
+            exit 1
+          fi
 
 jobs:
   build:
@@ -114,18 +115,10 @@ jobs:
     steps:
       - checkout
       - git_fetch_all_tags
-      - run:
-          name: Check Go Version
-          command: |
-            v=`go version | { read _ _ v _; echo ${v#go}; }`
-            if [["[[ $v != `cat GO_VERSION_MIN` ]]"]]; then
-              echo "GO_VERSION_MIN file does not match the go version being used."
-              echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
-              exit 1
-            fi
-      - prepare
       - run: git submodule sync
       - run: git submodule update --init
+      - install-ubuntu-deps
+      - check-go-version
       - run: make deps lotus
       - persist_to_workspace:
           root: ~/
@@ -135,7 +128,7 @@ jobs:
     executor: golang
     working_directory: ~/lotus
     steps:
-      - prepare
+      - install-ubuntu-deps
       - attach_workspace:
           at: ~/
       - run: go mod tidy -v
@@ -173,7 +166,7 @@ jobs:
         description: Test suite name to report to CircleCI.
     executor: << parameters.executor >>
     steps:
-      - prepare
+      - install-ubuntu-deps
       - attach_workspace:
           at: ~/
       - when:
@@ -219,7 +212,7 @@ jobs:
           submodule is used.
     executor: << parameters.executor >>
     steps:
-      - prepare
+      - install-ubuntu-deps
       - attach_workspace:
           at: ~/
       - download-params
@@ -424,7 +417,7 @@ jobs:
     executor: golang
     working_directory: ~/lotus
     steps:
-      - prepare
+      - install-ubuntu-deps
       - attach_workspace:
           at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
@@ -438,7 +431,7 @@ jobs:
     executor: golang
     working_directory: ~/lotus
     steps:
-      - prepare
+      - install-ubuntu-deps
       - attach_workspace:
           at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
@@ -466,7 +459,7 @@ jobs:
           Arguments to pass to golangci-lint
     executor: << parameters.executor >>
     steps:
-      - prepare
+      - install-ubuntu-deps
       - attach_workspace:
           at: ~/
       - run:
@@ -663,10 +656,12 @@ workflows:
             - build
           suite: itest-[[ $name ]]
           target: "./itests/[[ $file ]]"
-          [[if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]executor: golang-2xl[[end]]
-      [[ end ]][[- end -]]
+          [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
+          executor: golang-2xl
+          [[- end]]
+      [[- end ]][[- end]]
 
-      [[range $suite, $pkgs := .UnitSuites]]
+      [[- range $suite, $pkgs := .UnitSuites]]
       - test:
           name: test-[[ $suite ]]
           requires:
@@ -674,7 +669,7 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
           [[if eq $suite "unit-cli"]]get-params: true[[end]]
-          [[if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
+          [[- if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
       [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
