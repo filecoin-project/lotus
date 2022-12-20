@@ -186,9 +186,8 @@ jobs:
               --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
               --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
-              -- \
-              << parameters.go-test-flags >> \
-              << parameters.target >>
+              --packages="<< parameters.target >>" \
+              -- << parameters.go-test-flags >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
