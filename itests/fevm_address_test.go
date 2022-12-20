@@ -80,6 +80,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	cidMap, err := client.StateActorCodeCIDs(ctx, network.Version18)
+	require.NoError(t, err)
 	require.Equal(t, cidMap["embryo"], actor.Code)
 
 	// Create and deploy evm actor
@@ -107,9 +108,11 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 
 	// Check if eth address returned from Create2 is the same as eth address predicted at the start
 	var create2Return eam.Create2Return
-	create2Return.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
+	err = create2Return.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
+	require.NoError(t, err)
 
 	createdEthAddr, err := ethtypes.EthAddressFromBytes(create2Return.EthAddress[:])
+	require.NoError(t, err)
 	require.Equal(t, ethAddr, createdEthAddr)
 
 	// Check if newly deployed actor still has funds
