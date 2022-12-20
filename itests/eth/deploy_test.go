@@ -27,7 +27,7 @@ func TestDeployment(t *testing.T) {
 	// He who writes the second test, shall do that.
 	// kit.QuietMiningLogs()
 
-	blockTime := 1 * time.Second
+	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(
 		t,
 		kit.MockProofs(),
@@ -113,8 +113,8 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
 
-	// No error.
-	require.EqualValues(t, 0, receipt.Status)
+	// Success.
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
 
 	// Verify that the deployer is now an account.
 	client.AssertActorType(ctx, deployer, manifest.EthAccountKey)

@@ -197,11 +197,15 @@ func (e *EVM) SubmitTransaction(ctx context.Context, tx *ethtypes.EthTxArgs) eth
 // ComputeContractAddress computes the address of a contract deployed by the
 // specified address with the specified nonce.
 func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64) ethtypes.EthAddress {
+	nonceRlp, err := formatInt(int(nonce))
+	require.NoError(e.t, err)
+
 	encoded, err := ethtypes.EncodeRLP([]interface{}{
 		deployer[:],
-		nonce,
+		nonceRlp,
 	})
 	require.NoError(e.t, err)
+
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write(encoded)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
@@ -236,4 +240,32 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 
 func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 	panic("No mutations allowed")
+}
+
+func formatBigInt(val big.Int) ([]byte, error) {
+	b, err := val.Bytes()
+	if err != nil {
+		return nil, err
+	}
+	return removeLeadingZeros(b), nil
+}
+
+func formatInt(val int) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, int64(val))
+	if err != nil {
+		return nil, err
+	}
+	return removeLeadingZeros(buf.Bytes()), nil
+}
+
+func removeLeadingZeros(data []byte) []byte {
+	firstNonZeroIndex := len(data)
+	for i, b := range data {
+		if b > 0 {
+			firstNonZeroIndex = i
+			break
+		}
+	}
+	return data[firstNonZeroIndex:]
 }
