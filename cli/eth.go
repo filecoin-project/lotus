@@ -142,7 +142,7 @@ var EthCallSimulateCmd = &cli.Command{
 var EthGetContractAddress = &cli.Command{
 	Name:      "contract-address",
 	Usage:     "Generate contract address from smart contract code",
-	ArgsUsage: "[senderEthAddr] [salt] [contractBinPath]",
+	ArgsUsage: "[senderEthAddr] [salt] [contractHexPath]",
 	Action: func(cctx *cli.Context) error {
 
 		if cctx.NArg() != 3 {
@@ -156,7 +156,7 @@ var EthGetContractAddress = &cli.Command{
 
 		salt, err := hex.DecodeString(cctx.Args().Get(1))
 		if err != nil {
-			return err
+			return xerrors.Errorf("Could not decode salt: %w", err)
 		}
 		if len(salt) > 32 {
 			return xerrors.Errorf("Len of salt bytes greater than 32")
@@ -175,7 +175,7 @@ var EthGetContractAddress = &cli.Command{
 		}
 		contract, err := hex.DecodeString(string(contractHex))
 		if err != nil {
-			return err
+			return xerrors.Errorf("Could not decode contract file: %w", err)
 		}
 
 		contractAddr, err := ethtypes.GetContractEthAddressFromCode(sender, fsalt, contract)
