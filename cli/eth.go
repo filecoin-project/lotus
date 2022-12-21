@@ -142,7 +142,7 @@ var EthCallSimulateCmd = &cli.Command{
 var EthGetContractAddress = &cli.Command{
 	Name:      "contract-address",
 	Usage:     "Generate contract address from smart contract code",
-	ArgsUsage: "[senderEthAddr] [salt] [code binary]",
+	ArgsUsage: "[senderEthAddr] [salt] [contractBinPath]",
 	Action: func(cctx *cli.Context) error {
 
 		if cctx.NArg() != 3 {

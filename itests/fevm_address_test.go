@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"os"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 
 	var salt [32]byte
-	binary.BigEndian.PutUint64(salt[:], 32)
+	binary.BigEndian.PutUint64(salt[:], 1)
 
 	// Generate contract address before actually deploying contract
 	ethAddr, err := ethtypes.GetContractEthAddressFromCode(senderEthAddr, salt, contract)
@@ -81,7 +82,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 	cidMap, err := client.StateActorCodeCIDs(ctx, network.Version18)
 	require.NoError(t, err)
-	require.Equal(t, cidMap["embryo"], actor.Code)
+	require.Equal(t, cidMap[manifest.EmbryoKey], actor.Code)
 
 	// Create and deploy evm actor
 
@@ -120,6 +121,6 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, actorPostCreate.Balance, sendAmount)
-	require.NotEqual(t, actorPostCreate.Code, actor.Code)
+	require.Equal(t, cidMap[manifest.EvmKey], actorPostCreate.Code)
 
 }
