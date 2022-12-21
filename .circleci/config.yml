@@ -770,6 +770,11 @@ workflows:
           target: "./itests/eth_account_abstraction_test.go"
       
       - test:
+          name: test-itest-eth_deploy
+          suite: itest-eth_deploy
+          target: "./itests/eth_deploy_test.go"
+      
+      - test:
           name: test-itest-eth_filter
           suite: itest-eth_filter
           target: "./itests/eth_filter_test.go"

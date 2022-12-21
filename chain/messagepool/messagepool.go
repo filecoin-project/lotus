@@ -796,7 +796,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		if err != nil {
 			return xerrors.Errorf("failed to convert to eth tx args: %w", err)
 		}
-		msg, err := txArgs.OriginalRlpMsg()
+		msg, err := txArgs.ToRlpUnsignedMsg()
 		if err != nil {
 			return err
 		}

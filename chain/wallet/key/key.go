@@ -1,7 +1,6 @@
 package key
 
 import (
-	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 func GenerateKey(typ types.KeyType) (*Key, error) {
@@ -54,17 +54,12 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 		}
 	case types.KTDelegated:
 		// Assume eth for now
-		hasher := sha3.NewLegacyKeccak256()
-		pubk := k.PublicKey
-		// if we get an uncompressed public key (that's what we get from the library,
-		// but putting this check here for defensiveness), strip the prefix
-		if pubk[0] == 0x04 {
-			pubk = pubk[1:]
+		ethAddr, err := delegated.EthAddressFromPubKey(k.PublicKey)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to calculate Eth address from public key: %w", err)
 		}
 
-		hasher.Write(pubk)
-
-		k.Address, err = address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, hasher.Sum(nil)[12:])
+		k.Address, err = address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, ethAddr)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Delegated to address: %w", err)
 		}
