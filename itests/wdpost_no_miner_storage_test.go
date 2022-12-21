@@ -37,7 +37,7 @@ func TestWindowPostNoMinerStorage(t *testing.T) {
 		Worker(&miner, &sealw, kit.ThroughRPC(), kit.WithSealWorkerTasks).
 		Start()
 
-	ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	miner.PledgeSectors(ctx, sealSectors, 0, nil)
 
