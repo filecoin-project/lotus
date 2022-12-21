@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"os"
 	"testing"
 	"time"
@@ -15,9 +16,6 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/manifest"
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -80,9 +78,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	// Check if actor at new address is an embryo actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
 	require.NoError(t, err)
-	cidMap, err := client.StateActorCodeCIDs(ctx, network.Version18)
-	require.NoError(t, err)
-	require.Equal(t, cidMap[manifest.EmbryoKey], actor.Code)
+	require.True(t, builtin.IsEmbryoActor(actor.Code))
 
 	// Create and deploy evm actor
 
@@ -121,6 +117,6 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, actorPostCreate.Balance, sendAmount)
-	require.Equal(t, cidMap[manifest.EvmKey], actorPostCreate.Code)
+	require.True(t, builtin.IsEvmActor(actorPostCreate.Code))
 
 }
