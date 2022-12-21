@@ -780,6 +780,11 @@ workflows:
           target: "./itests/eth_filter_test.go"
       
       - test:
+          name: test-itest-fevm_address
+          suite: itest-fevm_address
+          target: "./itests/fevm_address_test.go"
+      
+      - test:
           name: test-itest-fevm_events
           suite: itest-fevm_events
           target: "./itests/fevm_events_test.go"

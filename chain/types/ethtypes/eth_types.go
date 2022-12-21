@@ -14,6 +14,7 @@ import (
 	"github.com/minio/blake2b-simd"
 	"github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -600,4 +601,23 @@ type EthSubscriptionResponse struct {
 
 	// The object matching the subscription. This may be a Block (tipset), a Transaction (message) or an EthLog
 	Result interface{} `json:"result"`
+}
+
+func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []byte) (EthAddress, error) {
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(initcode)
+	inithash := hasher.Sum(nil)
+
+	hasher.Reset()
+	hasher.Write([]byte{0xff})
+	hasher.Write(sender[:])
+	hasher.Write(salt[:])
+	hasher.Write(inithash)
+
+	ethAddr, err := EthAddressFromBytes(hasher.Sum(nil)[12:])
+	if err != nil {
+		return [20]byte{}, err
+	}
+
+	return ethAddr, nil
 }
