@@ -2622,7 +2622,7 @@ NAME:
    lotus eth contract-address - Generate contract address from smart contract code
 
 USAGE:
-   lotus eth contract-address [command options] [senderEthAddr] [salt] [code binary]
+   lotus eth contract-address [command options] [senderEthAddr] [salt] [contractBinPath]
 
 OPTIONS:
    --help, -h  show help (default: false)
