@@ -2579,9 +2579,10 @@ USAGE:
    lotus eth command [command options] [arguments...]
 
 COMMANDS:
-     stat     Print eth/filecoin addrs and code cid
-     call     Simulate an eth contract call
-     help, h  Shows a list of commands or help for one command
+     stat              Print eth/filecoin addrs and code cid
+     call              Simulate an eth contract call
+     contract-address  Generate contract address from smart contract code
+     help, h           Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2609,6 +2610,19 @@ NAME:
 
 USAGE:
    lotus eth call [command options] [from] [to] [params]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus eth contract-address
+```
+NAME:
+   lotus eth contract-address - Generate contract address from smart contract code
+
+USAGE:
+   lotus eth contract-address [command options] [senderEthAddr] [salt] [contractHexPath]
 
 OPTIONS:
    --help, -h  show help (default: false)
