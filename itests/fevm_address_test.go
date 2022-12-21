@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"os"
 	"testing"
 	"time"
@@ -16,8 +15,10 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
