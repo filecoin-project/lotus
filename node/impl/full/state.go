@@ -1809,6 +1809,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeOhSnapHeight:      build.UpgradeOhSnapHeight,
 			UpgradeSkyrHeight:        build.UpgradeSkyrHeight,
 			UpgradeSharkHeight:       build.UpgradeSharkHeight,
+			UpgradeHyggeHeight:       build.UpgradeHyggeHeight,
 		},
 	}, nil
 }
