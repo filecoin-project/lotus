@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"hlm-ipfs/x/infras"
+
 	"github.com/elastic/go-sysinfo"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -21,11 +23,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
-
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	storex "github.com/filecoin-project/lotus/x/store"
 )
 
 var pathTypes = []storiface.SectorFileType{storiface.FTUnsealed, storiface.FTSealed, storiface.FTCache, storiface.FTUpdate, storiface.FTUpdateCache}
@@ -78,6 +80,9 @@ type LocalWorker struct {
 }
 
 func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc, store paths.Store, local *paths.Local, sindex paths.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+	workerID, err := storex.WorkerID()
+	infras.Throw(err)
+
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -99,7 +104,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 		envLookup:            envLookup,
 		ignoreResources:      wcfg.IgnoreResourceFiltering,
 		challengeReadTimeout: wcfg.ChallengeReadTimeout,
-		session:              uuid.New(),
+		session:              workerID,
 		closing:              make(chan struct{}),
 	}
 

@@ -1,7 +1,10 @@
 package conf
 
 type Config struct {
-	ID    string `json:"id"` //miner-id or worker-id
+	ID  string
+	Url string
+
+	Token string `json:"token"`
 	Redis *Redis `json:"redis"`
 }
 

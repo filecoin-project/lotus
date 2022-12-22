@@ -1,0 +1,7 @@
+{
+  "token": "xxx",
+  "redis": {
+    "addr": "",
+    "pwd": ""
+  }
+}

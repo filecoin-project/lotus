@@ -13,22 +13,36 @@ const (
 )
 
 var (
+	exitC    = make(chan bool)
 	interval = time.Second * 5
 	timeout  = time.Second * 10
 )
 
-func Register(serviceName, instanceName, endpoint string) error {
+func Start(serviceName, instanceName, endpoint string) error {
 	if err := cache.Set(serviceName, instanceName, endpoint); err != nil {
 		return err
 	}
 	go func() {
 		for {
-			<-time.After(interval)
-			if err := cache.Set(serviceName, instanceName, endpoint); err != nil {
-				logger.Errorw("", "err", err)
+			select {
+			case <-exitC:
+				return
+			case <-time.After(interval):
+				if err := cache.Set(serviceName, instanceName, endpoint); err != nil {
+					logger.Errorw("", "err", err)
+				}
 			}
 		}
 	}()
+	return nil
+}
+
+func Stop() error {
+	select {
+	case <-exitC:
+	default:
+		close(exitC)
+	}
 	return nil
 }
 

@@ -13,10 +13,10 @@ var (
 	X = &Config{}
 )
 
-func Init(id, repo string) error {
-	path := filepath.Join(repo, "lotus-x.json")
+func Init(repo string) error {
+	path := filepath.Join(repo, "config.json")
 	if !infras.PathExist(path) {
-		return fmt.Errorf("lotus-x.json not found: %v", path)
+		return fmt.Errorf("config.json not found: %v", path)
 	}
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -24,11 +24,6 @@ func Init(id, repo string) error {
 	}
 	if err = json.Unmarshal(data, X); err != nil {
 		return err
-	} else {
-		X.ID = id
 	}
-	if err = initRedis(X.Redis.Addr, X.Redis.Pwd); err != nil {
-		return err
-	}
-	return nil
+	return initRedis(X.Redis.Addr, X.Redis.Pwd)
 }

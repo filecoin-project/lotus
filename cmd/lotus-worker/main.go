@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"hlm-ipfs/x/infras"
+
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
@@ -24,11 +26,9 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/ulimit"
@@ -39,6 +39,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/x"
+	apix "github.com/filecoin-project/lotus/x/api"
+	"github.com/filecoin-project/lotus/x/store"
 )
 
 var log = logging.Logger("main")
@@ -306,23 +309,31 @@ var runCmd = &cli.Command{
 
 		// Connect to storage-miner
 		ctx := lcli.ReqContext(cctx)
+		repoPath := cctx.String(FlagWorkerRepo)
+		if err = x.Init(repoPath); err != nil {
+			return err
+		}
 
 		var nodeApi api.StorageMiner
 		var closer func()
-		for {
-			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
-			if err == nil {
-				_, err = nodeApi.Version(ctx)
-				if err == nil {
-					break
-				}
-			}
-			fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
-			time.Sleep(time.Second)
-			continue
+		if nodeApi, closer, err = apix.GetMinerApi(ctx); err != nil {
+			return err
 		}
-
+		//for {
+		//	nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
+		//	if err == nil {
+		//		_, err = nodeApi.Version(ctx)
+		//		if err == nil {
+		//			break
+		//		}
+		//	}
+		//	fmt.Printf("\r\x1b[0KConnecting to miner API... (%s)", err)
+		//	time.Sleep(time.Second)
+		//	continue
+		//}
+		//
 		defer closer()
+
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
@@ -426,13 +437,10 @@ var runCmd = &cli.Command{
 		}
 
 		// Open repo
-
-		repoPath := cctx.String(FlagWorkerRepo)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
 		}
-
 		ok, err := r.Exists()
 		if err != nil {
 			return err
@@ -666,7 +674,12 @@ var runCmd = &cli.Command{
 
 					select {
 					case <-readyCh:
-						if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
+						url := "http://" + address + "/rpc/v0"
+						wid, err := store.WorkerID()
+						infras.Throw(err)
+						infras.Throw(x.Start(x.KindWorker, wid.String(), url))
+
+						if err := nodeApi.WorkerConnect(ctx, url); err != nil {
 							log.Errorf("Registering worker failed: %+v", err)
 							cancel()
 							return
@@ -694,6 +707,9 @@ var runCmd = &cli.Command{
 			log.Warn("Shutting down...")
 			if err := srv.Shutdown(context.TODO()); err != nil {
 				log.Errorf("shutting down RPC server failed: %s", err)
+			}
+			if err := x.Stop(); err != nil {
+				log.Errorf("shutting down lotus-x failed: %s", err)
 			}
 			log.Warn("Graceful shutdown successful")
 		}()
