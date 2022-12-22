@@ -6426,7 +6426,8 @@ Response:
     "UpgradeChocolateHeight": 0,
     "UpgradeOhSnapHeight": 0,
     "UpgradeSkyrHeight": 0,
-    "UpgradeSharkHeight": 0
+    "UpgradeSharkHeight": 0,
+    "UpgradeHyggeHeight": 0
   }
 }
 ```
