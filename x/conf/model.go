@@ -4,6 +4,7 @@ type Config struct {
 	ID  string
 	Url string
 
+	Proto string `json:"proto"`
 	Token string `json:"token"`
 	Redis *Redis `json:"redis"`
 }

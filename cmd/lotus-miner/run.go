@@ -5,6 +5,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	"hlm-ipfs/x/infras"
+
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
@@ -23,6 +25,8 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/x"
+	apix "github.com/filecoin-project/lotus/x/api"
 )
 
 var runCmd = &cli.Command{
@@ -104,6 +108,9 @@ var runCmd = &cli.Command{
 		}
 
 		minerRepoPath := cctx.String(FlagMinerRepo)
+		if err := x.Init(minerRepoPath); err != nil {
+			return err
+		}
 		r, err := repo.NewFS(minerRepoPath)
 		if err != nil {
 			return err
@@ -184,6 +191,13 @@ var runCmd = &cli.Command{
 		}
 
 		// Serve the RPC.
+		mid, err := x.GetMinerID(minerapi)
+		infras.Throw(err)
+		url, err := apix.GetEndpointUrl(endpoint)
+		infras.Throw(err)
+		if err := x.Start(x.KindMiner, mid, url); err != nil {
+			return err
+		}
 		rpcStopper, err := node.ServeRPC(handler, "lotus-miner", endpoint)
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
@@ -196,6 +210,7 @@ var runCmd = &cli.Command{
 		)
 
 		<-finishCh
+		infras.Throw(x.Stop())
 		return nil
 	},
 }

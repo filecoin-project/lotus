@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -10,6 +11,8 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/x/conf"
 	"github.com/filecoin-project/lotus/x/micro"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 )
 
 func initHeader(token string) http.Header {
@@ -19,6 +22,22 @@ func initHeader(token string) http.Header {
 		header.Set("Authorization", "Bearer "+token)
 	}
 	return header
+}
+
+func GetEndpointUrl(ep multiaddr.Multiaddr) (string, error) {
+	_, addr, err := manet.DialArgs(ep)
+	if err != nil {
+		return "", err
+	}
+	return GetAddressUrl(addr), nil
+}
+
+func GetAddressUrl(addr string) string {
+	proto := "https"
+	if conf.X.Proto == "http" {
+		proto = "http"
+	}
+	return fmt.Sprintf("%v://%v/rpc/v0", proto, addr)
 }
 
 func GetMinerApi(ctx context.Context) (v0api.StorageMiner, jsonrpc.ClientCloser, error) {

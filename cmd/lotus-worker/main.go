@@ -674,7 +674,7 @@ var runCmd = &cli.Command{
 
 					select {
 					case <-readyCh:
-						url := "http://" + address + "/rpc/v0"
+						url := apix.GetAddressUrl(address)
 						wid, err := store.WorkerID()
 						infras.Throw(err)
 						infras.Throw(x.Start(x.KindWorker, wid.String(), url))
