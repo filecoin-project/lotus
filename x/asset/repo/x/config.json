@@ -1,4 +1,6 @@
 {
+  "net": "mainnet",
+  "proto": "https",
   "token": "xxx",
   "redis": {
     "addr": "",

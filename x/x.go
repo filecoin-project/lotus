@@ -1,9 +1,13 @@
 package x
 
 import (
+	"context"
+	"errors"
 	"path/filepath"
 
+	"github.com/filecoin-project/go-jsonrpc/x"
 	"github.com/filecoin-project/lotus/x/conf"
+	"github.com/filecoin-project/lotus/x/meta"
 	"github.com/filecoin-project/lotus/x/micro"
 	"github.com/filecoin-project/lotus/x/store"
 )
@@ -28,10 +32,23 @@ func Start(kind Kind, id, url string) error {
 	conf.X.ID = id
 	conf.X.Url = url
 
-	srvName := micro.MinerName
-	if kind == KindWorker {
+	var (
+		srvName  string
+		fnNodeID func(context.Context) context.Context
+	)
+	switch kind {
+	case KindWorker:
 		srvName = micro.WorkerName
+		fnNodeID = meta.SetWorkerID
+	case KindMiner:
+		srvName = micro.MinerName
+		fnNodeID = meta.SetMinerID
+	default:
+		return errors.New("node-kind invalid")
 	}
+	x.UseClientContext(func(ctx context.Context) context.Context {
+		return fnNodeID(ctx)
+	})
 	return micro.Start(srvName, id, url)
 }
 
