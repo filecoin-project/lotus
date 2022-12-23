@@ -1487,6 +1487,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 
 	tx := ethtypes.EthTx{
 		Hash:                 hash,
+		Nonce:                ethtypes.EthUint64(smsg.Message.Nonce),
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		From:                 fromEthAddr,
 		To:                   toAddr,
