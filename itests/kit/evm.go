@@ -7,8 +7,10 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-varint"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
@@ -16,10 +18,15 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 // EVM groups EVM-related actions.
@@ -122,6 +129,89 @@ func (e *EVM) LoadEvents(ctx context.Context, eventsRoot cid.Cid) []types.Event 
 	return ret
 }
 
+func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
+	// Generate a secp256k1 key; this will back the Ethereum identity.
+	key, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(e.t, err)
+
+	ethAddr, err := delegated.EthAddressFromPubKey(key.PublicKey)
+	require.NoError(e.t, err)
+
+	addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
+	require.NoError(e.t, err)
+
+	return key, *(*ethtypes.EthAddress)(ethAddr), addr
+}
+
+// AssertAddressBalanceConsistent checks that the balance reported via the
+// Filecoin and Ethereum operations for an f410 address is identical, returning
+// the balance.
+func (e *EVM) AssertAddressBalanceConsistent(ctx context.Context, addr address.Address) big.Int {
+	// Validate the arg is an f410 address.
+	require.Equal(e.t, address.Delegated, addr.Protocol())
+	payload := addr.Payload()
+	namespace, _, err := varint.FromUvarint(payload)
+	require.NoError(e.t, err)
+	require.Equal(e.t, builtintypes.EthereumAddressManagerActorID, namespace)
+
+	fbal, err := e.WalletBalance(ctx, addr)
+	require.NoError(e.t, err)
+
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
+	require.NoError(e.t, err)
+
+	ebal, err := e.EthGetBalance(ctx, ethAddr, "latest")
+	require.NoError(e.t, err)
+
+	require.Equal(e.t, fbal, types.BigInt(ebal))
+	return fbal
+}
+
+// SignTransaction signs an Ethereum transaction in place with the supplied private key.
+func (e *EVM) SignTransaction(tx *ethtypes.EthTxArgs, privKey []byte) {
+	preimage, err := tx.ToRlpUnsignedMsg()
+	require.NoError(e.t, err)
+
+	// sign the RLP payload
+	signature, err := sigs.Sign(crypto.SigTypeDelegated, privKey, preimage)
+	require.NoError(e.t, err)
+
+	r, s, v, err := ethtypes.RecoverSignature(*signature)
+	require.NoError(e.t, err)
+
+	tx.V = big.Int(v)
+	tx.R = big.Int(r)
+	tx.S = big.Int(s)
+}
+
+// SubmitTransaction submits the transaction via the Eth endpoint.
+func (e *EVM) SubmitTransaction(ctx context.Context, tx *ethtypes.EthTxArgs) ethtypes.EthHash {
+	signed, err := tx.ToRlpSignedMsg()
+	require.NoError(e.t, err)
+
+	hash, err := e.EthSendRawTransaction(ctx, signed)
+	require.NoError(e.t, err)
+
+	return hash
+}
+
+// ComputeContractAddress computes the address of a contract deployed by the
+// specified address with the specified nonce.
+func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64) ethtypes.EthAddress {
+	nonceRlp, err := formatInt(int(nonce))
+	require.NoError(e.t, err)
+
+	encoded, err := ethtypes.EncodeRLP([]interface{}{
+		deployer[:],
+		nonceRlp,
+	})
+	require.NoError(e.t, err)
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(encoded)
+	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
+}
+
 // TODO: cleanup and put somewhere reusable.
 type apiIpldStore struct {
 	ctx context.Context
@@ -151,4 +241,24 @@ func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 
 func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
 	panic("No mutations allowed")
+}
+
+func formatInt(val int) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, int64(val))
+	if err != nil {
+		return nil, err
+	}
+	return removeLeadingZeros(buf.Bytes()), nil
+}
+
+func removeLeadingZeros(data []byte) []byte {
+	firstNonZeroIndex := len(data)
+	for i, b := range data {
+		if b > 0 {
+			firstNonZeroIndex = i
+			break
+		}
+	}
+	return data[firstNonZeroIndex:]
 }

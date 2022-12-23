@@ -2319,9 +2319,9 @@ Response:
   "chainId": "0x0",
   "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "blockNumber": "0x0",
-  "transactionIndex": "0x0",
+  "blockHash": null,
+  "blockNumber": null,
+  "transactionIndex": null,
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
@@ -2355,9 +2355,9 @@ Response:
   "chainId": "0x0",
   "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "blockNumber": "0x0",
-  "transactionIndex": "0x0",
+  "blockHash": null,
+  "blockNumber": null,
+  "transactionIndex": null,
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
@@ -2390,9 +2390,9 @@ Response:
   "chainId": "0x0",
   "nonce": "0x5",
   "hash": "0x0707070707070707070707070707070707070707070707070707070707070707",
-  "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "blockNumber": "0x0",
-  "transactionIndex": "0x0",
+  "blockHash": null,
+  "blockNumber": null,
+  "transactionIndex": null,
   "from": "0x0707070707070707070707070707070707070707",
   "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "value": "0x0",
@@ -6426,7 +6426,8 @@ Response:
     "UpgradeChocolateHeight": 0,
     "UpgradeOhSnapHeight": 0,
     "UpgradeSkyrHeight": 0,
-    "UpgradeSharkHeight": 0
+    "UpgradeSharkHeight": 0,
+    "UpgradeHyggeHeight": 0
   }
 }
 ```
