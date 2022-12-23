@@ -79,6 +79,8 @@ var (
 	_ EthEventAPI  = *new(api.FullNode)
 )
 
+var EmptyLogsBloom = make([]byte, 256)
+
 // EthModule provides a default implementation of EthModuleAPI.
 // It can be swapped out with another implementation through Dependency
 // Injection (for example with a thin RPC client).
@@ -1604,7 +1606,8 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		BlockHash:        blockHash,
 		BlockNumber:      blockNumber,
 		Type:             ethtypes.EthUint64(2),
-		LogsBloom:        []byte{0},
+		LogsBloom:        EmptyLogsBloom,
+		Logs:             make([]ethtypes.EthLog, 0),
 	}
 
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
