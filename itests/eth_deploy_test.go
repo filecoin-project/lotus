@@ -28,7 +28,9 @@ func TestDeployment(t *testing.T) {
 	// He who writes the second test, shall do that.
 	// kit.QuietMiningLogs()
 
-	blockTime := 100 * time.Millisecond
+	// reasonable blocktime so that the tx sits in the mpool for a bit during the test.
+	// although this is non-deterministic...
+	blockTime := 1 * time.Second
 	client, _, ens := kit.EnsembleMinimal(
 		t,
 		kit.MockProofs(),
@@ -94,17 +96,21 @@ func TestDeployment(t *testing.T) {
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 	fmt.Println(hash)
 
+	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
+	require.NoError(t, err)
+
+	// require that the hashes are identical
+	// TODO compare more fields
+	require.Equal(t, hash, mpoolTx.Hash)
+
 	changes, err := client.EthGetFilterChanges(ctx, pendingFilter)
 	require.NoError(t, err)
 	require.Len(t, changes.Results, 1)
 	require.Equal(t, hash.String(), changes.Results[0])
 
-	time.Sleep(5 * time.Second)
-
 	var receipt *api.EthTxReceipt
-	for i := 0; i < 10000000000; i++ {
+	for i := 0; i < 20; i++ {
 		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
-		fmt.Println(receipt, err)
 		if err != nil || receipt == nil {
 			time.Sleep(500 * time.Millisecond)
 			continue
