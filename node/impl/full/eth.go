@@ -79,8 +79,6 @@ var (
 	_ EthEventAPI  = *new(api.FullNode)
 )
 
-var EmptyLogsBloom = make([]byte, 256)
-
 // EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
 //
 // # Execution model reconciliation
@@ -659,10 +657,10 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 		// See https://github.com/filecoin-project/ref-fvm/issues/1173
 		from = builtinactors.BurntFundsActorAddr
 		// Send from the filecoin "system" address.
-		//from, err = (api.EthAddress{}).ToFilecoinAddress()
-		//if err != nil {
+		// from, err = (api.EthAddress{}).ToFilecoinAddress()
+		// if err != nil {
 		//	return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
-		//}
+		// }
 	} else {
 		// The from address must be translatable to an f4 address.
 		var err error
