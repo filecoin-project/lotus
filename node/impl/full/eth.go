@@ -79,8 +79,6 @@ var (
 	_ EthEventAPI  = *new(api.FullNode)
 )
 
-var EmptyLogsBloom = make([]byte, 256)
-
 // EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
 //
 // # Execution model reconciliation
@@ -650,16 +648,22 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 }
 
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.Message, error) {
-	var err error
 	var from address.Address
-	if tx.From == nil {
+	if tx.From == nil || *tx.From == (ethtypes.EthAddress{}) {
+		// TODO: We're sending from the "burnt funds" account for now, because we need to
+		// send from an actual account till we deploy an EVM _account_ to this address, not
+		// an empty EVM contract.
+		//
+		// See https://github.com/filecoin-project/ref-fvm/issues/1173
+		from = builtinactors.BurntFundsActorAddr
 		// Send from the filecoin "system" address.
-		from, err = (ethtypes.EthAddress{}).ToFilecoinAddress()
-		if err != nil {
-			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
-		}
+		// from, err = (api.EthAddress{}).ToFilecoinAddress()
+		// if err != nil {
+		//	return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
+		// }
 	} else {
 		// The from address must be translatable to an f4 address.
+		var err error
 		from, err = tx.From.ToFilecoinAddress()
 		if err != nil {
 			return nil, fmt.Errorf("failed to translate sender address (%s): %w", tx.From.String(), err)
@@ -1637,8 +1641,8 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		BlockHash:        blockHash,
 		BlockNumber:      blockNumber,
 		Type:             ethtypes.EthUint64(2),
-		LogsBloom:        EmptyLogsBloom,
-		Logs:             make([]ethtypes.EthLog, 0),
+		Logs:             []ethtypes.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
+		LogsBloom:        ethtypes.EmptyEthBloom[:],
 	}
 
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
@@ -1662,7 +1666,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		// TODO return a dummy non-zero bloom to signal that there are logs
 		//  need to figure out how worth it is to populate with a real bloom
 		//  should be feasible here since we are iterating over the logs anyway
-		receipt.LogsBloom = make([]byte, 256)
 		receipt.LogsBloom[255] = 0x01
 
 		receipt.Logs = make([]ethtypes.EthLog, 0, len(events))
