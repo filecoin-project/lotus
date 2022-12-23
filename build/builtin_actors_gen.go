@@ -237,7 +237,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "devnet-wasm",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzacedvzcxkoibhejtjvst3klmpar32livkfykq2nworqyv3hmrt3dnxi"),
+	ManifestCid: MustParseCid("bafy2bzacebc36b2i23pr2rkdxusxjtqlchoqxbmbtu4gxtjzmn5zopvb3tat6"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzaceboq6fccqnqyz4u5nefdg4ibqv543w32r35ohawnrsvr6426p6iti"),
 		"cron":             MustParseCid("bafk2bzacebaxieb6h4f666x36gj5fhqdstib7iqg26sxjrbpfqvjh3whbz4wc"),
@@ -245,7 +245,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"eam":              MustParseCid("bafk2bzacedg6jdkq4navaloocu5xn2ccawkbsaen7nea4qt2f5bx7hsx7legc"),
 		"embryo":           MustParseCid("bafk2bzacecrloi3xb6bwxsiwtl2chxlgisv5742nkcksahcax3fkrso5wiqrk"),
 		"ethaccount":       MustParseCid("bafk2bzaceco7ybkncres3pxbtobvj4vax34ixgxsm4ny6ffkmyvisttp6ban6"),
-		"evm":              MustParseCid("bafk2bzacealogvmixlpwys4yaqyugq5g5fase3fxoop6ye6ytnvl7t6hszr4o"),
+		"evm":              MustParseCid("bafk2bzaceckjelq3cprldg5m3emslg5oqhtcc74hzu4s77rmtzcww3pocpae2"),
 		"init":             MustParseCid("bafk2bzaceaj6rsvyzgcwhge5w2odgwwm2w24wj66e3254szlbi64micbhp7ss"),
 		"multisig":         MustParseCid("bafk2bzaced4m56freiof73gfpkqzdltjjido7v5u7wyv4ghtj6dsxv7oq2vcs"),
 		"paymentchannel":   MustParseCid("bafk2bzacedxwlhukvemf3pxrycijgfx7k5nf2xnxa7ukqcejseci7zri2b7ts"),
@@ -465,7 +465,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "wallaby",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzacechtpzlq73tho3je7hnedeut6i6hynb63kk4v24dum32virbc4pye"),
+	ManifestCid: MustParseCid("bafy2bzacebv5xzoysr5isxg4nlctwfc7nidjitm6v574stw2msbedbgrqbock"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacec63ehicn6roe4hwtktiqjdpn7buw4vewix2fshvk7ruk6bg54bga"),
 		"cron":             MustParseCid("bafk2bzacedgz5736vxapicnbdrk5yrbgwbjizhr5hjglxwkb6sonqpoyaid4u"),
@@ -473,7 +473,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 		"eam":              MustParseCid("bafk2bzaceammyagwzliynju7dzsn7zucxtwkstsmldcwyvbvbnhrftntfrwdi"),
 		"embryo":           MustParseCid("bafk2bzacecrloi3xb6bwxsiwtl2chxlgisv5742nkcksahcax3fkrso5wiqrk"),
 		"ethaccount":       MustParseCid("bafk2bzacedrk5se3gwabwxsxyogz4s3iqa3ujbxfrryvabwys2lrneouuakpg"),
-		"evm":              MustParseCid("bafk2bzaced45hvuklmyyrkr45o4m2xjawxxon3mr5ox2fx7u6524abcygjvre"),
+		"evm":              MustParseCid("bafk2bzacecuqugg64n2n5y3edusurstuzzpop4qoxezgoh6nt2ah5yyg2kfeq"),
 		"init":             MustParseCid("bafk2bzaceaaonvp6qwru3zhvffjrs72hzgzag7vlngmrz7rghdwsmdll4blsk"),
 		"multisig":         MustParseCid("bafk2bzacedw73tmdl7stykyycxmhsb3iom7notxmx24b2647g3vwmrg2brgqu"),
 		"paymentchannel":   MustParseCid("bafk2bzaced5frgcp6bszhis5kxtm6uko5jlgbuzyczqsj7uavovkayrbizg4s"),
