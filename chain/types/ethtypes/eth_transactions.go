@@ -29,9 +29,9 @@ type EthTx struct {
 	ChainID              EthUint64   `json:"chainId"`
 	Nonce                EthUint64   `json:"nonce"`
 	Hash                 EthHash     `json:"hash"`
-	BlockHash            EthHash     `json:"blockHash"`
-	BlockNumber          EthUint64   `json:"blockNumber"`
-	TransactionIndex     EthUint64   `json:"transactionIndex"`
+	BlockHash            *EthHash    `json:"blockHash"`
+	BlockNumber          *EthUint64  `json:"blockNumber"`
+	TransactionIndex     *EthUint64  `json:"transactionIndex"`
 	From                 EthAddress  `json:"from"`
 	To                   *EthAddress `json:"to"`
 	Value                EthBigInt   `json:"value"`

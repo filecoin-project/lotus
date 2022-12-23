@@ -1565,22 +1565,43 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		return ethtypes.EthTx{}, err
 	}
 
+	var (
+		bn = ethtypes.EthUint64(parentTs.Height())
+		ti = ethtypes.EthUint64(txIdx)
+	)
+
 	tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
 	tx.Hash = txHash
-	tx.BlockHash = blkHash
-	tx.BlockNumber = ethtypes.EthUint64(parentTs.Height())
-	tx.TransactionIndex = ethtypes.EthUint64(txIdx)
+	tx.BlockHash = &blkHash
+	tx.BlockNumber = &bn
+	tx.TransactionIndex = &ti
 	return tx, nil
 }
 
 func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, replay *api.InvocResult, events []types.Event, sa StateAPI) (api.EthTxReceipt, error) {
+	var (
+		transactionIndex ethtypes.EthUint64
+		blockHash        ethtypes.EthHash
+		blockNumber      ethtypes.EthUint64
+	)
+
+	if tx.TransactionIndex != nil {
+		transactionIndex = *tx.TransactionIndex
+	}
+	if tx.BlockHash != nil {
+		blockHash = *tx.BlockHash
+	}
+	if tx.BlockNumber != nil {
+		blockNumber = *tx.BlockNumber
+	}
+
 	receipt := api.EthTxReceipt{
 		TransactionHash:  tx.Hash,
-		TransactionIndex: tx.TransactionIndex,
-		BlockHash:        tx.BlockHash,
-		BlockNumber:      tx.BlockNumber,
 		From:             tx.From,
 		To:               tx.To,
+		TransactionIndex: transactionIndex,
+		BlockHash:        blockHash,
+		BlockNumber:      blockNumber,
 		Type:             ethtypes.EthUint64(2),
 		LogsBloom:        []byte{0},
 	}
@@ -1614,10 +1635,10 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			l := ethtypes.EthLog{
 				Removed:          false,
 				LogIndex:         ethtypes.EthUint64(i),
-				TransactionIndex: tx.TransactionIndex,
 				TransactionHash:  tx.Hash,
-				BlockHash:        tx.BlockHash,
-				BlockNumber:      tx.BlockNumber,
+				TransactionIndex: transactionIndex,
+				BlockHash:        blockHash,
+				BlockNumber:      blockNumber,
 			}
 
 			for _, entry := range evt.Entries {

@@ -100,8 +100,12 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 
 	// require that the hashes are identical
-	// TODO compare more fields
 	require.Equal(t, hash, mpoolTx.Hash)
+
+	// these fields should be nil because the tx hasn't landed on chain.
+	require.Nil(t, mpoolTx.BlockNumber)
+	require.Nil(t, mpoolTx.BlockHash)
+	require.Nil(t, mpoolTx.TransactionIndex)
 
 	changes, err := client.EthGetFilterChanges(ctx, pendingFilter)
 	require.NoError(t, err)
@@ -122,6 +126,19 @@ func TestDeployment(t *testing.T) {
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	// Verify that the chain transaction now has new fields set.
+	chainTx, err := client.EthGetTransactionByHash(ctx, &hash)
+	require.NoError(t, err)
+
+	// require that the hashes are identical
+	require.Equal(t, hash, chainTx.Hash)
+	require.NotNil(t, chainTx.BlockNumber)
+	require.Greater(t, uint64(*chainTx.BlockNumber), uint64(0))
+	require.NotNil(t, chainTx.BlockHash)
+	require.NotEmpty(t, *chainTx.BlockHash)
+	require.NotNil(t, chainTx.TransactionIndex)
+	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
 
 	// Verify that the deployer is now an account.
 	client.AssertActorType(ctx, deployer, manifest.EthAccountKey)
