@@ -12,16 +12,6 @@ executors:
   ubuntu:
     docker:
       - image: ubuntu:20.04
-  packer:
-    description: |
-      The HashiCorp provided Packer container
-    parameters:
-      packer-version:
-        type: string
-        default: "1.8"
-    docker:
-      - image: hashicorp/packer:<< parameters.packer-version >>
-
 
 commands:
   prepare:
@@ -109,25 +99,6 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
-  packer_build:
-    description: "Run a packer build"
-    parameters:
-      template:
-        description: |
-          The name of the packer template file
-        type: string
-        default: packer.json
-      args:
-        description: |
-          Arguments to pass to the packer build command
-        type: string
-        default: ""
-
-    steps:
-      - run:
-          name: "Run a packer build"
-          command: packer build << parameters.args >> << parameters.template >>
-          no_output_timeout: 1h
 
 jobs:
   mod-tidy-check:
@@ -640,15 +611,6 @@ jobs:
                       image: filecoin/<<parameters.image>>
                       extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
 
-  publish-packer-snap:
-    description: build packer image with snap. mainnet only.
-    executor:
-      name: packer
-    steps:
-      - checkout
-      - packer_build:
-          template: tools/packer/lotus-snap.pkr.hcl
-
 workflows:
   version: 2.1
   ci:
@@ -903,13 +865,3 @@ workflows:
           network: [[.]]
           push: true
       [[- end]]
-  biweekly:
-    triggers:
-      - schedule:
-          cron: "0 0 1,15 * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - publish-packer-snap
