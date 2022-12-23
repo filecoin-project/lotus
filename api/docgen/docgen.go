@@ -376,8 +376,10 @@ func init() {
 	addExample(ethint)
 	addExample(&ethint)
 	ethaddr, _ := ethtypes.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	addExample(ethaddr)
 	addExample(&ethaddr)
 	ethhash, _ := ethtypes.NewEthHashFromCid(c)
+	addExample(ethhash)
 	addExample(&ethhash)
 
 	ethFeeHistoryReward := [][]ethtypes.EthBigInt{}
@@ -468,7 +470,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
-			// ExampleValues[t] = es
+			ExampleValues[t] = es
 			return es
 		}
 	case reflect.Interface:
