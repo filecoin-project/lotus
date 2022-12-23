@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/x"
 	apix "github.com/filecoin-project/lotus/x/api"
 )
@@ -150,6 +151,7 @@ var runCmd = &cli.Command{
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi, cfg.Subsystems),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
+			node.Override(new(paths.SectorIndex), x.NewSectorIndex),
 			node.Base(),
 			node.Repo(r),
 

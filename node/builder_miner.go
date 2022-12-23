@@ -39,7 +39,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
-	"github.com/filecoin-project/lotus/x"
 )
 
 var MinerNode = Options(
@@ -128,7 +127,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		If(cfg.Subsystems.EnableSectorStorage,
 			// Sector storage
 			Override(new(*paths.Index), paths.NewIndex),
-			Override(new(paths.SectorIndex), x.NewSectorIndex),
+			Override(new(paths.SectorIndex), From(new(*paths.Index))),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
