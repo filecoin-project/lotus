@@ -104,6 +104,10 @@ var EmptyLogsBloom = make([]byte, 256)
 //   - eth_getTransactionByHash returns the inclusion tipset of a message, but
 //     only after it has executed.
 //   - eth_getTransactionReceipt ditto.
+//
+// "Latest executed epoch" refers to the tipset that this node currently
+// accepts as the best parent tipset, based on the blocks it is accumulating
+// within the HEAD tipset.
 type EthModule struct {
 	fx.In
 
