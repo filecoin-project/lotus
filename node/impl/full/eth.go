@@ -81,9 +81,29 @@ var (
 
 var EmptyLogsBloom = make([]byte, 256)
 
-// EthModule provides a default implementation of EthModuleAPI.
-// It can be swapped out with another implementation through Dependency
-// Injection (for example with a thin RPC client).
+// EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
+//
+// # Execution model reconciliation
+//
+// Ethereum relies on an immediate block-based execution model. The block that includes
+// a transaction is also the block that executes it. Each block specifies the state root
+// resulting from executing all transactions within it (output state).
+//
+// In Filecoin, at every epoch there is an unknown number of round winners all of whom are
+// entitled to publish a block. Blocks are collected into a tipset. A tipset is committed
+// only when the subsequent tipset is built on it (i.e. it becomes a parent). Block producers
+// execute the parent tipset and specify the resulting state root in the block being produced.
+// In other words, contrary to Ethereum, each block specifies the input state root.
+//
+// Ethereum clients expect transactions returned via eth_getBlock* to have a receipt
+// (due to immediate execution). For this reason:
+//
+//   - eth_blockNumber returns the latest executed epoch (head - 1)
+//   - The 'latest' block refers to the latest executed epoch (head - 1)
+//   - The 'pending' block refers to the current speculative tipset (head)
+//   - eth_getTransactionByHash returns the inclusion tipset of a message, but
+//     only after it has executed.
+//   - eth_getTransactionReceipt ditto.
 type EthModule struct {
 	fx.In
 
