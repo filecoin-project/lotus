@@ -4,15 +4,14 @@ import (
 	"errors"
 	"time"
 
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
 	provider "github.com/filecoin-project/index-provider"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -40,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
+	"github.com/filecoin-project/lotus/x"
 )
 
 var MinerNode = Options(
@@ -128,7 +128,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		If(cfg.Subsystems.EnableSectorStorage,
 			// Sector storage
 			Override(new(*paths.Index), paths.NewIndex),
-			Override(new(paths.SectorIndex), From(new(*paths.Index))),
+			Override(new(paths.SectorIndex), x.NewSectorIndex),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
