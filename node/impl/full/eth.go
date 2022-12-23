@@ -1480,7 +1480,13 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 		r, s, v = ethtypes.EthBigIntZero, ethtypes.EthBigIntZero, ethtypes.EthBigIntZero
 	}
 
+	hash, err := ethtypes.NewEthHashFromCid(smsg.Cid())
+	if err != nil {
+		return ethtypes.EthTx{}, err
+	}
+
 	tx := ethtypes.EthTx{
+		Hash:                 hash,
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		From:                 fromEthAddr,
 		To:                   toAddr,
