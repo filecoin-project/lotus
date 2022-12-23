@@ -147,17 +147,24 @@ func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, e
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *EthModule) EthBlockNumber(context.Context) (ethtypes.EthUint64, error) {
+func (a *EthModule) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
 	// eth_blockNumber needs to return the height of the latest committed tipset.
 	// Ethereum clients expect all transactions included in this block to have execution outputs.
 	// This is the parent of the head tipset. The head tipset is speculative, has not been
 	// recognized by the network, and its messages are only included, not executed.
 	// See https://github.com/filecoin-project/ref-fvm/issues/1135.
-	height := a.Chain.GetHeaviestTipSet().Height() - 1
-	if height < 0 {
-		height = 0 // genesis is the first ever committed tipset.
+	heaviest := a.Chain.GetHeaviestTipSet()
+	if height := heaviest.Height(); height == 0 {
+		// we're at genesis.
+		return ethtypes.EthUint64(height), nil
 	}
-	return ethtypes.EthUint64(height), nil
+	// First non-null parent.
+	effectiveParent := heaviest.Parents()
+	parent, err := a.Chain.GetTipSetFromKey(ctx, effectiveParent)
+	if err != nil {
+		return 0, err
+	}
+	return ethtypes.EthUint64(parent.Height()), nil
 }
 
 func (a *EthModule) EthAccounts(context.Context) ([]ethtypes.EthAddress, error) {
