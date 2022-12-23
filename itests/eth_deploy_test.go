@@ -123,6 +123,11 @@ func TestDeployment(t *testing.T) {
 	}
 	require.NoError(t, err)
 	require.NotNil(t, receipt)
+	// logs must be an empty array, not a nil value, to avoid tooling compatibility issues
+	require.Empty(t, receipt.Logs)
+	// a correctly formed logs bloom, albeit empty, has 256 zeroes
+	require.Len(t, receipt.LogsBloom, 256)
+	require.Equal(t, ethtypes.EthBytes(make([]byte, 256)), receipt.LogsBloom)
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
