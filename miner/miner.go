@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"sync"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/proof"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/x"
 )
 
 var log = logging.Logger("miner")
@@ -281,8 +282,11 @@ minerLoop:
 			continue
 		}
 
-		b, err := m.mineOne(ctx, base)
+		info := x.NewMineInfo()
+		b, err := m.mineOne(ctx, base, info)
 		if err != nil {
+			info.Message = err.Error()
+			x.PublishMine(info)
 			log.Errorf("mining block failed: %+v", err)
 			if !m.niceSleep(time.Second) {
 				continue minerLoop
@@ -299,6 +303,7 @@ minerLoop:
 		onDone(b != nil, h, nil)
 
 		if b != nil {
+			info.BlockCid = b.Cid().String()
 			m.journal.RecordEvent(m.evtTypes[evtTypeBlockMined], func() interface{} {
 				return map[string]interface{}{
 					"parents":   base.TipSet.Cids(),
@@ -338,10 +343,12 @@ minerLoop:
 			}
 
 			m.minedBlockHeights.Add(blkKey, true)
-
+			info.SubmitTime = time.Now()
 			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
+				info.Message = err.Error()
 				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
+			x.PublishMine(info)
 		} else {
 			base.NullRounds++
 
@@ -420,7 +427,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 // This method does the following:
 //
 //	1.
-func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *types.BlockMsg, err error) {
+func (m *Miner) mineOne(ctx context.Context, base *MiningBase, info *x.MineInfo) (minedBlock *types.BlockMsg, err error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()))
 	tStart := build.Clock.Now()
 
@@ -469,7 +476,21 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			"isWinner", (winner != nil),
 			"error", err,
 		}
-
+		info.BaseEpoch = int64(base.TipSet.Height())
+		info.CurrentEpoch = int64(round)
+		info.BeaconEpoch = int64(rbase.Round)
+		info.Beacon = hex.EncodeToString(rbase.Data)
+		info.Eligible = mbi.EligibleForMining
+		info.Late = isLate
+		info.TotalPower = mbi.NetworkPower.String()
+		info.MinerPower = mbi.MinerPower.String()
+		info.MsgCount = 0 //todo...
+		if winner != nil {
+			info.WinCount = int32(winner.WinCount)
+		}
+		if minedBlock != nil {
+			info.MsgCount = int32(len(minedBlock.BlsMessages) + len(minedBlock.SecpkMessages))
+		}
 		if err != nil {
 			log.Errorw("completed mineOne", logStruct...)
 		} else if isLate || (hasMinPower && !mbi.EligibleForMining) {
