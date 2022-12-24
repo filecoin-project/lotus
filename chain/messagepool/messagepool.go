@@ -3,7 +3,6 @@ package messagepool
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -285,7 +284,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
-		//ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
+		// ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
 
 	if !has && strict && len(ms.msgs) >= maxActorPendingMessages {
@@ -301,7 +300,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	ms.nextNonce = nextNonce
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
 
 	return !has, nil
 }
@@ -321,7 +320,7 @@ func (ms *msgSet) rm(nonce uint64, applied bool) {
 	}
 
 	ms.requiredFunds.Sub(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
 	delete(ms.msgs, nonce)
 
 	// adjust next nonce
@@ -347,7 +346,7 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
 	m, has := ms.msgs[nonce]
 	if has {
 		requiredFunds.Sub(requiredFunds, m.Message.RequiredFunds().Int)
-		//requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
+		// requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
 	}
 
 	return types.BigInt{Int: requiredFunds}
@@ -771,22 +770,10 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 		if len(m.Signature.Data) != ffi.SignatureBytes {
 			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
-
 		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
-
 		return string(hashCache[:]), nil
-	case crypto.SigTypeSecp256k1:
+	case crypto.SigTypeSecp256k1, crypto.SigTypeDelegated:
 		return string(m.Cid().Bytes()), nil
-	case crypto.SigTypeDelegated:
-		txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
-		if err != nil {
-			return "", err
-		}
-		msg, err := txArgs.HashedOriginalRlpMsg()
-		if err != nil {
-			return "", err
-		}
-		return hex.EncodeToString(msg), nil
 	default:
 		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
 	}
@@ -809,7 +796,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		if err != nil {
 			return xerrors.Errorf("failed to convert to eth tx args: %w", err)
 		}
-		msg, err := txArgs.OriginalRlpMsg()
+		msg, err := txArgs.ToRlpUnsignedMsg()
 		if err != nil {
 			return err
 		}
@@ -837,7 +824,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 	}
 
 	// add Value for soft failure check
-	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
+	// requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
 	mset, ok, err := mp.getPendingMset(ctx, m.Message.From)
 	if err != nil {

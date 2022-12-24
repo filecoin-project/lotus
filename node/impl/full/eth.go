@@ -79,9 +79,33 @@ var (
 	_ EthEventAPI  = *new(api.FullNode)
 )
 
-// EthModule provides a default implementation of EthModuleAPI.
-// It can be swapped out with another implementation through Dependency
-// Injection (for example with a thin RPC client).
+// EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
+//
+// # Execution model reconciliation
+//
+// Ethereum relies on an immediate block-based execution model. The block that includes
+// a transaction is also the block that executes it. Each block specifies the state root
+// resulting from executing all transactions within it (output state).
+//
+// In Filecoin, at every epoch there is an unknown number of round winners all of whom are
+// entitled to publish a block. Blocks are collected into a tipset. A tipset is committed
+// only when the subsequent tipset is built on it (i.e. it becomes a parent). Block producers
+// execute the parent tipset and specify the resulting state root in the block being produced.
+// In other words, contrary to Ethereum, each block specifies the input state root.
+//
+// Ethereum clients expect transactions returned via eth_getBlock* to have a receipt
+// (due to immediate execution). For this reason:
+//
+//   - eth_blockNumber returns the latest executed epoch (head - 1)
+//   - The 'latest' block refers to the latest executed epoch (head - 1)
+//   - The 'pending' block refers to the current speculative tipset (head)
+//   - eth_getTransactionByHash returns the inclusion tipset of a message, but
+//     only after it has executed.
+//   - eth_getTransactionReceipt ditto.
+//
+// "Latest executed epoch" refers to the tipset that this node currently
+// accepts as the best parent tipset, based on the blocks it is accumulating
+// within the HEAD tipset.
 type EthModule struct {
 	fx.In
 
@@ -121,17 +145,24 @@ func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, e
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
 
-func (a *EthModule) EthBlockNumber(context.Context) (ethtypes.EthUint64, error) {
+func (a *EthModule) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
 	// eth_blockNumber needs to return the height of the latest committed tipset.
 	// Ethereum clients expect all transactions included in this block to have execution outputs.
 	// This is the parent of the head tipset. The head tipset is speculative, has not been
 	// recognized by the network, and its messages are only included, not executed.
 	// See https://github.com/filecoin-project/ref-fvm/issues/1135.
-	height := a.Chain.GetHeaviestTipSet().Height() - 1
-	if height < 0 {
-		height = 0 // genesis is the first ever committed tipset.
+	heaviest := a.Chain.GetHeaviestTipSet()
+	if height := heaviest.Height(); height == 0 {
+		// we're at genesis.
+		return ethtypes.EthUint64(height), nil
 	}
-	return ethtypes.EthUint64(height), nil
+	// First non-null parent.
+	effectiveParent := heaviest.Parents()
+	parent, err := a.Chain.GetTipSetFromKey(ctx, effectiveParent)
+	if err != nil {
+		return 0, err
+	}
+	return ethtypes.EthUint64(parent.Height()), nil
 }
 
 func (a *EthModule) EthAccounts(context.Context) ([]ethtypes.EthAddress, error) {
@@ -228,7 +259,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, cid, api.LookbackNoLimit, true)
 	if err == nil {
-		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.ChainAPI, a.StateAPI)
+		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 		if err == nil {
 			return &tx, nil
 		}
@@ -237,19 +268,22 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	// if not found, try to get it from the mempool
 	pending, err := a.MpoolAPI.MpoolPending(ctx, types.EmptyTSK)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get pending txs from mpool: %v", err)
+		// inability to fetch mpool pending transactions is an internal node error
+		// that needs to be reported as-is
+		return nil, fmt.Errorf("cannot get pending txs from mpool: %s", err)
 	}
 
 	for _, p := range pending {
 		if p.Cid() == cid {
 			tx, err := newEthTxFromFilecoinMessage(ctx, p, a.StateAPI)
 			if err != nil {
-				return nil, fmt.Errorf("cannot get parse message into tx: %v", err)
+				return nil, fmt.Errorf("could not convert Filecoin message into tx: %s", err)
 			}
 			return &tx, nil
 		}
 	}
-	return nil, fmt.Errorf("cannot find cid %v from the mpool", cid)
+	// Ethereum clients expect an empty response when the message was not found
+	return nil, nil
 }
 
 func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam string) (ethtypes.EthUint64, error) {
@@ -278,7 +312,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 		return nil, nil
 	}
 
-	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.ChainAPI, a.StateAPI)
+	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 	if err != nil {
 		return nil, nil
 	}
@@ -623,10 +657,10 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 		// See https://github.com/filecoin-project/ref-fvm/issues/1173
 		from = builtinactors.BurntFundsActorAddr
 		// Send from the filecoin "system" address.
-		//from, err = (api.EthAddress{}).ToFilecoinAddress()
-		//if err != nil {
+		// from, err = (api.EthAddress{}).ToFilecoinAddress()
+		// if err != nil {
 		//	return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
-		//}
+		// }
 	} else {
 		// The from address must be translatable to an f4 address.
 		var err error
@@ -1370,7 +1404,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		gasUsed += msgLookup.Receipt.GasUsed
 
 		if fullTxInfo {
-			tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, cs, ca, sa)
+			tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, cs, sa)
 			if err != nil {
 				return ethtypes.EthBlock{}, nil
 			}
@@ -1483,7 +1517,14 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 		r, s, v = ethtypes.EthBigIntZero, ethtypes.EthBigIntZero, ethtypes.EthBigIntZero
 	}
 
+	hash, err := ethtypes.NewEthHashFromCid(smsg.Cid())
+	if err != nil {
+		return ethtypes.EthTx{}, err
+	}
+
 	tx := ethtypes.EthTx{
+		Hash:                 hash,
+		Nonce:                ethtypes.EthUint64(smsg.Message.Nonce),
 		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
 		From:                 fromEthAddr,
 		To:                   toAddr,
@@ -1504,7 +1545,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 // newEthTxFromFilecoinMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
 // into the function, it looksup the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
 // function
-func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, ca ChainAPI, sa StateAPI) (ethtypes.EthTx, error) {
+func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, sa StateAPI) (ethtypes.EthTx, error) {
 	if msgLookup == nil {
 		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
 	}
@@ -1539,6 +1580,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		for i, msg := range msgs {
 			if msg.Cid() == msgLookup.Message {
 				txIdx = i
+				break
 			}
 		}
 		if txIdx < 0 {
@@ -1561,22 +1603,43 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		return ethtypes.EthTx{}, err
 	}
 
+	var (
+		bn = ethtypes.EthUint64(parentTs.Height())
+		ti = ethtypes.EthUint64(txIdx)
+	)
+
 	tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
 	tx.Hash = txHash
-	tx.BlockHash = blkHash
-	tx.BlockNumber = ethtypes.EthUint64(parentTs.Height())
-	tx.TransactionIndex = ethtypes.EthUint64(txIdx)
+	tx.BlockHash = &blkHash
+	tx.BlockNumber = &bn
+	tx.TransactionIndex = &ti
 	return tx, nil
 }
 
 func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, replay *api.InvocResult, events []types.Event, sa StateAPI) (api.EthTxReceipt, error) {
+	var (
+		transactionIndex ethtypes.EthUint64
+		blockHash        ethtypes.EthHash
+		blockNumber      ethtypes.EthUint64
+	)
+
+	if tx.TransactionIndex != nil {
+		transactionIndex = *tx.TransactionIndex
+	}
+	if tx.BlockHash != nil {
+		blockHash = *tx.BlockHash
+	}
+	if tx.BlockNumber != nil {
+		blockNumber = *tx.BlockNumber
+	}
+
 	receipt := api.EthTxReceipt{
 		TransactionHash:  tx.Hash,
-		TransactionIndex: tx.TransactionIndex,
-		BlockHash:        tx.BlockHash,
-		BlockNumber:      tx.BlockNumber,
 		From:             tx.From,
 		To:               tx.To,
+		TransactionIndex: transactionIndex,
+		BlockHash:        blockHash,
+		BlockNumber:      blockNumber,
 		Type:             ethtypes.EthUint64(2),
 		Logs:             []ethtypes.EthLog{}, // empty log array is compulsory when no logs, or libraries like ethers.js break
 		LogsBloom:        ethtypes.EmptyEthBloom[:],
@@ -1610,10 +1673,10 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			l := ethtypes.EthLog{
 				Removed:          false,
 				LogIndex:         ethtypes.EthUint64(i),
-				TransactionIndex: tx.TransactionIndex,
 				TransactionHash:  tx.Hash,
-				BlockHash:        tx.BlockHash,
-				BlockNumber:      tx.BlockNumber,
+				TransactionIndex: transactionIndex,
+				BlockHash:        blockHash,
+				BlockNumber:      blockNumber,
 			}
 
 			for _, entry := range evt.Entries {

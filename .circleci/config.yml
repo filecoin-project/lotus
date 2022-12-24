@@ -770,9 +770,19 @@ workflows:
           target: "./itests/eth_account_abstraction_test.go"
       
       - test:
+          name: test-itest-eth_deploy
+          suite: itest-eth_deploy
+          target: "./itests/eth_deploy_test.go"
+      
+      - test:
           name: test-itest-eth_filter
           suite: itest-eth_filter
           target: "./itests/eth_filter_test.go"
+      
+      - test:
+          name: test-itest-fevm_address
+          suite: itest-fevm_address
+          target: "./itests/fevm_address_test.go"
       
       - test:
           name: test-itest-fevm_events
@@ -818,6 +828,11 @@ workflows:
           name: test-itest-migration_nv17
           suite: itest-migration_nv17
           target: "./itests/migration_nv17_test.go"
+      
+      - test:
+          name: test-itest-migration_nv18
+          suite: itest-migration_nv18
+          target: "./itests/migration_nv18_test.go"
       
       - test:
           name: test-itest-mpool_msg_uuid
