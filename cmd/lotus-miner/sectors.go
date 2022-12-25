@@ -813,6 +813,10 @@ var sectorsRenewCmd = &cli.Command{
 			Usage: "use up to this amount of FIL for one message. pass this flag to avoid message congestion.",
 			Value: "0",
 		},
+		&cli.Int64Flag{
+			Name:  "max-sectors",
+			Usage: "The maximum number of sectors contained in each message message",
+		},
 		&cli.BoolFlag{
 			Name:  "really-do-it",
 			Usage: "pass this flag to really renew sectors, otherwise will only print out json representation of parameters",
@@ -1020,10 +1024,16 @@ var sectorsRenewCmd = &cli.Command{
 		for l, exts := range extensions {
 			for newExp, numbers := range exts {
 				scount += len(numbers)
-				addrSectors, err := policy.GetAddressedSectorsMax(nv)
-				if err != nil {
-					return err
+				var addrSectors int
+				if cctx.Int("max-sectors") == 0 {
+					addrSectors, err = policy.GetAddressedSectorsMax(nv)
+					if err != nil {
+						return err
+					}
+				} else {
+					addrSectors = cctx.Int("max-sectors")
 				}
+
 				declMax, err := policy.GetDeclarationsMax(nv)
 				if err != nil {
 					return err
