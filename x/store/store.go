@@ -32,6 +32,9 @@ func WorkerID() (uuid.UUID, error) {
 	} else if id, err = uuid.ParseBytes(data); err != nil {
 		return nop, err
 	}
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
 	if err = store.Set(key, []byte(id.String())); err != nil {
 		return nop, err
 	}
