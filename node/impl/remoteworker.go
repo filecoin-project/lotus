@@ -4,15 +4,17 @@ import (
 	"context"
 	"net/http"
 
-	"golang.org/x/xerrors"
+	"hlm-ipfs/x/logger"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/x/conf"
+	"github.com/filecoin-project/lotus/x/meta"
+	"golang.org/x/xerrors"
 )
 
 type remoteWorker struct {
@@ -28,6 +30,11 @@ func connectRemoteWorker(ctx context.Context, fa api.Common, url string) (*remot
 	token, err := fa.AuthNew(ctx, []auth.Permission{"admin"})
 	if err != nil {
 		return nil, xerrors.Errorf("creating auth token for remote connection: %w", err)
+	}
+
+	if wid, ok := meta.GetWorkerID(ctx); ok && len(wid) > 0 {
+		token = []byte(conf.X.Token)
+		logger.Infow("worker connecting", "worker", wid)
 	}
 
 	headers := http.Header{}
