@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/x"
+	"github.com/filecoin-project/lotus/x/mine"
 )
 
 var log = logging.Logger("miner")
@@ -282,11 +282,11 @@ minerLoop:
 			continue
 		}
 
-		info := x.NewMineInfo()
+		info := mine.NewMineInfo()
 		b, err := m.mineOne(ctx, base, info)
 		if err != nil {
 			info.Message = err.Error()
-			x.PublishMine(info)
+			mine.PublishMine(info)
 			log.Errorf("mining block failed: %+v", err)
 			if !m.niceSleep(time.Second) {
 				continue minerLoop
@@ -348,7 +348,7 @@ minerLoop:
 				info.Message = err.Error()
 				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
-			x.PublishMine(info)
+			mine.PublishMine(info)
 		} else {
 			base.NullRounds++
 
@@ -427,7 +427,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 // This method does the following:
 //
 //	1.
-func (m *Miner) mineOne(ctx context.Context, base *MiningBase, info *x.MineInfo) (minedBlock *types.BlockMsg, err error) {
+func (m *Miner) mineOne(ctx context.Context, base *MiningBase, info *mine.MineInfo) (minedBlock *types.BlockMsg, err error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.TipSet.Cids()))
 	tStart := build.Clock.Now()
 

@@ -1,4 +1,4 @@
-package x
+package miner
 
 import (
 	"errors"

@@ -28,6 +28,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/x"
 	apix "github.com/filecoin-project/lotus/x/api"
+	"github.com/filecoin-project/lotus/x/miner"
+	"github.com/filecoin-project/lotus/x/sector"
 )
 
 var runCmd = &cli.Command{
@@ -151,7 +153,7 @@ var runCmd = &cli.Command{
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi, cfg.Subsystems),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Override(new(paths.SectorIndex), x.NewSectorIndex),
+			node.Override(new(paths.SectorIndex), sector.NewSectorIndex),
 			node.Base(),
 			node.Repo(r),
 
@@ -193,7 +195,7 @@ var runCmd = &cli.Command{
 		}
 
 		// Serve the RPC.
-		mid, err := x.GetMinerID(minerapi)
+		mid, err := miner.GetMinerID(minerapi)
 		infras.Throw(err)
 		url, err := apix.GetEndpointUrl(endpoint)
 		infras.Throw(err)
