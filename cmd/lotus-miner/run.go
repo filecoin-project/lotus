@@ -199,9 +199,7 @@ var runCmd = &cli.Command{
 		infras.Throw(err)
 		url, err := apix.GetEndpointUrl(endpoint)
 		infras.Throw(err)
-		if err := x.Start(x.KindMiner, mid, url); err != nil {
-			return err
-		}
+		infras.Throw(x.Start(x.KindMiner, mid, url))
 		rpcStopper, err := node.ServeRPC(handler, "lotus-miner", endpoint)
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
