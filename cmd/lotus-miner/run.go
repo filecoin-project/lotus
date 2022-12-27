@@ -153,7 +153,6 @@ var runCmd = &cli.Command{
 		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi, cfg.Subsystems),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Override(new(paths.SectorIndex), sector.NewSectorIndex),
 			node.Base(),
 			node.Repo(r),
 
@@ -162,6 +161,7 @@ var runCmd = &cli.Command{
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
 				})),
 			node.Override(new(v1api.RawFullNodeAPI), nodeApi),
+			node.Override(new(paths.SectorIndex), sector.NewSectorIndex),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)
