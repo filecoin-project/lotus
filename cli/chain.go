@@ -1554,7 +1554,10 @@ var ChainExecEVMCmd = &cli.Command{
 			return xerrors.Errorf("failed to read contract: %w", err)
 		}
 		if cctx.Bool("hex") {
-			contract, err = hex.DecodeString(string(contract))
+			contractCode := strings.TrimSpace(string(contract))
+			contractCode = strings.TrimPrefix(contractCode, "0x")
+			contractCode = strings.TrimPrefix(contractCode, "0X")
+			contract, err = hex.DecodeString(contractCode)
 			if err != nil {
 				return xerrors.Errorf("failed to decode contract: %w", err)
 			}
@@ -1798,11 +1801,10 @@ var ChainInvokeEVMCmd = &cli.Command{
 				return nil
 
 			})
+			if err != nil {
+				return err
+			}
 		}
-		if err != nil {
-			return err
-		}
-
 		return nil
 	},
 }
