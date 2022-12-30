@@ -75,7 +75,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 				// add by pan
 				var skip = false
 
-				if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 {
+				if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate {
 					i := sh.findWorker(task)
 					if i > -1 {
 						wnd = i
