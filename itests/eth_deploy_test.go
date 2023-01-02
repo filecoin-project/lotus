@@ -3,8 +3,11 @@ package itests
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -144,6 +147,57 @@ func TestDeployment(t *testing.T) {
 	require.NotEmpty(t, *chainTx.BlockHash)
 	require.NotNil(t, chainTx.TransactionIndex)
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
+
+	// verify block information
+	block1, err := client.EthGetBlockByHash(ctx, *chainTx.BlockHash, false)
+	require.Nil(t, err)
+	require.Equal(t, block1.Hash, *chainTx.BlockHash)
+	require.Equal(t, block1.Number, *chainTx.BlockNumber)
+	for _, tx := range block1.Transactions {
+		_, ok := tx.(string)
+		require.True(t, ok)
+	}
+	require.Contains(t, block1.Transactions, hash.String())
+
+	// make sure the block got from EthGetBlockByNumber is the same
+	blkNum := strconv.FormatInt(int64(*chainTx.BlockNumber), 10)
+	block2, err := client.EthGetBlockByNumber(ctx, blkNum, false)
+	require.Nil(t, err)
+	require.True(t, reflect.DeepEqual(block1, block2))
+
+	// should be able to get the block using latest as well
+	block3, err := client.EthGetBlockByNumber(ctx, "latest", false)
+	require.Nil(t, err)
+	require.True(t, reflect.DeepEqual(block2, block3))
+
+	// verify that the block contains full tx objects
+	block4, err := client.EthGetBlockByHash(ctx, *chainTx.BlockHash, true)
+	require.Nil(t, err)
+	require.Equal(t, block4.Hash, *chainTx.BlockHash)
+	require.Equal(t, block4.Number, *chainTx.BlockNumber)
+
+	// the call went through json-rpc and the response was unmarshaled
+	// into map[string]interface{}, so it has to be converted into ethtypes.EthTx
+	var foundTx *ethtypes.EthTx
+	for _, obj := range block4.Transactions {
+		j, err := json.Marshal(obj)
+		require.Nil(t, err)
+
+		var tx ethtypes.EthTx
+		err = json.Unmarshal(j, &tx)
+		require.Nil(t, err)
+
+		if tx.Hash == chainTx.Hash {
+			foundTx = &tx
+		}
+	}
+	require.NotNil(t, foundTx)
+	require.True(t, reflect.DeepEqual(*foundTx, *chainTx))
+
+	// make sure the block got from EthGetBlockByNumber is the same
+	block5, err := client.EthGetBlockByNumber(ctx, blkNum, true)
+	require.Nil(t, err)
+	require.True(t, reflect.DeepEqual(block4, block5))
 
 	// Verify that the deployer is now an account.
 	client.AssertActorType(ctx, deployer, manifest.EthAccountKey)
