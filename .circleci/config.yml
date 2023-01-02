@@ -12,16 +12,6 @@ executors:
   ubuntu:
     docker:
       - image: ubuntu:20.04
-  packer:
-    description: |
-      The HashiCorp provided Packer container
-    parameters:
-      packer-version:
-        type: string
-        default: "1.8"
-    docker:
-      - image: hashicorp/packer:<< parameters.packer-version >>
-
 
 commands:
   prepare:
@@ -109,25 +99,6 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
-  packer_build:
-    description: "Run a packer build"
-    parameters:
-      template:
-        description: |
-          The name of the packer template file
-        type: string
-        default: packer.json
-      args:
-        description: |
-          Arguments to pass to the packer build command
-        type: string
-        default: ""
-
-    steps:
-      - run:
-          name: "Run a packer build"
-          command: packer build << parameters.args >> << parameters.template >>
-          no_output_timeout: 1h
 
 jobs:
   mod-tidy-check:
@@ -596,8 +567,8 @@ jobs:
                       command: |
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>
                         if [[ ! -z $CIRCLE_SHA ]]; then
-                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA}"
-                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA}"
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
                         fi
                         if [[ ! -z $CIRCLE_TAG ]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"
@@ -626,8 +597,8 @@ jobs:
                       command: |
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
                         if [[ ! -z $CIRCLE_SHA ]]; then
-                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA}"-<<parameters.network>>
-                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA}"-<<parameters.network>>
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
+                          docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
                         fi
                         if [[ ! -z $CIRCLE_TAG ]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_TAG}"-<<parameters.network>>
@@ -639,15 +610,6 @@ jobs:
                   - docker/build:
                       image: filecoin/<<parameters.image>>
                       extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
-
-  publish-packer-snap:
-    description: build packer image with snap. mainnet only.
-    executor:
-      name: packer
-    steps:
-      - checkout
-      - packer_build:
-          template: tools/packer/lotus-snap.pkr.hcl
 
 workflows:
   version: 2.1
@@ -1389,13 +1351,3 @@ workflows:
           channel: nightly
           network: debug
           push: true
-  biweekly:
-    triggers:
-      - schedule:
-          cron: "0 0 1,15 * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - publish-packer-snap
