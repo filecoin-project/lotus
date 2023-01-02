@@ -353,6 +353,6 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 
 replace (
-	github.com/filecoin-project/go-jsonrpc => github.com/hlm-filecoin/go-jsonrpc v0.0.0-20221222130651-4013d81644c3
+	github.com/filecoin-project/go-jsonrpc => github.com/hlm-filecoin/go-jsonrpc v0.0.0-20230102134836-c3bbe161b947
 	hlm-ipfs/x => github.com/hlm-ipfs/x v0.0.0-20220822090136-cd7ed4c0f24a
 )

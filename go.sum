@@ -748,8 +748,8 @@ github.com/hashicorp/raft v1.1.1/go.mod h1:vPAJM8Asw6u8LxC3eJCUZmRP/E4QmUGE1R7g7
 github.com/hashicorp/raft-boltdb v0.0.0-20171010151810-6e5ba93211ea h1:xykPFhrBAS2J0VBzVa5e80b5ZtYuNQtgXjN40qBZlD4=
 github.com/hashicorp/raft-boltdb v0.0.0-20171010151810-6e5ba93211ea/go.mod h1:pNv7Wc3ycL6F5oOWn+tPGo2gWD4a5X+yp/ntwdKLjRk=
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
-github.com/hlm-filecoin/go-jsonrpc v0.0.0-20221222130651-4013d81644c3 h1:Eb7SUmzNaa+wrIJrjIfV3FtGyJLaAV77t/wE9ZtLgXs=
-github.com/hlm-filecoin/go-jsonrpc v0.0.0-20221222130651-4013d81644c3/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
+github.com/hlm-filecoin/go-jsonrpc v0.0.0-20230102134836-c3bbe161b947 h1:n3HhEU9HW2Zf3xuUH/AscIUoRM3eNC8fP1Bs/jHpixM=
+github.com/hlm-filecoin/go-jsonrpc v0.0.0-20230102134836-c3bbe161b947/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
 github.com/hlm-ipfs/x v0.0.0-20220822090136-cd7ed4c0f24a h1:eHDF5sHZ5NSwWQS95l69179t7JBFZavo/YGMS22M+zA=
 github.com/hlm-ipfs/x v0.0.0-20220822090136-cd7ed4c0f24a/go.mod h1:jSCnZ4cLc0RC6B+Dtw7kIRWK13LyCbupGs8SQvQ3Q88=
 github.com/hodgesds/perf-utils v0.0.8/go.mod h1:F6TfvsbtrF88i++hou29dTXlI2sfsJv+gRZDtmTJkAs=
