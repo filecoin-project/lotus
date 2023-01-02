@@ -148,6 +148,12 @@ func TestDeployment(t *testing.T) {
 	require.NotNil(t, chainTx.TransactionIndex)
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
 
+	// should return error with non-existent block hash
+	nonExistentHash, err := ethtypes.NewEthHashFromHex("0x62a80aa9262a3e1d3db0706af41c8535257b6275a283174cabf9d108d8946059")
+	require.Nil(t, err)
+	_, err = client.EthGetBlockByHash(ctx, nonExistentHash, false)
+	require.NotNil(t, err)
+
 	// verify block information
 	block1, err := client.EthGetBlockByHash(ctx, *chainTx.BlockHash, false)
 	require.Nil(t, err)
