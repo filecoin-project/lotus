@@ -40,7 +40,7 @@ func PublishMine(info *MineInfo) {
 		return
 	}
 	go func() {
-		if err := conf.KV.LPush("lotus:x:mine:queue", infras.ToJson(info)).Err(); err != nil {
+		if err := conf.KV.LPush("lotus:x:mine:infos", infras.ToJson(info)).Err(); err != nil {
 			logger.Error("publish mine-info error", "err", err)
 		}
 	}()
