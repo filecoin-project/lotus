@@ -72,7 +72,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 
 	client.EVM().SignTransaction(&tx, key.PrivateKey)
 
-	hash = client.EVM().SubmitTransaction(ctx, &tx)
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
 	fmt.Println(hash)
 
 	var receipt *api.EthTxReceipt
