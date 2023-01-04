@@ -727,7 +727,7 @@ type FullNode interface {
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
 
-	// PaychGet gets or creates a payment channel between address pair
+	// PaychGet gets or creates a payment channel between address pair (test change)
 	//  The specified amount will be reserved for use. If there aren't enough non-reserved funds
 	//    available, funds will be added through an on-chain message.
 	//  - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic
