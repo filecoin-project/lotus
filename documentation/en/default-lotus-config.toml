@@ -343,3 +343,11 @@
   #ActorEventDatabasePath = ""
 
 
+[EthTxHashConfig]
+  # EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
+  #
+  # type: bool
+  # env var: LOTUS_ETHTXHASHCONFIG_ENABLEETHHASHTOFILECOINCIDMAPPING
+  #EnableEthHashToFilecoinCidMapping = true
+
+

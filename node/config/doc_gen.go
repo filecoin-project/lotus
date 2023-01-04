@@ -391,6 +391,14 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
+	"EthTxHashConfig": []DocField{
+		{
+			Name: "EnableEthHashToFilecoinCidMapping",
+			Type: "bool",
+
+			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids`,
+		},
+	},
 	"FeeConfig": []DocField{
 		{
 			Name: "DefaultMaxFee",
@@ -433,6 +441,12 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 		{
 			Name: "ActorEvent",
 			Type: "ActorEventConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "EthTxHashConfig",
+			Type: "EthTxHashConfig",
 
 			Comment: ``,
 		},

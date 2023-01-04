@@ -204,7 +204,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI(), kit.EthTxHashLookup())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -289,9 +289,9 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 
 	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		eh, err := ethtypes.EthHashFromCid(m.msg.Cid)
+		eh, err := client.EthGetTransactionHashByCid(ctx, m.msg.Cid)
 		require.NoError(err)
-		received[eh] = m
+		received[*eh] = m
 	}
 	require.Equal(iterations, len(received), "all messages on chain")
 

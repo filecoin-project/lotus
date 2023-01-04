@@ -22,12 +22,13 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client     Client
-	Wallet     Wallet
-	Fees       FeeConfig
-	Chainstore Chainstore
-	Cluster    UserRaftConfig
-	ActorEvent ActorEventConfig
+	Client          Client
+	Wallet          Wallet
+	Fees            FeeConfig
+	Chainstore      Chainstore
+	Cluster         UserRaftConfig
+	ActorEvent      ActorEventConfig
+	EthTxHashConfig EthTxHashConfig
 }
 
 // // Common
@@ -691,4 +692,9 @@ type ActorEventConfig struct {
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
 	// Set upper bound on index size
+}
+
+type EthTxHashConfig struct {
+	// EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
+	EnableEthHashToFilecoinCidMapping bool
 }
