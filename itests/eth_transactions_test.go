@@ -67,7 +67,7 @@ func TestValueTransferValidSignature(t *testing.T) {
 	unsigned, err := tx.ToRlpUnsignedMsg()
 	require.NoError(t, err)
 	// Submit transaction without signing message
-	hash, err := client.EVM().EthSendRawTransaction(ctx, unsigned)
+	_, err = client.EVM().EthSendRawTransaction(ctx, unsigned)
 	require.Error(t, err)
 
 	client.EVM().SignTransaction(&tx, key.PrivateKey)
@@ -163,12 +163,12 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 	unsigned, err := tx.ToRlpUnsignedMsg()
 	require.NoError(t, err)
 	// Submit transaction without signing message
-	hash, err := client.EVM().EthSendRawTransaction(ctx, unsigned)
+	_, err = client.EVM().EthSendRawTransaction(ctx, unsigned)
 	require.Error(t, err)
 
 	client.EVM().SignTransaction(&tx, key.PrivateKey)
 
-	hash = client.EVM().SubmitTransaction(ctx, &tx)
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
 	fmt.Println(hash)
 
 	var receipt *api.EthTxReceipt

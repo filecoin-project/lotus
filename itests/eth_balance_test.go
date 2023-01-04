@@ -28,7 +28,7 @@ func TestEthGetBalanceExistingF4address(t *testing.T) {
 
 	balance, err := client.EthGetBalance(ctx, ethAddr, "latest")
 	require.NoError(t, err)
-	require.Equal(t, balance, ethtypes.EthBigInt{fundAmount.Int})
+	require.Equal(t, balance, ethtypes.EthBigInt{Int: fundAmount.Int})
 }
 
 func TestEthGetBalanceNonExistentF4address(t *testing.T) {
@@ -67,5 +67,5 @@ func TestEthGetBalanceExistentIDMaskedAddr(t *testing.T) {
 
 	ebal, err := client.EthGetBalance(ctx, ethAddr, "latest")
 	require.NoError(t, err)
-	require.Equal(t, ebal, ethtypes.EthBigInt{balance.Int})
+	require.Equal(t, ebal, ethtypes.EthBigInt{Int: balance.Int})
 }
