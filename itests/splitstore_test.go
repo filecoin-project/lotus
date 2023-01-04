@@ -249,6 +249,49 @@ func TestMessagesMode(t *testing.T) {
 	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 }
 
+func TestCompactRetainsTipSetRef(t *testing.T) {
+	ctx := context.Background()
+	// disable sync checking because efficient itests require that the node is out of sync : /
+	splitstore.CheckSyncGap = false
+	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
+	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
+	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	_ = genesisMiner
+	_ = bm
+
+	check, err := full.ChainHead(ctx)
+	require.NoError(t, err)
+	e := check.Height()
+	rawKey, err := check.Key().ToStorageBlock()
+	require.NoError(t, err)
+	checkRef := rawKey.Cid()
+	assert.True(t, ipldExists(ctx, t, checkRef, full)) // reference to tipset key should be persisted before compaction
+
+	// Determine index of compaction that covers tipset "check" and wait for compaction
+	for {
+		bm.Pause()
+		if splitStoreCompacting(ctx, t, full) {
+			bm.Restart()
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
+	}
+	lastCompactionEpoch := splitStoreBaseEpoch(ctx, t, full)
+	garbageCompactionIndex := splitStoreCompactionIndex(ctx, t, full) + 1
+	boundary := lastCompactionEpoch + splitstore.CompactionThreshold - splitstore.CompactionBoundary
+
+	for e > boundary {
+		boundary += splitstore.CompactionThreshold - splitstore.CompactionBoundary
+		garbageCompactionIndex++
+	}
+	bm.Restart()
+
+	// wait for compaction to occur
+	waitForCompaction(ctx, t, garbageCompactionIndex, full)
+	assert.True(t, ipldExists(ctx, t, checkRef, full)) // reference to tipset key should be persisted after compaction
+}
+
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
 	for {
 		if splitStoreCompactionIndex(ctx, t, n) >= cIdx {
@@ -305,6 +348,16 @@ func splitStorePruneIndex(ctx context.Context, t *testing.T, n *kit.TestFullNode
 	pruneIndex, ok := prune.(int64)
 	require.True(t, ok, "prune key on blockstore info wrong type")
 	return pruneIndex
+}
+
+func ipldExists(ctx context.Context, t *testing.T, c cid.Cid, n *kit.TestFullNode) bool {
+	_, err := n.ChainReadObj(ctx, c)
+	if ipld.IsNotFound(err) {
+		return false
+	} else if err != nil {
+		t.Fatalf("ChainReadObj failure on existence check: %s", err)
+	}
+	return true
 }
 
 // Create on chain unreachable garbage for a network to exercise splitstore
