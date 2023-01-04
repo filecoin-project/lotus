@@ -905,13 +905,13 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	walkCnt := new(int64)
 	scanCnt := new(int64)
 
-	// tsRef := func(cids []cid.Cid) (cid.Cid, error) {
-	// 	blk, err := types.NewTipSetKey(cids...).ToStorageBlock()
-	// 	if err != nil {
-	// 		return cid.Undef, err
-	// 	}
-	// 	return blk.Cid(), nil
-	// }
+	tsRef := func(cids []cid.Cid) (cid.Cid, error) {
+		blk, err := types.NewTipSetKey(cids...).ToStorageBlock()
+		if err != nil {
+			return cid.Undef, err
+		}
+		return blk.Cid(), nil
+	}
 
 	stopWalk := func(_ cid.Cid) error { return errStopWalk }
 
@@ -939,13 +939,13 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		}
 
 		// tipset CID references are retained
-		// pRef, err := tsRef(hdr.Parents)
-		// if err != nil {
-		// 	return xerrors.Errorf("error computing cid reference to parent tipset")
-		// }
-		// if err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk); err != nil {
-		// 	return xerrors.Errorf("error walking parent tipset cid reference")
-		// }
+		pRef, err := tsRef(hdr.Parents)
+		if err != nil {
+			return xerrors.Errorf("error computing cid reference to parent tipset")
+		}
+		if err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk); err != nil {
+			return xerrors.Errorf("error walking parent tipset cid reference")
+		}
 
 		// message are retained if within the inclMsgs boundary
 		if hdr.Height >= inclMsgs && hdr.Height > 0 {
@@ -998,13 +998,13 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	}
 
 	// retain ref to chain head
-	// hRef, err := tsRef(ts.Cids())
-	// if err != nil {
-	// 	return xerrors.Errorf("error computing cid reference to parent tipset")
-	// }
-	// if err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk); err != nil {
-	// 	return xerrors.Errorf("error walking parent tipset cid reference")
-	// }
+	hRef, err := tsRef(ts.Cids())
+	if err != nil {
+		return xerrors.Errorf("error computing cid reference to parent tipset")
+	}
+	if err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk); err != nil {
+		return xerrors.Errorf("error walking parent tipset cid reference")
+	}
 
 	for len(toWalk) > 0 {
 		// walking can take a while, so check this with every opportunity

@@ -290,6 +290,7 @@ func TestCompactRetainsTipSetRef(t *testing.T) {
 	// wait for compaction to occur
 	waitForCompaction(ctx, t, garbageCompactionIndex, full)
 	assert.True(t, ipldExists(ctx, t, checkRef, full)) // reference to tipset key should be persisted after compaction
+	bm.Stop()
 }
 
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
