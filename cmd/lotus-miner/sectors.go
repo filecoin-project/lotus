@@ -815,7 +815,7 @@ var sectorsRenewCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "max-sectors",
-			Usage: "The maximum number of sectors contained in each message message",
+			Usage: "the maximum number of sectors contained in each message message",
 		},
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -1025,13 +1025,17 @@ var sectorsRenewCmd = &cli.Command{
 			for newExp, numbers := range exts {
 				scount += len(numbers)
 				var addrSectors int
+				sectorsMax, err := policy.GetAddressedSectorsMax(nv)
+				if err != nil {
+					return err
+				}
 				if cctx.Int("max-sectors") == 0 {
-					addrSectors, err = policy.GetAddressedSectorsMax(nv)
-					if err != nil {
-						return err
-					}
+					addrSectors = sectorsMax
 				} else {
 					addrSectors = cctx.Int("max-sectors")
+					if addrSectors > sectorsMax {
+						return xerrors.Errorf("the specified max-sectors exceeds the maximum limit")
+					}
 				}
 
 				declMax, err := policy.GetDeclarationsMax(nv)
