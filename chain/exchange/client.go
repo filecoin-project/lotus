@@ -430,7 +430,9 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	}
 	_ = stream.SetWriteDeadline(time.Time{}) // clear deadline // FIXME: Needs
 	//  its own API (https://github.com/libp2p/go-libp2p/core/issues/162).
-	stream.CloseWrite()
+	if err := stream.CloseWrite(); err != nil {
+		log.Warnw("CloseWrite err", "error", err)
+	}
 
 	// Read response.
 	var res Response
