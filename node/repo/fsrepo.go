@@ -37,6 +37,7 @@ const (
 	fsDatastore     = "datastore"
 	fsLock          = "repo.lock"
 	fsKeystore      = "keystore"
+	fsSqlite        = "sqlite"
 )
 
 func NewRepoTypeFromString(t string) RepoType {
@@ -411,6 +412,10 @@ type fsLockedRepo struct {
 	ssErr  error
 	ssOnce sync.Once
 
+	sqlPath string
+	sqlErr  error
+	sqlOnce sync.Once
+
 	storageLk sync.Mutex
 	configLk  sync.Mutex
 }
@@ -513,6 +518,21 @@ func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
 	})
 
 	return fsr.ssPath, fsr.ssErr
+}
+
+func (fsr *fsLockedRepo) SqlitePath() (string, error) {
+	fsr.sqlOnce.Do(func() {
+		path := fsr.join(fsSqlite)
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.sqlErr = err
+			return
+		}
+
+		fsr.sqlPath = path
+	})
+
+	return fsr.sqlPath, fsr.sqlErr
 }
 
 // join joins path elements with fsr.path

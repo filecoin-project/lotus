@@ -269,6 +269,36 @@ func (tx *EthTxArgs) ToRlpUnsignedMsg() ([]byte, error) {
 	return append([]byte{0x02}, encoded...), nil
 }
 
+func (tx *EthTx) ToEthTxArgs() EthTxArgs {
+	return EthTxArgs{
+		ChainID:              int(tx.ChainID),
+		Nonce:                int(tx.Nonce),
+		To:                   tx.To,
+		Value:                big.Int(tx.Value),
+		MaxFeePerGas:         big.Int(tx.MaxFeePerGas),
+		MaxPriorityFeePerGas: big.Int(tx.MaxPriorityFeePerGas),
+		GasLimit:             int(tx.Gas),
+		Input:                tx.Input,
+		V:                    big.Int(tx.V),
+		R:                    big.Int(tx.R),
+		S:                    big.Int(tx.S),
+	}
+}
+
+func (tx *EthTx) TxHash() (EthHash, error) {
+	ethTxArgs := tx.ToEthTxArgs()
+	return (&ethTxArgs).TxHash()
+}
+
+func (tx *EthTxArgs) TxHash() (EthHash, error) {
+	rlp, err := tx.ToRlpSignedMsg()
+	if err != nil {
+		return EmptyEthHash, err
+	}
+
+	return EthHashFromTxBytes(rlp), nil
+}
+
 func (tx *EthTxArgs) ToRlpSignedMsg() ([]byte, error) {
 	packed1, err := tx.packTxFields()
 	if err != nil {
