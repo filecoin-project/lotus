@@ -51,7 +51,6 @@ func main() {
 		exportChainCmd,
 		exportCarCmd,
 		consensusCmd,
-		storageStatsCmd,
 		syncCmd,
 		stateTreePruneCmd,
 		datastoreCmd,
