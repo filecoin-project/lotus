@@ -8,9 +8,14 @@ import (
 )
 
 const (
+	MetaHostname = "META-Hostname"
 	MetaMinerID  = "META-MinerID"
 	MetaWorkerID = "META-WorkerID"
 )
+
+func SetHostname(ctx context.Context, name string) context.Context {
+	return meta.Set(ctx, MetaHostname, name)
+}
 
 func GetMinerID(ctx context.Context) (string, bool) {
 	return meta.Get(ctx, MetaMinerID)

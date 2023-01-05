@@ -3,6 +3,7 @@ package x
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -27,6 +28,13 @@ func Init(repo string) (err error) {
 	if err = conf.Init(repo); err != nil {
 		return err
 	}
+	host, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+	x.UseClientContext(func(ctx context.Context) context.Context {
+		return meta.SetHostname(ctx, host)
+	})
 	return store.Init(repo)
 }
 
