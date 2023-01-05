@@ -1,2 +1,0 @@
-On branch feat/buildinfo
-nothing to commit (use -u to show untracked files)
