@@ -4,12 +4,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 func GenerateKey(typ types.KeyType) (*Key, error) {
@@ -54,12 +53,17 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 		}
 	case types.KTDelegated:
 		// Assume eth for now
-		ethAddr, err := delegated.EthAddressFromPubKey(k.PublicKey)
+		ethAddr, err := ethtypes.NewEthAddressFromPubKey(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to calculate Eth address from public key: %w", err)
 		}
 
-		k.Address, err = address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, ethAddr)
+		ea, err := ethtypes.NewEthAddressFromBytes(ethAddr)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create ethereum address from bytes: %w", err)
+		}
+
+		k.Address, err = ea.ToFilecoinAddress()
 		if err != nil {
 			return nil, xerrors.Errorf("converting Delegated to address: %w", err)
 		}

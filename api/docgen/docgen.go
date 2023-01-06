@@ -375,7 +375,7 @@ func init() {
 
 	addExample(ethint)
 	addExample(&ethint)
-	ethaddr, _ := ethtypes.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	ethaddr, _ := ethtypes.NewEthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
 	addExample(ethaddr)
 	addExample(&ethaddr)
 	ethhash, _ := ethtypes.NewEthHashFromCid(c)

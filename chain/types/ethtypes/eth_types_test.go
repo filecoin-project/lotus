@@ -120,7 +120,7 @@ func TestParseEthAddr(t *testing.T) {
 		addr, err := address.NewIDAddress(id)
 		require.Nil(t, err)
 
-		eaddr, err := EthAddressFromFilecoinAddress(addr)
+		eaddr, err := NewEthAddressFromFilecoinAddress(addr)
 		require.Nil(t, err)
 
 		faddr, err := eaddr.ToFilecoinAddress()
@@ -164,7 +164,7 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
-	addr, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	addr, err := NewEthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
 	log := EthLog{
@@ -229,7 +229,7 @@ func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
 	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
-	addr, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	addr, err := NewEthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
 	pstring := func(s string) *string { return &s }
@@ -305,10 +305,10 @@ func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
 }
 
 func TestEthAddressListUnmarshalJSON(t *testing.T) {
-	addr1, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	addr1, err := NewEthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
-	addr2, err := EthAddressFromHex("abbbfb16488Aa48081296299d54b0c648C9333dA")
+	addr2, err := NewEthAddressFromHex("abbbfb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
 	testcases := []struct {

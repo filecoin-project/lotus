@@ -46,7 +46,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	fromId, err := client.StateLookupID(ctx, fromAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	senderEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromId)
+	senderEthAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(fromId)
 	require.NoError(t, err)
 
 	var salt [32]byte
@@ -109,7 +109,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	err = create2Return.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 	require.NoError(t, err)
 
-	createdEthAddr, err := ethtypes.EthAddressFromBytes(create2Return.EthAddress[:])
+	createdEthAddr, err := ethtypes.NewEthAddressFromBytes(create2Return.EthAddress[:])
 	require.NoError(t, err)
 	require.Equal(t, ethAddr, createdEthAddr)
 

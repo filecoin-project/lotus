@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 // EVM groups EVM-related actions.
@@ -134,10 +133,13 @@ func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
 	key, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(e.t, err)
 
-	ethAddr, err := delegated.EthAddressFromPubKey(key.PublicKey)
+	ethAddr, err := ethtypes.NewEthAddressFromPubKey(key.PublicKey)
 	require.NoError(e.t, err)
 
-	addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
+	ea, err := ethtypes.NewEthAddressFromBytes(ethAddr)
+	require.NoError(e.t, err)
+
+	addr, err := ea.ToFilecoinAddress()
 	require.NoError(e.t, err)
 
 	return key, *(*ethtypes.EthAddress)(ethAddr), addr
@@ -157,7 +159,7 @@ func (e *EVM) AssertAddressBalanceConsistent(ctx context.Context, addr address.A
 	fbal, err := e.WalletBalance(ctx, addr)
 	require.NoError(e.t, err)
 
-	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
+	ethAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(addr)
 	require.NoError(e.t, err)
 
 	ebal, err := e.EthGetBalance(ctx, ethAddr, "latest")

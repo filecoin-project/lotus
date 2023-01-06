@@ -288,7 +288,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	actor, err := client.StateGetActor(ctx, idAddr, ts.Key())
 	require.NoError(err)
 	require.NotNil(actor.Address)
-	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
+	ethContractAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
 	// collect filter results
@@ -382,7 +382,7 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 			if !ok {
 				return nil, xerrors.Errorf(k + ": not a string")
 			}
-			el.Address, err = ethtypes.EthAddressFromHex(s)
+			el.Address, err = ethtypes.NewEthAddressFromHex(s)
 			if err != nil {
 				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
@@ -544,7 +544,7 @@ func invokeContractAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode
 	actor, err := client.StateGetActor(ctx, idAddr, head.Key())
 	require.NoError(err)
 	require.NotNil(actor.Address)
-	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
+	ethContractAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
 	return ethContractAddr, received

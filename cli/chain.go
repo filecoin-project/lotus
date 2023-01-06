@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var ChainCmd = &cli.Command{
@@ -1644,7 +1645,12 @@ var ChainExecEVMCmd = &cli.Command{
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
 		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
 
-		delegated, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, result.EthAddress[:])
+		ea, err := ethtypes.NewEthAddressFromBytes(result.EthAddress[:])
+		if err != nil {
+			return fmt.Errorf("failed to create ethereum address: %w", err)
+		}
+
+		delegated, err := ea.ToFilecoinAddress()
 		if err != nil {
 			return fmt.Errorf("failed to calculate f4 address: %w", err)
 		}

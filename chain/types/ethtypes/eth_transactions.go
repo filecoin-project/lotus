@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 const Eip1559TxType = 2
@@ -84,7 +83,7 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
 	} else {
-		addr, err := EthAddressFromFilecoinAddress(msg.To)
+		addr, err := NewEthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, err
 		}
@@ -333,12 +332,17 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	ethAddr, err := delegated.EthAddressFromPubKey(pubk)
+	ethAddr, err := NewEthAddressFromPubKey(pubk)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
+	ea, err := NewEthAddressFromBytes(ethAddr)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return ea.ToFilecoinAddress()
 }
 
 func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) {
@@ -576,7 +580,7 @@ func parseEthAddr(v interface{}) (*EthAddress, error) {
 	if len(b) == 0 {
 		return nil, nil
 	}
-	addr, err := EthAddressFromBytes(b)
+	addr, err := NewEthAddressFromBytes(b)
 	if err != nil {
 		return nil, err
 	}

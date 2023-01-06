@@ -1181,7 +1181,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*ethtypes.EthFilte
 			}
 		}
 
-		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(ev.EmitterAddr)
+		log.Address, err = ethtypes.NewEthAddressFromFilecoinAddress(ev.EmitterAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -1468,7 +1468,7 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
-	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
+	return ethtypes.NewEthAddressFromFilecoinAddress(idAddr)
 }
 
 func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
