@@ -130,6 +130,7 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 	client.AssertActorType(ctx, deployer, manifest.EmbryoKey)
 
 	tx, err := deployContractTx(ctx, client, ethAddr, contract)
+	require.NoError(t, err)
 
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	// Mangle signature
@@ -187,6 +188,7 @@ func TestContractInvocation(t *testing.T) {
 
 	// DEPLOY CONTRACT
 	tx, err := deployContractTx(ctx, client, ethAddr, contract)
+	require.NoError(t, err)
 
 	client.EVM().SignTransaction(tx, key.PrivateKey)
 	hash := client.EVM().SubmitTransaction(ctx, tx)
