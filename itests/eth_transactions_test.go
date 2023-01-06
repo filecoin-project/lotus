@@ -3,7 +3,6 @@ package itests
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -64,14 +63,18 @@ func TestValueTransferValidSignature(t *testing.T) {
 		S:                    big.Zero(),
 	}
 
-	unsigned, err := tx.ToRlpUnsignedMsg()
+	client.EVM().SignTransaction(&tx, key.PrivateKey)
+	// Mangle signature
+	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
+
+	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
-	// Submit transaction without signing message
-	_, err = client.EVM().EthSendRawTransaction(ctx, unsigned)
+	// Submit transaction with bad signature
+	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
 	require.Error(t, err)
 
+	// Submit transaction with valid signature
 	client.EVM().SignTransaction(&tx, key.PrivateKey)
-
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
 
 	receipt, err := waitForEthTxReceipt(ctx, client, hash)
@@ -96,7 +99,8 @@ func TestLegacyTransaction(t *testing.T) {
 	txBytes, err := hex.DecodeString("f86f830131cf8504a817c800825208942cf1e5a8250ded8835694ebeb90cfa0237fcb9b1882ec4a5251d1100008026a0f5f8d2244d619e211eeb634acd1bea0762b7b4c97bba9f01287c82bfab73f911a015be7982898aa7cc6c6f27ff33e999e4119d6cd51330353474b98067ff56d930")
 	require.NoError(t, err)
 	_, err = client.EVM().EthSendRawTransaction(ctx, txBytes)
-	require.Errorf(t, err, "legacy transaction is not supported")
+	require.ErrorContains(t, err, "legacy transaction is not supported")
+
 }
 
 func TestContractDeploymentValidSignature(t *testing.T) {
@@ -125,38 +129,21 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 	// verify the deployer address is an embryo.
 	client.AssertActorType(ctx, deployer, manifest.EmbryoKey)
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
-	})
-	require.NoError(t, err)
+	tx, err := deployContractTx(ctx, client, ethAddr, contract)
 
-	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
-	require.NoError(t, err)
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	// Mangle signature
+	tx.V.Int.Xor(tx.V.Int, big.NewInt(1).Int)
 
-	// now deploy a contract from the embryo, and validate it went well
-	tx := ethtypes.EthTxArgs{
-		ChainID:              build.Eip155ChainId,
-		Value:                big.Zero(),
-		Nonce:                0,
-		MaxFeePerGas:         types.NanoFil,
-		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
-		Input:                contract,
-		V:                    big.Zero(),
-		R:                    big.Zero(),
-		S:                    big.Zero(),
-	}
-
-	unsigned, err := tx.ToRlpUnsignedMsg()
+	signed, err := tx.ToRlpSignedMsg()
 	require.NoError(t, err)
-	// Submit transaction without signing message
-	_, err = client.EVM().EthSendRawTransaction(ctx, unsigned)
+	// Submit transaction with bad signature
+	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
 	require.Error(t, err)
 
-	client.EVM().SignTransaction(&tx, key.PrivateKey)
-
-	hash := client.EVM().SubmitTransaction(ctx, &tx)
+	// Submit transaction with valid signature
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
 
 	receipt, err := waitForEthTxReceipt(ctx, client, hash)
 	require.NoError(t, err)
@@ -199,34 +186,10 @@ func TestContractInvocation(t *testing.T) {
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
 	// DEPLOY CONTRACT
+	tx, err := deployContractTx(ctx, client, ethAddr, contract)
 
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
-	})
-	require.NoError(t, err)
-
-	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
-	require.NoError(t, err)
-
-	// now deploy a contract from the embryo, and validate it went well
-	tx := ethtypes.EthTxArgs{
-		ChainID:              build.Eip155ChainId,
-		Value:                big.Zero(),
-		Nonce:                0,
-		MaxFeePerGas:         types.NanoFil,
-		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
-		Input:                contract,
-		V:                    big.Zero(),
-		R:                    big.Zero(),
-		S:                    big.Zero(),
-	}
-
-	client.EVM().SignTransaction(&tx, key.PrivateKey)
-
-	hash := client.EVM().SubmitTransaction(ctx, &tx)
-	fmt.Println(hash)
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
 
 	receipt, err := waitForEthTxReceipt(ctx, client, hash)
 	require.NoError(t, err)
@@ -238,17 +201,20 @@ func TestContractInvocation(t *testing.T) {
 
 	// INVOKE CONTRACT
 
+	// Params
+	// entry point for getBalance - f8b2cb4f
+	// address - ff00000000000000000000000000000000000064
 	params, err := hex.DecodeString("f8b2cb4f000000000000000000000000ff00000000000000000000000000000000000064")
 	require.NoError(t, err)
 
-	gaslimit, err = client.EthEstimateGas(ctx, ethtypes.EthCall{
+	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From: &ethAddr,
 		To:   &contractAddr,
 		Data: params,
 	})
 	require.NoError(t, err)
 
-	maxPriorityFeePerGas, err = client.EthMaxPriorityFeePerGas(ctx)
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 	require.NoError(t, err)
 
 	invokeTx := ethtypes.EthTxArgs{
@@ -265,14 +231,18 @@ func TestContractInvocation(t *testing.T) {
 		S:                    big.Zero(),
 	}
 
-	unsigned, err := tx.ToRlpUnsignedMsg()
+	client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
+	// Mangle signature
+	invokeTx.V.Int.Xor(invokeTx.V.Int, big.NewInt(1).Int)
+
+	signed, err := invokeTx.ToRlpSignedMsg()
 	require.NoError(t, err)
-	// Submit transaction without signing message
-	_, err = client.EVM().EthSendRawTransaction(ctx, unsigned)
+	// Submit transaction with bad signature
+	_, err = client.EVM().EthSendRawTransaction(ctx, signed)
 	require.Error(t, err)
 
+	// Submit transaction with valid signature
 	client.EVM().SignTransaction(&invokeTx, key.PrivateKey)
-
 	hash = client.EVM().SubmitTransaction(ctx, &invokeTx)
 
 	receipt, err = waitForEthTxReceipt(ctx, client, hash)
@@ -282,6 +252,35 @@ func TestContractInvocation(t *testing.T) {
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
 
+}
+
+func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthTxArgs, error) {
+	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// now deploy a contract from the embryo, and validate it went well
+	return &ethtypes.EthTxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.Zero(),
+		Nonce:                0,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		Input:                contract,
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}, nil
 }
 
 func waitForEthTxReceipt(ctx context.Context, client *kit.TestFullNode, hash ethtypes.EthHash) (*api.EthTxReceipt, error) {
