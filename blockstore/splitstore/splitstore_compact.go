@@ -905,12 +905,8 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	walkCnt := new(int64)
 	scanCnt := new(int64)
 
-	tsRef := func(cids []cid.Cid) (cid.Cid, error) {
-		blk, err := types.NewTipSetKey(cids...).ToStorageBlock()
-		if err != nil {
-			return cid.Undef, err
-		}
-		return blk.Cid(), nil
+	tsRef := func(blkCids []cid.Cid) (cid.Cid, error) {
+		return types.NewTipSetKey(blkCids...).Cid()
 	}
 
 	stopWalk := func(_ cid.Cid) error { return errStopWalk }

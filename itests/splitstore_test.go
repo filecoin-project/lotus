@@ -262,9 +262,8 @@ func TestCompactRetainsTipSetRef(t *testing.T) {
 	check, err := full.ChainHead(ctx)
 	require.NoError(t, err)
 	e := check.Height()
-	rawKey, err := check.Key().ToStorageBlock()
+	checkRef, err := check.Key().Cid()
 	require.NoError(t, err)
-	checkRef := rawKey.Cid()
 	assert.True(t, ipldExists(ctx, t, checkRef, full)) // reference to tipset key should be persisted before compaction
 
 	// Determine index of compaction that covers tipset "check" and wait for compaction
