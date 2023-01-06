@@ -39,7 +39,7 @@ USAGE:
 
 OPTIONS:
    --addpiece                    enable addpiece (default: true) [$LOTUS_WORKER_ADDPIECE]
-   --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true) [$LOTUS_WORKER_COMMIT]
+   --commit                      enable commit (default: true) [$LOTUS_WORKER_COMMIT]
    --http-server-timeout value   (default: "30s")
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456") [$LOTUS_WORKER_LISTEN]
    --name value                  custom worker name (default: hostname) [$LOTUS_WORKER_NAME]
@@ -49,14 +49,14 @@ OPTIONS:
    --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5) [$LOTUS_WORKER_PARALLEL_FETCH_LIMIT]
    --post-parallel-reads value   maximum number of parallel challenge reads (0 = no limit) (default: 128) [$LOTUS_WORKER_POST_PARALLEL_READS]
    --post-read-timeout value     time limit for reading PoSt challenges (0 = no limit) (default: 0s) [$LOTUS_WORKER_POST_READ_TIMEOUT]
-   --precommit1                  enable precommit1 (32G sectors: 1 core, 128GiB Memory) (default: true) [$LOTUS_WORKER_PRECOMMIT1]
-   --precommit2                  enable precommit2 (32G sectors: all cores, 96GiB Memory) (default: true) [$LOTUS_WORKER_PRECOMMIT2]
+   --precommit1                  enable precommit1 (default: true) [$LOTUS_WORKER_PRECOMMIT1]
+   --precommit2                  enable precommit2 (default: true) [$LOTUS_WORKER_PRECOMMIT2]
    --prove-replica-update2       enable prove replica update 2 (default: true) [$LOTUS_WORKER_PROVE_REPLICA_UPDATE2]
    --regen-sector-key            enable regen sector key (default: true) [$LOTUS_WORKER_REGEN_SECTOR_KEY]
    --replica-update              enable replica update (default: true) [$LOTUS_WORKER_REPLICA_UPDATE]
    --sector-download             enable external sector data download (default: false) [$LOTUS_WORKER_SECTOR_DOWNLOAD]
    --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m") [$LOTUS_WORKER_TIMEOUT]
-   --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true) [$LOTUS_WORKER_UNSEAL]
+   --unseal                      enable unsealing (default: true) [$LOTUS_WORKER_UNSEAL]
    --windowpost                  enable window post (default: false) [$LOTUS_WORKER_WINDOWPOST]
    --winningpost                 enable winning post (default: false) [$LOTUS_WORKER_WINNINGPOST]
    
