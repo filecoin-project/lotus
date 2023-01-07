@@ -233,6 +233,11 @@ type EthAddress [EthAddressLength]byte
 func NewEthAddressFromPubKey(pubk []byte) ([]byte, error) {
 	// if we get an uncompressed public key (that's what we get from the library,
 	// but putting this check here for defensiveness), strip the prefix
+	const pubKeyLen = 65
+	if len(pubk) != pubKeyLen {
+		return nil, fmt.Errorf("public key should have %d in length, but gets %d", pubKeyLen, len(pubk))
+	}
+
 	if pubk[0] != 0x04 {
 		return nil, fmt.Errorf("expected first byte of secp256k1 to be 0x04 (uncompressed)")
 	}
@@ -277,7 +282,6 @@ func NewEthAddressFromBytes(b []byte) (EthAddress, error) {
 	copy(a[:], b[:])
 	return a, nil
 }
-
 
 func (ea EthAddress) String() string {
 	return "0x" + hex.EncodeToString(ea[:])
