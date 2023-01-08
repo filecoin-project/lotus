@@ -345,7 +345,7 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 		if !ok {
 			return ethtypes.EthHash{}, xerrors.Errorf(k + " not a string")
 		}
-		return ethtypes.EthHashFromHex(s)
+		return ethtypes.NewEthHashFromHex(s)
 	}
 
 	ethUint64 := func(k string, v interface{}) (ethtypes.EthUint64, error) {
