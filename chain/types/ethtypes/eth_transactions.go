@@ -450,6 +450,13 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 		return nil, err
 	}
 
+	// EIP-1559 and EIP-2930 transactions only support 0 or 1 for v
+	// Legacy and EIP-155 transactions support other values
+	// https://github.com/ethers-io/ethers.js/blob/56fabe987bb8c1e4891fdf1e5d3fe8a4c0471751/packages/transactions/src.ts/index.ts#L333
+	if !v.Equals(big.NewInt(0)) && !v.Equals(big.NewInt(1)) {
+		return nil, fmt.Errorf("EIP-1559 transactions only support 0 or 1 for v")
+	}
+
 	args := EthTxArgs{
 		ChainID:              chainId,
 		Nonce:                nonce,
