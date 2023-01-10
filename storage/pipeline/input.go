@@ -578,7 +578,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 
 	if len(toAssign) > 0 {
 		log.Errorf("we are trying to create a new sector with open sectors %v", m.openSectors)
-		if err := m.tryGetDealSector(ctx, sp, getExpirationCached); err != nil {
+		if err := m.tryGetDealSector(ctx, sp, ssize, getExpirationCached); err != nil {
 			log.Errorw("Failed to create a new sector for deals", "error", err)
 		}
 	}
@@ -780,7 +780,7 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 	return sid, err
 }
 
-func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) error {
+func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealProof, ssize abi.SectorSize, ef expFn) error {
 	m.startupWait.Wait()
 
 	if m.nextDealSector != nil {
@@ -792,8 +792,16 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 		return xerrors.Errorf("getting storage config: %w", err)
 	}
 
-	// if we're above WaitDeals limit, we don't want to add more staging sectors
-	if cfg.MaxWaitDealsSectors > 0 && m.stats.curStaging() >= cfg.MaxWaitDealsSectors {
+	fullSizePieceIsPending := false
+	for _, piece := range m.pendingPieces {
+		// Check if any pending pieces are full size
+		if piece.size == abi.PaddedPieceSize(ssize).Unpadded() {
+			fullSizePieceIsPending = true
+		}
+	}
+
+	// if we're above WaitDeals limit, we don't want to add more staging sectors - unless a full Piece is waiting
+	if !fullSizePieceIsPending && cfg.MaxWaitDealsSectors > 0 && m.stats.curStaging() >= cfg.MaxWaitDealsSectors {
 		return nil
 	}
 
