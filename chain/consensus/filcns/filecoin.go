@@ -577,7 +577,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
-		if !filec.ValidateSecpkSigType(nv, m.Signature.Type) {
+		if nv >= network.Version14 && !chain.IsValidSecpkSigType(nv, m.Signature.Type) {
 			return xerrors.Errorf("block had invalid signed message at index %d: %w", i, err)
 		}
 
@@ -899,19 +899,6 @@ func (filec *FilecoinEC) isChainNearSynced() bool {
 	timestamp := ts.MinTimestamp()
 	timestampTime := time.Unix(int64(timestamp), 0)
 	return build.Clock.Since(timestampTime) < 6*time.Hour
-}
-
-// ValidateSecpkSigType checks that a signature type is valid for the network
-// version, for a "secpk" message.
-func (filec *FilecoinEC) ValidateSecpkSigType(nv network.Version, typ crypto.SigType) bool {
-	switch {
-	case nv < network.Version14:
-		return true // no check for signature type before nv14
-	case nv >= network.Version14 && nv < network.Version18:
-		return typ == crypto.SigTypeSecp256k1
-	default:
-		return typ == crypto.SigTypeSecp256k1 || typ == crypto.SigTypeDelegated
-	}
 }
 
 var _ consensus.Consensus = &FilecoinEC{}
