@@ -636,7 +636,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	_, err = a.StateAPI.StateGetActor(ctx, smsg.Message.To, types.EmptyTSK)
 	if err != nil {
 		// if actor does not exist on chain yet, set the method to 0 because
-		// embryos only implement method 0
+		// placeholders only implement method 0
 		smsg.Message.Method = builtinactors.MethodSend
 	}
 

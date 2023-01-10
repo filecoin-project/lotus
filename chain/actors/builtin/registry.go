@@ -14,7 +14,6 @@ import (
 	cron10 "github.com/filecoin-project/go-state-types/builtin/v10/cron"
 	datacap10 "github.com/filecoin-project/go-state-types/builtin/v10/datacap"
 	eam10 "github.com/filecoin-project/go-state-types/builtin/v10/eam"
-	embryo10 "github.com/filecoin-project/go-state-types/builtin/v10/embryo"
 	ethaccount10 "github.com/filecoin-project/go-state-types/builtin/v10/ethaccount"
 	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	_init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
@@ -22,6 +21,7 @@ import (
 	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	multisig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
 	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
+	placeholder10 "github.com/filecoin-project/go-state-types/builtin/v10/placeholder"
 	power10 "github.com/filecoin-project/go-state-types/builtin/v10/power"
 	reward10 "github.com/filecoin-project/go-state-types/builtin/v10/reward"
 	system10 "github.com/filecoin-project/go-state-types/builtin/v10/system"
@@ -361,10 +361,10 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: eam10.Methods,
 					state:   nil,
 				})
-			case manifest.EmbryoKey:
+			case manifest.PlaceholderKey:
 				registry = append(registry, RegistryEntry{
 					code:    codeID,
-					methods: embryo10.Methods,
+					methods: placeholder10.Methods,
 					state:   nil,
 				})
 			case manifest.EthAccountKey:

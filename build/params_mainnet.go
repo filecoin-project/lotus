@@ -1,5 +1,5 @@
-//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet
-// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet
+//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet && !hyperspacenet
+// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet,!hyperspacenet
 
 package build
 
