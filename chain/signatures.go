@@ -3,6 +3,7 @@ package chain
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -35,4 +36,15 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 		return xerrors.Errorf("secpk message %s has invalid signature: %w", msg.Cid(), err)
 	}
 	return nil
+}
+
+// IsValidSecpkSigType checks that a signature type is valid for the network
+// version, for a "secpk" message.
+func IsValidSecpkSigType(nv network.Version, typ crypto.SigType) bool {
+	switch {
+	case nv < network.Version18:
+		return typ == crypto.SigTypeSecp256k1
+	default:
+		return typ == crypto.SigTypeSecp256k1 || typ == crypto.SigTypeDelegated
+	}
 }
