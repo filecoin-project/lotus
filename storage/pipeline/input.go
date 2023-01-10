@@ -797,6 +797,7 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 		// Check if any pending pieces are full size
 		if piece.size == abi.PaddedPieceSize(ssize).Unpadded() {
 			fullSizePieceIsPending = true
+			break
 		}
 	}
 
