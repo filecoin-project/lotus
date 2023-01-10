@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -37,10 +38,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -795,20 +794,8 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if m.Signature.Type == crypto.SigTypeDelegated {
-		txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
-		if err != nil {
-			return xerrors.Errorf("failed to convert to eth tx args: %w", err)
-		}
-		msg, err := txArgs.ToRlpUnsignedMsg()
-		if err != nil {
-			return err
-		}
-		if err := sigs.Verify(&m.Signature, m.Message.From, msg); err != nil {
-			return err
-		}
-	} else if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
-		return err
+	if err := chain.AuthenticateMessage(m, m.Message.From); err != nil {
+		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
 
 	mp.sigValCache.Add(sck, struct{}{})

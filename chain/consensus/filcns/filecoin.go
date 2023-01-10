@@ -40,7 +40,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -578,9 +577,14 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
-		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version14 {
-			if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
+		switch nv := filec.sm.GetNetworkVersion(ctx, b.Header.Height); {
+		case nv >= network.Version14 && nv < network.Version18:
+			if typ := m.Signature.Type; typ != crypto.SigTypeSecp256k1 {
 				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
+			}
+		case nv >= network.Version18:
+			if typ := m.Signature.Type; typ != crypto.SigTypeSecp256k1 && typ != crypto.SigTypeDelegated {
+				return xerrors.Errorf("block had invalid signed message at index %d: %w", i, err)
 			}
 		}
 
@@ -595,21 +599,8 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}
 
-		digest := m.Message.Cid().Bytes()
-		if m.Signature.Type == crypto.SigTypeDelegated {
-			txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
-			if err != nil {
-				return err
-			}
-			msg, err := txArgs.ToRlpUnsignedMsg()
-			if err != nil {
-				return err
-			}
-			digest = msg
-		}
-
-		if err := sigs.Verify(&m.Signature, kaddr, digest); err != nil {
-			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
+		if err := chain.AuthenticateMessage(m, kaddr); err != nil {
+			return xerrors.Errorf("failed to validate signature: %w", err)
 		}
 
 		c, err := store.PutMessage(ctx, tmpbs, m)
