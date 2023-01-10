@@ -62,8 +62,8 @@ func TestDeployment(t *testing.T) {
 	bal := client.EVM().AssertAddressBalanceConsistent(ctx, deployer)
 	require.Equal(t, types.FromFil(10), bal)
 
-	// verify the deployer address is an embryo.
-	client.AssertActorType(ctx, deployer, manifest.EmbryoKey)
+	// verify the deployer address is an Placeholder.
+	client.AssertActorType(ctx, deployer, manifest.PlaceholderKey)
 
 	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From: &ethAddr,
@@ -74,7 +74,7 @@ func TestDeployment(t *testing.T) {
 	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 	require.NoError(t, err)
 
-	// now deploy a contract from the embryo, and validate it went well
+	// now deploy a contract from the placeholder, and validate it went well
 	tx := ethtypes.EthTxArgs{
 		ChainID:              build.Eip155ChainId,
 		Value:                big.Zero(),
