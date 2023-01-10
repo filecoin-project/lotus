@@ -83,7 +83,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 				dealInfo := piecestore.DealInfo{
 					SectorID: sectorID,
 				}
-				err = ps.AddDealForPiece(cid1, dealInfo)
+				err = ps.AddDealForPiece(cid1, cid.Undef, dealInfo)
 				require.NoError(t, err)
 			}
 
@@ -124,7 +124,7 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 	dealInfo := piecestore.DealInfo{
 		Length: 10,
 	}
-	err = ps.AddDealForPiece(cid1, dealInfo)
+	err = ps.AddDealForPiece(cid1, cid.Undef, dealInfo)
 	require.NoError(t, err)
 
 	// Check that the data length is correct
@@ -153,7 +153,7 @@ func TestThrottle(t *testing.T) {
 		SectorID: unsealedSectorID,
 		Length:   10,
 	}
-	err = ps.AddDealForPiece(cid1, dealInfo)
+	err = ps.AddDealForPiece(cid1, cid.Undef, dealInfo)
 	require.NoError(t, err)
 
 	// hold the lock to block.
