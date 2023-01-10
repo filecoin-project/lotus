@@ -870,8 +870,12 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 		return false, xerrors.Errorf("failed to get sender actor: %w", err)
 	}
 
+	// This message can only be included in the _next_ epoch and beyond, hence the +1.
+	epoch := curTs.Height() + 1
+	nv := mp.api.StateNetworkVersion(ctx, epoch)
+
 	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
-	if !filcns.IsValidForSending(senderAct) {
+	if !filcns.IsValidForSending(nv, senderAct) {
 		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}
 

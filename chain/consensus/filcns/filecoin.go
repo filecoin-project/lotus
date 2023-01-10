@@ -436,15 +436,35 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 	return nil
 }
 
-func IsValidForSending(act *types.Actor) bool {
+func IsValidForSending(nv network.Version, act *types.Actor) bool {
+	// Before nv18 (Hygge), we only supported built-in account actors as senders.
+	//
+	// Note: this gate is probably superfluous, since:
+	// 1. Placeholder actors cannot be created before nv18.
+	// 2. EthAccount actors cannot be created before nv18.
+	// 3. Delegated addresses cannot be created before nv18.
+	//
+	// But it's a safeguard.
+	//
+	// Note 2: ad-hoc checks for network versions like this across the codebase
+	// will be problematic with networks with diverging version lineages
+	// (e.g. Hyperspace). We need to revisit this strategy entirely.
+	if nv < network.Version18 {
+		return builtin.IsAccountActor(act.Code)
+	}
+
+	// After nv18, we also support other kinds of senders.
 	if builtin.IsAccountActor(act.Code) || builtin.IsEthAccountActor(act.Code) {
 		return true
 	}
 
+	// Allow placeholder actors with a delegated address and nonce 0 to send a message.
+	// These will be converted to an EthAccount actor on first send.
 	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
 
+	// Only allow such actors to send if their delegated address is in the EAM's namespace.
 	id, _, err := varint.FromUvarint(act.Address.Payload())
 	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
@@ -521,7 +541,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 
-			if !IsValidForSending(act) {
+			if !IsValidForSending(nv, act) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
