@@ -16,13 +16,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/go-multierror"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/x/conf"
+	"github.com/hashicorp/go-multierror"
+	"golang.org/x/xerrors"
 )
 
 var FetchTempSubdir = "fetching"
@@ -75,6 +74,9 @@ func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, typ storiface
 }
 
 func NewRemote(local Store, index SectorIndex, auth http.Header, fetchLimit int, pfHandler PartialFileHandler) *Remote {
+	auth = http.Header{}
+	auth.Add("Authorization", "Bearer "+string(conf.X.Token))
+
 	return &Remote{
 		local: local,
 		index: index,
