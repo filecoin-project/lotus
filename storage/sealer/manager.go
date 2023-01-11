@@ -279,12 +279,14 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 		return xerrors.Errorf("getting worker tasks: %w", err)
 	}
 
-	if m.windowPoStSched.MaybeAddWorker(wid, tasks, whnd) ||
-		m.winningPoStSched.MaybeAddWorker(wid, tasks, whnd) {
-		logger.Infow("start worker-post sched", "wid", wid)
+	if m.windowPoStSched.MaybeAddWorker(wid, tasks, whnd) {
+		logger.Infow("start wdpost sched", "wid", wid)
+	}
+	if m.winningPoStSched.MaybeAddWorker(wid, tasks, whnd) {
+		logger.Infow("start wnpost sched", "wid", wid)
 	}
 
-	logger.Infow("start worker sched", "wid", wid)
+	logger.Infow("start seal sched", "wid", wid)
 	return m.sched.runWorker(ctx, wid, whnd)
 }
 
