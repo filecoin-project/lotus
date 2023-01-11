@@ -2,6 +2,8 @@ package itests
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"testing"
 	"time"
 
@@ -84,10 +86,12 @@ func TestEthGetBalanceBuiltinActor(t *testing.T) {
 	fid, err := address.NewFromString("f05")
 	require.NoError(t, err)
 
+	kit.SendFunds(ctx, t, client, fid, abi.TokenAmount{big.NewInt(10).Int})
+
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(fid)
 	require.NoError(t, err)
 
 	ebal, err := client.EthGetBalance(ctx, ethAddr, "latest")
 	require.NoError(t, err)
-	require.Equal(t, ethtypes.EthBigIntZero, ebal)
+	require.Equal(t, ethtypes.EthBigInt{big.NewInt(10).Int}, ebal)
 }
