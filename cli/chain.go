@@ -1773,7 +1773,7 @@ var ChainInvokeEVMCmd = &cli.Command{
 			afmt.Println("Events emitted:")
 
 			s := &apiIpldStore{ctx, api}
-			amt, err := amt4.LoadAMT(ctx, s, *eventsRoot, amt4.UseTreeBitWidth(5))
+			amt, err := amt4.LoadAMT(ctx, s, *eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 			if err != nil {
 				return err
 			}
