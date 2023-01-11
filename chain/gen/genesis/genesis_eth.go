@@ -56,7 +56,7 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 func MakeEthNullAddressActor(av actorstypes.Version, addr address.Address) (*types.Actor, error) {
 	actcid, ok := actors.GetActorCodeID(av, manifest.EthAccountKey)
 	if !ok {
-		return nil, xerrors.Errorf("failed to get account actor code ID for actors version %d", av)
+		return nil, xerrors.Errorf("failed to get EthAccount actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

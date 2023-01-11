@@ -12,11 +12,9 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
-	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -105,18 +103,10 @@ func TestFEVMETH0(t *testing.T) {
 	eth0id, err := address.NewIDAddress(1001)
 	require.NoError(t, err)
 
+	client.AssertActorType(ctx, eth0id, manifest.EthAccountKey)
+
 	act, err := client.StateGetActor(ctx, eth0id, types.EmptyTSK)
 	require.NoError(t, err)
-
-	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
-	require.NoError(t, err)
-
-	av, err := actorstypes.VersionForNetwork(nv)
-	require.NoError(t, err)
-
-	evmCodeCid, ok := actors.GetActorCodeID(av, manifest.EthAccountKey)
-	require.True(t, ok, "failed to get EVM code id")
-	require.Equal(t, act.Code, evmCodeCid)
 
 	eth0Addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, make([]byte, 20))
 	require.NoError(t, err)
