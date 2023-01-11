@@ -114,7 +114,7 @@ func TestFEVMETH0(t *testing.T) {
 	av, err := actorstypes.VersionForNetwork(nv)
 	require.NoError(t, err)
 
-	evmCodeCid, ok := actors.GetActorCodeID(av, manifest.EvmKey)
+	evmCodeCid, ok := actors.GetActorCodeID(av, manifest.EthAccountKey)
 	require.True(t, ok, "failed to get EVM code id")
 	require.Equal(t, act.Code, evmCodeCid)
 
