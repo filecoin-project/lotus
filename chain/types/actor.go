@@ -26,7 +26,7 @@ type ActorV5 struct {
 	Head    cid.Cid
 	Nonce   uint64
 	Balance BigInt
-	// Delegated Address
+	// Deterministic Address: f1, f3, or f4 address.
 	Address *address.Address
 }
 
