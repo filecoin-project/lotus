@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"hlm-ipfs/x/logger"
+
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
@@ -279,9 +281,10 @@ func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
 
 	if m.windowPoStSched.MaybeAddWorker(wid, tasks, whnd) ||
 		m.winningPoStSched.MaybeAddWorker(wid, tasks, whnd) {
-		return nil
+		logger.Infow("start worker-post sched", "wid", wid)
 	}
 
+	logger.Infow("start worker sched", "wid", wid)
 	return m.sched.runWorker(ctx, wid, whnd)
 }
 
