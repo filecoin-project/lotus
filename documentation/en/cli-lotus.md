@@ -2090,8 +2090,6 @@ COMMANDS:
      encode                            encode various types
      disputer                          interact with the window post disputer
      prune                             prune the stored chain state and perform garbage collection
-     deploy                            Deploy an EVM smart contract and return its address
-     invoke                            Invoke an EVM smart contract using the specified CALLDATA
      help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2429,34 +2427,6 @@ OPTIONS:
    --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
    --online-gc        use online gc for garbage collecting the coldstore (default: false)
    --retention value  specify state retention policy (default: -1)
-   
-```
-
-### lotus chain deploy
-```
-NAME:
-   lotus chain deploy - Deploy an EVM smart contract and return its address
-
-USAGE:
-   lotus chain deploy [command options] contract
-
-OPTIONS:
-   --from value  optionally specify the account to use for sending the creation message
-   --hex         use when input contract is in hex (default: false)
-   
-```
-
-### lotus chain invoke
-```
-NAME:
-   lotus chain invoke - Invoke an EVM smart contract using the specified CALLDATA
-
-USAGE:
-   lotus chain invoke [command options] address calldata
-
-OPTIONS:
-   --from value   optionally specify the account to use for sending the exec message
-   --value value  optionally specify the value to be sent with the invokation message (default: 0)
    
 ```
 
