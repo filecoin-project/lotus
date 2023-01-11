@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -97,7 +96,6 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 
 	hash := client.EVM().SubmitTransaction(ctx, &tx)
-	fmt.Println(hash)
 
 	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
 	require.NoError(t, err)
