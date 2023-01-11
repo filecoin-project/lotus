@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 const Eip1559TxType = 2
@@ -333,7 +332,7 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	ethAddr, err := delegated.EthAddressFromPubKey(pubk)
+	ethAddr, err := EthAddressFromPubKey(pubk)
 	if err != nil {
 		return address.Undef, err
 	}

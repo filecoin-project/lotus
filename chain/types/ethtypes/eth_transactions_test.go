@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
@@ -200,7 +199,7 @@ func TestDelegatedSigner(t *testing.T) {
 	r := mustDecodeHex(rHex)
 	s := mustDecodeHex(sHex)
 
-	addrHash, err := delegated.EthAddressFromPubKey(pubk)
+	addrHash, err := EthAddressFromPubKey(pubk)
 	require.NoError(t, err)
 
 	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[12:])
