@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
@@ -59,6 +58,8 @@ var log = logging.Logger("genesis")
 type GenesisBootstrap struct {
 	Genesis *types.BlockHeader
 }
+
+var EmptyObjCid = cid.Undef
 
 /*
 From a list of parameters, create a genesis block / initial state
@@ -124,9 +125,10 @@ Genesis: {
 
 func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template genesis.Template) (*state.StateTree, map[address.Address]address.Address, error) {
 	// Create empty state tree
-
 	cst := cbor.NewCborStore(bs)
-	_, err := cst.Put(context.TODO(), []struct{}{})
+
+	var err error
+	EmptyObjCid, err = cst.Put(context.TODO(), []struct{}{})
 	if err != nil {
 		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
 	}
@@ -239,15 +241,12 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create accounts
 	for _, info := range template.Accounts {
-
 		switch info.Type {
 		case genesis.TAccount:
 			if err := CreateAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
 				return nil, nil, xerrors.Errorf("failed to create account actor: %w", err)
 			}
-
 		case genesis.TMultisig:
-
 			ida, err := address.NewIDAddress(uint64(idStart))
 			if err != nil {
 				return nil, nil, err
@@ -592,12 +591,21 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}
 
-	// setup FEVM
-	stateroot, err = SetupFEVM(ctx, cs, sys, stateroot, template.NetworkVersion)
+	st, err = state.LoadStateTree(st.Store, stateroot)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to setup FEVM functionality: %w", err)
+		return nil, xerrors.Errorf("failed to load updated state tree: %w", err)
 	}
 
+	// Set up Eth null addresses.
+	if _, err := SetupEthNullAddresses(ctx, st, template.NetworkVersion); err != nil {
+		return nil, xerrors.Errorf("failed to set up Eth null addresses: %w", err)
+	}
+
+	stateroot, err = st.Flush(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to flush state tree: %w", err)
+	}
+	
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 	emptyroot, err := adt0.MakeEmptyArray(store).Root()
 	if err != nil {
@@ -680,29 +688,4 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
-}
-
-func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error {
-	av, err := actorstypes.VersionForNetwork(nv)
-	if err != nil {
-		return fmt.Errorf("failed to get actors version for network version %d: %w", nv, err)
-	}
-
-	if av < actorstypes.Version10 {
-		// Not defined before version 10; migration has to create.
-		return nil
-	}
-
-	codecid, ok := actors.GetActorCodeID(av, manifest.EamKey)
-	if !ok {
-		return fmt.Errorf("failed to get CodeCID for EAM during genesis")
-	}
-
-	header := &types.Actor{
-		Code:    codecid,
-		Head:    vm.EmptyObjectCid,
-		Balance: big.Zero(),
-		Address: &builtintypes.EthereumAddressManagerActorAddr, // so that it can create ETH0
-	}
-	return nst.SetActor(builtintypes.EthereumAddressManagerActorAddr, header)
 }
