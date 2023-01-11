@@ -152,7 +152,8 @@ var ChainNode = Options(
 		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
 		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
-		Override(new(full.EthModuleAPI), new(api.Gateway)),
+		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
+		Override(new(full.EthEventAPI), From(new(api.Gateway))),
 	),
 
 	// Full node API / service startup
@@ -258,7 +259,9 @@ func ConfigFullNode(c interface{}) Option {
 
 		// Actor event filtering support
 		Override(new(events.EventAPI), From(new(modules.EventAPI))),
-		Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.ActorEvent)),
+
+		// in lite-mode Eth event api is provided by gateway
+		ApplyIf(isFullNode, Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.ActorEvent))),
 	)
 }
 
