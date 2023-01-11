@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -85,7 +85,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 		Epoch:          parentTs.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.ChainStore().StateBlockstore(),
-		Actors:         filcns.NewActorRegistry(),
+		Actors:         consensus.NewActorRegistry(),
 		Syscalls:       sm.VMSys(),
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NetworkVersion: sm.GetNetworkVersion(ctx, parentTs.Height()+1),

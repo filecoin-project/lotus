@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 )
 
 var extractManyFlags struct {
@@ -159,7 +159,7 @@ func runExtractMany(c *cli.Context) error {
 		}
 
 		// Lookup the method in actor method table.
-		if m, ok := filcns.NewActorRegistry().Methods[codeCid]; !ok {
+		if m, ok := consensus.NewActorRegistry().Methods[codeCid]; !ok {
 			return fmt.Errorf("unrecognized actor: %s", actorcode)
 		} else if methodnum >= len(m) {
 			return fmt.Errorf("unrecognized method number for actor %s: %d", actorcode, methodnum)

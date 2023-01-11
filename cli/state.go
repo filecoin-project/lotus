@@ -41,7 +41,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -1408,7 +1408,7 @@ func codeStr(c cid.Cid) string {
 }
 
 func getMethod(code cid.Cid, method abi.MethodNum) string {
-	return filcns.NewActorRegistry().Methods[code][method].Name // todo: use remote
+	return consensus.NewActorRegistry().Methods[code][method].Name // todo: use remote
 }
 
 func toFil(f types.BigInt) types.FIL {
@@ -1424,7 +1424,7 @@ func isVerySlow(t time.Duration) bool {
 }
 
 func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	p, err := stmgr.GetParamType(filcns.NewActorRegistry(), code, method) // todo use api for correct actor registry
+	p, err := stmgr.GetParamType(consensus.NewActorRegistry(), code, method) // todo use api for correct actor registry
 	if err != nil {
 		return "", err
 	}
@@ -1438,7 +1438,7 @@ func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 }
 
 func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
-	methodMeta, found := filcns.NewActorRegistry().Methods[code][method] // TODO: use remote
+	methodMeta, found := consensus.NewActorRegistry().Methods[code][method] // TODO: use remote
 	if !found {
 		return "", fmt.Errorf("method %d not found on actor %s", method, code)
 	}
