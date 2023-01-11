@@ -73,7 +73,7 @@ func MakeEthNullAddressActor(av actorstypes.Version, addr address.Address) (*typ
 func SetupEthNullAddresses(ctx context.Context, st *state.StateTree, nv network.Version) ([]address.Address, error) {
 	av, err := actorstypes.VersionForNetwork(nv)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve actors version for network version %d: %w", err)
+		return nil, xerrors.Errorf("failed to resolve actors version for network version %d: %w", av, err)
 	}
 
 	if av < actorstypes.Version10 {

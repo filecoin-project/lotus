@@ -605,7 +605,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	if err != nil {
 		return nil, xerrors.Errorf("failed to flush state tree: %w", err)
 	}
-	
+
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 	emptyroot, err := adt0.MakeEmptyArray(store).Root()
 	if err != nil {
