@@ -23,7 +23,6 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
@@ -543,11 +542,11 @@ var runCmd = &cli.Command{
 
 		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
-			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
-				w.WriteHeader(401)
-				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
-				return
-			}
+			//if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
+			//	w.WriteHeader(401)
+			//	_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
+			//	return
+			//}
 
 			fh.ServeHTTP(w, r)
 		}
