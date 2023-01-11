@@ -31,7 +31,7 @@ COMMANDS:
      log           Manage logging
      wait-api      Wait for lotus api to come online
      fetch-params  Fetch proving parameters
-     eth           Query eth contract state
+     eth           Ethereum operations
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
@@ -2090,8 +2090,8 @@ COMMANDS:
      encode                            encode various types
      disputer                          interact with the window post disputer
      prune                             prune the stored chain state and perform garbage collection
-     create-evm-actor                  Create an new EVM actor via the init actor and return its address
-     invoke-evm-actor                  Invoke a contract entry point in an EVM actor
+     deploy                            Deploy an EVM smart contract and return its address
+     invoke                            Invoke an EVM smart contract using the specified CALLDATA
      help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2432,27 +2432,27 @@ OPTIONS:
    
 ```
 
-### lotus chain create-evm-actor
+### lotus chain deploy
 ```
 NAME:
-   lotus chain create-evm-actor - Create an new EVM actor via the init actor and return its address
+   lotus chain deploy - Deploy an EVM smart contract and return its address
 
 USAGE:
-   lotus chain create-evm-actor [command options] contract
+   lotus chain deploy [command options] contract
 
 OPTIONS:
-   --from value  optionally specify the account to use for sending the exec message
+   --from value  optionally specify the account to use for sending the creation message
    --hex         use when input contract is in hex (default: false)
    
 ```
 
-### lotus chain invoke-evm-actor
+### lotus chain invoke
 ```
 NAME:
-   lotus chain invoke-evm-actor - Invoke a contract entry point in an EVM actor
+   lotus chain invoke - Invoke an EVM smart contract using the specified CALLDATA
 
 USAGE:
-   lotus chain invoke-evm-actor [command options] address contract-entry-point [input-data]
+   lotus chain invoke [command options] address calldata
 
 OPTIONS:
    --from value   optionally specify the account to use for sending the exec message
@@ -2573,12 +2573,14 @@ OPTIONS:
 ## lotus eth
 ```
 NAME:
-   lotus eth - Query eth contract state
+   lotus eth - Ethereum operations
 
 USAGE:
    lotus eth command [command options] [arguments...]
 
 COMMANDS:
+     deploy            Deploy an EVM smart contract and return its address
+     invoke            Invoke an EVM smart contract using the specified CALLDATA
      stat              Print eth/filecoin addrs and code cid
      call              Simulate an eth contract call
      contract-address  Generate contract address from smart contract code
@@ -2586,6 +2588,34 @@ COMMANDS:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus eth deploy
+```
+NAME:
+   lotus eth deploy - Deploy an EVM smart contract and return its address
+
+USAGE:
+   lotus eth deploy [command options] contract
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the creation message
+   --hex         use when input contract is in hex (default: false)
+   
+```
+
+### lotus eth invoke
+```
+NAME:
+   lotus eth invoke - Invoke an EVM smart contract using the specified CALLDATA
+
+USAGE:
+   lotus eth invoke [command options] address calldata
+
+OPTIONS:
+   --from value   optionally specify the account to use for sending the exec message
+   --value value  optionally specify the value to be sent with the invokation message (default: 0)
    
 ```
 

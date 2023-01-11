@@ -1,7 +1,6 @@
 package key
 
 import (
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -9,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
