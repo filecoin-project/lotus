@@ -19,7 +19,8 @@ import (
 func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error {
 	var digest []byte
 
-	switch typ := msg.Signature.Type; typ {
+	typ := msg.Signature.Type
+	switch typ {
 	case crypto.SigTypeDelegated:
 		txArgs, err := ethtypes.NewEthTxArgsFromMessage(&msg.Message)
 		if err != nil {
@@ -35,7 +36,7 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 	}
 
 	if err := sigs.Verify(&msg.Signature, signer, digest); err != nil {
-		return xerrors.Errorf("secpk message %s has invalid signature: %w", msg.Cid(), err)
+		return xerrors.Errorf("message %s has invalid signature (type %d): %w", msg.Cid(), typ, err)
 	}
 	return nil
 }
