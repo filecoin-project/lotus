@@ -112,7 +112,7 @@ func (e *EVM) LoadEvents(ctx context.Context, eventsRoot cid.Cid) []types.Event 
 	require := require.New(e.t)
 
 	s := &apiIpldStore{ctx, e}
-	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(5))
+	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 	require.NoError(err)
 
 	ret := make([]types.Event, 0, amt.Len())

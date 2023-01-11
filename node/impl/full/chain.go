@@ -661,7 +661,7 @@ func (a *ChainAPI) ChainBlockstoreInfo(ctx context.Context) (map[string]interfac
 // TODO (raulk) make copies of this logic elsewhere use this (e.g. itests, CLI, events filter).
 func (a *ChainAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]types.Event, error) {
 	store := cbor.NewCborStore(a.ExposedBlockstore)
-	evtArr, err := amt4.LoadAMT(ctx, store, root, amt4.UseTreeBitWidth(5))
+	evtArr, err := amt4.LoadAMT(ctx, store, root, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 	if err != nil {
 		return nil, xerrors.Errorf("load events amt: %w", err)
 	}

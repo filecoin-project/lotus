@@ -444,7 +444,7 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 			continue
 		}
 
-		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(5))
+		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 		if err != nil {
 			return nil, xerrors.Errorf("load events amt: %w", err)
 		}
