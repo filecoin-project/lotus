@@ -59,8 +59,6 @@ type GenesisBootstrap struct {
 	Genesis *types.BlockHeader
 }
 
-var EmptyObjCid = cid.Undef
-
 /*
 From a list of parameters, create a genesis block / initial state
 
@@ -126,12 +124,6 @@ Genesis: {
 func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template genesis.Template) (*state.StateTree, map[address.Address]address.Address, error) {
 	// Create empty state tree
 	cst := cbor.NewCborStore(bs)
-
-	var err error
-	EmptyObjCid, err = cst.Put(context.TODO(), []struct{}{})
-	if err != nil {
-		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
-	}
 
 	sv, err := state.VersionForNetwork(template.NetworkVersion)
 	if err != nil {

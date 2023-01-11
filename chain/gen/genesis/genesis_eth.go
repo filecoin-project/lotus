@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/chain/vm"
 )
 
 // EthNullAddresses are the Ethereum addresses we want to create zero-balanced EthAccounts in.
@@ -45,7 +46,7 @@ func SetupEAM(_ context.Context, nst *state.StateTree, nv network.Version) error
 
 	header := &types.Actor{
 		Code:    codecid,
-		Head:    EmptyObjCid,
+		Head:    vm.EmptyObjectCid,
 		Balance: big.Zero(),
 		Address: &builtin.EthereumAddressManagerActorAddr, // so that it can create ETH0
 	}
@@ -61,7 +62,7 @@ func MakeEthNullAddressActor(av actorstypes.Version, addr address.Address) (*typ
 
 	act := &types.Actor{
 		Code:    actcid,
-		Head:    EmptyObjCid,
+		Head:    vm.EmptyObjectCid,
 		Nonce:   0,
 		Balance: big.Zero(),
 		Address: &addr,
