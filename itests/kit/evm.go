@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/lib/sigs/delegated"
 )
 
 // EVM groups EVM-related actions.
@@ -134,7 +133,7 @@ func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
 	key, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(e.t, err)
 
-	ethAddr, err := delegated.EthAddressFromPubKey(key.PublicKey)
+	ethAddr, err := ethtypes.EthAddressFromPubKey(key.PublicKey)
 	require.NoError(e.t, err)
 
 	addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
