@@ -650,17 +650,12 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.Message, error) {
 	var from address.Address
 	if tx.From == nil || *tx.From == (ethtypes.EthAddress{}) {
-		// TODO: We're sending from the "burnt funds" account for now, because we need to
-		// send from an actual account till we deploy an EVM _account_ to this address, not
-		// an empty EVM contract.
-		//
-		// See https://github.com/filecoin-project/ref-fvm/issues/1173
-		from = builtinactors.BurntFundsActorAddr
 		// Send from the filecoin "system" address.
-		// from, err = (api.EthAddress{}).ToFilecoinAddress()
-		// if err != nil {
-		//	return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
-		// }
+		var err error
+		from, err = (ethtypes.EthAddress{}).ToFilecoinAddress()
+		if err != nil {
+			return nil, fmt.Errorf("failed to construct the ethereum system address: %w", err)
+		}
 	} else {
 		// The from address must be translatable to an f4 address.
 		var err error
