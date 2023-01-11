@@ -193,6 +193,8 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 		return true
 	}
 	// TODO: optimize this naive algorithm
+	// tracked in https://github.com/filecoin-project/lotus/issues/9987
+
 	// Note keys names may be repeated so we may have multiple opportunities to match
 
 	matched := map[string]bool{}
