@@ -263,7 +263,6 @@ func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 
 // ParseEthAddress parses an Ethereum address from a hex string.
 func ParseEthAddress(s string) (EthAddress, error) {
-	handlePrefix(&s)
 	b, err := decodeHexString(s, EthAddressLength)
 	if err != nil {
 		return EthAddress{}, err
@@ -372,25 +371,22 @@ func (h *EthHash) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func handlePrefix(s *string) {
-	if strings.HasPrefix(*s, "0x") || strings.HasPrefix(*s, "0X") {
-		*s = (*s)[2:]
+func decodeHexString(s string, expectedLen int) ([]byte, error) {
+	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
 	}
-	if len(*s)%2 == 1 {
-		*s = "0" + *s
+	// Sometimes clients will omit a leading zero in a byte; pad so we can decode correctly.
+	if len(s)%2 == 1 {
+		s = "0" + s
 	}
-}
-
-func decodeHexString(s string, length int) ([]byte, error) {
+	if len(s) != expectedLen*2 {
+		return []byte{}, xerrors.Errorf("expected length %d, got %d", expectedLen, len(s))
+	}
 	b, err := hex.DecodeString(s)
 	if err != nil {
-		return []byte{}, xerrors.Errorf("cannot parse hash: %w", err)
+		return []byte{}, xerrors.Errorf("cannot parse hex value: %w", err)
 	}
-
-	if len(b) > length {
-		return []byte{}, xerrors.Errorf("length of decoded bytes is longer than %d", length)
-	}
-
 	return b, nil
 }
 
@@ -399,7 +395,6 @@ func EthHashFromCid(c cid.Cid) (EthHash, error) {
 }
 
 func ParseEthHash(s string) (EthHash, error) {
-	handlePrefix(&s)
 	b, err := decodeHexString(s, EthHashLength)
 	if err != nil {
 		return EthHash{}, err
