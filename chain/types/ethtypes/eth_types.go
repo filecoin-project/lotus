@@ -369,11 +369,11 @@ func decodeHexString(s string, expectedLen int) ([]byte, error) {
 		s = "0" + s
 	}
 	if len(s) != expectedLen*2 {
-		return []byte{}, xerrors.Errorf("expected length %d, got %d", expectedLen, len(s))
+		return nil, xerrors.Errorf("expected hex string length sans prefix %d, got %d", expectedLen*2, len(s))
 	}
 	b, err := hex.DecodeString(s)
 	if err != nil {
-		return []byte{}, xerrors.Errorf("cannot parse hex value: %w", err)
+		return nil, xerrors.Errorf("cannot parse hex value: %w", err)
 	}
 	return b, nil
 }

@@ -372,12 +372,13 @@ func init() {
 	})
 
 	ethint := ethtypes.EthUint64(5)
-
 	addExample(ethint)
 	addExample(&ethint)
+
 	ethaddr, _ := ethtypes.ParseEthAddress("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
 	addExample(ethaddr)
 	addExample(&ethaddr)
+
 	ethhash, _ := ethtypes.EthHashFromCid(c)
 	addExample(ethhash)
 	addExample(&ethhash)
@@ -387,11 +388,13 @@ func init() {
 
 	addExample(&uuid.UUID{})
 
-	filterid, _ := ethtypes.ParseEthHash("0x5CbEeC012345673f25E309Cc264f240bb0664031")
-	addExample(ethtypes.EthFilterID(filterid))
+	filterid := ethtypes.EthFilterID(ethhash)
+	addExample(filterid)
+	addExample(&filterid)
 
-	subid, _ := ethtypes.ParseEthHash("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
-	addExample(ethtypes.EthSubscriptionID(subid))
+	subid := ethtypes.EthSubscriptionID(ethhash)
+	addExample(subid)
+	addExample(&subid)
 
 	pstring := func(s string) *string { return &s }
 	addExample(&ethtypes.EthFilterSpec{
