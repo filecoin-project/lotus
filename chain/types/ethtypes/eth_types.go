@@ -235,7 +235,7 @@ func NewEthAddressFromPubKey(pubk []byte) ([]byte, error) {
 	// but putting this check here for defensiveness), strip the prefix
 	const pubKeyLen = 65
 	if len(pubk) != pubKeyLen {
-		return nil, fmt.Errorf("public key should have %d in length, but gets %d", pubKeyLen, len(pubk))
+		return nil, fmt.Errorf("public key should have %d in length, but got %d", pubKeyLen, len(pubk))
 	}
 
 	if pubk[0] != 0x04 {
