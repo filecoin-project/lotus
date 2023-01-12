@@ -25,19 +25,19 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-var EthCmd = &cli.Command{
-	Name:  "eth",
-	Usage: "Ethereum operations",
+var EvmCmd = &cli.Command{
+	Name:  "evm",
+	Usage: "Commands related to the Filecoin EVM runtime",
 	Subcommands: []*cli.Command{
-		EthDeployCmd,
-		EthInvokeCmd,
-		EthGetInfoCmd,
-		EthCallSimulateCmd,
-		EthGetContractAddress,
+		EvmDeployCmd,
+		EvmInvokeCmd,
+		EvmGetInfoCmd,
+		EvmCallSimulateCmd,
+		EvmGetContractAddress,
 	},
 }
 
-var EthGetInfoCmd = &cli.Command{
+var EvmGetInfoCmd = &cli.Command{
 	Name:  "stat",
 	Usage: "Print eth/filecoin addrs and code cid",
 	Flags: []cli.Flag{
@@ -101,7 +101,7 @@ var EthGetInfoCmd = &cli.Command{
 	},
 }
 
-var EthCallSimulateCmd = &cli.Command{
+var EvmCallSimulateCmd = &cli.Command{
 	Name:      "call",
 	Usage:     "Simulate an eth contract call",
 	ArgsUsage: "[from] [to] [params]",
@@ -150,7 +150,7 @@ var EthCallSimulateCmd = &cli.Command{
 	},
 }
 
-var EthGetContractAddress = &cli.Command{
+var EvmGetContractAddress = &cli.Command{
 	Name:      "contract-address",
 	Usage:     "Generate contract address from smart contract code",
 	ArgsUsage: "[senderEthAddr] [salt] [contractHexPath]",
@@ -200,7 +200,7 @@ var EthGetContractAddress = &cli.Command{
 	},
 }
 
-var EthDeployCmd = &cli.Command{
+var EvmDeployCmd = &cli.Command{
 	Name:      "deploy",
 	Usage:     "Deploy an EVM smart contract and return its address",
 	ArgsUsage: "contract",
@@ -329,7 +329,7 @@ var EthDeployCmd = &cli.Command{
 	},
 }
 
-var EthInvokeCmd = &cli.Command{
+var EvmInvokeCmd = &cli.Command{
 	Name:      "invoke",
 	Usage:     "Invoke an EVM smart contract using the specified CALLDATA",
 	ArgsUsage: "address calldata",
