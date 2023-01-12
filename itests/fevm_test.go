@@ -172,4 +172,13 @@ func TestFEVMDelegateCall(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
+	//test the value is 7 via calling the getter
+	result = invokeContract(t, ctx, client, fromAddr, storageAddr, "getCounter()", []byte{})
+	require.Equal(t, result, expectedResult)
+
+	//test the value is 0 via calling the getter on the Actor contract
+	result = invokeContract(t, ctx, client, fromAddr, actorAddr, "getCounter()", []byte{})
+	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
+	require.NoError(t, err)
+	require.Equal(t, result, expectedResultActor)
 }
