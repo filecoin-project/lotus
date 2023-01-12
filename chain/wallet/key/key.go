@@ -52,7 +52,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
 	case types.KTDelegated:
-		// Assume eth for now
+		// Transitory Delegated signature verification as per FIP-0055
 		ethAddr, err := ethtypes.EthAddressFromPubKey(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to calculate Eth address from public key: %w", err)
