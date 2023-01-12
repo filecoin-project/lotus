@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-func setup(t *testing.T) (context.Context, context.CancelFunc, *kit.TestFullNode) {
+func setupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *kit.TestFullNode) {
 	kit.QuietMiningLogs()
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
@@ -89,7 +89,7 @@ func inputDataFromFrom(t *testing.T, ctx context.Context, client *kit.TestFullNo
 // TestFEVMBasic does a basic fevm contract installation and invocation
 func TestFEVMBasic(t *testing.T) {
 
-	ctx, cancel, client := setup(t)
+	ctx, cancel, client := setupFEVMTest(t)
 	defer cancel()
 
 	filename := "contracts/SimpleCoin.bin"
@@ -120,7 +120,7 @@ func TestFEVMBasic(t *testing.T) {
 
 // TestFEVMETH0 tests that the ETH0 actor is in genesis
 func TestFEVMETH0(t *testing.T) {
-	ctx, cancel, client := setup(t)
+	ctx, cancel, client := setupFEVMTest(t)
 	defer cancel()
 
 	eth0id, err := address.NewIDAddress(1001)
@@ -147,7 +147,7 @@ func TestFEVMETH0(t *testing.T) {
 // TestFEVMDelegateCall deploys two contracts and makes a delegate call transaction
 func TestFEVMDelegateCall(t *testing.T) {
 
-	ctx, cancel, client := setup(t)
+	ctx, cancel, client := setupFEVMTest(t)
 	defer cancel()
 
 	//install contract Actor
