@@ -1431,6 +1431,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 //     use that ID to form the masked ID address.
 //  4. Otherwise, we fetch the actor's ID from the state tree and form the masked ID with it.
 func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (ethtypes.EthAddress, error) {
+	// BLOCK A: We are trying to get an actual Ethereum address from an f410 address.
 	// Attempt to convert directly, if it's an f4 address.
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
 	if err == nil && !ethAddr.IsMaskedID() {
@@ -1446,6 +1447,7 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 		}
 	}
 
+	// BLOCK B: We gave up on getting an actual Ethereum address and are falling back to a Masked ID address.
 	// Check if we already have an ID addr, and use it if possible.
 	if err == nil && ethAddr.IsMaskedID() {
 		return ethAddr, nil
