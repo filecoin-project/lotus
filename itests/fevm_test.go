@@ -159,11 +159,14 @@ func TestFEVMDelegateCall(t *testing.T) {
 	require.Equal(t, fromAddr, fromAddrStorage)
 
 	//call Contract Storage which makes a delegatecall to contract Actor
+	//this contract call sets the "counter" variable to 7, from default value 0
 
 	inputDataContract := inputDataFromFrom(t, ctx, client, actorAddr)
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
+
+	//verify that the returned value of the call to setvars is 7
 	result := invokeContract(t, ctx, client, fromAddr, storageAddr, "setVars(address,uint256)", inputData)
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000007")
 	require.NoError(t, err)
