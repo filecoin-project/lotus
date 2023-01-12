@@ -93,7 +93,7 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 		To:     target,
 		From:   sender,
 		Value:  big.Zero(),
-		Method: abi.MethodNum(2),
+		Method: builtintypes.MethodsEVM.InvokeContract,
 		Params: params,
 	}
 
