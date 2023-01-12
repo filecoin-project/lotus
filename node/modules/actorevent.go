@@ -33,6 +33,8 @@ var _ events.EventAPI = &EventAPI{}
 
 func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEvent, error) {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.EthEvent, error) {
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
 		ee := &full.EthEvent{
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
@@ -53,7 +55,7 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 
 		// Start garbage collection for filters
 		lc.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
+			OnStart: func(context.Context) error {
 				go ee.GC(ctx, time.Duration(cfg.FilterTTL))
 				return nil
 			},
@@ -69,7 +71,7 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 			}
 
 			lc.Append(fx.Hook{
-				OnStop: func(ctx context.Context) error {
+				OnStop: func(context.Context) error {
 					return eventIndex.Close()
 				},
 			})
@@ -112,7 +114,6 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 
 		const ChainHeadConfidence = 1
 
-		ctx := helpers.LifecycleCtx(mctx, lc)
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
 				ev, err := events.NewEventsWithConfidence(ctx, &evapi, ChainHeadConfidence)
