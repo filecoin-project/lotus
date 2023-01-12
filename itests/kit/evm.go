@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"os"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-varint"
@@ -76,6 +78,23 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 	require.NoError(err)
 
 	return result
+}
+
+func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
+	contractHex, err := os.ReadFile(binFilename)
+	require.NoError(e.t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(e.t, err)
+
+	fromAddr, err := e.WalletDefaultAddress(ctx)
+	require.NoError(e.t, err)
+
+	result := e.DeployContract(ctx, fromAddr, contract)
+
+	idAddr, err := address.NewIDAddress(result.ActorID)
+	require.NoError(e.t, err)
+	return fromAddr, idAddr
 }
 
 func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) *api.MsgLookup {
@@ -211,6 +230,23 @@ func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64)
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write(encoded)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
+}
+
+func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) []byte {
+	entryPoint := CalcFuncSignature(funcSignature)
+	wait := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
+	require.True(e.t, wait.Receipt.ExitCode.IsSuccess(), "contract execution failed")
+	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
+	require.NoError(e.t, err)
+	return result
+}
+
+//function signatures are the first 4 bytes of the hash of the function name and types
+func CalcFuncSignature(funcName string) []byte {
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write([]byte(funcName))
+	hash := hasher.Sum(nil)
+	return hash[:4]
 }
 
 // TODO: cleanup and put somewhere reusable.
