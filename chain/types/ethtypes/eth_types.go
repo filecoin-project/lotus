@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	mathbig "math/big"
 	"strconv"
@@ -29,6 +30,8 @@ var (
 	EthTopic3 = "topic3"
 	EthTopic4 = "topic4"
 )
+
+var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
 type EthUint64 uint64
 
@@ -249,16 +252,28 @@ func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
 }
 
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
-	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
-	if err != nil {
-		return EthAddress{}, xerrors.Errorf("failed to try converting filecoin to eth addr: %w", err)
+	switch addr.Protocol() {
+	case address.ID:
+		id, err := address.IDFromAddress(addr)
+		if err != nil {
+			return EthAddress{}, err
+		}
+		var ethaddr EthAddress
+		ethaddr[0] = 0xff
+		binary.BigEndian.PutUint64(ethaddr[12:], id)
+		return ethaddr, nil
+	case address.Delegated:
+		payload := addr.Payload()
+		namespace, n, err := varint.FromUvarint(payload)
+		if err != nil {
+			return EthAddress{}, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
+		}
+		payload = payload[n:]
+		if namespace == builtintypes.EthereumAddressManagerActorID {
+			return CastEthAddress(payload)
+		}
 	}
-
-	if !ok {
-		return EthAddress{}, xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
-	}
-
-	return ethAddr, nil
+	return EthAddress{}, ErrInvalidAddress
 }
 
 // ParseEthAddress parses an Ethereum address from a hex string.
@@ -303,9 +318,13 @@ func (ea *EthAddress) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
+func (ea EthAddress) IsMaskedID() bool {
 	idmask := [12]byte{0xff}
-	if bytes.Equal(ea[:12], idmask[:]) {
+	return bytes.Equal(ea[:12], idmask[:])
+}
+
+func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
+	if ea.IsMaskedID() {
 		// This is a masked ID address.
 		id := binary.BigEndian.Uint64(ea[12:])
 		return address.NewIDAddress(id)
@@ -319,37 +338,6 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 			"Filecoin f4 address: %w", hex.EncodeToString(ea[:]), err)
 	}
 	return addr, nil
-}
-
-// This API assumes that if an ID address is passed in, it doesn't have an equivalent
-// delegated address
-func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
-	switch addr.Protocol() {
-	case address.ID:
-		if !allowId {
-			return EthAddress{}, false, nil
-		}
-		id, err := address.IDFromAddress(addr)
-		if err != nil {
-			return EthAddress{}, false, err
-		}
-		var ethaddr EthAddress
-		ethaddr[0] = 0xff
-		binary.BigEndian.PutUint64(ethaddr[12:], id)
-		return ethaddr, true, nil
-	case address.Delegated:
-		payload := addr.Payload()
-		namespace, n, err := varint.FromUvarint(payload)
-		if err != nil {
-			return EthAddress{}, false, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
-		}
-		payload = payload[n:]
-		if namespace == builtintypes.EthereumAddressManagerActorID {
-			addr, err := CastEthAddress(payload)
-			return addr, err == nil, err
-		}
-	}
-	return EthAddress{}, false, nil
 }
 
 type EthHash [EthHashLength]byte
