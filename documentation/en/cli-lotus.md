@@ -31,7 +31,7 @@ COMMANDS:
      log           Manage logging
      wait-api      Wait for lotus api to come online
      fetch-params  Fetch proving parameters
-     eth           Ethereum operations
+     evm           Commands related to the Filecoin EVM runtime
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
@@ -2540,13 +2540,13 @@ OPTIONS:
    
 ```
 
-## lotus eth
+## lotus evm
 ```
 NAME:
-   lotus eth - Ethereum operations
+   lotus evm - Commands related to the Filecoin EVM runtime
 
 USAGE:
-   lotus eth command [command options] [arguments...]
+   lotus evm command [command options] [arguments...]
 
 COMMANDS:
      deploy            Deploy an EVM smart contract and return its address
@@ -2561,13 +2561,13 @@ OPTIONS:
    
 ```
 
-### lotus eth deploy
+### lotus evm deploy
 ```
 NAME:
-   lotus eth deploy - Deploy an EVM smart contract and return its address
+   lotus evm deploy - Deploy an EVM smart contract and return its address
 
 USAGE:
-   lotus eth deploy [command options] contract
+   lotus evm deploy [command options] contract
 
 OPTIONS:
    --from value  optionally specify the account to use for sending the creation message
@@ -2575,13 +2575,13 @@ OPTIONS:
    
 ```
 
-### lotus eth invoke
+### lotus evm invoke
 ```
 NAME:
-   lotus eth invoke - Invoke an EVM smart contract using the specified CALLDATA
+   lotus evm invoke - Invoke an EVM smart contract using the specified CALLDATA
 
 USAGE:
-   lotus eth invoke [command options] address calldata
+   lotus evm invoke [command options] address calldata
 
 OPTIONS:
    --from value   optionally specify the account to use for sending the exec message
@@ -2589,13 +2589,13 @@ OPTIONS:
    
 ```
 
-### lotus eth stat
+### lotus evm stat
 ```
 NAME:
-   lotus eth stat - Print eth/filecoin addrs and code cid
+   lotus evm stat - Print eth/filecoin addrs and code cid
 
 USAGE:
-   lotus eth stat [command options] [arguments...]
+   lotus evm stat [command options] [arguments...]
 
 OPTIONS:
    --ethAddr value  Ethereum address
@@ -2603,26 +2603,26 @@ OPTIONS:
    
 ```
 
-### lotus eth call
+### lotus evm call
 ```
 NAME:
-   lotus eth call - Simulate an eth contract call
+   lotus evm call - Simulate an eth contract call
 
 USAGE:
-   lotus eth call [command options] [from] [to] [params]
+   lotus evm call [command options] [from] [to] [params]
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus eth contract-address
+### lotus evm contract-address
 ```
 NAME:
-   lotus eth contract-address - Generate contract address from smart contract code
+   lotus evm contract-address - Generate contract address from smart contract code
 
 USAGE:
-   lotus eth contract-address [command options] [senderEthAddr] [salt] [contractHexPath]
+   lotus evm contract-address [command options] [senderEthAddr] [salt] [contractHexPath]
 
 OPTIONS:
    --help, -h  show help (default: false)

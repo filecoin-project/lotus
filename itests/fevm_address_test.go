@@ -35,7 +35,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	defer cancel()
 
 	// install contract
-	contractHex, err := os.ReadFile("contracts/SimpleCoin.bin")
+	contractHex, err := os.ReadFile("contracts/SimpleCoin.hex")
 	require.NoError(t, err)
 
 	contract, err := hex.DecodeString(string(contractHex))

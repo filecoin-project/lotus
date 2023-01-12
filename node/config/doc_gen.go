@@ -73,9 +73,10 @@ the entire chain)`,
 			Name: "ActorEventDatabasePath",
 			Type: "string",
 
-			Comment: `EventHistoryDatabasePath is the full path to a sqlite database that will be used to index actor events to
+			Comment: `ActorEventDatabasePath is the full path to a sqlite database that will be used to index actor events to
 support the historic filter APIs. If the database does not exist it will be created. The directory containing
-the database must already exist and be writeable.`,
+the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+relative to the CWD (current working directory).`,
 		},
 	},
 	"Backup": []DocField{
