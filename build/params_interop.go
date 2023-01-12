@@ -50,7 +50,9 @@ var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 
-const UpgradeSharkHeight = abi.ChainEpoch(99999999999999)
+const UpgradeSharkHeight = abi.ChainEpoch(-20)
+
+const UpgradeHyggeHeight = abi.ChainEpoch(99999999999999)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -105,6 +107,7 @@ func init() {
 	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
 	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
 	UpgradeSharkHeight = getUpgradeHeight("LOTUS_SHARK_HEIGHT", UpgradeSharkHeight)
+	UpgradeHyggeHeight = getUpgradeHeight("LOTUS_HYGGE_HEIGHT", UpgradeHyggeHeight)
 
 	BuildType |= BuildInteropnet
 	SetAddressNetwork(address.Testnet)

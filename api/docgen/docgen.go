@@ -24,8 +24,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -378,8 +376,10 @@ func init() {
 	addExample(ethint)
 	addExample(&ethint)
 	ethaddr, _ := ethtypes.EthAddressFromHex("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	addExample(ethaddr)
 	addExample(&ethaddr)
 	ethhash, _ := ethtypes.NewEthHashFromCid(c)
+	addExample(ethhash)
 	addExample(&ethhash)
 
 	ethFeeHistoryReward := [][]ethtypes.EthBigInt{}
@@ -387,10 +387,10 @@ func init() {
 
 	addExample(&uuid.UUID{})
 
-	filterid, _ := ethtypes.EthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
+	filterid, _ := ethtypes.NewEthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
 	addExample(ethtypes.EthFilterID(filterid))
 
-	subid, _ := ethtypes.EthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
+	subid, _ := ethtypes.NewEthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
 	addExample(ethtypes.EthSubscriptionID(subid))
 
 	pstring := func(s string) *string { return &s }
@@ -470,7 +470,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
-			// ExampleValues[t] = es
+			ExampleValues[t] = es
 			return es
 		}
 	case reflect.Interface:
@@ -487,8 +487,8 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 		if f.Type == parent {
 			continue
 		}
-		caser := cases.Title(language.English)
-		if caser.String(f.Name) == f.Name {
+
+		if f.IsExported() {
 			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}

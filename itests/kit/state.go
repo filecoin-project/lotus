@@ -15,7 +15,7 @@ import (
 // AssertActorType verifies that the supplied address is an actor of the
 // specified type (as per its manifest key).
 func (f *TestFullNode) AssertActorType(ctx context.Context, addr address.Address, actorType string) {
-	// validate that an embryo was created
+	// validate that an placeholder was created
 	act, err := f.StateGetActor(ctx, addr, types.EmptyTSK)
 	require.NoError(f.t, err)
 

@@ -1,5 +1,5 @@
-//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet
-// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet
+//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet && !wallabynet && !hyperspacenet
+// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet,!wallabynet,!hyperspacenet
 
 package build
 
@@ -59,6 +59,7 @@ const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 const UpgradeOrangeHeight = 336458
 
 // 2020-12-22T02:00:00Z
+// var because of wdpost_test.go
 var UpgradeClausHeight = abi.ChainEpoch(343200)
 
 // 2021-03-04T00:00:30Z
@@ -83,7 +84,10 @@ const UpgradeOhSnapHeight = 1594680
 const UpgradeSkyrHeight = 1960320
 
 // 2022-11-30T14:00:00Z
-var UpgradeSharkHeight = abi.ChainEpoch(2383680)
+const UpgradeSharkHeight = 2383680
+
+// ??????????????
+var UpgradeHyggeHeight = abi.ChainEpoch(math.MaxInt64)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -98,8 +102,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_SHARK") == "1" {
-		UpgradeSharkHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_HYGGE") == "1" {
+		UpgradeHyggeHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

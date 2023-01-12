@@ -441,7 +441,7 @@ func IsValidForSending(act *types.Actor) bool {
 		return true
 	}
 
-	if !builtin.IsEmbryoActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
 

@@ -25,6 +25,12 @@ import (
         {{if (ge . 9)}}
             datacap{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/datacap"
         {{end}}
+        {{if (ge . 10)}}
+            evm{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/evm"
+            eam{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/eam"
+            placeholder{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/placeholder"
+            ethaccount{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/ethaccount"
+        {{end}}
     {{end}}
 	"github.com/filecoin-project/go-state-types/cbor"
 	rtt "github.com/filecoin-project/go-state-types/rt"
@@ -174,6 +180,32 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
                                 methods: datacap{{.}}.Methods,
                                 state:   new(datacap{{.}}.State),
                             }){{end}}
+                        {{if (ge . 10)}}
+                            case manifest.EvmKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: evm{{.}}.Methods,
+                                    state:   new(evm{{.}}.State),
+                                })
+                            case manifest.EamKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: eam{{.}}.Methods,
+                                    state:   nil,
+                                })
+                            case manifest.PlaceholderKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: placeholder{{.}}.Methods,
+                                    state:   nil,
+                                })
+                            case manifest.EthAccountKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: ethaccount{{.}}.Methods,
+                                    state:   nil,
+                                })
+                        {{end}}
                         }
                     }
             {{end}}
