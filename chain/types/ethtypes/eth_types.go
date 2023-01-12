@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	mathbig "math/big"
 	"strconv"
@@ -29,6 +30,8 @@ var (
 	EthTopic3 = "topic3"
 	EthTopic4 = "topic4"
 )
+
+var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
 type EthUint64 uint64
 
@@ -249,21 +252,32 @@ func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
 }
 
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
-	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
-	if err != nil {
-		return EthAddress{}, xerrors.Errorf("failed to try converting filecoin to eth addr: %w", err)
+	switch addr.Protocol() {
+	case address.ID:
+		id, err := address.IDFromAddress(addr)
+		if err != nil {
+			return EthAddress{}, err
+		}
+		var ethaddr EthAddress
+		ethaddr[0] = 0xff
+		binary.BigEndian.PutUint64(ethaddr[12:], id)
+		return ethaddr, nil
+	case address.Delegated:
+		payload := addr.Payload()
+		namespace, n, err := varint.FromUvarint(payload)
+		if err != nil {
+			return EthAddress{}, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
+		}
+		payload = payload[n:]
+		if namespace == builtintypes.EthereumAddressManagerActorID {
+			return CastEthAddress(payload)
+		}
 	}
-
-	if !ok {
-		return EthAddress{}, xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
-	}
-
-	return ethAddr, nil
+	return EthAddress{}, ErrInvalidAddress
 }
 
 // ParseEthAddress parses an Ethereum address from a hex string.
 func ParseEthAddress(s string) (EthAddress, error) {
-	handlePrefix(&s)
 	b, err := decodeHexString(s, EthAddressLength)
 	if err != nil {
 		return EthAddress{}, err
@@ -304,9 +318,13 @@ func (ea *EthAddress) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
+func (ea EthAddress) IsMaskedID() bool {
 	idmask := [12]byte{0xff}
-	if bytes.Equal(ea[:12], idmask[:]) {
+	return bytes.Equal(ea[:12], idmask[:])
+}
+
+func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
+	if ea.IsMaskedID() {
 		// This is a masked ID address.
 		id := binary.BigEndian.Uint64(ea[12:])
 		return address.NewIDAddress(id)
@@ -320,37 +338,6 @@ func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {
 			"Filecoin f4 address: %w", hex.EncodeToString(ea[:]), err)
 	}
 	return addr, nil
-}
-
-// This API assumes that if an ID address is passed in, it doesn't have an equivalent
-// delegated address
-func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAddress, bool, error) {
-	switch addr.Protocol() {
-	case address.ID:
-		if !allowId {
-			return EthAddress{}, false, nil
-		}
-		id, err := address.IDFromAddress(addr)
-		if err != nil {
-			return EthAddress{}, false, err
-		}
-		var ethaddr EthAddress
-		ethaddr[0] = 0xff
-		binary.BigEndian.PutUint64(ethaddr[12:], id)
-		return ethaddr, true, nil
-	case address.Delegated:
-		payload := addr.Payload()
-		namespace, n, err := varint.FromUvarint(payload)
-		if err != nil {
-			return EthAddress{}, false, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
-		}
-		payload = payload[n:]
-		if namespace == builtintypes.EthereumAddressManagerActorID {
-			addr, err := CastEthAddress(payload)
-			return addr, err == nil, err
-		}
-	}
-	return EthAddress{}, false, nil
 }
 
 type EthHash [EthHashLength]byte
@@ -372,25 +359,22 @@ func (h *EthHash) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func handlePrefix(s *string) {
-	if strings.HasPrefix(*s, "0x") || strings.HasPrefix(*s, "0X") {
-		*s = (*s)[2:]
+func decodeHexString(s string, expectedLen int) ([]byte, error) {
+	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
 	}
-	if len(*s)%2 == 1 {
-		*s = "0" + *s
+	// Sometimes clients will omit a leading zero in a byte; pad so we can decode correctly.
+	if len(s)%2 == 1 {
+		s = "0" + s
 	}
-}
-
-func decodeHexString(s string, length int) ([]byte, error) {
+	if len(s) != expectedLen*2 {
+		return []byte{}, xerrors.Errorf("expected length %d, got %d", expectedLen, len(s))
+	}
 	b, err := hex.DecodeString(s)
 	if err != nil {
-		return []byte{}, xerrors.Errorf("cannot parse hash: %w", err)
+		return []byte{}, xerrors.Errorf("cannot parse hex value: %w", err)
 	}
-
-	if len(b) > length {
-		return []byte{}, xerrors.Errorf("length of decoded bytes is longer than %d", length)
-	}
-
 	return b, nil
 }
 
@@ -399,7 +383,6 @@ func EthHashFromCid(c cid.Cid) (EthHash, error) {
 }
 
 func ParseEthHash(s string) (EthHash, error) {
-	handlePrefix(&s)
 	b, err := decodeHexString(s, EthHashLength)
 	if err != nil {
 		return EthHash{}, err
@@ -425,30 +408,6 @@ type EthFeeHistory struct {
 	BaseFeePerGas []EthBigInt    `json:"baseFeePerGas"`
 	GasUsedRatio  []float64      `json:"gasUsedRatio"`
 	Reward        *[][]EthBigInt `json:"reward,omitempty"`
-}
-
-type BlkNumType int64
-
-const (
-	BlkNumLatest BlkNumType = iota
-	BlkNumPending
-	BlkNumVal
-)
-
-func ParseBlkNumOption(str string) (typ BlkNumType, blkNum EthUint64, err error) {
-	switch str {
-	case "pending":
-		return BlkNumPending, 0, nil
-	case "latest":
-		return BlkNumLatest, 0, nil
-	default:
-		var num EthUint64
-		err := num.UnmarshalJSON([]byte(`"` + str + `"`))
-		if err != nil {
-			return BlkNumVal, 0, err
-		}
-		return BlkNumVal, num, nil
-	}
 }
 
 type EthFilterID EthHash
