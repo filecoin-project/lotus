@@ -158,10 +158,10 @@ func TestUnmarshalEthBytes(t *testing.T) {
 }
 
 func TestEthFilterResultMarshalJSON(t *testing.T) {
-	hash1, err := EthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	hash1, err := NewEthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
 	require.NoError(t, err, "eth hash")
 
-	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	hash2, err := NewEthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
 	addr, err := NewEthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
@@ -223,10 +223,10 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 }
 
 func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
-	hash1, err := EthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	hash1, err := NewEthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
 	require.NoError(t, err, "eth hash")
 
-	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	hash2, err := NewEthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
 	addr, err := NewEthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
@@ -348,10 +348,10 @@ func TestEthAddressListUnmarshalJSON(t *testing.T) {
 }
 
 func TestEthHashListUnmarshalJSON(t *testing.T) {
-	hash1, err := EthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	hash1, err := NewEthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
 	require.NoError(t, err, "eth hash")
 
-	hash2, err := EthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	hash2, err := NewEthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
 	testcases := []struct {

@@ -284,17 +284,16 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, error) {
-	// Account & Embryo code special case
-	if builtin.IsAccountActor(act.Code) || builtin.IsEmbryoActor(act.Code) {
-		return nil, nil
-	}
-
 	actInfo, ok := i.actors[act.Code]
 	if !ok {
 		return nil, xerrors.Errorf("state type for actor %s not found", act.Code)
 	}
 
 	um := actInfo.vmActor.State()
+	if um == nil {
+		// TODO: I would like to assert that we have the empty object here
+		return nil, nil
+	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, xerrors.Errorf("unmarshaling actor state: %w", err)
 	}

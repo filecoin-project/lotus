@@ -92,7 +92,7 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 		To:     target,
 		From:   sender,
 		Value:  big.Zero(),
-		Method: abi.MethodNum(2),
+		Method: builtintypes.MethodsEVM.InvokeContract,
 		Params: params,
 	}
 
@@ -112,7 +112,7 @@ func (e *EVM) LoadEvents(ctx context.Context, eventsRoot cid.Cid) []types.Event 
 	require := require.New(e.t)
 
 	s := &apiIpldStore{ctx, e}
-	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(5))
+	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 	require.NoError(err)
 
 	ret := make([]types.Event, 0, amt.Len())
@@ -133,7 +133,7 @@ func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
 	key, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(e.t, err)
 
-	ethAddr, err := ethtypes.NewEthAddressFromPubKey(key.PublicKey)
+	ethAddr, err := ethtypes.EthAddressFromPubKey(key.PublicKey)
 	require.NoError(e.t, err)
 
 	ea, err := ethtypes.NewEthAddressFromBytes(ethAddr)

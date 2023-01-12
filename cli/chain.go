@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,18 +17,14 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-varint"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -44,7 +39,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var ChainCmd = &cli.Command{
@@ -69,8 +63,6 @@ var ChainCmd = &cli.Command{
 		ChainEncodeCmd,
 		ChainDisputeSetCmd,
 		ChainPruneCmd,
-		ChainExecEVMCmd,
-		ChainInvokeEVMCmd,
 	},
 }
 
@@ -1510,305 +1502,5 @@ var ChainPruneCmd = &cli.Command{
 		opts.RetainState = int64(cctx.Int("retention"))
 
 		return api.ChainPrune(ctx, opts)
-	},
-}
-
-// TODO: Find a home for this.
-func isNativeEthereumAddress(addr address.Address) bool {
-	if addr.Protocol() != address.ID {
-		return false
-	}
-	id, _, err := varint.FromUvarint(addr.Payload())
-	return err == nil && id == builtintypes.EthereumAddressManagerActorID
-}
-
-var ChainExecEVMCmd = &cli.Command{
-	Name:      "create-evm-actor",
-	Usage:     "Create an new EVM actor via the init actor and return its address",
-	ArgsUsage: "contract",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "optionally specify the account to use for sending the exec message",
-		},
-		&cli.BoolFlag{
-			Name:  "hex",
-			Usage: "use when input contract is in hex",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		afmt := NewAppFmt(cctx.App)
-
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
-		if argc := cctx.Args().Len(); argc != 1 {
-			return xerrors.Errorf("must pass the contract init code")
-		}
-
-		contract, err := os.ReadFile(cctx.Args().First())
-		if err != nil {
-			return xerrors.Errorf("failed to read contract: %w", err)
-		}
-		if cctx.Bool("hex") {
-			contract, err = hex.DecodeString(string(contract))
-			if err != nil {
-				return xerrors.Errorf("failed to decode contract: %w", err)
-			}
-		}
-
-		var fromAddr address.Address
-		if from := cctx.String("from"); from == "" {
-			fromAddr, err = api.WalletDefaultAddress(ctx)
-		} else {
-			fromAddr, err = address.NewFromString(from)
-		}
-		if err != nil {
-			return err
-		}
-
-		nonce, err := api.MpoolGetNonce(ctx, fromAddr)
-		if err != nil {
-			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
-		}
-
-		var (
-			params []byte
-			method abi.MethodNum
-		)
-		if isNativeEthereumAddress(fromAddr) {
-			params, err = actors.SerializeParams(&eam.CreateParams{
-				Initcode: contract,
-				Nonce:    nonce,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to serialize Create params: %w", err)
-			}
-			method = builtintypes.MethodsEAM.Create
-		} else {
-			// TODO this should be able to use Create now; needs new bundle
-			var salt [32]byte
-			binary.BigEndian.PutUint64(salt[:], nonce)
-
-			params, err = actors.SerializeParams(&eam.Create2Params{
-				Initcode: contract,
-				Salt:     salt,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to serialize Create2 params: %w", err)
-			}
-			method = builtintypes.MethodsEAM.Create2
-		}
-
-		msg := &types.Message{
-			To:     builtintypes.EthereumAddressManagerActorAddr,
-			From:   fromAddr,
-			Value:  big.Zero(),
-			Method: method,
-			Params: params,
-		}
-
-		// TODO: this is very racy. It may assign a _different_ nonce than the expected one.
-		afmt.Println("sending message...")
-		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
-		if err != nil {
-			return xerrors.Errorf("failed to push message: %w", err)
-		}
-
-		afmt.Println("waiting for message to execute...")
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
-		if err != nil {
-			return xerrors.Errorf("error waiting for message: %w", err)
-		}
-
-		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("actor execution failed")
-		}
-
-		var result eam.CreateReturn
-		r := bytes.NewReader(wait.Receipt.Return)
-		if err := result.UnmarshalCBOR(r); err != nil {
-			return xerrors.Errorf("error unmarshaling return value: %w", err)
-		}
-
-		addr, err := address.NewIDAddress(result.ActorID)
-		if err != nil {
-			return err
-		}
-		afmt.Printf("Actor ID: %d\n", result.ActorID)
-		afmt.Printf("ID Address: %s\n", addr)
-		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
-		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
-
-		ea, err := ethtypes.NewEthAddressFromBytes(result.EthAddress[:])
-		if err != nil {
-			return fmt.Errorf("failed to create ethereum address: %w", err)
-		}
-
-		delegated, err := ea.ToFilecoinAddress()
-		if err != nil {
-			return fmt.Errorf("failed to calculate f4 address: %w", err)
-		}
-
-		afmt.Printf("f4 Address: %s\n", delegated)
-
-		if len(wait.Receipt.Return) > 0 {
-			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
-			afmt.Printf("Return: %s\n", result)
-		}
-
-		return nil
-	},
-}
-
-var ChainInvokeEVMCmd = &cli.Command{
-	Name:      "invoke-evm-actor",
-	Usage:     "Invoke a contract entry point in an EVM actor",
-	ArgsUsage: "address contract-entry-point [input-data]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "optionally specify the account to use for sending the exec message",
-		}, &cli.IntFlag{
-			Name:  "value",
-			Usage: "optionally specify the value to be sent with the invokation message",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		afmt := NewAppFmt(cctx.App)
-
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
-		if argc := cctx.Args().Len(); argc < 2 || argc > 3 {
-			return xerrors.Errorf("must pass the address, entry point and (optionally) input data")
-		}
-
-		addr, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return xerrors.Errorf("failed to decode address: %w", err)
-		}
-
-		entryPoint, err := hex.DecodeString(cctx.Args().Get(1))
-		if err != nil {
-			return xerrors.Errorf("failed to decode hex entry point: %w", err)
-		}
-
-		var inputData []byte
-		if cctx.Args().Len() == 3 {
-			inputData, err = hex.DecodeString(cctx.Args().Get(2))
-			if err != nil {
-				return xerrors.Errorf("decoding hex input data: %w", err)
-			}
-		}
-
-		// TODO need to encode as CBOR bytes now
-		params := append(entryPoint, inputData...)
-
-		var buffer bytes.Buffer
-		if err := cbg.WriteByteArray(&buffer, params); err != nil {
-			return xerrors.Errorf("failed to encode evm params as cbor: %w", err)
-		}
-		params = buffer.Bytes()
-
-		var fromAddr address.Address
-		if from := cctx.String("from"); from == "" {
-			defaddr, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = defaddr
-		} else {
-			addr, err := address.NewFromString(from)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = addr
-		}
-
-		val := abi.NewTokenAmount(cctx.Int64("value"))
-		msg := &types.Message{
-			To:     addr,
-			From:   fromAddr,
-			Value:  val,
-			Method: abi.MethodNum(2),
-			Params: params,
-		}
-
-		afmt.Println("sending message...")
-		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
-		if err != nil {
-			return xerrors.Errorf("failed to push message: %w", err)
-		}
-
-		afmt.Println("waiting for message to execute...")
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
-		if err != nil {
-			return xerrors.Errorf("error waiting for message: %w", err)
-		}
-
-		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			return xerrors.Errorf("actor execution failed")
-		}
-
-		afmt.Println("Gas used: ", wait.Receipt.GasUsed)
-		result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
-		if err != nil {
-			return xerrors.Errorf("evm result not correctly encoded: %w", err)
-		}
-
-		if len(result) > 0 {
-			afmt.Println(hex.EncodeToString(result))
-		} else {
-			afmt.Println("OK")
-		}
-
-		if eventsRoot := wait.Receipt.EventsRoot; eventsRoot != nil {
-			afmt.Println("Events emitted:")
-
-			s := &apiIpldStore{ctx, api}
-			amt, err := amt4.LoadAMT(ctx, s, *eventsRoot, amt4.UseTreeBitWidth(5))
-			if err != nil {
-				return err
-			}
-
-			var evt types.Event
-			err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-				fmt.Printf("%x\n", deferred.Raw)
-				if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-					return err
-				}
-				if err != nil {
-					return err
-				}
-				fmt.Printf("\tEmitter ID: %s\n", evt.Emitter)
-				for _, e := range evt.Entries {
-					value, err := cbg.ReadByteArray(bytes.NewBuffer(e.Value), uint64(len(e.Value)))
-					if err != nil {
-						return err
-					}
-					fmt.Printf("\t\tKey: %s, Value: 0x%x, Flags: b%b\n", e.Key, value, e.Flags)
-				}
-				return nil
-
-			})
-		}
-		if err != nil {
-			return err
-		}
-
-		return nil
 	},
 }

@@ -27,7 +27,7 @@ import (
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
-	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -1231,7 +1231,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower        types.BigInt
 	NetworkPower      types.BigInt
-	Sectors           []builtinactors.ExtendedSectorInfo
+	Sectors           []builtin.ExtendedSectorInfo
 	WorkerKey         address.Address
 	SectorSize        abi.SectorSize
 	PrevBeaconEntry   types.BeaconEntry
@@ -1248,7 +1248,7 @@ type BlockTemplate struct {
 	Messages         []*types.SignedMessage
 	Epoch            abi.ChainEpoch
 	Timestamp        uint64
-	WinningPoStProof []builtinactors.PoStProof
+	WinningPoStProof []builtin.PoStProof
 }
 
 type DataSize struct {
@@ -1329,14 +1329,12 @@ type PruneOpts struct {
 }
 
 type EthTxReceipt struct {
-	TransactionHash  ethtypes.EthHash     `json:"transactionHash"`
-	TransactionIndex ethtypes.EthUint64   `json:"transactionIndex"`
-	BlockHash        ethtypes.EthHash     `json:"blockHash"`
-	BlockNumber      ethtypes.EthUint64   `json:"blockNumber"`
-	From             ethtypes.EthAddress  `json:"from"`
-	To               *ethtypes.EthAddress `json:"to"`
-	// Logs
-	// LogsBloom
+	TransactionHash   ethtypes.EthHash     `json:"transactionHash"`
+	TransactionIndex  ethtypes.EthUint64   `json:"transactionIndex"`
+	BlockHash         ethtypes.EthHash     `json:"blockHash"`
+	BlockNumber       ethtypes.EthUint64   `json:"blockNumber"`
+	From              ethtypes.EthAddress  `json:"from"`
+	To                *ethtypes.EthAddress `json:"to"`
 	StateRoot         ethtypes.EthHash     `json:"root"`
 	Status            ethtypes.EthUint64   `json:"status"`
 	ContractAddress   *ethtypes.EthAddress `json:"contractAddress"`

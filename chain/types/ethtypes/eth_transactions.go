@@ -332,7 +332,7 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	ethAddr, err := NewEthAddressFromPubKey(pubk)
+	ethAddr, err := EthAddressFromPubKey(pubk)
 	if err != nil {
 		return address.Undef, err
 	}

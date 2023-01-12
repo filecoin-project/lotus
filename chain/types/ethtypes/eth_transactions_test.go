@@ -150,6 +150,7 @@ func TestTransformParams(t *testing.T) {
 
 	require.Equal(t, mustDecodeHex("0x1122334455"), evmParams.Initcode)
 }
+
 func TestEcRecover(t *testing.T) {
 	rHex := "0x479ff7fa64cf8bf641eb81635d1e8a698530d2f219951d234539e6d074819529"
 	sHex := "0x4b6146d27be50cdbb2853ba9a42f207af8d730272f1ebe9c9a78aeef1d6aa924"
@@ -198,7 +199,7 @@ func TestDelegatedSigner(t *testing.T) {
 	r := mustDecodeHex(rHex)
 	s := mustDecodeHex(sHex)
 
-	addrHash, err := NewEthAddressFromPubKey(pubk)
+	addrHash, err := EthAddressFromPubKey(pubk)
 	require.NoError(t, err)
 
 	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash)

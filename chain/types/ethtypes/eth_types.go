@@ -364,7 +364,7 @@ func (h *EthHash) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	hash, err := EthHashFromHex(s)
+	hash, err := NewEthHashFromHex(s)
 	if err != nil {
 		return err
 	}
@@ -395,10 +395,10 @@ func decodeHexString(s string, length int) ([]byte, error) {
 }
 
 func NewEthHashFromCid(c cid.Cid) (EthHash, error) {
-	return EthHashFromHex(c.Hash().HexString()[8:])
+	return NewEthHashFromHex(c.Hash().HexString()[8:])
 }
 
-func EthHashFromHex(s string) (EthHash, error) {
+func NewEthHashFromHex(s string) (EthHash, error) {
 	handlePrefix(&s)
 	b, err := decodeHexString(s, EthHashLength)
 	if err != nil {
@@ -641,5 +641,22 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 		return [20]byte{}, err
 	}
 
+	return ethAddr, nil
+}
+
+// EthAddressFromPubKey returns the Ethereum address corresponding to an
+// uncompressed secp256k1 public key.
+func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
+	// if we get an uncompressed public key (that's what we get from the library,
+	// but putting this check here for defensiveness), strip the prefix
+	if pubk[0] != 0x04 {
+		return nil, fmt.Errorf("expected first byte of secp256k1 to be 0x04 (uncompressed)")
+	}
+	pubk = pubk[1:]
+
+	// Calculate the Ethereum address based on the keccak hash of the pubkey.
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(pubk)
+	ethAddr := hasher.Sum(nil)[12:]
 	return ethAddr, nil
 }

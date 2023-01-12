@@ -53,7 +53,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 		}
 	case types.KTDelegated:
 		// Assume eth for now
-		ethAddr, err := ethtypes.NewEthAddressFromPubKey(k.PublicKey)
+		ethAddr, err := ethtypes.EthAddressFromPubKey(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to calculate Eth address from public key: %w", err)
 		}

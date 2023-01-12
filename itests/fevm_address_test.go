@@ -76,10 +76,10 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	// Check if actor at new address is an embryo actor
+	// Check if actor at new address is an placeholder actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
 	require.NoError(t, err)
-	require.True(t, builtin.IsEmbryoActor(actor.Code))
+	require.True(t, builtin.IsPlaceholderActor(actor.Code))
 
 	// Create and deploy evm actor
 

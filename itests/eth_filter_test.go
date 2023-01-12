@@ -76,7 +76,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 		}
 	}()
 
-	// var sms []*types.SignedMessage
+	var sms []*types.SignedMessage
 	for i := 0; i < iterations; i++ {
 		msg := &types.Message{
 			From:  client.DefaultKey.Address,
@@ -88,8 +88,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, i, sm.Message.Nonce)
 
-		// FIXME this was here and unused. Use or remove.
-		// sms = append(sms, sm)
+		sms = append(sms, sm)
 	}
 
 	select {
@@ -98,12 +97,26 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 		t.Errorf("timeout to wait for pack messages")
 	}
 
+	expected := make(map[string]bool)
+	for _, sm := range sms {
+		hash, err := ethtypes.NewEthHashFromCid(sm.Cid())
+		require.NoError(t, err)
+		expected[hash.String()] = false
+	}
+
 	// collect filter results
 	res, err := client.EthGetFilterChanges(ctx, filterID)
 	require.NoError(t, err)
 
 	// expect to have seen iteration number of mpool messages
 	require.Equal(t, iterations, len(res.Results))
+	for _, txid := range res.Results {
+		expected[txid.(string)] = true
+	}
+
+	for _, found := range expected {
+		require.True(t, found)
+	}
 }
 
 func TestEthNewBlockFilter(t *testing.T) {
@@ -345,7 +358,7 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 		if !ok {
 			return ethtypes.EthHash{}, xerrors.Errorf(k + " not a string")
 		}
-		return ethtypes.EthHashFromHex(s)
+		return ethtypes.NewEthHashFromHex(s)
 	}
 
 	ethUint64 := func(k string, v interface{}) (ethtypes.EthUint64, error) {

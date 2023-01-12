@@ -387,10 +387,10 @@ func init() {
 
 	addExample(&uuid.UUID{})
 
-	filterid, _ := ethtypes.EthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
+	filterid, _ := ethtypes.NewEthHashFromHex("0x5CbEeC012345673f25E309Cc264f240bb0664031")
 	addExample(ethtypes.EthFilterID(filterid))
 
-	subid, _ := ethtypes.EthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
+	subid, _ := ethtypes.NewEthHashFromHex("0x5CbEeCF99d3fDB301234567c264f240bb0664031")
 	addExample(ethtypes.EthSubscriptionID(subid))
 
 	pstring := func(s string) *string { return &s }

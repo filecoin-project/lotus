@@ -40,7 +40,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/lib/sigs"
@@ -436,15 +435,35 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 	return nil
 }
 
-func IsValidForSending(act *types.Actor) bool {
+func IsValidForSending(nv network.Version, act *types.Actor) bool {
+	// Before nv18 (Hygge), we only supported built-in account actors as senders.
+	//
+	// Note: this gate is probably superfluous, since:
+	// 1. Placeholder actors cannot be created before nv18.
+	// 2. EthAccount actors cannot be created before nv18.
+	// 3. Delegated addresses cannot be created before nv18.
+	//
+	// But it's a safeguard.
+	//
+	// Note 2: ad-hoc checks for network versions like this across the codebase
+	// will be problematic with networks with diverging version lineages
+	// (e.g. Hyperspace). We need to revisit this strategy entirely.
+	if nv < network.Version18 {
+		return builtin.IsAccountActor(act.Code)
+	}
+
+	// After nv18, we also support other kinds of senders.
 	if builtin.IsAccountActor(act.Code) || builtin.IsEthAccountActor(act.Code) {
 		return true
 	}
 
-	if !builtin.IsEmbryoActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
+	// Allow placeholder actors with a delegated address and nonce 0 to send a message.
+	// These will be converted to an EthAccount actor on first send.
+	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
 		return false
 	}
 
+	// Only allow such actors to send if their delegated address is in the EAM's namespace.
 	id, _, err := varint.FromUvarint(act.Address.Payload())
 	return err == nil && id == builtintypes.EthereumAddressManagerActorID
 }
@@ -521,7 +540,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 
-			if !IsValidForSending(act) {
+			if !IsValidForSending(nv, act) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
@@ -558,10 +577,8 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
-		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version14 {
-			if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
-				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
-			}
+		if nv >= network.Version14 && !chain.IsValidSecpkSigType(nv, m.Signature.Type) {
+			return xerrors.Errorf("block had invalid signed message at index %d: %w", i, err)
 		}
 
 		if err := checkMsg(m); err != nil {
@@ -575,21 +592,8 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}
 
-		digest := m.Message.Cid().Bytes()
-		if m.Signature.Type == crypto.SigTypeDelegated {
-			txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
-			if err != nil {
-				return err
-			}
-			msg, err := txArgs.ToRlpUnsignedMsg()
-			if err != nil {
-				return err
-			}
-			digest = msg
-		}
-
-		if err := sigs.Verify(&m.Signature, kaddr, digest); err != nil {
-			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
+		if err := chain.AuthenticateMessage(m, kaddr); err != nil {
+			return xerrors.Errorf("failed to validate signature: %w", err)
 		}
 
 		c, err := store.PutMessage(ctx, tmpbs, m)

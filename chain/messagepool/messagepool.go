@@ -33,14 +33,13 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -795,20 +794,8 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if m.Signature.Type == crypto.SigTypeDelegated {
-		txArgs, err := ethtypes.NewEthTxArgsFromMessage(&m.Message)
-		if err != nil {
-			return xerrors.Errorf("failed to convert to eth tx args: %w", err)
-		}
-		msg, err := txArgs.ToRlpUnsignedMsg()
-		if err != nil {
-			return err
-		}
-		if err := sigs.Verify(&m.Signature, m.Message.From, msg); err != nil {
-			return err
-		}
-	} else if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
-		return err
+	if err := chain.AuthenticateMessage(m, m.Message.From); err != nil {
+		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
 
 	mp.sigValCache.Add(sck, struct{}{})
@@ -870,8 +857,12 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 		return false, xerrors.Errorf("failed to get sender actor: %w", err)
 	}
 
+	// This message can only be included in the _next_ epoch and beyond, hence the +1.
+	epoch := curTs.Height() + 1
+	nv := mp.api.StateNetworkVersion(ctx, epoch)
+
 	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
-	if !filcns.IsValidForSending(senderAct) {
+	if !filcns.IsValidForSending(nv, senderAct) {
 		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}
 

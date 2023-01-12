@@ -274,10 +274,10 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 	return false
 }
 
-func IsEmbryoActor(c cid.Cid) bool {
+func IsPlaceholderActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == manifest.EmbryoKey
+		return name == manifest.PlaceholderKey
 	}
 
 	return false
