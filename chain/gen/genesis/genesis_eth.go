@@ -84,7 +84,7 @@ func SetupEthNullAddresses(ctx context.Context, st *state.StateTree, nv network.
 
 	var ethAddresses []ethtypes.EthAddress
 	for _, addr := range EthNullAddresses {
-		a, err := ethtypes.EthAddressFromHex(addr)
+		a, err := ethtypes.ParseEthAddress(addr)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to represent the 0x0 as an EthAddress: %w", err)
 		}

@@ -337,7 +337,12 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	return address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
+	ea, err := CastEthAddress(ethAddr)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return ea.ToFilecoinAddress()
 }
 
 func RecoverSignature(sig typescrypto.Signature) (r, s, v EthBigInt, err error) {
@@ -443,6 +448,13 @@ func parseEip1559Tx(data []byte) (*EthTxArgs, error) {
 	v, err := parseBigInt(decoded[9])
 	if err != nil {
 		return nil, err
+	}
+
+	// EIP-1559 and EIP-2930 transactions only support 0 or 1 for v
+	// Legacy and EIP-155 transactions support other values
+	// https://github.com/ethers-io/ethers.js/blob/56fabe987bb8c1e4891fdf1e5d3fe8a4c0471751/packages/transactions/src.ts/index.ts#L333
+	if !v.Equals(big.NewInt(0)) && !v.Equals(big.NewInt(1)) {
+		return nil, fmt.Errorf("EIP-1559 transactions only support 0 or 1 for v")
 	}
 
 	args := EthTxArgs{
@@ -575,7 +587,7 @@ func parseEthAddr(v interface{}) (*EthAddress, error) {
 	if len(b) == 0 {
 		return nil, nil
 	}
-	addr, err := EthAddressFromBytes(b)
+	addr, err := CastEthAddress(b)
 	if err != nil {
 		return nil, err
 	}

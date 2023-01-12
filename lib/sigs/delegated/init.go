@@ -59,6 +59,9 @@ func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 	hasher.Write(pubk)
 	addrHash := hasher.Sum(nil)
 
+	// The address hash will not start with [12]byte{0xff}, so we don't have to use
+	// EthAddr.ToFilecoinAddress() to handle the case with an id address
+	// Also, importing ethtypes here will cause circulating import
 	maybeaddr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, addrHash[12:])
 	if err != nil {
 		return err

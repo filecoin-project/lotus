@@ -90,7 +90,7 @@ func TestEthHash(t *testing.T) {
 		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
 
 		c := h.ToCid()
-		h1, err := NewEthHashFromCid(c)
+		h1, err := EthHashFromCid(c)
 		require.Nil(t, err)
 		require.Equal(t, h, h1)
 	}
@@ -158,13 +158,13 @@ func TestUnmarshalEthBytes(t *testing.T) {
 }
 
 func TestEthFilterResultMarshalJSON(t *testing.T) {
-	hash1, err := NewEthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	hash1, err := ParseEthHash("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
 	require.NoError(t, err, "eth hash")
 
-	hash2, err := NewEthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	hash2, err := ParseEthHash("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
-	addr, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	addr, err := ParseEthAddress("d4c5fb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
 	log := EthLog{
@@ -223,13 +223,13 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 }
 
 func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
-	hash1, err := NewEthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	hash1, err := ParseEthHash("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
 	require.NoError(t, err, "eth hash")
 
-	hash2, err := NewEthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	hash2, err := ParseEthHash("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
-	addr, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	addr, err := ParseEthAddress("d4c5fb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
 	pstring := func(s string) *string { return &s }
@@ -305,10 +305,10 @@ func TestEthFilterSpecUnmarshalJSON(t *testing.T) {
 }
 
 func TestEthAddressListUnmarshalJSON(t *testing.T) {
-	addr1, err := EthAddressFromHex("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	addr1, err := ParseEthAddress("d4c5fb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
-	addr2, err := EthAddressFromHex("abbbfb16488Aa48081296299d54b0c648C9333dA")
+	addr2, err := ParseEthAddress("abbbfb16488Aa48081296299d54b0c648C9333dA")
 	require.NoError(t, err, "eth address")
 
 	testcases := []struct {
@@ -348,10 +348,10 @@ func TestEthAddressListUnmarshalJSON(t *testing.T) {
 }
 
 func TestEthHashListUnmarshalJSON(t *testing.T) {
-	hash1, err := NewEthHashFromHex("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
+	hash1, err := ParseEthHash("013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184")
 	require.NoError(t, err, "eth hash")
 
-	hash2, err := NewEthHashFromHex("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
+	hash2, err := ParseEthHash("ab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738")
 	require.NoError(t, err, "eth hash")
 
 	testcases := []struct {

@@ -14,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
@@ -136,7 +135,10 @@ func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
 	ethAddr, err := ethtypes.EthAddressFromPubKey(key.PublicKey)
 	require.NoError(e.t, err)
 
-	addr, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, ethAddr)
+	ea, err := ethtypes.CastEthAddress(ethAddr)
+	require.NoError(e.t, err)
+
+	addr, err := ea.ToFilecoinAddress()
 	require.NoError(e.t, err)
 
 	return key, *(*ethtypes.EthAddress)(ethAddr), addr

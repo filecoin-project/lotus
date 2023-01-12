@@ -109,7 +109,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	err = create2Return.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 	require.NoError(t, err)
 
-	createdEthAddr, err := ethtypes.EthAddressFromBytes(create2Return.EthAddress[:])
+	createdEthAddr, err := ethtypes.CastEthAddress(create2Return.EthAddress[:])
 	require.NoError(t, err)
 	require.Equal(t, ethAddr, createdEthAddr)
 

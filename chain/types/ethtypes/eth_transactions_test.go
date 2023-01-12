@@ -202,7 +202,7 @@ func TestDelegatedSigner(t *testing.T) {
 	addrHash, err := EthAddressFromPubKey(pubk)
 	require.NoError(t, err)
 
-	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash[12:])
+	from, err := address.NewDelegatedAddress(builtintypes.EthereumAddressManagerActorID, addrHash)
 	require.NoError(t, err)
 
 	sig := append(r, s...)

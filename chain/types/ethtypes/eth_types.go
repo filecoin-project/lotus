@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
-	"github.com/minio/blake2b-simd"
 	"github.com/multiformats/go-multihash"
 	"github.com/multiformats/go-varint"
 	"golang.org/x/crypto/sha3"
@@ -228,6 +227,62 @@ func (n *EthNonce) UnmarshalJSON(b []byte) error {
 
 type EthAddress [EthAddressLength]byte
 
+// EthAddressFromPubKey returns the Ethereum address corresponding to an
+// uncompressed secp256k1 public key.
+func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
+	// if we get an uncompressed public key (that's what we get from the library,
+	// but putting this check here for defensiveness), strip the prefix
+	const pubKeyLen = 65
+	if len(pubk) != pubKeyLen {
+		return nil, fmt.Errorf("public key should have %d in length, but got %d", pubKeyLen, len(pubk))
+	}
+	if pubk[0] != 0x04 {
+		return nil, fmt.Errorf("expected first byte of secp256k1 to be 0x04 (uncompressed)")
+	}
+	pubk = pubk[1:]
+
+	// Calculate the Ethereum address based on the keccak hash of the pubkey.
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(pubk)
+	ethAddr := hasher.Sum(nil)[12:]
+	return ethAddr, nil
+}
+
+func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
+	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
+	if err != nil {
+		return EthAddress{}, xerrors.Errorf("failed to try converting filecoin to eth addr: %w", err)
+	}
+
+	if !ok {
+		return EthAddress{}, xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
+	}
+
+	return ethAddr, nil
+}
+
+// ParseEthAddress parses an Ethereum address from a hex string.
+func ParseEthAddress(s string) (EthAddress, error) {
+	handlePrefix(&s)
+	b, err := decodeHexString(s, EthAddressLength)
+	if err != nil {
+		return EthAddress{}, err
+	}
+	var h EthAddress
+	copy(h[EthAddressLength-len(b):], b)
+	return h, nil
+}
+
+// CastEthAddress interprets bytes as an EthAddress, performing some basic checks.
+func CastEthAddress(b []byte) (EthAddress, error) {
+	var a EthAddress
+	if len(b) != EthAddressLength {
+		return EthAddress{}, xerrors.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
+	}
+	copy(a[:], b[:])
+	return a, nil
+}
+
 func (ea EthAddress) String() string {
 	return "0x" + hex.EncodeToString(ea[:])
 }
@@ -241,7 +296,7 @@ func (ea *EthAddress) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	addr, err := EthAddressFromHex(s)
+	addr, err := ParseEthAddress(s)
 	if err != nil {
 		return err
 	}
@@ -291,44 +346,11 @@ func TryEthAddressFromFilecoinAddress(addr address.Address, allowId bool) (EthAd
 		}
 		payload = payload[n:]
 		if namespace == builtintypes.EthereumAddressManagerActorID {
-			addr, err := EthAddressFromBytes(payload)
+			addr, err := CastEthAddress(payload)
 			return addr, err == nil, err
 		}
 	}
 	return EthAddress{}, false, nil
-}
-
-func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
-	ethAddr, ok, err := TryEthAddressFromFilecoinAddress(addr, true)
-	if err != nil {
-		return EthAddress{}, xerrors.Errorf("failed to try converting filecoin to eth addr: %w", err)
-	}
-
-	if !ok {
-		return EthAddress{}, xerrors.Errorf("failed to convert filecoin address %s to an equivalent eth address", addr)
-	}
-
-	return ethAddr, nil
-}
-
-func EthAddressFromHex(s string) (EthAddress, error) {
-	handlePrefix(&s)
-	b, err := decodeHexString(s, EthAddressLength)
-	if err != nil {
-		return EthAddress{}, err
-	}
-	var h EthAddress
-	copy(h[EthAddressLength-len(b):], b)
-	return h, nil
-}
-
-func EthAddressFromBytes(b []byte) (EthAddress, error) {
-	var a EthAddress
-	if len(b) != EthAddressLength {
-		return EthAddress{}, xerrors.Errorf("cannot parse bytes into an EthAddress: incorrect input length")
-	}
-	copy(a[:], b[:])
-	return a, nil
 }
 
 type EthHash [EthHashLength]byte
@@ -342,7 +364,7 @@ func (h *EthHash) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	hash, err := NewEthHashFromHex(s)
+	hash, err := ParseEthHash(s)
 	if err != nil {
 		return err
 	}
@@ -372,11 +394,11 @@ func decodeHexString(s string, length int) ([]byte, error) {
 	return b, nil
 }
 
-func NewEthHashFromCid(c cid.Cid) (EthHash, error) {
-	return NewEthHashFromHex(c.Hash().HexString()[8:])
+func EthHashFromCid(c cid.Cid) (EthHash, error) {
+	return ParseEthHash(c.Hash().HexString()[8:])
 }
 
-func NewEthHashFromHex(s string) (EthHash, error) {
+func ParseEthHash(s string) (EthHash, error) {
 	handlePrefix(&s)
 	b, err := decodeHexString(s, EthHashLength)
 	if err != nil {
@@ -385,10 +407,6 @@ func NewEthHashFromHex(s string) (EthHash, error) {
 	var h EthHash
 	copy(h[EthHashLength-len(b):], b)
 	return h, nil
-}
-
-func EthHashData(b []byte) EthHash {
-	return EthHash(blake2b.Sum256(b))
 }
 
 func (h EthHash) String() string {
@@ -614,27 +632,10 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 	hasher.Write(salt[:])
 	hasher.Write(inithash)
 
-	ethAddr, err := EthAddressFromBytes(hasher.Sum(nil)[12:])
+	ethAddr, err := CastEthAddress(hasher.Sum(nil)[12:])
 	if err != nil {
 		return [20]byte{}, err
 	}
 
-	return ethAddr, nil
-}
-
-// EthAddressFromPubKey returns the Ethereum address corresponding to an
-// uncompressed secp256k1 public key.
-func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
-	// if we get an uncompressed public key (that's what we get from the library,
-	// but putting this check here for defensiveness), strip the prefix
-	if pubk[0] != 0x04 {
-		return nil, fmt.Errorf("expected first byte of secp256k1 to be 0x04 (uncompressed)")
-	}
-	pubk = pubk[1:]
-
-	// Calculate the Ethereum address based on the keccak hash of the pubkey.
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write(pubk)
-	ethAddr := hasher.Sum(nil)[12:]
 	return ethAddr, nil
 }
