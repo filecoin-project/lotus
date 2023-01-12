@@ -99,7 +99,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 
 	expected := make(map[string]bool)
 	for _, sm := range sms {
-		hash, err := ethtypes.NewEthHashFromCid(sm.Cid())
+		hash, err := ethtypes.EthHashFromCid(sm.Cid())
 		require.NoError(t, err)
 		expected[hash.String()] = false
 	}
@@ -289,7 +289,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 
 	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		eh, err := ethtypes.NewEthHashFromCid(m.msg.Cid)
+		eh, err := ethtypes.EthHashFromCid(m.msg.Cid)
 		require.NoError(err)
 		received[eh] = m
 	}
@@ -301,7 +301,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	actor, err := client.StateGetActor(ctx, idAddr, ts.Key())
 	require.NoError(err)
 	require.NotNil(actor.Address)
-	ethContractAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(*actor.Address)
+	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
 	// collect filter results
@@ -334,7 +334,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 		tsCid, err := msg.ts.Key().Cid()
 		require.NoError(err)
 
-		tsCidHash, err := ethtypes.NewEthHashFromCid(tsCid)
+		tsCidHash, err := ethtypes.EthHashFromCid(tsCid)
 		require.NoError(err)
 
 		require.Equal(tsCidHash, elog.BlockHash, "block hash")
@@ -358,7 +358,7 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 		if !ok {
 			return ethtypes.EthHash{}, xerrors.Errorf(k + " not a string")
 		}
-		return ethtypes.NewEthHashFromHex(s)
+		return ethtypes.ParseEthHash(s)
 	}
 
 	ethUint64 := func(k string, v interface{}) (ethtypes.EthUint64, error) {
@@ -395,7 +395,7 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 			if !ok {
 				return nil, xerrors.Errorf(k + ": not a string")
 			}
-			el.Address, err = ethtypes.NewEthAddressFromHex(s)
+			el.Address, err = ethtypes.ParseEthAddress(s)
 			if err != nil {
 				return nil, xerrors.Errorf("%s: %w", k, err)
 			}
@@ -545,7 +545,7 @@ func invokeContractAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode
 
 	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		eh, err := ethtypes.NewEthHashFromCid(m.msg.Cid)
+		eh, err := ethtypes.EthHashFromCid(m.msg.Cid)
 		require.NoError(err)
 		received[eh] = m
 	}
@@ -557,7 +557,7 @@ func invokeContractAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode
 	actor, err := client.StateGetActor(ctx, idAddr, head.Key())
 	require.NoError(err)
 	require.NotNil(actor.Address)
-	ethContractAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(*actor.Address)
+	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
 	require.NoError(err)
 
 	return ethContractAddr, received
@@ -610,7 +610,7 @@ func TestEthGetLogsAll(t *testing.T) {
 		tsCid, err := msg.ts.Key().Cid()
 		require.NoError(err)
 
-		tsCidHash, err := ethtypes.NewEthHashFromCid(tsCid)
+		tsCidHash, err := ethtypes.EthHashFromCid(tsCid)
 		require.NoError(err)
 
 		require.Equal(tsCidHash, elog.BlockHash, "block hash")
@@ -674,7 +674,7 @@ func TestEthGetLogsByTopic(t *testing.T) {
 		tsCid, err := msg.ts.Key().Cid()
 		require.NoError(err)
 
-		tsCidHash, err := ethtypes.NewEthHashFromCid(tsCid)
+		tsCidHash, err := ethtypes.EthHashFromCid(tsCid)
 		require.NoError(err)
 
 		require.Equal(tsCidHash, elog.BlockHash, "block hash")
@@ -794,7 +794,7 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		eh, err := ethtypes.NewEthHashFromCid(m.msg.Cid)
+		eh, err := ethtypes.EthHashFromCid(m.msg.Cid)
 		require.NoError(err)
 		received[eh] = m
 	}

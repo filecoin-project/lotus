@@ -75,7 +75,7 @@ var EthGetInfoCmd = &cli.Command{
 				return err
 			}
 		} else if ethAddr != "" {
-			eaddr, err = ethtypes.NewEthAddressFromHex(ethAddr)
+			eaddr, err = ethtypes.ParseEthAddress(ethAddr)
 			if err != nil {
 				return err
 			}
@@ -111,12 +111,12 @@ var EthCallSimulateCmd = &cli.Command{
 			return IncorrectNumArgs(cctx)
 		}
 
-		fromEthAddr, err := ethtypes.NewEthAddressFromHex(cctx.Args().Get(0))
+		fromEthAddr, err := ethtypes.ParseEthAddress(cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}
 
-		toEthAddr, err := ethtypes.NewEthAddressFromHex(cctx.Args().Get(1))
+		toEthAddr, err := ethtypes.ParseEthAddress(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
@@ -160,7 +160,7 @@ var EthGetContractAddress = &cli.Command{
 			return IncorrectNumArgs(cctx)
 		}
 
-		sender, err := ethtypes.NewEthAddressFromHex(cctx.Args().Get(0))
+		sender, err := ethtypes.ParseEthAddress(cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ var EthDeployCmd = &cli.Command{
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
 		afmt.Printf("Eth Address: %s\n", "0x"+hex.EncodeToString(result.EthAddress[:]))
 
-		ea, err := ethtypes.NewEthAddressFromBytes(result.EthAddress[:])
+		ea, err := ethtypes.CastEthAddress(result.EthAddress[:])
 		if err != nil {
 			return fmt.Errorf("failed to create ethereum address: %w", err)
 		}
@@ -494,7 +494,7 @@ func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi
 		return ethtypes.EthAddress{}, addr, xerrors.Errorf("Filecoin address doesn't match known protocols")
 	}
 
-	ethAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(faddr)
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(faddr)
 	if err != nil {
 		return ethtypes.EthAddress{}, addr, err
 	}

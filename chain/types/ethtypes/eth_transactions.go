@@ -83,7 +83,7 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
 	} else {
-		addr, err := NewEthAddressFromFilecoinAddress(msg.To)
+		addr, err := EthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, err
 		}
@@ -337,7 +337,7 @@ func (tx *EthTxArgs) Sender() (address.Address, error) {
 		return address.Undef, err
 	}
 
-	ea, err := NewEthAddressFromBytes(ethAddr)
+	ea, err := CastEthAddress(ethAddr)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -587,7 +587,7 @@ func parseEthAddr(v interface{}) (*EthAddress, error) {
 	if len(b) == 0 {
 		return nil, nil
 	}
-	addr, err := NewEthAddressFromBytes(b)
+	addr, err := CastEthAddress(b)
 	if err != nil {
 		return nil, err
 	}

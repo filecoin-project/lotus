@@ -644,7 +644,7 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
-	return ethtypes.NewEthHashFromCid(cid)
+	return ethtypes.EthHashFromCid(cid)
 }
 
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.Message, error) {
@@ -1176,12 +1176,12 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*ethtypes.EthFilte
 			}
 		}
 
-		log.Address, err = ethtypes.NewEthAddressFromFilecoinAddress(ev.EmitterAddr)
+		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(ev.EmitterAddr)
 		if err != nil {
 			return nil, err
 		}
 
-		log.TransactionHash, err = ethtypes.NewEthHashFromCid(ev.MsgCid)
+		log.TransactionHash, err = ethtypes.EthHashFromCid(ev.MsgCid)
 		if err != nil {
 			return nil, err
 		}
@@ -1190,7 +1190,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*ethtypes.EthFilte
 		if err != nil {
 			return nil, err
 		}
-		log.BlockHash, err = ethtypes.NewEthHashFromCid(c)
+		log.BlockHash, err = ethtypes.EthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
@@ -1209,7 +1209,7 @@ func ethFilterResultFromTipSets(tsks []types.TipSetKey) (*ethtypes.EthFilterResu
 		if err != nil {
 			return nil, err
 		}
-		hash, err := ethtypes.NewEthHashFromCid(c)
+		hash, err := ethtypes.EthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
@@ -1224,7 +1224,7 @@ func ethFilterResultFromMessages(cs []cid.Cid) (*ethtypes.EthFilterResult, error
 	res := &ethtypes.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := ethtypes.NewEthHashFromCid(c)
+		hash, err := ethtypes.EthHashFromCid(c)
 		if err != nil {
 			return nil, err
 		}
@@ -1368,7 +1368,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
-	parentBlkHash, err := ethtypes.NewEthHashFromCid(parentKeyCid)
+	parentBlkHash, err := ethtypes.EthHashFromCid(parentKeyCid)
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
@@ -1377,7 +1377,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
-	blkHash, err := ethtypes.NewEthHashFromCid(blkCid)
+	blkHash, err := ethtypes.EthHashFromCid(blkCid)
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
@@ -1405,7 +1405,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 			}
 			block.Transactions = append(block.Transactions, tx)
 		} else {
-			hash, err := ethtypes.NewEthHashFromCid(msg.Cid())
+			hash, err := ethtypes.EthHashFromCid(msg.Cid())
 			if err != nil {
 				return ethtypes.EthBlock{}, err
 			}
@@ -1463,7 +1463,7 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 	if err != nil {
 		return ethtypes.EthAddress{}, err
 	}
-	return ethtypes.NewEthAddressFromFilecoinAddress(idAddr)
+	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
 func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
@@ -1512,7 +1512,7 @@ func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage,
 		r, s, v = ethtypes.EthBigIntZero, ethtypes.EthBigIntZero, ethtypes.EthBigIntZero
 	}
 
-	hash, err := ethtypes.NewEthHashFromCid(smsg.Cid())
+	hash, err := ethtypes.EthHashFromCid(smsg.Cid())
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
@@ -1545,7 +1545,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
 	}
 	cid := msgLookup.Message
-	txHash, err := ethtypes.NewEthHashFromCid(cid)
+	txHash, err := ethtypes.EthHashFromCid(cid)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
@@ -1583,7 +1583,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		}
 	}
 
-	blkHash, err := ethtypes.NewEthHashFromCid(parentTsCid)
+	blkHash, err := ethtypes.EthHashFromCid(parentTsCid)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}

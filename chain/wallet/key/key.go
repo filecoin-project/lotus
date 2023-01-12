@@ -58,7 +58,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 			return nil, xerrors.Errorf("failed to calculate Eth address from public key: %w", err)
 		}
 
-		ea, err := ethtypes.NewEthAddressFromBytes(ethAddr)
+		ea, err := ethtypes.CastEthAddress(ethAddr)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create ethereum address from bytes: %w", err)
 		}

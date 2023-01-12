@@ -135,7 +135,7 @@ func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
 	ethAddr, err := ethtypes.EthAddressFromPubKey(key.PublicKey)
 	require.NoError(e.t, err)
 
-	ea, err := ethtypes.NewEthAddressFromBytes(ethAddr)
+	ea, err := ethtypes.CastEthAddress(ethAddr)
 	require.NoError(e.t, err)
 
 	addr, err := ea.ToFilecoinAddress()
@@ -158,7 +158,7 @@ func (e *EVM) AssertAddressBalanceConsistent(ctx context.Context, addr address.A
 	fbal, err := e.WalletBalance(ctx, addr)
 	require.NoError(e.t, err)
 
-	ethAddr, err := ethtypes.NewEthAddressFromFilecoinAddress(addr)
+	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
 	require.NoError(e.t, err)
 
 	ebal, err := e.EthGetBalance(ctx, ethAddr, "latest")
