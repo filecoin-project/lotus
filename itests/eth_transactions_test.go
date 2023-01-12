@@ -127,7 +127,7 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
 
 	// verify the deployer address is an embryo.
-	client.AssertActorType(ctx, deployer, manifest.EmbryoKey)
+	client.AssertActorType(ctx, deployer, manifest.PlaceholderKey)
 
 	tx, err := deployContractTx(ctx, client, ethAddr, contract)
 	require.NoError(t, err)
