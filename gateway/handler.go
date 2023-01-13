@@ -38,7 +38,7 @@ func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinu
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
-		lapi.CrateEthRPCAliases(rpcServer)
+		lapi.CreateEthRPCAliases(rpcServer)
 
 		m.Handle(path, rpcServer)
 	}
