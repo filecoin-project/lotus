@@ -6,6 +6,8 @@ import (
 	"fmt"
 	mathbig "math/big"
 
+	"github.com/filecoin-project/go-state-types/abi"
+
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
@@ -71,16 +73,12 @@ func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
-		// TODO: Uncomment
-		//case builtintypes.MethodsEAM.CreateExternal:
-		case builtintypes.MethodsEAM.Create:
-			// TODO: Uncomment
-			// var create eam.CreateExternalParams
-			var create eam.CreateParams
+		case builtintypes.MethodsEAM.CreateExternal:
+			var create abi.CborBytes
 			if err := create.UnmarshalCBOR(paramsReader); err != nil {
 				return EthTxArgs{}, err
 			}
-			params = create.Initcode
+			params = create
 		default:
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
