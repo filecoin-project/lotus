@@ -175,7 +175,7 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 		}
 	}
 
-	fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
+	fromA, err := a.Stmgr.ResolveToDeterministicAddress(ctx, msg.From, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
 	}

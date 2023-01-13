@@ -585,9 +585,9 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 
-		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
-		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
-		kaddr, err := filec.sm.ResolveToKeyAddress(ctx, m.Message.From, baseTs)
+		// `From` being an account actor is only validated inside the `vm.ResolveToDeterministicAddr` call
+		// in `StateManager.ResolveToDeterministicAddress` here (and not in `checkMsg`).
+		kaddr, err := filec.sm.ResolveToDeterministicAddress(ctx, m.Message.From, baseTs)
 		if err != nil {
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}

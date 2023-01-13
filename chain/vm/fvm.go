@@ -276,7 +276,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Add
 		return address.Undef, gasUsed, err
 	}
 
-	raddr, err := ResolveToKeyAddr(stateTree, cstWithGas, info.Worker)
+	raddr, err := ResolveToDeterministicAddr(stateTree, cstWithGas, info.Worker)
 	if err != nil {
 		return address.Undef, gasUsed, err
 	}

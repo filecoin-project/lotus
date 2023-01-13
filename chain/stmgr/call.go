@@ -200,7 +200,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	var ret *vm.ApplyRet
 	var gasInfo api.MsgGasCost
 	if checkGas {
-		fromKey, err := sm.ResolveToKeyAddress(ctx, msg.From, ts)
+		fromKey, err := sm.ResolveToDeterministicAddress(ctx, msg.From, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("could not resolve key: %w", err)
 		}
