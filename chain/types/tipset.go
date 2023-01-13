@@ -202,6 +202,10 @@ func (ts *TipSet) MinTimestamp() uint64 {
 
 	blks := ts.Blocks()
 
+	// TODO::FVM @vyzo @magik Null rounds shouldn't ever be represented as
+	//  tipsets with no blocks; Null-round generally means that the tipset at
+	//  that epoch doesn't exist - and the next tipset that does exist links
+	//  straight to first epoch with blocks (@raulk agrees -- this is odd)
 	if len(blks) == 0 {
 		// null rounds make things crash -- it is threaded in every fvm instantiation
 		return 0
