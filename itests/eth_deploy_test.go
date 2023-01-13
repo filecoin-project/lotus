@@ -10,6 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/sha3"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
+	gstStore "github.com/filecoin-project/go-state-types/store"
+	"github.com/filecoin-project/lotus/blockstore"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -224,4 +232,20 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 
 	client.AssertActorType(ctx, contractAddr, "evm")
+
+	contractAct, err := client.StateGetActor(ctx, contractAddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	var evmSt evm.State
+	bs := blockstore.NewAPIBlockstore(client)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	require.NoError(t, ctxStore.Get(ctx, contractAct.Head, &evmSt))
+	var byteCode abi.CborBytesTransparent
+	require.NoError(t, ctxStore.Get(ctx, evmSt.Bytecode, &byteCode))
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(byteCode)
+	byteCodeHash := hasher.Sum(nil)
+	require.Equal(t, evmSt.BytecodeHash[:], byteCodeHash)
 }
