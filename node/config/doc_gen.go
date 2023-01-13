@@ -391,20 +391,20 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
-	"EthTxHashConfig": []DocField{
-		{
-			Name: "EnableEthHashToFilecoinCidMapping",
-			Type: "bool",
-
-			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids`,
-		},
-	},
 	"FeeConfig": []DocField{
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
 
 			Comment: ``,
+		},
+	},
+	"FevmConfig": []DocField{
+		{
+			Name: "EnableEthHashToFilecoinCidMapping",
+			Type: "bool",
+
+			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids`,
 		},
 	},
 	"FullNode": []DocField{
@@ -445,8 +445,8 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 		{
-			Name: "EthTxHashConfig",
-			Type: "EthTxHashConfig",
+			Name: "Fevm",
+			Type: "FevmConfig",
 
 			Comment: ``,
 		},

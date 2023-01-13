@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func EthModuleAPI(cfg config.EthTxHashConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI) (*full.EthModule, error) {
+func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI) (*full.EthModule, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI) (*full.EthModule, error) {
 		em := &full.EthModule{
 			Chain:        cs,
@@ -38,7 +38,7 @@ func EthModuleAPI(cfg config.EthTxHashConfig) func(helpers.MetricsCtx, repo.Lock
 			return nil, err
 		}
 
-		transactionHashLookup, err := chain.NewTransactionHashLookup(filepath.Join(dbPath + "txHash.db"))
+		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(dbPath, "txhash.db"))
 		if err != nil {
 			return nil, err
 		}

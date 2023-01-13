@@ -25,9 +25,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -1760,7 +1760,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	return receipt, nil
 }
 
-func (m EthTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) error {
+func (m *EthTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) error {
 	for _, blk := range to.Blocks() {
 		_, smsgs, err := m.StateAPI.Chain.MessagesForBlock(ctx, blk)
 		if err != nil {
@@ -1789,10 +1789,10 @@ func (m EthTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) err
 
 type EthTxHashManager struct {
 	StateAPI              StateAPI
-	TransactionHashLookup *chain.TransactionHashLookup
+	TransactionHashLookup *ethhashlookup.TransactionHashLookup
 }
 
-func (m EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) error {
+func (m *EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) error {
 	return nil
 }
 
@@ -1814,7 +1814,7 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 				log.Errorf("error converting filecoin message to eth tx: %s", err)
 			}
 
-			err = manager.TransactionHashLookup.InsertTxHash(ethTx.Hash, u.Message.Cid(), chain.MemPoolEpoch)
+			err = manager.TransactionHashLookup.InsertTxHash(ethTx.Hash, u.Message.Cid(), ethhashlookup.MemPoolEpoch)
 			if err != nil {
 				log.Errorf("error inserting tx mapping to db: %s", err)
 			}

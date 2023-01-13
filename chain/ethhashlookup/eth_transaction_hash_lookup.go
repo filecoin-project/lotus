@@ -1,4 +1,4 @@
-package chain
+package ethhashlookup
 
 import (
 	"database/sql"
@@ -25,11 +25,13 @@ var pragmas = []string{
 }
 
 var ddls = []string{
-	`CREATE TABLE IF NOT EXISTS tx_hash_lookup (
-		hash TEXT PRIMARY KEY,
-		cid TEXT NOT NULL,
+	`CREATE TABLE IF NOT EXISTS eth_tx_hashes (
+		hash TEXT PRIMARY KEY NOT NULL,
+		cid TEXT NOT NULL UNIQUE,
 		epoch INT NOT NULL
 	)`,
+
+	`CREATE INDEX IF NOT EXISTS eth_tx_hashes_epoch_index ON eth_tx_hashes (epoch)`,
 
 	// metadata containing version of schema
 	`CREATE TABLE IF NOT EXISTS _meta (
@@ -44,7 +46,7 @@ const schemaVersion = 1
 const MemPoolEpoch = math.MaxInt64
 
 const (
-	insertTxHash = `INSERT INTO tx_hash_lookup
+	insertTxHash = `INSERT INTO eth_tx_hashes
 	(hash, cid, epoch)
 	VALUES(?, ?, ?)
 	ON CONFLICT (hash) DO UPDATE SET epoch = EXCLUDED.epoch
@@ -66,7 +68,7 @@ func (ei *TransactionHashLookup) InsertTxHash(txHash ethtypes.EthHash, c cid.Cid
 }
 
 func (ei *TransactionHashLookup) LookupCidFromTxHash(txHash ethtypes.EthHash) (cid.Cid, error) {
-	q, err := ei.db.Query("SELECT cid FROM tx_hash_lookup WHERE hash = :hash;", sql.Named("hash", txHash.String()))
+	q, err := ei.db.Query("SELECT cid FROM eth_tx_hashes WHERE hash = :hash;", sql.Named("hash", txHash.String()))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -83,7 +85,7 @@ func (ei *TransactionHashLookup) LookupCidFromTxHash(txHash ethtypes.EthHash) (c
 }
 
 func (ei *TransactionHashLookup) LookupTxHashFromCid(c cid.Cid) (ethtypes.EthHash, error) {
-	q, err := ei.db.Query("SELECT hash FROM tx_hash_lookup WHERE cid = :cid;", sql.Named("cid", c.String()))
+	q, err := ei.db.Query("SELECT hash FROM eth_tx_hashes WHERE cid = :cid;", sql.Named("cid", c.String()))
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
 	}
@@ -100,7 +102,7 @@ func (ei *TransactionHashLookup) LookupTxHashFromCid(c cid.Cid) (ethtypes.EthHas
 }
 
 func (ei *TransactionHashLookup) RemoveEntriesOlderThan(epoch abi.ChainEpoch) (int64, error) {
-	res, err := ei.db.Exec("DELETE FROM tx_hash_lookup WHERE epoch < :epoch;", sql.Named("epoch", epoch))
+	res, err := ei.db.Exec("DELETE FROM eth_tx_hashes WHERE epoch < :epoch;", sql.Named("epoch", epoch))
 	if err != nil {
 		return 0, err
 	}

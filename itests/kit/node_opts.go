@@ -299,7 +299,7 @@ func HistoricFilterAPI(dbpath string) NodeOpt {
 
 func EthTxHashLookup() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.EthTxHashConfig.EnableEthHashToFilecoinCidMapping = true
+		cfg.Fevm.EnableEthHashToFilecoinCidMapping = true
 		return nil
 	})
 }

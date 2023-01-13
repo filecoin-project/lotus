@@ -22,13 +22,13 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client          Client
-	Wallet          Wallet
-	Fees            FeeConfig
-	Chainstore      Chainstore
-	Cluster         UserRaftConfig
-	ActorEvent      ActorEventConfig
-	EthTxHashConfig EthTxHashConfig
+	Client     Client
+	Wallet     Wallet
+	Fees       FeeConfig
+	Chainstore Chainstore
+	Cluster    UserRaftConfig
+	ActorEvent ActorEventConfig
+	Fevm       FevmConfig
 }
 
 // // Common
@@ -694,7 +694,7 @@ type ActorEventConfig struct {
 	// Set upper bound on index size
 }
 
-type EthTxHashConfig struct {
+type FevmConfig struct {
 	// EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
 	EnableEthHashToFilecoinCidMapping bool
 }

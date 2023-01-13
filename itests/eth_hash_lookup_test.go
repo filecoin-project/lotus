@@ -37,7 +37,7 @@ func TestTransactionHashLookup(t *testing.T) {
 	defer cancel()
 
 	// install contract
-	contractHex, err := os.ReadFile("./contracts/SimpleCoin.bin")
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
 	require.NoError(t, err)
 
 	contract, err := hex.DecodeString(string(contractHex))
@@ -122,7 +122,7 @@ func TestTransactionHashLookupNoDb(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 		kit.WithCfgOpt(func(cfg *config.FullNode) error {
-			cfg.EthTxHashConfig.EnableEthHashToFilecoinCidMapping = false
+			cfg.Fevm.EnableEthHashToFilecoinCidMapping = false
 			return nil
 		}),
 	)
@@ -132,7 +132,7 @@ func TestTransactionHashLookupNoDb(t *testing.T) {
 	defer cancel()
 
 	// install contract
-	contractHex, err := os.ReadFile("./contracts/SimpleCoin.bin")
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
 	require.NoError(t, err)
 
 	contract, err := hex.DecodeString(string(contractHex))
