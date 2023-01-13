@@ -291,7 +291,7 @@ func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, 
 
 	um := actInfo.vmActor.State()
 	if um == nil {
-		// TODO: I would like to assert that we have the empty object here
+		// TODO::FVM @arajasek I would like to assert that we have the empty object here
 		return nil, nil
 	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {

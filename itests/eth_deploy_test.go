@@ -26,7 +26,7 @@ import (
 // TestDeployment smoke tests the deployment of a contract via the
 // Ethereum JSON-RPC endpoint, from an EEOA.
 func TestDeployment(t *testing.T) {
-	// TODO the contract installation and invocation can be lifted into utility methods
+	// TODO::FVM @raulk the contract installation and invocation can be lifted into utility methods
 	// He who writes the second test, shall do that.
 	// kit.QuietMiningLogs()
 
@@ -104,6 +104,8 @@ func TestDeployment(t *testing.T) {
 	require.Equal(t, hash, mpoolTx.Hash)
 
 	// these fields should be nil because the tx hasn't landed on chain.
+	// TODO::FVM @raulk We can either skip the assertion if the msg has already
+	//  landed, or pause mining between the embryo creation and this assertion.
 	require.Nil(t, mpoolTx.BlockNumber)
 	require.Nil(t, mpoolTx.BlockHash)
 	require.Nil(t, mpoolTx.TransactionIndex)
@@ -115,6 +117,9 @@ func TestDeployment(t *testing.T) {
 
 	var receipt *api.EthTxReceipt
 	for i := 0; i < 20; i++ {
+		// TODO::FVM @raulk The right time to exit this loop isn't after
+		//  20 iterations, but when StateWaitMsg returns -- let's wait on that
+		//  event while continuing to make this assertion
 		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
 		if err != nil || receipt == nil {
 			time.Sleep(500 * time.Millisecond)
