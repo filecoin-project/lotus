@@ -2,7 +2,7 @@ package api
 
 import apitypes "github.com/filecoin-project/lotus/api/types"
 
-func CrateEthRPCAliases(as apitypes.Aliaser) {
+func CreateEthRPCAliases(as apitypes.Aliaser) {
 	// TODO: maybe use reflect to automatically register all the eth aliases
 	as.AliasMethod("eth_accounts", "Filecoin.EthAccounts")
 	as.AliasMethod("eth_blockNumber", "Filecoin.EthBlockNumber")

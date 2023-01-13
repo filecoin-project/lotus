@@ -79,7 +79,7 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
-		api.CrateEthRPCAliases(rpcServer)
+		api.CreateEthRPCAliases(rpcServer)
 
 		var handler http.Handler = rpcServer
 		if permissioned {
