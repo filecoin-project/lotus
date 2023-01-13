@@ -143,6 +143,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
 		Epoch:          vmHeight,
+		Timestamp:      ts.MinTimestamp(),
 		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, nvGetter),
 		Bstore:         buffStore,
 		Actors:         sm.tsExec.NewActorRegistry(),
@@ -199,7 +200,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	var ret *vm.ApplyRet
 	var gasInfo api.MsgGasCost
 	if checkGas {
-		fromKey, err := sm.ResolveToKeyAddress(ctx, msg.From, ts)
+		fromKey, err := sm.ResolveToDeterministicAddress(ctx, msg.From, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("could not resolve key: %w", err)
 		}
@@ -210,6 +211,24 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		case address.BLS:
 			msgApply = msg
 		case address.SECP256K1:
+			msgApply = &types.SignedMessage{
+				Message: *msg,
+				Signature: crypto.Signature{
+					Type: crypto.SigTypeSecp256k1,
+					Data: make([]byte, 65),
+				},
+			}
+		case address.Delegated:
+			msgApply = &types.SignedMessage{
+				Message: *msg,
+				Signature: crypto.Signature{
+					Type: crypto.SigTypeDelegated,
+					Data: make([]byte, 65),
+				},
+			}
+		default:
+			// XXX: Hack to make sending from f099 (and others) "just work".
+			// REMOVE ME.
 			msgApply = &types.SignedMessage{
 				Message: *msg,
 				Signature: crypto.Signature{

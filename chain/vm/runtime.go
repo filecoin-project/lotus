@@ -168,8 +168,8 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 				aerr = ar
 				return
 			}
-			//log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
-			//Sugar().Errorf("spec actors failure: %s", r)
+			// log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
+			// Sugar().Errorf("spec actors failure: %s", r)
 			log.Errorf("spec actors failure: %s", r)
 			if rt.NetworkVersion() <= network.Version3 {
 				aerr = aerrors.Newf(1, "spec actors failure: %s", r)
@@ -249,7 +249,7 @@ func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparati
 
 func (rt *Runtime) NewActorAddress() address.Address {
 	var b bytes.Buffer
-	oa, _ := ResolveToKeyAddr(rt.vm.cstate, rt.vm.cst, rt.origin)
+	oa, _ := ResolveToDeterministicAddr(rt.vm.cstate, rt.vm.cst, rt.origin)
 	if err := oa.MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
 		panic(aerrors.Fatalf("writing caller address into a buffer: %v", err))
 	}

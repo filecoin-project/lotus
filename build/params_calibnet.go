@@ -4,6 +4,7 @@
 package build
 
 import (
+	"math"
 	"os"
 	"strconv"
 
@@ -26,6 +27,7 @@ const GenesisNetworkVersion = network.Version0
 
 var NetworkBundle = "calibrationnet"
 var BundleOverrides map[actorstypes.Version]string
+var ActorDebugging = false
 
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car"
@@ -68,6 +70,8 @@ const UpgradeOhSnapHeight = 480
 const UpgradeSkyrHeight = 510
 
 const UpgradeSharkHeight = 16800 // 6 days after genesis
+
+const UpgradeHyggeHeight = math.MaxInt64
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -112,5 +116,9 @@ var PropagationDelaySecs = uint64(10)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4
+
+// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
+// As per https://github.com/ethereum-lists/chains
+const Eip155ChainId = 314159
 
 var WhitelistedBlock = cid.Undef

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -54,6 +55,7 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 
 	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []crypto.Signature
+	nv := filec.sm.GetNetworkVersion(ctx, bt.Epoch)
 	for _, msg := range bt.Messages {
 		if msg.Signature.Type == crypto.SigTypeBLS {
 			blsSigs = append(blsSigs, msg.Signature)
@@ -65,7 +67,7 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
-		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 {
+		} else if chain.IsValidSecpkSigType(nv, msg.Signature.Type) {
 			c, err := filec.sm.ChainStore().PutMessage(ctx, msg)
 			if err != nil {
 				return nil, err

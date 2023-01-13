@@ -31,6 +31,7 @@ COMMANDS:
      log           Manage logging
      wait-api      Wait for lotus api to come online
      fetch-params  Fetch proving parameters
+     evm           Commands related to the Filecoin EVM runtime
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
@@ -2533,6 +2534,95 @@ USAGE:
 
 CATEGORY:
    DEVELOPER
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+## lotus evm
+```
+NAME:
+   lotus evm - Commands related to the Filecoin EVM runtime
+
+USAGE:
+   lotus evm command [command options] [arguments...]
+
+COMMANDS:
+     deploy            Deploy an EVM smart contract and return its address
+     invoke            Invoke an EVM smart contract using the specified CALLDATA
+     stat              Print eth/filecoin addrs and code cid
+     call              Simulate an eth contract call
+     contract-address  Generate contract address from smart contract code
+     help, h           Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus evm deploy
+```
+NAME:
+   lotus evm deploy - Deploy an EVM smart contract and return its address
+
+USAGE:
+   lotus evm deploy [command options] contract
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the creation message
+   --hex         use when input contract is in hex (default: false)
+   
+```
+
+### lotus evm invoke
+```
+NAME:
+   lotus evm invoke - Invoke an EVM smart contract using the specified CALLDATA
+
+USAGE:
+   lotus evm invoke [command options] address calldata
+
+OPTIONS:
+   --from value   optionally specify the account to use for sending the exec message
+   --value value  optionally specify the value to be sent with the invokation message (default: 0)
+   
+```
+
+### lotus evm stat
+```
+NAME:
+   lotus evm stat - Print eth/filecoin addrs and code cid
+
+USAGE:
+   lotus evm stat [command options] [arguments...]
+
+OPTIONS:
+   --ethAddr value  Ethereum address
+   --filAddr value  Filecoin address
+   
+```
+
+### lotus evm call
+```
+NAME:
+   lotus evm call - Simulate an eth contract call
+
+USAGE:
+   lotus evm call [command options] [from] [to] [params]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus evm contract-address
+```
+NAME:
+   lotus evm contract-address - Generate contract address from smart contract code
+
+USAGE:
+   lotus evm contract-address [command options] [senderEthAddr] [salt] [contractHexPath]
 
 OPTIONS:
    --help, -h  show help (default: false)

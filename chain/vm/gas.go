@@ -111,6 +111,7 @@ var Prices = map[abi.ChainEpoch]Pricelist{
 		verifySignature: map[crypto.SigType]int64{
 			crypto.SigTypeBLS:       16598605,
 			crypto.SigTypeSecp256k1: 1637292,
+			crypto.SigTypeDelegated: 1637292,
 		},
 
 		hashingBase:                  31355,

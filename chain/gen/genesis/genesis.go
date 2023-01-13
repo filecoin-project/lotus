@@ -123,12 +123,7 @@ Genesis: {
 
 func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template genesis.Template) (*state.StateTree, map[address.Address]address.Address, error) {
 	// Create empty state tree
-
 	cst := cbor.NewCborStore(bs)
-	_, err := cst.Put(context.TODO(), []struct{}{})
-	if err != nil {
-		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
-	}
 
 	sv, err := state.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
@@ -238,15 +233,12 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create accounts
 	for _, info := range template.Accounts {
-
 		switch info.Type {
 		case genesis.TAccount:
 			if err := CreateAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
 				return nil, nil, xerrors.Errorf("failed to create account actor: %w", err)
 			}
-
 		case genesis.TMultisig:
-
 			ida, err := address.NewIDAddress(uint64(idStart))
 			if err != nil {
 				return nil, nil, err
@@ -566,6 +558,11 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
+	// Set up the Ethereum Address Manager
+	if err = SetupEAM(ctx, st, template.NetworkVersion); err != nil {
+		return nil, xerrors.Errorf("failed to setup EAM: %w", err)
+	}
+
 	stateroot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("flush state tree failed: %w", err)
@@ -580,9 +577,25 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
 
+	// setup Storage Miners
 	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
+	}
+
+	st, err = state.LoadStateTree(st.Store, stateroot)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load updated state tree: %w", err)
+	}
+
+	// Set up Eth null addresses.
+	if _, err := SetupEthNullAddresses(ctx, st, template.NetworkVersion); err != nil {
+		return nil, xerrors.Errorf("failed to set up Eth null addresses: %w", err)
+	}
+
+	stateroot, err = st.Flush(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to flush state tree: %w", err)
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))

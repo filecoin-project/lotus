@@ -29,6 +29,56 @@ var Doc = map[string][]DocField{
 			Comment: ``,
 		},
 	},
+	"ActorEventConfig": []DocField{
+		{
+			Name: "EnableRealTimeFilterAPI",
+			Type: "bool",
+
+			Comment: `EnableRealTimeFilterAPI enables APIs that can create and query filters for actor events as they are emitted.`,
+		},
+		{
+			Name: "EnableHistoricFilterAPI",
+			Type: "bool",
+
+			Comment: `EnableHistoricFilterAPI enables APIs that can create and query filters for actor events that occurred in the past.
+A queryable index of events will be maintained.`,
+		},
+		{
+			Name: "FilterTTL",
+			Type: "Duration",
+
+			Comment: `FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+this time become eligible for automatic deletion.`,
+		},
+		{
+			Name: "MaxFilters",
+			Type: "int",
+
+			Comment: `MaxFilters specifies the maximum number of filters that may exist at any one time.`,
+		},
+		{
+			Name: "MaxFilterResults",
+			Type: "int",
+
+			Comment: `MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.`,
+		},
+		{
+			Name: "MaxFilterHeightRange",
+			Type: "uint64",
+
+			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+the entire chain)`,
+		},
+		{
+			Name: "ActorEventDatabasePath",
+			Type: "string",
+
+			Comment: `ActorEventDatabasePath is the full path to a sqlite database that will be used to index actor events to
+support the historic filter APIs. If the database does not exist it will be created. The directory containing
+the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+relative to the CWD (current working directory).`,
+		},
+	},
 	"Backup": []DocField{
 		{
 			Name: "DisableMetadataLog",
@@ -377,6 +427,12 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 		{
 			Name: "Cluster",
 			Type: "UserRaftConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "ActorEvent",
+			Type: "ActorEventConfig",
 
 			Comment: ``,
 		},
