@@ -477,7 +477,7 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 	}
 
 	// resolve the address
-	ka, err := mp.api.StateAccountKeyAtFinality(ctx, addr, mp.curTs)
+	ka, err := mp.api.StateDeterministicAddressAtFinality(ctx, addr, mp.curTs)
 	if err != nil {
 		return address.Undef, err
 	}

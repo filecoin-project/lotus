@@ -261,7 +261,7 @@ func gasEstimateGasLimit(
 	msg.GasFeeCap = big.Zero()
 	msg.GasPremium = big.Zero()
 
-	fromA, err := smgr.ResolveToKeyAddress(ctx, msgIn.From, currTs)
+	fromA, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
 	if err != nil {
 		return -1, xerrors.Errorf("getting key address: %w", err)
 	}
@@ -323,7 +323,7 @@ func gasEstimateGasLimit(
 					transitionalMulti = 4.095
 				case 7:
 					// skip, stay at 2.0
-					//transitionalMulti = 1.289
+					// transitionalMulti = 1.289
 				case 11:
 					transitionalMulti = 17.8758
 				case 16:
