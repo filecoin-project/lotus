@@ -1,5 +1,5 @@
-//go:build hyperspace
-// +build hyperspace
+//go:build hyperspacenet
+// +build hyperspacenet
 
 package build
 
@@ -23,10 +23,6 @@ const BootstrappersFile = "hyperspace.pi"
 const GenesisFile = "hyperspace.car"
 
 const GenesisNetworkVersion = network.Version18
-
-var NetworkBundle = "hyperspacenet"
-var BundleOverrides map[actorstypes.Version]string
-var ActorDebugging = false
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
