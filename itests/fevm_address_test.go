@@ -90,7 +90,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	// Check if actor at new address is an placeholder actor
+	// Check if actor at new address is a placeholder actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.True(t, builtin.IsPlaceholderActor(actor.Code))
@@ -116,7 +116,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, wait.Receipt.ExitCode)
 
-	// Check if eth address returned from Create2 is the same as eth address predicted at the start
+	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
 	var createExternalReturn eam.CreateExternalReturn
 	err = createExternalReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
 	require.NoError(t, err)
