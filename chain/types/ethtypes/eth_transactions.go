@@ -104,14 +104,15 @@ func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
 			}
 
-			if paramsReader.Len() != 0 {
-				return EthTxArgs{}, xerrors.Errorf("extra data found in params")
-			}
 			if len(params) == 0 {
 				// Otherwise, we don't get a guaranteed round-trip.
 				return EthTxArgs{}, xerrors.Errorf("cannot invoke contracts with empty parameters from an eth-account")
 			}
 		}
+	}
+
+	if paramsReader.Len() != 0 {
+		return EthTxArgs{}, xerrors.Errorf("extra data found in params")
 	}
 
 	return EthTxArgs{
