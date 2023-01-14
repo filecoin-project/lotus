@@ -206,14 +206,14 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	// check blocks are properly signed by their respective miner
 	// note we do not need to check extra's: it is a parent to block b
 	// which itself is signed, so it was willingly included by the miner
-	gasA, sigErr := x.VerifyBlockSig(ctx, &blockA)
+	gasA, sigErr := x.verifyBlockSig(ctx, &blockA)
 	totalGas += gasA
 	if sigErr != nil {
 		log.Info("invalid consensus fault: cannot verify first block sig: %w", sigErr)
 		return ret, totalGas
 	}
 
-	gas2, sigErr := x.VerifyBlockSig(ctx, &blockB)
+	gas2, sigErr := x.verifyBlockSig(ctx, &blockB)
 	totalGas += gas2
 	if sigErr != nil {
 		log.Info("invalid consensus fault: cannot verify second block sig: %w", sigErr)
@@ -226,7 +226,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	return ret, totalGas
 }
 
-func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) (int64, error) {
+func (x *FvmExtern) verifyBlockSig(ctx context.Context, blk *types.BlockHeader) (int64, error) {
 	waddr, gasUsed, err := x.workerKeyAtLookback(ctx, blk.Miner, blk.Height)
 	if err != nil {
 		return gasUsed, err
