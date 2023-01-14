@@ -1,16 +1,12 @@
 package itests
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
@@ -22,50 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
-
-func setupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *kit.TestFullNode) {
-	kit.QuietMiningLogs()
-	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	return ctx, cancel, client
-}
-
-func installContract(t *testing.T, ctx context.Context, filename string, client *kit.TestFullNode) (address.Address, address.Address) {
-	contractHex, err := os.ReadFile(filename)
-	require.NoError(t, err)
-
-	contract, err := hex.DecodeString(string(contractHex))
-	require.NoError(t, err)
-
-	fromAddr, err := client.WalletDefaultAddress(ctx)
-	require.NoError(t, err)
-
-	result := client.EVM().DeployContract(ctx, fromAddr, contract)
-
-	idAddr, err := address.NewIDAddress(result.ActorID)
-	require.NoError(t, err)
-
-	return fromAddr, idAddr
-}
-
-func invokeContract(t *testing.T, ctx context.Context, client *kit.TestFullNode, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) []byte {
-	entryPoint := calcFuncSignature(funcSignature)
-	wait := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
-	require.True(t, wait.Receipt.ExitCode.IsSuccess(), "contract execution failed")
-	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
-	require.NoError(t, err)
-	return result
-}
-
-//function signatures are the first 4 bytes of the hash of the function name and types
-func calcFuncSignature(funcName string) []byte {
-	hasher := sha3.NewLegacyKeccak256()
-	hasher.Write([]byte(funcName))
-	hash := hasher.Sum(nil)
-	return hash[:4]
-}
 
 //convert a simple byte array into input data which is a left padded 32 byte array
 func inputDataFromArray(input []byte) []byte {
@@ -86,6 +38,15 @@ func inputDataFromFrom(t *testing.T, ctx context.Context, client *kit.TestFullNo
 	return inputData
 }
 
+func setupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *kit.TestFullNode) {
+	kit.QuietMiningLogs()
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	return ctx, cancel, client
+}
+
 // TestFEVMBasic does a basic fevm contract installation and invocation
 func TestFEVMBasic(t *testing.T) {
 
@@ -94,12 +55,12 @@ func TestFEVMBasic(t *testing.T) {
 
 	filename := "contracts/SimpleCoin.bin"
 	// install contract
-	fromAddr, idAddr := installContract(t, ctx, filename, client)
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 
 	// invoke the contract with owner
 	{
 		inputData := inputDataFromFrom(t, ctx, client, fromAddr)
-		result := invokeContract(t, ctx, client, fromAddr, idAddr, "getBalance(address)", inputData)
+		result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 
 		expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000002710")
 		require.NoError(t, err)
@@ -110,7 +71,7 @@ func TestFEVMBasic(t *testing.T) {
 	{
 		inputData := inputDataFromFrom(t, ctx, client, fromAddr)
 		inputData[31] += 1 // change the pub address to one that has 0 balance by modifying the last byte of the address
-		result := invokeContract(t, ctx, client, fromAddr, idAddr, "getBalance(address)", inputData)
+		result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 
 		expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 		require.NoError(t, err)
@@ -152,10 +113,10 @@ func TestFEVMDelegateCall(t *testing.T) {
 
 	//install contract Actor
 	filenameActor := "contracts/DelegatecallActor.bin"
-	fromAddr, actorAddr := installContract(t, ctx, filenameActor, client)
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 	//install contract Storage
 	filenameStorage := "contracts/DelegatecallStorage.bin"
-	fromAddrStorage, storageAddr := installContract(t, ctx, filenameStorage, client)
+	fromAddrStorage, storageAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 	require.Equal(t, fromAddr, fromAddrStorage)
 
 	//call Contract Storage which makes a delegatecall to contract Actor
@@ -165,19 +126,18 @@ func TestFEVMDelegateCall(t *testing.T) {
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
-
 	//verify that the returned value of the call to setvars is 7
-	result := invokeContract(t, ctx, client, fromAddr, storageAddr, "setVars(address,uint256)", inputData)
+	result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVars(address,uint256)", inputData)
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000007")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
 	//test the value is 7 via calling the getter
-	result = invokeContract(t, ctx, client, fromAddr, storageAddr, "getCounter()", []byte{})
+	result = client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "getCounter()", []byte{})
 	require.Equal(t, result, expectedResult)
 
 	//test the value is 0 via calling the getter on the Actor contract
-	result = invokeContract(t, ctx, client, fromAddr, actorAddr, "getCounter()", []byte{})
+	result = client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "getCounter()", []byte{})
 	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResultActor)
