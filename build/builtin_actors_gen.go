@@ -53,12 +53,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "butterflynet",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzaceba5qgs4z3imhlxwds5vamahngatvuuglbv5yl3ftfiosj6ud5chs"),
+	ManifestCid: MustParseCid("bafy2bzacecjs7xvhtejsh47b2tx2iwe7mbad4kxovbfs7a6wxfl47kcnl25bm"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacebd5zetyjtragjwrv2nqktct6u2pmsi4eifbanovxohx3a7lszjxi"),
 		"cron":             MustParseCid("bafk2bzacecrszortqkc7har77ssgajglymv6ftrqvmdko5h2yqqh5k2qospl2"),
 		"datacap":          MustParseCid("bafk2bzacecapjnxnyw4talwqv5ajbtbkzmzqiosztj5cb3sortyp73ndjl76e"),
-		"eam":              MustParseCid("bafk2bzacecflry2dyjqj6fhpovkbcbei377zabectznuxsf6bxggsve7bsxga"),
+		"eam":              MustParseCid("bafk2bzaceavdyeveel5iohjg7t6twc2cbdo7bt3m5xajwtibekudyhzv2xojy"),
 		"ethaccount":       MustParseCid("bafk2bzacedl4pmkfxkzoqajs6im3ranmopozsmxjcxsnk3kwvd3vv7mfwwrf4"),
 		"evm":              MustParseCid("bafk2bzacebgzvmvwv7rsnnhp3zhqbiqkumvyrc7pazfovpptgpgtqkalrli74"),
 		"init":             MustParseCid("bafk2bzacecbxp66q3ytjkg37nyv4rmzezbfaigvx4i5yhvqbm5gg4amjeaias"),
@@ -110,12 +110,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "calibrationnet",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzacedaj2jtodzct5b2ijrqkg4vabnhp6d5rmbscmpl5273b6uxrynn3w"),
+	ManifestCid: MustParseCid("bafy2bzaceaklxgrzd34i53rm4eeq6477nlq2ckpex27evftbsmjd2yrdbj4ba"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacea7zmrdz2rjbzlbmrmx3ko6pm3cbyqxxgogiqldsccbqffuok7m6s"),
 		"cron":             MustParseCid("bafk2bzacec7bxugi7ouh75nglycy7qwdq7e2hnku3w6yafq4fwdwvvq2mtrl2"),
 		"datacap":          MustParseCid("bafk2bzacedii4stmlo3ccdff7eevcolmgnuxy5ftkzbzwtkqa4iinlfzq4mei"),
-		"eam":              MustParseCid("bafk2bzacedqvcmlki7exa3dw4oxdaecuekthl4i2hxrr2lzi5eiiev7udmpuk"),
+		"eam":              MustParseCid("bafk2bzacea6du2tjdewnfd2zofjp342d2lw7rdl6hx4ejawup744kpym2xsf4"),
 		"ethaccount":       MustParseCid("bafk2bzacecgbcbh3uk7olcfdqo44no5nxxayeqnycdznrlekqigbifor2revm"),
 		"evm":              MustParseCid("bafk2bzaceanxhvz5czs6xfunhbysbttmim5e7poftibsu53uqn4by5nqmdaj6"),
 		"init":             MustParseCid("bafk2bzacea7lxnvgxupwwgoxlmwtrca75w73qabe324wnwx43qranbgf5zdqo"),
@@ -176,12 +176,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "caterpillarnet",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzacebsdvrxmdajiyxq2mxxxppvg2zwvqjzz3pgbsxwh6pvdcjofpmnxw"),
+	ManifestCid: MustParseCid("bafy2bzaceawh5opc4uqctlzc6xnq3pb7ycchfqwprjysbfa5xlrmiicbbvkrm"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacedfms6w3ghqtljpgsfuiqa6ztjx7kcuin6myjezj6rypj3zjbqms6"),
 		"cron":             MustParseCid("bafk2bzaceaganmlpozvy4jywigs46pfrtdmhjjey6uyhpurplqbasojsislba"),
 		"datacap":          MustParseCid("bafk2bzacebafqqe3wv5ytkfwmqzbmchgem66pw6yq6rl7w6vlhqsbkxnisswq"),
-		"eam":              MustParseCid("bafk2bzaceaeayeksiivw4y3gdqtigbgfntyvwc3q7v2ivb5kx7u55pn4q5lt6"),
+		"eam":              MustParseCid("bafk2bzaceawl3twv7iontkiiwgezkub2vvgd7cprhv7wvgpqjpeh4o6ygshlg"),
 		"ethaccount":       MustParseCid("bafk2bzaceburkmtd63nmzxpux5rcxsbqr6x5didl2ce7al32g4tqrvo4pjz2i"),
 		"evm":              MustParseCid("bafk2bzacea7tp4lop7ivhay3ozitkmxxurk74v4zse42ant47rh2uw5z3tq5e"),
 		"init":             MustParseCid("bafk2bzaced23r54kwuebl7t6mdantbby5qpfduxwxfryeliof2enyqzhokix6"),
@@ -233,12 +233,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "devnet",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzaceanq4logp5zjb2dyrjwupmgiyy2s6tagdodcoqc5nc4b2g5m54zzk"),
+	ManifestCid: MustParseCid("bafy2bzacedfwwsn5weycwkqrnusc37m6ut2uf42z5qvbukl67wi76mqtgafw2"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacebb5txxkfexeaxa2th3rckxsxchzyss3ijgqbicf265h7rre2rvhm"),
 		"cron":             MustParseCid("bafk2bzacecotn4gwluhamoqwnzgbg7ogehv26o5xnhjzltnzfv6utrlyanzek"),
 		"datacap":          MustParseCid("bafk2bzacea4hket2srrtbewkf3tip6ellwpxdfbrzt5u47y57i2k6iojqqgba"),
-		"eam":              MustParseCid("bafk2bzacebx32wmbhhgdhsguvopmucvnvitq4h424kkyvtok5hhkdgsoiwrvq"),
+		"eam":              MustParseCid("bafk2bzacecrg5sjpnmk3nu3vqyegkmjnvsjoumptseuu7zabeggu745bd2kwo"),
 		"ethaccount":       MustParseCid("bafk2bzacedh4y3zvtgft3i6ift4rpptgr2dx67pvenowvq7yaspuf25gqgcdc"),
 		"evm":              MustParseCid("bafk2bzacecrjgqoozymyoplrmtpi7bmkmggiqgpbgwkzooy2a67fjivuedm6a"),
 		"init":             MustParseCid("bafk2bzacedof2ckc6w2qboxzxv4w67njcug4ut4cq3nnlrfybzsvlgnp4kt24"),
@@ -299,12 +299,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "hyperspace",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzacedvffumcvf72f2btjqvece3kpcdorxq5tq76iwcmqbzvsiu526cqm"),
+	ManifestCid: MustParseCid("bafy2bzacedimb4dzty5tsyy3ucbcxai7crli452wn5cguhpmuelq74i4bffoo"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacecim7uybic2qprbkjhowg7qkniv4zywj5h5g4u4ss72urco2akzuo"),
 		"cron":             MustParseCid("bafk2bzaceahgq64awp4f7li3hdgimc4upqvdvltpmeywckvens33umcxt424a"),
 		"datacap":          MustParseCid("bafk2bzacebkxn52ttooaslkwncijk3bgd3tm2zw7vijdhwvg2cxnxbrzmmq5e"),
-		"eam":              MustParseCid("bafk2bzaceczhgub5anrnaf7ol65mu54gsgwcj6c6m3yhet7rhxm2l6kz4s4ru"),
+		"eam":              MustParseCid("bafk2bzacedg5bnw3ic2ub4mb2agrvdowpqd7xyjv6v2ndlkugnrtjgzzfxqlw"),
 		"ethaccount":       MustParseCid("bafk2bzacealn5enbxyxbfs7gbsjbyma2zk3bcr7okvflxhpr753d4eh6ixooa"),
 		"evm":              MustParseCid("bafk2bzacedljkrmazyewawpnddrkzrt55556374dw2pm2hokgkompgzw4vx5y"),
 		"init":             MustParseCid("bafk2bzacec55gyyaqjrw7zughywocgwcjvv6k5fijjpjw4xgckuqz6pjtff5a"),
@@ -356,12 +356,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "mainnet",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzacedm3l5pxuwd5eem6k2ndvix26ftky45oca3shg7l3lxd2drykjmwo"),
+	ManifestCid: MustParseCid("bafy2bzaceat4ut5xv3qn4lvvkvwvdn6gtlbnqzvueh67fjqlemw6eled5oqnc"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzacedsn6i2flkpk6sb4iuejo7gfl5n6fhsdawggtbsihlrrjtvs7oepu"),
 		"cron":             MustParseCid("bafk2bzacecw4guere7ba2canyi2622lw52b5qbn7iubckcp5cwlmx2kw7qqwy"),
 		"datacap":          MustParseCid("bafk2bzaceat2ncckd2jjjqcovd3ib4sylwff7jk7rlk6gr5d2gmrrc7isrmu2"),
-		"eam":              MustParseCid("bafk2bzaceddhqhwduaw6x54w27s346267izwttnjdyol3hv4toe7mkt47y2gy"),
+		"eam":              MustParseCid("bafk2bzacebl7267zqf7aubpl7n6ligulayhz65dpgn3ii26b3wwjwytlsdc3i"),
 		"ethaccount":       MustParseCid("bafk2bzacedmwzkbytxfn7exmxxosomvix4mpyxrmupeqw45aofqmdq5q7mgqe"),
 		"evm":              MustParseCid("bafk2bzacecrrwixyqwphxaybhy5zxuawkhncq5tgtuz2ind4bl22oivzjidoq"),
 		"init":             MustParseCid("bafk2bzacec6276d7ls3hhuqibqorn3yp45mv7hroczf3bgb6jkhmbb2zqt3bw"),
@@ -413,12 +413,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "testing",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzaceaxrrais4643j7j2cjkk2gdlwzt32gvy4hjdsmmmk47g4qfnzuipm"),
+	ManifestCid: MustParseCid("bafy2bzacearh2dy6uzcfvruckai5qbf7banklkg6uezaa7w6onsmdfxn2qxbs"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzaceds3iy5qjgr3stoywxt4uxvhybca23q7d2kxhitedgudrkhxaxa6o"),
 		"cron":             MustParseCid("bafk2bzacebxp4whb4ocqxnbvqlz3kckarabtyvhjbhqvrdwhejuffwactyiss"),
 		"datacap":          MustParseCid("bafk2bzacedepm3zas6vqryruwiz7d3axkneo7v66q65gf2dlpfd53pjlycrg4"),
-		"eam":              MustParseCid("bafk2bzaceappxiqxvpwiwfaqobhbbzrb6nuedaryj7nakyhwyy353coxj3jdc"),
+		"eam":              MustParseCid("bafk2bzacedl4q6l3m5uvunuviwlxicyweszrahipxfpf3nt6wspvcdi4ryzyk"),
 		"ethaccount":       MustParseCid("bafk2bzacecbhz4ipg773lsovgpjysm6fxl2i7y2wuxadqnt4s4vm3nd2qodb4"),
 		"evm":              MustParseCid("bafk2bzaced5efc2bi7ulqsep4ej74hxwbjap2qi7lojiqzfsowxr4kylkwzk6"),
 		"init":             MustParseCid("bafk2bzacebqym5i5eciyyyzsimu73z6bkffpm5hzjpx3gwcm64pm2fh7okrja"),
@@ -470,12 +470,12 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }, {
 	Network:     "testing-fake-proofs",
 	Version:     10,
-	ManifestCid: MustParseCid("bafy2bzacedkxrjyboullp5vqdilbkclfzz2siniidh2lfcb7uustm3ffn4zw2"),
+	ManifestCid: MustParseCid("bafy2bzacedw6kk3u2vjexzqmm3vtvusd42lllk7wbnsrlxxmt35smsnmiatca"),
 	Actors: map[string]cid.Cid{
 		"account":          MustParseCid("bafk2bzaceds3iy5qjgr3stoywxt4uxvhybca23q7d2kxhitedgudrkhxaxa6o"),
 		"cron":             MustParseCid("bafk2bzacebxp4whb4ocqxnbvqlz3kckarabtyvhjbhqvrdwhejuffwactyiss"),
 		"datacap":          MustParseCid("bafk2bzacedepm3zas6vqryruwiz7d3axkneo7v66q65gf2dlpfd53pjlycrg4"),
-		"eam":              MustParseCid("bafk2bzaceappxiqxvpwiwfaqobhbbzrb6nuedaryj7nakyhwyy353coxj3jdc"),
+		"eam":              MustParseCid("bafk2bzacedl4q6l3m5uvunuviwlxicyweszrahipxfpf3nt6wspvcdi4ryzyk"),
 		"ethaccount":       MustParseCid("bafk2bzacecbhz4ipg773lsovgpjysm6fxl2i7y2wuxadqnt4s4vm3nd2qodb4"),
 		"evm":              MustParseCid("bafk2bzaced5efc2bi7ulqsep4ej74hxwbjap2qi7lojiqzfsowxr4kylkwzk6"),
 		"init":             MustParseCid("bafk2bzacebqym5i5eciyyyzsimu73z6bkffpm5hzjpx3gwcm64pm2fh7okrja"),
