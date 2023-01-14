@@ -226,16 +226,6 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 					Data: make([]byte, 65),
 				},
 			}
-		default:
-			// XXX: Hack to make sending from f099 (and others) "just work".
-			// REMOVE ME.
-			msgApply = &types.SignedMessage{
-				Message: *msg,
-				Signature: crypto.Signature{
-					Type: crypto.SigTypeSecp256k1,
-					Data: make([]byte, 65),
-				},
-			}
 		}
 
 		ret, err = vmi.ApplyMessage(ctx, msgApply)

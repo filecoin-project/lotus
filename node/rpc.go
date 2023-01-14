@@ -107,7 +107,6 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 			Next:   handleImportFunc,
 		}
 		m.Handle("/rest/v0/import", importAH)
-
 		exportAH := &auth.Handler{
 			Verify: a.AuthVerify,
 			Next:   handleExportFunc,
