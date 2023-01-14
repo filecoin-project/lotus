@@ -19,8 +19,8 @@ var NetworkBundle = "hyperspace"
 var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = true
 
-const BootstrappersFile = "hyperspace.pi"
-const GenesisFile = "hyperspace.car"
+const BootstrappersFile = "hyperspacenet.pi"
+const GenesisFile = "hyperspacenet.car"
 
 const GenesisNetworkVersion = network.Version18
 
