@@ -681,7 +681,7 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}
 		params = params2
-		method = builtintypes.MethodsEAM.Create
+		method = builtintypes.MethodsEAM.CreateExternal
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
 		if err != nil {

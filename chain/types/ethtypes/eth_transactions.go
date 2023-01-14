@@ -6,17 +6,15 @@ import (
 	"fmt"
 	mathbig "math/big"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build"
@@ -140,17 +138,12 @@ func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, er
 	// nil indicates the EAM, only CreateExternal is allowed
 	if tx.To == nil {
 		to = builtintypes.EthereumAddressManagerActorAddr
-		// TODO: Uncomment
-		//method = builtintypes.MethodsEAM.CreateExternal
-		method = builtintypes.MethodsEAM.Create
+		method = builtintypes.MethodsEAM.CreateExternal
 		if len(tx.Input) == 0 {
 			return nil, xerrors.New("cannot call CreateExternal without params")
 		}
-		// TODO: CreateExternalParams, it doesn't have a nonce
-		params, err = actors.SerializeParams(&eam.CreateParams{
-			Initcode: tx.Input,
-			Nonce:    uint64(tx.Nonce),
-		})
+		inputParams := abi.CborBytes(tx.Input)
+		params, err = actors.SerializeParams(&inputParams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}

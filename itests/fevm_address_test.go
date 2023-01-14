@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -83,11 +85,9 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 
 	// Create and deploy evm actor
 
-	method := builtintypes.MethodsEAM.Create2
-	params, err := actors.SerializeParams(&eam.Create2Params{
-		Initcode: contract,
-		Salt:     salt,
-	})
+	method := builtintypes.MethodsEAM.CreateExternal
+	contractParams := abi.CborBytes(contract)
+	params, err := actors.SerializeParams(&contractParams)
 	require.NoError(t, err)
 
 	createMsg := &types.Message{
