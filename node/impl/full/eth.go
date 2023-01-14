@@ -286,7 +286,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 
 	for _, p := range pending {
 		if p.Cid() == c {
-			tx, err := NewEthTxFromFilecoinMessage(ctx, p, a.StateAPI)
+			tx, err := newEthTxFromFilecoinMessage(ctx, p, a.StateAPI)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %s", err)
 			}
@@ -1540,7 +1540,7 @@ func EthTxHashFromFilecoinMessageCid(ctx context.Context, c cid.Cid, sa StateAPI
 
 func EthTxHashFromSignedFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthHash, error) {
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		ethTx, err := NewEthTxFromFilecoinMessage(ctx, smsg, sa)
+		ethTx, err := newEthTxFromFilecoinMessage(ctx, smsg, sa)
 		if err != nil {
 			return ethtypes.EmptyEthHash, err
 		}
@@ -1550,85 +1550,24 @@ func EthTxHashFromSignedFilecoinMessage(ctx context.Context, smsg *types.SignedM
 	return ethtypes.EthHashFromCid(smsg.Cid())
 }
 
-func NewEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
-	// Ignore errors here so we can still parse non-eth messages
-	fromEthAddr, _ := lookupEthAddress(ctx, smsg.Message.From, sa)
-	toEthAddr, _ := lookupEthAddress(ctx, smsg.Message.To, sa)
-
-	toAddr := &toEthAddr
-	input := smsg.Message.Params
-	var err error
-	// Check to see if we need to decode as contract deployment.
-	// We don't need to resolve the to address, because there's only one form (an ID).
-	if smsg.Message.To == builtintypes.EthereumAddressManagerActorAddr {
-		switch smsg.Message.Method {
-		case builtintypes.MethodsEAM.Create:
-			toAddr = nil
-			var params eam.CreateParams
-			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
-			input = params.Initcode
-		case builtintypes.MethodsEAM.Create2:
-			toAddr = nil
-			var params eam.Create2Params
-			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
-			input = params.Initcode
-		case builtintypes.MethodsEAM.CreateExternal:
-			toAddr = nil
-			var params abi.CborBytes
-			err = params.UnmarshalCBOR(bytes.NewReader(smsg.Message.Params))
-			input = []byte(params)
-		}
-		if err != nil {
-			return ethtypes.EthTx{}, err
-		}
-	}
-	// Otherwise, try to decode as a cbor byte array.
-	// TODO: Actually check if this is an ethereum call. This code will work for demo purposes, but is not correct.
-	if toAddr != nil {
-		if decodedParams, err := cbg.ReadByteArray(bytes.NewReader(smsg.Message.Params), uint64(len(smsg.Message.Params))); err == nil {
-			input = decodedParams
-		}
-	}
-
-	r, s, v, err := ethtypes.RecoverSignature(smsg.Signature)
+func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
+	tx, err := ethtypes.EthTxFromSignedMessage(smsg)
 	if err != nil {
-		// we don't want to return error if the message is not an Eth tx
-		r, s, v = ethtypes.EthBigIntZero, ethtypes.EthBigIntZero, ethtypes.EthBigIntZero
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 	}
 
-	tx := ethtypes.EthTx{
-		Nonce:                ethtypes.EthUint64(smsg.Message.Nonce),
-		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
-		From:                 fromEthAddr,
-		To:                   toAddr,
-		Value:                ethtypes.EthBigInt(smsg.Message.Value),
-		Type:                 ethtypes.EthUint64(2),
-		Input:                input,
-		Gas:                  ethtypes.EthUint64(smsg.Message.GasLimit),
-		MaxFeePerGas:         ethtypes.EthBigInt(smsg.Message.GasFeeCap),
-		MaxPriorityFeePerGas: ethtypes.EthBigInt(smsg.Message.GasPremium),
-		V:                    v,
-		R:                    r,
-		S:                    s,
+	fromEthAddr, err := lookupEthAddress(ctx, smsg.Message.From, sa)
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup from ethaddress: %w", err)
 	}
 
-	// This is an eth tx
-	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		tx.Hash, err = tx.TxHash()
-		if err != nil {
-			return tx, err
-		}
-	} else if smsg.Signature.Type == crypto.SigTypeUnknown { // BLS Filecoin message
-		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
-		if err != nil {
-			return tx, err
-		}
-	} else { // Secp Filecoin Message
-		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
-		if err != nil {
-			return tx, err
-		}
+	toEthAddr, err := lookupEthAddress(ctx, smsg.Message.To, sa)
+	if err != nil {
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup to ethaddress: %w", err)
 	}
+
+	tx.From = fromEthAddr
+	tx.To = &toEthAddr
 
 	return tx, nil
 }
@@ -1695,7 +1634,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		}
 	}
 
-	tx, err := NewEthTxFromFilecoinMessage(ctx, smsg, sa)
+	tx, err := newEthTxFromFilecoinMessage(ctx, smsg, sa)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
@@ -1858,7 +1797,7 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 				continue
 			}
 
-			ethTx, err := NewEthTxFromFilecoinMessage(ctx, u.Message, manager.StateAPI)
+			ethTx, err := newEthTxFromFilecoinMessage(ctx, u.Message, manager.StateAPI)
 			if err != nil {
 				log.Errorf("error converting filecoin message to eth tx: %s", err)
 			}

@@ -58,7 +58,46 @@ type EthTxArgs struct {
 	S                    big.Int     `json:"s"`
 }
 
-func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
+// EthTxFromSignedMessage does NOT populate:
+// - BlockHash
+// - BlockNumber
+// - TransactionIndex
+// - From
+func EthTxFromSignedMessage(smsg *types.SignedMessage) (EthTx, error) {
+	txArgs, err := EthTxArgsFromUnsignedMessage(&smsg.Message)
+	if err != nil {
+		return EthTx{}, xerrors.Errorf("failed to convert the unsigned message: %w", err)
+	}
+
+	r, s, v, err := RecoverSignature(smsg.Signature)
+	if err != nil {
+		// we don't want to return error if the message is not an Eth tx
+		r, s, v = EthBigIntZero, EthBigIntZero, EthBigIntZero
+	}
+
+	hash, err := EthHashFromCid(smsg.Cid())
+	if err != nil {
+		return EthTx{}, xerrors.Errorf("failed to calculate EthHash: %w", err)
+	}
+
+	return EthTx{
+		Hash:                 hash,
+		Nonce:                EthUint64(txArgs.Nonce),
+		ChainID:              EthUint64(txArgs.ChainID),
+		To:                   txArgs.To,
+		Value:                EthBigInt(txArgs.Value),
+		Type:                 Eip1559TxType,
+		Gas:                  EthUint64(txArgs.GasLimit),
+		MaxFeePerGas:         EthBigInt(txArgs.MaxFeePerGas),
+		MaxPriorityFeePerGas: EthBigInt(txArgs.MaxPriorityFeePerGas),
+		V:                    v,
+		R:                    r,
+		S:                    s,
+		Input:                txArgs.Input,
+	}, nil
+}
+
+func EthTxArgsFromUnsignedMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
 		to           *EthAddress
 		params       []byte
