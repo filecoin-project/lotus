@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -89,12 +91,16 @@ var EvmGetInfoCmd = &cli.Command{
 
 		actor, err := api.StateGetActor(ctx, faddr, types.EmptyTSK)
 		if err != nil {
-			return err
+			fmt.Println("fail to get ID address: ", err.Error())
+
+		} else {
+			fmt.Println("ID address: ", actor.Address.String())
+			fmt.Println("Code cid: ", actor.Code.String())
+			fmt.Println("Actor Type: ", builtin.ActorNameByCode(actor.Code))
 		}
 
 		fmt.Println("Filecoin address: ", faddr)
 		fmt.Println("Eth address: ", eaddr)
-		fmt.Println("Code cid: ", actor.Code.String())
 
 		return nil
 
