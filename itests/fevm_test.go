@@ -3,9 +3,12 @@ package itests
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"encoding/binary"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -45,6 +48,84 @@ func setupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *kit.Test
 	return ctx, cancel, client
 }
 
+func buildInputFromuint64(number uint64) []byte {
+	// Convert the number to a binary uint64 array
+	binaryNumber := make([]byte, 8)
+	binary.BigEndian.PutUint64(binaryNumber, number)
+	return inputDataFromArray(binaryNumber)
+}
+
+//math.Max is weird needs float
+func max(x int, y int) int {
+	max := x
+	if y > max {
+		max = y
+	}
+	return max
+}
+
+// TestFEVMRecursive does a basic fevm contract installation and invocation
+func TestFEVMRecursive(t *testing.T) {
+	callcounts := []uint64{0, 1}
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	// Iterate over the numbers array
+	for _, callcount := range callcounts {
+		fmt.Println("mike - ", buildInputFromuint64(callcount))
+		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callcount), func(t *testing.T) {
+			_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
+			if err != nil {
+				fmt.Printf("error - %+v", err)
+			}
+			require.NoError(t, err)
+			events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+			//passing in 0 still means there's 1 event
+			require.Equal(t, max(1, int(callcount)), len(events))
+		})
+	}
+}
+
+func TestFEVMRecursiveFail(t *testing.T) {
+	callcounts := []uint64{2, 10, 1000, 100000}
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	// Iterate over the numbers array
+	for _, callcount := range callcounts {
+		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callcount), func(t *testing.T) {
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
+			require.Error(t, err)
+			require.True(t, strings.HasPrefix(err.Error(), "GasEstimateMessageGas"))
+		})
+	}
+}
+func TestFEVMRecursive1(t *testing.T) {
+	callcount := 1
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive1()", []byte{})
+	require.NoError(t, err)
+	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+	//passing in 0 still means there's 1 event
+	require.Equal(t, max(1, int(callcount)), len(events))
+}
+func TestFEVMRecursive2(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive2()", []byte{})
+	require.Error(t, err)
+	require.True(t, strings.HasPrefix(err.Error(), "GasEstimateMessageGas"))
+}
+
 // TestFEVMBasic does a basic fevm contract installation and invocation
 func TestFEVMBasic(t *testing.T) {
 
@@ -58,7 +139,8 @@ func TestFEVMBasic(t *testing.T) {
 	// invoke the contract with owner
 	{
 		inputData := inputDataFromFrom(t, ctx, client, fromAddr)
-		result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
+		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
+		require.NoError(t, err)
 
 		expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000002710")
 		require.NoError(t, err)
@@ -69,7 +151,8 @@ func TestFEVMBasic(t *testing.T) {
 	{
 		inputData := inputDataFromFrom(t, ctx, client, fromAddr)
 		inputData[31] += 1 // change the pub address to one that has 0 balance by modifying the last byte of the address
-		result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
+		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
+		require.NoError(t, err)
 
 		expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 		require.NoError(t, err)
@@ -117,17 +200,20 @@ func TestFEVMDelegateCall(t *testing.T) {
 	inputData := append(inputDataContract, inputDataValue...)
 
 	//verify that the returned value of the call to setvars is 7
-	result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVars(address,uint256)", inputData)
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVars(address,uint256)", inputData)
+	require.NoError(t, err)
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000007")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
 	//test the value is 7 via calling the getter
-	result = client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "getCounter()", []byte{})
+	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "getCounter()", []byte{})
+	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
 	//test the value is 0 via calling the getter on the Actor contract
-	result = client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "getCounter()", []byte{})
+	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "getCounter()", []byte{})
+	require.NoError(t, err)
 	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResultActor)

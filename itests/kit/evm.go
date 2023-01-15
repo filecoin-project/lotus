@@ -97,13 +97,13 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 	return fromAddr, idAddr
 }
 
-func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) *api.MsgLookup {
-	require := require.New(e.t)
-
+func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) (*api.MsgLookup, error) {
 	params := append(selector, inputData...)
 	var buffer bytes.Buffer
 	err := cbg.WriteByteArray(&buffer, params)
-	require.NoError(err)
+	if err != nil {
+		return nil, err
+	}
 	params = buffer.Bytes()
 
 	msg := &types.Message{
@@ -116,13 +116,17 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 
 	e.t.Log("sending invoke message")
 	smsg, err := e.MpoolPushMessage(ctx, msg, nil)
-	require.NoError(err)
+	if err != nil {
+		return nil, err
+	}
 
 	e.t.Log("waiting for message to execute")
 	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
-	require.NoError(err)
+	if err != nil {
+		return nil, err
+	}
 
-	return wait
+	return wait, nil
 }
 
 // LoadEvents loads all events in an event AMT.
@@ -232,13 +236,20 @@ func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
 }
 
-func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) []byte {
+func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) ([]byte, *api.MsgLookup, error) {
 	entryPoint := CalcFuncSignature(funcSignature)
-	wait := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
-	require.True(e.t, wait.Receipt.ExitCode.IsSuccess(), "contract execution failed")
+	wait, err := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !wait.Receipt.ExitCode.IsSuccess() {
+		return nil, nil, fmt.Errorf("contract execution failed")
+	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
-	require.NoError(e.t, err)
-	return result
+	if err != nil {
+		return nil, nil, err
+	}
+	return result, wait, nil
 }
 
 //function signatures are the first 4 bytes of the hash of the function name and types
