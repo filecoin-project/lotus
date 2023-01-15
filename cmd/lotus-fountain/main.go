@@ -193,11 +193,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	to, err := address.NewFromString(r.FormValue("address"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	// Unsanitized input fix
+	toString := r.FormValue("address")
+	if !address.IsValidAddress(toString) {
+		http.Error(w, "Invalid address", http.StatusBadRequest)
 		return
 	}
+	to, _ := address.NewFromString(toString)
 	if to == address.Undef {
 		http.Error(w, "empty address", http.StatusBadRequest)
 		return
@@ -232,10 +234,9 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		From:  h.from,
 		To:    to,
 	}, nil)
-	if err != nil {
+	if err != nil { 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+		}
+		_, _ = w.Write([]byte(smsg.Cid().String()))
 	}
-
-	_, _ = w.Write([]byte(smsg.Cid().String()))
-}
