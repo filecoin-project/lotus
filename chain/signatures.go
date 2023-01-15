@@ -22,15 +22,24 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 	typ := msg.Signature.Type
 	switch typ {
 	case crypto.SigTypeDelegated:
-		txArgs, err := ethtypes.NewEthTxArgsFromMessage(&msg.Message)
+		txArgs, err := ethtypes.EthTxArgsFromMessage(&msg.Message)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
 		}
-		msg, err := txArgs.ToRlpUnsignedMsg()
+		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
+		if err != nil {
+			return xerrors.Errorf("failed to reconstruct filecoin msg: %w", err)
+		}
+
+		if !msg.Message.Equals(roundTripMsg) {
+			return xerrors.New("ethereum tx failed to roundtrip")
+		}
+
+		rlpEncodedMsg, err := txArgs.ToRlpUnsignedMsg()
 		if err != nil {
 			return xerrors.Errorf("failed to repack eth rlp message: %w", err)
 		}
-		digest = msg
+		digest = rlpEncodedMsg
 	default:
 		digest = msg.Message.Cid().Bytes()
 	}

@@ -8,13 +8,13 @@ import (
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/crypto/sha3"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build"
@@ -58,27 +58,25 @@ type EthTxArgs struct {
 	S                    big.Int     `json:"s"`
 }
 
-func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
+func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
-		to            *EthAddress
-		decodedParams []byte
-		paramsReader  = bytes.NewReader(msg.Params)
+		to           *EthAddress
+		params       []byte
+		paramsReader = bytes.NewReader(msg.Params)
 	)
+
+	if msg.Version != 0 {
+		return EthTxArgs{}, xerrors.Errorf("unsupported msg version: %d", msg.Version)
+	}
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
-		case builtintypes.MethodsEAM.Create:
-			var create eam.CreateParams
+		case builtintypes.MethodsEAM.CreateExternal:
+			var create abi.CborBytes
 			if err := create.UnmarshalCBOR(paramsReader); err != nil {
 				return EthTxArgs{}, err
 			}
-			decodedParams = create.Initcode
-		case builtintypes.MethodsEAM.Create2:
-			var create2 eam.Create2Params
-			if err := create2.UnmarshalCBOR(paramsReader); err != nil {
-				return EthTxArgs{}, err
-			}
-			decodedParams = create2.Initcode
+			params = create
 		default:
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
@@ -89,13 +87,32 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 		}
 		to = &addr
 
-		if len(msg.Params) > 0 {
-			params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-			if err != nil {
-				return EthTxArgs{}, err
+		if len(msg.Params) == 0 {
+			if msg.Method != builtintypes.MethodSend {
+				return EthTxArgs{}, xerrors.Errorf("cannot invoke method %d on non-EAM actor without params", msg.Method)
 			}
-			decodedParams = params
+		} else {
+			if msg.Method != builtintypes.MethodsEVM.InvokeContract {
+				return EthTxArgs{},
+					xerrors.Errorf("invalid methodnum %d: only allowed non-send method is InvokeContract(%d)",
+						msg.Method,
+						builtintypes.MethodsEVM.InvokeContract)
+			}
+
+			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+			if err != nil {
+				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
+			}
+
+			if len(params) == 0 {
+				// Otherwise, we don't get a guaranteed round-trip.
+				return EthTxArgs{}, xerrors.Errorf("cannot invoke contracts with empty parameters from an eth-account")
+			}
 		}
+	}
+
+	if paramsReader.Len() != 0 {
+		return EthTxArgs{}, xerrors.Errorf("extra data found in params")
 	}
 
 	return EthTxArgs{
@@ -103,84 +120,90 @@ func NewEthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 		Nonce:                int(msg.Nonce),
 		To:                   to,
 		Value:                msg.Value,
-		Input:                decodedParams,
+		Input:                params,
 		MaxFeePerGas:         msg.GasFeeCap,
 		MaxPriorityFeePerGas: msg.GasPremium,
 		GasLimit:             int(msg.GasLimit),
 	}, nil
 }
 
-func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
-	from, err := tx.Sender()
-	if err != nil {
-		return nil, err
+func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, error) {
+	if tx.ChainID != build.Eip155ChainId {
+		return nil, xerrors.Errorf("unsupported chain id: %d", tx.ChainID)
 	}
 
-	var to address.Address
+	var err error
+	method := builtintypes.MethodSend
 	var params []byte
-
-	if len(tx.To) == 0 && len(tx.Input) == 0 {
-		return nil, fmt.Errorf("to and input cannot both be empty")
-	}
-
-	var method abi.MethodNum
+	var to address.Address
+	// nil indicates the EAM, only CreateExternal is allowed
 	if tx.To == nil {
-		// TODO unify with applyEvmMsg
-
-		// this is a contract creation
 		to = builtintypes.EthereumAddressManagerActorAddr
-
-		params2, err := actors.SerializeParams(&eam.CreateParams{
-			Initcode: tx.Input,
-			Nonce:    uint64(tx.Nonce),
-		})
+		method = builtintypes.MethodsEAM.CreateExternal
+		if len(tx.Input) == 0 {
+			return nil, xerrors.New("cannot call CreateExternal without params")
+		}
+		inputParams := abi.CborBytes(tx.Input)
+		params, err = actors.SerializeParams(&inputParams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
 		}
-		params = params2
-		method = builtintypes.MethodsEAM.Create
-	} else {
-		addr, err := tx.To.ToFilecoinAddress()
-		if err != nil {
-			return nil, err
-		}
-		to = addr
 
-		if len(tx.Input) > 0 {
-			var buf bytes.Buffer
-			if err := cbg.WriteByteArray(&buf, tx.Input); err != nil {
-				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
-			}
-			params = buf.Bytes()
-			method = builtintypes.MethodsEVM.InvokeContract
-		} else {
+	} else {
+		to, err = tx.To.ToFilecoinAddress()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to convert To into filecoin addr: %w", err)
+		}
+		if len(tx.Input) == 0 {
+			// Yes, this is redundant, but let's be sure what we're doing
 			method = builtintypes.MethodSend
+			params = make([]byte, 0)
+		} else {
+			// must be InvokeContract
+			method = builtintypes.MethodsEVM.InvokeContract
+			buf := new(bytes.Buffer)
+			if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
+				return nil, xerrors.Errorf("failed to write input args: %w", err)
+			}
+
+			params = buf.Bytes()
 		}
 	}
 
-	msg := &types.Message{
-		Nonce:      uint64(tx.Nonce),
-		From:       from,
+	return &types.Message{
+		Version:    0,
 		To:         to,
+		From:       from,
+		Nonce:      uint64(tx.Nonce),
 		Value:      tx.Value,
-		Method:     method,
-		Params:     params,
 		GasLimit:   int64(tx.GasLimit),
 		GasFeeCap:  tx.MaxFeePerGas,
 		GasPremium: tx.MaxPriorityFeePerGas,
-	}
+		Method:     method,
+		Params:     params,
+	}, nil
+}
 
-	sig, err := tx.Signature()
+func (tx *EthTxArgs) ToSignedMessage() (*types.SignedMessage, error) {
+	from, err := tx.Sender()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to calculate sender: %w", err)
 	}
 
-	signedMsg := types.SignedMessage{
-		Message:   *msg,
-		Signature: *sig,
+	unsignedMsg, err := tx.ToUnsignedMessage(from)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to convert to unsigned msg: %w", err)
 	}
-	return &signedMsg, nil
 
+	siggy, err := tx.Signature()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to calculate signature: %w", err)
+	}
+
+	return &types.SignedMessage{
+		Message:   *unsignedMsg,
+		Signature: *siggy,
+	}, nil
 }
 
 func (tx *EthTxArgs) HashedOriginalRlpMsg() ([]byte, error) {
