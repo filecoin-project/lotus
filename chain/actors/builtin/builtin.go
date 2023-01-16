@@ -274,6 +274,33 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 	return false
 }
 
+func IsPlaceholderActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.PlaceholderKey
+	}
+
+	return false
+}
+
+func IsEvmActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EvmKey
+	}
+
+	return false
+}
+
+func IsEthAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EthAccountKey
+	}
+
+	return false
+}
+
 func makeAddress(addr string) address.Address {
 	ret, err := address.NewFromString(addr)
 	if err != nil {

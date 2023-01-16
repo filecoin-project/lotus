@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet)
+NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet hyperspace)
 
 set -e
 

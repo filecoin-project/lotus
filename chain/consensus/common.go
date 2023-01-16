@@ -10,11 +10,13 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/multiformats/go-varint"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -29,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
-	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 )
 
@@ -130,7 +131,39 @@ func CommonBlkChecks(ctx context.Context, sm *stmgr.StateManager, cs *store.Chai
 	}
 }
 
-// Check the validity of the messages included in a block.
+func IsValidForSending(nv network.Version, act *types.Actor) bool {
+	// Before nv18 (Hygge), we only supported built-in account actors as senders.
+	//
+	// Note: this gate is probably superfluous, since:
+	// 1. Placeholder actors cannot be created before nv18.
+	// 2. EthAccount actors cannot be created before nv18.
+	// 3. Delegated addresses cannot be created before nv18.
+	//
+	// But it's a safeguard.
+	//
+	// Note 2: ad-hoc checks for network versions like this across the codebase
+	// will be problematic with networks with diverging version lineages
+	// (e.g. Hyperspace). We need to revisit this strategy entirely.
+	if nv < network.Version18 {
+		return builtin.IsAccountActor(act.Code)
+	}
+
+	// After nv18, we also support other kinds of senders.
+	if builtin.IsAccountActor(act.Code) || builtin.IsEthAccountActor(act.Code) {
+		return true
+	}
+
+	// Allow placeholder actors with a delegated address and nonce 0 to send a message.
+	// These will be converted to an EthAccount actor on first send.
+	if !builtin.IsPlaceholderActor(act.Code) || act.Nonce != 0 || act.Address == nil || act.Address.Protocol() != address.Delegated {
+		return false
+	}
+
+	// Only allow such actors to send if their delegated address is in the EAM's namespace.
+	id, _, err := varint.FromUvarint(act.Address.Payload())
+	return err == nil && id == builtintypes.EthereumAddressManagerActorID
+}
+
 func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.ChainStore, b *types.FullBlock, baseTs *types.TipSet) error {
 	{
 		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
@@ -202,7 +235,7 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
 
-			if !builtin.IsAccountActor(act.Code) {
+			if !IsValidForSending(nv, act) {
 				return xerrors.New("Sender must be an account actor")
 			}
 			nonces[sender] = act.Nonce
@@ -239,25 +272,23 @@ func checkBlockMessages(ctx context.Context, sm *stmgr.StateManager, cs *store.C
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
-		if sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version14 {
-			if m.Signature.Type != crypto.SigTypeSecp256k1 {
-				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
-			}
+		if nv >= network.Version14 && !IsValidSecpkSigType(nv, m.Signature.Type) {
+			return xerrors.Errorf("block had invalid signed message at index %d: %w", i, err)
 		}
 
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
 
-		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
-		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
-		kaddr, err := sm.ResolveToKeyAddress(ctx, m.Message.From, baseTs)
+		// `From` being an account actor is only validated inside the `vm.ResolveToDeterministicAddr` call
+		// in `StateManager.ResolveToDeterministicAddress` here (and not in `checkMsg`).
+		kaddr, err := sm.ResolveToDeterministicAddress(ctx, m.Message.From, baseTs)
 		if err != nil {
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}
 
-		if err := sigs.Verify(&m.Signature, kaddr, m.Message.Cid().Bytes()); err != nil {
-			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
+		if err := AuthenticateMessage(m, kaddr); err != nil {
+			return xerrors.Errorf("failed to validate signature: %w", err)
 		}
 
 		c, err := store.PutMessage(ctx, tmpbs, m)
@@ -330,6 +361,7 @@ func CreateBlockHeader(ctx context.Context, sm *stmgr.StateManager, pts *types.T
 
 	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []crypto.Signature
+	nv := sm.GetNetworkVersion(ctx, bt.Epoch)
 	for _, msg := range bt.Messages {
 		if msg.Signature.Type == crypto.SigTypeBLS {
 			blsSigs = append(blsSigs, msg.Signature)
@@ -341,7 +373,7 @@ func CreateBlockHeader(ctx context.Context, sm *stmgr.StateManager, pts *types.T
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
-		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 {
+		} else if IsValidSecpkSigType(nv, msg.Signature.Type) {
 			c, err := sm.ChainStore().PutMessage(ctx, msg)
 			if err != nil {
 				return nil, nil, nil, err
