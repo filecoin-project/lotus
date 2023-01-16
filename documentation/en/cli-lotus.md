@@ -38,6 +38,7 @@ COMMANDS:
      status  Check node status
 
 GLOBAL OPTIONS:
+   --color        use color in display output (default: depends on output being a TTY)
    --force-send   if true, will ignore pre-send checks (default: false)
    --help, -h     show help (default: false)
    --interactive  setting to false will disable interactive functionality of commands (default: false)
