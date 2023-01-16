@@ -68,7 +68,7 @@ func TestFEVMBasic(t *testing.T) {
 	// invoke the contract with non owner
 	{
 		inputData := inputDataFromFrom(t, ctx, client, fromAddr)
-		inputData[31] += 1 // change the pub address to one that has 0 balance by modifying the last byte of the address
+		inputData[31]++ // change the pub address to one that has 0 balance by incrementing the last byte of the address
 		result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 
 		expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
