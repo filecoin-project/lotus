@@ -1,6 +1,7 @@
 package itests
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -48,6 +49,12 @@ func setupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *kit.Test
 	return ctx, cancel, client
 }
 
+func decodeOutputToUint64(output []byte) (uint64, error) {
+	var result uint64
+	buf := bytes.NewReader(output[len(output)-8:])
+	err := binary.Read(buf, binary.BigEndian, &result)
+	return result, err
+}
 func buildInputFromuint64(number uint64) []byte {
 	// Convert the number to a binary uint64 array
 	binaryNumber := make([]byte, 8)
@@ -74,7 +81,6 @@ func TestFEVMRecursive(t *testing.T) {
 
 	// Iterate over the numbers array
 	for _, callcount := range callcounts {
-		fmt.Println("mike - ", buildInputFromuint64(callcount))
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callcount), func(t *testing.T) {
 			_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
 			if err != nil {
@@ -124,6 +130,121 @@ func TestFEVMRecursive2(t *testing.T) {
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive2()", []byte{})
 	require.Error(t, err)
 	require.True(t, strings.HasPrefix(err.Error(), "GasEstimateMessageGas"))
+}
+
+func recursiveDelegatecallNotEqual(t *testing.T, ctx context.Context, client *kit.TestFullNode, filename string, count uint64) {
+
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	t.Log("recursion count - ", count)
+	inputData := buildInputFromuint64(count)
+	result, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	require.NoError(t, err)
+	fmt.Println(result)
+	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+	fmt.Println(events)
+	fmt.Println(len(events))
+
+	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+	require.NoError(t, err)
+	t.Log("result - ", result)
+
+	resultUint, err := decodeOutputToUint64(result)
+	require.NoError(t, err)
+	t.Log("result - ", resultUint)
+
+	require.NotEqual(t, int(resultUint), int(count))
+}
+func recursiveDelegatecallError(t *testing.T, ctx context.Context, client *kit.TestFullNode, filename string, count uint64) {
+
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	t.Log("recursion count - ", count)
+	inputData := buildInputFromuint64(count)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	require.Error(t, err)
+
+	//result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+	//require.Error(t, err)
+}
+
+func recursiveDelegatecallFail(t *testing.T, ctx context.Context, client *kit.TestFullNode, filename string, count uint64) {
+
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	t.Log("recursion count - ", count)
+	inputData := buildInputFromuint64(count)
+	result, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	if err != nil {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
+		fmt.Println(result)
+		events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+		fmt.Println(events)
+		fmt.Println(len(events))
+
+		result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+		require.NoError(t, err)
+		t.Log("result - ", result)
+
+		resultUint, err := decodeOutputToUint64(result)
+		require.NoError(t, err)
+		t.Log("result - ", resultUint)
+
+		require.NotEqual(t, int(resultUint), int(count))
+	}
+}
+func recursiveDelegatecallSuccess(t *testing.T, ctx context.Context, client *kit.TestFullNode, filename string, count uint64) {
+
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	t.Log("recursion count - ", count)
+	inputData := buildInputFromuint64(count)
+	result, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	require.NoError(t, err)
+	fmt.Println(result)
+	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+	fmt.Println(events)
+	fmt.Println(len(events))
+
+	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+	require.NoError(t, err)
+	t.Log("result - ", result)
+
+	resultUint, err := decodeOutputToUint64(result)
+	require.NoError(t, err)
+	t.Log("result - ", resultUint)
+
+	require.Equal(t, int(resultUint), int(count))
+}
+
+// TestFEVMBasic does a basic fevm contract installation and invocation
+func TestFEVMRecursiveDelegatecall(t *testing.T) {
+
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	filename := "contracts/RecursiveDelegeatecall.hex"
+
+	//success with 44 or fewer calls
+	for i := uint64(1); i <= 44; i++ { // 0-10 linearly then 10-120 by 10s
+		recursiveDelegatecallSuccess(t, ctx, client, filename, i)
+	}
+
+	//these fail but the evm doesn't error, just the return value is not count
+	for i := uint64(46); i <= 58; i++ {
+		recursiveDelegatecallNotEqual(t, ctx, client, filename, i)
+	}
+
+	//from 59 to 62 it fails in an oscillating way between count not being correct and EVM error
+	for i := uint64(59); i <= 62; i++ {
+		if i%2 == 0 {
+			recursiveDelegatecallNotEqual(t, ctx, client, filename, i)
+		} else {
+			recursiveDelegatecallError(t, ctx, client, filename, i)
+		}
+	}
+	//63 and beyond it fails either w evm error or an incorrect result:
+	for i := uint64(63); i <= 800; i += 40 {
+		recursiveDelegatecallFail(t, ctx, client, filename, i)
+	}
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
