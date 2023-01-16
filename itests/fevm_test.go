@@ -357,6 +357,8 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	//verify that the returned value of the call to setvars is 7
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
 	require.Error(t, err)
+
+	t.Log(err)
 	//the error message is a big string, the handling is going to be a little messy
 	//the failure is that we recursively call setVarsSelf
 	//so check the counts of the specific sub call error messages are correct:
