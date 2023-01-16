@@ -657,6 +657,8 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 		return ethtypes.EmptyEthHash, err
 	}
 
+	fmt.Println("Original: ", txArgs)
+
 	smsg, err := txArgs.ToSignedMessage()
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -1502,27 +1504,33 @@ func EthTxHashFromSignedFilecoinMessage(ctx context.Context, smsg *types.SignedM
 }
 
 func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
-	tx, err := ethtypes.EthTxFromSignedMessage(smsg)
-	if err != nil {
-		return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
-	}
-
-	tx.From, _ = lookupEthAddress(ctx, smsg.Message.From, sa)
-	toEthAddr, _ := lookupEthAddress(ctx, smsg.Message.To, sa)
-	tx.To = &toEthAddr
+	var tx ethtypes.EthTx
+	var err error
 
 	// This is an eth tx
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
+		tx, err = ethtypes.EthTxFromMessageDelegatedSignature(smsg)
+		if err != nil {
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
+		}
+
+		tx.From, err = lookupEthAddress(ctx, smsg.Message.From, sa)
+		if err != nil {
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup from ethaddress: %w", err)
+		}
+
 		tx.Hash, err = tx.TxHash()
 		if err != nil {
 			return tx, err
 		}
-	} else if smsg.Signature.Type == crypto.SigTypeUnknown { // BLS Filecoin message
+	} else if smsg.Signature.Type == crypto.SigTypeUnknown { // Executed BLS Filecoin message
+		tx = ethtypes.EthTxFromFileocoinMessage(smsg.VMMessage())
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
 		if err != nil {
 			return tx, err
 		}
-	} else { // Secp Filecoin Message
+	} else { // Secp Filecoin Message or BLS Filecoin message in the mpool
+		tx = ethtypes.EthTxFromFileocoinMessage(smsg.VMMessage())
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
 		if err != nil {
 			return tx, err
@@ -1640,7 +1648,8 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		LogsBloom:        ethtypes.EmptyEthBloom[:],
 	}
 
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+	// V.Int will be nil for non-eth transactions, so we want to skip unmarshalling the create return.
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() && tx.V.Int != nil {
 		// Create and Create2 return the same things.
 		var ret eam.CreateReturn
 		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
@@ -1761,6 +1770,8 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 			if err != nil {
 				log.Errorf("error converting filecoin message to eth tx: %s", err)
 			}
+
+			fmt.Println("DB: ", ethTx.ToEthTxArgs())
 
 			err = manager.TransactionHashLookup.UpsertHash(ethTx.Hash, u.Message.Cid())
 			if err != nil {

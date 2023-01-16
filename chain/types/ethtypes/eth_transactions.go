@@ -58,13 +58,14 @@ type EthTxArgs struct {
 	S                    big.Int     `json:"s"`
 }
 
-// EthTxFromSignedMessage does NOT populate:
+// EthTxFromMessageDelegatedSignature does NOT populate:
 // - BlockHash
 // - BlockNumber
 // - TransactionIndex
 // - From
-func EthTxFromSignedMessage(smsg *types.SignedMessage) (EthTx, error) {
-	txArgs, err := EthTxArgsFromUnsignedMessage(&smsg.Message)
+// - Hash
+func EthTxFromMessageDelegatedSignature(smsg *types.SignedMessage) (EthTx, error) {
+	txArgs, err := EthTxArgsFromUnsignedEthMessage(&smsg.Message)
 	if err != nil {
 		return EthTx{}, xerrors.Errorf("failed to convert the unsigned message: %w", err)
 	}
@@ -75,13 +76,7 @@ func EthTxFromSignedMessage(smsg *types.SignedMessage) (EthTx, error) {
 		r, s, v = EthBigIntZero, EthBigIntZero, EthBigIntZero
 	}
 
-	hash, err := EthHashFromCid(smsg.Cid())
-	if err != nil {
-		return EthTx{}, xerrors.Errorf("failed to calculate EthHash: %w", err)
-	}
-
 	return EthTx{
-		Hash:                 hash,
 		Nonce:                EthUint64(txArgs.Nonce),
 		ChainID:              EthUint64(txArgs.ChainID),
 		To:                   txArgs.To,
@@ -97,7 +92,26 @@ func EthTxFromSignedMessage(smsg *types.SignedMessage) (EthTx, error) {
 	}, nil
 }
 
-func EthTxArgsFromUnsignedMessage(msg *types.Message) (EthTxArgs, error) {
+// EthTxFromFileocoinMessage does NOT populate:
+// - BlockHash
+// - BlockNumber
+// - TransactionIndex
+// - Hash
+// - From (not valid)
+// - To (not valid)
+func EthTxFromFileocoinMessage(msg *types.Message) EthTx {
+	return EthTx{
+		Nonce:                EthUint64(msg.Nonce),
+		ChainID:              EthUint64(build.Eip155ChainId),
+		Value:                EthBigInt(msg.Value),
+		Type:                 Eip1559TxType,
+		Gas:                  EthUint64(msg.GasLimit),
+		MaxFeePerGas:         EthBigInt(msg.GasFeeCap),
+		MaxPriorityFeePerGas: EthBigInt(msg.GasPremium),
+	}
+}
+
+func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
 		to           *EthAddress
 		params       []byte
