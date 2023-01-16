@@ -17,7 +17,7 @@ import (
 
 var NetworkBundle = "hyperspace"
 var BundleOverrides map[actorstypes.Version]string
-var ActorDebugging = true
+var ActorDebugging = false
 
 const BootstrappersFile = "hyperspacenet.pi"
 const GenesisFile = "hyperspacenet.car"
