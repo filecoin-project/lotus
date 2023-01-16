@@ -350,4 +350,11 @@
   # env var: LOTUS_FEVM_ENABLEETHHASHTOFILECOINCIDMAPPING
   #EnableEthHashToFilecoinCidMapping = false
 
+  # EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+  # Set to 0 to keep all mappings
+  #
+  # type: int
+  # env var: LOTUS_FEVM_ETHTXHASHMAPPINGLIFETIMEDAYS
+  #EthTxHashMappingLifetimeDays = 0
+
 

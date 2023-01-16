@@ -74,6 +74,7 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 					return err
 				}
 				go full.WaitForMpoolUpdates(ctx, ch, &ethTxHashManager)
+				go full.EthTxHashGC(ctx, cfg.EthTxHashMappingLifetimeDays, &ethTxHashManager)
 
 				return nil
 			},

@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// TestFEVMBasic does a basic ethhash contract installation and invocation
+// TestFEVMBasic does a basic fevm contract installation and invocation
 func TestFEVMBasic(t *testing.T) {
 	// TODO the contract installation and invocation can be lifted into utility methods
 	// He who writes the second test, shall do that.

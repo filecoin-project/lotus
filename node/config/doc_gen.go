@@ -406,6 +406,13 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 
 			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids`,
 		},
+		{
+			Name: "EthTxHashMappingLifetimeDays",
+			Type: "int",
+
+			Comment: `EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+Set to 0 to keep all mappings`,
+		},
 	},
 	"FullNode": []DocField{
 		{

@@ -259,7 +259,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	c := cid.Undef
 	if a.EthTxHashManager != nil {
 		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.LookupCidFromTxHash(*txHash)
+		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
 		if err != nil {
 			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 		}
@@ -326,7 +326,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 	c := cid.Undef
 	if a.EthTxHashManager != nil {
 		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.LookupCidFromTxHash(txHash)
+		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
 		if err != nil {
 			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 		}
@@ -1777,7 +1777,7 @@ func (m *EthTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) er
 				return err
 			}
 
-			err = m.TransactionHashLookup.InsertTxHash(hash, smsg.Cid(), int64(to.Height()))
+			err = m.TransactionHashLookup.UpsertHash(hash, smsg.Cid())
 			if err != nil {
 				return err
 			}
@@ -1789,7 +1789,7 @@ func (m *EthTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) er
 
 type EthTxHashManager struct {
 	StateAPI              StateAPI
-	TransactionHashLookup *ethhashlookup.TransactionHashLookup
+	TransactionHashLookup *ethhashlookup.EthTxHashLookup
 }
 
 func (m *EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) error {
@@ -1814,11 +1814,27 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 				log.Errorf("error converting filecoin message to eth tx: %s", err)
 			}
 
-			err = manager.TransactionHashLookup.InsertTxHash(ethTx.Hash, u.Message.Cid(), ethhashlookup.MemPoolEpoch)
+			err = manager.TransactionHashLookup.UpsertHash(ethTx.Hash, u.Message.Cid())
 			if err != nil {
 				log.Errorf("error inserting tx mapping to db: %s", err)
 			}
 		}
+	}
+}
+
+func EthTxHashGC(ctx context.Context, retentionDays int, manager *EthTxHashManager) {
+	if retentionDays == 0 {
+		return
+	}
+
+	gcPeriod := 1 * time.Hour
+	for {
+		entriesDeleted, err := manager.TransactionHashLookup.DeleteEntriesOlderThan(retentionDays)
+		if err != nil {
+			log.Errorf("error garbage collecting eth transaction hash database: %s", err)
+		}
+		log.Info("garbage collection run on eth transaction hash lookup database. %d entries deleted", entriesDeleted)
+		time.Sleep(gcPeriod)
 	}
 }
 

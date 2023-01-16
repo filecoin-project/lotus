@@ -2,16 +2,17 @@ package ethhashlookup
 
 import (
 	"database/sql"
-	"math"
+	"errors"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+var ErrNotFound = errors.New("not found")
 
 var pragmas = []string{
 	"PRAGMA synchronous = normal",
@@ -28,10 +29,10 @@ var ddls = []string{
 	`CREATE TABLE IF NOT EXISTS eth_tx_hashes (
 		hash TEXT PRIMARY KEY NOT NULL,
 		cid TEXT NOT NULL UNIQUE,
-		epoch INT NOT NULL
+		insertion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 	)`,
 
-	`CREATE INDEX IF NOT EXISTS eth_tx_hashes_epoch_index ON eth_tx_hashes (epoch)`,
+	`CREATE INDEX IF NOT EXISTS insertion_time_index ON eth_tx_hashes (insertion_time)`,
 
 	// metadata containing version of schema
 	`CREATE TABLE IF NOT EXISTS _meta (
@@ -43,31 +44,29 @@ var ddls = []string{
 }
 
 const schemaVersion = 1
-const MemPoolEpoch = math.MaxInt64
 
 const (
 	insertTxHash = `INSERT INTO eth_tx_hashes
-	(hash, cid, epoch)
-	VALUES(?, ?, ?)
-	ON CONFLICT (hash) DO UPDATE SET epoch = EXCLUDED.epoch
-	WHERE epoch > EXCLUDED.epoch`
+	(hash, cid)
+	VALUES(?, ?)
+	ON CONFLICT (hash) DO UPDATE SET insertion_time = CURRENT_TIMESTAMP`
 )
 
-type TransactionHashLookup struct {
+type EthTxHashLookup struct {
 	db *sql.DB
 }
 
-func (ei *TransactionHashLookup) InsertTxHash(txHash ethtypes.EthHash, c cid.Cid, epoch int64) error {
+func (ei *EthTxHashLookup) UpsertHash(txHash ethtypes.EthHash, c cid.Cid) error {
 	hashEntry, err := ei.db.Prepare(insertTxHash)
 	if err != nil {
 		return xerrors.Errorf("prepare insert event: %w", err)
 	}
 
-	_, err = hashEntry.Exec(txHash.String(), c.String(), epoch)
+	_, err = hashEntry.Exec(txHash.String(), c.String())
 	return err
 }
 
-func (ei *TransactionHashLookup) LookupCidFromTxHash(txHash ethtypes.EthHash) (cid.Cid, error) {
+func (ei *EthTxHashLookup) GetCidFromHash(txHash ethtypes.EthHash) (cid.Cid, error) {
 	q, err := ei.db.Query("SELECT cid FROM eth_tx_hashes WHERE hash = :hash;", sql.Named("hash", txHash.String()))
 	if err != nil {
 		return cid.Undef, err
@@ -75,7 +74,7 @@ func (ei *TransactionHashLookup) LookupCidFromTxHash(txHash ethtypes.EthHash) (c
 
 	var c string
 	if !q.Next() {
-		return cid.Undef, xerrors.Errorf("transaction hash %s not found", txHash.String())
+		return cid.Undef, ErrNotFound
 	}
 	err = q.Scan(&c)
 	if err != nil {
@@ -84,7 +83,7 @@ func (ei *TransactionHashLookup) LookupCidFromTxHash(txHash ethtypes.EthHash) (c
 	return cid.Decode(c)
 }
 
-func (ei *TransactionHashLookup) LookupTxHashFromCid(c cid.Cid) (ethtypes.EthHash, error) {
+func (ei *EthTxHashLookup) GetHashFromCid(c cid.Cid) (ethtypes.EthHash, error) {
 	q, err := ei.db.Query("SELECT hash FROM eth_tx_hashes WHERE cid = :cid;", sql.Named("cid", c.String()))
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -92,7 +91,7 @@ func (ei *TransactionHashLookup) LookupTxHashFromCid(c cid.Cid) (ethtypes.EthHas
 
 	var hashString string
 	if !q.Next() {
-		return ethtypes.EmptyEthHash, xerrors.Errorf("transaction hash %s not found", c.String())
+		return ethtypes.EmptyEthHash, ErrNotFound
 	}
 	err = q.Scan(&hashString)
 	if err != nil {
@@ -101,8 +100,8 @@ func (ei *TransactionHashLookup) LookupTxHashFromCid(c cid.Cid) (ethtypes.EthHas
 	return ethtypes.ParseEthHash(hashString)
 }
 
-func (ei *TransactionHashLookup) RemoveEntriesOlderThan(epoch abi.ChainEpoch) (int64, error) {
-	res, err := ei.db.Exec("DELETE FROM eth_tx_hashes WHERE epoch < :epoch;", sql.Named("epoch", epoch))
+func (ei *EthTxHashLookup) DeleteEntriesOlderThan(days int) (int64, error) {
+	res, err := ei.db.Exec("DELETE FROM eth_tx_hashes WHERE insertion_time < datetime('now', ?);", "-"+strconv.Itoa(days)+" day")
 	if err != nil {
 		return 0, err
 	}
@@ -110,7 +109,7 @@ func (ei *TransactionHashLookup) RemoveEntriesOlderThan(epoch abi.ChainEpoch) (i
 	return res.RowsAffected()
 }
 
-func NewTransactionHashLookup(path string) (*TransactionHashLookup, error) {
+func NewTransactionHashLookup(path string) (*EthTxHashLookup, error) {
 	db, err := sql.Open("sqlite3", path+"?mode=rwc")
 	if err != nil {
 		return nil, xerrors.Errorf("open sqlite3 database: %w", err)
@@ -151,12 +150,12 @@ func NewTransactionHashLookup(path string) (*TransactionHashLookup, error) {
 		}
 	}
 
-	return &TransactionHashLookup{
+	return &EthTxHashLookup{
 		db: db,
 	}, nil
 }
 
-func (ei *TransactionHashLookup) Close() error {
+func (ei *EthTxHashLookup) Close() error {
 	if ei.db == nil {
 		return nil
 	}
