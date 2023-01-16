@@ -27,7 +27,7 @@ const perConnLimiterKey perConnLimiterKeyType = "limiter"
 
 type filterTrackerKeyType string
 
-const filterTrackerKey filterTrackerKeyType = "filterTracker"
+const statefulCallTrackerKey filterTrackerKeyType = "statefulCallTracker"
 
 // Handler returns a gateway http.Handler, to be mounted as-is on the server.
 func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
@@ -90,7 +90,7 @@ func (h RateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(context.WithValue(r.Context(), perConnLimiterKey, h.limiter))
 
 	// also add a filter tracker to the context
-	r = r.WithContext(context.WithValue(r.Context(), filterTrackerKey, newFilterTracker()))
+	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, newStatefulCallTracker()))
 
 	h.handler.ServeHTTP(w, r)
 }

@@ -7,6 +7,15 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -23,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
+
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -35,14 +45,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/metrics"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -702,7 +704,7 @@ type GatewayMethods struct {
 
 	EthSendRawTransaction func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) ``
 
-	EthSubscribe func(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) ``
+	EthSubscribe func(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) ``
 
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) ``
 
@@ -4463,15 +4465,15 @@ func (s *GatewayStub) EthSendRawTransaction(p0 context.Context, p1 ethtypes.EthB
 	return *new(ethtypes.EthHash), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) {
+func (s *GatewayStruct) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
 	if s.Internal.EthSubscribe == nil {
-		return nil, ErrNotSupported
+		return *new(ethtypes.EthSubscriptionID), ErrNotSupported
 	}
 	return s.Internal.EthSubscribe(p0, p1, p2)
 }
 
-func (s *GatewayStub) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) {
-	return nil, ErrNotSupported
+func (s *GatewayStub) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
+	return *new(ethtypes.EthSubscriptionID), ErrNotSupported
 }
 
 func (s *GatewayStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {

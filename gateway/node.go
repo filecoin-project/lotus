@@ -117,7 +117,7 @@ type TargetAPI interface {
 	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error)
+	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error)
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
 }
 
@@ -125,6 +125,7 @@ var _ TargetAPI = *new(api.FullNode) // gateway depends on latest
 
 type Node struct {
 	target                 TargetAPI
+	subHnd                 *EthSubHandler
 	lookbackCap            time.Duration
 	stateWaitLookbackLimit abi.ChainEpoch
 	rateLimiter            *rate.Limiter
@@ -141,7 +142,7 @@ var (
 )
 
 // NewNode creates a new gateway node.
-func NewNode(api TargetAPI, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch, rateLimit int64, rateLimitTimeout time.Duration) *Node {
+func NewNode(api TargetAPI, sHnd *EthSubHandler, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch, rateLimit int64, rateLimitTimeout time.Duration) *Node {
 	var limit rate.Limit
 	if rateLimit == 0 {
 		limit = rate.Inf
@@ -150,6 +151,7 @@ func NewNode(api TargetAPI, lookbackCap time.Duration, stateWaitLookbackLimit ab
 	}
 	return &Node{
 		target:                 api,
+		subHnd:                 sHnd,
 		lookbackCap:            lookbackCap,
 		stateWaitLookbackLimit: stateWaitLookbackLimit,
 		rateLimiter:            rate.NewLimiter(limit, stateRateLimitTokens),
