@@ -339,3 +339,31 @@ func TestFEVMDelegateCall(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResultActor)
 }
+
+// TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
+func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameActor := "contracts/DelegatecallStorage.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	//any data will do for this test that fails
+	inputDataContract := inputDataFromFrom(t, ctx, client, actorAddr)
+	inputDataValue := inputDataFromArray([]byte{7})
+	inputData := append(inputDataContract, inputDataValue...)
+
+	//verify that the returned value of the call to setvars is 7
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
+	require.Error(t, err)
+	//the error message is a big string, the handling is going to be a little messy
+	//the failure is that we recursively call setVarsSelf
+	//so check the counts of the specific sub call error messages are correct:
+	error1 := "f01002 (method 2) -- fatal error (10)" // expect once
+	error2 := "f01002 (method 5) -- fatal error (10)" // expected 256 times
+	error3 := "f01002 (method 3) -- fatal error (10)" // expect once
+	require.Equal(t, 1, strings.Count(err.Error(),error1))
+	require.Equal(t, 257, strings.Count(err.Error(),error2))
+	require.Equal(t, 1, strings.Count(err.Error(),error3))
+}
