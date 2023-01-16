@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -831,7 +833,7 @@ type FullNode interface {
 	//  - logs: notify new event logs that match a criteria
 	// params contains additional parameters used with the log event type
 	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
-	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) //perm:write
+	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) //perm:write
 
 	// Unsubscribe from a websocket subscription
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) //perm:write
@@ -847,6 +849,12 @@ type FullNode interface {
 
 	RaftState(ctx context.Context) (*RaftStateData, error) //perm:read
 	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
+}
+
+// reverse interface to the client, called after EthSubscribe
+type EthSubscriber interface {
+	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
+	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error //rpc_method:eth_subscription notify:true
 }
 
 type StorageAsk struct {

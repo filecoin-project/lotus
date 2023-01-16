@@ -342,6 +342,8 @@ github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0 h1:rVVNq0x6RGQIzCo1iiJlGFm9AG
 github.com/filecoin-project/go-hamt-ipld/v3 v3.1.0/go.mod h1:bxmzgT8tmeVQA1/gvBwFmYdT8SOFUwB3ovSUfG1Ux0g=
 github.com/filecoin-project/go-jsonrpc v0.1.9 h1:HRWLxo7HAWzI3xZGeFG4LZJoYpms+Q+8kwmMTLnyS3A=
 github.com/filecoin-project/go-jsonrpc v0.1.9/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
+github.com/filecoin-project/go-jsonrpc v0.1.10-0.20230116095704-da92324a76e1 h1:GcF3gSvesv1epB2SrTfalrYvhFzT1UnmSS1Bh+jprQY=
+github.com/filecoin-project/go-jsonrpc v0.1.10-0.20230116095704-da92324a76e1/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
 github.com/filecoin-project/go-legs v0.4.4 h1:mpMmAOOnamaz0CV9rgeKhEWA8j9kMC+f+UGCGrxKaZo=
 github.com/filecoin-project/go-legs v0.4.4/go.mod h1:JQ3hA6xpJdbR8euZ2rO0jkxaMxeidXf0LDnVuqPAe9s=
 github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20/go.mod h1:mPn+LRRd5gEKNAtc+r3ScpW2JRU/pj4NBKdADYWHiak=
