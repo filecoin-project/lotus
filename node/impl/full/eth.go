@@ -211,7 +211,7 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("error loading tipset %s: %w", ts, err)
 	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.ChainAPI, a.StateAPI)
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
 func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string) (tipset *types.TipSet, err error) {
@@ -248,7 +248,7 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fu
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
-	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.ChainAPI, a.StateAPI)
+	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
@@ -270,7 +270,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, api.LookbackNoLimit, true)
 	if err == nil {
-		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 		if err == nil {
 			return &tx, nil
 		}
@@ -286,7 +286,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 
 	for _, p := range pending {
 		if p.Cid() == c {
-			tx, err := newEthTxFromFilecoinMessage(ctx, p, a.StateAPI)
+			tx, err := newEthTxFromSignedMessage(ctx, p, a.StateAPI)
 			if err != nil {
 				return nil, fmt.Errorf("could not convert Filecoin message into tx: %s", err)
 			}
@@ -335,7 +335,7 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 }
 
 func (a *EthModule) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
-	hash, err := EthTxHashFromFilecoinMessageCid(ctx, cid, a.StateAPI)
+	hash, err := EthTxHashFromMessageCid(ctx, cid, a.StateAPI)
 	if hash == ethtypes.EmptyEthHash {
 		// not found
 		return nil, nil
@@ -378,7 +378,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 		return nil, nil
 	}
 
-	tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
+	tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 	if err != nil {
 		return nil, nil
 	}
@@ -614,7 +614,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
 		// Unfortunately we need to rebuild the full message view so we can
 		// totalize gas used in the tipset.
-		block, err := newEthBlockFromFilecoinTipSet(ctx, ts, false, a.Chain, a.ChainAPI, a.StateAPI)
+		block, err := newEthBlockFromFilecoinTipSet(ctx, ts, false, a.Chain, a.StateAPI)
 		if err != nil {
 			return ethtypes.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
 		}
@@ -1246,7 +1246,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 			return nil, err
 		}
 
-		log.TransactionHash, err = EthTxHashFromFilecoinMessageCid(context.TODO(), ev.MsgCid, sa)
+		log.TransactionHash, err = EthTxHashFromMessageCid(context.TODO(), ev.MsgCid, sa)
 		if err != nil {
 			return nil, err
 		}
@@ -1288,7 +1288,7 @@ func ethFilterResultFromMessages(cs []*types.SignedMessage, sa StateAPI) (*ethty
 	res := &ethtypes.EthFilterResult{}
 
 	for _, c := range cs {
-		hash, err := EthTxHashFromSignedFilecoinMessage(context.TODO(), c, sa)
+		hash, err := EthTxHashFromSignedMessage(context.TODO(), c, sa)
 		if err != nil {
 			return nil, err
 		}
@@ -1389,7 +1389,7 @@ func (e *ethSubscription) start(ctx context.Context) {
 			case *filter.CollectedEvent:
 				resp.Result, err = ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
 			case *types.TipSet:
-				eb, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.ChainAPI, e.StateAPI)
+				eb, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
 				if err != nil {
 					break
 				}
@@ -1423,7 +1423,7 @@ func (e *ethSubscription) stop() {
 	}
 }
 
-func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs *store.ChainStore, ca ChainAPI, sa StateAPI) (ethtypes.EthBlock, error) {
+func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs *store.ChainStore, sa StateAPI) (ethtypes.EthBlock, error) {
 	parent, err := cs.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return ethtypes.EthBlock{}, err
@@ -1462,7 +1462,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		}
 		gasUsed += msgLookup.Receipt.GasUsed
 
-		tx, err := newEthTxFromFilecoinMessageLookup(ctx, msgLookup, txIdx, cs, sa)
+		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, txIdx, cs, sa)
 		if err != nil {
 			return ethtypes.EthBlock{}, nil
 		}
@@ -1522,11 +1522,11 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 	return ethtypes.EthAddressFromFilecoinAddress(idAddr)
 }
 
-func EthTxHashFromFilecoinMessageCid(ctx context.Context, c cid.Cid, sa StateAPI) (ethtypes.EthHash, error) {
+func EthTxHashFromMessageCid(ctx context.Context, c cid.Cid, sa StateAPI) (ethtypes.EthHash, error) {
 	smsg, err := sa.Chain.GetSignedMessage(ctx, c)
 	if err == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool
-		return EthTxHashFromSignedFilecoinMessage(ctx, smsg, sa)
+		return EthTxHashFromSignedMessage(ctx, smsg, sa)
 	}
 
 	_, err = sa.Chain.GetMessage(ctx, c)
@@ -1538,9 +1538,9 @@ func EthTxHashFromFilecoinMessageCid(ctx context.Context, c cid.Cid, sa StateAPI
 	return ethtypes.EmptyEthHash, nil
 }
 
-func EthTxHashFromSignedFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthHash, error) {
+func EthTxHashFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthHash, error) {
 	if smsg.Signature.Type == crypto.SigTypeDelegated {
-		ethTx, err := newEthTxFromFilecoinMessage(ctx, smsg, sa)
+		ethTx, err := newEthTxFromSignedMessage(ctx, smsg, sa)
 		if err != nil {
 			return ethtypes.EmptyEthHash, err
 		}
@@ -1550,32 +1550,47 @@ func EthTxHashFromSignedFilecoinMessage(ctx context.Context, smsg *types.SignedM
 	return ethtypes.EthHashFromCid(smsg.Cid())
 }
 
-func newEthTxFromFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
-	tx, err := ethtypes.EthTxFromSignedMessage(smsg)
-	if err != nil {
-		return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
-	}
+func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
+	var tx ethtypes.EthTx
+	var err error
 
-	fromEthAddr, err := lookupEthAddress(ctx, smsg.Message.From, sa)
-	if err != nil {
-		return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup from ethaddress: %w", err)
-	}
+	// This is an eth tx
+	if smsg.Signature.Type == crypto.SigTypeDelegated {
+		tx, err = ethtypes.EthTxFromSignedEthMessage(smsg)
+		if err != nil {
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
+		}
 
-	toEthAddr, err := lookupEthAddress(ctx, smsg.Message.To, sa)
-	if err != nil {
-		return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup to ethaddress: %w", err)
-	}
+		tx.From, err = lookupEthAddress(ctx, smsg.Message.From, sa)
+		if err != nil {
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup from ethaddress: %w", err)
+		}
 
-	tx.From = fromEthAddr
-	tx.To = &toEthAddr
+		tx.Hash, err = tx.TxHash()
+		if err != nil {
+			return tx, err
+		}
+	} else if smsg.Signature.Type == crypto.SigTypeUnknown { // Executed BLS Filecoin message
+		tx = ethtypes.EthTxFromNativeMessage(smsg.VMMessage())
+		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
+		if err != nil {
+			return tx, err
+		}
+	} else { // Secp Filecoin Message or BLS Filecoin message in the mpool
+		tx = ethtypes.EthTxFromNativeMessage(smsg.VMMessage())
+		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
+		if err != nil {
+			return tx, err
+		}
+	}
 
 	return tx, nil
 }
 
-// newEthTxFromFilecoinMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
-// into the function, it looksup the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
+// newEthTxFromMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
+// into the function, it looks up the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
 // function
-func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, sa StateAPI) (ethtypes.EthTx, error) {
+func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, sa StateAPI) (ethtypes.EthTx, error) {
 	if msgLookup == nil {
 		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
 	}
@@ -1634,7 +1649,7 @@ func newEthTxFromFilecoinMessageLookup(ctx context.Context, msgLookup *api.MsgLo
 		}
 	}
 
-	tx, err := newEthTxFromFilecoinMessage(ctx, smsg, sa)
+	tx, err := newEthTxFromSignedMessage(ctx, smsg, sa)
 	if err != nil {
 		return ethtypes.EthTx{}, err
 	}
@@ -1680,7 +1695,8 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		LogsBloom:        ethtypes.EmptyEthBloom[:],
 	}
 
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+	// V.Int will be nil for non-eth transactions, so we want to skip unmarshalling the create return.
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() && tx.V.Int != nil {
 		// Create and Create2 return the same things.
 		var ret eam.CreateReturn
 		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
@@ -1760,7 +1776,7 @@ func (m *EthTxHashManager) Apply(ctx context.Context, from, to *types.TipSet) er
 				continue
 			}
 
-			hash, err := EthTxHashFromSignedFilecoinMessage(ctx, smsg, m.StateAPI)
+			hash, err := EthTxHashFromSignedMessage(ctx, smsg, m.StateAPI)
 			if err != nil {
 				return err
 			}
@@ -1797,7 +1813,7 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 				continue
 			}
 
-			ethTx, err := newEthTxFromFilecoinMessage(ctx, u.Message, manager.StateAPI)
+			ethTx, err := newEthTxFromSignedMessage(ctx, u.Message, manager.StateAPI)
 			if err != nil {
 				log.Errorf("error converting filecoin message to eth tx: %s", err)
 			}
