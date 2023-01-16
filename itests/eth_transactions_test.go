@@ -21,7 +21,7 @@ import (
 
 func TestValueTransferValidSignature(t *testing.T) {
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.EthTxHashLookup())
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
