@@ -404,7 +404,8 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Name: "EnableEthHashToFilecoinCidMapping",
 			Type: "bool",
 
-			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids`,
+			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
+You will not be able to look up ethereum transactions by their hash if this is disabled.`,
 		},
 		{
 			Name: "EthTxHashMappingLifetimeDays",
