@@ -22,6 +22,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+const MAX_TIPSETS_FROM_SNAPSHOT = 2000
+
 func (cs *ChainStore) UnionStore() bstore.Blockstore {
 	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
 }
@@ -111,6 +113,19 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(br.Roots...))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+	}
+
+	ts := root
+	for i := 0; i < MAX_TIPSETS_FROM_SNAPSHOT; i++ {
+		if ts == nil {
+			break
+		}
+		err = cs.PersistTipset(ctx, ts)
+		if err != nil {
+			return nil, err
+		}
+		parentTsKey := ts.Parents()
+		ts, err = cs.LoadTipSet(ctx, parentTsKey)
 	}
 
 	return root, nil
