@@ -21,4 +21,13 @@ contract DelegatecallStorage {
         require(success, 'Error message: Delegatecall failed');
 	return counter;
     }
+    function setVarsRevert(address _contract, uint _counter) public payable returns (uint){
+         (bool success, ) = _contract.delegatecall(
+            abi.encodeWithSignature("setVars(uint256)", _counter)
+        );
+        require(false,"intentionally throwing error");
+    }
+    function revert() public{
+        require(false,"intentionally throwing error");
+    }
 }

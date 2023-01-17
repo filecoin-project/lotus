@@ -342,6 +342,8 @@ func TestFEVMDelegateCall(t *testing.T) {
 
 // TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
 func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
+	//TODO change the gas limit of this invocation and confirm that the number of errors is different
+	//also TODO should we not have fatal error show up here?
 	ctx, cancel, client := setupFEVMTest(t)
 	defer cancel()
 
@@ -368,4 +370,59 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.Equal(t, 1, strings.Count(err.Error(),error1))
 	require.Equal(t, 257, strings.Count(err.Error(),error2))
 	require.Equal(t, 1, strings.Count(err.Error(),error3))
+}
+
+
+// TestFEVMDelegateCallRevert makes a delegatecall action and then calls revert.
+// the state should not have changed 
+func TestFEVMDelegateCallRevert(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameActor := "contracts/DelegatecallActor.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+	//install contract Storage
+	filenameStorage := "contracts/DelegatecallStorage.hex"
+	fromAddrStorage, storageAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
+	require.Equal(t, fromAddr, fromAddrStorage)
+
+	//call Contract Storage which makes a delegatecall to contract Actor
+	//this contract call sets the "counter" variable to 7, from default value 0
+
+	inputDataContract := inputDataFromFrom(t, ctx, client, actorAddr)
+	inputDataValue := inputDataFromArray([]byte{7})
+	inputData := append(inputDataContract, inputDataValue...)
+
+	//verify that the returned value of the call to setvars is 7
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
+	require.Error(t, err)
+	t.Log(err)
+
+	//test the value is 0 via calling the getter and was not set to 7
+	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "getCounter()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, result, expectedResult)
+
+	//test the value is 0 via calling the getter on the Actor contract
+	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "getCounter()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, result, expectedResult)
+}
+
+// TestFEVMDelegateCallRevert makes a call that is a simple revert
+func TestFEVMSimpleRevert(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameStorage := "contracts/DelegatecallStorage.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
+
+	//call revert
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
+
+	require.Error(t, err)
+	t.Log(err)
 }
