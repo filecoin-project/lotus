@@ -245,6 +245,10 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			StopWithin:      5,
 		}},
 		Expensive: true,
+	}, {
+		Height:    build.UpgradeNV19Height,
+		Network:   network.Version19,
+		Migration: UpgradeActorsV11,
 	},
 	}
 
@@ -1698,7 +1702,6 @@ func upgradeActorsV10Common(
 	return newRoot, nil
 }
 
-//Example upgrade function if upgrade requires only code changes
 func UpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
 	oldAv := actorstypes.Version10
 	newAv := actorstypes.Version11
@@ -1811,6 +1814,7 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 			Head:    head,
 			Nonce:   actorIn.Nonce,
 			Balance: actorIn.Balance,
+			Address: actorIn.Address,
 		}
 		err = actorsOut.SetActor(addr, &newActor)
 		if err != nil {

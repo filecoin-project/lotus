@@ -16,7 +16,7 @@ const ({{range .actorVersions}}
 
 var LatestVersion = 11
 
-var Versions = []int{0, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+var Versions = []int{0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
 
 const (
 	Version0  Version = 0
@@ -29,6 +29,7 @@ const (
 	Version8  Version = 8
 	Version9  Version = 9
 	Version10 Version = 10
+	Version11 Version = 11
 )
 
 /* inline-gen end */

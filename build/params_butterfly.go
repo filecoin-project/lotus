@@ -53,6 +53,8 @@ const UpgradeSkyrHeight = -19
 const UpgradeSharkHeight = abi.ChainEpoch(-20)
 const UpgradeHyggeHeight = abi.ChainEpoch(600)
 
+var UpgradeNV19Height = abi.ChainEpoch(99999999999999)
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
