@@ -8,16 +8,18 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
 )
 
 // convert a simple byte array into input data which is a left padded 32 byte array
@@ -144,54 +146,18 @@ func TestFEVMRecursive2(t *testing.T) {
 	}
 }
 
-func recursiveDelegatecallNotEqual(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	t.Log("recursion count - ", count)
-	inputData := buildInputFromuint64(count)
-	result, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-	require.NoError(t, err)
-	fmt.Println(result)
-	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-	//TODO do somethign with events
-	_ = events
-	//fmt.Println(events)
-	//fmt.Println(len(events))
-
-	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-	require.NoError(t, err)
-	t.Log("result - ", result)
-
-	resultUint, err := decodeOutputToUint64(result)
-	require.NoError(t, err)
-	t.Log("result - ", resultUint)
-
-	require.NotEqual(t, int(resultUint), int(count))
-}
-func recursiveDelegatecallError(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	t.Log("recursion count - ", count)
-	inputData := buildInputFromuint64(count)
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-	require.Error(t, err)
-
-	//result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-	//require.Error(t, err)
-}
-
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
 
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
-	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
 	if err != nil {
 		require.Error(t, err)
 	} else {
 		require.NoError(t, err)
 
-		result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
 		require.NoError(t, err)
 
 		resultUint, err := decodeOutputToUint64(result)
@@ -205,10 +171,10 @@ func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit
 
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	inputData := buildInputFromuint64(count)
-	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
 	require.NoError(t, err)
 
-	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
 	require.NoError(t, err)
 
 	resultUint, err := decodeOutputToUint64(result)
@@ -478,9 +444,6 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	filenameStorage := "contracts/SelfDestruct.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-	require.NoError(t, err)
-
 	//transfer 1 wei to contract
 	sendAmount := big.NewInt(1)
 	sendMsg := &types.Message{
@@ -494,19 +457,13 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-	require.NoError(t, err)
-
 	//call self destruct which should return balance
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
-	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-	require.NoError(t, err)
-
 	finalBalanceMinimum, err := big.FromString("99999999900000000000000000")
-	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
+	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	require.Equal(t, true, finalBal.GreaterThan(finalBalanceMinimum))
 
@@ -653,21 +610,20 @@ func TestFEVMRecursiveFuncCall(t *testing.T) {
 	filenameActor := "contracts/StackFunc.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
-	testN := func(n int) func(t *testing.T) {
+	testN := func(n int, ex exitcode.ExitCode) func(t *testing.T) {
 		return func(t *testing.T) {
 			inputData := make([]byte, 32)
 			binary.BigEndian.PutUint64(inputData[24:], uint64(n))
-
-			result, _, _ := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "exec1(uint256)", inputData)
-			require.Equal(t, result, []byte{})
+			client.EVM().InvokeContractByFuncNameExpectExit(ctx, fromAddr, actorAddr, "exec1(uint256)", inputData, ex)
 		}
 	}
 
-	t.Run("n=0", testN(0))
-	t.Run("n=1", testN(1))
-	t.Run("n=20", testN(20))
-	t.Run("n=200", testN(200))
-	t.Run("n=293", testN(293))
+	t.Run("n=0", testN(0, exitcode.Ok))
+	t.Run("n=1", testN(1, exitcode.Ok))
+	t.Run("n=20", testN(20, exitcode.Ok))
+	t.Run("n=200", testN(200, exitcode.Ok))
+	t.Run("n=507", testN(507, exitcode.Ok))
+	t.Run("n=508", testN(508, exitcode.ExitCode(23))) // 23 means stack overflow
 }
 
 // TestFEVMRecursiveActorCall deploys a contract and makes a recursive actor calls
