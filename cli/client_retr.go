@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"sort"
-	"strings"
-	"time"
-
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-state-types/big"
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/markets/utils"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -26,16 +28,11 @@ import (
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-state-types/big"
-
-	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/markets/utils"
-	"github.com/filecoin-project/lotus/node/repo"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"time"
 )
 
 const DefaultMaxRetrievePrice = "0"
@@ -160,7 +157,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 			var evt lapi.RetrievalInfo
 			select {
 			case <-ctx.Done():
-				return nil, xerrors.New("Retrieval Timed Out")
+				return nil, xerrors.Errorf("[%s] Retrieval Timed Out", time.Now().Format(time.RFC3339))
 			case evt = <-subscribeEvents:
 				if evt.ID != retrievalRes.DealID {
 					// we can't check the deal ID ahead of time because:
@@ -175,12 +172,14 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 				event = retrievalmarket.ClientEvents[*evt.Event]
 			}
 
-			printf("Recv %s, Paid %s, %s (%s), %s [%d|%d]\n",
+			now := time.Now()
+			printf("[%s] Recv %s, Paid %s, %s (%s), %s [%d|%d]\n",
+				now.UTC().Format(time.RFC3339),
 				types.SizeStr(types.NewInt(evt.BytesReceived)),
 				types.FIL(evt.TotalPaid),
 				strings.TrimPrefix(event, "ClientEvent"),
 				strings.TrimPrefix(retrievalmarket.DealStatuses[evt.Status], "DealStatus"),
-				time.Now().Sub(start).Truncate(time.Millisecond),
+				now.Sub(start).Truncate(time.Millisecond),
 				evt.ID,
 				types.NewInt(evt.BytesReceived),
 			)
