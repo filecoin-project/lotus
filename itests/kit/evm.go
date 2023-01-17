@@ -241,7 +241,7 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 	return result
 }
 
-//function signatures are the first 4 bytes of the hash of the function name and types
+// function signatures are the first 4 bytes of the hash of the function name and types
 func CalcFuncSignature(funcName string) []byte {
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write([]byte(funcName))

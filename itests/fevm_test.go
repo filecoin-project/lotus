@@ -17,15 +17,15 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-//convert a simple byte array into input data which is a left padded 32 byte array
+// convert a simple byte array into input data which is a left padded 32 byte array
 func inputDataFromArray(input []byte) []byte {
 	inputData := make([]byte, 32)
 	copy(inputData[32-len(input):], input[:])
 	return inputData
 }
 
-//convert a "from" address into input data which is a left padded 32 byte array
-func inputDataFromFrom(t *testing.T, ctx context.Context, client *kit.TestFullNode, from address.Address) []byte {
+// convert a "from" address into input data which is a left padded 32 byte array
+func inputDataFromFrom(ctx context.Context, t *testing.T, client *kit.TestFullNode, from address.Address) []byte {
 	fromId, err := client.StateLookupID(ctx, from, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -57,7 +57,7 @@ func TestFEVMBasic(t *testing.T) {
 
 	// invoke the contract with owner
 	{
-		inputData := inputDataFromFrom(t, ctx, client, fromAddr)
+		inputData := inputDataFromFrom(ctx, t, client, fromAddr)
 		result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 
 		expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000002710")
@@ -67,7 +67,7 @@ func TestFEVMBasic(t *testing.T) {
 
 	// invoke the contract with non owner
 	{
-		inputData := inputDataFromFrom(t, ctx, client, fromAddr)
+		inputData := inputDataFromFrom(ctx, t, client, fromAddr)
 		inputData[31]++ // change the pub address to one that has 0 balance by incrementing the last byte of the address
 		result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getBalance(address)", inputData)
 
@@ -112,7 +112,7 @@ func TestFEVMDelegateCall(t *testing.T) {
 	//call Contract Storage which makes a delegatecall to contract Actor
 	//this contract call sets the "counter" variable to 7, from default value 0
 
-	inputDataContract := inputDataFromFrom(t, ctx, client, actorAddr)
+	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
