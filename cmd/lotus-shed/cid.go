@@ -44,7 +44,9 @@ var cborCid = &cli.Command{
 		}
 		cbgc := cbg.CborCid(c)
 		buf := bytes.NewBuffer(make([]byte, 0))
-		cbgc.MarshalCBOR(buf)
+		if err := cbgc.MarshalCBOR(buf); err != nil {
+			return err
+		}
 		fmt.Printf("%x\n", buf.Bytes())
 		return nil
 	},
