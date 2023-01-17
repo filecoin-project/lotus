@@ -4,11 +4,11 @@ package store_test
 import (
 	"bytes"
 	"context"
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
