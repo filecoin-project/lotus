@@ -83,6 +83,7 @@ var StateCmd = &cli.Command{
 		StateNtwkVersionCmd,
 		StateMinerProvingDeadlineCmd,
 		StateSysActorCIDsCmd,
+		StateGetBlockHashCmd,
 	},
 }
 
@@ -1959,5 +1960,35 @@ var StateSysActorCIDsCmd = &cli.Command{
 			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, cid)
 		}
 		return tw.Flush()
+	},
+}
+
+var StateGetBlockHashCmd = &cli.Command{
+	Name:  "blockhash",
+	Usage: "Get the tipset CID - eth blockhash",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("must specify address to print market balance for"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		blkCid, err := ts.Key().ToStorageBlock()
+		if err != nil {
+			return xerrors.Errorf("failed to get tipset key block: %w", err)
+		}
+		fmt.Printf("tipset CID: %d\n", blkCid)
+		return nil
 	},
 }
