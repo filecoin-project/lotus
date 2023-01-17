@@ -2,6 +2,7 @@ package v0api
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -259,6 +260,7 @@ func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, sub
 		case <-ctx.Done():
 			return xerrors.New("Retrieval Timed Out")
 		case events <- marketevents.RetrievalEvent{
+			Timestamp:     time.Now().String(),
 			Event:         evt,
 			Status:        subscribeEvent.Status,
 			BytesReceived: subscribeEvent.BytesReceived,
@@ -284,7 +286,7 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 
 	finish := func(e error) {
 		if e != nil {
-			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero()}
+			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero(), Timestamp: time.Now().String()}
 		}
 	}
 

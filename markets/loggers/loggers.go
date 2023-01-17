@@ -68,6 +68,7 @@ func ReadyLogger(module string) func(error) {
 }
 
 type RetrievalEvent struct {
+	Timestamp     string
 	Event         retrievalmarket.ClientEvent
 	Status        retrievalmarket.DealStatus
 	BytesReceived uint64
