@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/ipld/go-car"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -27,6 +29,23 @@ var cidCmd = &cli.Command{
 	Subcommands: cli.Commands{
 		cidIdCmd,
 		inspectBundleCmd,
+		cborCid,
+	},
+}
+
+var cborCid = &cli.Command{
+	Name:      "cbor",
+	Usage:     "Serialize cid to cbor",
+	ArgsUsage: "[cid]",
+	Action: func(cctx *cli.Context) error {
+		c, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		cbgc := cbg.CborCid(c)
+		buf := bytes.NewBuffer(make([]byte, 0))
+		cbgc.MarshalCBOR(buf)
+		fmt.Printf("%x\n", buf.Bytes())
 	},
 }
 
