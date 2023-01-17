@@ -117,15 +117,16 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 
 	ts := root
 	for i := 0; i < MAX_TIPSETS_FROM_SNAPSHOT; i++ {
-		if ts == nil {
-			break
-		}
 		err = cs.PersistTipset(ctx, ts)
 		if err != nil {
 			return nil, err
 		}
 		parentTsKey := ts.Parents()
 		ts, err = cs.LoadTipSet(ctx, parentTsKey)
+		if ts == nil || err != nil {
+			log.Warnf("Only able to load the last %d tipsets", i)
+			break
+		}
 	}
 
 	return root, nil
