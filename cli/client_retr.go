@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-state-types/big"
-	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/markets/utils"
-	"github.com/filecoin-project/lotus/node/repo"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"time"
+
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -28,11 +26,16 @@ import (
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"io"
-	"os"
-	"sort"
-	"strings"
-	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-state-types/big"
+
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/markets/utils"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 const DefaultMaxRetrievePrice = "0"
@@ -157,7 +160,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 			var evt lapi.RetrievalInfo
 			select {
 			case <-ctx.Done():
-				return nil, xerrors.Errorf("[%s] Retrieval Timed Out", time.Now().Format(time.RFC3339))
+				return nil, xerrors.Errorf("[%s] Retrieval Timed Out", time.Now().UTC().Format(time.RFC3339))
 			case evt = <-subscribeEvents:
 				if evt.ID != retrievalRes.DealID {
 					// we can't check the deal ID ahead of time because:
@@ -188,13 +191,13 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 			case retrievalmarket.DealStatusCompleted:
 				break readEvents
 			case retrievalmarket.DealStatusRejected:
-				return nil, xerrors.Errorf("Retrieval Proposal Rejected: %s", evt.Message)
+				return nil, xerrors.Errorf("[%s] Retrieval Proposal Rejected: %s", time.Now().UTC().Format(time.RFC3339), evt.Message)
 			case retrievalmarket.DealStatusCancelled:
-				return nil, xerrors.Errorf("Retrieval Proposal Cancelled: %s", evt.Message)
+				return nil, xerrors.Errorf("[%s] Retrieval Proposal Cancelled: %s", time.Now().UTC().Format(time.RFC3339), evt.Message)
 			case
 				retrievalmarket.DealStatusDealNotFound,
 				retrievalmarket.DealStatusErrored:
-				return nil, xerrors.Errorf("Retrieval Error: %s", evt.Message)
+				return nil, xerrors.Errorf("[%s] Retrieval Error: %s", time.Now().UTC().Format(time.RFC3339), evt.Message)
 			}
 		}
 
