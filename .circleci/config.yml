@@ -926,11 +926,6 @@ workflows:
           target: "./itests/self_sent_txn_test.go"
       
       - test:
-          name: test-itest-snapshot
-          suite: itest-snapshot
-          target: "./itests/snapshot_test.go"
-      
-      - test:
           name: test-itest-splitstore
           suite: itest-splitstore
           target: "./itests/splitstore_test.go"
