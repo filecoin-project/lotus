@@ -260,7 +260,7 @@ func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, sub
 		case <-ctx.Done():
 			return xerrors.New("Retrieval Timed Out")
 		case events <- marketevents.RetrievalEvent{
-			Timestamp:     time.Now().String(),
+			Timestamp:     time.Now().Format(time.RFC3339),
 			Event:         evt,
 			Status:        subscribeEvent.Status,
 			BytesReceived: subscribeEvent.BytesReceived,
@@ -286,7 +286,7 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 
 	finish := func(e error) {
 		if e != nil {
-			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero(), Timestamp: time.Now().String()}
+			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero(), Timestamp: time.Now().Format(time.RFC3339)}
 		}
 	}
 
