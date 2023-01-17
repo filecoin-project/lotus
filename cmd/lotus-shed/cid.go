@@ -30,6 +30,22 @@ var cidCmd = &cli.Command{
 		cidIdCmd,
 		inspectBundleCmd,
 		cborCid,
+		cidBytes,
+	},
+}
+
+var cidBytes = &cli.Command{
+	Name:      "bytes",
+	Usage:     "cid bytes",
+	ArgsUsage: "[cid]",
+	Action: func(cctx *cli.Context) error {
+		c, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		// Add in the troublesome zero byte prefix
+		fmt.Printf("00%x\n", c.Bytes())
+		return nil
 	},
 }
 
