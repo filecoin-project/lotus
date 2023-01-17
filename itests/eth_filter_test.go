@@ -277,7 +277,8 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 
 	for i := 0; i < iterations; i++ {
 		// log a four topic event with data
-		ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		ret, err := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		require.NoError(err)
 		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	}
 
@@ -533,7 +534,8 @@ func invokeContractAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode
 
 	for i := 0; i < iterations; i++ {
 		// log a four topic event with data
-		ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		ret, err := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		require.NoError(err)
 		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	}
 
@@ -776,7 +778,8 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 	for i := 0; i < iterations; i++ {
 		// log a four topic event with data
-		ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		ret, err := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		require.NoError(err)
 		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	}
 
