@@ -462,6 +462,6 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 	//call destroy
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	t.Log(err)
-	require.Error(t, err) // XXX currently returns an error but should be success
+	require.NoError(t, err) // XXX currently returns an error but should be success
 
 }
