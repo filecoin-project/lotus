@@ -2014,7 +2014,7 @@ Inputs:
 Response:
 ```json
 {
-  "Timestamp": "string value",
+  "UnixMillis": 9,
   "Event": 5,
   "Status": 0,
   "BytesReceived": 42,
