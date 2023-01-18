@@ -1097,6 +1097,10 @@ func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
 	return cs.stateBlockstore
 }
 
+func (cs *ChainStore) ChainLocalBlockstore() bstore.Blockstore {
+	return cs.chainLocalBlockstore
+}
+
 func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
 	return adt.WrapStore(ctx, cbor.NewCborStore(bs))
 }
