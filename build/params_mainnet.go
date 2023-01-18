@@ -87,7 +87,10 @@ const UpgradeSkyrHeight = 1960320
 const UpgradeSharkHeight = 2383680
 
 // ??????????????
-var UpgradeHyggeHeight = abi.ChainEpoch(math.MaxInt64)
+var UpgradeHyggeHeight = abi.ChainEpoch(math.MaxInt64 - 1)
+
+// ??????????????
+var UpgradeNV19Height = abi.ChainEpoch(math.MaxInt64)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

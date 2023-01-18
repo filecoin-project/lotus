@@ -806,6 +806,11 @@ workflows:
           target: "./itests/migration_nv18_test.go"
       
       - test:
+          name: test-itest-migration_nv19
+          suite: itest-migration_nv19
+          target: "./itests/migration_nv19_test.go"
+      
+      - test:
           name: test-itest-mpool_msg_uuid
           suite: itest-mpool_msg_uuid
           target: "./itests/mpool_msg_uuid_test.go"
