@@ -1252,6 +1252,21 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionCount(arg0, arg1, arg2 inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionCount", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionCount), arg0, arg1, arg2)
 }
 
+// EthGetTransactionHashByCid mocks base method.
+func (m *MockFullNode) EthGetTransactionHashByCid(arg0 context.Context, arg1 cid.Cid) (*ethtypes.EthHash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetTransactionHashByCid", arg0, arg1)
+	ret0, _ := ret[0].(*ethtypes.EthHash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetTransactionHashByCid indicates an expected call of EthGetTransactionHashByCid.
+func (mr *MockFullNodeMockRecorder) EthGetTransactionHashByCid(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionHashByCid", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionHashByCid), arg0, arg1)
+}
+
 // EthGetTransactionReceipt mocks base method.
 func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 ethtypes.EthHash) (*api.EthTxReceipt, error) {
 	m.ctrl.T.Helper()

@@ -741,6 +741,11 @@ workflows:
           target: "./itests/eth_filter_test.go"
       
       - test:
+          name: test-itest-eth_hash_lookup
+          suite: itest-eth_hash_lookup
+          target: "./itests/eth_hash_lookup_test.go"
+      
+      - test:
           name: test-itest-eth_transactions
           suite: itest-eth_transactions
           target: "./itests/eth_transactions_test.go"
