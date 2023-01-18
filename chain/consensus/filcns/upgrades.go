@@ -246,7 +246,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeNV19Height,
+		Height:    build.UpgradeHyperspaceNV19Height,
 		Network:   network.Version19,
 		Migration: UpgradeActorsV11,
 	},
