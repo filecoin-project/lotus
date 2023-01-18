@@ -153,10 +153,10 @@ func TestChainImportTipsetKeyCid(t *testing.T) {
 	root, err := cs.Import(ctx, buf)
 	require.NoError(t, err)
 
+	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
+
 	err = cs.SetHead(ctx, last)
 	require.NoError(t, err)
-
-	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
 
 	for _, tsKey := range tsKeys {
 		_, err := cs.LoadTipSet(ctx, tsKey)

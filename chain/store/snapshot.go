@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const MAX_TIPSETS_FROM_SNAPSHOT = 2000
+const TIPSETKEY_BACKFILL_RANGE = 2 * build.Finality
 
 func (cs *ChainStore) UnionStore() bstore.Blockstore {
 	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
@@ -116,7 +116,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	}
 
 	ts := root
-	for i := 0; i < MAX_TIPSETS_FROM_SNAPSHOT; i++ {
+	for i := 0; i < int(TIPSETKEY_BACKFILL_RANGE); i++ {
 		err = cs.PersistTipset(ctx, ts)
 		if err != nil {
 			return nil, err
