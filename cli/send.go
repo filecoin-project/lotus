@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"strings"
 
 	"github.com/urfave/cli/v2"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var sendCmd = &cli.Command{
