@@ -36,10 +36,7 @@ var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 type EthUint64 uint64
 
 func (e EthUint64) MarshalJSON() ([]byte, error) {
-	if e == 0 {
-		return json.Marshal("0x0")
-	}
-	return json.Marshal(fmt.Sprintf("0x%x", e))
+	return json.Marshal(e.Hex())
 }
 
 func (e *EthUint64) UnmarshalJSON(b []byte) error {
@@ -62,6 +59,13 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 		return EthUint64(0), err
 	}
 	return EthUint64(parsedInt), nil
+}
+
+func (e EthUint64) Hex() string {
+	if e == 0 {
+		return "0x0"
+	}
+	return fmt.Sprintf("0x%x", e)
 }
 
 // EthBigInt represents a large integer whose zero value serializes to "0x0".

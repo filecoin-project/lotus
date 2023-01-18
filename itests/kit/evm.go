@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"os"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-varint"
@@ -75,6 +77,21 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 	require.NoError(err)
 
 	return result
+}
+
+func (e *EVM) DeployContractFile(ctx context.Context, sender address.Address, filename string) eam.CreateReturn {
+	require := require.New(e.t)
+
+	contractHex, err := os.ReadFile(filename)
+	require.NoError(err)
+
+	// strip any trailing newlines from the file
+	contractHex = bytes.TrimRight(contractHex, "\n")
+
+	bytecode, err := hex.DecodeString(string(contractHex))
+	require.NoError(err)
+
+	return e.DeployContract(ctx, sender, bytecode)
 }
 
 func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) *api.MsgLookup {

@@ -1161,7 +1161,7 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent) (*ethtypes.EthFilte
 		var err error
 
 		for _, entry := range ev.Entries {
-			value := ethtypes.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
+			value := ethtypes.EthBytes(leftpad32(entry.Value)) // value has already been cbor-decoded but see https://github.com/filecoin-project/ref-fvm/issues/1345
 			if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
 				log.Topics = append(log.Topics, value)
 			} else {
