@@ -28,6 +28,7 @@ type FullNode struct {
 	Chainstore Chainstore
 	Cluster    UserRaftConfig
 	ActorEvent ActorEventConfig
+	Fevm       FevmConfig
 }
 
 // // Common
@@ -691,4 +692,13 @@ type ActorEventConfig struct {
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
 	// Set upper bound on index size
+}
+
+type FevmConfig struct {
+	// EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
+	// You will not be able to look up ethereum transactions by their hash if this is disabled.
+	EnableEthHashToFilecoinCidMapping bool
+	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+	// Set to 0 to keep all mappings
+	EthTxHashMappingLifetimeDays int
 }
