@@ -338,3 +338,35 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	require.NotNil(t, chainTx.TransactionIndex)
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
 }
+
+// TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
+func TestTransactionHashLookupNonexistentMessage(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	blocktime := 1 * time.Second
+	client, _, ens := kit.EnsembleMinimal(
+		t,
+		kit.MockProofs(),
+		kit.ThroughRPC(),
+		kit.EthTxHashLookup(),
+	)
+	ens.InterconnectAll().BeginMining(blocktime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	cid := build.MustParseCid("bafk2bzacecapjnxnyw4talwqv5ajbtbkzmzqiosztj5cb3sortyp73ndjl76e")
+
+	// We shouldn't be able to return a hash for this fake cid
+	chainHash, err := client.EthGetTransactionHashByCid(ctx, cid)
+	require.NoError(t, err)
+	require.Nil(t, chainHash)
+
+	calculatedHash, err := ethtypes.EthHashFromCid(cid)
+	require.NoError(t, err)
+
+	// We shouldn't be able to return a cid for this fake hash
+	chainCid, err := client.EthGetMessageCidByTransactionHash(ctx, &calculatedHash)
+	require.NoError(t, err)
+	require.Nil(t, chainCid)
+}
