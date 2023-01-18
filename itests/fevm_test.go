@@ -465,3 +465,45 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 	require.NoError(t, err) // XXX currently returns an error but should be success
 
 }
+
+
+// TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
+func TestFEVMTestApp(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameStorage := "contracts/TestApp.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
+
+	inputData, err := hex.DecodeString( "0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000000000000066162636465660000000000000000000000000000000000000000000000000000") // sending string "abcdef" and int 7 - constructed using remix
+	require.NoError(t, err)
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "new_Test(string,uint256)", inputData)
+	t.Log(err)
+	require.NoError(t, err)
+
+	inputData, err = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
+	require.NoError(t, err)
+
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "get_Test_N(uint256)", inputData)
+	require.NoError(t, err)
+
+}
+
+// TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
+func TestFEVMTestConstructor(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameStorage := "contracts/Constructor.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
+
+	//input = uint256{7}. set value and confirm tx success
+	inputData, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000007")
+	require.NoError(t, err)
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "new_Test(uint256)", inputData)
+	t.Log(err)
+	require.NoError(t, err)
+
+}
