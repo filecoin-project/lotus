@@ -399,6 +399,22 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
+	"FevmConfig": []DocField{
+		{
+			Name: "EnableEthHashToFilecoinCidMapping",
+			Type: "bool",
+
+			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
+You will not be able to look up ethereum transactions by their hash if this is disabled.`,
+		},
+		{
+			Name: "EthTxHashMappingLifetimeDays",
+			Type: "int",
+
+			Comment: `EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+Set to 0 to keep all mappings`,
+		},
+	},
 	"FullNode": []DocField{
 		{
 			Name: "Client",
@@ -433,6 +449,12 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 		{
 			Name: "ActorEvent",
 			Type: "ActorEventConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Fevm",
+			Type: "FevmConfig",
 
 			Comment: ``,
 		},

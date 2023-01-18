@@ -296,3 +296,10 @@ func HistoricFilterAPI(dbpath string) NodeOpt {
 		return nil
 	})
 }
+
+func EthTxHashLookup() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Fevm.EnableEthHashToFilecoinCidMapping = true
+		return nil
+	})
+}
