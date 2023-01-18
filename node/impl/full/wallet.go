@@ -2,6 +2,8 @@ package full
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/messagesigner"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -51,12 +53,20 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
 
+	keyInfo, err := a.Wallet.WalletExport(ctx, k)
+	if err != nil {
+		return nil, err
+	}
+	sb, err := messagesigner.SigningBytes(msg, key.ActSigType(keyInfo.Type))
+	if err != nil {
+		return nil, err
+	}
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := a.Wallet.WalletSign(ctx, keyAddr, mb.Cid().Bytes(), api.MsgMeta{
+	sig, err := a.Wallet.WalletSign(ctx, keyAddr, sb, api.MsgMeta{
 		Type:  api.MTChainMsg,
 		Extra: mb.RawData(),
 	})

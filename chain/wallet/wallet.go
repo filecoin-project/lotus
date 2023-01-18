@@ -73,6 +73,15 @@ func (w *LocalWallet) WalletSign(ctx context.Context, addr address.Address, msg 
 	return sigs.Sign(key.ActSigType(ki.Type), ki.PrivateKey, msg)
 }
 
+func (w *LocalWallet) KeyType(addr address.Address) (*crypto.SigType, error) {
+	k, err := w.findKey(addr)
+	if err != nil {
+		return nil, err
+	}
+	sigType := key.ActSigType(k.KeyInfo.Type)
+	return &sigType, nil
+}
+
 func (w *LocalWallet) findKey(addr address.Address) (*key.Key, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
