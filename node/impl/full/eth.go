@@ -257,14 +257,11 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 		return nil, nil
 	}
 
-	c := cid.Undef
-	if a.EthTxHashManager != nil { // todo rm checks
-		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
-		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		}
+	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	if err != nil {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
@@ -306,25 +303,22 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		return nil, nil
 	}
 
-	c := cid.Undef
-	if a.EthTxHashManager != nil {
-		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
-		// We fall out of the first condition and continue
-		if errors.Is(err, ethhashlookup.ErrNotFound) {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		} else if err != nil {
-			return nil, xerrors.Errorf("database error: %w", err)
-		} else {
-			return &c, nil
-		}
+	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	// We fall out of the first condition and continue
+	if errors.Is(err, ethhashlookup.ErrNotFound) {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+	} else if err != nil {
+		return nil, xerrors.Errorf("database error: %w", err)
+	} else {
+		return &c, nil
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's try looking it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
 	}
 
-	_, err := a.StateAPI.Chain.GetSignedMessage(ctx, c)
+	_, err = a.StateAPI.Chain.GetSignedMessage(ctx, c)
 	if err == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool
 		return &c, nil
@@ -369,14 +363,11 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 }
 
 func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	c := cid.Undef
-	if a.EthTxHashManager != nil {
-		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
-		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		}
+	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+	if err != nil {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
