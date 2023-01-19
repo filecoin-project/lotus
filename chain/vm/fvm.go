@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -632,6 +633,37 @@ func NewDualExecutionFVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	}, nil
 }
 
+var traceFile *os.File
+var traceEncoder *json.Encoder
+var traceLock sync.Mutex
+
+func getTraceFile() (*os.File, *json.Encoder, func()) {
+	traceLock.Lock()
+	if traceFile == nil {
+		var err error
+		traceFile, err = os.OpenFile("dual_execution_results.ndjson", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+		if err != nil {
+			log.Errorf("opening trace file: %+v", err)
+			traceLock.Unlock()
+			return nil, nil, func() {}
+		}
+		traceEncoder = json.NewEncoder(traceFile)
+	}
+
+	return traceFile, traceEncoder, traceLock.Unlock
+}
+
+func traceDump(key string, value interface{}) {
+	d := map[string]interface{}{"type": key, "value": value}
+	_, e, c := getTraceFile()
+	defer c()
+	err := e.Encode(d)
+	if err != nil {
+		log.Errorf("encoding trace dump: %+v", err)
+	}
+	return
+}
+
 func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (ret *ApplyRet, err error) {
 	var wg sync.WaitGroup
 
@@ -649,12 +681,15 @@ func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMs
 		defer wg.Done()
 		ret2, err2 = vm.debug.ApplyMessage(ctx, cmsg)
 	}()
-	if err2 != nil {
-		log.Debugf("debug execution failed: %+v", err2)
-	}
-	_ = ret2
 
 	wg.Wait()
+
+	if err2 != nil {
+		traceDump("executionError", err2.Error())
+		log.Errorf("debug execution failed: %+v", err2)
+	} else {
+		traceDump("dualExec", map[string]*ApplyRet{"active": ret, "debug": ret2})
+	}
 	return ret, err
 }
 
@@ -668,14 +703,21 @@ func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types
 		ret, err = vm.main.ApplyImplicitMessage(ctx, msg)
 	}()
 
+	var ret2 *ApplyRet
+	var err2 error
 	go func() {
 		defer wg.Done()
-		if _, err := vm.debug.ApplyImplicitMessage(ctx, msg); err != nil {
-			log.Errorf("debug execution failed: %s", err)
-		}
+		ret2, err2 = vm.debug.ApplyMessage(ctx, msg)
 	}()
 
 	wg.Wait()
+
+	if err2 != nil {
+		traceDump("executionError", err2.Error())
+		log.Errorf("debug execution failed: %+v", err2)
+	} else {
+		traceDump("dualExec", map[string]*ApplyRet{"active": ret, "debug": ret2})
+	}
 	return ret, err
 }
 
