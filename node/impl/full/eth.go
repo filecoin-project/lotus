@@ -45,6 +45,7 @@ type EthModuleAPI interface {
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)
+	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)
 	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)
 	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error)
 	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error)
@@ -299,8 +300,53 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	return nil, nil
 }
 
+func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
+	// Ethereum's behavior is to return null when the txHash is invalid, so we use nil to check if txHash is valid
+	if txHash == nil {
+		return nil, nil
+	}
+
+	c := cid.Undef
+	if a.EthTxHashManager != nil {
+		var err error
+		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+		// We fall out of the first condition and continue
+		if errors.Is(err, ethhashlookup.ErrNotFound) {
+			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+		} else if err != nil {
+			return nil, xerrors.Errorf("database error: %w", err)
+		} else {
+			return &c, nil
+		}
+	}
+	// This isn't an eth transaction we have the mapping for, so let's try looking it up as a filecoin message
+	if c == cid.Undef {
+		c = txHash.ToCid()
+	}
+
+	_, err := a.StateAPI.Chain.GetSignedMessage(ctx, c)
+	if err == nil {
+		// This is an Eth Tx, Secp message, Or BLS message in the mpool
+		return &c, nil
+	}
+
+	_, err = a.StateAPI.Chain.GetMessage(ctx, c)
+	if err == nil {
+		// This is a BLS message
+		return &c, nil
+	}
+
+	// Ethereum clients expect an empty response when the message was not found
+	return nil, nil
+}
+
 func (a *EthModule) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
 	hash, err := EthTxHashFromFilecoinMessageCid(ctx, cid, a.StateAPI)
+	if hash == ethtypes.EmptyEthHash {
+		// not found
+		return nil, nil
+	}
+
 	return &hash, err
 }
 
@@ -1483,10 +1529,17 @@ func lookupEthAddress(ctx context.Context, addr address.Address, sa StateAPI) (e
 func EthTxHashFromFilecoinMessageCid(ctx context.Context, c cid.Cid, sa StateAPI) (ethtypes.EthHash, error) {
 	smsg, err := sa.Chain.GetSignedMessage(ctx, c)
 	if err == nil {
+		// This is an Eth Tx, Secp message, Or BLS message in the mpool
 		return EthTxHashFromSignedFilecoinMessage(ctx, smsg, sa)
 	}
 
-	return ethtypes.EthHashFromCid(c)
+	_, err = sa.Chain.GetMessage(ctx, c)
+	if err == nil {
+		// This is a BLS message
+		return ethtypes.EthHashFromCid(c)
+	}
+
+	return ethtypes.EmptyEthHash, nil
 }
 
 func EthTxHashFromSignedFilecoinMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthHash, error) {

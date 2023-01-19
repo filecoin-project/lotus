@@ -109,6 +109,7 @@ func DefaultFullNode() *FullNode {
 		},
 		Fevm: FevmConfig{
 			EnableEthHashToFilecoinCidMapping: false,
+			EthTxHashMappingLifetimeDays:      0,
 		},
 	}
 }
