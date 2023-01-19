@@ -934,6 +934,42 @@ func TestEthGetLogs(t *testing.T) {
 		},
 
 		{
+			name: "find all EventOneIndexedWithData events from contract1 or contract2",
+			spec: EthFilterBuilder().
+				FromBlockEpoch(0).
+				AddressOneOf(contract1, contract2).
+				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).
+				Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(44),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(46),
+					},
+					Data: paddedUint64(12),
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(50),
+					},
+					Data: paddedUint64(9),
+				},
+			},
+		},
+
+		{
 			name: "find all events with topic2 of 46",
 			spec: EthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(46))).Filter(),
 
@@ -1049,6 +1085,35 @@ func TestEthGetLogs(t *testing.T) {
 						paddedUint64(27),
 					},
 					Data: paddedUint64(19),
+				},
+			},
+		},
+
+		{
+			name: "find all events with topic1 of EventTwoIndexedWithData or EventOneIndexed and topic2 of 44",
+			spec: EthFilterBuilder().
+				FromBlockEpoch(0).
+				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"]), paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).
+				Topic2OneOf(paddedEthHash(paddedUint64(44))).
+				Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(44),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexed"],
+						paddedUint64(44),
+					},
+					Data: nil,
 				},
 			},
 		},

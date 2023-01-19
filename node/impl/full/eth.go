@@ -914,13 +914,16 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 	}
 
 	for idx, vals := range filterSpec.Topics {
+		if len(vals) == 0 {
+			continue
+		}
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 		key := fmt.Sprintf("topic%d", idx+1)
-		keyvals := make([][]byte, len(vals))
-		for i, v := range vals {
-			keyvals[i] = v[:]
+		for _, v := range vals {
+			buf := make([]byte, len(v[:]))
+			copy(buf, v[:])
+			keys[key] = append(keys[key], buf)
 		}
-		keys[key] = keyvals
 	}
 
 	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
