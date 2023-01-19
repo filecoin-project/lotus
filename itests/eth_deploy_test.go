@@ -100,6 +100,7 @@ func TestDeployment(t *testing.T) {
 
 	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
 	require.NoError(t, err)
+	require.NotNil(t, mpoolTx)
 
 	// require that the hashes are identical
 	require.Equal(t, hash, mpoolTx.Hash)
