@@ -28,11 +28,6 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			StateAPI:     stateapi,
 		}
 
-		if !cfg.EnableEthHashToFilecoinCidMapping {
-			// mapping functionality disabled. Nothing to do here
-			return em, nil
-		}
-
 		dbPath, err := r.SqlitePath()
 		if err != nil {
 			return nil, err

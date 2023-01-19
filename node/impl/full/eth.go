@@ -258,7 +258,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 	}
 
 	c := cid.Undef
-	if a.EthTxHashManager != nil {
+	if a.EthTxHashManager != nil { // todo rm checks
 		var err error
 		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
 		if err != nil {

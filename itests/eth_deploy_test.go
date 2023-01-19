@@ -41,7 +41,7 @@ func TestDeployment(t *testing.T) {
 			cfg.ActorEvent.EnableRealTimeFilterAPI = true
 			return nil
 		}),
-		kit.EthTxHashLookup(),
+		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blockTime)
 

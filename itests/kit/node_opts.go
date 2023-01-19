@@ -297,9 +297,9 @@ func HistoricFilterAPI(dbpath string) NodeOpt {
 	})
 }
 
-func EthTxHashLookup() NodeOpt {
+func EthRPC() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.Fevm.EnableEthHashToFilecoinCidMapping = true
+		cfg.Fevm.EnableEthPRC = true
 		return nil
 	})
 }

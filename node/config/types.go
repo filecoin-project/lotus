@@ -695,9 +695,9 @@ type ActorEventConfig struct {
 }
 
 type FevmConfig struct {
-	// EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
-	// You will not be able to look up ethereum transactions by their hash if this is disabled.
-	EnableEthHashToFilecoinCidMapping bool
+	// EnableEthPRC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+	EnableEthPRC bool
+
 	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
