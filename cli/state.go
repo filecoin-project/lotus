@@ -252,10 +252,16 @@ func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	return cids, nil
 }
 
+type TipSetResolver interface {
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+}
+
 // LoadTipSet gets the tipset from the context, or the head from the API.
 //
 // It always gets the head from the API so commands use a consistent tipset even if time pases.
-func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*types.TipSet, error) {
+func LoadTipSet(ctx context.Context, cctx *cli.Context, api TipSetResolver) (*types.TipSet, error) {
 	tss := cctx.String("tipset")
 	if tss == "" {
 		return api.ChainHead(ctx)
@@ -264,7 +270,7 @@ func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*ty
 	return ParseTipSetRef(ctx, api, tss)
 }
 
-func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types.TipSet, error) {
+func ParseTipSetRef(ctx context.Context, api TipSetResolver, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
 		if tss == "@head" {
 			return api.ChainHead(ctx)
