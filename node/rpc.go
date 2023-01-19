@@ -94,9 +94,8 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		fnapi = api.PermissionedFullAPI(fnapi)
 	}
 
-	var v0 v0api.FullNode = &(struct{ v0api.FullNode }{&v0api.WrapperV1Full{FullNode: fnapi}})
 	serveRpc("/rpc/v1", fnapi)
-	serveRpc("/rpc/v0", v0)
+	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: fnapi})
 
 	// Import handler
 	handleImportFunc := handleImport(a.(*impl.FullNodeAPI))
