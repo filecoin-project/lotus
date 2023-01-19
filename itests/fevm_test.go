@@ -258,7 +258,7 @@ func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
 // XXX acts weird has two different types of errors with inconsistent patterns
-func _TestFEVMRecursiveDelegatecall(t *testing.T) {
+func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	ctx, cancel, client := setupFEVMTest(t)
 	defer cancel()
@@ -501,7 +501,7 @@ func TestFEVMTestConstructor(t *testing.T) {
 
 // TestFEVMAutoSelfDestruct creates a contract that just has a self destruct feature and calls it
 // XXX tx w destroy fails
-func _TestFEVMAutoSelfDestruct(t *testing.T) {
+func TestFEVMAutoSelfDestruct(t *testing.T) {
 	ctx, cancel, client := setupFEVMTest(t)
 	defer cancel()
 
@@ -712,4 +712,23 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.Equal(t, 1, strings.Count(err.Error(), error1))
 	require.Equal(t, 256, strings.Count(err.Error(), error2))
 	require.Equal(t, 1, strings.Count(err.Error(), error3))
+}
+
+
+// creates a contract that should fail when tx are sent to it
+// example on goerli of tx failing https://goerli.etherscan.io/address/0xec037bdc9a79420985a53a49fdae3ccf8989909b
+// currently succeeds
+func TestFEVMSendGasLimit(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/GasLimitSend.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	//send $ to contract
+	//transfer 1 wei to contract
+	sendAmount := big.MustFromString("10000000")
+
+  transferValue(ctx, t, client, fromAddr, contractAddr, sendAmount) // XXX should fail but succeeds
 }
