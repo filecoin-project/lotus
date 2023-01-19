@@ -686,7 +686,6 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed retrievals (default: false)
    --show-failed  show failed/failing deals (default: true)
    --verbose, -v  print verbose deal details (default: false)
@@ -757,7 +756,6 @@ CATEGORY:
    STORAGE
 
 OPTIONS:
-   --color        use color in display output (default: depends on output being a TTY)
    --show-failed  show failed/failing deals (default: false)
    --verbose, -v  print verbose deal details (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
@@ -890,7 +888,6 @@ CATEGORY:
    UTIL
 
 OPTIONS:
-   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed data transfers (default: false)
    --show-failed  show failed/cancelled transfers (default: false)
    --verbose, -v  print verbose transfer details (default: false)

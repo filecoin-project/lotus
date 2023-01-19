@@ -333,7 +333,6 @@ USAGE:
    lotus-miner actor control list [command options] [arguments...]
 
 OPTIONS:
-   --color    use color in display output (default: depends on output being a TTY)
    --verbose  (default: false)
    
 ```
@@ -980,7 +979,6 @@ USAGE:
    lotus-miner data-transfers list [command options] [arguments...]
 
 OPTIONS:
-   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed data transfers (default: false)
    --show-failed  show failed/cancelled transfers (default: false)
    --verbose, -v  print verbose transfer details (default: false)
@@ -1062,7 +1060,7 @@ USAGE:
    lotus-miner dagstore list-shards [command options] [arguments...]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1075,7 +1073,7 @@ USAGE:
    lotus-miner dagstore register-shard [command options] [key]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1088,7 +1086,7 @@ USAGE:
    lotus-miner dagstore initialize-shard [command options] [key]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1101,7 +1099,7 @@ USAGE:
    lotus-miner dagstore recover-shard [command options] [key]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1114,7 +1112,6 @@ USAGE:
    lotus-miner dagstore initialize-all [command options] [arguments...]
 
 OPTIONS:
-   --color              use color in display output (default: depends on output being a TTY)
    --concurrency value  maximum shards to initialize concurrently at a time; use 0 for unlimited (default: 0)
    --include-sealed     initialize sealed pieces as well (default: false)
    
@@ -1129,7 +1126,7 @@ USAGE:
    lotus-miner dagstore gc [command options] [arguments...]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1142,7 +1139,7 @@ USAGE:
    lotus-miner dagstore lookup-pieces [command options] <cid>
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1173,7 +1170,7 @@ USAGE:
    lotus-miner index announce [command options] <deal proposal cid>
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1186,7 +1183,7 @@ USAGE:
    lotus-miner index announce-all [command options] [arguments...]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1721,7 +1718,6 @@ USAGE:
    lotus-miner sectors list [command options] [arguments...]
 
 OPTIONS:
-   --color, -c           use color in display output (default: depends on output being a TTY)
    --events, -e          display number of events the sector has received (default: false)
    --fast, -f            don't show on-chain info for better performance (default: false)
    --initial-pledge, -p  display initial pledge (default: false)
@@ -2223,7 +2219,7 @@ USAGE:
    lotus-miner proving workers [command options] [arguments...]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2371,7 +2367,6 @@ COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```
@@ -2385,7 +2380,7 @@ USAGE:
    lotus-miner storage list sectors [command options] [arguments...]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2458,7 +2453,6 @@ USAGE:
    lotus-miner sealing jobs [command options] [arguments...]
 
 OPTIONS:
-   --color          use color in display output (default: depends on output being a TTY)
    --show-ret-done  show returned but not consumed calls (default: false)
    
 ```
@@ -2472,7 +2466,7 @@ USAGE:
    lotus-miner sealing workers [command options] [arguments...]
 
 OPTIONS:
-   --color  use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 

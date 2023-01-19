@@ -1121,11 +1121,6 @@ var clientListRetrievalsCmd = &cli.Command{
 			Usage:   "print verbose deal details",
 		},
 		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-		&cli.BoolFlag{
 			Name:  "show-failed",
 			Usage: "show failed/failing deals",
 			Value: true,
@@ -1140,10 +1135,6 @@ var clientListRetrievalsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -1709,11 +1700,6 @@ var clientListDeals = &cli.Command{
 			Usage:   "print verbose deal details",
 		},
 		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-		&cli.BoolFlag{
 			Name:  "show-failed",
 			Usage: "show failed/failing deals",
 		},
@@ -1723,10 +1709,6 @@ var clientListDeals = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -2239,11 +2221,6 @@ var clientListTransfers = &cli.Command{
 			Usage:   "print verbose transfer details",
 		},
 		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-		&cli.BoolFlag{
 			Name:  "completed",
 			Usage: "show completed data transfers",
 		},
@@ -2257,10 +2234,6 @@ var clientListTransfers = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
