@@ -885,18 +885,20 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 			// Here the client is looking for events between the head and some future height
 			ts := e.Chain.GetHeaviestTipSet()
 			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", e.MaxFilterHeightRange)
 			}
 		} else if minHeight >= 0 && maxHeight == -1 {
 			// Here the client is looking for events between some time in the past and the current head
 			ts := e.Chain.GetHeaviestTipSet()
 			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", e.MaxFilterHeightRange)
 			}
 
 		} else if minHeight >= 0 && maxHeight >= 0 {
-			if minHeight > maxHeight || maxHeight-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range")
+			if minHeight > maxHeight {
+				return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+			} else if maxHeight-minHeight > e.MaxFilterHeightRange {
+				return nil, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", e.MaxFilterHeightRange)
 			}
 		}
 

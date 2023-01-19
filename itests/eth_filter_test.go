@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -82,7 +83,7 @@ var EventsContract = SolidityContractDef{
 func TestEthNewPendingTransactionFilter(t *testing.T) {
 	ctx := context.Background()
 
-	kit.QuietMiningLogs()
+	kit.QuietAllLogsExcept("events", "messagepool")
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
@@ -179,7 +180,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 func TestEthNewBlockFilter(t *testing.T) {
 	ctx := context.Background()
 
-	kit.QuietMiningLogs()
+	kit.QuietAllLogsExcept("events", "messagepool")
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
@@ -277,7 +278,7 @@ func TestEthNewBlockFilter(t *testing.T) {
 func TestEthNewFilterCatchAll(t *testing.T) {
 	require := require.New(t)
 
-	kit.QuietMiningLogs()
+	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
@@ -426,166 +427,9 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	}
 }
 
-func parseEthLogsFromSubscriptionResponses(subResponses []ethtypes.EthSubscriptionResponse) ([]*ethtypes.EthLog, error) {
-	elogs := make([]*ethtypes.EthLog, 0, len(subResponses))
-	for i := range subResponses {
-		rlist, ok := subResponses[i].Result.([]interface{})
-		if !ok {
-			return nil, xerrors.Errorf("expected subscription result to be []interface{}, but was %T", subResponses[i].Result)
-		}
-
-		for _, r := range rlist {
-			rmap, ok := r.(map[string]interface{})
-			if !ok {
-				return nil, xerrors.Errorf("expected subscription result entry to be map[string]interface{}, but was %T", r)
-			}
-
-			elog, err := ParseEthLog(rmap)
-			if err != nil {
-				return nil, err
-			}
-			elogs = append(elogs, elog)
-		}
-	}
-
-	return elogs, nil
-}
-
-func parseEthLogsFromFilterResult(res *ethtypes.EthFilterResult) ([]*ethtypes.EthLog, error) {
-	elogs := make([]*ethtypes.EthLog, 0, len(res.Results))
-
-	for _, r := range res.Results {
-		rmap, ok := r.(map[string]interface{})
-		if !ok {
-			return nil, xerrors.Errorf("expected filter result entry to be map[string]interface{}, but was %T", r)
-		}
-
-		elog, err := ParseEthLog(rmap)
-		if err != nil {
-			return nil, err
-		}
-		elogs = append(elogs, elog)
-	}
-
-	return elogs, nil
-}
-
-func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
-	el := &ethtypes.EthLog{}
-
-	ethHash := func(k string, v interface{}) (ethtypes.EthHash, error) {
-		s, ok := v.(string)
-		if !ok {
-			return ethtypes.EthHash{}, xerrors.Errorf(k + " not a string")
-		}
-		return ethtypes.ParseEthHash(s)
-	}
-
-	ethUint64 := func(k string, v interface{}) (ethtypes.EthUint64, error) {
-		s, ok := v.(string)
-		if !ok {
-			return 0, xerrors.Errorf(k + " not a string")
-		}
-		parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
-		if err != nil {
-			return 0, err
-		}
-		return ethtypes.EthUint64(parsedInt), nil
-	}
-
-	var err error
-	for k, v := range in {
-		switch k {
-		case "removed":
-			b, ok := v.(bool)
-			if ok {
-				el.Removed = b
-				continue
-			}
-			s, ok := v.(string)
-			if !ok {
-				return nil, xerrors.Errorf(k + ": not a string")
-			}
-			el.Removed, err = strconv.ParseBool(s)
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-		case "address":
-			s, ok := v.(string)
-			if !ok {
-				return nil, xerrors.Errorf(k + ": not a string")
-			}
-			el.Address, err = ethtypes.ParseEthAddress(s)
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-		case "logIndex":
-			el.LogIndex, err = ethUint64(k, v)
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-		case "transactionIndex":
-			el.TransactionIndex, err = ethUint64(k, v)
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-		case "blockNumber":
-			el.BlockNumber, err = ethUint64(k, v)
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-		case "transactionHash":
-			el.TransactionHash, err = ethHash(k, v)
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-		case "blockHash":
-			el.BlockHash, err = ethHash(k, v)
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-		case "data":
-			s, ok := v.(string)
-			if !ok {
-				return nil, xerrors.Errorf(k + ": not a string")
-			}
-			data, err := hex.DecodeString(s[2:])
-			if err != nil {
-				return nil, xerrors.Errorf("%s: %w", k, err)
-			}
-			el.Data = data
-
-		case "topics":
-			s, ok := v.(string)
-			if ok {
-				topic, err := hex.DecodeString(s[2:])
-				if err != nil {
-					return nil, xerrors.Errorf("%s: %w", k, err)
-				}
-				el.Topics = append(el.Topics, topic)
-				continue
-			}
-
-			sl, ok := v.([]interface{})
-			if !ok {
-				return nil, xerrors.Errorf(k + ": not a slice")
-			}
-			for _, s := range sl {
-				topic, err := hex.DecodeString(s.(string)[2:])
-				if err != nil {
-					return nil, xerrors.Errorf("%s: %w", k, err)
-				}
-				el.Topics = append(el.Topics, topic)
-			}
-		}
-	}
-
-	return el, err
-}
-
 func TestEthGetLogsAll(t *testing.T) {
 	require := require.New(t)
-	kit.QuietMiningLogs()
+	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
 	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
@@ -630,7 +474,7 @@ func TestEthGetLogsAll(t *testing.T) {
 func TestEthGetLogsByTopic(t *testing.T) {
 	require := require.New(t)
 
-	kit.QuietMiningLogs()
+	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
 	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
@@ -669,7 +513,7 @@ func TestEthGetLogsByTopic(t *testing.T) {
 func TestEthSubscribeLogs(t *testing.T) {
 	require := require.New(t)
 
-	kit.QuietMiningLogs()
+	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
@@ -729,7 +573,7 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 func TestEthGetLogs(t *testing.T) {
 	require := require.New(t)
-	kit.QuietMiningLogs()
+	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
 	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
@@ -740,6 +584,7 @@ func TestEthGetLogs(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
+	// Set up the test fixture with a standard list of invocations
 	contract1, contract2, messages := invokeEventMatrix(ctx, t, client)
 
 	testCases := []struct {
@@ -843,6 +688,15 @@ func TestEthGetLogs(t *testing.T) {
 						EventMatrixContract.Ev["EventTwoIndexed"],
 						paddedUint64(44),
 						paddedUint64(19),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexed"],
+						paddedUint64(40),
+						paddedUint64(20),
 					},
 					Data: nil,
 				},
@@ -1213,15 +1067,231 @@ func TestEthGetLogs(t *testing.T) {
 	}
 }
 
+func TestEthGetLogsWithBlockRanges(t *testing.T) {
+	require := require.New(t)
+	kit.QuietAllLogsExcept("events", "messagepool")
+
+	blockTime := 100 * time.Millisecond
+	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Set up the test fixture with a standard list of invocations
+	_, _, messages := invokeEventMatrix(ctx, t, client)
+
+	// Organize expected logs into three partitions for range testing
+	expectedByHeight := map[abi.ChainEpoch][]ExpectedEthLog{}
+	distinctHeights := map[abi.ChainEpoch]bool{}
+
+	// Select events for partitioning
+	for _, m := range messages {
+		if bytes.Equal(m.invocation.Selector, EventMatrixContract.Fn["logEventTwoIndexedWithData"]) {
+			addr := getContractEthAddress(ctx, t, client, m.invocation.Target)
+			args := unpackUint64Values(m.invocation.Data)
+			require.Equal(3, len(args), "logEventTwoIndexedWithData should have 3 arguments")
+
+			distinctHeights[m.ts.Height()] = true
+			expectedByHeight[m.ts.Height()] = append(expectedByHeight[m.ts.Height()], ExpectedEthLog{
+				Address: addr,
+				Topics: []ethtypes.EthBytes{
+					EventMatrixContract.Ev["EventTwoIndexedWithData"],
+					paddedUint64(args[0]),
+					paddedUint64(args[1]),
+				},
+				Data: paddedUint64(args[2]),
+			})
+		}
+	}
+
+	// Divide heights into 3 partitions, they don't have to be equal
+	require.True(len(distinctHeights) >= 3, "expected slice should divisible into three partitions")
+	heights := make([]abi.ChainEpoch, 0, len(distinctHeights))
+	for h := range distinctHeights {
+		heights = append(heights, h)
+	}
+	sort.Slice(heights, func(i, j int) bool {
+		return heights[i] < heights[j]
+	})
+	heightsPerPartition := len(heights) / 3
+
+	type partition struct {
+		start    abi.ChainEpoch
+		end      abi.ChainEpoch
+		expected []ExpectedEthLog
+	}
+
+	var partition1, partition2, partition3 partition
+
+	partition1.start = heights[0]
+	partition1.end = heights[heightsPerPartition-1]
+	for e := partition1.start; e <= partition1.end; e++ {
+		exp, ok := expectedByHeight[e]
+		if !ok {
+			continue
+		}
+		partition1.expected = append(partition1.expected, exp...)
+	}
+	t.Logf("partition1 from %d to %d with %d expected", partition1.start, partition1.end, len(partition1.expected))
+	require.True(len(partition1.expected) > 0, "partition should have events")
+
+	partition2.start = heights[heightsPerPartition]
+	partition2.end = heights[heightsPerPartition*2-1]
+	for e := partition2.start; e <= partition2.end; e++ {
+		exp, ok := expectedByHeight[e]
+		if !ok {
+			continue
+		}
+		partition2.expected = append(partition2.expected, exp...)
+	}
+	t.Logf("partition2 from %d to %d with %d expected", partition2.start, partition2.end, len(partition2.expected))
+	require.True(len(partition2.expected) > 0, "partition should have events")
+
+	partition3.start = heights[heightsPerPartition*2]
+	partition3.end = heights[len(heights)-1]
+	for e := partition3.start; e <= partition3.end; e++ {
+		exp, ok := expectedByHeight[e]
+		if !ok {
+			continue
+		}
+		partition3.expected = append(partition3.expected, exp...)
+	}
+	t.Logf("partition3 from %d to %d with %d expected", partition3.start, partition3.end, len(partition3.expected))
+	require.True(len(partition3.expected) > 0, "partition should have events")
+
+	// these are the topics we selected for partitioning earlier
+	topics := []ethtypes.EthHash{paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])}
+
+	union := func(lists ...[]ExpectedEthLog) []ExpectedEthLog {
+		ret := []ExpectedEthLog{}
+		for _, list := range lists {
+			ret = append(ret, list...)
+		}
+		return ret
+	}
+
+	testCases := []struct {
+		name     string
+		spec     *ethtypes.EthFilterSpec
+		expected []ExpectedEthLog
+	}{
+		{
+			name:     "find all events from genesis",
+			spec:     EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected, partition2.expected, partition3.expected),
+		},
+
+		{
+			name:     "find all from start of partition1",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition1.start).Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected, partition2.expected, partition3.expected),
+		},
+
+		{
+			name:     "find all from start of partition2",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition2.start).Topic1OneOf(topics...).Filter(),
+			expected: union(partition2.expected, partition3.expected),
+		},
+
+		{
+			name:     "find all from start of partition3",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition3.start).Topic1OneOf(topics...).Filter(),
+			expected: union(partition3.expected),
+		},
+
+		{
+			name:     "find none after end of partition3",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition3.end + 1).Topic1OneOf(topics...).Filter(),
+			expected: nil,
+		},
+
+		{
+			name:     "find all events from genesis to end of partition1",
+			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected),
+		},
+
+		{
+			name:     "find all events from genesis to end of partition2",
+			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition2.end).Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected, partition2.expected),
+		},
+
+		{
+			name:     "find all events from genesis to end of partition3",
+			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition3.end).Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected, partition2.expected, partition3.expected),
+		},
+
+		{
+			name:     "find none from genesis to start of partition1",
+			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition1.start - 1).Topic1OneOf(topics...).Filter(),
+			expected: nil,
+		},
+
+		{
+			name:     "find all events in partition1",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition1.start).ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected),
+		},
+
+		{
+			name:     "find all events in partition2",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition2.start).ToBlockEpoch(partition2.end).Topic1OneOf(topics...).Filter(),
+			expected: union(partition2.expected),
+		},
+
+		{
+			name:     "find all events in partition3",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition3.start).ToBlockEpoch(partition3.end).Topic1OneOf(topics...).Filter(),
+			expected: union(partition3.expected),
+		},
+
+		{
+			name:     "find all events from earliest to end of partition1",
+			spec:     EthFilterBuilder().FromBlock("earliest").ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected),
+		},
+
+		{
+			name:     "find all events from start of partition3 to latest",
+			spec:     EthFilterBuilder().FromBlockEpoch(partition3.start).ToBlock("latest").Topic1OneOf(topics...).Filter(),
+			expected: union(partition3.expected),
+		},
+
+		{
+			name:     "find all events from earliest to latest",
+			spec:     EthFilterBuilder().FromBlock("earliest").ToBlock("latest").Topic1OneOf(topics...).Filter(),
+			expected: union(partition1.expected, partition2.expected, partition3.expected),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // appease the lint despot
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := client.EthGetLogs(ctx, tc.spec)
+			require.NoError(err)
+
+			elogs, err := parseEthLogsFromFilterResult(res)
+			require.NoError(err)
+			AssertEthLogs(t, elogs, tc.expected, messages)
+		})
+	}
+}
+
 // -------------------------------------------------------------------------------
 // end of tests
 // -------------------------------------------------------------------------------
 
 type msgInTipset struct {
-	msg      api.Message
-	events   []types.Event // events extracted from receipt
-	ts       *types.TipSet
-	reverted bool
+	invocation Invocation // the solidity invocation that generated this message
+	msg        api.Message
+	events     []types.Event // events extracted from receipt
+	ts         *types.TipSet
+	reverted   bool
 }
 
 func installContract(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string) (address.Address, address.Address) {
@@ -1236,11 +1306,11 @@ func installContract(ctx context.Context, t *testing.T, client *kit.TestFullNode
 	return sender, actorAddr
 }
 
-func getContractEthAddress(ctx context.Context, t *testing.T, client *kit.TestFullNode, idAddr address.Address) ethtypes.EthAddress {
+func getContractEthAddress(ctx context.Context, t *testing.T, client *kit.TestFullNode, addr address.Address) ethtypes.EthAddress {
 	head, err := client.ChainHead(ctx)
 	require.NoError(t, err)
 
-	actor, err := client.StateGetActor(ctx, idAddr, head.Key())
+	actor, err := client.StateGetActor(ctx, addr, head.Key())
 	require.NoError(t, err)
 	require.NotNil(t, actor.Address)
 	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
@@ -1316,7 +1386,8 @@ func invokeAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, invoca
 		t.Fatalf("timeout waiting for first head change")
 	}
 
-	events := map[cid.Cid][]types.Event{}
+	eventMap := map[cid.Cid][]types.Event{}
+	invocationMap := map[cid.Cid]Invocation{}
 	for _, inv := range invocations {
 		if inv.MinHeight > 0 {
 			for {
@@ -1335,10 +1406,12 @@ func invokeAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, invoca
 		ret := client.EVM().InvokeSolidity(ctx, inv.Sender, inv.Target, inv.Selector, inv.Data)
 		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 
+		invocationMap[ret.Message] = inv
+
 		require.NotNil(t, ret.Receipt.EventsRoot, "no event root on receipt")
 
 		evs := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-		events[ret.Message] = evs
+		eventMap[ret.Message] = evs
 	}
 
 	select {
@@ -1349,7 +1422,11 @@ func invokeAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, invoca
 
 	received := make(map[ethtypes.EthHash]msgInTipset)
 	for m := range msgChan {
-		evs, ok := events[m.msg.Cid]
+		inv, ok := invocationMap[m.msg.Cid]
+		require.True(ok)
+		m.invocation = inv
+
+		evs, ok := eventMap[m.msg.Cid]
 		require.True(ok)
 		m.events = evs
 
@@ -1424,7 +1501,7 @@ func invokeEventMatrix(ctx context.Context, t *testing.T, client *kit.TestFullNo
 		// topic2: 44
 		// topic3: 19
 		{
-			Sender:   sender1,
+			Sender:   sender2,
 			Target:   contract2,
 			Selector: EventMatrixContract.Fn["logEventTwoIndexed"],
 			Data:     packUint64Values(44, 19),
@@ -1562,6 +1639,16 @@ func invokeEventMatrix(ctx context.Context, t *testing.T, client *kit.TestFullNo
 			Selector: EventMatrixContract.Fn["logEventTwoIndexedWithData"],
 			Data:     packUint64Values(46, 14, 19),
 		},
+		// log EventTwoIndexed(44,19) from contract1
+		// topic1: hash(EventTwoIndexed)
+		// topic2: 44
+		// topic3: 19
+		{
+			Sender:   sender1,
+			Target:   contract1,
+			Selector: EventMatrixContract.Fn["logEventTwoIndexed"],
+			Data:     packUint64Values(40, 20),
+		},
 	}
 
 	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
@@ -1641,7 +1728,7 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 
 		if !matched {
 			var buf strings.Builder
-			buf.WriteString("found unexpected log:\n")
+			buf.WriteString(fmt.Sprintf("found unexpected log at height %d:\n", msg.ts.Height()))
 			buf.WriteString(fmt.Sprintf("  address: %s\n", elog.Address))
 			buf.WriteString(fmt.Sprintf("  topics: %s\n", formatTopics(elog.Topics)))
 			buf.WriteString(fmt.Sprintf("  data: %x\n", elog.Data))
@@ -1668,6 +1755,163 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 			t.Errorf(buf.String())
 		}
 	}
+}
+
+func parseEthLogsFromSubscriptionResponses(subResponses []ethtypes.EthSubscriptionResponse) ([]*ethtypes.EthLog, error) {
+	elogs := make([]*ethtypes.EthLog, 0, len(subResponses))
+	for i := range subResponses {
+		rlist, ok := subResponses[i].Result.([]interface{})
+		if !ok {
+			return nil, xerrors.Errorf("expected subscription result to be []interface{}, but was %T", subResponses[i].Result)
+		}
+
+		for _, r := range rlist {
+			rmap, ok := r.(map[string]interface{})
+			if !ok {
+				return nil, xerrors.Errorf("expected subscription result entry to be map[string]interface{}, but was %T", r)
+			}
+
+			elog, err := ParseEthLog(rmap)
+			if err != nil {
+				return nil, err
+			}
+			elogs = append(elogs, elog)
+		}
+	}
+
+	return elogs, nil
+}
+
+func parseEthLogsFromFilterResult(res *ethtypes.EthFilterResult) ([]*ethtypes.EthLog, error) {
+	elogs := make([]*ethtypes.EthLog, 0, len(res.Results))
+
+	for _, r := range res.Results {
+		rmap, ok := r.(map[string]interface{})
+		if !ok {
+			return nil, xerrors.Errorf("expected filter result entry to be map[string]interface{}, but was %T", r)
+		}
+
+		elog, err := ParseEthLog(rmap)
+		if err != nil {
+			return nil, err
+		}
+		elogs = append(elogs, elog)
+	}
+
+	return elogs, nil
+}
+
+func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
+	el := &ethtypes.EthLog{}
+
+	ethHash := func(k string, v interface{}) (ethtypes.EthHash, error) {
+		s, ok := v.(string)
+		if !ok {
+			return ethtypes.EthHash{}, xerrors.Errorf(k + " not a string")
+		}
+		return ethtypes.ParseEthHash(s)
+	}
+
+	ethUint64 := func(k string, v interface{}) (ethtypes.EthUint64, error) {
+		s, ok := v.(string)
+		if !ok {
+			return 0, xerrors.Errorf(k + " not a string")
+		}
+		parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
+		if err != nil {
+			return 0, err
+		}
+		return ethtypes.EthUint64(parsedInt), nil
+	}
+
+	var err error
+	for k, v := range in {
+		switch k {
+		case "removed":
+			b, ok := v.(bool)
+			if ok {
+				el.Removed = b
+				continue
+			}
+			s, ok := v.(string)
+			if !ok {
+				return nil, xerrors.Errorf(k + ": not a string")
+			}
+			el.Removed, err = strconv.ParseBool(s)
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+		case "address":
+			s, ok := v.(string)
+			if !ok {
+				return nil, xerrors.Errorf(k + ": not a string")
+			}
+			el.Address, err = ethtypes.ParseEthAddress(s)
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+		case "logIndex":
+			el.LogIndex, err = ethUint64(k, v)
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+		case "transactionIndex":
+			el.TransactionIndex, err = ethUint64(k, v)
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+		case "blockNumber":
+			el.BlockNumber, err = ethUint64(k, v)
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+		case "transactionHash":
+			el.TransactionHash, err = ethHash(k, v)
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+		case "blockHash":
+			el.BlockHash, err = ethHash(k, v)
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+		case "data":
+			s, ok := v.(string)
+			if !ok {
+				return nil, xerrors.Errorf(k + ": not a string")
+			}
+			data, err := hex.DecodeString(s[2:])
+			if err != nil {
+				return nil, xerrors.Errorf("%s: %w", k, err)
+			}
+			el.Data = data
+
+		case "topics":
+			s, ok := v.(string)
+			if ok {
+				topic, err := hex.DecodeString(s[2:])
+				if err != nil {
+					return nil, xerrors.Errorf("%s: %w", k, err)
+				}
+				el.Topics = append(el.Topics, topic)
+				continue
+			}
+
+			sl, ok := v.([]interface{})
+			if !ok {
+				return nil, xerrors.Errorf(k + ": not a slice")
+			}
+			for _, s := range sl {
+				topic, err := hex.DecodeString(s.(string)[2:])
+				if err != nil {
+					return nil, xerrors.Errorf("%s: %w", k, err)
+				}
+				el.Topics = append(el.Topics, topic)
+			}
+		}
+	}
+
+	return el, err
 }
 
 func decodeLogBytes(orig []byte) []byte {
@@ -1728,6 +1972,19 @@ func packUint64Values(vals ...uint64) []byte {
 	return ret
 }
 
+func unpackUint64Values(data []byte) []uint64 {
+	if len(data)%32 != 0 {
+		panic("data length not a multiple of 32")
+	}
+
+	var vals []uint64
+	for i := 0; i < len(data); i += 32 {
+		v := binary.BigEndian.Uint64(data[i+24 : i+32])
+		vals = append(vals, v)
+	}
+	return vals
+}
+
 func EthFilterBuilder() *ethFilterBuilder { return &ethFilterBuilder{} }
 
 type ethFilterBuilder struct {
@@ -1741,7 +1998,7 @@ func (e *ethFilterBuilder) FromBlock(v string) *ethFilterBuilder {
 	return e
 }
 
-func (e *ethFilterBuilder) FromBlockEpoch(v uint64) *ethFilterBuilder {
+func (e *ethFilterBuilder) FromBlockEpoch(v abi.ChainEpoch) *ethFilterBuilder {
 	s := ethtypes.EthUint64(v).Hex()
 	e.filter.FromBlock = &s
 	return e
@@ -1752,7 +2009,7 @@ func (e *ethFilterBuilder) ToBlock(v string) *ethFilterBuilder {
 	return e
 }
 
-func (e *ethFilterBuilder) ToBlockEpoch(v uint64) *ethFilterBuilder {
+func (e *ethFilterBuilder) ToBlockEpoch(v abi.ChainEpoch) *ethFilterBuilder {
 	s := ethtypes.EthUint64(v).Hex()
 	e.filter.ToBlock = &s
 	return e
