@@ -28,7 +28,6 @@ func TestTransactionHashLookup(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
-		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 
@@ -120,7 +119,6 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
-		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 
@@ -190,7 +188,6 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
-		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 
@@ -267,7 +264,6 @@ func TestTransactionHashLookupNonexistentMessage(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
-		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 
@@ -298,7 +294,6 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
-		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 
@@ -395,7 +390,6 @@ func TestEthGetMessageCidByTransactionHashSecp(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
-		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 
@@ -466,7 +460,6 @@ func TestEthGetMessageCidByTransactionHashBLS(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
-		kit.EthRPC(),
 	)
 	ens.InterconnectAll().BeginMining(blocktime)
 

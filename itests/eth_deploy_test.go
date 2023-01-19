@@ -40,9 +40,7 @@ func TestDeployment(t *testing.T) {
 		kit.WithCfgOpt(func(cfg *config.FullNode) error {
 			cfg.ActorEvent.EnableRealTimeFilterAPI = true
 			return nil
-		}),
-		kit.EthRPC(),
-	)
+		}))
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
