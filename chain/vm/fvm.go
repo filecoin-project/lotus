@@ -347,7 +347,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	return ret, nil
 }
 
-func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+func NewDebugFVM(ctx context.Context, opts *VMOpts, executeInNextVersion bool) (*FVM, error) {
 	baseBstore := opts.Bstore
 	overlayBstore := blockstore.NewMemorySync()
 	cborStore := cbor.NewCborStore(overlayBstore)
@@ -360,6 +360,9 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	fvmOpts.Debug = true
+	if executeInNextVersion {
+		fvmOpts.NetworkVersion += 1
+	}
 
 	putMapping := func(ar map[cid.Cid]cid.Cid) (cid.Cid, error) {
 		var mapping xMapping
@@ -426,12 +429,14 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil
 	}
 
-	av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
+	av, err := actorstypes.VersionForNetwork(fvmOpts.NetworkVersion)
 	if err != nil {
-		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
+		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", fvmOpts.NetworkVersion, err)
 	}
+	envName := fmt.Sprintf("LOTUS_FVM_DEBUG_BUNDLE_V%d", av)
+	log.Warnf("looking for bundle for debug execution under env: %s", envName)
 
-	debugBundlePath := os.Getenv(fmt.Sprintf("LOTUS_FVM_DEBUG_BUNDLE_V%d", av))
+	debugBundlePath := os.Getenv(envName)
 	if debugBundlePath != "" {
 		if err := createMapping(debugBundlePath); err != nil {
 			log.Errorf("failed to create v%d debug mapping", av)
@@ -608,13 +613,15 @@ type dualExecutionFVM struct {
 
 var _ Interface = (*dualExecutionFVM)(nil)
 
+var useFvmDebugForward = os.Getenv("LOTUS_FVM_DEVELOPER_DEBUG_FORWARD") == "1"
+
 func NewDualExecutionFVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	main, err := NewFVM(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	debug, err := NewDebugFVM(ctx, opts)
+	debug, err := NewDebugFVM(ctx, opts, useFvmDebugForward)
 	if err != nil {
 		return nil, err
 	}
@@ -635,12 +642,17 @@ func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMs
 		ret, err = vm.main.ApplyMessage(ctx, cmsg)
 	}()
 
+	var ret2 *ApplyRet
+	var err2 error
+
 	go func() {
 		defer wg.Done()
-		if _, err := vm.debug.ApplyMessage(ctx, cmsg); err != nil {
-			log.Errorf("debug execution failed: %w", err)
-		}
+		ret2, err2 = vm.debug.ApplyMessage(ctx, cmsg)
 	}()
+	if err2 != nil {
+		log.Debugf("debug execution failed: %+v", err2)
+	}
+	_ = ret2
 
 	wg.Wait()
 	return ret, err
