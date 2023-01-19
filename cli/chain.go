@@ -63,6 +63,7 @@ var ChainCmd = &cli.Command{
 		ChainEncodeCmd,
 		ChainDisputeSetCmd,
 		ChainPruneCmd,
+		ChainGetTipSetByHeightCmd,
 	},
 }
 
@@ -1502,5 +1503,40 @@ var ChainPruneCmd = &cli.Command{
 		opts.RetainState = int64(cctx.Int("retention"))
 
 		return api.ChainPrune(ctx, opts)
+	},
+}
+
+var ChainGetTipSetByHeightCmd = &cli.Command{
+	Name:    "gettipset",
+	Aliases: []string{"love"},
+	Usage:   "View a segment of the chain",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{Name: "height", DefaultText: "current head"},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var head *types.TipSet
+
+		if cctx.IsSet("height") {
+			head, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("height")), types.EmptyTSK)
+		} else {
+			head, err = api.ChainHead(ctx)
+		}
+		if err != nil {
+			return err
+		}
+
+		head, err = api.ChainGetTipSet(ctx, head.Parents())
+		if err != nil {
+			return err
+		}
+		fmt.Printf(": %s\n", head.Key().Cids())
+		return nil
 	},
 }
