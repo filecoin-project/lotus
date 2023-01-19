@@ -707,7 +707,7 @@ func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types
 	var err2 error
 	go func() {
 		defer wg.Done()
-		ret2, err2 = vm.debug.ApplyMessage(ctx, msg)
+		ret2, err2 = vm.debug.ApplyImplicitMessage(ctx, msg)
 	}()
 
 	wg.Wait()
