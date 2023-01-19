@@ -1300,18 +1300,6 @@ type msgInTipset struct {
 	reverted   bool
 }
 
-func installContract(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string) (address.Address, address.Address) {
-	sender, err := client.WalletDefaultAddress(ctx)
-	require.NoError(t, err)
-
-	result := client.EVM().DeployContractFile(ctx, sender, filename)
-
-	actorAddr, err := address.NewIDAddress(result.ActorID)
-	require.NoError(t, err)
-
-	return sender, actorAddr
-}
-
 func getContractEthAddress(ctx context.Context, t *testing.T, client *kit.TestFullNode, addr address.Address) ethtypes.EthAddress {
 	head, err := client.ChainHead(ctx)
 	require.NoError(t, err)
@@ -1449,7 +1437,7 @@ func invokeLogFourData(t *testing.T, client *kit.TestFullNode, iterations int) (
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	fromAddr, idAddr := installContract(ctx, t, client, EventsContract.Filename)
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, EventsContract.Filename)
 
 	invocations := make([]Invocation, iterations)
 	for i := range invocations {
@@ -1469,8 +1457,8 @@ func invokeLogFourData(t *testing.T, client *kit.TestFullNode, iterations int) (
 }
 
 func invokeEventMatrix(ctx context.Context, t *testing.T, client *kit.TestFullNode) (ethtypes.EthAddress, ethtypes.EthAddress, map[ethtypes.EthHash]msgInTipset) {
-	sender1, contract1 := installContract(ctx, t, client, EventMatrixContract.Filename)
-	sender2, contract2 := installContract(ctx, t, client, EventMatrixContract.Filename)
+	sender1, contract1 := client.EVM().DeployContractFromFilename(ctx, EventMatrixContract.Filename)
+	sender2, contract2 := client.EVM().DeployContractFromFilename(ctx, EventMatrixContract.Filename)
 
 	invocations := []Invocation{
 		// log EventZeroData()
