@@ -81,7 +81,8 @@ var EventsContract = SolidityContractDef{
 }
 
 func TestEthNewPendingTransactionFilter(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
 	kit.QuietAllLogsExcept("events", "messagepool")
 
@@ -113,9 +114,15 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 		require.NoError(t, err)
 		<-headChangeCh // skip hccurrent
 
+		defer func() {
+			close(waitAllCh)
+		}()
+
 		count := 0
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case headChanges := <-headChangeCh:
 				for _, change := range headChanges {
 					if change.Type == store.HCApply {
@@ -123,7 +130,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 						require.NoError(t, err)
 						count += len(msgs)
 						if count == iterations {
-							waitAllCh <- struct{}{}
+							return
 						}
 					}
 				}
@@ -148,8 +155,8 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 
 	select {
 	case <-waitAllCh:
-	case <-time.After(time.Minute):
-		t.Errorf("timeout to wait for pack messages")
+	case <-ctx.Done():
+		t.Errorf("timeout waiting to pack messages")
 	}
 
 	expected := make(map[string]bool)
@@ -178,7 +185,8 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 }
 
 func TestEthNewBlockFilter(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
 	kit.QuietAllLogsExcept("events", "messagepool")
 
@@ -211,17 +219,22 @@ func TestEthNewBlockFilter(t *testing.T) {
 		require.NoError(t, err)
 		<-headChangeCh // skip hccurrent
 
+		defer func() {
+			close(tipsetChan)
+			close(waitAllCh)
+		}()
+
 		count := 0
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case headChanges := <-headChangeCh:
 				for _, change := range headChanges {
 					if change.Type == store.HCApply || change.Type == store.HCRevert {
 						count++
 						tipsetChan <- change.Val
 						if count == iterations {
-							close(tipsetChan)
-							close(waitAllCh)
 							return
 						}
 					}
@@ -244,8 +257,8 @@ func TestEthNewBlockFilter(t *testing.T) {
 
 	select {
 	case <-waitAllCh:
-	case <-time.After(time.Minute):
-		t.Errorf("timeout to wait for pack messages")
+	case <-ctx.Done():
+		t.Errorf("timeout waiting to pack messages")
 	}
 
 	expected := make(map[string]bool)
@@ -307,79 +320,8 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	filterID, err := client.EthNewFilter(ctx, &ethtypes.EthFilterSpec{})
 	require.NoError(err)
 
-	const iterations = 10
-
-	type msgInTipset struct {
-		msg api.Message
-		ts  *types.TipSet
-	}
-
-	msgChan := make(chan msgInTipset, iterations)
-
-	waitAllCh := make(chan struct{})
-	go func() {
-		headChangeCh, err := client.ChainNotify(ctx)
-		require.NoError(err)
-		<-headChangeCh // skip hccurrent
-
-		count := 0
-		for {
-			select {
-			case headChanges := <-headChangeCh:
-				for _, change := range headChanges {
-					if change.Type == store.HCApply || change.Type == store.HCRevert {
-						msgs, err := client.ChainGetMessagesInTipset(ctx, change.Val.Key())
-						require.NoError(err)
-
-						count += len(msgs)
-						for _, m := range msgs {
-							select {
-							case msgChan <- msgInTipset{msg: m, ts: change.Val}:
-							default:
-							}
-						}
-
-						if count == iterations {
-							close(msgChan)
-							close(waitAllCh)
-							return
-						}
-					}
-				}
-			}
-		}
-	}()
-
-	time.Sleep(blockTime * 6)
-
-	for i := 0; i < iterations; i++ {
-		// log a four topic event with data
-		ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
-		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
-	}
-
-	select {
-	case <-waitAllCh:
-	case <-time.After(time.Minute):
-		t.Errorf("timeout to wait for pack messages")
-	}
-
-	received := make(map[ethtypes.EthHash]msgInTipset)
-	for m := range msgChan {
-		eh, err := ethtypes.EthHashFromCid(m.msg.Cid)
-		require.NoError(err)
-		received[eh] = m
-	}
-	require.Equal(iterations, len(received), "all messages on chain")
-
-	ts, err := client.ChainHead(ctx)
-	require.NoError(err)
-
-	actor, err := client.StateGetActor(ctx, idAddr, ts.Key())
-	require.NoError(err)
-	require.NotNil(actor.Address)
-	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
-	require.NoError(err)
+	const iterations = 3
+	ethContractAddr, received := invokeLogFourData(t, client, iterations)
 
 	// collect filter results
 	res, err := client.EthGetFilterChanges(ctx, filterID)
@@ -388,43 +330,42 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	// expect to have seen iteration number of events
 	require.Equal(iterations, len(res.Results))
 
-	topic1 := paddedEthBytes([]byte{0x11, 0x11})
-	topic2 := paddedEthBytes([]byte{0x22, 0x22})
-	topic3 := paddedEthBytes([]byte{0x33, 0x33})
-	topic4 := paddedEthBytes([]byte{0x44, 0x44})
-	data1 := paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88})
-
-	for _, r := range res.Results {
-		// since response is a union and Go doesn't support them well, go-jsonrpc won't give us typed results
-		rc, ok := r.(map[string]interface{})
-		require.True(ok, "result type")
-
-		elog, err := ParseEthLog(rc)
-		require.NoError(err)
-
-		require.Equal(ethContractAddr, elog.Address, "event address")
-		require.Equal(ethtypes.EthUint64(0), elog.TransactionIndex, "transaction index") // only one message per tipset
-
-		msg, exists := received[elog.TransactionHash]
-		require.True(exists, "message seen on chain")
-
-		tsCid, err := msg.ts.Key().Cid()
-		require.NoError(err)
-
-		tsCidHash, err := ethtypes.EthHashFromCid(tsCid)
-		require.NoError(err)
-
-		require.Equal(tsCidHash, elog.BlockHash, "block hash")
-
-		require.Equal(4, len(elog.Topics), "number of topics")
-		require.Equal(topic1, elog.Topics[0], "topic1")
-		require.Equal(topic2, elog.Topics[1], "topic2")
-		require.Equal(topic3, elog.Topics[2], "topic3")
-		require.Equal(topic4, elog.Topics[3], "topic4")
-
-		require.Equal(data1, elog.Data, "data1")
-
+	expected := []ExpectedEthLog{
+		{
+			Address: ethContractAddr,
+			Topics: []ethtypes.EthBytes{
+				paddedEthBytes([]byte{0x11, 0x11}),
+				paddedEthBytes([]byte{0x22, 0x22}),
+				paddedEthBytes([]byte{0x33, 0x33}),
+				paddedEthBytes([]byte{0x44, 0x44}),
+			},
+			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+		},
+		{
+			Address: ethContractAddr,
+			Topics: []ethtypes.EthBytes{
+				paddedEthBytes([]byte{0x11, 0x11}),
+				paddedEthBytes([]byte{0x22, 0x22}),
+				paddedEthBytes([]byte{0x33, 0x33}),
+				paddedEthBytes([]byte{0x44, 0x44}),
+			},
+			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+		},
+		{
+			Address: ethContractAddr,
+			Topics: []ethtypes.EthBytes{
+				paddedEthBytes([]byte{0x11, 0x11}),
+				paddedEthBytes([]byte{0x22, 0x22}),
+				paddedEthBytes([]byte{0x33, 0x33}),
+				paddedEthBytes([]byte{0x44, 0x44}),
+			},
+			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+		},
 	}
+
+	elogs, err := parseEthLogsFromFilterResult(res)
+	require.NoError(err)
+	AssertEthLogs(t, elogs, expected, received)
 }
 
 func TestEthGetLogsAll(t *testing.T) {
@@ -444,7 +385,7 @@ func TestEthGetLogsAll(t *testing.T) {
 	ethContractAddr, received := invokeLogFourData(t, client, invocations)
 
 	// Build filter spec
-	spec := EthFilterBuilder().
+	spec := newEthFilterBuilder().
 		FromBlockEpoch(0).
 		Topic1OneOf(paddedEthHash([]byte{0x11, 0x11})).
 		Filter()
@@ -594,7 +535,7 @@ func TestEthGetLogs(t *testing.T) {
 	}{
 		{
 			name: "find all EventZeroData events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventZeroData"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventZeroData"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -615,7 +556,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventOneData events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneData"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneData"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -636,7 +577,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventTwoData events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoData"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoData"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -650,7 +591,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventThreeData events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeData"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeData"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -664,7 +605,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventOneIndexed events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -679,7 +620,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventTwoIndexed events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexed"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexed"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -704,7 +645,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventThreeIndexed events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexed"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexed"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -721,7 +662,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventOneIndexedWithData events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -752,7 +693,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventTwoIndexedWithData events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -786,7 +727,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all EventThreeIndexedWithData events",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexedWithData"])).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexedWithData"])).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -804,7 +745,7 @@ func TestEthGetLogs(t *testing.T) {
 
 		{
 			name: "find all events from contract2",
-			spec: EthFilterBuilder().FromBlockEpoch(0).AddressOneOf(contract2).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).AddressOneOf(contract2).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -846,7 +787,7 @@ func TestEthGetLogs(t *testing.T) {
 
 		{
 			name: "find all events with topic2 of 44",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -908,7 +849,7 @@ func TestEthGetLogs(t *testing.T) {
 
 		{
 			name: "find all events with topic2 of 44 from contract2",
-			spec: EthFilterBuilder().FromBlockEpoch(0).AddressOneOf(contract2).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).AddressOneOf(contract2).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -935,7 +876,7 @@ func TestEthGetLogs(t *testing.T) {
 
 		{
 			name: "find all EventOneIndexedWithData events from contract1 or contract2",
-			spec: EthFilterBuilder().
+			spec: newEthFilterBuilder().
 				FromBlockEpoch(0).
 				AddressOneOf(contract1, contract2).
 				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).
@@ -971,7 +912,7 @@ func TestEthGetLogs(t *testing.T) {
 
 		{
 			name: "find all events with topic2 of 46",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(46))).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(46))).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -1004,7 +945,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all events with topic2 of 50",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(50))).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(50))).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -1019,7 +960,7 @@ func TestEthGetLogs(t *testing.T) {
 		},
 		{
 			name: "find all events with topic2 of 46 or 50",
-			spec: EthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(46)), paddedEthHash(paddedUint64(50))).Filter(),
+			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(46)), paddedEthHash(paddedUint64(50))).Filter(),
 
 			expected: []ExpectedEthLog{
 				{
@@ -1061,7 +1002,7 @@ func TestEthGetLogs(t *testing.T) {
 
 		{
 			name: "find all events with topic1 of EventTwoIndexedWithData and topic3 of 27",
-			spec: EthFilterBuilder().
+			spec: newEthFilterBuilder().
 				FromBlockEpoch(0).
 				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])).
 				Topic3OneOf(paddedEthHash(paddedUint64(27))).
@@ -1091,7 +1032,7 @@ func TestEthGetLogs(t *testing.T) {
 
 		{
 			name: "find all events with topic1 of EventTwoIndexedWithData or EventOneIndexed and topic2 of 44",
-			spec: EthFilterBuilder().
+			spec: newEthFilterBuilder().
 				FromBlockEpoch(0).
 				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"]), paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).
 				Topic2OneOf(paddedEthHash(paddedUint64(44))).
@@ -1245,91 +1186,91 @@ func TestEthGetLogsWithBlockRanges(t *testing.T) {
 	}{
 		{
 			name:     "find all events from genesis",
-			spec:     EthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected, partition2.expected, partition3.expected),
 		},
 
 		{
 			name:     "find all from start of partition1",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition1.start).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition1.start).Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected, partition2.expected, partition3.expected),
 		},
 
 		{
 			name:     "find all from start of partition2",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition2.start).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition2.start).Topic1OneOf(topics...).Filter(),
 			expected: union(partition2.expected, partition3.expected),
 		},
 
 		{
 			name:     "find all from start of partition3",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition3.start).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition3.start).Topic1OneOf(topics...).Filter(),
 			expected: union(partition3.expected),
 		},
 
 		{
 			name:     "find none after end of partition3",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition3.end + 1).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition3.end + 1).Topic1OneOf(topics...).Filter(),
 			expected: nil,
 		},
 
 		{
 			name:     "find all events from genesis to end of partition1",
-			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected),
 		},
 
 		{
 			name:     "find all events from genesis to end of partition2",
-			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition2.end).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition2.end).Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected, partition2.expected),
 		},
 
 		{
 			name:     "find all events from genesis to end of partition3",
-			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition3.end).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition3.end).Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected, partition2.expected, partition3.expected),
 		},
 
 		{
 			name:     "find none from genesis to start of partition1",
-			spec:     EthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition1.start - 1).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(0).ToBlockEpoch(partition1.start - 1).Topic1OneOf(topics...).Filter(),
 			expected: nil,
 		},
 
 		{
 			name:     "find all events in partition1",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition1.start).ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition1.start).ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected),
 		},
 
 		{
 			name:     "find all events in partition2",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition2.start).ToBlockEpoch(partition2.end).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition2.start).ToBlockEpoch(partition2.end).Topic1OneOf(topics...).Filter(),
 			expected: union(partition2.expected),
 		},
 
 		{
 			name:     "find all events in partition3",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition3.start).ToBlockEpoch(partition3.end).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition3.start).ToBlockEpoch(partition3.end).Topic1OneOf(topics...).Filter(),
 			expected: union(partition3.expected),
 		},
 
 		{
 			name:     "find all events from earliest to end of partition1",
-			spec:     EthFilterBuilder().FromBlock("earliest").ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlock("earliest").ToBlockEpoch(partition1.end).Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected),
 		},
 
 		{
 			name:     "find all events from start of partition3 to latest",
-			spec:     EthFilterBuilder().FromBlockEpoch(partition3.start).ToBlock("latest").Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlockEpoch(partition3.start).ToBlock("latest").Topic1OneOf(topics...).Filter(),
 			expected: union(partition3.expected),
 		},
 
 		{
 			name:     "find all events from earliest to latest",
-			spec:     EthFilterBuilder().FromBlock("earliest").ToBlock("latest").Topic1OneOf(topics...).Filter(),
+			spec:     newEthFilterBuilder().FromBlock("earliest").ToBlock("latest").Topic1OneOf(topics...).Filter(),
 			expected: union(partition1.expected, partition2.expected, partition3.expected),
 		},
 	}
@@ -2050,7 +1991,7 @@ func unpackUint64Values(data []byte) []uint64 {
 	return vals
 }
 
-func EthFilterBuilder() *ethFilterBuilder { return &ethFilterBuilder{} }
+func newEthFilterBuilder() *ethFilterBuilder { return &ethFilterBuilder{} }
 
 type ethFilterBuilder struct {
 	filter ethtypes.EthFilterSpec
