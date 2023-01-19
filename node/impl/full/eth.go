@@ -1896,21 +1896,6 @@ func EthTxHashGC(ctx context.Context, retentionDays int, manager *EthTxHashManag
 	}
 }
 
-// decodeLogBytes decodes a CBOR-serialized array into its original form.
-//
-// This function swallows errors and returns the original array if it failed
-// to decode.
-func decodeLogBytes(orig []byte) []byte {
-	if orig == nil {
-		return orig
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
-	}
-	return decoded
-}
-
 // TODO we could also emit full EVM words from the EVM runtime, but not doing so
 // makes the contract slightly cheaper (and saves storage bytes), at the expense
 // of having to left pad in the API, which is a pretty acceptable tradeoff at
