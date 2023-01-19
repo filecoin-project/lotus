@@ -401,11 +401,10 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 	},
 	"FevmConfig": []DocField{
 		{
-			Name: "EnableEthHashToFilecoinCidMapping",
+			Name: "EnableEthRPC",
 			Type: "bool",
 
-			Comment: `EnableEthHashToFilecoinCidMapping enables storing a mapping of eth transaction hashes to filecoin message Cids
-You will not be able to look up ethereum transactions by their hash if this is disabled.`,
+			Comment: `EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.`,
 		},
 		{
 			Name: "EthTxHashMappingLifetimeDays",

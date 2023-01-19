@@ -58,6 +58,15 @@ var DefaultNodeOpts = nodeOpts{
 	sectors:    DefaultPresealsPerBootstrapMiner,
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 
+	cfgOpts: []CfgOption{
+		func(cfg *config.FullNode) error {
+			// test defaults
+
+			cfg.Fevm.EnableEthRPC = true
+			return nil
+		},
+	},
+
 	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed},
 	workerStorageOpt: func(store paths.Store) paths.Store { return store },
 }
@@ -297,9 +306,9 @@ func HistoricFilterAPI(dbpath string) NodeOpt {
 	})
 }
 
-func EthTxHashLookup() NodeOpt {
+func DisableEthRPC() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.Fevm.EnableEthHashToFilecoinCidMapping = true
+		cfg.Fevm.EnableEthRPC = false
 		return nil
 	})
 }

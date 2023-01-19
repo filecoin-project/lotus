@@ -19,20 +19,6 @@ import (
 
 func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI) (*full.EthModule, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI) (*full.EthModule, error) {
-		em := &full.EthModule{
-			Chain:        cs,
-			Mpool:        mp,
-			StateManager: sm,
-			ChainAPI:     chainapi,
-			MpoolAPI:     mpoolapi,
-			StateAPI:     stateapi,
-		}
-
-		if !cfg.EnableEthHashToFilecoinCidMapping {
-			// mapping functionality disabled. Nothing to do here
-			return em, nil
-		}
-
 		dbPath, err := r.SqlitePath()
 		if err != nil {
 			return nil, err
@@ -53,8 +39,6 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			StateAPI:              stateapi,
 			TransactionHashLookup: transactionHashLookup,
 		}
-
-		em.EthTxHashManager = &ethTxHashManager
 
 		const ChainHeadConfidence = 1
 
@@ -80,6 +64,16 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			},
 		})
 
-		return em, nil
+		return &full.EthModule{
+			Chain:        cs,
+			Mpool:        mp,
+			StateManager: sm,
+
+			ChainAPI: chainapi,
+			MpoolAPI: mpoolapi,
+			StateAPI: stateapi,
+
+			EthTxHashManager: &ethTxHashManager,
+		}, nil
 	}
 }

@@ -40,9 +40,7 @@ func TestDeployment(t *testing.T) {
 		kit.WithCfgOpt(func(cfg *config.FullNode) error {
 			cfg.ActorEvent.EnableRealTimeFilterAPI = true
 			return nil
-		}),
-		kit.EthTxHashLookup(),
-	)
+		}))
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -100,6 +98,7 @@ func TestDeployment(t *testing.T) {
 
 	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
 	require.NoError(t, err)
+	require.NotNil(t, mpoolTx)
 
 	// require that the hashes are identical
 	require.Equal(t, hash, mpoolTx.Hash)

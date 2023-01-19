@@ -21,7 +21,7 @@ import (
 
 func TestValueTransferValidSignature(t *testing.T) {
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.EthTxHashLookup())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
@@ -106,7 +106,7 @@ func TestLegacyTransaction(t *testing.T) {
 func TestContractDeploymentValidSignature(t *testing.T) {
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.EthTxHashLookup())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
@@ -167,7 +167,7 @@ func TestContractDeploymentValidSignature(t *testing.T) {
 
 func TestContractInvocation(t *testing.T) {
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.EthTxHashLookup())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
 	ens.InterconnectAll().BeginMining(blockTime)
 
