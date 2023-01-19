@@ -401,10 +401,10 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 	},
 	"FevmConfig": []DocField{
 		{
-			Name: "EnableEthPRC",
+			Name: "EnableEthRPC",
 			Type: "bool",
 
-			Comment: `EnableEthPRC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.`,
+			Comment: `EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.`,
 		},
 		{
 			Name: "EthTxHashMappingLifetimeDays",

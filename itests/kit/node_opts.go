@@ -62,7 +62,7 @@ var DefaultNodeOpts = nodeOpts{
 		func(cfg *config.FullNode) error {
 			// test defaults
 
-			cfg.Fevm.EnableEthPRC = true
+			cfg.Fevm.EnableEthRPC = true
 			return nil
 		},
 	},
@@ -308,7 +308,7 @@ func HistoricFilterAPI(dbpath string) NodeOpt {
 
 func DisableEthRPC() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.Fevm.EnableEthPRC = false
+		cfg.Fevm.EnableEthRPC = false
 		return nil
 	})
 }
