@@ -21,7 +21,7 @@ const GenesisFile = ""
 
 var NetworkBundle = "devnet"
 var BundleOverrides map[actorstypes.Version]string
-var ActorDebugging = false
+var ActorDebugging = true
 
 const GenesisNetworkVersion = network.Version18
 
