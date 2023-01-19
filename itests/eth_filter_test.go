@@ -294,7 +294,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI(), kit.EthTxHashLookup())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -1436,9 +1436,9 @@ func invokeAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, invoca
 		require.True(ok)
 		m.events = evs
 
-		eh, err := ethtypes.EthHashFromCid(m.msg.Cid)
+		eh, err := client.EthGetTransactionHashByCid(ctx, m.msg.Cid)
 		require.NoError(err)
-		received[eh] = m
+		received[*eh] = m
 	}
 	require.Equal(len(invocations), len(received), "all messages on chain")
 

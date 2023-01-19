@@ -107,6 +107,10 @@ func DefaultFullNode() *FullNode {
 			MaxFilterResults:        10000,
 			MaxFilterHeightRange:    2880, // conservative limit of one day
 		},
+		Fevm: FevmConfig{
+			EnableEthHashToFilecoinCidMapping: false,
+			EthTxHashMappingLifetimeDays:      0,
+		},
 	}
 }
 
