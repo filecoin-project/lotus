@@ -38,15 +38,8 @@ func (f *TestFullNode) EVM() *EVM {
 }
 
 func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
+	var err error
 	require := require.New(e.t)
-
-	nonce, err := e.MpoolGetNonce(ctx, sender)
-	if err != nil {
-		nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
-	}
-
-	var salt [32]byte
-	binary.BigEndian.PutUint64(salt[:], nonce)
 
 	method := builtintypes.MethodsEAM.CreateExternal
 	initcode := abi.CborBytes(bytecode)
