@@ -249,15 +249,8 @@ var EvmDeployCmd = &cli.Command{
 			return err
 		}
 
-		nonce, err := api.MpoolGetNonce(ctx, fromAddr)
-		if err != nil {
-			nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
-		}
-
-		params, err := actors.SerializeParams(&eam.CreateParams{
-			Initcode: contract,
-			Nonce:    nonce,
-		})
+		initcode := abi.CborBytes(contract)
+		params, err := actors.SerializeParams(&initcode)
 		if err != nil {
 			return fmt.Errorf("failed to serialize Create params: %w", err)
 		}
@@ -266,7 +259,7 @@ var EvmDeployCmd = &cli.Command{
 			To:     builtintypes.EthereumAddressManagerActorAddr,
 			From:   fromAddr,
 			Value:  big.Zero(),
-			Method: builtintypes.MethodsEAM.Create,
+			Method: builtintypes.MethodsEAM.CreateExternal,
 			Params: params,
 		}
 
@@ -352,8 +345,8 @@ var EvmInvokeCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if argc := cctx.Args().Len(); argc < 2 || argc > 3 {
-			return xerrors.Errorf("must pass the address, entry point and (optionally) input data")
+		if argc := cctx.Args().Len(); argc != 2 {
+			return xerrors.Errorf("must pass the address and calldata")
 		}
 
 		addr, err := address.NewFromString(cctx.Args().Get(0))
@@ -362,7 +355,7 @@ var EvmInvokeCmd = &cli.Command{
 		}
 
 		var calldata []byte
-		calldata, err = hex.DecodeString(cctx.Args().Get(2))
+		calldata, err = hex.DecodeString(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("decoding hex input data: %w", err)
 		}
@@ -395,7 +388,7 @@ var EvmInvokeCmd = &cli.Command{
 			To:     addr,
 			From:   fromAddr,
 			Value:  val,
-			Method: abi.MethodNum(2),
+			Method: builtintypes.MethodsEVM.InvokeContract,
 			Params: calldata,
 		}
 

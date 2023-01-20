@@ -45,7 +45,6 @@ func inputDataFromFrom(ctx context.Context, t *testing.T, client *kit.TestFullNo
 	return inputData
 }
 
-
 func transferValue(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
 	sendMsg := &types.Message{
 		From:  fromAddr,
@@ -382,7 +381,6 @@ func TestFEVMDelegateCall(t *testing.T) {
 	require.Equal(t, result, expectedResultActor)
 }
 
-
 // TestFEVMDelegateCallRevert makes a delegatecall action and then calls revert.
 // the state should not have changed
 func TestFEVMDelegateCallRevert(t *testing.T) {
@@ -583,6 +581,7 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	t.Log("balance after destroy - ", bal)
 
 }
+
 // TestFEVMTestSendGasCost sends $ to yourself and looks at the balance diff
 // to determine gas cost of sending
 // gas seems to go down each time by a factor of appx 2
@@ -625,7 +624,6 @@ func TestFEVMTestSendGasCost(t *testing.T) {
 
 	}
 }
-
 
 // XXX Currently fails -- is the contract info for B correct?
 // TestFEVMTestSendValueThroughContracts creates A and B contract and exchanges value
@@ -675,9 +673,9 @@ func TestFEVMTestNotPayable(t *testing.T) {
 	//create contract A
 	filenameStorage := "contracts/NotPayable.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
-	sendAmount:= big.MustFromString("10000000")
+	sendAmount := big.MustFromString("10000000")
 
-  transferValue(ctx, t, client, fromAddr, contractAddr, sendAmount)
+	transferValue(ctx, t, client, fromAddr, contractAddr, sendAmount)
 
 }
 
@@ -714,7 +712,6 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.Equal(t, 1, strings.Count(err.Error(), error3))
 }
 
-
 // creates a contract that should fail when tx are sent to it
 // example on goerli of tx failing https://goerli.etherscan.io/address/0xec037bdc9a79420985a53a49fdae3ccf8989909b
 // currently succeeds
@@ -730,5 +727,12 @@ func TestFEVMSendGasLimit(t *testing.T) {
 	//transfer 1 wei to contract
 	sendAmount := big.MustFromString("10000000")
 
-  transferValue(ctx, t, client, fromAddr, contractAddr, sendAmount) // XXX should fail but succeeds
+	transferValue(ctx, t, client, fromAddr, contractAddr, sendAmount) // XXX should fail but succeeds
+}
+
+func TestEVMRpcDisable(t *testing.T) {
+	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
+
+	_, err := client.EthBlockNumber(context.Background())
+	require.ErrorContains(t, err, "module disabled, enable with Fevm.EnableEthRPC")
 }

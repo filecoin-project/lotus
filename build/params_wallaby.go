@@ -17,7 +17,7 @@ import (
 
 var NetworkBundle = "wallaby"
 var BundleOverrides map[actorstypes.Version]string
-var ActorDebugging = true
+var ActorDebugging = false
 
 const BootstrappersFile = "wallabynet.pi"
 const GenesisFile = "wallabynet.car"

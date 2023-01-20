@@ -384,7 +384,19 @@ func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 	if err != nil {
 		return xerrors.Errorf("errored while expanding tipset: %w", err)
 	}
-	log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
+
+	if expanded.Key() != ts.Key() {
+		log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
+
+		tsBlk, err := expanded.Key().ToStorageBlock()
+		if err != nil {
+			return xerrors.Errorf("failed to get tipset key block: %w", err)
+		}
+
+		if err = cs.chainLocalBlockstore.Put(ctx, tsBlk); err != nil {
+			return xerrors.Errorf("failed to put tipset key block: %w", err)
+		}
+	}
 
 	if err := cs.MaybeTakeHeavierTipSet(ctx, expanded); err != nil {
 		return xerrors.Errorf("MaybeTakeHeavierTipSet failed in PutTipSet: %w", err)
@@ -1095,6 +1107,10 @@ func (cs *ChainStore) ChainBlockstore() bstore.Blockstore {
 // caching policies, but in the future they will segregate.
 func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
 	return cs.stateBlockstore
+}
+
+func (cs *ChainStore) ChainLocalBlockstore() bstore.Blockstore {
+	return cs.chainLocalBlockstore
 }
 
 func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {

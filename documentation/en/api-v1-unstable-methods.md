@@ -83,11 +83,13 @@
   * [EthGetFilterChanges](#EthGetFilterChanges)
   * [EthGetFilterLogs](#EthGetFilterLogs)
   * [EthGetLogs](#EthGetLogs)
+  * [EthGetMessageCidByTransactionHash](#EthGetMessageCidByTransactionHash)
   * [EthGetStorageAt](#EthGetStorageAt)
   * [EthGetTransactionByBlockHashAndIndex](#EthGetTransactionByBlockHashAndIndex)
   * [EthGetTransactionByBlockNumberAndIndex](#EthGetTransactionByBlockNumberAndIndex)
   * [EthGetTransactionByHash](#EthGetTransactionByHash)
   * [EthGetTransactionCount](#EthGetTransactionCount)
+  * [EthGetTransactionHashByCid](#EthGetTransactionHashByCid)
   * [EthGetTransactionReceipt](#EthGetTransactionReceipt)
   * [EthMaxPriorityFeePerGas](#EthMaxPriorityFeePerGas)
   * [EthNewBlockFilter](#EthNewBlockFilter)
@@ -2640,6 +2642,25 @@ Response:
 ]
 ```
 
+### EthGetMessageCidByTransactionHash
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### EthGetStorageAt
 
 
@@ -2777,6 +2798,22 @@ Inputs:
 ```
 
 Response: `"0x5"`
+
+### EthGetTransactionHashByCid
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthGetTransactionReceipt
 

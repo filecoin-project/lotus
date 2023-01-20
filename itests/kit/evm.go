@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
@@ -47,11 +48,9 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 	var salt [32]byte
 	binary.BigEndian.PutUint64(salt[:], nonce)
 
-	method := builtintypes.MethodsEAM.Create2
-	params, err := actors.SerializeParams(&eam.Create2Params{
-		Initcode: bytecode,
-		Salt:     salt,
-	})
+	method := builtintypes.MethodsEAM.CreateExternal
+	initcode := abi.CborBytes(bytecode)
+	params, err := actors.SerializeParams(&initcode)
 	require.NoError(err)
 
 	msg := &types.Message{
@@ -83,6 +82,9 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
 	contractHex, err := os.ReadFile(binFilename)
 	require.NoError(e.t, err)
+
+	// strip any trailing newlines from the file
+	contractHex = bytes.TrimRight(contractHex, "\n")
 
 	contract, err := hex.DecodeString(string(contractHex))
 	require.NoError(e.t, err)
