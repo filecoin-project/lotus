@@ -100,9 +100,18 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				continue
 			}
 
+			decodedEntries := make([]types.EventEntry, len(ev.Entries))
+			for i, entry := range ev.Entries {
+				decodedEntries[i] = types.EventEntry{
+					Flags: entry.Flags,
+					Key:   entry.Key,
+					Value: decodeLogBytes(entry.Value),
+				}
+			}
+
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Entries:     ev.Entries,
+				Entries:     decodedEntries,
 				EmitterAddr: addr,
 				EventIdx:    evIdx,
 				Reverted:    revert,
