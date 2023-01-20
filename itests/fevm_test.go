@@ -696,3 +696,10 @@ func TestFEVMTestSendGasCost(t *testing.T) {
 
 	}
 }
+
+func TestEVMRpcDisable(t *testing.T) {
+	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
+
+	_, err := client.EthBlockNumber(context.Background())
+	require.ErrorContains(t, err, "module disabled, enable with Fevm.EnableEthRPC")
+}

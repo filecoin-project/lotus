@@ -135,13 +135,21 @@ func HeightAtLeast(target abi.ChainEpoch) ChainPredicate {
 	}
 }
 
-// BlockMinedBy returns a ChainPredicate that is satisfied when we observe the
-// first block mined by the specified miner.
-func BlockMinedBy(miner address.Address) ChainPredicate {
+// BlocksMinedByAll returns a ChainPredicate that is satisfied when we observe a
+// tipset including blocks from all the specified miners, in no particular order.
+func BlocksMinedByAll(miner ...address.Address) ChainPredicate {
 	return func(ts *types.TipSet) bool {
+		seen := make([]bool, len(miner))
+		var done int
 		for _, b := range ts.Blocks() {
-			if b.Miner == miner {
-				return true
+			for i, m := range miner {
+				if b.Miner != m || seen[i] {
+					continue
+				}
+				seen[i] = true
+				if done++; done == len(miner) {
+					return true
+				}
 			}
 		}
 		return false
