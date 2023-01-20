@@ -83,6 +83,9 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 	contractHex, err := os.ReadFile(binFilename)
 	require.NoError(e.t, err)
 
+	// strip any trailing newlines from the file
+	contractHex = bytes.TrimRight(contractHex, "\n")
+
 	contract, err := hex.DecodeString(string(contractHex))
 	require.NoError(e.t, err)
 

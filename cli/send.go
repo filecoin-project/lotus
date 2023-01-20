@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var sendCmd = &cli.Command{
@@ -23,6 +24,10 @@ var sendCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "optionally specify the account to send funds from",
+		},
+		&cli.StringFlag{
+			Name:  "from-eth-addr",
+			Usage: "optionally specify the eth addr to send funds from",
 		},
 		&cli.StringFlag{
 			Name:  "gas-premium",
@@ -98,6 +103,18 @@ var sendCmd = &cli.Command{
 			}
 
 			params.From = addr
+		} else if from := cctx.String("from-eth-addr"); from != "" {
+			eaddr, err := ethtypes.ParseEthAddress(from)
+			if err != nil {
+				return err
+			}
+			faddr, err := eaddr.ToFilecoinAddress()
+			if err != nil {
+				fmt.Println("error on conversion to faddr")
+				return err
+			}
+			fmt.Println("f4 addr: ", faddr)
+			params.From = faddr
 		}
 
 		if cctx.IsSet("gas-premium") {
