@@ -121,3 +121,69 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.True(t, builtin.IsEvmActor(actorPostCreate.Code))
 
 }
+
+func TestDeployAddressMultipleTimes(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	fromAddr, err := client.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+	fromId, err := client.StateLookupID(ctx, fromAddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	senderEthAddr, err := ethtypes.EthAddressFromFilecoinAddress(fromId)
+	require.NoError(t, err)
+
+	var salt [32]byte
+	binary.BigEndian.PutUint64(salt[:], 1)
+
+	// Generate contract address before actually deploying contract
+	ethAddr, err := ethtypes.GetContractEthAddressFromCode(senderEthAddr, salt, contract)
+	require.NoError(t, err)
+
+	// Create and deploy evm actor
+
+	method := builtintypes.MethodsEAM.Create2
+	params, err := actors.SerializeParams(&eam.Create2Params{
+		Initcode: contract,
+		Salt:     salt,
+	})
+	require.NoError(t, err)
+
+	createMsg := &types.Message{
+		To:     builtintypes.EthereumAddressManagerActorAddr,
+		From:   fromAddr,
+		Value:  big.Zero(),
+		Method: method,
+		Params: params,
+	}
+	smsg, err := client.MpoolPushMessage(ctx, createMsg, nil)
+	require.NoError(t, err)
+
+	wait, err := client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	require.NoError(t, err)
+	require.Equal(t, exitcode.Ok, wait.Receipt.ExitCode)
+
+	// Check if eth address returned from Create2 is the same as eth address predicted at the start
+	var create2Return eam.Create2Return
+	err = create2Return.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
+	require.NoError(t, err)
+
+	createdEthAddr, err := ethtypes.CastEthAddress(create2Return.EthAddress[:])
+	require.NoError(t, err)
+	require.Equal(t, ethAddr, createdEthAddr)
+
+	// try to deploy contract again w same address
+	// assert that this second deploy fails
+	_, err = client.MpoolPushMessage(ctx, createMsg, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot replace an existing non-placeholder actor with code")
+	t.Log(err)
+}

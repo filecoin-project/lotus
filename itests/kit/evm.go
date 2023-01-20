@@ -7,6 +7,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"testing"
+	"time"
+
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-varint"
@@ -309,4 +313,31 @@ func removeLeadingZeros(data []byte) []byte {
 		}
 	}
 	return data[firstNonZeroIndex:]
+}
+
+func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFullNode) {
+	//make all logs extra quiet for fevm tests
+	lvl, err := logging.LevelFromString("error")
+	if err != nil {
+		panic(err)
+	}
+	logging.SetAllLoggers(lvl)
+
+	blockTime := 100 * time.Millisecond
+	client, _, ens := EnsembleMinimal(t, MockProofs(), ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+
+	// instead of having this in a few tests put this in the setup
+	// verify that the intial balance is 100000000000000000000000000
+	// this allows other tests to assert the initial balance
+	// without explicitly checking it
+	fromAddr := client.DefaultKey.Address
+	bal, err := client.WalletBalance(ctx, fromAddr)
+	require.NoError(t, err)
+	originalBalance, err := big.FromString("100000000000000000000000000")
+	require.NoError(t, err)
+	require.Equal(t, originalBalance, bal)
+
+	return ctx, cancel, client
 }
