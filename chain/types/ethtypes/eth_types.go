@@ -364,14 +364,7 @@ func (h *EthHash) UnmarshalJSON(b []byte) error {
 }
 
 func decodeHexString(s string, expectedLen int) ([]byte, error) {
-	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
-	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
-		s = s[2:]
-	}
-	// Sometimes clients will omit a leading zero in a byte; pad so we can decode correctly.
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
+	s = handleHexStringPrefix(s)
 	if len(s) != expectedLen*2 {
 		return nil, xerrors.Errorf("expected hex string length sans prefix %d, got %d", expectedLen*2, len(s))
 	}
@@ -380,6 +373,27 @@ func decodeHexString(s string, expectedLen int) ([]byte, error) {
 		return nil, xerrors.Errorf("cannot parse hex value: %w", err)
 	}
 	return b, nil
+}
+
+func DecodeHexString(s string) ([]byte, error) {
+	s = handleHexStringPrefix(s)
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse hex value: %w", err)
+	}
+	return b, nil
+}
+
+func handleHexStringPrefix(s string) string {
+	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
+	}
+	// Sometimes clients will omit a leading zero in a byte; pad so we can decode correctly.
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+	return s
 }
 
 func EthHashFromCid(c cid.Cid) (EthHash, error) {
