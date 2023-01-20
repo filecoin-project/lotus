@@ -1741,6 +1741,7 @@ COMMANDS:
      network-version             Returns the network version
      miner-proving-deadline      Retrieve information about a given miner's proving deadline
      actor-cids                  Returns the built-in actor bundle manifest ID & system actor cids
+     blockhash                   Get the tipset CID - eth blockhash
      help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2061,6 +2062,19 @@ USAGE:
 
 OPTIONS:
    --network-version value  specify network version (default: 0)
+   
+```
+
+### lotus state blockhash
+```
+NAME:
+   lotus state blockhash - Get the tipset CID - eth blockhash
+
+USAGE:
+   lotus state blockhash [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 
