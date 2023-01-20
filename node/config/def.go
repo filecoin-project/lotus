@@ -99,17 +99,17 @@ func DefaultFullNode() *FullNode {
 			},
 		},
 		Cluster: *DefaultUserRaftConfig(),
-		ActorEvent: ActorEventConfig{
-			EnableRealTimeFilterAPI: false,
-			EnableHistoricFilterAPI: false,
-			FilterTTL:               Duration(time.Hour * 24),
-			MaxFilters:              100,
-			MaxFilterResults:        10000,
-			MaxFilterHeightRange:    2880, // conservative limit of one day
-		},
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
+			Events: Events{
+				DisableRealTimeFilterAPI: false,
+				DisableHistoricFilterAPI: false,
+				FilterTTL:                Duration(time.Hour * 24),
+				MaxFilters:               100,
+				MaxFilterResults:         10000,
+				MaxFilterHeightRange:     2880, // conservative limit of one day
+			},
 		},
 	}
 }

@@ -19,12 +19,12 @@ import (
 
 func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI) (*full.EthModule, error) {
 	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI) (*full.EthModule, error) {
-		dbPath, err := r.SqlitePath()
+		sqlitePath, err := r.SqlitePath()
 		if err != nil {
 			return nil, err
 		}
 
-		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(dbPath, "txhash.db"))
+		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(sqlitePath, "txhash.db"))
 		if err != nil {
 			return nil, err
 		}
