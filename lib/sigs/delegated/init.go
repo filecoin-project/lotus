@@ -68,7 +68,7 @@ func (delegatedSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 	}
 
 	if maybeaddr != a {
-		return fmt.Errorf("signature did not match")
+		return fmt.Errorf("signature did not match maybeaddr: %s, signer: %s", maybeaddr, a)
 	}
 
 	return nil

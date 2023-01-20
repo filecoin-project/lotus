@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -86,7 +85,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 
 	kit.QuietAllLogsExcept("events", "messagepool")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
 	// create a new address where to send funds.
@@ -190,7 +189,7 @@ func TestEthNewBlockFilter(t *testing.T) {
 
 	kit.QuietAllLogsExcept("events", "messagepool")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
 	// create a new address where to send funds.
@@ -294,7 +293,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI(), kit.EthTxHashLookup())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -373,9 +372,8 @@ func TestEthGetLogsAll(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -418,9 +416,8 @@ func TestEthGetLogsByTopic(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	invocations := 1
@@ -457,7 +454,7 @@ func TestEthSubscribeLogs(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -517,9 +514,8 @@ func TestEthGetLogs(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -1078,9 +1074,8 @@ func TestEthGetLogsWithBlockRanges(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -1908,15 +1903,98 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 	return el, err
 }
 
-func decodeLogBytes(orig []byte) []byte {
-	if len(orig) == 0 {
-		return orig
+func invokeContractAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, iterations int) (ethtypes.EthAddress, map[ethtypes.EthHash]msgInTipset) {
+	require := require.New(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	blockTime := 100 * time.Millisecond
+
+	// install contract
+	contractHex, err := os.ReadFile("contracts/events.bin")
+	require.NoError(err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(err)
+
+	fromAddr, err := client.WalletDefaultAddress(ctx)
+	require.NoError(err)
+
+	result := client.EVM().DeployContract(ctx, fromAddr, contract)
+
+	idAddr, err := address.NewIDAddress(result.ActorID)
+	require.NoError(err)
+	t.Logf("actor ID address is %s", idAddr)
+
+	msgChan := make(chan msgInTipset, iterations)
+
+	waitAllCh := make(chan struct{})
+	go func() {
+		headChangeCh, err := client.ChainNotify(ctx)
+		require.NoError(err)
+		<-headChangeCh // skip hccurrent
+
+		count := 0
+		for {
+			select {
+			case headChanges := <-headChangeCh:
+				for _, change := range headChanges {
+					if change.Type == store.HCApply || change.Type == store.HCRevert {
+						msgs, err := client.ChainGetMessagesInTipset(ctx, change.Val.Key())
+						require.NoError(err)
+
+						count += len(msgs)
+						for _, m := range msgs {
+							select {
+							case msgChan <- msgInTipset{msg: m, ts: change.Val, reverted: change.Type == store.HCRevert}:
+							default:
+							}
+						}
+
+						if count == iterations {
+							close(msgChan)
+							close(waitAllCh)
+							return
+						}
+					}
+				}
+			}
+		}
+	}()
+
+	time.Sleep(blockTime * 6)
+
+	for i := 0; i < iterations; i++ {
+		// log a four topic event with data
+		ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
+
+	select {
+	case <-waitAllCh:
+	case <-time.After(time.Minute):
+		t.Errorf("timeout to wait for pack messages")
 	}
-	return decoded
+
+	received := make(map[ethtypes.EthHash]msgInTipset)
+	for m := range msgChan {
+		eh, err := ethtypes.EthHashFromCid(m.msg.Cid)
+		require.NoError(err)
+		received[eh] = m
+	}
+	require.Equal(iterations, len(received), "all messages on chain")
+
+	head, err := client.ChainHead(ctx)
+	require.NoError(err)
+
+	actor, err := client.StateGetActor(ctx, idAddr, head.Key())
+	require.NoError(err)
+	require.NotNil(actor.Address)
+	ethContractAddr, err := ethtypes.EthAddressFromFilecoinAddress(*actor.Address)
+	require.NoError(err)
+
+	return ethContractAddr, received
 }
 
 func paddedEthBytes(orig []byte) ethtypes.EthBytes {
@@ -2049,4 +2127,15 @@ func (e *ethFilterBuilder) Topic4OneOf(hs ...ethtypes.EthHash) *ethFilterBuilder
 	}
 	e.filter.Topics[3] = hs
 	return e
+}
+
+func decodeLogBytes(orig []byte) []byte {
+	if len(orig) == 0 {
+		return orig
+	}
+	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
+	if err != nil {
+		return orig
+	}
+	return decoded
 }

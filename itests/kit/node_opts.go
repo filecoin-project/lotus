@@ -58,6 +58,15 @@ var DefaultNodeOpts = nodeOpts{
 	sectors:    DefaultPresealsPerBootstrapMiner,
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 
+	cfgOpts: []CfgOption{
+		func(cfg *config.FullNode) error {
+			// test defaults
+
+			cfg.Fevm.EnableEthRPC = true
+			return nil
+		},
+	},
+
 	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed},
 	workerStorageOpt: func(store paths.Store) paths.Store { return store },
 }
@@ -281,25 +290,16 @@ func SplitstoreMessges() NodeOpt {
 	})
 }
 
-func RealTimeFilterAPI() NodeOpt {
+func WithEthRPC() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.ActorEvent.EnableRealTimeFilterAPI = true
+		cfg.Fevm.EnableEthRPC = true
 		return nil
 	})
 }
 
-func HistoricFilterAPI(dbpath string) NodeOpt {
+func DisableEthRPC() NodeOpt {
 	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.ActorEvent.EnableRealTimeFilterAPI = true
-		cfg.ActorEvent.EnableHistoricFilterAPI = true
-		cfg.ActorEvent.ActorEventDatabasePath = dbpath
-		return nil
-	})
-}
-
-func EthTxHashLookup() NodeOpt {
-	return WithCfgOpt(func(cfg *config.FullNode) error {
-		cfg.Fevm.EnableEthHashToFilecoinCidMapping = true
+		cfg.Fevm.EnableEthRPC = false
 		return nil
 	})
 }

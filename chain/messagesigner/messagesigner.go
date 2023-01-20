@@ -13,10 +13,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -66,15 +69,24 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, sp
 	// Sign the message with the nonce
 	msg.Nonce = nonce
 
+	keyInfo, err := ms.wallet.WalletExport(ctx, msg.From)
+	if err != nil {
+		return nil, err
+	}
+	sb, err := SigningBytes(msg, key.ActSigType(keyInfo.Type))
+	if err != nil {
+		return nil, err
+	}
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := ms.wallet.WalletSign(ctx, msg.From, mb.Cid().Bytes(), api.MsgMeta{
+	sig, err := ms.wallet.WalletSign(ctx, msg.From, sb, api.MsgMeta{
 		Type:  api.MTChainMsg,
 		Extra: mb.RawData(),
 	})
+
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w, addr=%s", err, msg.From)
 	}
@@ -186,4 +198,20 @@ func (ms *MessageSigner) SaveNonce(ctx context.Context, addr address.Address, no
 
 func (ms *MessageSigner) dstoreKey(addr address.Address) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyActorNonce, addr.String()})
+}
+
+func SigningBytes(msg *types.Message, sigType crypto.SigType) ([]byte, error) {
+	if sigType == crypto.SigTypeDelegated {
+		txArgs, err := ethtypes.EthTxArgsFromMessage(msg)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
+		}
+		rlpEncodedMsg, err := txArgs.ToRlpUnsignedMsg()
+		if err != nil {
+			return nil, xerrors.Errorf("failed to repack eth rlp message: %w", err)
+		}
+		return rlpEncodedMsg, nil
+	}
+
+	return msg.Cid().Bytes(), nil
 }
