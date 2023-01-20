@@ -777,7 +777,9 @@ var StateGetActorCmd = &cli.Command{
 		fmt.Printf("Nonce:\t\t%d\n", a.Nonce)
 		fmt.Printf("Code:\t\t%s (%s)\n", a.Code, strtype)
 		fmt.Printf("Head:\t\t%s\n", a.Head)
-		fmt.Printf("Delegated address:\t\t%s\n", a.Address)
+		if a.Address != nil {
+			fmt.Printf("Delegated address:\t\t%s\n", a.Address)
+		}
 
 		return nil
 	},
