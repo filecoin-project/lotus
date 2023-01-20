@@ -653,49 +653,6 @@ func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
 
 }
 
-// @mgs possibly irrelevant test
-// TestFEVMTestSendGasCost sends $ to yourself and looks at the balance diff
-// to determine gas cost of sending
-// gas seems to go down each time by a factor of appx 2
-// for the first 10 transfers then settles to appx constant ???
-// XXX gas costs are weird
-func TestFEVMTestSendGasCost(t *testing.T) {
-
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-
-	fromAddr := client.DefaultKey.Address
-
-	bal, err := client.WalletBalance(ctx, fromAddr)
-	require.NoError(t, err)
-	t.Log("initial balance- ", bal)
-
-	originalBalance, err := big.FromString("100000000000000000000000000")
-	require.NoError(t, err)
-	require.Equal(t, originalBalance, bal)
-
-	//transfer 0 wei to yourself
-	sendAmount := big.NewInt(0)
-	transferValueOrFailTest(ctx, t, client, fromAddr, fromAddr, sendAmount)
-
-	//calculate gas used to send 0 to yourself
-	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-	require.NoError(t, err)
-	gasUsedFirstSend := big.Subtract(originalBalance, bal)
-	t.Log("balance change from send - ", 0, gasUsedFirstSend)
-
-	//send 0 again to yourself 15 times and calculate gas
-	for i := 1; i <= 15; i++ {
-		bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-		require.NoError(t, err)
-		transferValueOrFailTest(ctx, t, client, fromAddr, fromAddr, sendAmount)
-		balAfterTx, err := client.WalletBalance(ctx, client.DefaultKey.Address)
-		require.NoError(t, err)
-		gasUsed := big.Subtract(bal, balAfterTx)
-		t.Log("balance change from send - ", i, gasUsed)
-
-	}
-}
 
 func TestEVMRpcDisable(t *testing.T) {
 	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
