@@ -153,13 +153,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return xerrors.Errorf("prepare insert entry: %w", err)
 	}
 
-	isIndexedValue := func(b uint8) bool {
-		// currently we mark the full entry as indexed if either the key
-		// or the value are indexed; in the future we will need finer-grained
-		// management of indices
-		return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
-	}
-
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
 			addr, found := addressLookups[ev.Emitter]

@@ -20,7 +20,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const indexed uint8 = 0x01
+func isIndexedValue(b uint8) bool {
+	// currently we mark the full entry as indexed if either the key
+	// or the value are indexed; in the future we will need finer-grained
+	// management of indices
+	return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
+}
 
 type EventFilter struct {
 	id         types.FilterID
@@ -209,7 +214,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 	matched := map[string]bool{}
 	for _, ee := range ees {
 		// Skip an entry that is not indexable
-		if ee.Flags&indexed != indexed {
+		if !isIndexedValue(ee.Flags) {
 			continue
 		}
 
@@ -221,12 +226,15 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 		}
 
 		wantlist, ok := f.keys[keyname]
-		if !ok {
+		if !ok || len(wantlist) == 0 {
 			continue
 		}
 
 		for _, w := range wantlist {
-			if bytes.Equal(w, ee.Value) {
+			// TODO: remove this. Currently the filters use raw values but the value in the entry is cbor-encoded
+			// We want to make all internal values cbor-encoded as per https://github.com/filecoin-project/ref-fvm/issues/1345
+			value := leftpad32(decodeLogBytes(ee.Value))
+			if bytes.Equal(w, value) {
 				matched[keyname] = true
 				break
 			}
@@ -480,4 +488,14 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 	}
 
 	return ems, nil
+}
+
+func leftpad32(orig []byte) []byte {
+	needed := 32 - len(orig)
+	if needed <= 0 {
+		return orig
+	}
+	ret := make([]byte, 32)
+	copy(ret[needed:], orig)
+	return ret
 }

@@ -1016,6 +1016,8 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFil
 		return ethtypes.EthFilterID{}, err
 	}
 
+	fmt.Printf("REMOVEME: EthNewFilter.f=%+v\n", f)
+
 	return ethtypes.EthFilterID(f.ID()), nil
 }
 
@@ -1140,13 +1142,16 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 		keys := map[string][][]byte{}
 		if params != nil {
 			for idx, vals := range params.Topics {
+				if len(vals) == 0 {
+					continue
+				}
 				// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 				key := fmt.Sprintf("topic%d", idx+1)
-				keyvals := make([][]byte, len(vals))
-				for i, v := range vals {
-					keyvals[i] = v[:]
+				for _, v := range vals {
+					buf := make([]byte, len(v[:]))
+					copy(buf, v[:])
+					keys[key] = append(keys[key], buf)
 				}
-				keys[key] = keyvals
 			}
 		}
 
