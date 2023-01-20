@@ -341,7 +341,7 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
-	"EventsConfig": []DocField{
+	"Events": []DocField{
 		{
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
@@ -419,7 +419,7 @@ Set to 0 to keep all mappings`,
 		},
 		{
 			Name: "Events",
-			Type: "EventsConfig",
+			Type: "Events",
 
 			Comment: ``,
 		},
@@ -452,12 +452,6 @@ Set to 0 to keep all mappings`,
 		{
 			Name: "Cluster",
 			Type: "UserRaftConfig",
-
-			Comment: ``,
-		},
-		{
-			Name: "Events",
-			Type: "EventsConfig",
 
 			Comment: ``,
 		},

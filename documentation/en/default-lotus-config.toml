@@ -293,59 +293,6 @@
   #Tracing = false
 
 
-[Events]
-  # EnableEthRPC enables APIs that
-  # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
-  # The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
-  #
-  # type: bool
-  # env var: LOTUS_EVENTS_DISABLEREALTIMEFILTERAPI
-  #DisableRealTimeFilterAPI = false
-
-  # DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
-  # that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
-  # The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
-  #
-  # type: bool
-  # env var: LOTUS_EVENTS_DISABLEHISTORICFILTERAPI
-  #DisableHistoricFilterAPI = false
-
-  # FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
-  # this time become eligible for automatic deletion.
-  #
-  # type: Duration
-  # env var: LOTUS_EVENTS_FILTERTTL
-  #FilterTTL = "0s"
-
-  # MaxFilters specifies the maximum number of filters that may exist at any one time.
-  #
-  # type: int
-  # env var: LOTUS_EVENTS_MAXFILTERS
-  #MaxFilters = 0
-
-  # MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
-  #
-  # type: int
-  # env var: LOTUS_EVENTS_MAXFILTERRESULTS
-  #MaxFilterResults = 0
-
-  # MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
-  # the entire chain)
-  #
-  # type: uint64
-  # env var: LOTUS_EVENTS_MAXFILTERHEIGHTRANGE
-  #MaxFilterHeightRange = 0
-
-  # DatabasePath is the full path to a sqlite database that will be used to index actor events to
-  # support the historic filter APIs. If the database does not exist it will be created. The directory containing
-  # the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
-  # relative to the CWD (current working directory).
-  #
-  # type: string
-  # env var: LOTUS_EVENTS_DATABASEPATH
-  #DatabasePath = ""
-
-
 [Fevm]
   # EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
   # This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.

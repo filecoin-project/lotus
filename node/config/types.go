@@ -27,7 +27,6 @@ type FullNode struct {
 	Fees       FeeConfig
 	Chainstore Chainstore
 	Cluster    UserRaftConfig
-	Events     EventsConfig
 	Fevm       FevmConfig
 }
 
@@ -669,10 +668,10 @@ type FevmConfig struct {
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
 
-	Events EventsConfig
+	Events Events
 }
 
-type EventsConfig struct {
+type Events struct {
 	// EnableEthRPC enables APIs that
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
 	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
