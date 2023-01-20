@@ -1909,7 +1909,7 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 }
 
 func decodeLogBytes(orig []byte) []byte {
-	if orig == nil {
+	if len(orig) == 0 {
 		return orig
 	}
 	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
