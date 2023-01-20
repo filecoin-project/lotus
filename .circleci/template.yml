@@ -457,7 +457,7 @@ jobs:
             equal: [ mainnet, <<parameters.network>> ]
           steps:
             - when:
-                condition: <parameters.push>>
+                condition: <<parameters.push>>
                 steps:
                   - docker/build:
                       image: filecoin/<<parameters.image>>
@@ -468,7 +468,7 @@ jobs:
                       command: |
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>
                         if [["[[ ! -z $CIRCLE_SHA ]]"]]; then
-                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
                           docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
                         fi
                         if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
@@ -496,7 +496,7 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
-                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
+                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>
                         if [["[[ ! -z $CIRCLE_SHA ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
                           docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
