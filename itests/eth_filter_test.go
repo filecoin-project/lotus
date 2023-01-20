@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -30,7 +29,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
 	// create a new address where to send funds.
@@ -124,7 +123,7 @@ func TestEthNewBlockFilter(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
 	// create a new address where to send funds.
@@ -204,7 +203,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -569,9 +568,8 @@ func TestEthGetLogsAll(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ethContractAddr, received := invokeContractAndWaitUntilAllOnChain(t, client, 10)
@@ -632,9 +630,8 @@ func TestEthGetLogsByTopic(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	blockTime := 100 * time.Millisecond
-	dbpath := filepath.Join(t.TempDir(), "actorevents.db")
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.HistoricFilterAPI(dbpath))
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	invocations := 1
@@ -696,7 +693,7 @@ func TestEthSubscribeLogs(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.RealTimeFilterAPI())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
