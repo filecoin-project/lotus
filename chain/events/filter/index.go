@@ -1,7 +1,6 @@
 package filter
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -191,13 +189,12 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			}
 
 			for _, entry := range ev.Entries {
-				value := decodeLogBytes(entry.Value)
 				_, err := stmtEntry.Exec(
 					lastID,                      // event_id
 					isIndexedValue(entry.Flags), // indexed
 					[]byte{entry.Flags},         // flags
 					entry.Key,                   // key
-					value,                       // value
+					entry.Value,                 // value
 				)
 				if err != nil {
 					return xerrors.Errorf("exec insert entry: %w", err)
@@ -211,21 +208,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	return nil
-}
-
-// decodeLogBytes decodes a CBOR-serialized array into its original form.
-//
-// This function swallows errors and returns the original array if it failed
-// to decode.
-func decodeLogBytes(orig []byte) []byte {
-	if len(orig) == 0 {
-		return orig
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
-	}
-	return decoded
 }
 
 // PrefillFilter fills a filter's collection of events from the historic index

@@ -105,18 +105,18 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				continue
 			}
 
-			decodedEntries := make([]types.EventEntry, len(ev.Entries))
+			entries := make([]types.EventEntry, len(ev.Entries))
 			for i, entry := range ev.Entries {
-				decodedEntries[i] = types.EventEntry{
+				entries[i] = types.EventEntry{
 					Flags: entry.Flags,
 					Key:   entry.Key,
-					Value: decodeLogBytes(entry.Value),
+					Value: entry.Value,
 				}
 			}
 
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Entries:     decodedEntries,
+				Entries:     entries,
 				EmitterAddr: addr,
 				EventIdx:    evIdx,
 				Reverted:    revert,
@@ -231,10 +231,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 		}
 
 		for _, w := range wantlist {
-			// TODO: remove this. Currently the filters use raw values but the value in the entry is cbor-encoded
-			// We want to make all internal values cbor-encoded as per https://github.com/filecoin-project/ref-fvm/issues/1345
-			value := leftpad32(decodeLogBytes(ee.Value))
-			if bytes.Equal(w, value) {
+			if bytes.Equal(w, ee.Value) {
 				matched[keyname] = true
 				break
 			}
@@ -488,14 +485,4 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 	}
 
 	return ems, nil
-}
-
-func leftpad32(orig []byte) []byte {
-	needed := 32 - len(orig)
-	if needed <= 0 {
-		return orig
-	}
-	ret := make([]byte, 32)
-	copy(ret[needed:], orig)
-	return ret
 }
