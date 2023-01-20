@@ -1177,6 +1177,21 @@ func (mr *MockFullNodeMockRecorder) EthGetLogs(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetLogs", reflect.TypeOf((*MockFullNode)(nil).EthGetLogs), arg0, arg1)
 }
 
+// EthGetMessageCidByTransactionHash mocks base method.
+func (m *MockFullNode) EthGetMessageCidByTransactionHash(arg0 context.Context, arg1 *ethtypes.EthHash) (*cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetMessageCidByTransactionHash", arg0, arg1)
+	ret0, _ := ret[0].(*cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetMessageCidByTransactionHash indicates an expected call of EthGetMessageCidByTransactionHash.
+func (mr *MockFullNodeMockRecorder) EthGetMessageCidByTransactionHash(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetMessageCidByTransactionHash", reflect.TypeOf((*MockFullNode)(nil).EthGetMessageCidByTransactionHash), arg0, arg1)
+}
+
 // EthGetStorageAt mocks base method.
 func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBytes, arg3 string) (ethtypes.EthBytes, error) {
 	m.ctrl.T.Helper()
@@ -1250,6 +1265,21 @@ func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 ethtype
 func (mr *MockFullNodeMockRecorder) EthGetTransactionCount(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionCount", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionCount), arg0, arg1, arg2)
+}
+
+// EthGetTransactionHashByCid mocks base method.
+func (m *MockFullNode) EthGetTransactionHashByCid(arg0 context.Context, arg1 cid.Cid) (*ethtypes.EthHash, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetTransactionHashByCid", arg0, arg1)
+	ret0, _ := ret[0].(*ethtypes.EthHash)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetTransactionHashByCid indicates an expected call of EthGetTransactionHashByCid.
+func (mr *MockFullNodeMockRecorder) EthGetTransactionHashByCid(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionHashByCid", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionHashByCid), arg0, arg1)
 }
 
 // EthGetTransactionReceipt mocks base method.

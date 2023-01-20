@@ -36,10 +36,7 @@ var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 type EthUint64 uint64
 
 func (e EthUint64) MarshalJSON() ([]byte, error) {
-	if e == 0 {
-		return json.Marshal("0x0")
-	}
-	return json.Marshal(fmt.Sprintf("0x%x", e))
+	return json.Marshal(e.Hex())
 }
 
 func (e *EthUint64) UnmarshalJSON(b []byte) error {
@@ -62,6 +59,13 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 		return EthUint64(0), err
 	}
 	return EthUint64(parsedInt), nil
+}
+
+func (e EthUint64) Hex() string {
+	if e == 0 {
+		return "0x0"
+	}
+	return fmt.Sprintf("0x%x", e)
 }
 
 // EthBigInt represents a large integer whose zero value serializes to "0x0".
@@ -360,14 +364,7 @@ func (h *EthHash) UnmarshalJSON(b []byte) error {
 }
 
 func decodeHexString(s string, expectedLen int) ([]byte, error) {
-	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
-	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
-		s = s[2:]
-	}
-	// Sometimes clients will omit a leading zero in a byte; pad so we can decode correctly.
-	if len(s)%2 == 1 {
-		s = "0" + s
-	}
+	s = handleHexStringPrefix(s)
 	if len(s) != expectedLen*2 {
 		return nil, xerrors.Errorf("expected hex string length sans prefix %d, got %d", expectedLen*2, len(s))
 	}
@@ -376,6 +373,27 @@ func decodeHexString(s string, expectedLen int) ([]byte, error) {
 		return nil, xerrors.Errorf("cannot parse hex value: %w", err)
 	}
 	return b, nil
+}
+
+func DecodeHexString(s string) ([]byte, error) {
+	s = handleHexStringPrefix(s)
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse hex value: %w", err)
+	}
+	return b, nil
+}
+
+func handleHexStringPrefix(s string) string {
+	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
+	}
+	// Sometimes clients will omit a leading zero in a byte; pad so we can decode correctly.
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+	return s
 }
 
 func EthHashFromCid(c cid.Cid) (EthHash, error) {
@@ -392,10 +410,21 @@ func ParseEthHash(s string) (EthHash, error) {
 	return h, nil
 }
 
+func EthHashFromTxBytes(b []byte) EthHash {
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(b)
+	hash := hasher.Sum(nil)
+
+	var ethHash EthHash
+	copy(ethHash[:], hash)
+	return ethHash
+}
+
 func (h EthHash) String() string {
 	return "0x" + hex.EncodeToString(h[:])
 }
 
+// Should ONLY be used for blocks and Filecoin messages. Eth transactions expect a different hashing scheme.
 func (h EthHash) ToCid() cid.Cid {
 	// err is always nil
 	mh, _ := multihash.EncodeName(h[:], "blake2b-256")
@@ -556,7 +585,7 @@ type EthLog struct {
 	// The index corresponds to the sequence of messages produced by ChainGetParentMessages
 	TransactionIndex EthUint64 `json:"transactionIndex"`
 
-	// TransactionHash is the cid of the message that produced the event log.
+	// TransactionHash is the hash of the RLP message that produced the event log.
 	TransactionHash EthHash `json:"transactionHash"`
 
 	// BlockHash is the hash of the tipset containing the message that produced the log.

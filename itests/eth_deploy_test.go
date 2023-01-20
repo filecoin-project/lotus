@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 // TestDeployment smoke tests the deployment of a contract via the
@@ -36,12 +35,7 @@ func TestDeployment(t *testing.T) {
 	client, _, ens := kit.EnsembleMinimal(
 		t,
 		kit.MockProofs(),
-		kit.ThroughRPC(),
-		kit.WithCfgOpt(func(cfg *config.FullNode) error {
-			cfg.ActorEvent.EnableRealTimeFilterAPI = true
-			return nil
-		}),
-	)
+		kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -99,6 +93,7 @@ func TestDeployment(t *testing.T) {
 
 	mpoolTx, err := client.EthGetTransactionByHash(ctx, &hash)
 	require.NoError(t, err)
+	require.NotNil(t, mpoolTx)
 
 	// require that the hashes are identical
 	require.Equal(t, hash, mpoolTx.Hash)

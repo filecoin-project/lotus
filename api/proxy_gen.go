@@ -253,6 +253,8 @@ type FullNodeStruct struct {
 
 		EthGetLogs func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
+		EthGetMessageCidByTransactionHash func(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) `perm:"read"`
+
 		EthGetStorageAt func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) `perm:"read"`
 
 		EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) `perm:"read"`
@@ -262,6 +264,8 @@ type FullNodeStruct struct {
 		EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) `perm:"read"`
 
 		EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) `perm:"read"`
+
+		EthGetTransactionHashByCid func(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) `perm:"read"`
 
 		EthGetTransactionReceipt func(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) `perm:"read"`
 
@@ -2117,6 +2121,17 @@ func (s *FullNodeStub) EthGetLogs(p0 context.Context, p1 *ethtypes.EthFilterSpec
 	return nil, ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) {
+	if s.Internal.EthGetMessageCidByTransactionHash == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetMessageCidByTransactionHash(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) {
 	if s.Internal.EthGetStorageAt == nil {
 		return *new(ethtypes.EthBytes), ErrNotSupported
@@ -2170,6 +2185,17 @@ func (s *FullNodeStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.
 
 func (s *FullNodeStub) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) {
 	return *new(ethtypes.EthUint64), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {
+	if s.Internal.EthGetTransactionHashByCid == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetTransactionHashByCid(p0, p1)
+}
+
+func (s *FullNodeStub) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) {
