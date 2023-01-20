@@ -351,13 +351,11 @@ func splitStorePruneIndex(ctx context.Context, t *testing.T, n *kit.TestFullNode
 }
 
 func ipldExists(ctx context.Context, t *testing.T, c cid.Cid, n *kit.TestFullNode) bool {
-	_, err := n.ChainReadObj(ctx, c)
-	if ipld.IsNotFound(err) {
-		return false
-	} else if err != nil {
-		t.Fatalf("ChainReadObj failure on existence check: %s", err)
+	found, err := n.ChainHasObj(ctx, c)
+	if err != nil {
+		t.Fatalf("ChainHasObj failure: %s", err)
 	}
-	return true
+	return found
 }
 
 // Create on chain unreachable garbage for a network to exercise splitstore
@@ -414,12 +412,10 @@ func (g *Garbager) Exists(ctx context.Context, c cid.Cid) bool {
 		return false
 	} else if err != nil {
 		g.t.Fatalf("ChainReadObj failure on existence check: %s", err)
+		return false // unreachable
 	} else {
 		return true
 	}
-
-	g.t.Fatal("unreachable")
-	return false
 }
 
 func (g *Garbager) newPeerID(ctx context.Context) abi.ChainEpoch {
