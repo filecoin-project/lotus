@@ -413,12 +413,12 @@ func TestFEVMSelfDestruct(t *testing.T) {
 	//call destroy
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	t.Log(err)
-	require.Error(t, err) // XXX currently returns an error but should be success
+	require.NoError(t, err)
 
-	//call destroy a second time and get error
+	//call destroy a second time and also no error
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	t.Log(err)
-	require.Error(t, err)
+	require.NoError(t, err)
 }
 
 // TestFEVMTestApp deploys a fairly complex app contract and confirms it works as expected
