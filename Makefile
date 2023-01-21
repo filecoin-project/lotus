@@ -84,9 +84,6 @@ butterflynet: build-devnets
 interopnet: GOFLAGS+=-tags=interopnet
 interopnet: build-devnets
 
-wallabynet: GOFLAGS+=-tags=wallabynet
-wallabynet: build-devnets
-
 hyperspacenet: GOFLAGS+=-tags=hyperspacenet
 hyperspacenet: build-devnets
 

@@ -13,7 +13,6 @@ const (
 	BuildCalibnet      = 0x4
 	BuildInteropnet    = 0x5
 	BuildButterflynet  = 0x7
-	BuildWallabynet    = 0x8
 	BuildHyperspacenet = 0x9
 )
 
@@ -33,8 +32,6 @@ func BuildTypeString() string {
 		return "+interopnet"
 	case BuildButterflynet:
 		return "+butterflynet"
-	case BuildWallabynet:
-		return "+wallabynet"
 	case BuildHyperspacenet:
 		return "+hyperspacenet"
 	default:
