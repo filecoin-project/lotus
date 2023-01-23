@@ -417,71 +417,6 @@ jobs:
             golangci-lint run -v --timeout 10m \
               --concurrency 4 << parameters.args >>
 
-  publish:
-    description: publish binary artifacts
-    executor: ubuntu
-    parameters:
-      linux:
-        default: false
-        description: publish linux binaries?
-        type: boolean
-      appimage:
-        default: false
-        description: publish appimage binaries?
-        type: boolean
-    steps:
-      - run:
-          name: Install git jq curl
-          command: apt update && apt install -y git jq curl sudo
-      - checkout
-      - git_fetch_all_tags
-      - install_ipfs
-      - attach_workspace:
-          at: /tmp/workspace
-      - when:
-          condition: << parameters.linux >>
-          steps:
-            - run: ./scripts/build-arch-bundle.sh linux
-            - run: ./scripts/publish-arch-release.sh linux
-      - when:
-          condition: << parameters.appimage >>
-          steps:
-            - run: ./scripts/build-appimage-bundle.sh
-            - run: ./scripts/publish-arch-release.sh appimage
-
-  publish-snapcraft:
-    description: build and push snapcraft
-    machine:
-      image: ubuntu-2004:202104-01
-    resource_class: 2xlarge
-    parameters:
-      channel:
-        type: string
-        default: "edge"
-        description: snapcraft channel
-      snap-name:
-        type: string
-        default: 'lotus-filecoin'
-        description: name of snap in snap store
-    steps:
-      - checkout
-      - run:
-          name: Install snapcraft
-          command: sudo snap install snapcraft --classic
-      - run:
-          name: Build << parameters.snap-name >> snap
-          command: |
-            if [ "<< parameters.snap-name >>" != 'lotus-filecoin' ]; then
-              cat snap/snapcraft.yaml | sed 's/lotus-filecoin/lotus/' > edited-snapcraft.yaml
-              mv edited-snapcraft.yaml snap/snapcraft.yaml
-            fi
-
-            snapcraft --use-lxd --debug
-      - run:
-          name: Publish snap to << parameters.channel >> channel
-          shell: /bin/bash -o pipefail
-          command: |
-            snapcraft upload *.snap --release << parameters.channel >>
   build-docker:
     description: >
       Publish to Dockerhub
@@ -737,9 +672,10 @@ workflows:
           target: "./itests/eth_balance_test.go"
       - test:
           name: test-itest-eth_block_hash
+          requires:
+            - build
           suite: itest-eth_block_hash
           target: "./itests/eth_block_hash_test.go"
-      
       - test:
           name: test-itest-eth_deploy
           requires:
@@ -754,9 +690,10 @@ workflows:
           target: "./itests/eth_filter_test.go"
       - test:
           name: test-itest-eth_hash_lookup
+          requires:
+            - build
           suite: itest-eth_hash_lookup
           target: "./itests/eth_hash_lookup_test.go"
-      
       - test:
           name: test-itest-eth_transactions
           requires:

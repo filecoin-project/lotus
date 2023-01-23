@@ -1677,8 +1677,7 @@ COMMANDS:
      precommits            Print on-chain precommit info
      check-expire          Inspect expiring sectors
      expired               Get or cleanup expired sectors
-     renew                 Renew expiring sectors while not exceeding each sector's max life
-     extend                Extend sector expiration
+     extend                Extend expiring sectors while not exceeding each sector's max life
      terminate             Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
      remove                Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
      snap-up               Mark a committed capacity sector to be filled with deals
@@ -1884,13 +1883,13 @@ OPTIONS:
    
 ```
 
-### lotus-miner sectors renew
+### lotus-miner sectors extend
 ```
 NAME:
-   lotus-miner sectors renew - Renew expiring sectors while not exceeding each sector's max life
+   lotus-miner sectors extend - Extend expiring sectors while not exceeding each sector's max life
 
 USAGE:
-   lotus-miner sectors renew [command options] [arguments...]
+   lotus-miner sectors extend [command options] <sectorNumbers...(optional)>
 
 OPTIONS:
    --exclude value         optionally provide a file containing excluding sectors
@@ -1900,28 +1899,10 @@ OPTIONS:
    --max-sectors value     the maximum number of sectors contained in each message message (default: 0)
    --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
    --only-cc               only extend CC sectors (useful for making sector ready for snap upgrade) (default: false)
-   --really-do-it          pass this flag to really renew sectors, otherwise will only print out json representation of parameters (default: false)
+   --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
    --sector-file value     provide a file containing one sector number in each line, ignoring above selecting criteria
    --to value              only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 92160 (32 days) (default: 0)
    --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
-   
-```
-
-### lotus-miner sectors extend
-```
-NAME:
-   lotus-miner sectors extend - Extend sector expiration
-
-USAGE:
-   lotus-miner sectors extend [command options] <sectorNumbers...>
-
-OPTIONS:
-                              
-   --expiration-cutoff value  when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified) (default: 0)
-   --expiration-ignore value  when extending v1 sectors, skip sectors whose current expiration is less than <ignore> epochs from now (default: 120)
-   --new-expiration value     new expiration epoch (default: 0)
-   --tolerance value          when extending v1 sectors, don't try to extend sectors by fewer than this number of epochs (default: 20160)
-   --v1-sectors               renews all v1 sectors up to the maximum possible lifetime (default: false)
    
 ```
 
