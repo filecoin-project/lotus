@@ -660,7 +660,6 @@ func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
 
 }
 
-
 func TestEVMRpcDisable(t *testing.T) {
 	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
 
