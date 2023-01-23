@@ -1545,9 +1545,11 @@ func EthTxHashFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, 
 			return ethtypes.EmptyEthHash, err
 		}
 		return ethTx.Hash, nil
+	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 {
+		return ethtypes.EthHashFromCid(smsg.Cid())
+	} else { // BLS message
+		return ethtypes.EthHashFromCid(smsg.Message.Cid())
 	}
-
-	return ethtypes.EthHashFromCid(smsg.Cid())
 }
 
 func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, sa StateAPI) (ethtypes.EthTx, error) {
@@ -1570,15 +1572,15 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 		if err != nil {
 			return tx, err
 		}
-	} else if smsg.Signature.Type == crypto.SigTypeUnknown { // Executed BLS Filecoin message
+	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
 		tx = ethtypes.EthTxFromNativeMessage(smsg.VMMessage())
-		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
+		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
 		if err != nil {
 			return tx, err
 		}
-	} else { // Secp Filecoin Message or BLS Filecoin message in the mpool
+	} else { // BLS Filecoin message
 		tx = ethtypes.EthTxFromNativeMessage(smsg.VMMessage())
-		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
+		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
 		if err != nil {
 			return tx, err
 		}
@@ -1643,7 +1645,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 		smsg = &types.SignedMessage{
 			Message: *msg,
 			Signature: crypto.Signature{
-				Type: crypto.SigTypeUnknown,
+				Type: crypto.SigTypeBLS,
 				Data: nil,
 			},
 		}
@@ -1698,7 +1700,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	// V.Int will be nil for non-eth transactions, so we want to skip unmarshalling the create return.
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() && tx.V.Int != nil {
 		// Create and Create2 return the same things.
-		var ret eam.CreateReturn
+		var ret eam.CreateExternalReturn
 		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}
