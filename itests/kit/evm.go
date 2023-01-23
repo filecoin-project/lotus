@@ -25,8 +25,10 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -113,11 +115,12 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	params = buffer.Bytes()
 
 	msg := &types.Message{
-		To:     target,
-		From:   sender,
-		Value:  big.Zero(),
-		Method: builtintypes.MethodsEVM.InvokeContract,
-		Params: params,
+		To:       target,
+		From:     sender,
+		Value:    big.Zero(),
+		Method:   builtintypes.MethodsEVM.InvokeContract,
+		GasLimit: build.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
+		Params:   params,
 	}
 
 	e.t.Log("sending invoke message")
@@ -256,6 +259,12 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, nil, err
 	}
 	return result, wait, nil
+}
+
+func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte, exit exitcode.ExitCode) {
+	entryPoint := CalcFuncSignature(funcSignature)
+	wait, _ := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
+	require.Equal(e.t, exit, wait.Receipt.ExitCode)
 }
 
 // function signatures are the first 4 bytes of the hash of the function name and types
