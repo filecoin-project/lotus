@@ -899,6 +899,10 @@ github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20211210234204-ce2a1c70cd
 github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20211210234204-ce2a1c70cd73/go.mod h1:2PJ0JgxyB08t0b2WKrcuqI3di0V+5n6RS/LTUJhkoxY=
 github.com/ipld/go-ipld-selector-text-lite v0.0.1 h1:lNqFsQpBHc3p5xHob2KvEg/iM5dIFn6iw4L/Hh+kS1Y=
 github.com/ipld/go-ipld-selector-text-lite v0.0.1/go.mod h1:U2CQmFb+uWzfIEF3I1arrDa5rwtj00PrpiwwCO+k1RM=
+github.com/ipni/index-provider v0.10.0 h1:nu8YBxzRopdjwZHsgCUuC4AHpq88VVHJYrbkqUDx7eg=
+github.com/ipni/index-provider v0.10.0/go.mod h1:InSXbZp2p/ZhAwiDElG/wzjnA1ea1iJ3hhyiAHrD+Vo=
+github.com/ipni/storetheindex v0.5.3-0.20221203123030-16745cb63f15 h1:qJq6QtLk+9nQi3CDBhNfJ1cjZ4pghjCHcQUZ1mWbF0k=
+github.com/ipni/storetheindex v0.5.3-0.20221203123030-16745cb63f15/go.mod h1:c/NS640Iu2NrCCIErnUhsUM5KVEyeXymgtNnx6eDwMU=
 github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 h1:QG4CGBqCeuBo6aZlGAamSkxWdgWfZGeE49eUOWJPA4c=
 github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52/go.mod h1:fdg+/X9Gg4AsAIzWpEHwnqd+QY3b7lajxyjE1m4hkq4=
 github.com/jackpal/gateway v1.0.5/go.mod h1:lTpwd4ACLXmpyiCTRtfiNyVnUmqT9RivzCDQetPfnjA=

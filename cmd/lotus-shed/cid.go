@@ -27,6 +27,7 @@ var cidCmd = &cli.Command{
 	Subcommands: cli.Commands{
 		cidIdCmd,
 		inspectBundleCmd,
+		cborSerCid,
 	},
 }
 
@@ -90,6 +91,25 @@ var cidIdCmd = &cli.Command{
 			return xerrors.Errorf("unrecognized codec: %s", cctx.String("codec"))
 		}
 
+		return nil
+	},
+}
+
+var cborSerCid = &cli.Command{
+	Name:      "cborSer",
+	Usage:     "CBOR Serialize CID to bytes",
+	ArgsUsage: "[cid]",
+	Flags:     []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify data")
+		}
+		cid, err := cid.Decode(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%x\n", cid.Bytes())
 		return nil
 	},
 }

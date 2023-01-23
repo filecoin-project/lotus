@@ -882,6 +882,8 @@ type StorageMinerStruct struct {
 
 		IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
+		InitiateDealWithClient func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 cid.Cid, p4 address.Address, p5 abi.ChainEpoch, p6 uint64, p7 string) error `perm:"admin"`
+
 		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
 		MarketDataTransferDiagnostics func(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) `perm:"write"`
@@ -5385,6 +5387,17 @@ func (s *StorageMinerStruct) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid)
 }
 
 func (s *StorageMinerStub) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) InitiateDealWithClient(p0 context.Context, p1 cid.Cid, p2 uint64, p3 cid.Cid, p4 address.Address, p5 abi.ChainEpoch, p6 uint64, p7 string) error {
+	if s.Internal.InitiateDealWithClient == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.InitiateDealWithClient(p0, p1, p2, p3, p4, p5, p6, p7)
+}
+
+func (s *StorageMinerStub) InitiateDealWithClient(p0 context.Context, p1 cid.Cid, p2 uint64, p3 cid.Cid, p4 address.Address, p5 abi.ChainEpoch, p6 uint64, p7 string) error {
 	return ErrNotSupported
 }
 

@@ -1234,6 +1234,10 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
 }
 
+func (sm *StorageMinerAPI) InitiateDealWithClient(ctx context.Context, commP cid.Cid, commPSize uint64, rootCid cid.Cid, clientAddr address.Address, startEpoch abi.ChainEpoch, duration uint64, carPath string) error {
+	return sm.StorageProvider.InitiateDealWithClient(ctx, commP, commPSize, rootCid, clientAddr, startEpoch, duration, carPath)
+}
+
 func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
 	return sm.StorageDealPieceCidBlocklistConfigFunc()
 }

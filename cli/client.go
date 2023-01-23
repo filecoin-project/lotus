@@ -32,6 +32,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -202,8 +204,13 @@ var clientCommPCmd = &cli.Command{
 	Usage:     "Calculate the piece-cid (commP) of a CAR file",
 	ArgsUsage: "[inputFile]",
 	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "padded",
+			Usage: "Pad CommP to a size with power of 2",
+		},
 		&CidBaseFlag,
 	},
+
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -226,9 +233,29 @@ var clientCommPCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("CID: ", encoder.Encode(ret.Root))
-		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(uint64(ret.Size))))
-		fmt.Println("Piece size in bytes: ", types.NewInt(uint64(ret.Size)))
+		commP := ret.Root
+		size := uint64(ret.Size)
+
+		if cctx.Bool("padded") {
+
+			_, _, b, err := commcid.CIDToCommitment(ret.Root)
+			if err != nil {
+				return err
+			}
+			padded, err := commp.PadCommP(b, uint64(ret.Size), uint64(ret.Size.Padded()))
+			if err != nil {
+				return err
+			}
+			_, commP, err = cid.CidFromBytes(padded)
+			if err != nil {
+				return err
+			}
+			size = uint64(ret.Size.Padded())
+		}
+
+		fmt.Println("CID: ", encoder.Encode(commP))
+		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(size)))
+		fmt.Println("Piece size in bytes: ", types.NewInt(size))
 		return nil
 	},
 }

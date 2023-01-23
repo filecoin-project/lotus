@@ -53,6 +53,8 @@
 * [Indexer](#Indexer)
   * [IndexerAnnounceAllDeals](#IndexerAnnounceAllDeals)
   * [IndexerAnnounceDeal](#IndexerAnnounceDeal)
+* [Initiate](#Initiate)
+  * [InitiateDealWithClient](#InitiateDealWithClient)
 * [Log](#Log)
   * [LogAlerts](#LogAlerts)
   * [LogList](#LogList)
@@ -988,6 +990,33 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }
+]
+```
+
+Response: `{}`
+
+## Initiate
+
+
+### InitiateDealWithClient
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  42,
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "f01234",
+  10101,
+  42,
+  "string value"
 ]
 ```
 

@@ -24,6 +24,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -354,6 +355,64 @@ var storageDealsCmd = &cli.Command{
 		setSealDurationCmd,
 		dealsPendingPublish,
 		dealsRetryPublish,
+		dealsAsyncContractDeal,
+	},
+}
+
+var dealsAsyncContractDeal = &cli.Command{
+	Name:      "async-contract-deal",
+	Usage:     "Async deal with client contract",
+	ArgsUsage: "<rootCid> <commP> <commPSize> <clientAddr> <startEpoch> <duration> <carFile>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.DaemonContext(cctx)
+
+		if cctx.NArg() != 7 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		rootCid, err := cid.Decode(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		commP, err := cid.Decode(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		commPSize, err := strconv.Atoi(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		clientAddr, err := address.NewFromString(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		startEpoch, err := strconv.Atoi(cctx.Args().Get(4))
+		if err != nil {
+			return err
+		}
+
+		duration, err := strconv.Atoi(cctx.Args().Get(5))
+		if err != nil {
+			return err
+		}
+
+		carPath, err := filepath.Abs(cctx.Args().Get(6))
+		if err != nil {
+			return err
+		}
+		fmt.Println("carPath in cli: ", carPath)
+
+		return api.InitiateDealWithClient(ctx, commP, uint64(commPSize), rootCid, clientAddr, abi.ChainEpoch(startEpoch), uint64(duration), carPath)
 	},
 }
 

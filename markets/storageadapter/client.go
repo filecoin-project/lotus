@@ -16,6 +16,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v9/account"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -92,8 +94,32 @@ func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 
 	return out, nil
 }
-
 func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
+
+	var params account.AuthenticateMessageParams
+
+	params.Message = input
+	params.Signature = sig.Data
+
+	var msg types.Message
+	buf := new(bytes.Buffer)
+
+	params.MarshalCBOR(buf)
+	msg.Params = buf.Bytes()
+	msg.From = builtin.StorageMarketActorAddr
+	msg.To = addr
+	msg.Nonce = 1
+	msg.Method = builtin.MethodsAccount.AuthenticateMessage
+
+	res, err := c.StateCall(ctx, &msg, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
+
+	return res.MsgRct.ExitCode == exitcode.Ok, nil
+}
+
+func (c *ClientNodeAdapter) VerifySignatureOld(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
 	addr, err := c.StateAccountKey(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return false, err
