@@ -1570,16 +1570,16 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 
 		tx.Hash, err = tx.TxHash()
 		if err != nil {
-			return tx, err
+			return ethtypes.EthTx{}, err
 		}
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
-		tx = ethtypes.EthTxFromNativeMessage(smsg.VMMessage())
+		tx = ethTxFromNativeMessage(ctx, smsg.VMMessage(), sa)
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
 		if err != nil {
 			return tx, err
 		}
 	} else { // BLS Filecoin message
-		tx = ethtypes.EthTxFromNativeMessage(smsg.VMMessage())
+		tx = ethTxFromNativeMessage(ctx, smsg.VMMessage(), sa)
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Message.Cid())
 		if err != nil {
 			return tx, err
@@ -1587,6 +1587,28 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 	}
 
 	return tx, nil
+}
+
+// ethTxFromNativeMessage does NOT populate:
+// - BlockHash
+// - BlockNumber
+// - TransactionIndex
+// - Hash
+func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, sa StateAPI) ethtypes.EthTx {
+	// We don't care if we error here, conversion is best effort for non-eth transactions
+	from, _ := lookupEthAddress(ctx, msg.From, sa)
+	to, _ := lookupEthAddress(ctx, msg.To, sa)
+	return ethtypes.EthTx{
+		To:                   &to,
+		From:                 from,
+		Nonce:                ethtypes.EthUint64(msg.Nonce),
+		ChainID:              ethtypes.EthUint64(build.Eip155ChainId),
+		Value:                ethtypes.EthBigInt(msg.Value),
+		Type:                 ethtypes.Eip1559TxType,
+		Gas:                  ethtypes.EthUint64(msg.GasLimit),
+		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
+		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
+	}
 }
 
 // newEthTxFromMessageLookup creates an ethereum transaction from filecoin message lookup. If a negative txIdx is passed
@@ -1711,11 +1733,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 
 	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
 	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
-
-	// V.Int will be nil for non-eth transactions, so we want return here and skip eth-specific stuff
-	if tx.V.Int == nil {
-		return receipt, nil
-	}
 
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.

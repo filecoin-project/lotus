@@ -95,25 +95,6 @@ func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
 	}, nil
 }
 
-// EthTxFromNativeMessage does NOT populate:
-// - BlockHash
-// - BlockNumber
-// - TransactionIndex
-// - Hash
-// - From (not valid)
-// - To (not valid)
-func EthTxFromNativeMessage(msg *types.Message) EthTx {
-	return EthTx{
-		Nonce:                EthUint64(msg.Nonce),
-		ChainID:              EthUint64(build.Eip155ChainId),
-		Value:                EthBigInt(msg.Value),
-		Type:                 Eip1559TxType,
-		Gas:                  EthUint64(msg.GasLimit),
-		MaxFeePerGas:         EthBigInt(msg.GasFeeCap),
-		MaxPriorityFeePerGas: EthBigInt(msg.GasPremium),
-	}
-}
-
 func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
 		to           *EthAddress
