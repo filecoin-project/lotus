@@ -2,6 +2,7 @@ package itests
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -38,9 +40,9 @@ func inputDataFromFrom(ctx context.Context, t *testing.T, client *kit.TestFullNo
 
 func setupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *kit.TestFullNode) {
 	kit.QuietMiningLogs()
-	blockTime := 100 * time.Millisecond
+	blockTime := 5 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	return ctx, cancel, client
 }
@@ -138,4 +140,79 @@ func TestEVMRpcDisable(t *testing.T) {
 
 	_, err := client.EthBlockNumber(context.Background())
 	require.ErrorContains(t, err, "module disabled, enable with Fevm.EnableEthRPC")
+}
+
+// TestFEVMRecursiveFuncCall deploys a contract and makes a recursive function calls
+func TestFEVMRecursiveFuncCall(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameActor := "contracts/StackFunc.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	testN := func(n int) func(t *testing.T) {
+		return func(t *testing.T) {
+			inputData := make([]byte, 32)
+			binary.BigEndian.PutUint64(inputData[24:], uint64(n))
+
+			result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "exec1(uint256)", inputData)
+			require.Equal(t, result, []byte{})
+		}
+	}
+
+	t.Run("n=0", testN(0))
+	t.Run("n=1", testN(1))
+	t.Run("n=20", testN(20))
+	t.Run("n=200", testN(200))
+	t.Run("n=293", testN(293))
+}
+
+// TestFEVMRecursiveActorCall deploys a contract and makes a recursive actor calls
+func TestFEVMRecursiveActorCall(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameActor := "contracts/RecCall.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	testN := func(n, r int, ex exitcode.ExitCode) func(t *testing.T) {
+		return func(t *testing.T) {
+			inputData := make([]byte, 32*3)
+			binary.BigEndian.PutUint64(inputData[24:], uint64(n))
+			binary.BigEndian.PutUint64(inputData[32+24:], uint64(n))
+			binary.BigEndian.PutUint64(inputData[32+32+24:], uint64(r))
+
+			client.EVM().InvokeContractByFuncNameExpectExit(ctx, fromAddr, actorAddr, "exec1(uint256,uint256,uint256)", inputData, ex)
+		}
+	}
+
+	t.Run("n=0,r=1", testN(0, 1, exitcode.Ok))
+	t.Run("n=1,r=1", testN(1, 1, exitcode.Ok))
+	t.Run("n=20,r=1", testN(20, 1, exitcode.Ok))
+	t.Run("n=200,r=1", testN(200, 1, exitcode.Ok))
+	t.Run("n=251,r=1", testN(251, 1, exitcode.Ok))
+
+	t.Run("n=252,r=1-fails", testN(252, 1, exitcode.ExitCode(23))) // 23 means stack overflow
+
+	t.Run("n=0,r=10", testN(0, 10, exitcode.Ok))
+	t.Run("n=1,r=10", testN(1, 10, exitcode.Ok))
+	t.Run("n=20,r=10", testN(20, 10, exitcode.Ok))
+	t.Run("n=200,r=10", testN(200, 10, exitcode.Ok))
+	t.Run("n=251,r=10", testN(251, 10, exitcode.Ok))
+
+	t.Run("n=252,r=10-fails", testN(252, 10, exitcode.ExitCode(23)))
+
+	t.Run("n=0,r=32", testN(0, 32, exitcode.Ok))
+	t.Run("n=1,r=32", testN(1, 32, exitcode.Ok))
+	t.Run("n=20,r=32", testN(20, 32, exitcode.Ok))
+	t.Run("n=200,r=32", testN(200, 32, exitcode.Ok))
+	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
+
+	t.Run("n=0,r=254", testN(0, 254, exitcode.Ok))
+	t.Run("n=251,r=170", testN(251, 170, exitcode.Ok))
+
+	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=251,r=171-fails", testN(251, 171, exitcode.ExitCode(33)))
 }
