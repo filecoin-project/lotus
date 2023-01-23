@@ -1771,7 +1771,10 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			}
 
 			for _, entry := range evt.Entries {
-				value := ethtypes.EthBytes(leftpad32(entry.Value)) // value has already been cbor-decoded but see https://github.com/filecoin-project/ref-fvm/issues/1345
+				value, err := cborDecodeTopicValue(entry.Value)
+				if err != nil {
+					return api.EthTxReceipt{}, xerrors.Errorf("failed to decode event log value: %w", err)
+				}
 				if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
 					l.Topics = append(l.Topics, value)
 				} else {
