@@ -1,28 +1,27 @@
 package itests
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"os"
-	"path"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/itests/kit"
-	oaerrors "github.com/go-openapi/errors"
 	"github.com/go-openapi/spec"
-	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/validate"
+	"github.com/gregdhill/go-openrpc/parse"
+	orpctypes "github.com/gregdhill/go-openrpc/types"
 	"github.com/ipfs/go-cid"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/stretchr/testify/require"
+	"github.com/xeipuuv/gojsonschema"
 
-	"github.com/gregdhill/go-openrpc/parse"
-	"github.com/gregdhill/go-openrpc/types"
-	"github.com/gregdhill/go-openrpc/util"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
+
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 // TODO generate this using reflection
@@ -48,35 +47,34 @@ type ethAPIRaw struct {
 	EthGetTransactionByBlockNumberAndIndex func(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (json.RawMessage, error)
 	EthGetTransactionByHash                func(context.Context, *ethtypes.EthHash) (json.RawMessage, error)
 	EthGetTransactionCount                 func(context.Context, ethtypes.EthAddress, string) (json.RawMessage, error)
-	EthGetTransactionHashByCid             func(context.Context, cid.Cid) (json.RawMessage, error)
 	EthGetTransactionReceipt               func(context.Context, ethtypes.EthHash) (json.RawMessage, error)
 	EthMaxPriorityFeePerGas                func(context.Context) (json.RawMessage, error)
 	EthNewBlockFilter                      func(context.Context) (json.RawMessage, error)
 	EthNewFilter                           func(context.Context, *ethtypes.EthFilterSpec) (json.RawMessage, error)
 	EthNewPendingTransactionFilter         func(context.Context) (json.RawMessage, error)
-	EthProtocolVersion                     func(context.Context) (json.RawMessage, error)
 	EthSendRawTransaction                  func(context.Context, ethtypes.EthBytes) (json.RawMessage, error)
 	EthSubscribe                           func(context.Context, string, *ethtypes.EthSubscriptionParams) (json.RawMessage, error)
 	EthUninstallFilter                     func(context.Context, ethtypes.EthFilterID) (json.RawMessage, error)
 	EthUnsubscribe                         func(context.Context, ethtypes.EthSubscriptionID) (json.RawMessage, error)
 }
 
-func TestEthOpenRPC(t *testing.T) {
+func TestEthOpenRPCConformance(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
+	// specs/eth_openrpc.json is built from https://github.com/ethereum/execution-apis
 	specJSON, err := os.ReadFile("specs/eth_openrpc.json")
 	require.NoError(t, err)
 
-	specParsed := types.NewOpenRPCSpec1()
+	specParsed := orpctypes.NewOpenRPCSpec1()
 	err = json.Unmarshal([]byte(specJSON), specParsed)
 	require.NoError(t, err)
 	parse.GetTypes(specParsed, specParsed.Objects)
 
 	schemas := make(map[string]spec.Schema)
 	for _, method := range specParsed.Methods {
+		t.Logf("method: %s", method.Name)
 		if method.Result != nil {
-			schema := resolveSchema(specParsed, method.Result.Schema)
-			schemas[method.Name] = schema
+			schemas[method.Name] = method.Result.Schema
 		}
 	}
 
@@ -86,12 +84,29 @@ func TestEthOpenRPC(t *testing.T) {
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
+	contractHex, err := os.ReadFile(EventMatrixContract.Filename)
+	require.NoError(t, err)
+
+	// strip any trailing newlines from the file
+	contractHex = bytes.TrimRight(contractHex, "\n")
+
+	contractBin, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	senderAddr, err := client.EVM().WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+	// senderEthAddr := getContractEthAddress(ctx, t, client, senderAddr)
+
+	result := client.EVM().DeployContract(ctx, senderAddr, contractBin)
+
+	contractAddr, err := address.NewIDAddress(result.ActorID)
+	require.NoError(t, err)
+
 	// send a message that exercises event logs
-	sender, contract := client.EVM().DeployContractFromFilename(ctx, EventMatrixContract.Filename)
 	messages := invokeAndWaitUntilAllOnChain(t, client, []Invocation{
 		{
-			Sender:   sender,
-			Target:   contract,
+			Sender:   senderAddr,
+			Target:   contractAddr,
 			Selector: EventMatrixContract.Fn["logEventThreeIndexedWithData"],
 			Data:     packUint64Values(44, 27, 19, 12),
 		},
@@ -100,28 +115,88 @@ func TestEthOpenRPC(t *testing.T) {
 	require.NotEmpty(t, messages)
 
 	var messageWithEvents ethtypes.EthHash
-	for k := range messages {
+	var blockHashWithMessage ethtypes.EthHash
+	var blockNumberWithMessage ethtypes.EthUint64
+
+	for k, mts := range messages {
 		messageWithEvents = k
+		ts := mts.ts
+		blockNumberWithMessage = ethtypes.EthUint64(ts.Height())
+
+		tsCid, err := ts.Key().Cid()
+		require.NoError(t, err)
+
+		blockHashWithMessage, err = ethtypes.EthHashFromCid(tsCid)
+		require.NoError(t, err)
 		break
 	}
+
+	// create a json-rpc client that returns raw json responses
+	var ethapi ethAPIRaw
 
 	netAddr, err := manet.ToNetAddr(client.ListenAddr)
 	require.NoError(t, err)
 	rpcAddr := "ws://" + netAddr.String() + "/rpc/v1"
 
-	var ethapi ethAPIRaw
 	closer, err := jsonrpc.NewClient(ctx, rpcAddr, "Filecoin", &ethapi, nil)
 	require.NoError(t, err)
 	defer closer()
 
+	// maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+
 	testCases := []struct {
-		method string
-		call   func(*ethAPIRaw) (json.RawMessage, error)
+		method  string
+		variant string // suffix applied to the test name to distinguish different variants of a method call
+		call    func(*ethAPIRaw) (json.RawMessage, error)
 	}{
+		// Simple no-argument calls first
+
+		{
+			method: "eth_accounts",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthAccounts(context.Background())
+			},
+		},
+
 		{
 			method: "eth_blockNumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthBlockNumber(context.Background())
+			},
+		},
+
+		{
+			method: "eth_chainId",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthChainId(context.Background())
+			},
+		},
+
+		{
+			method: "eth_gasPrice",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGasPrice(context.Background())
+			},
+		},
+
+		{
+			method: "eth_maxPriorityFeePerGas",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthMaxPriorityFeePerGas(context.Background())
+			},
+		},
+
+		{
+			method: "eth_newBlockFilter",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthNewBlockFilter(context.Background())
+			},
+		},
+
+		{
+			method: "eth_newPendingTransactionFilter",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthNewPendingTransactionFilter(context.Background())
 			},
 		},
 
@@ -131,72 +206,107 @@ func TestEthOpenRPC(t *testing.T) {
 				return ethapi.EthGetTransactionReceipt(context.Background(), messageWithEvents)
 			},
 		},
+
+		{
+			method:  "eth_getBlockByHash",
+			variant: "txhashes",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockByHash(context.Background(), blockHashWithMessage, false)
+			},
+		},
+
+		{
+			method:  "eth_getBlockByHash",
+			variant: "txfull",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockByHash(context.Background(), blockHashWithMessage, true)
+			},
+		},
+
+		{
+			method:  "eth_getBlockByNumber",
+			variant: "earliest",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockByNumber(context.Background(), "earliest", true)
+			},
+		},
+
+		{
+			method:  "eth_getBlockByNumber",
+			variant: "pending",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockByNumber(context.Background(), "pending", true)
+			},
+		},
+
+		{
+			method:  "eth_getBlockByNumber",
+			variant: "latest",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
+			},
+		},
+
+		// {
+		// 	method: "eth_call",
+		// 	call: func(a *ethAPIRaw) (json.RawMessage, error) {
+		// 		return ethapi.EthCall(context.Background(), ethtypes.EthCall{
+		// 			From: &senderEthAddr,
+		// 			Data: contractBin,
+		// 		}, "logEventZeroData")
+		// 	},
+		// },
+
+		// {
+		// 	method: "eth_estimateGas",
+		// 	call: func(a *ethAPIRaw) (json.RawMessage, error) {
+		// 		return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
+		// 			From: &senderEthAddr,
+		// 			Data: contractBin,
+		// 		})
+		// 	},
+		// },
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.method, func(t *testing.T) {
+		name := tc.method
+		if tc.variant != "" {
+			name += "_" + tc.variant
+		}
+		t.Run(name, func(t *testing.T) {
 			schema, ok := schemas[tc.method]
 			require.True(t, ok, "method not found in openrpc spec")
 
 			resp, err := tc.call(&ethapi)
 			require.NoError(t, err)
 
-			respJson, err := json.MarshalIndent(resp, "", "  ")
+			respJson, err := json.Marshal(resp)
 			require.NoError(t, err)
 
-			err = validate.AgainstSchema(&schema, respJson, strfmt.Default)
-			if err != nil {
-				t.Logf("response was %s", respJson)
+			loader := gojsonschema.NewGoLoader(schema)
+			resploader := gojsonschema.NewBytesLoader(respJson)
+			result, err := gojsonschema.Validate(loader, resploader)
+			require.NoError(t, err)
 
-				ce := &oaerrors.CompositeError{}
-				if errors.As(err, &ce) {
-					for _, e := range ce.Errors {
-						t.Logf("error: %v", e)
-					}
+			if !result.Valid() {
+				niceRespJson, err := json.MarshalIndent(resp, "", "  ")
+				if err == nil {
+					t.Logf("response was %s", niceRespJson)
 				}
+
+				schemaJson, err := json.MarshalIndent(schema, "", "  ")
+				if err == nil {
+					t.Logf("schema was %s", schemaJson)
+				}
+
+				// check against https://www.jsonschemavalidator.net/
+
+				for _, desc := range result.Errors() {
+					t.Logf("- %s\n", desc)
+				}
+
+				t.Errorf("response did not validate")
 			}
-			require.NoError(t, err)
 		})
 	}
-}
-
-func resolveSchema(openrpc *types.OpenRPCSpec1, sch spec.Schema) spec.Schema {
-	doc, _, _ := sch.Ref.GetPointer().Get(openrpc)
-
-	if s, ok := doc.(spec.Schema); ok {
-		sch = persistFields(sch, s)
-	} else if cd, ok := doc.(*types.ContentDescriptor); ok {
-		sch = persistFields(sch, cd.Schema)
-	}
-
-	for i := range sch.OneOf {
-		sch.OneOf[i] = resolveSchema(openrpc, sch.OneOf[i])
-	}
-
-	for i := range sch.AllOf {
-		sch.AllOf[i] = resolveSchema(openrpc, sch.AllOf[i])
-	}
-
-	for i := range sch.AnyOf {
-		sch.AnyOf[i] = resolveSchema(openrpc, sch.AnyOf[i])
-	}
-
-	if sch.Not != nil {
-		s := resolveSchema(openrpc, *sch.Not)
-		sch.Not = &s
-	}
-
-	if sch.Ref.GetURL() != nil {
-		return resolveSchema(openrpc, sch)
-	}
-	return sch
-}
-
-func persistFields(prev, next spec.Schema) spec.Schema {
-	next.Title = util.FirstOf(next.Title, prev.Title, path.Base(prev.Ref.String()))
-	next.Description = util.FirstOf(next.Description, prev.Description)
-	if next.Items == nil {
-		next.Items = prev.Items
-	}
-	return next
 }
