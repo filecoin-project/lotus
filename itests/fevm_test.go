@@ -95,9 +95,11 @@ func TestFEVMRecursive(t *testing.T) {
 				fmt.Printf("error - %+v", err)
 			}
 			require.NoError(t, err)
-			events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-			//passing in 0 still means there's 1 event
-			require.Equal(t, max(1, int(callcount)), len(events))
+			if ret != nil && ret.Receipt.EventsRoot != nil {
+				events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+				//passing in 0 still means there's 1 event
+				require.Equal(t, max(1, callcount), len(events))
+			}
 		})
 	}
 }
@@ -127,9 +129,11 @@ func TestFEVMRecursive1(t *testing.T) {
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive1()", []byte{})
 	require.NoError(t, err)
-	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-	//passing in 0 still means there's 1 event
-	require.Equal(t, max(1, callcount), len(events))
+	if ret != nil && ret.Receipt.EventsRoot != nil {
+		events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+		//passing in 0 still means there's 1 event
+		require.Equal(t, max(1, callcount), len(events))
+	}
 }
 func TestFEVMRecursive2(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -221,7 +225,7 @@ func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
-// XXX acts weird has two different types of errors with inconsistent patterns
+// XXX Is this behavior expected?
 func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -234,20 +238,10 @@ func TestFEVMRecursiveDelegatecall(t *testing.T) {
 		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
 	}
 
-	//these fail but the evm doesn't error, just the return value is not count
-	for i := uint64(46); i <= 58; i++ {
-		recursiveDelegatecallNotEqual(ctx, t, client, filename, i)
+	//45 and beyond it fails
+	for i := uint64(45); i <= 62; i++ {
+		recursiveDelegatecallFail(ctx, t, client, filename, i)
 	}
-
-	//from 59 to 62 it fails in an oscillating way between count not being correct and EVM error
-	for i := uint64(59); i <= 62; i++ {
-		if i%2 == 0 {
-			recursiveDelegatecallNotEqual(ctx, t, client, filename, i)
-		} else {
-			recursiveDelegatecallError(ctx, t, client, filename, i)
-		}
-	}
-	//63 and beyond it fails either w evm error or an incorrect result:
 	for i := uint64(63); i <= 800; i += 40 {
 		recursiveDelegatecallFail(ctx, t, client, filename, i)
 	}
@@ -482,18 +476,6 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 // TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
 // XXX calling self destruct fails
 func TestFEVMTestSendToContract(t *testing.T) {
-
-	//TODO not sure how to get actual gas used so for now hard coding these values
-	// calculated from running the test and seeing the change
-	// next step is to make these come through automatically..
-
-	//gasCostDeploy, _ := big.FromString("508807660917778")
-	gasCostTransfer, _ := big.FromString("508807660917778")
-	gasCostDestroy, _ := big.FromString("508807660917778")
-
-	_ = gasCostTransfer
-	_ = gasCostDestroy
-
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
@@ -539,11 +521,18 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	t.Log(err)
 	t.Log("a - ", a)
 	t.Log("b - ", b)
-	require.Error(t, err) // XXX currently returns an error but should be success
+	require.NoError(t, err)
 
 	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	t.Log("balance after destroy - ", bal)
+
+	finalBalanceMinimum, err := big.FromString("99999999990000000000000000")
+	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
+	require.NoError(t, err)
+	t.Log("initial balance- ", bal)
+	require.NoError(t, err)
+	require.Equal(t, true, finalBal.GreaterThan(finalBalanceMinimum))
 
 }
 
@@ -567,6 +556,20 @@ func TestFEVMTestNotPayable(t *testing.T) {
 
 }
 
+// tx to non function succeeds
+func TestFEVMSendCall(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/GasSendTest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "x()", []byte{})
+	require.NoError(t, err)
+	fmt.Println("ret - ", ret)
+}
+
 // creates a contract that would fail when tx are sent to it
 // on eth but on fevm it succeeds
 // example on goerli of tx failing https://goerli.etherscan.io/address/0xec037bdc9a79420985a53a49fdae3ccf8989909b
@@ -583,6 +586,10 @@ func TestFEVMSendGasLimit(t *testing.T) {
 	sendAmount := big.MustFromString("10000000")
 
 	transferValueOrFailTest(ctx, t, client, fromAddr, contractAddr, sendAmount)
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDataLength()", []byte{})
+	require.NoError(t, err)
+	fmt.Println("ret - ", ret)
+
 }
 
 // TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error

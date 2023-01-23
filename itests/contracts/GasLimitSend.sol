@@ -13,10 +13,13 @@ contract GasLimitTest {
     function expensiveTest() public{
         GasLimitTestReceiver(receiver).expensive();
     }
+    function getDataLength() public returns (uint256)  {
+        return GasLimitTestReceiver(receiver).getDataLength();
+    }
 }
 
 contract GasLimitTestReceiver {
-    uint256[] data;
+    uint256[] public data;
     fallback() external payable {
         expensive();
     }
