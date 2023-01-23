@@ -12,7 +12,6 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/gregdhill/go-openrpc/parse"
 	orpctypes "github.com/gregdhill/go-openrpc/types"
-	"github.com/ipfs/go-cid"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/stretchr/testify/require"
 	"github.com/xeipuuv/gojsonschema"
@@ -72,7 +71,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 
 	schemas := make(map[string]spec.Schema)
 	for _, method := range specParsed.Methods {
-		t.Logf("method: %s", method.Name)
 		if method.Result != nil {
 			schemas[method.Name] = method.Result.Schema
 		}
@@ -244,6 +242,41 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			variant: "latest",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
+			},
+		},
+
+		{
+			method: "eth_getBlockTransactionCountByHash",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockTransactionCountByHash(context.Background(), blockHashWithMessage)
+			},
+		},
+
+		{
+			method: "eth_getBlockTransactionCountByNumber",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBlockTransactionCountByNumber(context.Background(), blockNumberWithMessage)
+			},
+		},
+
+		{
+			method: "eth_getTransactionByBlockHashAndIndex",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
+			},
+		},
+
+		{
+			method: "eth_getTransactionByBlockNumberAndIndex",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage, ethtypes.EthUint64(0))
+			},
+		},
+
+		{
+			method: "eth_getTransactionByHash",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionByHash(context.Background(), &messageWithEvents)
 			},
 		},
 
