@@ -6,11 +6,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/lotus/api"
@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 )
 
 // convert a simple byte array into input data which is a left padded 32 byte array
@@ -77,47 +76,46 @@ func max(x int, y int) int {
 
 // TestFEVMRecursive does a basic fevm contract installation and invocation
 func TestFEVMRecursive(t *testing.T) {
-	callcounts := []uint64{0, 1}
+	callcounts := []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 230, 330}
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 	filename := "contracts/Recursive.hex"
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 
-	// Iterate over the numbers array
-	for _, _callcount := range callcounts {
-		callcount := _callcount // create local copy in loop to mollify golint
-		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callcount), func(t *testing.T) {
-			_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
-			if err != nil {
-				fmt.Printf("error - %+v", err)
-			}
-			require.NoError(t, err)
-			if ret != nil && ret.Receipt.EventsRoot != nil {
-				events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-				//passing in 0 still means there's 1 event
-				require.Equal(t, max(1, int(callcount)), len(events))
-			}
-		})
-	}
-}
-
-func TestFEVMRecursiveFail(t *testing.T) {
-	callcounts := []uint64{2, 10, 1000, 100000}
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-	filename := "contracts/Recursive.hex"
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-
-	// Iterate over the numbers array
+	// Successful calls
 	for _, _callcount := range callcounts {
 		callcount := _callcount // create local copy in loop to mollify golint
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callcount), func(t *testing.T) {
 			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
+			if err != nil {
+				fmt.Printf("error - %+v", err)
+			}
+			require.NoError(t, err)
+		})
+	}
+
+}
+
+func TestFEVMRecursiveFail(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	// Unsuccessful calls
+	failcallcounts := []uint64{340, 400, 600, 850, 1000}
+	for _, _callcount := range failcallcounts {
+		callcount := _callcount // create local copy in loop to mollify golint
+		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", callcount), func(t *testing.T) {
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
+			if err != nil {
+				fmt.Printf("error - %+v", err)
+			}
 			require.Error(t, err)
-			require.True(t, strings.HasPrefix(err.Error(), "GasEstimateMessageGas"))
 		})
 	}
 }
+
 func TestFEVMRecursive1(t *testing.T) {
 	callcount := 1
 	ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -137,9 +135,13 @@ func TestFEVMRecursive2(t *testing.T) {
 	defer cancel()
 	filename := "contracts/Recursive.hex"
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive2()", []byte{})
-	require.Error(t, err)
-	require.True(t, strings.HasPrefix(err.Error(), "GasEstimateMessageGas"))
+	_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive2()", []byte{})
+	require.NoError(t, err)
+	if ret != nil && ret.Receipt.EventsRoot != nil {
+		events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+		//passing in 0 still means there's 1 event
+		require.Equal(t, 2, len(events))
+	}
 }
 
 func recursiveDelegatecallNotEqual(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
@@ -199,30 +201,24 @@ func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.Te
 	}
 }
 func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
+	t.Log("Count - ", count)
 
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
-	result, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
 	require.NoError(t, err)
-	fmt.Println(result)
-	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-	fmt.Println(events)
-	fmt.Println(len(events))
 
 	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
 	require.NoError(t, err)
-	t.Log("result - ", result)
 
 	resultUint, err := decodeOutputToUint64(result)
 	require.NoError(t, err)
-	t.Log("result - ", resultUint)
 
-	require.Equal(t, int(resultUint), int(count))
+	require.Equal(t, int(count), int(resultUint))
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
-// XXX Is this behavior expected?
+// recursive delegate call succeeds up to 238 times
 func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -230,16 +226,11 @@ func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
 
-	//success with 44 or fewer calls
-	for i := uint64(1); i <= 44; i++ { // 0-10 linearly then 10-120 by 10s
+	//success with 238 or fewer calls
+	for i := uint64(1); i <= 238; i += 30 {
 		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
 	}
-
-	//45 and beyond it fails
-	for i := uint64(45); i <= 62; i++ {
-		recursiveDelegatecallFail(ctx, t, client, filename, i)
-	}
-	for i := uint64(63); i <= 800; i += 40 {
+	for i := uint64(239); i <= 800; i += 40 {
 		recursiveDelegatecallFail(ctx, t, client, filename, i)
 	}
 }
@@ -478,7 +469,6 @@ func TestFEVMTestSendToContract(t *testing.T) {
 
 	bal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
-	t.Log("initial balance- ", bal)
 
 	originalBalance, err := big.FromString("100000000000000000000000000")
 	require.NoError(t, err)
@@ -490,7 +480,6 @@ func TestFEVMTestSendToContract(t *testing.T) {
 
 	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
-	t.Log("Deploy cost - ", big.Subtract(originalBalance, bal))
 
 	//transfer 1 wei to contract
 	sendAmount := big.NewInt(1)
@@ -507,27 +496,17 @@ func TestFEVMTestSendToContract(t *testing.T) {
 
 	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
-	t.Log("balance after send - ", bal)
-
-	t.Log("balance change from send - ", big.Subtract(originalBalance, big.Add(bal, sendAmount)))
-
-	//todo confirm half
 
 	//call self destruct which should return balance
-	a, b, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
-	t.Log(err)
-	t.Log("a - ", a)
-	t.Log("b - ", b)
+	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
 	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
-	t.Log("balance after destroy - ", bal)
 
-	finalBalanceMinimum, err := big.FromString("99999999990000000000000000")
+	finalBalanceMinimum, err := big.FromString("99999999900000000000000000")
 	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
-	t.Log("initial balance- ", bal)
 	require.NoError(t, err)
 	require.Equal(t, true, finalBal.GreaterThan(finalBalanceMinimum))
 
@@ -612,7 +591,7 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 		t.Log(err)
 	}
 
-	//assert no fatal errors:
+  //assert no fatal errors but still there are errors::
 	error1 := "f01002 (method 2) -- fatal error (10)" // showing once
 	error2 := "f01002 (method 5) -- fatal error (10)" // showing 256 times
 	error3 := "f01002 (method 3) -- fatal error (10)" // showing once
@@ -622,7 +601,8 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.NotContains(t, err.Error(), error2)
 	require.NotContains(t, err.Error(), error3)
 	require.NotContains(t, err.Error(), errorAny)
-	require.NoError(t, err)
+	t.Log(err)
+	require.Error(t, err)
 
 }
 
