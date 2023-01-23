@@ -591,7 +591,7 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 		t.Log(err)
 	}
 
-  //assert no fatal errors but still there are errors::
+	//assert no fatal errors but still there are errors::
 	error1 := "f01002 (method 2) -- fatal error (10)" // showing once
 	error2 := "f01002 (method 5) -- fatal error (10)" // showing 256 times
 	error3 := "f01002 (method 3) -- fatal error (10)" // showing once
