@@ -17,8 +17,9 @@ contract Recursive {
       return recursiveCall(0);
     }
     function recursiveCall(uint256 count) public returns (uint256) {
-        if (count > 1) {
-            recursiveCall(count--);
+        if (count > 0) {
+            emit RecursiveCallEvent(count);
+            return recursiveCall(count-1);
         }
         return count;
     }
