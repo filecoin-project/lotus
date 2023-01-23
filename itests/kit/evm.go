@@ -252,7 +252,7 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, nil, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, nil, fmt.Errorf("contract execution failed")
+		return nil, nil, fmt.Errorf("Contract execution failed - %i", wait.Receipt.ExitCode)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {
