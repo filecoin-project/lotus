@@ -58,6 +58,15 @@ var DefaultNodeOpts = nodeOpts{
 	sectors:    DefaultPresealsPerBootstrapMiner,
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 
+	cfgOpts: []CfgOption{
+		func(cfg *config.FullNode) error {
+			// test defaults
+
+			cfg.Fevm.EnableEthRPC = true
+			return nil
+		},
+	},
+
 	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed},
 	workerStorageOpt: func(store paths.Store) paths.Store { return store },
 }
@@ -277,6 +286,20 @@ func SplitstoreMessges() NodeOpt {
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "messages"  // universal bs is coldstore, and it accepts messages
+		return nil
+	})
+}
+
+func WithEthRPC() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Fevm.EnableEthRPC = true
+		return nil
+	})
+}
+
+func DisableEthRPC() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Fevm.EnableEthRPC = false
 		return nil
 	})
 }

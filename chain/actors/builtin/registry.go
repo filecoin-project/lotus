@@ -13,11 +13,15 @@ import (
 	account10 "github.com/filecoin-project/go-state-types/builtin/v10/account"
 	cron10 "github.com/filecoin-project/go-state-types/builtin/v10/cron"
 	datacap10 "github.com/filecoin-project/go-state-types/builtin/v10/datacap"
+	eam10 "github.com/filecoin-project/go-state-types/builtin/v10/eam"
+	ethaccount10 "github.com/filecoin-project/go-state-types/builtin/v10/ethaccount"
+	evm10 "github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	_init10 "github.com/filecoin-project/go-state-types/builtin/v10/init"
 	market10 "github.com/filecoin-project/go-state-types/builtin/v10/market"
 	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	multisig10 "github.com/filecoin-project/go-state-types/builtin/v10/multisig"
 	paych10 "github.com/filecoin-project/go-state-types/builtin/v10/paych"
+	placeholder10 "github.com/filecoin-project/go-state-types/builtin/v10/placeholder"
 	power10 "github.com/filecoin-project/go-state-types/builtin/v10/power"
 	reward10 "github.com/filecoin-project/go-state-types/builtin/v10/reward"
 	system10 "github.com/filecoin-project/go-state-types/builtin/v10/system"
@@ -265,6 +269,7 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: datacap9.Methods,
 					state:   new(datacap9.State),
 				})
+
 			}
 		}
 
@@ -343,6 +348,32 @@ func MakeRegistry(av actorstypes.Version) []RegistryEntry {
 					methods: datacap10.Methods,
 					state:   new(datacap10.State),
 				})
+
+			case manifest.EvmKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: evm10.Methods,
+					state:   new(evm10.State),
+				})
+			case manifest.EamKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: eam10.Methods,
+					state:   nil,
+				})
+			case manifest.PlaceholderKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: placeholder10.Methods,
+					state:   nil,
+				})
+			case manifest.EthAccountKey:
+				registry = append(registry, RegistryEntry{
+					code:    codeID,
+					methods: ethaccount10.Methods,
+					state:   nil,
+				})
+
 			}
 		}
 

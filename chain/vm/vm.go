@@ -45,9 +45,11 @@ var (
 	gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 )
 
-// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
-func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
+// ResolveToDeterministicAddr returns the public key type of address
+// (`BLS`/`SECP256K1`) of an actor identified by `addr`, or its
+// delegated address.
+func ResolveToDeterministicAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
+	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
 		return addr, nil
 	}
 
@@ -56,12 +58,19 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
+	if state.Version() >= types.StateTreeVersion5 {
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
+		}
+	}
+
 	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
-
 	return aast.PubkeyAddress()
+
 }
 
 var (
@@ -216,6 +225,7 @@ type LegacyVM struct {
 type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Rand           Rand
 	Bstore         blockstore.Blockstore
 	Actors         *ActorRegistry

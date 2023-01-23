@@ -79,6 +79,8 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
+		api.CreateEthRPCAliases(rpcServer)
+
 		var handler http.Handler = rpcServer
 		if permissioned {
 			handler = &auth.Handler{Verify: a.AuthVerify, Next: rpcServer.ServeHTTP}
@@ -106,7 +108,6 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 			Next:   handleImportFunc,
 		}
 		m.Handle("/rest/v0/import", importAH)
-
 		exportAH := &auth.Handler{
 			Verify: a.AuthVerify,
 			Next:   handleExportFunc,

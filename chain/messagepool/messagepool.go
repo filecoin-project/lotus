@@ -33,12 +33,12 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -282,7 +282,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 		}
 
 		ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.RequiredFunds().Int)
-		//ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
+		// ms.requiredFunds.Sub(ms.requiredFunds, exms.Message.Value.Int)
 	}
 
 	if !has && strict && len(ms.msgs) >= maxActorPendingMessages {
@@ -298,7 +298,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	ms.nextNonce = nextNonce
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
 
 	return !has, nil
 }
@@ -318,7 +318,7 @@ func (ms *msgSet) rm(nonce uint64, applied bool) {
 	}
 
 	ms.requiredFunds.Sub(ms.requiredFunds, m.Message.RequiredFunds().Int)
-	//ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
+	// ms.requiredFunds.Sub(ms.requiredFunds, m.Message.Value.Int)
 	delete(ms.msgs, nonce)
 
 	// adjust next nonce
@@ -344,7 +344,7 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
 	m, has := ms.msgs[nonce]
 	if has {
 		requiredFunds.Sub(requiredFunds, m.Message.RequiredFunds().Int)
-		//requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
+		// requiredFunds.Sub(requiredFunds, m.Message.Value.Int)
 	}
 
 	return types.BigInt{Int: requiredFunds}
@@ -476,7 +476,7 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 	}
 
 	// resolve the address
-	ka, err := mp.api.StateAccountKeyAtFinality(ctx, addr, mp.curTs)
+	ka, err := mp.api.StateDeterministicAddressAtFinality(ctx, addr, mp.curTs)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -772,11 +772,9 @@ func sigCacheKey(m *types.SignedMessage) (string, error) {
 		if len(m.Signature.Data) != ffi.SignatureBytes {
 			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
-
 		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
-
 		return string(hashCache[:]), nil
-	case crypto.SigTypeSecp256k1:
+	case crypto.SigTypeSecp256k1, crypto.SigTypeDelegated:
 		return string(m.Cid().Bytes()), nil
 	default:
 		return "", xerrors.Errorf("unrecognized signature type: %d", m.Signature.Type)
@@ -795,8 +793,8 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
-		return err
+	if err := consensus.AuthenticateMessage(m, m.Message.From); err != nil {
+		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
 
 	mp.sigValCache.Add(sck, struct{}{})
@@ -816,7 +814,7 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 	}
 
 	// add Value for soft failure check
-	//requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
+	// requiredFunds = types.BigAdd(requiredFunds, m.Message.Value)
 
 	mset, ok, err := mp.getPendingMset(ctx, m.Message.From)
 	if err != nil {
@@ -853,18 +851,32 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	senderAct, err := mp.api.GetActorAfter(m.Message.From, curTs)
+	if err != nil {
+		return false, xerrors.Errorf("failed to get sender actor: %w", err)
+	}
+
+	// This message can only be included in the _next_ epoch and beyond, hence the +1.
+	epoch := curTs.Height() + 1
+	nv := mp.api.StateNetworkVersion(ctx, epoch)
+
+	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
+	if !consensus.IsValidForSending(nv, senderAct) {
+		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
+	}
+
 	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTs, local)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("verify msg failed: %w", err)
 	}
 
 	if err := mp.checkBalance(ctx, m, curTs); err != nil {
-		return false, err
+		return false, xerrors.Errorf("failed to check balance: %w", err)
 	}
 
 	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
-		return false, err
+		return false, xerrors.Errorf("failed to add locked: %w", err)
 	}
 
 	if local {

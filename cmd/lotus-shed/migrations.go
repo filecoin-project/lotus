@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -25,6 +25,8 @@ import (
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/manifest"
+	mutil "github.com/filecoin-project/go-state-types/migration"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -48,9 +50,9 @@ import (
 )
 
 var migrationsCmd = &cli.Command{
-	Name:        "migrate-nv17",
-	Description: "Run the nv17 migration",
-	ArgsUsage:   "[block to look back from]",
+	Name:        "migrate-state",
+	Description: "Run a network upgrade migration",
+	ArgsUsage:   "[new network version, block to look back from]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
@@ -66,16 +68,21 @@ var migrationsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
 
-		err := logging.SetLogLevelRegex("badger*", "ERROR")
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		nv, err := strconv.ParseUint(cctx.Args().Get(0), 10, 32)
+		if err != nil {
+			return fmt.Errorf("failed to parse network version: %w", err)
+		}
+
+		upgradeActorsFunc, preUpgradeActorsFunc, checkInvariantsFunc, err := getMigrationFuncsForNetwork(network.Version(nv))
 		if err != nil {
 			return err
 		}
 
-		if cctx.NArg() != 1 {
-			return lcli.IncorrectNumArgs(cctx)
-		}
-
-		blkCid, err := cid.Decode(cctx.Args().First())
+		blkCid, err := cid.Decode(cctx.Args().Get(1))
 		if err != nil {
 			return fmt.Errorf("failed to parse input: %w", err)
 		}
@@ -130,7 +137,7 @@ var migrationsCmd = &cli.Command{
 
 		startTime := time.Now()
 
-		newCid2, err := filcns.UpgradeActorsV9(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+		newCid2, err := upgradeActorsFunc(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}
@@ -143,7 +150,7 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("completed round actual (without cache), took ", uncachedMigrationTime)
 
 		if !cctx.IsSet("skip-pre-migration") {
-			cache := nv15.NewMemMigrationCache()
+			cache := mutil.NewMemMigrationCache()
 
 			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
 			if err != nil {
@@ -152,7 +159,7 @@ var migrationsCmd = &cli.Command{
 
 			startTime = time.Now()
 
-			err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
+			err = preUpgradeActorsFunc(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
 			if err != nil {
 				return err
 			}
@@ -166,7 +173,7 @@ var migrationsCmd = &cli.Command{
 
 			startTime = time.Now()
 
-			err = filcns.PreUpgradeActorsV9(ctx, sm, cache, ts2.ParentState(), ts2.Height()-1, ts2)
+			err = preUpgradeActorsFunc(ctx, sm, cache, ts2.ParentState(), ts2.Height()-1, ts2)
 			if err != nil {
 				return err
 			}
@@ -175,7 +182,7 @@ var migrationsCmd = &cli.Command{
 
 			startTime = time.Now()
 
-			newCid1, err := filcns.UpgradeActorsV9(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+			newCid1, err := upgradeActorsFunc(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 			if err != nil {
 				return err
 			}
@@ -192,7 +199,10 @@ var migrationsCmd = &cli.Command{
 		}
 
 		if cctx.Bool("check-invariants") {
-			err = checkMigrationInvariants(ctx, blk.ParentStateRoot, newCid2, bs, blk.Height-1)
+			if checkInvariantsFunc == nil {
+				return xerrors.Errorf("check invariants not implemented for nv%d", nv)
+			}
+			err = checkInvariantsFunc(ctx, blk.ParentStateRoot, newCid2, bs, blk.Height-1)
 			if err != nil {
 				return err
 			}
@@ -202,7 +212,22 @@ var migrationsCmd = &cli.Command{
 	},
 }
 
-func checkMigrationInvariants(ctx context.Context, v8StateRootCid cid.Cid, v9StateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgradeActorsFunc, CheckInvariantsFunc, error) {
+	switch nv {
+	case network.Version17:
+		return filcns.UpgradeActorsV9, filcns.PreUpgradeActorsV9, checkNv17Invariants, nil
+	case network.Version18:
+		return filcns.UpgradeActorsV10, filcns.PreUpgradeActorsV10, nil, nil
+	default:
+		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
+	}
+}
+
+type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, stmgr.ExecMonitor, cid.Cid, abi.ChainEpoch, *types.TipSet) (cid.Cid, error)
+type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
+type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
+
+func checkNv17Invariants(ctx context.Context, v8StateRootCid cid.Cid, v9StateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 	actorStore := store.ActorStore(ctx, bs)
 	startTime := time.Now()
 

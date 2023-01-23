@@ -94,6 +94,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
+			Timestamp:      ts.MinTimestamp(),
 			Rand:           r,
 			Bstore:         sm.ChainStore().StateBlockstore(),
 			Actors:         NewActorRegistry(),

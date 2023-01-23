@@ -277,6 +277,14 @@ func (lmem *lockedMemRepo) SplitstorePath() (string, error) {
 	return splitstorePath, nil
 }
 
+func (lmem *lockedMemRepo) SqlitePath() (string, error) {
+	sqlitePath := filepath.Join(lmem.Path(), "sqlite")
+	if err := os.MkdirAll(sqlitePath, 0755); err != nil {
+		return "", err
+	}
+	return sqlitePath, nil
+}
+
 func (lmem *lockedMemRepo) ListDatastores(ns string) ([]int64, error) {
 	return nil, nil
 }

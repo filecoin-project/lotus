@@ -31,6 +31,7 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -181,6 +182,9 @@ type FullNode interface {
 
 	// ChainBlockstoreInfo returns some basic information about the blockstore
 	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
+
+	// ChainGetEvents returns the events under an event AMT root CID.
+	ChainGetEvents(context.Context, cid.Cid) ([]types.Event, error) //perm:read
 
 	// GasEstimateFeeCap estimates gas fee cap
 	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error) //perm:read
@@ -759,6 +763,79 @@ type FullNode interface {
 
 	NodeStatus(ctx context.Context, inclChainStatus bool) (NodeStatus, error) //perm:read
 
+	// MethodGroup: Eth
+	// These methods are used for Ethereum-compatible JSON-RPC calls
+	//
+	// EthAccounts will always return [] since we don't expect Lotus to manage private keys
+	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) //perm:read
+	// EthBlockNumber returns the height of the latest (heaviest) TipSet
+	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) //perm:read
+	// EthGetBlockTransactionCountByNumber returns the number of messages in the TipSet
+	EthGetBlockTransactionCountByNumber(ctx context.Context, blkNum ethtypes.EthUint64) (ethtypes.EthUint64, error) //perm:read
+	// EthGetBlockTransactionCountByHash returns the number of messages in the TipSet
+	EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) //perm:read
+
+	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)                               //perm:read
+	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)                                        //perm:read
+	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)                                            //perm:read
+	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)                                                    //perm:read
+	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)                                         //perm:read
+	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error)                         //perm:read
+	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*EthTxReceipt, error)                                              //perm:read
+	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error)    //perm:read
+	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) //perm:read
+
+	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error)                                         //perm:read
+	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error)      //perm:read
+	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)                                   //perm:read
+	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)                                                                                    //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                                                //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                                                //perm:read
+	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                            //perm:read
+	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                                                                                   //perm:read
+	EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error) //perm:read
+
+	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)                      //perm:read
+	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error)          //perm:read
+	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) //perm:read
+
+	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error) //perm:read
+
+	// Returns event logs matching given filter spec.
+	EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) //perm:read
+
+	// Polling method for a filter, returns event logs which occurred since last poll.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) //perm:write
+
+	// Returns event logs matching filter with given id.
+	// (requires write perm since timestamp of last filter execution will be written)
+	EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) //perm:write
+
+	// Installs a persistent filter based on given filter spec.
+	EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when a new block arrives.
+	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error) //perm:write
+
+	// Installs a persistent filter to notify when new messages arrive in the message pool.
+	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error) //perm:write
+
+	// Uninstalls a filter with given id.
+	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error) //perm:write
+
+	// Subscribe to different event types using websockets
+	// eventTypes is one or more of:
+	//  - newHeads: notify when new blocks arrive.
+	//  - pendingTransactions: notify when new messages arrive in the message pool.
+	//  - logs: notify new event logs that match a criteria
+	// params contains additional parameters used with the log event type
+	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
+	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) //perm:write
+
+	// Unsubscribe from a websocket subscription
+	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) //perm:write
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
@@ -1251,4 +1328,22 @@ type MsigTransaction struct {
 type PruneOpts struct {
 	MovingGC    bool
 	RetainState int64
+}
+
+type EthTxReceipt struct {
+	TransactionHash   ethtypes.EthHash     `json:"transactionHash"`
+	TransactionIndex  ethtypes.EthUint64   `json:"transactionIndex"`
+	BlockHash         ethtypes.EthHash     `json:"blockHash"`
+	BlockNumber       ethtypes.EthUint64   `json:"blockNumber"`
+	From              ethtypes.EthAddress  `json:"from"`
+	To                *ethtypes.EthAddress `json:"to"`
+	StateRoot         ethtypes.EthHash     `json:"root"`
+	Status            ethtypes.EthUint64   `json:"status"`
+	ContractAddress   *ethtypes.EthAddress `json:"contractAddress"`
+	CumulativeGasUsed ethtypes.EthUint64   `json:"cumulativeGasUsed"`
+	GasUsed           ethtypes.EthUint64   `json:"gasUsed"`
+	EffectiveGasPrice ethtypes.EthBigInt   `json:"effectiveGasPrice"`
+	LogsBloom         ethtypes.EthBytes    `json:"logsBloom"`
+	Logs              []ethtypes.EthLog    `json:"logs"`
+	Type              ethtypes.EthUint64   `json:"type"`
 }
