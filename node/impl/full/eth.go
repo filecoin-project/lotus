@@ -1697,8 +1697,27 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		LogsBloom:        ethtypes.EmptyEthBloom[:],
 	}
 
-	// V.Int will be nil for non-eth transactions, so we want to skip unmarshalling the create return.
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() && tx.V.Int != nil {
+	if lookup.Receipt.ExitCode.IsSuccess() {
+		receipt.Status = 1
+	}
+	if lookup.Receipt.ExitCode.IsError() {
+		receipt.Status = 0
+	}
+
+	receipt.GasUsed = ethtypes.EthUint64(lookup.Receipt.GasUsed)
+
+	// TODO: handle CumulativeGasUsed
+	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
+
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
+
+	// V.Int will be nil for non-eth transactions, so we want return here and skip eth-specific stuff
+	if tx.V.Int == nil {
+		return receipt, nil
+	}
+
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
 		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
@@ -1706,13 +1725,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
 		receipt.ContractAddress = &addr
-	}
-
-	if lookup.Receipt.ExitCode.IsSuccess() {
-		receipt.Status = 1
-	}
-	if lookup.Receipt.ExitCode.IsError() {
-		receipt.Status = 0
 	}
 
 	if len(events) > 0 {
@@ -1754,14 +1766,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			receipt.Logs = append(receipt.Logs, l)
 		}
 	}
-
-	receipt.GasUsed = ethtypes.EthUint64(lookup.Receipt.GasUsed)
-
-	// TODO: handle CumulativeGasUsed
-	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
-
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
-	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
 
 	return receipt, nil
 }
