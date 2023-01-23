@@ -14,7 +14,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	provider "github.com/filecoin-project/index-provider"
+	provider "github.com/ipni/index-provider"
 
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
