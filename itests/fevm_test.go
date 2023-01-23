@@ -151,21 +151,21 @@ func TestFEVMRecursiveFuncCall(t *testing.T) {
 	filenameActor := "contracts/StackFunc.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
-	testN := func(n int) func(t *testing.T) {
+	testN := func(n int, ex exitcode.ExitCode) func(t *testing.T) {
 		return func(t *testing.T) {
 			inputData := make([]byte, 32)
 			binary.BigEndian.PutUint64(inputData[24:], uint64(n))
 
-			result := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "exec1(uint256)", inputData)
-			require.Equal(t, result, []byte{})
+			client.EVM().InvokeContractByFuncNameExpectExit(ctx, fromAddr, actorAddr, "exec1(uint256)", inputData, ex)
 		}
 	}
 
-	t.Run("n=0", testN(0))
-	t.Run("n=1", testN(1))
-	t.Run("n=20", testN(20))
-	t.Run("n=200", testN(200))
-	t.Run("n=293", testN(293))
+	t.Run("n=0", testN(0, exitcode.Ok))
+	t.Run("n=1", testN(1, exitcode.Ok))
+	t.Run("n=20", testN(20, exitcode.Ok))
+	t.Run("n=200", testN(200, exitcode.Ok))
+	t.Run("n=507", testN(507, exitcode.Ok))
+	t.Run("n=508", testN(508, exitcode.ExitCode(23))) // 23 means stack overflow
 }
 
 // TestFEVMRecursiveActorCall deploys a contract and makes a recursive actor calls
