@@ -18,7 +18,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -97,6 +100,8 @@ func TestEthOpenRPCConformance(t *testing.T) {
 
 	result := client.EVM().DeployContract(ctx, senderAddr, contractBin)
 
+	// set up some standard values for tests
+
 	contractAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(t, err)
 
@@ -129,6 +134,45 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		break
 	}
 
+	// install contract
+	contract2Hex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contract2Hex))
+	require.NoError(t, err)
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	_, ethAddr2, _ := client.EVM().NewAccount()
+
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
+
+	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+		From: &ethAddr,
+		Data: contract,
+	})
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.EthTxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &ethAddr2,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	client.EVM().SignTransaction(&tx, key.PrivateKey)
+	signed, err := tx.ToRlpSignedMsg()
+	require.NoError(t, err)
+
 	// create a json-rpc client that returns raw json responses
 	var ethapi ethAPIRaw
 
@@ -139,8 +183,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	closer, err := jsonrpc.NewClient(ctx, rpcAddr, "Filecoin", &ethapi, nil)
 	require.NoError(t, err)
 	defer closer()
-
-	// maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
 
 	testCases := []struct {
 		method  string
@@ -277,6 +319,13 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method: "eth_getTransactionByHash",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByHash(context.Background(), &messageWithEvents)
+			},
+		},
+
+		{
+			method: "eth_sendRawTransaction",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthSendRawTransaction(context.Background(), signed)
 			},
 		},
 
