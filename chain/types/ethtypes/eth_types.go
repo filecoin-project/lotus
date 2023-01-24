@@ -144,7 +144,7 @@ type EthBlock struct {
 	GasLimit         EthUint64  `json:"gasLimit"`
 	GasUsed          EthUint64  `json:"gasUsed"`
 	Timestamp        EthUint64  `json:"timestamp"`
-	Extradata        []byte     `json:"extraData"`
+	Extradata        EthBytes   `json:"extraData"`
 	MixHash          EthHash    `json:"mixHash"`
 	Nonce            EthNonce   `json:"nonce"`
 	BaseFeePerGas    EthBigInt  `json:"baseFeePerGas"`
