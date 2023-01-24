@@ -252,7 +252,7 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, nil, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, nil, fmt.Errorf("Contract execution failed - %i", wait.Receipt.ExitCode)
+		return nil, nil, fmt.Errorf("Contract execution failed - %v", wait.Receipt.ExitCode)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {
@@ -340,7 +340,7 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 	// instead of having this in a few tests put this in the setup
-	// verify that the intial balance is 100000000000000000000000000
+	// verify that the initial balance is 100000000000000000000000000
 	// this allows other tests to assert the initial balance
 	// without explicitly checking it
 	fromAddr := client.DefaultKey.Address

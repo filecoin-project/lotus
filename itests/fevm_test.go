@@ -144,54 +144,18 @@ func TestFEVMRecursive2(t *testing.T) {
 	}
 }
 
-func recursiveDelegatecallNotEqual(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	t.Log("recursion count - ", count)
-	inputData := buildInputFromuint64(count)
-	result, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-	require.NoError(t, err)
-	fmt.Println(result)
-	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-	//TODO do somethign with events
-	_ = events
-	//fmt.Println(events)
-	//fmt.Println(len(events))
-
-	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-	require.NoError(t, err)
-	t.Log("result - ", result)
-
-	resultUint, err := decodeOutputToUint64(result)
-	require.NoError(t, err)
-	t.Log("result - ", resultUint)
-
-	require.NotEqual(t, int(resultUint), int(count))
-}
-func recursiveDelegatecallError(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	t.Log("recursion count - ", count)
-	inputData := buildInputFromuint64(count)
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-	require.Error(t, err)
-
-	//result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-	//require.Error(t, err)
-}
-
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
 
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
-	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
 	if err != nil {
 		require.Error(t, err)
 	} else {
 		require.NoError(t, err)
 
-		result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
 		require.NoError(t, err)
 
 		resultUint, err := decodeOutputToUint64(result)
@@ -205,10 +169,10 @@ func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit
 
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	inputData := buildInputFromuint64(count)
-	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
 	require.NoError(t, err)
 
-	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
 	require.NoError(t, err)
 
 	resultUint, err := decodeOutputToUint64(result)
@@ -478,9 +442,6 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	filenameStorage := "contracts/SelfDestruct.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-	require.NoError(t, err)
-
 	//transfer 1 wei to contract
 	sendAmount := big.NewInt(1)
 	sendMsg := &types.Message{
@@ -494,19 +455,13 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
-	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-	require.NoError(t, err)
-
 	//call self destruct which should return balance
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
-	bal, err = client.WalletBalance(ctx, client.DefaultKey.Address)
-	require.NoError(t, err)
-
 	finalBalanceMinimum, err := big.FromString("99999999900000000000000000")
-	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
+	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	require.Equal(t, true, finalBal.GreaterThan(finalBalanceMinimum))
 
