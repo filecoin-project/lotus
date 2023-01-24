@@ -500,18 +500,8 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
 	}
 
-	// TODO super duper hack (raulk). The EVM runtime actor uses the U256 parameter type in
-	//  GetStorageAtParams, which serializes as a hex-encoded string. It should serialize
-	//  as bytes. We didn't get to fix in time for Iron, so for now we just pass
-	//  through the hex-encoded value passed through the Eth JSON-RPC API, by remarshalling it.
-	//  We don't fix this at origin (builtin-actors) because we are not updating the bundle
-	//  for Iron.
-	tmp, err := position.MarshalJSON()
-	if err != nil {
-		panic(err)
-	}
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
-		StorageKey: tmp[1 : len(tmp)-1], // TODO strip the JSON-encoding quotes -- yuck
+		StorageKey: position,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
