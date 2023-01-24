@@ -13,6 +13,15 @@ import (
 
 var addressCmd = &cli.Command{
 	Name:  "addr",
+	Usage: "interact with filecoin addresses",
+	Subcommands: cli.Commands{
+		addrDecode,
+		addrEncode,
+	},
+}
+
+var addrDecode = &cli.Command{
+	Name:  "decode",
 	Usage: "decode hex bytes into address",
 	Action: func(cctx *cli.Context) error {
 		addrHex := cctx.Args().First()
@@ -36,6 +45,20 @@ var addressCmd = &cli.Command{
 			return xerrors.New("could not decode as CBOR or raw payload, failing")
 		}
 		fmt.Printf("%s\n", a)
+		return nil
+	},
+}
+
+var addrEncode = &cli.Command{
+	Name:  "encode",
+	Usage: "encode address to hex bytes",
+	Action: func(cctx *cli.Context) error {
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%x\n", addr.Bytes())
 		return nil
 	},
 }
