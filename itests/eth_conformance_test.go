@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -103,6 +104,20 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	// set up some standard values for tests
 
 	contractAddr, err := address.NewIDAddress(result.ActorID)
+	require.NoError(t, err)
+
+	pendingTransactionFilterID, err := client.EthNewPendingTransactionFilter(ctx)
+	require.NoError(t, err)
+
+	blockFilterID, err := client.EthNewBlockFilter(ctx)
+	require.NoError(t, err)
+
+	filterAllLogs := newEthFilterBuilder().FromBlockEpoch(0).Filter()
+
+	logFilterID, err := client.EthNewFilter(ctx, filterAllLogs)
+	require.NoError(t, err)
+
+	uninstallableFilterID, err := client.EthNewFilter(ctx, filterAllLogs)
 	require.NoError(t, err)
 
 	// send a message that exercises event logs
@@ -280,8 +295,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		},
 
 		{
-			method:  "eth_getBlockByNumber",
-			variant: "latest",
+			method: "eth_getBlockByNumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
 			},
@@ -329,6 +343,51 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			},
 		},
 
+		{
+			method: "eth_getLogs",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetLogs(context.Background(), filterAllLogs)
+			},
+		},
+
+		{
+			method:  "eth_getFilterChanges",
+			variant: "pendingtransaction",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return a.EthGetFilterChanges(ctx, pendingTransactionFilterID)
+			},
+		},
+
+		{
+			method:  "eth_getFilterChanges",
+			variant: "block",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return a.EthGetFilterChanges(ctx, blockFilterID)
+			},
+		},
+
+		{
+			method:  "eth_getFilterChanges",
+			variant: "logs",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return a.EthGetFilterChanges(ctx, logFilterID)
+			},
+		},
+
+		{
+			method: "eth_getFilterLogs",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return a.EthGetFilterLogs(ctx, logFilterID)
+			},
+		},
+
+		{
+			method: "eth_uninstallFilter",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return a.EthUninstallFilter(ctx, uninstallableFilterID)
+			},
+		},
+
 		// {
 		// 	method: "eth_call",
 		// 	call: func(a *ethAPIRaw) (json.RawMessage, error) {
@@ -371,6 +430,12 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			require.NoError(t, err)
 
 			if !result.Valid() {
+				if len(result.Errors()) == 1 && strings.Contains(result.Errors()[0].String(), "Must validate one and only one schema (oneOf)") {
+					// Ignore this error, since it seems the openrpc spec can't handle it
+					// New transaction and block filters have the same schema: an array of 32 byte hashes
+					return
+				}
+
 				niceRespJson, err := json.MarshalIndent(resp, "", "  ")
 				if err == nil {
 					t.Logf("response was %s", niceRespJson)
