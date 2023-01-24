@@ -10,9 +10,8 @@ import (
 	"testing"
 	"time"
 
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-varint"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
