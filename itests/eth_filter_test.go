@@ -1091,7 +1091,7 @@ func TestEthGetLogsWithBlockRanges(t *testing.T) {
 	// Select events for partitioning
 	for _, m := range messages {
 		if bytes.Equal(m.invocation.Selector, EventMatrixContract.Fn["logEventTwoIndexedWithData"]) {
-			addr := getContractEthAddress(ctx, t, client, m.invocation.Target)
+			addr := getEthAddress(ctx, t, client, m.invocation.Target)
 			args := unpackUint64Values(m.invocation.Data)
 			require.Equal(3, len(args), "logEventTwoIndexedWithData should have 3 arguments")
 
@@ -1295,7 +1295,7 @@ type msgInTipset struct {
 	reverted   bool
 }
 
-func getContractEthAddress(ctx context.Context, t *testing.T, client *kit.TestFullNode, addr address.Address) ethtypes.EthAddress {
+func getEthAddress(ctx context.Context, t *testing.T, client *kit.TestFullNode, addr address.Address) ethtypes.EthAddress {
 	head, err := client.ChainHead(ctx)
 	require.NoError(t, err)
 
@@ -1446,7 +1446,7 @@ func invokeLogFourData(t *testing.T, client *kit.TestFullNode, iterations int) (
 
 	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 
-	ethAddr := getContractEthAddress(ctx, t, client, idAddr)
+	ethAddr := getEthAddress(ctx, t, client, idAddr)
 
 	return ethAddr, messages
 }
@@ -1641,8 +1641,8 @@ func invokeEventMatrix(ctx context.Context, t *testing.T, client *kit.TestFullNo
 	}
 
 	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
-	ethAddr1 := getContractEthAddress(ctx, t, client, contract1)
-	ethAddr2 := getContractEthAddress(ctx, t, client, contract2)
+	ethAddr1 := getEthAddress(ctx, t, client, contract1)
+	ethAddr2 := getEthAddress(ctx, t, client, contract2)
 	return ethAddr1, ethAddr2, messages
 }
 

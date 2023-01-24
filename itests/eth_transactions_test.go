@@ -100,11 +100,9 @@ func TestLegacyTransaction(t *testing.T) {
 	require.NoError(t, err)
 	_, err = client.EVM().EthSendRawTransaction(ctx, txBytes)
 	require.ErrorContains(t, err, "legacy transaction is not supported")
-
 }
 
 func TestContractDeploymentValidSignature(t *testing.T) {
-
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
 
@@ -253,7 +251,6 @@ func TestContractInvocation(t *testing.T) {
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
-
 }
 
 func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthTxArgs, error) {

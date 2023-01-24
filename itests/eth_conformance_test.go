@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -95,15 +96,11 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	contractBin, err := hex.DecodeString(string(contractHex))
 	require.NoError(t, err)
 
-	senderAddr, err := client.EVM().WalletDefaultAddress(ctx)
-	require.NoError(t, err)
-	// senderEthAddr := getContractEthAddress(ctx, t, client, senderAddr)
+	senderKey, senderEthAddr, senderFilAddr := client.EVM().NewAccount()
+	_, receiverEthAddr, _ := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, senderFilAddr, types.FromFil(1000))
 
-	result := client.EVM().DeployContract(ctx, senderAddr, contractBin)
-
-	// set up some standard values for tests
-
-	contractAddr, err := address.NewIDAddress(result.ActorID)
+	deployerAddr, err := client.EVM().WalletDefaultAddress(ctx)
 	require.NoError(t, err)
 
 	pendingTransactionFilterID, err := client.EthNewPendingTransactionFilter(ctx)
@@ -120,73 +117,15 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	uninstallableFilterID, err := client.EthNewFilter(ctx, filterAllLogs)
 	require.NoError(t, err)
 
-	// send a message that exercises event logs
-	messages := invokeAndWaitUntilAllOnChain(t, client, []Invocation{
-		{
-			Sender:   senderAddr,
-			Target:   contractAddr,
-			Selector: EventMatrixContract.Fn["logEventThreeIndexedWithData"],
-			Data:     packUint64Values(44, 27, 19, 12),
-		},
-	})
+	rawSignedEthTx := createRawSignedEthTx(ctx, t, client, senderEthAddr, receiverEthAddr, senderKey, contractBin)
 
-	require.NotEmpty(t, messages)
-
-	var messageWithEvents ethtypes.EthHash
-	var blockHashWithMessage ethtypes.EthHash
-	var blockNumberWithMessage ethtypes.EthUint64
-
-	for k, mts := range messages {
-		messageWithEvents = k
-		ts := mts.ts
-		blockNumberWithMessage = ethtypes.EthUint64(ts.Height())
-
-		tsCid, err := ts.Key().Cid()
-		require.NoError(t, err)
-
-		blockHashWithMessage, err = ethtypes.EthHashFromCid(tsCid)
-		require.NoError(t, err)
-		break
-	}
-
-	// install contract
-	contract2Hex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	result := client.EVM().DeployContract(ctx, deployerAddr, contractBin)
+	contractAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(t, err)
 
-	contract, err := hex.DecodeString(string(contract2Hex))
-	require.NoError(t, err)
+	contractEthAddr := ethtypes.EthAddress(result.EthAddress)
 
-	// create a new Ethereum account
-	key, ethAddr, deployer := client.EVM().NewAccount()
-	_, ethAddr2, _ := client.EVM().NewAccount()
-
-	kit.SendFunds(ctx, t, client, deployer, types.FromFil(1000))
-
-	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
-		From: &ethAddr,
-		Data: contract,
-	})
-	require.NoError(t, err)
-
-	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
-	require.NoError(t, err)
-
-	tx := ethtypes.EthTxArgs{
-		ChainID:              build.Eip155ChainId,
-		Value:                big.NewInt(100),
-		Nonce:                0,
-		To:                   &ethAddr2,
-		MaxFeePerGas:         types.NanoFil,
-		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
-		GasLimit:             int(gaslimit),
-		V:                    big.Zero(),
-		R:                    big.Zero(),
-		S:                    big.Zero(),
-	}
-
-	client.EVM().SignTransaction(&tx, key.PrivateKey)
-	signed, err := tx.ToRlpSignedMsg()
-	require.NoError(t, err)
+	messageWithEvents, blockHashWithMessage, blockNumberWithMessage := waitForMessageWithEvents(ctx, t, client, deployerAddr, contractAddr)
 
 	// create a json-rpc client that returns raw json responses
 	var ethapi ethAPIRaw
@@ -339,7 +278,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_sendRawTransaction",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthSendRawTransaction(context.Background(), signed)
+				return ethapi.EthSendRawTransaction(context.Background(), rawSignedEthTx)
 			},
 		},
 
@@ -402,7 +341,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method: "eth_estimateGas",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
-					From: &ethAddr,
+					From: &senderEthAddr,
 					Data: contractBin,
 				})
 			},
@@ -412,6 +351,29 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method: "eth_feeHistory",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "", nil)
+			},
+		},
+		{
+			method:  "eth_getTransactionCount",
+			variant: "blocknumber",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionCount(context.Background(), senderEthAddr, "0x0")
+			},
+		},
+
+		{
+			method:  "eth_getCode",
+			variant: "blocknumber",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetCode(context.Background(), contractEthAddr, "0x0")
+			},
+		},
+
+		{
+			method:  "eth_getStorageAt",
+			variant: "blocknumber",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetStorageAt(context.Background(), contractEthAddr, ethtypes.EthBytes{0}, "0x0")
 			},
 		},
 	}
@@ -463,4 +425,63 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			}
 		})
 	}
+}
+
+func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFullNode, senderEthAddr ethtypes.EthAddress, receiverEthAddr ethtypes.EthAddress, senderKey *key.Key, contractBin []byte) []byte {
+	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+		From: &senderEthAddr,
+		Data: contractBin,
+	})
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.EthTxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &receiverEthAddr,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	client.EVM().SignTransaction(&tx, senderKey.PrivateKey)
+	signed, err := tx.ToRlpSignedMsg()
+	require.NoError(t, err)
+	return signed
+}
+
+func waitForMessageWithEvents(ctx context.Context, t *testing.T, client *kit.TestFullNode, sender address.Address, target address.Address) (ethtypes.EthHash, ethtypes.EthHash, ethtypes.EthUint64) {
+	// send a message that exercises event logs
+	messages := invokeAndWaitUntilAllOnChain(t, client, []Invocation{
+		{
+			Sender:   sender,
+			Target:   target,
+			Selector: EventMatrixContract.Fn["logEventThreeIndexedWithData"],
+			Data:     packUint64Values(44, 27, 19, 12),
+		},
+	})
+
+	require.NotEmpty(t, messages)
+
+	for msgHash, mts := range messages {
+		ts := mts.ts
+		blockNumber := ethtypes.EthUint64(ts.Height())
+
+		tsCid, err := ts.Key().Cid()
+		require.NoError(t, err)
+
+		blockHash, err := ethtypes.EthHashFromCid(tsCid)
+		require.NoError(t, err)
+		return msgHash, blockHash, blockNumber
+	}
+
+	// should not get here
+	t.FailNow()
+	return ethtypes.EthHash{}, ethtypes.EthHash{}, 0
 }
