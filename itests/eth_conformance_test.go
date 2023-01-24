@@ -327,15 +327,16 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			},
 		},
 
-		// {
-		// 	method: "eth_call",
-		// 	call: func(a *ethAPIRaw) (json.RawMessage, error) {
-		// 		return ethapi.EthCall(context.Background(), ethtypes.EthCall{
-		// 			From: &senderEthAddr,
-		// 			Data: contractBin,
-		// 		}, "logEventZeroData")
-		// 	},
-		// },
+		{
+			method:  "eth_call",
+			variant: "latest",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
+					From: &senderEthAddr,
+					Data: contractBin,
+				}, "latest")
+			},
+		},
 
 		{
 			method: "eth_estimateGas",
@@ -374,6 +375,14 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetStorageAt(context.Background(), contractEthAddr, ethtypes.EthBytes{0}, "0x0")
+			},
+		},
+
+		{
+			method:  "eth_getBalance",
+			variant: "blocknumber",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetBalance(context.Background(), contractEthAddr, "0x0")
 			},
 		},
 	}
