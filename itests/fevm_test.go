@@ -614,7 +614,7 @@ func TestFEVMRecursiveFuncCall(t *testing.T) {
 		return func(t *testing.T) {
 			inputData := make([]byte, 32)
 			binary.BigEndian.PutUint64(inputData[24:], uint64(n))
-      client.EVM().InvokeContractByFuncNameExpectExit(ctx, fromAddr, actorAddr, "exec1(uint256)", inputData, ex)
+			client.EVM().InvokeContractByFuncNameExpectExit(ctx, fromAddr, actorAddr, "exec1(uint256)", inputData, ex)
 		}
 	}
 
