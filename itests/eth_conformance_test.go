@@ -398,15 +398,22 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		// 	},
 		// },
 
-		// {
-		// 	method: "eth_estimateGas",
-		// 	call: func(a *ethAPIRaw) (json.RawMessage, error) {
-		// 		return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
-		// 			From: &senderEthAddr,
-		// 			Data: contractBin,
-		// 		})
-		// 	},
-		// },
+		{
+			method: "eth_estimateGas",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
+					From: &ethAddr,
+					Data: contractBin,
+				})
+			},
+		},
+
+		{
+			method: "eth_feeHistory",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "", nil)
+			},
+		},
 	}
 
 	for _, tc := range testCases {

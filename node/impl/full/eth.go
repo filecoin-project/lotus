@@ -640,7 +640,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 	}
 
 	return ethtypes.EthFeeHistory{
-		OldestBlock:   oldestBlkHeight,
+		OldestBlock:   ethtypes.EthUint64(oldestBlkHeight),
 		BaseFeePerGas: baseFeeArray,
 		GasUsedRatio:  gasUsedRatioArray,
 	}, nil
