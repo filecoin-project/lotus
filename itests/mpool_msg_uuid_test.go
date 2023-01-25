@@ -23,7 +23,7 @@ func TestMsgWithoutUuidWithMaxFee(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	node, _, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	bal, err := node.WalletBalance(ctx, node.DefaultKey.Address)
 	require.NoError(t, err)

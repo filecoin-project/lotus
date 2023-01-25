@@ -49,7 +49,7 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
 	)
 
-	ens.InterconnectAll().BeginMining(250 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(250 * time.Millisecond)
 
 	api := node.FullNode.(*impl.FullNodeAPI)
 	ctx, cancel := context.WithCancel(context.Background())

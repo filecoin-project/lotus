@@ -25,7 +25,7 @@ func TestDuplicateMpoolMessages(t *testing.T) {
 	defer cancel()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	msgBal := &types.Message{
 		From:  client.DefaultKey.Address,

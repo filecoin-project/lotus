@@ -29,7 +29,7 @@ func TestStorageDealMissingBlock(t *testing.T) {
 		kit.MockProofs(),
 		kit.SectorSize(512<<20), // 512MiB sectors.
 	)
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	dh := kit.NewDealHarness(t, client, miner, miner)
 

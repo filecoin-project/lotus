@@ -36,7 +36,7 @@ func TestDeployment(t *testing.T) {
 		t,
 		kit.MockProofs(),
 		kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

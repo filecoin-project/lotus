@@ -93,7 +93,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
+		ens.InterconnectAll().BeginMiningMustPost(250 * time.Millisecond)
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
@@ -143,7 +143,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle, 0, graphsyncThrottle))),
 			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle, graphsyncThrottle)),
 		))
-		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
+		ens.InterconnectAll().BeginMiningMustPost(250 * time.Millisecond)
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		ctx, cancel := context.WithCancel(context.Background())

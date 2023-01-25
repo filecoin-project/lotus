@@ -61,7 +61,7 @@ func TestPublishDealsBatching(t *testing.T) {
 	)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.Account(publisherKey, types.FromFil(10)), kit.MockProofs(), kit.ConstructorOpts(opts))
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	_, err = client.WalletImport(ctx, &publisherKey.KeyInfo)
 	require.NoError(t, err)

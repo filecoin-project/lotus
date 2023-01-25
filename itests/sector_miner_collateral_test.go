@@ -73,7 +73,7 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		)
 		full, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 		full.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)

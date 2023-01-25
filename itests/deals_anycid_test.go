@@ -52,7 +52,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 
 	// Create a client, and a miner with its own full node
 	_, client, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs(), bsaOpt, eightMBSectorsOpt)
-	ens.InterconnectAll().BeginMining(250 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(250 * time.Millisecond)
 
 	dh := kit.NewDealHarness(t, client, miner, miner)
 

@@ -133,7 +133,7 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 		Value: big.Zero(),
 	}
 
-	ens.BeginMining(100 * time.Millisecond)
+	ens.BeginMiningMustPost(100 * time.Millisecond)
 
 	sm, err := full.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
@@ -284,7 +284,7 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ctx := context.Background()
 
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, append(ts.opts, kit.MockProofs())...)
-	ens.InterconnectAll().BeginMining(4 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(4 * time.Millisecond)
 
 	time.Sleep(1 * time.Second)
 

@@ -62,7 +62,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	client, miner, ens := kit.EnsembleMinimal(t,
 		kit.MockProofs(),
 		kit.LatestActorsAt(upgradeHeight))
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMining(blocktime) // PoSt test
 
 	miner.PledgeSectors(ctx, nSectors, 0, nil)
 
@@ -247,7 +247,7 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 	t.Cleanup(func() { build.UpgradeClausHeight = och })
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version9))
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMining(blocktime) // PoSt test
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -304,7 +304,7 @@ func TestWindowPostBaseFeeBurn(t *testing.T) {
 	blocktime := 2 * time.Millisecond
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMining(blocktime) // PoSt test
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

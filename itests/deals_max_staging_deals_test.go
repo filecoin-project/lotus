@@ -30,7 +30,7 @@ func TestMaxStagingDeals(t *testing.T) {
 		kit.WithMaxStagingDealsBytes(8192), // max 8KB staging deals
 		kit.SectorSize(512<<20),            // 512MiB sectors.
 	)
-	ens.InterconnectAll().BeginMining(200 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(200 * time.Millisecond)
 
 	dh := kit.NewDealHarness(t, client, miner, miner)
 

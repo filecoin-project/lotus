@@ -50,7 +50,7 @@ func TestPartialRetrieval(t *testing.T) {
 	kit.QuietMiningLogs()
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MockProofs(), kit.SectorSize(512<<20))
 	dh := kit.NewDealHarness(t, client, miner, miner)
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	_, err := client.ClientImport(ctx, api.FileRef{Path: sourceCar, IsCAR: true})
 	require.NoError(t, err)

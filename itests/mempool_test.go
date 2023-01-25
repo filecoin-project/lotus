@@ -83,7 +83,7 @@ func TestMemPoolPushSingleNode(t *testing.T) {
 		require.True(t, found)
 	}
 
-	ens.BeginMining(blockTime)
+	ens.BeginMiningMustPost(blockTime)
 
 	kit.CircuitBreaker(t, "mine messages", mPoolThrottle, mPoolTimeout, func() bool {
 		// pool pending list should be empty
@@ -155,7 +155,7 @@ func TestMemPoolPushTwoNodes(t *testing.T) {
 		sms = append(sms, sm2)
 	}
 
-	ens.BeginMining(blockTime)
+	ens.BeginMiningMustPost(blockTime)
 
 	kit.CircuitBreaker(t, "push & mine messages", mPoolThrottle, mPoolTimeout, func() bool {
 		pending1, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
@@ -230,7 +230,7 @@ func TestMemPoolClearPending(t *testing.T) {
 	})
 
 	// mine a couple of blocks
-	ens.BeginMining(blockTime)
+	ens.BeginMiningMustPost(blockTime)
 	time.Sleep(5 * blockTime)
 
 	// make sure that the cleared message wasn't picked up and mined
@@ -312,7 +312,7 @@ func TestMemPoolBatchPush(t *testing.T) {
 		require.True(t, found)
 	}
 
-	ens.BeginMining(blockTime)
+	ens.BeginMiningMustPost(blockTime)
 
 	kit.CircuitBreaker(t, "mine messages", mPoolThrottle, mPoolTimeout, func() bool {
 		// pool pending list should be empty
@@ -406,7 +406,7 @@ func TestMemPoolPushSingleNodeUntrusted(t *testing.T) {
 		require.True(t, found)
 	}
 
-	ens.BeginMining(blockTime)
+	ens.BeginMiningMustPost(blockTime)
 
 	kit.CircuitBreaker(t, "mine untrusted messages", mPoolThrottle, mPoolTimeout, func() bool {
 		// pool pending list should be empty
@@ -501,7 +501,7 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 		require.True(t, found)
 	}
 
-	ens.BeginMining(blockTime)
+	ens.BeginMiningMustPost(blockTime)
 
 	// wait until pending messages are mined, pool pending list should be empty
 	kit.CircuitBreaker(t, "mine untrusted messages", mPoolThrottle, mPoolTimeout, func() bool {

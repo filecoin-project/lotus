@@ -106,7 +106,7 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 	ens.AddInactiveMiner(miner)
 	ens.Start()
 
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	return ens
 }
@@ -555,7 +555,7 @@ func TestGoRPCAuth(t *testing.T) {
 	ens.AddInactiveMiner(&miner)
 	ens.Start()
 
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	leader, err := node0.RaftLeader(ctx)
 	require.NoError(t, err)

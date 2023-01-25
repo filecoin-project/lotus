@@ -71,7 +71,7 @@ func TestMigrationNV17(t *testing.T) {
 		},
 		))
 
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
 	ctx, cancel := context.WithCancel(context.Background())

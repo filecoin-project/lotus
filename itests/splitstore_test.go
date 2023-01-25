@@ -40,7 +40,7 @@ func TestHotstoreCompactsOnce(t *testing.T) {
 	splitstore.CheckSyncGap = false
 	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
-	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(4 * time.Millisecond)[0]
 	_ = full
 	_ = genesisMiner
 	_ = bm
@@ -57,7 +57,7 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 	splitstore.CheckSyncGap = false
 	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
-	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(4 * time.Millisecond)[0]
 	_ = full
 	_ = genesisMiner
 
@@ -116,7 +116,7 @@ func TestColdStorePrune(t *testing.T) {
 	splitstore.CheckSyncGap = false
 	opts := []interface{}{kit.MockProofs(), kit.SplitstoreUniversal(), kit.FsRepo()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
-	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(4 * time.Millisecond)[0]
 	_ = full
 	_ = genesisMiner
 
@@ -194,7 +194,7 @@ func TestMessagesMode(t *testing.T) {
 	splitstore.CheckSyncGap = false
 	opts := []interface{}{kit.MockProofs(), kit.SplitstoreMessges(), kit.FsRepo()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
-	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(4 * time.Millisecond)[0]
 	_ = full
 	_ = genesisMiner
 
@@ -255,7 +255,7 @@ func TestCompactRetainsTipSetRef(t *testing.T) {
 	splitstore.CheckSyncGap = false
 	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
-	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(4 * time.Millisecond)[0]
 	_ = genesisMiner
 	_ = bm
 

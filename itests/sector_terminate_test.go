@@ -34,7 +34,7 @@ func TestTerminate(t *testing.T) {
 	)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.PresealSectors(nSectors))
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMining(blocktime) // PoSt test
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

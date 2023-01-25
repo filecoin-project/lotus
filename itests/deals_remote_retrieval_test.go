@@ -31,7 +31,7 @@ func TestNetStoreRetrieval(t *testing.T) {
 	ctx := context.Background()
 
 	full, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	time.Sleep(5 * time.Second)
 

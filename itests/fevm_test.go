@@ -40,7 +40,7 @@ func setupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *kit.Test
 	kit.QuietMiningLogs()
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	return ctx, cancel, client
 }

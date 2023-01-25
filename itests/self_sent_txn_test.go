@@ -27,7 +27,7 @@ func TestSelfSentTxnV15(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client15, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version15))
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	bal, err := client15.WalletBalance(ctx, client15.DefaultKey.Address)
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestSelfSentTxnV14(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client14, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version14))
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	bal, err := client14.WalletBalance(ctx, client14.DefaultKey.Address)
 	require.NoError(t, err)

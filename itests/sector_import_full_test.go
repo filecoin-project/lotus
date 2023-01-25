@@ -66,7 +66,7 @@ func TestSectorImport(t *testing.T) {
 			// Start a miner node
 
 			client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
-			ens.InterconnectAll().BeginMining(blockTime)
+			ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 			ctx := context.Background()
 

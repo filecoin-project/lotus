@@ -39,7 +39,7 @@ func TestPledgeSectors(t *testing.T) {
 		defer cancel()
 
 		_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 		miner.PledgeSectors(ctx, nSectors, 0, nil)
 	}
@@ -70,7 +70,7 @@ func TestPledgeBatching(t *testing.T) {
 		defer cancel()
 
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
@@ -133,7 +133,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		defer cancel()
 
 		_, full, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 		m, ok := miner.StorageMiner.(*impl.StorageMinerAPI)
 		require.True(t, ok)
 		cfg, err := m.GetSealingConfigFunc()
@@ -212,7 +212,7 @@ func TestPledgeBeforeNv13(t *testing.T) {
 
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
 			kit.GenesisNetworkVersion(network.Version12))
-		ens.InterconnectAll().BeginMining(blocktime)
+		ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 

@@ -29,7 +29,7 @@ func TestTransactionHashLookup(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -120,7 +120,7 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -189,7 +189,7 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -265,7 +265,7 @@ func TestTransactionHashLookupNonexistentMessage(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -295,7 +295,7 @@ func TestEthGetMessageCidByTransactionHashEthTx(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -391,7 +391,7 @@ func TestEthGetMessageCidByTransactionHashSecp(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -461,7 +461,7 @@ func TestEthGetMessageCidByTransactionHashBLS(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

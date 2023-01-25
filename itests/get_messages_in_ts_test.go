@@ -28,7 +28,7 @@ func TestChainGetMessagesInTs(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	// create a new address where to send funds.
 	addr, err := client.WalletNew(ctx, types.KTBLS)

@@ -52,7 +52,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 		kit.Account(verifier2Key, abi.NewTokenAmount(bal.Int64())),
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())))
 
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
 	ctx, cancel := context.WithCancel(context.Background())

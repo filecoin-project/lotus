@@ -77,7 +77,7 @@ func testDealsRetryLackOfFunds(t *testing.T, publishStorageAccountFunds abi.Toke
 	ens.
 		Start().
 		InterconnectAll().
-		BeginMining(blockTime)
+		BeginMiningMustPost(blockTime)
 
 	_, err = minerFullNode.WalletImport(ctx, &publishStorageDealKey.KeyInfo)
 	require.NoError(t, err)
@@ -153,7 +153,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 	ens.
 		Start().
 		InterconnectAll().
-		BeginMining(blockTime)
+		BeginMiningMustPost(blockTime)
 
 	_, err = minerFullNode.WalletImport(ctx, &publishStorageDealKey.KeyInfo)
 	require.NoError(t, err)

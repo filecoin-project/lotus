@@ -287,7 +287,7 @@ func startNodes(
 	// create the full node and the miner.
 	var ens *kit.Ensemble
 	full, miner, ens = kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	// Create a gateway server in front of the full node
 	gwapi := gateway.NewNode(full, lookbackCap, stateWaitLookbackLimit, 0, time.Minute)

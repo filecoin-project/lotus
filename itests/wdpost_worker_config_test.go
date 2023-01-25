@@ -53,7 +53,7 @@ func TestWindowPostNoBuiltinWindow(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0] // PoSt test
 
 	di = di.NextNotElapsed()
 
@@ -113,7 +113,7 @@ func TestWindowPostNoBuiltinWindowWithWorker(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0] // PoSt test
 
 	di = di.NextNotElapsed()
 

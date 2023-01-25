@@ -33,7 +33,7 @@ func TestWorkerPledge(t *testing.T) {
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
 		kit.WithSealWorkerTasks) // no mock proofs
 
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -49,7 +49,7 @@ func TestWorkerPledgeSpread(t *testing.T) {
 		kit.WithAssigner("spread"),
 	) // no mock proofs
 
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestWorkerPledgeLocalFin(t *testing.T) {
 		kit.WithDisallowRemoteFinalize(true),
 	) // no mock proofs
 
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -112,7 +112,7 @@ func TestWinningPostWorker(t *testing.T) {
 	client, _, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWinningPoSt})) // no mock proofs
 
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -141,7 +141,7 @@ func TestWindowPostWorker(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0] // PoSt test
 
 	di = di.NextNotElapsed()
 
@@ -280,7 +280,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0] // PoSt test
 
 	di = di.NextNotElapsed()
 
@@ -453,7 +453,7 @@ func TestWorkerName(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithWorkerName(name))
 
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	e, err := worker.Info(ctx)
 	require.NoError(t, err)

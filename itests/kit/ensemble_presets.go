@@ -50,7 +50,7 @@ func EnsembleWithMinerAndMarketNodes(t *testing.T, opts ...interface{}) (*TestFu
 
 	blockTime := 100 * time.Millisecond
 	ens := NewEnsemble(t, eopts...).FullNode(&fullnode, nopts...).Miner(&main, &fullnode, mainNodeOpts...).Start()
-	ens.BeginMining(blockTime)
+	ens.BeginMiningMustPost(blockTime)
 
 	marketNodeOpts := []NodeOpt{OwnerAddr(fullnode.DefaultKey), MainMiner(&main), WithSubsystems(SMarkets)}
 	marketNodeOpts = append(marketNodeOpts, nopts...)

@@ -43,7 +43,7 @@ func testTapeFix(t *testing.T, blocktime time.Duration, after bool) {
 	}
 
 	_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(networkVersion))
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	sid, err := miner.PledgeSector(ctx)
 	require.NoError(t, err)

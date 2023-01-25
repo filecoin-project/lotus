@@ -86,7 +86,7 @@ func TestEthNewPendingTransactionFilter(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	// create a new address where to send funds.
 	addr, err := client.WalletNew(ctx, types.KTBLS)
@@ -190,7 +190,7 @@ func TestEthNewBlockFilter(t *testing.T) {
 	kit.QuietAllLogsExcept("events", "messagepool")
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	// create a new address where to send funds.
 	addr, err := client.WalletNew(ctx, types.KTBLS)
@@ -294,7 +294,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -374,7 +374,7 @@ func TestEthGetLogsAll(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -418,7 +418,7 @@ func TestEthGetLogsByTopic(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	invocations := 1
 	ethContractAddr, received := invokeLogFourData(t, client, invocations)
@@ -455,7 +455,7 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -516,7 +516,7 @@ func TestEthGetLogs(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -1076,7 +1076,7 @@ func TestEthGetLogsWithBlockRanges(t *testing.T) {
 	blockTime := 100 * time.Millisecond
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

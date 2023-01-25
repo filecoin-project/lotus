@@ -22,6 +22,6 @@ func TestClient(t *testing.T) {
 
 	blockTime := 5 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 	kit.RunClientTest(t, cli.Commands, client)
 }

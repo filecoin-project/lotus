@@ -22,7 +22,7 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.WithAllSubsystems()) // no mock proofs.
-	ens.InterconnectAll().BeginMining(250 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(250 * time.Millisecond)
 	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	t.Run("stdretrieval", func(t *testing.T) {

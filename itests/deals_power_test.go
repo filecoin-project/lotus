@@ -33,7 +33,7 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	ens.FullNode(&client)
 	ens.Miner(&genMiner, &client, kit.WithAllSubsystems())
 	ens.Miner(&provider, &client, kit.WithAllSubsystems(), kit.PresealSectors(0))
-	ens.Start().InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.Start().InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	ctx := context.Background()
 

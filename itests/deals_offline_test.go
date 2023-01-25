@@ -29,7 +29,7 @@ func TestOfflineDealFlow(t *testing.T) {
 	runTest := func(t *testing.T, fastRet bool, upscale abi.PaddedPieceSize) {
 		ctx := context.Background()
 		client, miner, ens := kit.EnsembleMinimal(t, kit.WithAllSubsystems()) // no mock proofs
-		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
+		ens.InterconnectAll().BeginMiningMustPost(250 * time.Millisecond)
 
 		dh := kit.NewDealHarness(t, client, miner, miner)
 

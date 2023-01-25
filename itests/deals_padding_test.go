@@ -29,7 +29,7 @@ func TestDealPadding(t *testing.T) {
 	startEpoch := abi.ChainEpoch(2 << 12)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.WithAllSubsystems()) // no mock proofs.
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	ctx := context.Background()

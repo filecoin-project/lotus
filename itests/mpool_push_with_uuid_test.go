@@ -24,7 +24,7 @@ func TestMpoolPushWithoutUuidWithMaxFee(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client15, _, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	bal, err := client15.WalletBalance(ctx, client15.DefaultKey.Address)
 	require.NoError(t, err)

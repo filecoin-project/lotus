@@ -28,7 +28,7 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC(),
 	)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	n1.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(25)))

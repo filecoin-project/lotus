@@ -172,6 +172,18 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 		require.Equal(bm.t, ts.Height(), curr[0].Val.Height(), "failed sanity check: are multiple miners mining with must post?")
 		for {
 			select {
+			case <-bm.pause:
+				select {
+				case <-bm.unpause:
+				case <-ctx.Done():
+					return
+				}
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			select {
 			case <-time.After(blocktime):
 			case <-ctx.Done():
 				return

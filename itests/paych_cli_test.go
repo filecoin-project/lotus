@@ -457,7 +457,7 @@ func startPaychCreatorReceiverMiner(ctx context.Context, t *testing.T, paymentCr
 		Miner(&miner, paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll().
-		BeginMining(blocktime)
+		BeginMiningMustPost(blocktime)
 
 	// Send some funds to the second node
 	receiverAddr, err := paymentReceiver.WalletDefaultAddress(ctx)

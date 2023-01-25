@@ -35,7 +35,7 @@ func TestWindowPostNoPreChecks(t *testing.T) {
 					DisableWDPoStPreChecks: true,
 				},
 			))))
-	ens.InterconnectAll().BeginMining(2 * time.Millisecond)
+	ens.InterconnectAll().BeginMining(2 * time.Millisecond) // PoSt test
 
 	nSectors := 10
 
@@ -200,7 +200,7 @@ func TestWindowPostMaxSectorsRecoveryConfig(t *testing.T) {
 	client, miner, ens := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
 		kit.MockProofs())
-	ens.InterconnectAll().BeginMining(2 * time.Millisecond)
+	ens.InterconnectAll().BeginMining(2 * time.Millisecond) // PoSt test
 
 	nSectors := 10
 
@@ -314,7 +314,7 @@ func TestWindowPostManualSectorsRecovery(t *testing.T) {
 	client, miner, ens := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
 		kit.MockProofs())
-	ens.InterconnectAll().BeginMining(2 * time.Millisecond)
+	ens.InterconnectAll().BeginMining(2 * time.Millisecond) // PoSt test
 
 	nSectors := 10
 

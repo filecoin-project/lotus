@@ -38,7 +38,7 @@ func TestMultisig(t *testing.T) {
 
 	blockTime := 5 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	multisig.RunMultisigTests(t, client)
 }
@@ -57,7 +57,7 @@ func TestMultisigReentrant(t *testing.T) {
 
 	blockTime := 5 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 	store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(client)))
 
 	signer := client.DefaultKey.Address

@@ -33,7 +33,7 @@ func TestLiteMigration(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client16, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version16))
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	client16.WaitTillChain(ctx, func(set *types.TipSet) bool {
 		return set.Height() > 100

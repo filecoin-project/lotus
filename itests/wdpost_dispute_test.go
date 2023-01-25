@@ -60,7 +60,7 @@ func TestWindowPostDispute(t *testing.T) {
 	require.NoError(t, err)
 
 	// Mine with the _second_ node (the good one).
-	ens.InterconnectAll().BeginMining(blocktime, &chainMiner)
+	ens.InterconnectAll().BeginMining(blocktime, &chainMiner) // PoSt test
 
 	// Give the chain miner enough sectors to win every block.
 	chainMiner.PledgeSectors(ctx, 10, 0, nil)
@@ -248,7 +248,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	defer cancel()
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMining(blocktime) // PoSt test
 
 	defaultFrom, err := client.WalletDefaultAddress(ctx)
 	require.NoError(t, err)

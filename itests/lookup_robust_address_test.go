@@ -18,7 +18,7 @@ func TestStateLookupRobustAddress(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version15))
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(10 * time.Millisecond)
 
 	addr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

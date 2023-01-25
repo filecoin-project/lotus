@@ -54,7 +54,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 				kit.Account(verifierKey, abi.NewTokenAmount(bal.Int64())), // assign some balance to the verifier so they can send an AddClient message.
 				kit.GenesisNetworkVersion(nv))
 
-			ens.InterconnectAll().BeginMining(blockTime)
+			ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 			api := node.FullNode.(*impl.FullNodeAPI)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -185,7 +185,7 @@ func TestRemoveDataCap(t *testing.T) {
 		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
 	)
 
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	api := node.FullNode.(*impl.FullNodeAPI)
 	ctx, cancel := context.WithCancel(context.Background())
