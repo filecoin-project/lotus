@@ -93,7 +93,7 @@ func TestDeadlineToggling(t *testing.T) {
 		Miner(&minerA, &client, opts...).
 		Start().
 		InterconnectAll()
-	ens.BeginMining(blocktime) // PoSt test
+	ens.BeginMiningNoPoSt(blocktime) // PoSt test
 
 	opts = append(opts, kit.OwnerAddr(client.DefaultKey))
 	ens.Miner(&minerB, &client, opts...).

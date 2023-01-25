@@ -24,7 +24,7 @@ import (
 //	kit.QuietMiningLogs()
 //
 //	client16, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version16))
-//	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+//	ens.InterconnectAll().BeginMiningNoPoSt(10 * time.Millisecond)
 //
 //	dealLabel, err := market.NewLabelFromString(string([]byte{0xde, 0xad, 0xbe, 0xef}))
 //	require.NoError(t, err)

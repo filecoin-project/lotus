@@ -36,7 +36,7 @@ func TestWorkerKeyChange(t *testing.T) {
 
 	blocktime := 1 * time.Millisecond
 	client1, client2, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	output := bytes.NewBuffer(nil)
 	run := func(cmd *cli.Command, args ...string) error {

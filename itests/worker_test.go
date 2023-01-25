@@ -141,7 +141,7 @@ func TestWindowPostWorker(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0] // PoSt test
+	bm := ens.InterconnectAll().BeginMiningNoPoSt(2 * time.Millisecond)[0] // PoSt test
 
 	di = di.NextNotElapsed()
 
@@ -280,7 +280,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0] // PoSt test
+	bm := ens.InterconnectAll().BeginMiningNoPoSt(2 * time.Millisecond)[0] // PoSt test
 
 	di = di.NextNotElapsed()
 
@@ -409,7 +409,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTPreCommit1})) // no mock proofs
 
-	//ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	//ens.InterconnectAll().BeginMiningNoPoSt(50 * time.Millisecond)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)

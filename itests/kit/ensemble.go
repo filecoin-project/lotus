@@ -89,19 +89,19 @@ func init() {
 //
 // After the initial nodes are added, call `ens.Start()` to forge genesis
 // and start the network. Mining will NOT be started automatically. It needs
-// to be started explicitly by calling `BeginMining`.
+// to be started explicitly by calling `BeginMiningNoPoSt`.
 //
 // Nodes also need to be connected with one another, either via `ens.Connect()`
 // or `ens.InterconnectAll()`. A common inchantation for simple tests is to do:
 //
-//	ens.InterconnectAll().BeginMining(blocktime)
+//	ens.InterconnectAll().BeginMiningNoPoSt(blocktime)
 //
 // You can continue to add more nodes, but you must always follow with
 // `ens.Start()` to activate the new nodes.
 //
 // The API is chainable, so it's possible to do a lot in a very succinct way:
 //
-//	kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMining()
+//	kit.NewEnsemble().FullNode(&full).Miner(&miner, &full).Start().InterconnectAll().BeginMiningNoPoSt()
 //
 // You can also find convenient fullnode:miner presets, such as 1:1, 1:2,
 // and 2:1, e.g.:
@@ -961,10 +961,13 @@ func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestM
 	return bms
 }
 
-// BeginMining kicks off mining for the specified miners. If nil or 0-length,
+// BeginMiningNoPoSt kicks off mining for the specified miners. If nil or 0-length,
 // it will kick off mining for all enrolled and active miners. It also adds a
 // cleanup function to stop all mining operations on test teardown.
-func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
+//
+// WARNING: This method does not wait for PoSts to be submitted,
+// ONLY USE IN TESTS WHICH ARE AWARE OF THIS BEHAVIOUR.
+func (n *Ensemble) BeginMiningNoPoSt(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
 	ctx := context.Background()
 
 	// wait one second to make sure that nodes are connected and have handshaken.
