@@ -64,6 +64,7 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
+	Web3ClientVersion(ctx context.Context) (string, error)
 }
 
 type EthEventAPI interface {
@@ -712,6 +713,10 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	}
 
 	return ethtypes.EthHashFromTxBytes(rawTx), nil
+}
+
+func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
+	return build.UserVersion(), nil
 }
 
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.Message, error) {
