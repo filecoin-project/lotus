@@ -58,8 +58,7 @@ var disputerMsgCmd = &cli.Command{
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 3 {
-			fmt.Println("Usage: dispute [minerAddress index postIndex]")
-			return nil
+			return IncorrectNumArgs(cctx)
 		}
 
 		ctx := ReqContext(cctx)
