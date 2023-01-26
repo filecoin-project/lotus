@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -349,13 +350,20 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		m.inputLk.Lock()
 	}
 
+	fmt.Println("!!!!!!!!!!!!!!! BEFORE ADD PENDING PIECE!!!!!!!!!!!!!!!!!!!!!")
+
 	// addPendingPiece takes over m.inputLk
 	pp := m.addPendingPiece(ctx, size, data, deal, claimTerms, sp)
+
+	fmt.Println("!!!!!!!!!!!!!!! ADD PENDING PIECE succeeds !!!!!!!!!!!!!!!!!!!!!")
 
 	res, err := waitAddPieceResp(ctx, pp)
 	if err != nil {
 		return api.SectorOffset{}, err
 	}
+
+	fmt.Println("!!!!!!!!!!!!!!! WAIT ADD PIECE succeeds !!!!!!!!!!!!!!!!!!!!!")
+
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 

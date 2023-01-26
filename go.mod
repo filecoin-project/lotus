@@ -110,6 +110,7 @@ require (
 	github.com/ipld/go-codec-dagpb v1.5.0
 	github.com/ipld/go-ipld-prime v0.18.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
+	github.com/ipni/index-provider v0.10.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
@@ -245,7 +246,6 @@ require (
 	github.com/ipfs/go-peertaskqueue v0.8.0 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
 	github.com/ipld/go-ipld-adl-hamt v0.0.0-20220616142416-9004dbd839e0 // indirect
-	github.com/ipni/index-provider v0.10.0 // indirect
 	github.com/ipni/storetheindex v0.5.3-0.20221203123030-16745cb63f15 // indirect
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect

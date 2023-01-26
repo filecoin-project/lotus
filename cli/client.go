@@ -32,8 +32,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	commcid "github.com/filecoin-project/go-fil-commcid"
-	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -235,23 +233,6 @@ var clientCommPCmd = &cli.Command{
 
 		commP := ret.Root
 		size := uint64(ret.Size)
-
-		if cctx.Bool("padded") {
-
-			_, _, b, err := commcid.CIDToCommitment(ret.Root)
-			if err != nil {
-				return err
-			}
-			padded, err := commp.PadCommP(b, uint64(ret.Size), uint64(ret.Size.Padded()))
-			if err != nil {
-				return err
-			}
-			_, commP, err = cid.CidFromBytes(padded)
-			if err != nil {
-				return err
-			}
-			size = uint64(ret.Size.Padded())
-		}
 
 		fmt.Println("CID: ", encoder.Encode(commP))
 		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(size)))

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 
@@ -106,11 +107,15 @@ func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize
 		return 0, 0, err
 	}
 
+	fmt.Println("!!!!!!!!!!!!!!! SECTOR ADD PIECE TO ANY succeeds !!!!!!!!!!!!!!!!!!!!!")
+
 	// TODO: DealID has very low finality here
 	err = st.writeRef(ctx, d.DealID, so.Sector, so.Offset, size)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("writeRef: %w", err)
 	}
+
+	fmt.Println("!!!!!!!!!!!!!!! WRITE REF succeeds !!!!!!!!!!!!!!!!!!!!!")
 
 	return so.Sector, so.Offset, nil
 }

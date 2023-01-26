@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"net/http"
 	"os"
 	"sort"
@@ -1234,10 +1235,6 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
 }
 
-func (sm *StorageMinerAPI) InitiateDealWithClient(ctx context.Context, commP cid.Cid, commPSize uint64, rootCid cid.Cid, clientAddr address.Address, startEpoch abi.ChainEpoch, duration uint64, carPath string) error {
-	return sm.StorageProvider.InitiateDealWithClient(ctx, commP, commPSize, rootCid, clientAddr, startEpoch, duration, carPath)
-}
-
 func (sm *StorageMinerAPI) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
 	return sm.StorageDealPieceCidBlocklistConfigFunc()
 }
@@ -1415,4 +1412,13 @@ func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.Token
 	}
 
 	return smsg.Cid(), nil
+}
+
+func (sm *StorageMinerAPI) InitiateDealWithClient(ctx context.Context, commP cid.Cid, commPSize uint64, rootCid cid.Cid, clientAddr address.Address, startEpoch abi.ChainEpoch, duration uint64, carPath string) error {
+	return sm.StorageProvider.InitiateDealWithClient(ctx, commP, commPSize, rootCid, clientAddr, startEpoch, duration, carPath)
+}
+
+func curTime() cbg.CborTime {
+	now := time.Now()
+	return cbg.CborTime(time.Unix(0, now.UnixNano()).UTC())
 }

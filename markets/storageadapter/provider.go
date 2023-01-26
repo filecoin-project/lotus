@@ -109,6 +109,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 
 	// Attempt to add the piece to the sector
 	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
+
 	curTime := build.Clock.Now()
 	for build.Clock.Since(curTime) < addPieceRetryTimeout {
 		// Check if there was an error because of too many sectors being sealed
@@ -143,6 +144,8 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
 	log.Warnf("New Deal: deal %d", deal.DealID)
+
+	fmt.Println("!!!!!!!!!!!!!!! ADD PIECE succeeds !!!!!!!!!!!!!!!!!!!!!")
 
 	return &storagemarket.PackingResult{
 		SectorNumber: p,

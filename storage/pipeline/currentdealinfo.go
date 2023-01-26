@@ -175,6 +175,7 @@ func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tsk ty
 		return false, err
 	}
 	p2ClientID, err := mgr.CDAPI.StateLookupID(ctx, p2.Client, tsk)
+
 	if err != nil {
 		return false, err
 	}
