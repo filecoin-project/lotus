@@ -59,7 +59,7 @@ var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 
 var UpgradeSharkHeight = abi.ChainEpoch(-20)
 
-var UpgradeHyggeHeight = abi.ChainEpoch(-21)
+var UpgradeHyggeHeight = abi.ChainEpoch(30)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
