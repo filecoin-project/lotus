@@ -1013,9 +1013,6 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFil
 
 		return ethtypes.EthFilterID{}, err
 	}
-
-	fmt.Printf("REMOVEME: EthNewFilter.f=%+v\n", f)
-
 	return ethtypes.EthFilterID(f.ID()), nil
 }
 
