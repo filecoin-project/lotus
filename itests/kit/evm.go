@@ -338,29 +338,26 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 	ens.InterconnectAll().BeginMining(blockTime)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
-	// instead of having this in a few tests put this in the setup
-	// verify that the initial balance is 100000000000000000000000000
-	// this allows other tests to assert the initial balance
-	// without explicitly checking it
+	// require that the initial balance is 100 million FIL in setup
+	// this way other tests can count on this initial wallet balance
 	fromAddr := client.DefaultKey.Address
 	bal, err := client.WalletBalance(ctx, fromAddr)
 	require.NoError(t, err)
-	originalBalance, err := big.FromString("100000000000000000000000000")
-	require.NoError(t, err)
+	originalBalance := types.FromFil(100 * uint64(1e6)) // 100 million FIL
 	require.Equal(t, originalBalance, bal)
 
 	return ctx, cancel, client
 }
 
-func (e *EVM) TransferValueOrFailTest(ctx context.Context, fromAddr address.address, toAddr address.address, sendAmount big.int) {
+func (e *EVM) TransferValueOrFailTest(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
 	sendMsg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,
 		Value: sendAmount,
 	}
-	signedMsg, err := client.MpoolPushMessage(ctx, sendMsg, nil)
+	signedMsg, err := e.MpoolPushMessage(ctx, sendMsg, nil)
 	require.NoError(e.t, err)
-	mLookup, err := client.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := e.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(e.t, err)
 	require.Equal(e.t, exitcode.Ok, mLookup.Receipt.ExitCode)
 }
