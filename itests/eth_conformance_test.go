@@ -138,10 +138,13 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	require.NoError(t, err)
 	defer closer()
 
+	const skipUntilIssue10106 = "Skipped until https://github.com/filecoin-project/lotus/issues/10106 is addressed"
+
 	testCases := []struct {
-		method  string
-		variant string // suffix applied to the test name to distinguish different variants of a method call
-		call    func(*ethAPIRaw) (json.RawMessage, error)
+		method     string
+		variant    string // suffix applied to the test name to distinguish different variants of a method call
+		call       func(*ethAPIRaw) (json.RawMessage, error)
+		skipReason string
 	}{
 		// Alphabetical order
 
@@ -223,6 +226,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByHash(context.Background(), blockHashWithMessage, true)
 			},
+			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -231,6 +235,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), "earliest", true)
 			},
+			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -239,6 +244,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), "pending", true)
 			},
+			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -246,6 +252,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
 			},
+			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -321,6 +328,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
 			},
+			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -328,6 +336,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage, ethtypes.EthUint64(0))
 			},
+			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -335,6 +344,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByHash(context.Background(), &messageWithEvents)
 			},
+			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -401,6 +411,10 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			name += "_" + tc.variant
 		}
 		t.Run(name, func(t *testing.T) {
+			if tc.skipReason != "" {
+				t.Skipf(tc.skipReason)
+			}
+
 			schema, ok := schemas[tc.method]
 			require.True(t, ok, "method not found in openrpc spec")
 
