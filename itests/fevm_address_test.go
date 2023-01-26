@@ -63,8 +63,8 @@ func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode
 
 	method := builtintypes.MethodsEAM.CreateExternal
 	contractParams := abi.CborBytes(contract)
-	params, actors_err := actors.SerializeParams(&contractParams)
-	require.NoError(t, actors_err)
+	params, actorsErr := actors.SerializeParams(&contractParams)
+	require.NoError(t, actorsErr)
 
 	createMsg := &types.Message{
 		To:     builtintypes.EthereumAddressManagerActorAddr,
@@ -184,7 +184,7 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 	require.True(t, builtin.IsEvmActor(actorPostCreate.Code))
 
 	// Create and deploy evm actor
-	wait = createanddeploy(ctx, t, client, fromAddr, contract)
+	wait = createAndDeploy(ctx, t, client, fromAddr, contract)
 
 	// Check that this time eth address returned from CreateExternal is not the same as eth address predicted at the start
 	createdEthAddr = getEthAddressTX(ctx, t, client, wait, ethAddr)
