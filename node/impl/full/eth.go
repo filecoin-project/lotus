@@ -982,17 +982,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		addresses = append(addresses, a)
 	}
 
-	for idx, vals := range filterSpec.Topics {
-		if len(vals) == 0 {
-			continue
-		}
-		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
-		key := fmt.Sprintf("topic%d", idx+1)
-		for _, v := range vals {
-			buf := make([]byte, len(v[:]))
-			copy(buf, v[:])
-			keys[key] = append(keys[key], buf)
-		}
+	keys, err := parseEthTopics(filterSpec.Topics)
+	if err != nil {
+		return nil, err
 	}
 
 	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
@@ -1017,7 +1009,6 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFil
 
 		return ethtypes.EthFilterID{}, err
 	}
-
 	return ethtypes.EthFilterID(f.ID()), nil
 }
 
@@ -1141,14 +1132,12 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 	case EthSubscribeEventTypeLogs:
 		keys := map[string][][]byte{}
 		if params != nil {
-			for idx, vals := range params.Topics {
-				// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
-				key := fmt.Sprintf("topic%d", idx+1)
-				keyvals := make([][]byte, len(vals))
-				for i, v := range vals {
-					keyvals[i] = v[:]
-				}
-				keys[key] = keyvals
+			var err error
+			keys, err = parseEthTopics(params.Topics)
+			if err != nil {
+				// clean up any previous filters added and stop the sub
+				_, _ = e.EthUnsubscribe(ctx, sub.id)
+				return nil, err
 			}
 		}
 
@@ -1235,7 +1224,10 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 		var err error
 
 		for _, entry := range ev.Entries {
-			value := ethtypes.EthBytes(leftpad32(entry.Value)) // value has already been cbor-decoded but see https://github.com/filecoin-project/ref-fvm/issues/1345
+			value, err := cborDecodeTopicValue(entry.Value)
+			if err != nil {
+				return nil, err
+			}
 			if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
 				log.Topics = append(log.Topics, value)
 			} else {
@@ -1778,7 +1770,10 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			}
 
 			for _, entry := range evt.Entries {
-				value := ethtypes.EthBytes(leftpad32(entry.Value)) // value has already been cbor-decoded but see https://github.com/filecoin-project/ref-fvm/issues/1345
+				value, err := cborDecodeTopicValue(entry.Value)
+				if err != nil {
+					return api.EthTxReceipt{}, xerrors.Errorf("failed to decode event log value: %w", err)
+				}
 				if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
 					l.Topics = append(l.Topics, value)
 				} else {
@@ -1889,10 +1884,6 @@ func EthTxHashGC(ctx context.Context, retentionDays int, manager *EthTxHashManag
 	}
 }
 
-// TODO we could also emit full EVM words from the EVM runtime, but not doing so
-// makes the contract slightly cheaper (and saves storage bytes), at the expense
-// of having to left pad in the API, which is a pretty acceptable tradeoff at
-// face value. There may be other protocol implications to consider.
 func leftpad32(orig []byte) []byte {
 	needed := 32 - len(orig)
 	if needed <= 0 {
@@ -1901,4 +1892,52 @@ func leftpad32(orig []byte) []byte {
 	ret := make([]byte, 32)
 	copy(ret[needed:], orig)
 	return ret
+}
+
+func trimLeadingZeros(b []byte) []byte {
+	for i := range b {
+		if b[i] != 0 {
+			return b[i:]
+		}
+	}
+	return []byte{}
+}
+
+func cborEncodeTopicValue(orig []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	err := cbg.WriteByteArray(&buf, trimLeadingZeros(orig))
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func cborDecodeTopicValue(orig []byte) ([]byte, error) {
+	if len(orig) == 0 {
+		return orig, nil
+	}
+	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
+	if err != nil {
+		return nil, err
+	}
+	return leftpad32(decoded), nil
+}
+
+func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
+	keys := map[string][][]byte{}
+	for idx, vals := range topics {
+		if len(vals) == 0 {
+			continue
+		}
+		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
+		key := fmt.Sprintf("topic%d", idx+1)
+		for _, v := range vals {
+			encodedVal, err := cborEncodeTopicValue(v[:])
+			if err != nil {
+				return nil, xerrors.Errorf("failed to encode topic value")
+			}
+			keys[key] = append(keys[key], encodedVal)
+		}
+	}
+	return keys, nil
 }

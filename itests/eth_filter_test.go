@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -287,7 +286,7 @@ func TestEthNewBlockFilter(t *testing.T) {
 	}
 }
 
-func TestEthNewFilterCatchAll(t *testing.T) {
+func TestEthNewFilterDefaultSpec(t *testing.T) {
 	require := require.New(t)
 
 	kit.QuietAllLogsExcept("events", "messagepool")
@@ -367,7 +366,7 @@ func TestEthNewFilterCatchAll(t *testing.T) {
 	AssertEthLogs(t, elogs, expected, received)
 }
 
-func TestEthGetLogsAll(t *testing.T) {
+func TestEthGetLogsBasic(t *testing.T) {
 	require := require.New(t)
 	kit.QuietAllLogsExcept("events", "messagepool")
 
@@ -410,45 +409,7 @@ func TestEthGetLogsAll(t *testing.T) {
 	AssertEthLogs(t, elogs, expected, received)
 }
 
-func TestEthGetLogsByTopic(t *testing.T) {
-	require := require.New(t)
-
-	kit.QuietAllLogsExcept("events", "messagepool")
-
-	blockTime := 100 * time.Millisecond
-
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
-
-	invocations := 1
-	ethContractAddr, received := invokeLogFourData(t, client, invocations)
-
-	// find log by known topic1
-	var spec ethtypes.EthFilterSpec
-	err := json.Unmarshal([]byte(`{"fromBlock":"0x0","topics":["0x0000000000000000000000000000000000000000000000000000000000001111"]}`), &spec)
-	require.NoError(err)
-
-	res, err := client.EthGetLogs(context.Background(), &spec)
-	require.NoError(err)
-
-	expected := []ExpectedEthLog{
-		{
-			Address: ethContractAddr,
-			Topics: []ethtypes.EthBytes{
-				paddedEthBytes([]byte{0x11, 0x11}),
-				paddedEthBytes([]byte{0x22, 0x22}),
-				paddedEthBytes([]byte{0x33, 0x33}),
-				paddedEthBytes([]byte{0x44, 0x44}),
-			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
-		},
-	}
-	elogs, err := parseEthLogsFromFilterResult(res)
-	require.NoError(err)
-	AssertEthLogs(t, elogs, expected, received)
-}
-
-func TestEthSubscribeLogs(t *testing.T) {
+func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
 	require := require.New(t)
 
 	kit.QuietAllLogsExcept("events", "messagepool")
@@ -522,544 +483,193 @@ func TestEthGetLogs(t *testing.T) {
 	defer cancel()
 
 	// Set up the test fixture with a standard list of invocations
-	contract1, contract2, messages := invokeEventMatrix(ctx, t, client)
+	contract1, contract2, invocations := prepareEventMatrixInvocations(ctx, t, client)
+	testCases := getCombinationFilterTestCases(contract1, contract2, "0x0")
 
-	testCases := []struct {
-		name     string
-		spec     *ethtypes.EthFilterSpec
-		expected []ExpectedEthLog
-	}{
-		{
-			name: "find all EventZeroData events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventZeroData"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventZeroData"],
-					},
-					Data: nil,
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventZeroData"],
-					},
-					Data: nil,
-				},
-			},
-		},
-		{
-			name: "find all EventOneData events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneData"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneData"],
-					},
-					Data: packUint64Values(23),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneData"],
-					},
-					Data: packUint64Values(44),
-				},
-			},
-		},
-		{
-			name: "find all EventTwoData events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoData"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoData"],
-					},
-					Data: packUint64Values(555, 666),
-				},
-			},
-		},
-		{
-			name: "find all EventThreeData events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeData"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventThreeData"],
-					},
-					Data: packUint64Values(1, 2, 3),
-				},
-			},
-		},
-		{
-			name: "find all EventOneIndexed events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexed"],
-						paddedUint64(44),
-					},
-					Data: nil,
-				},
-			},
-		},
-		{
-			name: "find all EventTwoIndexed events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexed"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexed"],
-						paddedUint64(44),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexed"],
-						paddedUint64(40),
-						paddedUint64(20),
-					},
-					Data: nil,
-				},
-			},
-		},
-		{
-			name: "find all EventThreeIndexed events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexed"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventThreeIndexed"],
-						paddedUint64(44),
-						paddedUint64(27),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-			},
-		},
-		{
-			name: "find all EventOneIndexedWithData events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(44),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(46),
-					},
-					Data: paddedUint64(12),
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(50),
-					},
-					Data: paddedUint64(9),
-				},
-			},
-		},
-		{
-			name: "find all EventTwoIndexedWithData events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(44),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(46),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(46),
-						paddedUint64(14),
-					},
-					Data: paddedUint64(19),
-				},
-			},
-		},
-		{
-			name: "find all EventThreeIndexedWithData events",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexedWithData"])).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventThreeIndexedWithData"],
-						paddedUint64(44),
-						paddedUint64(27),
-						paddedUint64(19),
-					},
-					Data: paddedUint64(12),
-				},
-			},
-		},
-
-		{
-			name: "find all events from contract2",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).AddressOneOf(contract2).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventZeroData"],
-					},
-					Data: nil,
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventThreeIndexed"],
-						paddedUint64(44),
-						paddedUint64(27),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexed"],
-						paddedUint64(44),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(50),
-					},
-					Data: paddedUint64(9),
-				},
-			},
-		},
-
-		{
-			name: "find all events with topic2 of 44",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexed"],
-						paddedUint64(44),
-					},
-					Data: nil,
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexed"],
-						paddedUint64(44),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventThreeIndexed"],
-						paddedUint64(44),
-						paddedUint64(27),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(44),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(44),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventThreeIndexedWithData"],
-						paddedUint64(44),
-						paddedUint64(27),
-						paddedUint64(19),
-					},
-					Data: paddedUint64(12),
-				},
-			},
-		},
-
-		{
-			name: "find all events with topic2 of 44 from contract2",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).AddressOneOf(contract2).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventThreeIndexed"],
-						paddedUint64(44),
-						paddedUint64(27),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexed"],
-						paddedUint64(44),
-						paddedUint64(19),
-					},
-					Data: nil,
-				},
-			},
-		},
-
-		{
-			name: "find all EventOneIndexedWithData events from contract1 or contract2",
-			spec: newEthFilterBuilder().
-				FromBlockEpoch(0).
-				AddressOneOf(contract1, contract2).
-				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).
-				Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(44),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(46),
-					},
-					Data: paddedUint64(12),
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(50),
-					},
-					Data: paddedUint64(9),
-				},
-			},
-		},
-
-		{
-			name: "find all events with topic2 of 46",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(46))).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(46),
-					},
-					Data: paddedUint64(12),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(46),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(46),
-						paddedUint64(14),
-					},
-					Data: paddedUint64(19),
-				},
-			},
-		},
-		{
-			name: "find all events with topic2 of 50",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(50))).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(50),
-					},
-					Data: paddedUint64(9),
-				},
-			},
-		},
-		{
-			name: "find all events with topic2 of 46 or 50",
-			spec: newEthFilterBuilder().FromBlockEpoch(0).Topic2OneOf(paddedEthHash(paddedUint64(46)), paddedEthHash(paddedUint64(50))).Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(46),
-					},
-					Data: paddedUint64(12),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(46),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(46),
-						paddedUint64(14),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract2,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexedWithData"],
-						paddedUint64(50),
-					},
-					Data: paddedUint64(9),
-				},
-			},
-		},
-
-		{
-			name: "find all events with topic1 of EventTwoIndexedWithData and topic3 of 27",
-			spec: newEthFilterBuilder().
-				FromBlockEpoch(0).
-				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])).
-				Topic3OneOf(paddedEthHash(paddedUint64(27))).
-				Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(44),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(46),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-			},
-		},
-
-		{
-			name: "find all events with topic1 of EventTwoIndexedWithData or EventOneIndexed and topic2 of 44",
-			spec: newEthFilterBuilder().
-				FromBlockEpoch(0).
-				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"]), paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).
-				Topic2OneOf(paddedEthHash(paddedUint64(44))).
-				Filter(),
-
-			expected: []ExpectedEthLog{
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventTwoIndexedWithData"],
-						paddedUint64(44),
-						paddedUint64(27),
-					},
-					Data: paddedUint64(19),
-				},
-				{
-					Address: contract1,
-					Topics: []ethtypes.EthBytes{
-						EventMatrixContract.Ev["EventOneIndexed"],
-						paddedUint64(44),
-					},
-					Data: nil,
-				},
-			},
-		},
-	}
+	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 
 	for _, tc := range testCases {
 		tc := tc // appease the lint despot
 		t.Run(tc.name, func(t *testing.T) {
 			res, err := client.EthGetLogs(ctx, tc.spec)
+			require.NoError(err)
+
+			elogs, err := parseEthLogsFromFilterResult(res)
+			require.NoError(err)
+			AssertEthLogs(t, elogs, tc.expected, messages)
+		})
+	}
+}
+
+func TestEthGetFilterChanges(t *testing.T) {
+	require := require.New(t)
+	kit.QuietAllLogsExcept("events", "messagepool")
+
+	blockTime := 100 * time.Millisecond
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Set up the test fixture with a standard list of invocations
+	contract1, contract2, invocations := prepareEventMatrixInvocations(ctx, t, client)
+
+	// Get the test cases
+	testCases := getCombinationFilterTestCases(contract1, contract2, "latest")
+
+	testFilters := map[string]ethtypes.EthFilterID{}
+	// Create all the filters
+	for _, tc := range testCases {
+		filterID, err := client.EthNewFilter(ctx, tc.spec)
+		require.NoError(err)
+		testFilters[tc.name] = filterID
+	}
+
+	// Perform all the invocations
+	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
+
+	for _, tc := range testCases {
+		tc := tc // appease the lint despot
+		t.Run(tc.name, func(t *testing.T) {
+			filterID, ok := testFilters[tc.name]
+			require.True(ok)
+
+			// Look for events that the filter has accumulated
+			res, err := client.EthGetFilterChanges(ctx, filterID)
+			require.NoError(err)
+
+			elogs, err := parseEthLogsFromFilterResult(res)
+			require.NoError(err)
+			AssertEthLogs(t, elogs, tc.expected, messages)
+		})
+	}
+}
+
+func TestEthSubscribeLogs(t *testing.T) {
+	require := require.New(t)
+	kit.QuietAllLogsExcept("events", "messagepool")
+
+	blockTime := 100 * time.Millisecond
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Set up the test fixture with a standard list of invocations
+	contract1, contract2, invocations := prepareEventMatrixInvocations(ctx, t, client)
+
+	// Get the test cases
+	testCases := getTopicFilterTestCases(contract1, contract2, "latest")
+
+	testResponses := map[string]chan ethtypes.EthSubscriptionResponse{}
+
+	// quit is used to signal that we're ready to start testing collected results
+	quit := make(chan struct{})
+
+	// Create all the filters
+	for _, tc := range testCases {
+
+		// subscribe to topics in filter
+		subCh, err := client.EthSubscribe(ctx, "logs", &ethtypes.EthSubscriptionParams{Topics: tc.spec.Topics})
+		require.NoError(err)
+
+		responseCh := make(chan ethtypes.EthSubscriptionResponse, len(invocations))
+		testResponses[tc.name] = responseCh
+
+		// start a goroutine to forward responses from subscription to a buffered channel with guaranteed capacity
+		go func(subCh <-chan ethtypes.EthSubscriptionResponse, responseCh chan<- ethtypes.EthSubscriptionResponse, quit chan struct{}) {
+			defer func() {
+				close(responseCh)
+			}()
+			for {
+				select {
+				case resp := <-subCh:
+					responseCh <- resp
+				case <-quit:
+					return
+				case <-ctx.Done():
+					return
+				}
+			}
+		}(subCh, responseCh, quit)
+
+	}
+
+	// Perform all the invocations
+	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
+
+	// wait a little for subscriptions to gather results and then tell all the goroutines to stop
+	time.Sleep(blockTime * 6)
+	close(quit)
+
+	for _, tc := range testCases {
+		tc := tc // appease the lint despot
+		t.Run(tc.name, func(t *testing.T) {
+			responseCh, ok := testResponses[tc.name]
+			require.True(ok)
+
+			var elogs []*ethtypes.EthLog
+			for resp := range responseCh {
+				rlist, ok := resp.Result.([]interface{})
+				require.True(ok, "expected subscription result to be []interface{}, but was %T", resp.Result)
+
+				for _, rentry := range rlist {
+					rmap, ok := rentry.(map[string]interface{})
+					require.True(ok, "expected subscription result entry to be map[string]interface{}, but was %T", resp.Result)
+
+					elog, err := ParseEthLog(rmap)
+					require.NoError(err)
+
+					elogs = append(elogs, elog)
+				}
+
+			}
+			AssertEthLogs(t, elogs, tc.expected, messages)
+		})
+	}
+}
+
+func TestEthGetFilterLogs(t *testing.T) {
+	require := require.New(t)
+	kit.QuietAllLogsExcept("events", "messagepool")
+
+	blockTime := 100 * time.Millisecond
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// Set up the test fixture with a standard list of invocations
+	contract1, contract2, invocations := prepareEventMatrixInvocations(ctx, t, client)
+
+	// Get the test cases
+	testCases := getCombinationFilterTestCases(contract1, contract2, "latest")
+
+	testFilters := map[string]ethtypes.EthFilterID{}
+	// Create all the filters
+	for _, tc := range testCases {
+		filterID, err := client.EthNewFilter(ctx, tc.spec)
+		require.NoError(err)
+		testFilters[tc.name] = filterID
+	}
+
+	// Perform all the invocations
+	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
+
+	for _, tc := range testCases {
+		tc := tc // appease the lint despot
+		t.Run(tc.name, func(t *testing.T) {
+			filterID, ok := testFilters[tc.name]
+			require.True(ok)
+
+			// Look for events that the filter has accumulated
+			res, err := client.EthGetFilterLogs(ctx, filterID)
 			require.NoError(err)
 
 			elogs, err := parseEthLogsFromFilterResult(res)
@@ -1283,6 +893,108 @@ func TestEthGetLogsWithBlockRanges(t *testing.T) {
 	}
 }
 
+func TestEthNewFilterMergesHistoricWithRealtime(t *testing.T) {
+	require := require.New(t)
+
+	kit.QuietAllLogsExcept("events", "messagepool")
+
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	sender, contract := client.EVM().DeployContractFromFilename(ctx, EventMatrixContract.Filename)
+
+	// generate some events before the creation of the filter
+	preInvocations := []Invocation{
+		{
+			Sender:   sender,
+			Target:   contract,
+			Selector: EventMatrixContract.Fn["logEventOneData"],
+			Data:     packUint64Values(1),
+		},
+		{
+			Sender:   sender,
+			Target:   contract,
+			Selector: EventMatrixContract.Fn["logEventOneIndexed"],
+			Data:     packUint64Values(2),
+		},
+	}
+
+	messages := invokeAndWaitUntilAllOnChain(t, client, preInvocations)
+
+	// now install filter
+	spec := newEthFilterBuilder().FromBlock("earliest").Filter()
+
+	filterID, err := client.EthNewFilter(ctx, spec)
+	require.NoError(err)
+
+	// generate some events after the creation of the filter
+	postInvocations := []Invocation{
+		{
+			Sender:   sender,
+			Target:   contract,
+			Selector: EventMatrixContract.Fn["logEventOneData"],
+			Data:     packUint64Values(3),
+		},
+		{
+			Sender:   sender,
+			Target:   contract,
+			Selector: EventMatrixContract.Fn["logEventOneIndexed"],
+			Data:     packUint64Values(4),
+		},
+	}
+
+	postMessages := invokeAndWaitUntilAllOnChain(t, client, postInvocations)
+	for k, v := range postMessages {
+		messages[k] = v
+	}
+
+	// collect filter results
+	res, err := client.EthGetFilterChanges(ctx, filterID)
+	require.NoError(err)
+
+	ethContractAddr := getContractEthAddress(ctx, t, client, contract)
+
+	// expect to see 2 messages from before the filter was installed and 2 after
+	expected := []ExpectedEthLog{
+		{
+			Address: ethContractAddr,
+			Topics: []ethtypes.EthBytes{
+				EventMatrixContract.Ev["EventOneData"],
+			},
+			Data: paddedUint64(1),
+		},
+		{
+			Address: ethContractAddr,
+			Topics: []ethtypes.EthBytes{
+				EventMatrixContract.Ev["EventOneIndexed"],
+				paddedUint64(2),
+			},
+		},
+		{
+			Address: ethContractAddr,
+			Topics: []ethtypes.EthBytes{
+				EventMatrixContract.Ev["EventOneData"],
+			},
+			Data: paddedUint64(3),
+		},
+		{
+			Address: ethContractAddr,
+			Topics: []ethtypes.EthBytes{
+				EventMatrixContract.Ev["EventOneIndexed"],
+				paddedUint64(4),
+			},
+		},
+	}
+
+	elogs, err := parseEthLogsFromFilterResult(res)
+	require.NoError(err)
+	AssertEthLogs(t, elogs, expected, messages)
+}
+
 // -------------------------------------------------------------------------------
 // end of tests
 // -------------------------------------------------------------------------------
@@ -1451,7 +1163,7 @@ func invokeLogFourData(t *testing.T, client *kit.TestFullNode, iterations int) (
 	return ethAddr, messages
 }
 
-func invokeEventMatrix(ctx context.Context, t *testing.T, client *kit.TestFullNode) (ethtypes.EthAddress, ethtypes.EthAddress, map[ethtypes.EthHash]msgInTipset) {
+func prepareEventMatrixInvocations(ctx context.Context, t *testing.T, client *kit.TestFullNode) (ethtypes.EthAddress, ethtypes.EthAddress, []Invocation) {
 	sender1, contract1 := client.EVM().DeployContractFromFilename(ctx, EventMatrixContract.Filename)
 	sender2, contract2 := client.EVM().DeployContractFromFilename(ctx, EventMatrixContract.Filename)
 
@@ -1640,10 +1352,564 @@ func invokeEventMatrix(ctx context.Context, t *testing.T, client *kit.TestFullNo
 		},
 	}
 
-	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 	ethAddr1 := getContractEthAddress(ctx, t, client, contract1)
 	ethAddr2 := getContractEthAddress(ctx, t, client, contract2)
+
+	return ethAddr1, ethAddr2, invocations
+}
+
+func invokeEventMatrix(ctx context.Context, t *testing.T, client *kit.TestFullNode) (ethtypes.EthAddress, ethtypes.EthAddress, map[ethtypes.EthHash]msgInTipset) {
+	ethAddr1, ethAddr2, invocations := prepareEventMatrixInvocations(ctx, t, client)
+	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 	return ethAddr1, ethAddr2, messages
+}
+
+type filterTestCase struct {
+	name     string
+	spec     *ethtypes.EthFilterSpec
+	expected []ExpectedEthLog
+}
+
+// getTopicFilterTestCases returns filter test cases that only include topic criteria
+func getTopicFilterTestCases(contract1, contract2 ethtypes.EthAddress, fromBlock string) []filterTestCase {
+	return []filterTestCase{
+		{
+			name: "find all EventZeroData events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventZeroData"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventZeroData"],
+					},
+					Data: nil,
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventZeroData"],
+					},
+					Data: nil,
+				},
+			},
+		},
+		{
+			name: "find all EventOneData events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneData"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneData"],
+					},
+					Data: packUint64Values(23),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneData"],
+					},
+					Data: packUint64Values(44),
+				},
+			},
+		},
+		{
+			name: "find all EventTwoData events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoData"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoData"],
+					},
+					Data: packUint64Values(555, 666),
+				},
+			},
+		},
+		{
+			name: "find all EventThreeData events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeData"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventThreeData"],
+					},
+					Data: packUint64Values(1, 2, 3),
+				},
+			},
+		},
+		{
+			name: "find all EventOneIndexed events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexed"],
+						paddedUint64(44),
+					},
+					Data: nil,
+				},
+			},
+		},
+		{
+			name: "find all EventTwoIndexed events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexed"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexed"],
+						paddedUint64(44),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexed"],
+						paddedUint64(40),
+						paddedUint64(20),
+					},
+					Data: nil,
+				},
+			},
+		},
+		{
+			name: "find all EventThreeIndexed events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexed"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventThreeIndexed"],
+						paddedUint64(44),
+						paddedUint64(27),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+			},
+		},
+		{
+			name: "find all EventOneIndexedWithData events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(44),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(46),
+					},
+					Data: paddedUint64(12),
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(50),
+					},
+					Data: paddedUint64(9),
+				},
+			},
+		},
+		{
+			name: "find all EventTwoIndexedWithData events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(44),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(46),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(46),
+						paddedUint64(14),
+					},
+					Data: paddedUint64(19),
+				},
+			},
+		},
+		{
+			name: "find all EventThreeIndexedWithData events",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventThreeIndexedWithData"])).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventThreeIndexedWithData"],
+						paddedUint64(44),
+						paddedUint64(27),
+						paddedUint64(19),
+					},
+					Data: paddedUint64(12),
+				},
+			},
+		},
+
+		{
+			name: "find all events with topic2 of 44",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexed"],
+						paddedUint64(44),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexed"],
+						paddedUint64(44),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventThreeIndexed"],
+						paddedUint64(44),
+						paddedUint64(27),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(44),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(44),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventThreeIndexedWithData"],
+						paddedUint64(44),
+						paddedUint64(27),
+						paddedUint64(19),
+					},
+					Data: paddedUint64(12),
+				},
+			},
+		},
+		{
+			name: "find all events with topic2 of 46",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic2OneOf(paddedEthHash(paddedUint64(46))).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(46),
+					},
+					Data: paddedUint64(12),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(46),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(46),
+						paddedUint64(14),
+					},
+					Data: paddedUint64(19),
+				},
+			},
+		},
+		{
+			name: "find all events with topic2 of 50",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic2OneOf(paddedEthHash(paddedUint64(50))).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(50),
+					},
+					Data: paddedUint64(9),
+				},
+			},
+		},
+		{
+			name: "find all events with topic2 of 46 or 50",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).Topic2OneOf(paddedEthHash(paddedUint64(46)), paddedEthHash(paddedUint64(50))).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(46),
+					},
+					Data: paddedUint64(12),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(46),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(46),
+						paddedUint64(14),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(50),
+					},
+					Data: paddedUint64(9),
+				},
+			},
+		},
+
+		{
+			name: "find all events with topic1 of EventTwoIndexedWithData and topic3 of 27",
+			spec: newEthFilterBuilder().
+				FromBlockEpoch(0).
+				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"])).
+				Topic3OneOf(paddedEthHash(paddedUint64(27))).
+				Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(44),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(46),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+			},
+		},
+
+		{
+			name: "find all events with topic1 of EventTwoIndexedWithData or EventOneIndexed and topic2 of 44",
+			spec: newEthFilterBuilder().
+				FromBlockEpoch(0).
+				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventTwoIndexedWithData"]), paddedEthHash(EventMatrixContract.Ev["EventOneIndexed"])).
+				Topic2OneOf(paddedEthHash(paddedUint64(44))).
+				Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexedWithData"],
+						paddedUint64(44),
+						paddedUint64(27),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexed"],
+						paddedUint64(44),
+					},
+					Data: nil,
+				},
+			},
+		},
+	}
+}
+
+// getAddressFilterTestCases returns filter test cases include address criteria
+func getAddressFilterTestCases(contract1, contract2 ethtypes.EthAddress, fromBlock string) []filterTestCase {
+	return []filterTestCase{
+		{
+			name: "find all events from contract2",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).AddressOneOf(contract2).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventZeroData"],
+					},
+					Data: nil,
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventThreeIndexed"],
+						paddedUint64(44),
+						paddedUint64(27),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexed"],
+						paddedUint64(44),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(50),
+					},
+					Data: paddedUint64(9),
+				},
+			},
+		},
+
+		{
+			name: "find all events with topic2 of 44 from contract2",
+			spec: newEthFilterBuilder().FromBlock(fromBlock).AddressOneOf(contract2).Topic2OneOf(paddedEthHash(paddedUint64(44))).Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventThreeIndexed"],
+						paddedUint64(44),
+						paddedUint64(27),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventTwoIndexed"],
+						paddedUint64(44),
+						paddedUint64(19),
+					},
+					Data: nil,
+				},
+			},
+		},
+
+		{
+			name: "find all EventOneIndexedWithData events from contract1 or contract2",
+			spec: newEthFilterBuilder().
+				FromBlockEpoch(0).
+				AddressOneOf(contract1, contract2).
+				Topic1OneOf(paddedEthHash(EventMatrixContract.Ev["EventOneIndexedWithData"])).
+				Filter(),
+
+			expected: []ExpectedEthLog{
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(44),
+					},
+					Data: paddedUint64(19),
+				},
+				{
+					Address: contract1,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(46),
+					},
+					Data: paddedUint64(12),
+				},
+				{
+					Address: contract2,
+					Topics: []ethtypes.EthBytes{
+						EventMatrixContract.Ev["EventOneIndexedWithData"],
+						paddedUint64(50),
+					},
+					Data: paddedUint64(9),
+				},
+			},
+		},
+	}
+}
+
+func getCombinationFilterTestCases(contract1, contract2 ethtypes.EthAddress, fromBlock string) []filterTestCase {
+	topicCases := getTopicFilterTestCases(contract1, contract2, fromBlock)
+	addressCases := getAddressFilterTestCases(contract1, contract2, fromBlock)
+
+	return append(topicCases, addressCases...)
 }
 
 type ExpectedEthLog struct {
@@ -1659,7 +1925,8 @@ type ExpectedEthLog struct {
 
 func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedEthLog, messages map[ethtypes.EthHash]msgInTipset) {
 	require := require.New(t)
-	// require.Equal(len(expected), len(actual), "number of results equal to expected")
+
+	t.Logf("got %d ethlogs, wanted %d", len(actual), len(expected))
 
 	formatTopics := func(topics []ethtypes.EthBytes) string {
 		ss := make([]string, len(topics))
@@ -1673,7 +1940,7 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 
 	for _, elog := range actual {
 		msg, exists := messages[elog.TransactionHash]
-		require.True(exists, "message seen on chain")
+		require.True(exists, "message not seen on chain")
 
 		tsCid, err := msg.ts.Key().Cid()
 		require.NoError(err)
