@@ -140,18 +140,15 @@ func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.Te
 	inputData := buildInputFromuint64(count)
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
 	if err != nil {
-		require.Error(t, err)
-	} else {
-		require.NoError(t, err)
-
-		result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
-		require.NoError(t, err)
-
-		resultUint, err := decodeOutputToUint64(result)
-		require.NoError(t, err)
-
-		require.NotEqual(t, int(resultUint), int(count))
+		return
 	}
+	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
+	require.NoError(t, err)
+
+	resultUint, err := decodeOutputToUint64(result)
+	require.NoError(t, err)
+
+	require.NotEqual(t, int(resultUint), int(count))
 }
 func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
 	t.Log("Count - ", count)
