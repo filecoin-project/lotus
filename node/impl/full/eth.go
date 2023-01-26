@@ -64,6 +64,7 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
+	Web3ClientVersion(ctx context.Context) (string, error)
 }
 
 type EthEventAPI interface {
@@ -500,18 +501,8 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
 	}
 
-	// TODO super duper hack (raulk). The EVM runtime actor uses the U256 parameter type in
-	//  GetStorageAtParams, which serializes as a hex-encoded string. It should serialize
-	//  as bytes. We didn't get to fix in time for Iron, so for now we just pass
-	//  through the hex-encoded value passed through the Eth JSON-RPC API, by remarshalling it.
-	//  We don't fix this at origin (builtin-actors) because we are not updating the bundle
-	//  for Iron.
-	tmp, err := position.MarshalJSON()
-	if err != nil {
-		panic(err)
-	}
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
-		StorageKey: tmp[1 : len(tmp)-1], // TODO strip the JSON-encoding quotes -- yuck
+		StorageKey: position,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
@@ -714,6 +705,10 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	return ethtypes.EthHashFromTxBytes(rawTx), nil
 }
 
+func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
+	return build.UserVersion(), nil
+}
+
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.Message, error) {
 	var from address.Address
 	if tx.From == nil || *tx.From == (ethtypes.EthAddress{}) {
@@ -827,8 +822,9 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (et
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) {
 	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
+
 	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
@@ -836,11 +832,17 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to apply message: %w", err)
 	}
-	if len(invokeResult.MsgRct.Return) > 0 {
+
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		// As far as I can tell, the Eth API always returns empty on contract deployment
+		return ethtypes.EthBytes{}, nil
+
+	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
+
 	return ethtypes.EthBytes{}, nil
 }
 

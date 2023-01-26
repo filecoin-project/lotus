@@ -836,6 +836,9 @@ type FullNode interface {
 	// Unsubscribe from a websocket subscription
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) //perm:write
 
+	// Returns the client version
+	Web3ClientVersion(ctx context.Context) (string, error) //perm:read
+
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that

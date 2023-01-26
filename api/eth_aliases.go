@@ -41,4 +41,6 @@ func CreateEthRPCAliases(as apitypes.Aliaser) {
 
 	as.AliasMethod("net_version", "Filecoin.NetVersion")
 	as.AliasMethod("net_listening", "Filecoin.NetListening")
+
+	as.AliasMethod("web3_clientVersion", "Filecoin.Web3ClientVersion")
 }

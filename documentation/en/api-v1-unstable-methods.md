@@ -291,6 +291,8 @@
   * [WalletSignMessage](#WalletSignMessage)
   * [WalletValidateAddress](#WalletValidateAddress)
   * [WalletVerify](#WalletVerify)
+* [Web3](#Web3)
+  * [Web3ClientVersion](#Web3ClientVersion)
 ## 
 
 
@@ -9206,4 +9208,17 @@ Inputs:
 ```
 
 Response: `true`
+
+## Web3
+
+
+### Web3ClientVersion
+Returns the client version
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"string value"`
 
