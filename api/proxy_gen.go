@@ -582,6 +582,8 @@ type FullNodeStruct struct {
 		WalletValidateAddress func(p0 context.Context, p1 string) (address.Address, error) `perm:"read"`
 
 		WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
+
+		Web3ClientVersion func(p0 context.Context) (string, error) `perm:"read"`
 	}
 }
 
@@ -3934,6 +3936,17 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 
 func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) Web3ClientVersion(p0 context.Context) (string, error) {
+	if s.Internal.Web3ClientVersion == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.Web3ClientVersion(p0)
+}
+
+func (s *FullNodeStub) Web3ClientVersion(p0 context.Context) (string, error) {
+	return "", ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
