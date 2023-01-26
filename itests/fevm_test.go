@@ -65,14 +65,14 @@ func max(x int, y int) int {
 
 // TestFEVMRecursive does a basic fevm contract installation and invocation
 func TestFEVMRecursive(t *testing.T) {
-	callcounts := []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 230, 330}
+	callCounts := []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 230, 330}
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 	filename := "contracts/Recursive.hex"
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 
 	// Successful calls
-	for _, _callcount := range callcounts {
+	for _, _callcount := range callCounts {
 		callcount := _callcount // create local copy in loop to mollify golint
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callcount), func(t *testing.T) {
 			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
@@ -92,8 +92,8 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 
 	// Unsuccessful calls
-	failcallcounts := []uint64{340, 400, 600, 850, 1000}
-	for _, _callcount := range failcallcounts {
+	failCallCounts := []uint64{340, 400, 600, 850, 1000}
+	for _, _callcount := range failCallCounts {
 		callcount := _callcount // create local copy in loop to mollify golint
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", callcount), func(t *testing.T) {
 			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
