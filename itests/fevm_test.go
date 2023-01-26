@@ -302,7 +302,6 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	//verify that the returned value of the call to setvars is 7
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
 	require.Error(t, err)
-	t.Log(err)
 
 	//test the value is 0 via calling the getter and was not set to 7
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
@@ -330,7 +329,6 @@ func TestFEVMSimpleRevert(t *testing.T) {
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
 
 	require.Error(t, err)
-	t.Log(err)
 }
 
 // TestFEVMSelfDestruct creates a contract that just has a self destruct feature and calls it
@@ -344,12 +342,10 @@ func TestFEVMSelfDestruct(t *testing.T) {
 
 	//call destroy
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
-	t.Log(err)
 	require.NoError(t, err)
 
 	//call destroy a second time and also no error
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
-	t.Log(err)
 	require.NoError(t, err)
 }
 
@@ -365,7 +361,6 @@ func TestFEVMTestApp(t *testing.T) {
 	inputData, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000000000000066162636465660000000000000000000000000000000000000000000000000000") // sending string "abcdef" and int 7 - constructed using remix
 	require.NoError(t, err)
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "new_Test(string,uint256)", inputData)
-	t.Log(err)
 	require.NoError(t, err)
 
 	inputData, err = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
@@ -389,7 +384,6 @@ func TestFEVMTestConstructor(t *testing.T) {
 	inputData, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000007")
 	require.NoError(t, err)
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "new_Test(uint256)", inputData)
-	t.Log(err)
 	require.NoError(t, err)
 
 }
@@ -406,7 +400,6 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 
 	//call destroy
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
-	t.Log(err)
 	require.NoError(t, err) // XXX currently returns an error but should be success
 
 }
