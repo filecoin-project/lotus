@@ -701,7 +701,7 @@ var walletMarketAdd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		// Get amount param
-		if cctx.NArg() != 1 {
+		if cctx.NArg() < 1 {
 			return IncorrectNumArgs(cctx)
 		}
 		f, err := types.ParseFIL(cctx.Args().First())
