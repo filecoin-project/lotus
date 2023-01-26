@@ -423,7 +423,7 @@ func TestFEVMTestSendToContract(t *testing.T) {
 
 	//transfer 1 attoFIL to contract
 	sendAmount := big.NewInt(1)
-	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractAddr, sendAmount)
+	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
 
 	//call self destruct which should return balance
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
@@ -453,7 +453,7 @@ func TestFEVMTestNotPayable(t *testing.T) {
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 	sendAmount := big.MustFromString("10000000")
 
-	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractAddr, sendAmount)
+	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
 
 }
 
@@ -486,7 +486,7 @@ func TestFEVMSendGasLimit(t *testing.T) {
 	//transfer 1 wei to contract
 	sendAmount := big.MustFromString("10000000")
 
-	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractAddr, sendAmount)
+	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDataLength()", []byte{})
 	require.NoError(t, err)
 	fmt.Println("ret - ", ret)

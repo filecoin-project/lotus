@@ -102,7 +102,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 
 	// Send contract address small funds to init
 	sendAmount := big.NewInt(2)
-	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractFilAddr, sendAmount)
+	client.EVM().TransferValueOrFail(ctx, fromAddr, contractFilAddr, sendAmount)
 
 	// Check if actor at new address is a placeholder actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
@@ -148,7 +148,7 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 
 	// Send contract address small funds to init
 	sendAmount := big.NewInt(2)
-	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractFilAddr, sendAmount)
+	client.EVM().TransferValueOrFail(ctx, fromAddr, contractFilAddr, sendAmount)
 
 	// Check if actor at new address is a placeholder actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)

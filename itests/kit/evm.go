@@ -349,7 +349,7 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 	return ctx, cancel, client
 }
 
-func (e *EVM) TransferValueOrFailTest(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
+func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
 	sendMsg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,
