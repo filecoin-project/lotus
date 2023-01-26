@@ -64,6 +64,7 @@ type EthModuleAPI interface {
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
+	Web3ClientVersion(ctx context.Context) (string, error)
 }
 
 type EthEventAPI interface {
@@ -257,14 +258,11 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 		return nil, nil
 	}
 
-	c := cid.Undef
-	if a.EthTxHashManager != nil {
-		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
-		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		}
+	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	if err != nil {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
@@ -306,25 +304,22 @@ func (a *EthModule) EthGetMessageCidByTransactionHash(ctx context.Context, txHas
 		return nil, nil
 	}
 
-	c := cid.Undef
-	if a.EthTxHashManager != nil {
-		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
-		// We fall out of the first condition and continue
-		if errors.Is(err, ethhashlookup.ErrNotFound) {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		} else if err != nil {
-			return nil, xerrors.Errorf("database error: %w", err)
-		} else {
-			return &c, nil
-		}
+	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(*txHash)
+	// We fall out of the first condition and continue
+	if errors.Is(err, ethhashlookup.ErrNotFound) {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
+	} else if err != nil {
+		return nil, xerrors.Errorf("database error: %w", err)
+	} else {
+		return &c, nil
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's try looking it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
 	}
 
-	_, err := a.StateAPI.Chain.GetSignedMessage(ctx, c)
+	_, err = a.StateAPI.Chain.GetSignedMessage(ctx, c)
 	if err == nil {
 		// This is an Eth Tx, Secp message, Or BLS message in the mpool
 		return &c, nil
@@ -369,14 +364,11 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 }
 
 func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
-	c := cid.Undef
-	if a.EthTxHashManager != nil {
-		var err error
-		c, err = a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
-		if err != nil {
-			log.Debug("could not find transaction hash %s in lookup table", txHash.String())
-		}
+	c, err := a.EthTxHashManager.TransactionHashLookup.GetCidFromHash(txHash)
+	if err != nil {
+		log.Debug("could not find transaction hash %s in lookup table", txHash.String())
 	}
+
 	// This isn't an eth transaction we have the mapping for, so let's look it up as a filecoin message
 	if c == cid.Undef {
 		c = txHash.ToCid()
@@ -509,18 +501,8 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
 	}
 
-	// TODO super duper hack (raulk). The EVM runtime actor uses the U256 parameter type in
-	//  GetStorageAtParams, which serializes as a hex-encoded string. It should serialize
-	//  as bytes. We didn't get to fix in time for Iron, so for now we just pass
-	//  through the hex-encoded value passed through the Eth JSON-RPC API, by remarshalling it.
-	//  We don't fix this at origin (builtin-actors) because we are not updating the bundle
-	//  for Iron.
-	tmp, err := position.MarshalJSON()
-	if err != nil {
-		panic(err)
-	}
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
-		StorageKey: tmp[1 : len(tmp)-1], // TODO strip the JSON-encoding quotes -- yuck
+		StorageKey: position,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
@@ -723,6 +705,10 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 	return ethtypes.EthHashFromTxBytes(rawTx), nil
 }
 
+func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
+	return build.UserVersion(), nil
+}
+
 func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.EthCall) (*types.Message, error) {
 	var from address.Address
 	if tx.From == nil || *tx.From == (ethtypes.EthAddress{}) {
@@ -836,8 +822,9 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (et
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) {
 	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
+
 	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
@@ -845,11 +832,17 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to apply message: %w", err)
 	}
-	if len(invokeResult.MsgRct.Return) > 0 {
+
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		// As far as I can tell, the Eth API always returns empty on contract deployment
+		return ethtypes.EthBytes{}, nil
+
+	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
+
 	return ethtypes.EthBytes{}, nil
 }
 
@@ -961,18 +954,20 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 			// Here the client is looking for events between the head and some future height
 			ts := e.Chain.GetHeaviestTipSet()
 			if maxHeight-ts.Height() > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range: to block is too far in the future (maximum: %d)", e.MaxFilterHeightRange)
 			}
 		} else if minHeight >= 0 && maxHeight == -1 {
 			// Here the client is looking for events between some time in the past and the current head
 			ts := e.Chain.GetHeaviestTipSet()
 			if ts.Height()-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range")
+				return nil, xerrors.Errorf("invalid epoch range: from block is too far in the past (maximum: %d)", e.MaxFilterHeightRange)
 			}
 
 		} else if minHeight >= 0 && maxHeight >= 0 {
-			if minHeight > maxHeight || maxHeight-minHeight > e.MaxFilterHeightRange {
-				return nil, xerrors.Errorf("invalid epoch range")
+			if minHeight > maxHeight {
+				return nil, xerrors.Errorf("invalid epoch range: to block (%d) must be after from block (%d)", minHeight, maxHeight)
+			} else if maxHeight-minHeight > e.MaxFilterHeightRange {
+				return nil, xerrors.Errorf("invalid epoch range: range between to and from blocks is too large (maximum: %d)", e.MaxFilterHeightRange)
 			}
 		}
 
@@ -987,14 +982,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		addresses = append(addresses, a)
 	}
 
-	for idx, vals := range filterSpec.Topics {
-		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
-		key := fmt.Sprintf("topic%d", idx+1)
-		keyvals := make([][]byte, len(vals))
-		for i, v := range vals {
-			keyvals[i] = v[:]
-		}
-		keys[key] = keyvals
+	keys, err := parseEthTopics(filterSpec.Topics)
+	if err != nil {
+		return nil, err
 	}
 
 	return e.EventFilterManager.Install(ctx, minHeight, maxHeight, tipsetCid, addresses, keys)
@@ -1019,7 +1009,6 @@ func (e *EthEvent) EthNewFilter(ctx context.Context, filterSpec *ethtypes.EthFil
 
 		return ethtypes.EthFilterID{}, err
 	}
-
 	return ethtypes.EthFilterID(f.ID()), nil
 }
 
@@ -1143,14 +1132,12 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 	case EthSubscribeEventTypeLogs:
 		keys := map[string][][]byte{}
 		if params != nil {
-			for idx, vals := range params.Topics {
-				// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
-				key := fmt.Sprintf("topic%d", idx+1)
-				keyvals := make([][]byte, len(vals))
-				for i, v := range vals {
-					keyvals[i] = v[:]
-				}
-				keys[key] = keyvals
+			var err error
+			keys, err = parseEthTopics(params.Topics)
+			if err != nil {
+				// clean up any previous filters added and stop the sub
+				_, _ = e.EthUnsubscribe(ctx, sub.id)
+				return nil, err
 			}
 		}
 
@@ -1237,7 +1224,10 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 		var err error
 
 		for _, entry := range ev.Entries {
-			value := ethtypes.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
+			value, err := cborDecodeTopicValue(entry.Value)
+			if err != nil {
+				return nil, err
+			}
 			if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
 				log.Topics = append(log.Topics, value)
 			} else {
@@ -1780,7 +1770,10 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			}
 
 			for _, entry := range evt.Entries {
-				value := ethtypes.EthBytes(leftpad32(decodeLogBytes(entry.Value)))
+				value, err := cborDecodeTopicValue(entry.Value)
+				if err != nil {
+					return api.EthTxReceipt{}, xerrors.Errorf("failed to decode event log value: %w", err)
+				}
 				if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
 					l.Topics = append(l.Topics, value)
 				} else {
@@ -1891,25 +1884,6 @@ func EthTxHashGC(ctx context.Context, retentionDays int, manager *EthTxHashManag
 	}
 }
 
-// decodeLogBytes decodes a CBOR-serialized array into its original form.
-//
-// This function swallows errors and returns the original array if it failed
-// to decode.
-func decodeLogBytes(orig []byte) []byte {
-	if orig == nil {
-		return orig
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
-	}
-	return decoded
-}
-
-// TODO we could also emit full EVM words from the EVM runtime, but not doing so
-// makes the contract slightly cheaper (and saves storage bytes), at the expense
-// of having to left pad in the API, which is a pretty acceptable tradeoff at
-// face value. There may be other protocol implications to consider.
 func leftpad32(orig []byte) []byte {
 	needed := 32 - len(orig)
 	if needed <= 0 {
@@ -1918,4 +1892,52 @@ func leftpad32(orig []byte) []byte {
 	ret := make([]byte, 32)
 	copy(ret[needed:], orig)
 	return ret
+}
+
+func trimLeadingZeros(b []byte) []byte {
+	for i := range b {
+		if b[i] != 0 {
+			return b[i:]
+		}
+	}
+	return []byte{}
+}
+
+func cborEncodeTopicValue(orig []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	err := cbg.WriteByteArray(&buf, trimLeadingZeros(orig))
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func cborDecodeTopicValue(orig []byte) ([]byte, error) {
+	if len(orig) == 0 {
+		return orig, nil
+	}
+	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
+	if err != nil {
+		return nil, err
+	}
+	return leftpad32(decoded), nil
+}
+
+func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
+	keys := map[string][][]byte{}
+	for idx, vals := range topics {
+		if len(vals) == 0 {
+			continue
+		}
+		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
+		key := fmt.Sprintf("topic%d", idx+1)
+		for _, v := range vals {
+			encodedVal, err := cborEncodeTopicValue(v[:])
+			if err != nil {
+				return nil, xerrors.Errorf("failed to encode topic value")
+			}
+			keys[key] = append(keys[key], encodedVal)
+		}
+	}
+	return keys, nil
 }

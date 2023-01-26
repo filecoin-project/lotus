@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
 	"github.com/multiformats/go-varint"
@@ -20,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 type EventAPI struct {
@@ -31,16 +33,16 @@ type EventAPI struct {
 
 var _ events.EventAPI = &EventAPI{}
 
-func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEvent, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.EthEvent, error) {
+func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI) (*full.EthEvent, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI) (*full.EthEvent, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		ee := &full.EthEvent{
 			Chain:                cs,
-			MaxFilterHeightRange: abi.ChainEpoch(cfg.MaxFilterHeightRange),
+			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
 		}
 
-		if !cfg.EnableRealTimeFilterAPI {
+		if !cfg.EnableEthRPC || cfg.Events.DisableRealTimeFilterAPI {
 			// all event functionality is disabled
 			// the historic filter API relies on the real time one
 			return ee, nil
@@ -51,21 +53,32 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 			StateAPI: stateapi,
 			ChainAPI: chainapi,
 		}
-		ee.FilterStore = filter.NewMemFilterStore(cfg.MaxFilters)
+		ee.FilterStore = filter.NewMemFilterStore(cfg.Events.MaxFilters)
 
 		// Start garbage collection for filters
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				go ee.GC(ctx, time.Duration(cfg.FilterTTL))
+				go ee.GC(ctx, time.Duration(cfg.Events.FilterTTL))
 				return nil
 			},
 		})
 
 		// Enable indexing of actor events
 		var eventIndex *filter.EventIndex
-		if cfg.EnableHistoricFilterAPI {
+		if !cfg.Events.DisableHistoricFilterAPI {
+			var dbPath string
+			if cfg.Events.DatabasePath == "" {
+				sqlitePath, err := r.SqlitePath()
+				if err != nil {
+					return nil, err
+				}
+				dbPath = filepath.Join(sqlitePath, "events.db")
+			} else {
+				dbPath = cfg.Events.DatabasePath
+			}
+
 			var err error
-			eventIndex, err = filter.NewEventIndex(cfg.ActorEventDatabasePath)
+			eventIndex, err = filter.NewEventIndex(dbPath)
 			if err != nil {
 				return nil, err
 			}
@@ -103,13 +116,13 @@ func EthEventAPI(cfg config.ActorEventConfig) func(helpers.MetricsCtx, fx.Lifecy
 				return *actor.Address, true
 			},
 
-			MaxFilterResults: cfg.MaxFilterResults,
+			MaxFilterResults: cfg.Events.MaxFilterResults,
 		}
 		ee.TipSetFilterManager = &filter.TipSetFilterManager{
-			MaxFilterResults: cfg.MaxFilterResults,
+			MaxFilterResults: cfg.Events.MaxFilterResults,
 		}
 		ee.MemPoolFilterManager = &filter.MemPoolFilterManager{
-			MaxFilterResults: cfg.MaxFilterResults,
+			MaxFilterResults: cfg.Events.MaxFilterResults,
 		}
 
 		const ChainHeadConfidence = 1

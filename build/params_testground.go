@@ -42,9 +42,6 @@ var (
 
 	AllowableClockDriftSecs = uint64(1)
 
-	Finality            = policy.ChainFinality
-	ForkLengthThreshold = Finality
-
 	SlashablePowerDelay        = 20
 	InteractivePoRepConfidence = 6
 
@@ -129,6 +126,9 @@ var (
 	BootstrappersFile = ""
 	GenesisFile       = ""
 )
+
+const Finality = policy.ChainFinality
+const ForkLengthThreshold = Finality
 
 const BootstrapPeerThreshold = 1
 
