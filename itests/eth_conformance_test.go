@@ -143,7 +143,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		variant string // suffix applied to the test name to distinguish different variants of a method call
 		call    func(*ethAPIRaw) (json.RawMessage, error)
 	}{
-		// Simple no-argument calls first
+		// Alphabetical order
 
 		{
 			method: "eth_accounts",
@@ -160,9 +160,37 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		},
 
 		{
+			method:  "eth_call",
+			variant: "latest",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
+					From: &senderEthAddr,
+					Data: contractBin,
+				}, "latest")
+			},
+		},
+
+		{
 			method: "eth_chainId",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthChainId(context.Background())
+			},
+		},
+
+		{
+			method: "eth_estimateGas",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
+					From: &senderEthAddr,
+					Data: contractBin,
+				})
+			},
+		},
+
+		{
+			method: "eth_feeHistory",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "", nil)
 			},
 		},
 
@@ -174,30 +202,10 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		},
 
 		{
-			method: "eth_maxPriorityFeePerGas",
+			method:  "eth_getBalance",
+			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthMaxPriorityFeePerGas(context.Background())
-			},
-		},
-
-		{
-			method: "eth_newBlockFilter",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthNewBlockFilter(context.Background())
-			},
-		},
-
-		{
-			method: "eth_newPendingTransactionFilter",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthNewPendingTransactionFilter(context.Background())
-			},
-		},
-
-		{
-			method: "eth_getTransactionReceipt",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionReceipt(context.Background(), messageWithEvents)
+				return ethapi.EthGetBalance(context.Background(), contractEthAddr, "0x0")
 			},
 		},
 
@@ -255,37 +263,10 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		},
 
 		{
-			method: "eth_getTransactionByBlockHashAndIndex",
+			method:  "eth_getCode",
+			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
-			},
-		},
-
-		{
-			method: "eth_getTransactionByBlockNumberAndIndex",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage, ethtypes.EthUint64(0))
-			},
-		},
-
-		{
-			method: "eth_getTransactionByHash",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionByHash(context.Background(), &messageWithEvents)
-			},
-		},
-
-		{
-			method: "eth_sendRawTransaction",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthSendRawTransaction(context.Background(), rawSignedEthTx)
-			},
-		},
-
-		{
-			method: "eth_getLogs",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetLogs(context.Background(), filterAllLogs)
+				return ethapi.EthGetCode(context.Background(), contractEthAddr, blockNumberWithMessage.Hex())
 			},
 		},
 
@@ -321,52 +302,9 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		},
 
 		{
-			method: "eth_uninstallFilter",
+			method: "eth_getLogs",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return a.EthUninstallFilter(ctx, uninstallableFilterID)
-			},
-		},
-
-		{
-			method:  "eth_call",
-			variant: "latest",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
-					From: &senderEthAddr,
-					Data: contractBin,
-				}, "latest")
-			},
-		},
-
-		{
-			method: "eth_estimateGas",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthEstimateGas(context.Background(), ethtypes.EthCall{
-					From: &senderEthAddr,
-					Data: contractBin,
-				})
-			},
-		},
-
-		{
-			method: "eth_feeHistory",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "", nil)
-			},
-		},
-		{
-			method:  "eth_getTransactionCount",
-			variant: "blocknumber",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionCount(context.Background(), senderEthAddr, "0x0")
-			},
-		},
-
-		{
-			method:  "eth_getCode",
-			variant: "blocknumber",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetCode(context.Background(), contractEthAddr, "0x0")
+				return ethapi.EthGetLogs(context.Background(), filterAllLogs)
 			},
 		},
 
@@ -379,10 +317,79 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		},
 
 		{
-			method:  "eth_getBalance",
+			method: "eth_getTransactionByBlockHashAndIndex",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
+			},
+		},
+
+		{
+			method: "eth_getTransactionByBlockNumberAndIndex",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage, ethtypes.EthUint64(0))
+			},
+		},
+
+		{
+			method: "eth_getTransactionByHash",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionByHash(context.Background(), &messageWithEvents)
+			},
+		},
+
+		{
+			method:  "eth_getTransactionCount",
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBalance(context.Background(), contractEthAddr, "0x0")
+				return ethapi.EthGetTransactionCount(context.Background(), senderEthAddr, blockNumberWithMessage.Hex())
+			},
+		},
+
+		{
+			method: "eth_getTransactionReceipt",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthGetTransactionReceipt(context.Background(), messageWithEvents)
+			},
+		},
+
+		{
+			method: "eth_maxPriorityFeePerGas",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthMaxPriorityFeePerGas(context.Background())
+			},
+		},
+
+		{
+			method: "eth_newBlockFilter",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthNewBlockFilter(context.Background())
+			},
+		},
+
+		{
+			method: "eth_newFilter",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthNewFilter(context.Background(), filterAllLogs)
+			},
+		},
+
+		{
+			method: "eth_newPendingTransactionFilter",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthNewPendingTransactionFilter(context.Background())
+			},
+		},
+
+		{
+			method: "eth_sendRawTransaction",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return ethapi.EthSendRawTransaction(context.Background(), rawSignedEthTx)
+			},
+		},
+		{
+			method: "eth_uninstallFilter",
+			call: func(a *ethAPIRaw) (json.RawMessage, error) {
+				return a.EthUninstallFilter(ctx, uninstallableFilterID)
 			},
 		},
 	}
