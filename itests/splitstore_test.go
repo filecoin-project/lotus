@@ -57,7 +57,7 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 	splitstore.CheckSyncGap = false
 	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
-	bm := ens.InterconnectAll().BeginMiningMustPost(4 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningNoPoSt(4 * time.Millisecond)[0] // no post as pause/resume is a bit flaky with post
 	_ = full
 	_ = genesisMiner
 

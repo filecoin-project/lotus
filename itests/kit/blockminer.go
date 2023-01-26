@@ -168,7 +168,12 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 		chg, err := bm.miner.FullNode.ChainNotify(ctx)
 		require.NoError(bm.t, err)
 		// read current out
-		curr := <-chg
+		curr, ok := <-chg
+		if !ok {
+			// shutdown before we started
+			return
+		}
+
 		require.Equal(bm.t, ts.Height(), curr[0].Val.Height(), "failed sanity check: are multiple miners mining with must post?")
 		for {
 			select {

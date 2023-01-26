@@ -33,7 +33,7 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	ens.FullNode(&client)
 	ens.Miner(&genMiner, &client, kit.WithAllSubsystems())
 	ens.Miner(&provider, &client, kit.WithAllSubsystems(), kit.PresealSectors(0))
-	ens.Start().InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
+	ens.Start().InterconnectAll().BeginMiningNoPoSt(50 * time.Millisecond) // MustPoSt only supports one miner
 
 	ctx := context.Background()
 
