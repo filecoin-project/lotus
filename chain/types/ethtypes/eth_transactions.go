@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -58,59 +59,38 @@ type EthTxArgs struct {
 
 func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
-		to           *EthAddress
-		params       []byte
-		paramsReader = bytes.NewReader(msg.Params)
-		err          error
+		to     *EthAddress
+		params []byte
 	)
 
 	if msg.Version != 0 {
 		return EthTxArgs{}, xerrors.Errorf("unsupported msg version: %d", msg.Version)
 	}
 
-	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		switch msg.Method {
-		case builtintypes.MethodsEAM.CreateExternal:
-			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-			if err != nil {
-				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
-			}
-		default:
-			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
-		}
-	} else {
-		addr, err := EthAddressFromFilecoinAddress(msg.To)
-		if err != nil {
-			return EthTxArgs{}, err
-		}
-		to = &addr
-
-		if len(msg.Params) == 0 {
-			if msg.Method != builtintypes.MethodSend {
-				return EthTxArgs{}, xerrors.Errorf("cannot invoke method %d on non-EAM actor without params", msg.Method)
-			}
-		} else {
-			if msg.Method != builtintypes.MethodsEVM.InvokeContract {
-				return EthTxArgs{},
-					xerrors.Errorf("invalid methodnum %d: only allowed non-send method is InvokeContract(%d)",
-						msg.Method,
-						builtintypes.MethodsEVM.InvokeContract)
-			}
-
-			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-			if err != nil {
-				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
-			}
-		}
+	paramsReader := bytes.NewReader(msg.Params)
+	params, err := cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+	if err != nil {
+		return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
 	}
 
 	if paramsReader.Len() != 0 {
 		return EthTxArgs{}, xerrors.Errorf("extra data found in params")
 	}
 
-	if len(params) == 0 && msg.Method != builtintypes.MethodSend {
-		// Otherwise, we don't get a guaranteed round-trip.
-		return EthTxArgs{}, xerrors.Errorf("msgs with empty parameters from an eth-account must be Sends (MethodNum: %d)", msg.Method)
+	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
+		if msg.Method != builtintypes.MethodsEAM.CreateExternal {
+			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
+		}
+	} else {
+		if msg.Method != builtintypes.MethodsEVM.InvokeContract {
+			return EthTxArgs{}, xerrors.Errorf("invalid methodnum %d: only allowed non-send method is InvokeContract(%d)", msg.Method, builtintypes.MethodsEVM.InvokeContract)
+		}
+
+		addr, err := EthAddressFromFilecoinAddress(msg.To)
+		if err != nil {
+			return EthTxArgs{}, err
+		}
+		to = &addr
 	}
 
 	return EthTxArgs{
@@ -130,42 +110,24 @@ func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, er
 		return nil, xerrors.Errorf("unsupported chain id: %d", tx.ChainID)
 	}
 
-	var err error
-	method := builtintypes.MethodSend
-	var params []byte
+	buf := new(bytes.Buffer)
+	if err := cbg.WriteByteArray(buf, tx.Input); err != nil {
+		return nil, xerrors.Errorf("failed to write input args: %w", err)
+	}
+	params := buf.Bytes()
+
 	var to address.Address
+	var method abi.MethodNum
 	// nil indicates the EAM, only CreateExternal is allowed
 	if tx.To == nil {
-		to = builtintypes.EthereumAddressManagerActorAddr
 		method = builtintypes.MethodsEAM.CreateExternal
-		if len(tx.Input) == 0 {
-			return nil, xerrors.New("cannot call CreateExternal without params")
-		}
-
-		buf := new(bytes.Buffer)
-		if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
-			return nil, xerrors.Errorf("failed to serialize Create params: %w", err)
-		}
-
-		params = buf.Bytes()
+		to = builtintypes.EthereumAddressManagerActorAddr
 	} else {
+		method = builtintypes.MethodsEVM.InvokeContract
+		var err error
 		to, err = tx.To.ToFilecoinAddress()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to convert To into filecoin addr: %w", err)
-		}
-		if len(tx.Input) == 0 {
-			// Yes, this is redundant, but let's be sure what we're doing
-			method = builtintypes.MethodSend
-			params = make([]byte, 0)
-		} else {
-			// must be InvokeContract
-			method = builtintypes.MethodsEVM.InvokeContract
-			buf := new(bytes.Buffer)
-			if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
-				return nil, xerrors.Errorf("failed to write input args: %w", err)
-			}
-
-			params = buf.Bytes()
 		}
 	}
 

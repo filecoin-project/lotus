@@ -67,7 +67,9 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder := &types.Message{
 		From: placeholderAddress,
 		// self-send because an "eth tx payload" can't be to a filecoin address?
-		To: placeholderAddress,
+		To:     placeholderAddress,
+		Params: []byte{64}, // empty cbor byte string
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
@@ -100,9 +102,11 @@ func TestEthAccountAbstraction(t *testing.T) {
 	// Send another message, it should succeed without any code CID changes
 
 	msgFromPlaceholder = &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Nonce: 1,
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Nonce:  1,
+		Params: []byte{64}, // empty cbor byte string
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
@@ -172,9 +176,11 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 
 	// send a message from the placeholder address
 	msgFromPlaceholder := &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Value: abi.TokenAmount(types.MustParseFIL("20")),
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Value:  abi.TokenAmount(types.MustParseFIL("20")),
+		Params: []byte{64}, // empty cbor byte string
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
@@ -209,10 +215,12 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	// Send a valid message now, it should succeed without any code CID changes
 
 	msgFromPlaceholder = &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Nonce: 1,
-		Value: abi.NewTokenAmount(1),
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Nonce:  1,
+		Value:  abi.NewTokenAmount(1),
+		Params: []byte{64}, // empty cbor byte string
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
