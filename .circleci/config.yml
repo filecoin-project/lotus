@@ -620,6 +620,11 @@ workflows:
           target: "./itests/eth_block_hash_test.go"
       
       - test:
+          name: test-itest-eth_config
+          suite: itest-eth_config
+          target: "./itests/eth_config_test.go"
+      
+      - test:
           name: test-itest-eth_deploy
           suite: itest-eth_deploy
           target: "./itests/eth_deploy_test.go"
