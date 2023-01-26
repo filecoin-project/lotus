@@ -906,7 +906,7 @@ NAME:
    lotus client restart-transfer - Force restart a stalled data transfer
 
 USAGE:
-   lotus client restart-transfer [command options] [arguments...]
+   lotus client restart-transfer [command options] [transferID]
 
 CATEGORY:
    UTIL
@@ -923,7 +923,7 @@ NAME:
    lotus client cancel-transfer - Force cancel a data transfer
 
 USAGE:
-   lotus client cancel-transfer [command options] [arguments...]
+   lotus client cancel-transfer [command options] [transferID]
 
 CATEGORY:
    UTIL
@@ -2034,7 +2034,7 @@ NAME:
    lotus state market balance - Get the market balance (locked and escrowed) for a given account
 
 USAGE:
-   lotus state market balance [command options] [arguments...]
+   lotus state market balance [command options] [address]
 
 OPTIONS:
    --help, -h  show help (default: false)
