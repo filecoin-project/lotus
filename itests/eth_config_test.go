@@ -19,7 +19,7 @@ func TestEthFilterAPIDisabledViaConfig(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	// don't pass kit.RealTimeFilterAPI() so ActorEvent.EnableRealTimeFilterAPI is false
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
 	_, err := client.EthNewPendingTransactionFilter(ctx)
