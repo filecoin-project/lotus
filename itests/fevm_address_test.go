@@ -58,7 +58,7 @@ func effectiveEthAddressForCreate(t *testing.T, sender address.Address) ethtypes
 	panic("unreachable")
 }
 
-func createanddeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *api.MsgLookup {
+func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *api.MsgLookup {
 	// Create and deploy evm actor
 
 	method := builtintypes.MethodsEAM.CreateExternal
@@ -125,7 +125,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.True(t, builtin.IsPlaceholderActor(actor.Code))
 
 	// Create and deploy evm actor
-	wait := createanddeploy(ctx, t, client, fromAddr, contract)
+	wait := createAndDeploy(ctx, t, client, fromAddr, contract)
 
 	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
 	createdEthAddr := getEthAddressTX(ctx, t, client, wait, ethAddr)
@@ -171,7 +171,7 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 	require.True(t, builtin.IsPlaceholderActor(actor.Code))
 
 	// Create and deploy evm actor
-	wait := createanddeploy(ctx, t, client, fromAddr, contract)
+	wait := createAndDeploy(ctx, t, client, fromAddr, contract)
 
 	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
 	createdEthAddr := getEthAddressTX(ctx, t, client, wait, ethAddr)
