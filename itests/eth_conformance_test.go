@@ -138,7 +138,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	require.NoError(t, err)
 	defer closer()
 
-	const skipUntilIssue10106 = "Skipped until https://github.com/filecoin-project/lotus/issues/10106 is addressed"
+	const skipUntilIssue10106 = "Skipped until EthTx is updated, see https://github.com/filecoin-project/lotus/issues/10106"
 
 	testCases := []struct {
 		method     string
