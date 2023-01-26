@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -72,10 +71,9 @@ func TestFEVMRecursive(t *testing.T) {
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 
 	// Successful calls
-	for _, _callcount := range callCounts {
-		callcount := _callcount // create local copy in loop to mollify golint
-		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callcount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
+	for _, callCount := range callCounts {
+		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callCount))
 			if err != nil {
 				fmt.Printf("error - %+v", err)
 			}
@@ -93,10 +91,9 @@ func TestFEVMRecursiveFail(t *testing.T) {
 
 	// Unsuccessful calls
 	failCallCounts := []uint64{340, 400, 600, 850, 1000}
-	for _, _callcount := range failCallCounts {
-		callcount := _callcount // create local copy in loop to mollify golint
-		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", callcount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callcount))
+	for _, callCount := range failCallCounts {
+		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", callCount), func(t *testing.T) {
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callCount))
 			if err != nil {
 				fmt.Printf("error - %+v", err)
 			}
@@ -106,7 +103,7 @@ func TestFEVMRecursiveFail(t *testing.T) {
 }
 
 func TestFEVMRecursive1(t *testing.T) {
-	callcount := 1
+	callCount := 1
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 	filename := "contracts/Recursive.hex"
@@ -116,7 +113,7 @@ func TestFEVMRecursive1(t *testing.T) {
 	if ret != nil && ret.Receipt.EventsRoot != nil {
 		events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
 		//passing in 0 still means there's 1 event
-		require.Equal(t, max(1, callcount), len(events))
+		require.Equal(t, max(1, callCount), len(events))
 	}
 }
 func TestFEVMRecursive2(t *testing.T) {
