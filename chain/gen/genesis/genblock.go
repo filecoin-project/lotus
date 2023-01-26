@@ -3,8 +3,8 @@ package genesis
 import (
 	"encoding/hex"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/multiformats/go-multihash"
 )
 
