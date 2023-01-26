@@ -351,3 +351,16 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 
 	return ctx, cancel, client
 }
+
+func (e *EVM) TransferValueOrFailTest(ctx context.Context, fromAddr address.address, toAddr address.address, sendAmount big.int) {
+	sendMsg := &types.Message{
+		From:  fromAddr,
+		To:    toAddr,
+		Value: sendAmount,
+	}
+	signedMsg, err := client.MpoolPushMessage(ctx, sendMsg, nil)
+	require.NoError(e.t, err)
+	mLookup, err := client.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
+	require.NoError(e.t, err)
+	require.Equal(e.t, exitcode.Ok, mLookup.Receipt.ExitCode)
+}

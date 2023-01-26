@@ -25,21 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-func sendValue(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
-
-	sendMsg := &types.Message{
-		From:  fromAddr,
-		To:    toAddr,
-		Value: sendAmount,
-	}
-	signedMsg, err := client.MpoolPushMessage(ctx, sendMsg, nil)
-	require.NoError(t, err)
-	mLookup, err := client.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
-
-}
-
 func effectiveEthAddressForCreate(t *testing.T, sender address.Address) ethtypes.EthAddress {
 	switch sender.Protocol() {
 	case address.SECP256K1, address.BLS:
@@ -117,7 +102,7 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 
 	// Send contract address small funds to init
 	sendAmount := big.NewInt(2)
-	sendValue(ctx, t, client, fromAddr, contractFilAddr, sendAmount)
+	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractFilAddr, sendAmount)
 
 	// Check if actor at new address is a placeholder actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
@@ -163,7 +148,7 @@ func TestDeployAddressMultipleTimes(t *testing.T) {
 
 	// Send contract address small funds to init
 	sendAmount := big.NewInt(2)
-	sendValue(ctx, t, client, fromAddr, contractFilAddr, sendAmount)
+	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractFilAddr, sendAmount)
 
 	// Check if actor at new address is a placeholder actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)

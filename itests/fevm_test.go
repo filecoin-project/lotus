@@ -41,19 +41,6 @@ func inputDataFromFrom(ctx context.Context, t *testing.T, client *kit.TestFullNo
 	return inputData
 }
 
-func transferValueOrFailTest(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
-	sendMsg := &types.Message{
-		From:  fromAddr,
-		To:    toAddr,
-		Value: sendAmount,
-	}
-	signedMsg, err := client.MpoolPushMessage(ctx, sendMsg, nil)
-	require.NoError(t, err)
-	mLookup, err := client.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
-}
-
 func decodeOutputToUint64(output []byte) (uint64, error) {
 	var result uint64
 	buf := bytes.NewReader(output[len(output)-8:])
@@ -485,7 +472,7 @@ func TestFEVMTestNotPayable(t *testing.T) {
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 	sendAmount := big.MustFromString("10000000")
 
-	transferValueOrFailTest(ctx, t, client, fromAddr, contractAddr, sendAmount)
+	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractAddr, sendAmount)
 
 }
 
@@ -518,7 +505,7 @@ func TestFEVMSendGasLimit(t *testing.T) {
 	//transfer 1 wei to contract
 	sendAmount := big.MustFromString("10000000")
 
-	transferValueOrFailTest(ctx, t, client, fromAddr, contractAddr, sendAmount)
+	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractAddr, sendAmount)
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDataLength()", []byte{})
 	require.NoError(t, err)
 	fmt.Println("ret - ", ret)
