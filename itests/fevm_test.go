@@ -421,18 +421,9 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	filenameStorage := "contracts/SelfDestruct.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//transfer 1 wei to contract
+	//transfer 1 attoFIL to contract
 	sendAmount := big.NewInt(1)
-	sendMsg := &types.Message{
-		From:  fromAddr,
-		To:    contractAddr,
-		Value: sendAmount,
-	}
-	signedMsg, err := client.MpoolPushMessage(ctx, sendMsg, nil)
-	require.NoError(t, err)
-	mLookup, err := client.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
+	client.EVM().TransferValueOrFailTest(ctx, fromAddr, contractAddr, sendAmount)
 
 	//call self destruct which should return balance
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
