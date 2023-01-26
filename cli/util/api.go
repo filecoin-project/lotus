@@ -359,7 +359,7 @@ func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNo
 	var closers []jsonrpc.ClientCloser
 
 	for _, head := range heads {
-		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header)
+		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
 		if err != nil {
 			log.Warnf("Not able to establish connection to node with addr: ", head.addr)
 			continue

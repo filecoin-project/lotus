@@ -134,6 +134,7 @@ type EthEvent struct {
 	FilterStore          filter.FilterStore
 	SubManager           *EthSubscriptionManager
 	MaxFilterHeightRange abi.ChainEpoch
+	SubscribtionCtx      context.Context
 }
 
 var _ EthEventAPI = (*EthEvent)(nil)
@@ -1112,7 +1113,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("connection doesn't support callbacks")
 	}
 
-	sub, err := e.SubManager.StartSubscription(ctx, ethCb.EthSubscription)
+	sub, err := e.SubManager.StartSubscription(e.SubscribtionCtx, ethCb.EthSubscription)
 	if err != nil {
 		return ethtypes.EthSubscriptionID{}, err
 	}

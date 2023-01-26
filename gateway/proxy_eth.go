@@ -463,7 +463,7 @@ func (gw *Node) EthSubscribe(ctx context.Context, eventType string, params *etht
 		return ethtypes.EthSubscriptionID{}, err
 	}
 
-	err = gw.subHnd.addSub(ctx, sub, func(ctx context.Context, response *ethtypes.EthSubscriptionResponse) error {
+	err = gw.subHnd.AddSub(ctx, sub, func(ctx context.Context, response *ethtypes.EthSubscriptionResponse) error {
 		outParam, err := json.Marshal(response)
 		if err != nil {
 			return err
@@ -502,7 +502,7 @@ func (gw *Node) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionI
 	delete(ft.userSubscriptions, id)
 
 	if gw.subHnd != nil {
-		gw.subHnd.removeSub(id)
+		gw.subHnd.RemoveSub(id)
 	}
 
 	return ok, nil

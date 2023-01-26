@@ -24,11 +24,12 @@ func NewEthSubHandler() *EthSubHandler {
 	}
 }
 
-func (e *EthSubHandler) addSub(ctx context.Context, id ethtypes.EthSubscriptionID, sink func(context.Context, *ethtypes.EthSubscriptionResponse) error) error {
+func (e *EthSubHandler) AddSub(ctx context.Context, id ethtypes.EthSubscriptionID, sink func(context.Context, *ethtypes.EthSubscriptionResponse) error) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
 	for _, p := range e.queued[id] {
+		p := p // copy
 		if err := sink(ctx, &p); err != nil {
 			return err
 		}
@@ -38,7 +39,7 @@ func (e *EthSubHandler) addSub(ctx context.Context, id ethtypes.EthSubscriptionI
 	return nil
 }
 
-func (e *EthSubHandler) removeSub(id ethtypes.EthSubscriptionID) {
+func (e *EthSubHandler) RemoveSub(id ethtypes.EthSubscriptionID) {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 

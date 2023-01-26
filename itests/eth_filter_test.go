@@ -438,15 +438,15 @@ func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
 	t.Logf("actor ID address is %s", idAddr)
 
 	// install filter
-	respCh, err := client.EthSubscribe(ctx, "logs", nil)
+	subId, err := client.EthSubscribe(ctx, "logs", nil)
 	require.NoError(err)
 
-	subResponses := []ethtypes.EthSubscriptionResponse{}
-	go func() {
-		for resp := range respCh {
-			subResponses = append(subResponses, resp)
-		}
-	}()
+	var subResponses []ethtypes.EthSubscriptionResponse
+	err = client.EthSubRouter.AddSub(ctx, subId, func(ctx context.Context, resp *ethtypes.EthSubscriptionResponse) error {
+		subResponses = append(subResponses, *resp)
+		return nil
+	})
+	require.NoError(err)
 
 	const iterations = 10
 	ethContractAddr, messages := invokeLogFourData(t, client, iterations)
