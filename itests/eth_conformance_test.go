@@ -70,7 +70,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	require.NoError(t, err)
 
 	specParsed := orpctypes.NewOpenRPCSpec1()
-	err = json.Unmarshal([]byte(specJSON), specParsed)
+	err = json.Unmarshal(specJSON, specParsed)
 	require.NoError(t, err)
 	parse.GetTypes(specParsed, specParsed.Objects)
 
@@ -395,6 +395,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		name := tc.method
 		if tc.variant != "" {
 			name += "_" + tc.variant
