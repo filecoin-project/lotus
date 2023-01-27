@@ -252,6 +252,7 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 	require.Equal(e.t, exit, wait.Receipt.ExitCode)
 }
 
+
 // function signatures are the first 4 bytes of the hash of the function name and types
 func CalcFuncSignature(funcName string) []byte {
 	hasher := sha3.NewLegacyKeccak256()
@@ -309,4 +310,78 @@ func removeLeadingZeros(data []byte) []byte {
 		}
 	}
 	return data[firstNonZeroIndex:]
+}
+
+func NewEthFilterBuilder() *EthFilterBuilder {
+	return &EthFilterBuilder{}
+}
+
+type EthFilterBuilder struct {
+	filter ethtypes.EthFilterSpec
+}
+
+func (e *EthFilterBuilder) Filter() *ethtypes.EthFilterSpec { return &e.filter }
+
+func (e *EthFilterBuilder) FromBlock(v string) *EthFilterBuilder {
+	e.filter.FromBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) FromBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.FromBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlock(v string) *EthFilterBuilder {
+	e.filter.ToBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.ToBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) BlockHash(h ethtypes.EthHash) *EthFilterBuilder {
+	e.filter.BlockHash = &h
+	return e
+}
+
+func (e *EthFilterBuilder) AddressOneOf(as ...ethtypes.EthAddress) *EthFilterBuilder {
+	e.filter.Address = as
+	return e
+}
+
+func (e *EthFilterBuilder) Topic1OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	if len(e.filter.Topics) == 0 {
+		e.filter.Topics = make(ethtypes.EthTopicSpec, 1)
+	}
+	e.filter.Topics[0] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic2OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 2 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[1] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic3OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 3 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[2] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic4OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 4 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[3] = hs
+	return e
 }

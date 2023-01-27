@@ -3,6 +3,7 @@ package itests
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -87,7 +88,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.WithEthRPC())
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	contractHex, err := os.ReadFile(EventMatrixContract.Filename)
+	contractHex, err := os.ReadFile("contracts/EventMatrix.hex")
 	require.NoError(t, err)
 
 	// strip any trailing newlines from the file
@@ -109,7 +110,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	blockFilterID, err := client.EthNewBlockFilter(ctx)
 	require.NoError(t, err)
 
-	filterAllLogs := newEthFilterBuilder().FromBlockEpoch(0).Filter()
+	filterAllLogs := kit.NewEthFilterBuilder().FromBlockEpoch(0).Filter()
 
 	logFilterID, err := client.EthNewFilter(ctx, filterAllLogs)
 	require.NoError(t, err)
@@ -488,31 +489,31 @@ func createRawSignedEthTx(ctx context.Context, t *testing.T, client *kit.TestFul
 }
 
 func waitForMessageWithEvents(ctx context.Context, t *testing.T, client *kit.TestFullNode, sender address.Address, target address.Address) (ethtypes.EthHash, ethtypes.EthHash, ethtypes.EthUint64) {
-	// send a message that exercises event logs
-	messages := invokeAndWaitUntilAllOnChain(t, client, []Invocation{
-		{
-			Sender:   sender,
-			Target:   target,
-			Selector: EventMatrixContract.Fn["logEventThreeIndexedWithData"],
-			Data:     packUint64Values(44, 27, 19, 12),
-		},
-	})
-
-	require.NotEmpty(t, messages)
-
-	for msgHash, mts := range messages {
-		ts := mts.ts
-		blockNumber := ethtypes.EthUint64(ts.Height())
-
-		tsCid, err := ts.Key().Cid()
-		require.NoError(t, err)
-
-		blockHash, err := ethtypes.EthHashFromCid(tsCid)
-		require.NoError(t, err)
-		return msgHash, blockHash, blockNumber
+	vals := []uint64{44, 27, 19, 12}
+	inputData := []byte{}
+	for _, v := range vals {
+		buf := make([]byte, 32)
+		binary.BigEndian.PutUint64(buf[24:], v)
+		inputData = append(inputData, buf...)
 	}
 
-	// should not get here
-	t.FailNow()
-	return ethtypes.EthHash{}, ethtypes.EthHash{}, 0
+	// send a message that exercises event logs
+	ret := client.EVM().InvokeSolidity(ctx, sender, target, kit.EventMatrixContract.Fn["logEventThreeIndexedWithData"], inputData)
+	require.True(t, ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
+
+	msgHash, err := client.EthGetTransactionHashByCid(ctx, ret.Message)
+	require.NoError(t, err)
+	require.NotNil(t, msgHash)
+
+	ts, err := client.ChainGetTipSet(ctx, ret.TipSet)
+	require.NoError(t, err)
+
+	blockNumber := ethtypes.EthUint64(ts.Height())
+
+	tsCid, err := ts.Key().Cid()
+	require.NoError(t, err)
+
+	blockHash, err := ethtypes.EthHashFromCid(tsCid)
+	require.NoError(t, err)
+	return *msgHash, blockHash, blockNumber
 }
