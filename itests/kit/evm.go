@@ -252,7 +252,6 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 	require.Equal(e.t, exit, wait.Receipt.ExitCode)
 }
 
-
 // function signatures are the first 4 bytes of the hash of the function name and types
 func CalcFuncSignature(funcName string) []byte {
 	hasher := sha3.NewLegacyKeccak256()
