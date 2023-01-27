@@ -95,11 +95,12 @@ func TestFEVMRecursiveFail(t *testing.T) {
 	for _, failCallCount := range failCallCounts {
 		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
+			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
 			if err != nil {
 				fmt.Printf("error - %+v", err)
 			}
 			require.Error(t, err)
+			require.Equal(t, exitcode.ExitCode(23), wait.Receipt.ExitCode)
 		})
 	}
 }
@@ -299,8 +300,9 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	inputData := append(inputDataContract, inputDataValue...)
 
 	//verify that the returned value of the call to setvars is 7
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
 	require.Error(t, err)
+	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
 	//test the value is 0 via calling the getter and was not set to 7
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
@@ -315,7 +317,7 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	require.Equal(t, result, expectedResult)
 }
 
-// TestFEVMDelegateCallRevert makes a call that is a simple revert
+// TestFEVMSimpleRevert makes a call that is a simple revert
 func TestFEVMSimpleRevert(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -325,8 +327,9 @@ func TestFEVMSimpleRevert(t *testing.T) {
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
 	//call revert
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
 
+	require.Equal(t, wait.Receipt.ExitCode, exitcode.ExitCode(33))
 	require.Error(t, err)
 }
 
