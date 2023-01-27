@@ -248,14 +248,14 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 	entryPoint := CalcFuncSignature(funcSignature)
 	wait, err := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
 	if err != nil {
-		return nil, nil, err
+		return nil, wait, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, nil, fmt.Errorf("Contract execution failed - %v", wait.Receipt.ExitCode)
+		return nil, wait, fmt.Errorf("Contract execution failed - %v", wait.Receipt.ExitCode)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {
-		return nil, nil, err
+		return nil, wait, err
 	}
 	return result, wait, nil
 }

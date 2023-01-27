@@ -92,7 +92,7 @@ func TestFEVMRecursiveFail(t *testing.T) {
 
 	// Unsuccessful calls
 	failCallCounts := []uint64{340, 400, 600, 850, 1000}
-	for _, failCallCounts := range failCallCounts {
+	for _, failCallCount := range failCallCounts {
 		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
 			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
@@ -510,10 +510,9 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	inputData := append(inputDataContract, inputDataValue...)
 
 	//verify that the returned value of the call to setvars is 7
-	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
-	if err != nil {
-		t.Log(err)
-	}
+	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
+	require.Error(t, err)
+	require.Equal(t, exitcode.SysErrorIllegalArgument, wait.Receipt.ExitCode)
 
 	//assert no fatal errors but still there are errors::
 	error1 := "f01002 (method 2) -- fatal error (10)" // showing once
@@ -525,9 +524,6 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.NotContains(t, err.Error(), error2)
 	require.NotContains(t, err.Error(), error3)
 	require.NotContains(t, err.Error(), errorAny)
-	t.Log(err)
-	require.Error(t, err)
-
 }
 
 // XXX Currently fails as self destruct has a bug
