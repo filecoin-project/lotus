@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -215,4 +216,29 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 
 	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=171-fails", testN(251, 171, exitcode.ExitCode(33)))
+}
+
+// TestFEVMEventsOnTransferdeploys a contract and tests events
+// emitted when sent to a contract's payable methods
+func TestFEVMEventsOnTransfer(t *testing.T) {
+	ctx, cancel, client := setupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameActor := "contracts/PayableEventsOnTransfer.hex"
+	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	testEvents := func(method string, ex exitcode.ExitCode) func(t *testing.T) {
+		return func(t *testing.T) {
+			client.EVM().InvokeContractByFuncNameExpectExitSendValue(ctx, fromAddr, actorAddr, method, []byte{}, ex, big.NewInt(1))
+		}
+	}
+
+	t.Run("Emit Two Events with Zero Variables (Should Succeed)", testEvents("doTransferEmitTwiceBlankEvent()", exitcode.Ok))
+	t.Run("Emit One Event with two variables (Should Succeed)", testEvents("doTransferEmitOnce()", exitcode.Ok))
+	t.Run("Emit One Event with Three variables (Should Succeed)", testEvents("doTransferEmitOnceManyVars()", exitcode.Ok))
+
+	t.Run("Emit Two Events with One Variable (Should Fail)", testEvents("doTransferEmitTwiceOneVar()", exitcode.SysErrOutOfGas))
+	t.Run("Emit Two Events with Two Variables (Should Fail)", testEvents("doTransferEmitTwice()", exitcode.SysErrOutOfGas))
+	t.Run("Emit One Event with Four Variables (Should Fail)", testEvents("doTransferEmitOnceTooManyVars()", exitcode.SysErrOutOfGas))
 }

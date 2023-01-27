@@ -101,7 +101,7 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 	return fromAddr, idAddr
 }
 
-func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) *api.MsgLookup {
+func (e *EVM) InvokeSoliditySendValue(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte, value big.Int) *api.MsgLookup {
 	require := require.New(e.t)
 
 	params := append(selector, inputData...)
@@ -113,7 +113,7 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	msg := &types.Message{
 		To:       target,
 		From:     sender,
-		Value:    big.Zero(),
+		Value:    value,
 		Method:   builtintypes.MethodsEVM.InvokeContract,
 		GasLimit: build.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
 		Params:   params,
@@ -128,6 +128,11 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	require.NoError(err)
 
 	return wait
+
+}
+
+func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) *api.MsgLookup {
+	return e.InvokeSoliditySendValue(ctx, sender, target, selector, inputData, big.Zero())
 }
 
 // LoadEvents loads all events in an event AMT.
@@ -246,10 +251,14 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 	return result
 }
 
-func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte, exit exitcode.ExitCode) {
+func (e *EVM) InvokeContractByFuncNameExpectExitSendValue(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte, exit exitcode.ExitCode, value big.Int) {
 	entryPoint := CalcFuncSignature(funcSignature)
-	wait := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
+	wait := e.InvokeSoliditySendValue(ctx, fromAddr, idAddr, entryPoint, inputData, value)
 	require.Equal(e.t, exit, wait.Receipt.ExitCode)
+}
+
+func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte, exit exitcode.ExitCode) {
+	e.InvokeContractByFuncNameExpectExitSendValue(ctx, fromAddr, idAddr, funcSignature, inputData, exit, big.Zero())
 }
 
 // function signatures are the first 4 bytes of the hash of the function name and types
