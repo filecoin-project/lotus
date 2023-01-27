@@ -485,8 +485,8 @@ func TestFEVMSendGasLimit(t *testing.T) {
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
 	//send $ to contract
-	//transfer 1 wei to contract
-	sendAmount := big.MustFromString("10000000")
+	//transfer 1 attoFIL to contract
+	sendAmount := big.MustFromString("1")
 
 	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDataLength()", []byte{})
