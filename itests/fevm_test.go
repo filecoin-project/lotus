@@ -72,7 +72,7 @@ func TestFEVMRecursive(t *testing.T) {
 
 	// Successful calls
 	for _, callCount := range callCounts {
-    callCount := callCount // linter unhappy unless callCount is local to loop 
+		callCount := callCount // linter unhappy unless callCount is local to loop
 		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
 			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callCount))
 			if err != nil {
@@ -92,10 +92,10 @@ func TestFEVMRecursiveFail(t *testing.T) {
 
 	// Unsuccessful calls
 	failCallCounts := []uint64{340, 400, 600, 850, 1000}
-	for _, callCount := range failCallCounts {
-    callCount := callCount // linter unhappy unless callCount is local to loop 
-		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", callCount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callCount))
+	for _, failCallCounts := range failCallCounts {
+		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
+		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
 			if err != nil {
 				fmt.Printf("error - %+v", err)
 			}
