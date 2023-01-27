@@ -269,7 +269,7 @@ func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtype
 
 	// first, try to get the cid from mined transactions
 	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, api.LookbackNoLimit, true)
-	if err == nil {
+	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 		if err == nil {
 			return &tx, nil
@@ -1563,11 +1563,6 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 			return ethtypes.EthTx{}, xerrors.Errorf("failed to convert from signed message: %w", err)
 		}
 
-		tx.From, err = lookupEthAddress(ctx, smsg.Message.From, sa)
-		if err != nil {
-			return ethtypes.EthTx{}, xerrors.Errorf("failed to lookup from ethaddress: %w", err)
-		}
-
 		tx.Hash, err = tx.TxHash()
 		if err != nil {
 			return ethtypes.EthTx{}, err
@@ -1615,10 +1610,6 @@ func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, sa StateAPI
 // into the function, it looks up the transaction index of the message in the tipset, otherwise it uses the txIdx passed into the
 // function
 func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, txIdx int, cs *store.ChainStore, sa StateAPI) (ethtypes.EthTx, error) {
-	if msgLookup == nil {
-		return ethtypes.EthTx{}, fmt.Errorf("msg does not exist")
-	}
-
 	ts, err := cs.LoadTipSet(ctx, msgLookup.TipSet)
 	if err != nil {
 		return ethtypes.EthTx{}, err
