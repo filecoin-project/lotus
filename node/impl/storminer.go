@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"net/http"
 	"os"
 	"sort"
@@ -19,6 +18,7 @@ import (
 	"github.com/ipfs/go-graphsync/peerstate"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -1414,8 +1414,8 @@ func (sm *StorageMinerAPI) withdrawBalance(ctx context.Context, amount abi.Token
 	return smsg.Cid(), nil
 }
 
-func (sm *StorageMinerAPI) InitiateDealWithClient(ctx context.Context, commP cid.Cid, commPSize uint64, rootCid cid.Cid, clientAddr address.Address, startEpoch abi.ChainEpoch, duration uint64, carPath string) error {
-	return sm.StorageProvider.InitiateDealWithClient(ctx, commP, commPSize, rootCid, clientAddr, startEpoch, duration, carPath)
+func (sm *StorageMinerAPI) InitiateDealWithClient(ctx context.Context, commP cid.Cid, commPSize uint64, clientAddr address.Address, startEpoch abi.ChainEpoch, duration uint64, carPath string) error {
+	return sm.StorageProvider.InitiateDealWithClient(ctx, commP, commPSize, clientAddr, startEpoch, duration, carPath)
 }
 
 func curTime() cbg.CborTime {

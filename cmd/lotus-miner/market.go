@@ -372,47 +372,42 @@ var dealsAsyncContractDeal = &cli.Command{
 
 		ctx := lcli.DaemonContext(cctx)
 
-		if cctx.NArg() != 7 {
+		if cctx.NArg() != 6 {
 			return lcli.IncorrectNumArgs(cctx)
 		}
 
-		rootCid, err := cid.Decode(cctx.Args().Get(0))
+		commP, err := cid.Decode(cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}
 
-		commP, err := cid.Decode(cctx.Args().Get(1))
+		commPSize, err := strconv.Atoi(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
 
-		commPSize, err := strconv.Atoi(cctx.Args().Get(2))
+		clientAddr, err := address.NewFromString(cctx.Args().Get(2))
 		if err != nil {
 			return err
 		}
 
-		clientAddr, err := address.NewFromString(cctx.Args().Get(3))
+		startEpoch, err := strconv.Atoi(cctx.Args().Get(3))
 		if err != nil {
 			return err
 		}
 
-		startEpoch, err := strconv.Atoi(cctx.Args().Get(4))
+		duration, err := strconv.Atoi(cctx.Args().Get(4))
 		if err != nil {
 			return err
 		}
 
-		duration, err := strconv.Atoi(cctx.Args().Get(5))
-		if err != nil {
-			return err
-		}
-
-		carPath, err := filepath.Abs(cctx.Args().Get(6))
+		carPath, err := filepath.Abs(cctx.Args().Get(5))
 		if err != nil {
 			return err
 		}
 		fmt.Println("carPath in cli: ", carPath)
 
-		return api.InitiateDealWithClient(ctx, commP, uint64(commPSize), rootCid, clientAddr, abi.ChainEpoch(startEpoch), uint64(duration), carPath)
+		return api.InitiateDealWithClient(ctx, commP, uint64(commPSize), clientAddr, abi.ChainEpoch(startEpoch), uint64(duration), carPath)
 	},
 }
 

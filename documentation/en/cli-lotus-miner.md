@@ -617,18 +617,19 @@ USAGE:
    lotus-miner storage-deals command [command options] [arguments...]
 
 COMMANDS:
-     import-data        Manually import data for a deal
-     list               List all deals for this miner
-     selection          Configure acceptance criteria for storage deal proposals
-     set-ask            Configure the miner's ask
-     get-ask            Print the miner's ask
-     set-blocklist      Set the miner's list of blocklisted piece CIDs
-     get-blocklist      List the contents of the miner's piece CID blocklist
-     reset-blocklist    Remove all entries from the miner's piece CID blocklist
-     set-seal-duration  Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.
-     pending-publish    list deals waiting in publish queue
-     retry-publish      retry publishing a deal
-     help, h            Shows a list of commands or help for one command
+     import-data          Manually import data for a deal
+     list                 List all deals for this miner
+     selection            Configure acceptance criteria for storage deal proposals
+     set-ask              Configure the miner's ask
+     get-ask              Print the miner's ask
+     set-blocklist        Set the miner's list of blocklisted piece CIDs
+     get-blocklist        List the contents of the miner's piece CID blocklist
+     reset-blocklist      Remove all entries from the miner's piece CID blocklist
+     set-seal-duration    Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.
+     pending-publish      list deals waiting in publish queue
+     retry-publish        retry publishing a deal
+     async-contract-deal  Async deal with client contract
+     help, h              Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -824,6 +825,19 @@ NAME:
 
 USAGE:
    lotus-miner storage-deals retry-publish [command options] <proposal CID>
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner storage-deals async-contract-deal
+```
+NAME:
+   lotus-miner storage-deals async-contract-deal - Async deal with client contract
+
+USAGE:
+   lotus-miner storage-deals async-contract-deal [command options] <rootCid> <commP> <commPSize> <clientAddr> <startEpoch> <duration> <carFile>
 
 OPTIONS:
    --help, -h  show help (default: false)

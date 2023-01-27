@@ -201,14 +201,6 @@ var clientCommPCmd = &cli.Command{
 	Name:      "commP",
 	Usage:     "Calculate the piece-cid (commP) of a CAR file",
 	ArgsUsage: "[inputFile]",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "padded",
-			Usage: "Pad CommP to a size with power of 2",
-		},
-		&CidBaseFlag,
-	},
-
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {

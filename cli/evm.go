@@ -77,10 +77,14 @@ var EvmGetInfoCmd = &cli.Command{
 
 		actor, err := api.StateGetActor(ctx, faddr, types.EmptyTSK)
 		if err != nil {
-			fmt.Println("fail to get ID address: ", err.Error())
-
+			fmt.Printf("Actor lookup failed for faddr %s with error: %s\n", faddr, err)
 		} else {
-			fmt.Println("ID address: ", actor.Address.String())
+			idAddr, err := api.StateLookupID(ctx, faddr, types.EmptyTSK)
+			if err != nil {
+				fmt.Printf("Id Addr lookup failed for faddr %s with error: %s\n", faddr, err)
+			} else {
+				fmt.Println("ID address: ", idAddr)
+			}
 			fmt.Println("Code cid: ", actor.Code.String())
 			fmt.Println("Actor Type: ", builtin.ActorNameByCode(actor.Code))
 		}

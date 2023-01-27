@@ -5,7 +5,6 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -18,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/account"
+	"github.com/filecoin-project/go-state-types/builtin/v10/account"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -145,8 +144,6 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 	log.Warnf("New Deal: deal %d", deal.DealID)
 
-	fmt.Println("!!!!!!!!!!!!!!! ADD PIECE succeeds !!!!!!!!!!!!!!!!!!!!!")
-
 	return &storagemarket.PackingResult{
 		SectorNumber: p,
 		Offset:       offset,
@@ -154,12 +151,9 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}, nil
 }
 
-func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
+func (n *ProviderNodeAdapter) VerifySignatureContract(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
 
 	var params account.AuthenticateMessageParams
-
-	fmt.Println("________-________________ REACHES VERIFY SIGNATURE _____________________________")
-
 	params.Message = input
 	params.Signature = sig.Data
 
@@ -169,27 +163,25 @@ func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Si
 	params.MarshalCBOR(buf)
 	msg.Params = buf.Bytes()
 
-	fmt.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!%x\n", msg.Params)
-
 	msg.From = builtin.StorageMarketActorAddr
 	msg.To = addr
 	msg.Nonce = 1
-	// TODO: hacked num
-	msg.Method = abi.MethodNum(2643134072)
 
-	res, err := n.StateCall(ctx, &msg, types.EmptyTSK)
+	var err error
+	msg.Method, err = builtin.GenerateFRCMethodNum("AuthenticateMessage") // abi.MethodNum(2643134072)
 	if err != nil {
-		fmt.Println("_________________________ STATE CALL FAILS _____________________________", err)
-
 		return false, err
 	}
 
-	fmt.Println("________-________________ STATE CALL SUCCEEDS _____________________________", res.MsgRct.ExitCode)
+	res, err := n.StateCall(ctx, &msg, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
 
 	return res.MsgRct.ExitCode == exitcode.Ok, nil
 }
 
-func (n *ProviderNodeAdapter) VerifySignatureOld(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
+func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
 	addr, err := n.StateAccountKey(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return false, err

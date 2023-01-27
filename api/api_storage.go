@@ -309,7 +309,7 @@ type StorageMiner interface {
 	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
 	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
 
-	InitiateDealWithClient(ctx context.Context, commP cid.Cid, commPSize uint64, rootCid cid.Cid, clientAddr address.Address, startEpoch abi.ChainEpoch, duration uint64, carPath string) error //perm:admin
+	InitiateDealWithClient(ctx context.Context, commP cid.Cid, commPSize uint64, clientAddr address.Address, startEpoch abi.ChainEpoch, duration uint64, carPath string) error //perm:admin
 
 	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)                                 //perm:read
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)                               //perm:read
