@@ -42,7 +42,7 @@ func (f *TestFullNode) EVM() *EVM {
 	return &EVM{f}
 }
 
-func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
+func (e *EVM) DeployContractValue(ctx context.Context, sender address.Address, bytecode []byte, value big.Int) eam.CreateReturn {
 	require := require.New(e.t)
 
 	nonce, err := e.MpoolGetNonce(ctx, sender)
@@ -61,7 +61,7 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 	msg := &types.Message{
 		To:     builtintypes.EthereumAddressManagerActorAddr,
 		From:   sender,
-		Value:  big.Zero(),
+		Value:  value,
 		Method: method,
 		Params: params,
 	}
@@ -83,8 +83,11 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 
 	return result
 }
+func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
+	return e.DeployContractValue(ctx, sender, bytecode, big.Zero())
+}
 
-func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
+func (e *EVM) DeployContractFromFilenameValue(ctx context.Context, binFilename string, value big.Int) (address.Address, address.Address) {
 	contractHex, err := os.ReadFile(binFilename)
 	require.NoError(e.t, err)
 
@@ -97,11 +100,14 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 	fromAddr, err := e.WalletDefaultAddress(ctx)
 	require.NoError(e.t, err)
 
-	result := e.DeployContract(ctx, fromAddr, contract)
+	result := e.DeployContractValue(ctx, fromAddr, contract, value)
 
 	idAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(e.t, err)
 	return fromAddr, idAddr
+}
+func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
+	return e.DeployContractFromFilenameValue(ctx, binFilename, big.Zero())
 }
 
 func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) (*api.MsgLookup, error) {

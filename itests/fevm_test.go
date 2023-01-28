@@ -640,3 +640,42 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=171-fails", testN(251, 171, exitcode.ExitCode(33)))
 }
+
+// TestFEVM deploys a contract and makes a recursive actor calls
+func TestFEVMDeployValue(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//testValue is the amoutn sent when the contract is created
+	//at the end we check that the new contract has a balance of testValue
+	testValue := big.NewInt(20)
+
+	// deploy DeployValueTest which creates NewContract
+	// testValue is sent to DeployValueTest and that amount is
+	// also sent to NewContract
+	filenameActor := "contracts/DeployValueTest.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilenameValue(ctx, filenameActor, testValue)
+
+	//call getNewContractBalance to find the value of NewContract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
+	require.NoError(t, err)
+
+	contractBalance, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	//require balance of NewContract is testValue
+	require.Equal(t, testValue.Uint64(), contractBalance)
+}
+
+// TestFEVM deploys a contract and makes a recursive actor calls
+func TestFEVMDeploySimpleCoinWithValue(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract SimpleCoin with no value
+	filenameActor := "contracts/SimpleCoin.hex"
+	_, _ = client.EVM().DeployContractFromFilenameValue(ctx, filenameActor, big.NewInt(0))
+
+	//install contract SimpleCoin with 1 attoFIL value
+	_, _ = client.EVM().DeployContractFromFilenameValue(ctx, filenameActor, big.NewInt(1))
+}
