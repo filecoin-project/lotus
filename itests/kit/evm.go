@@ -251,7 +251,7 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, wait, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, wait, fmt.Errorf("Contract execution failed - %v", wait.Receipt.ExitCode)
+		return nil, wait, fmt.Errorf("contract execution failed - %v", wait.Receipt.ExitCode)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {
@@ -343,7 +343,7 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 	fromAddr := client.DefaultKey.Address
 	bal, err := client.WalletBalance(ctx, fromAddr)
 	require.NoError(t, err)
-	originalBalance := types.FromFil(100 * uint64(1e6)) // 100 million FIL
+	originalBalance := types.FromFil(uint64(100_000_000)) // 100 million FIL
 	require.Equal(t, originalBalance, bal)
 
 	return ctx, cancel, client

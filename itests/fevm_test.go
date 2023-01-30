@@ -62,86 +62,17 @@ func max(x int, y int) int {
 	return max
 }
 
-// TestFEVMRecursive does a basic fevm contract installation and invocation
-func TestFEVMRecursive(t *testing.T) {
-	callCounts := []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 230, 330}
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-	filename := "contracts/Recursive.hex"
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-
-	// Successful calls
-	for _, callCount := range callCounts {
-		callCount := callCount // linter unhappy unless callCount is local to loop
-		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
-			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callCount))
-			if err != nil {
-				fmt.Printf("error - %+v", err)
-			}
-			require.NoError(t, err)
-		})
-	}
-
-}
-
-func TestFEVMRecursiveFail(t *testing.T) {
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-	filename := "contracts/Recursive.hex"
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-
-	// Unsuccessful calls
-	failCallCounts := []uint64{340, 400, 600, 850, 1000}
-	for _, failCallCount := range failCallCounts {
-		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
-		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
-			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
-			if err != nil {
-				fmt.Printf("error - %+v", err)
-			}
-			require.Error(t, err)
-			require.Equal(t, exitcode.ExitCode(23), wait.Receipt.ExitCode)
-		})
-	}
-}
-
-func TestFEVMRecursive1(t *testing.T) {
-	callCount := 1
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-	filename := "contracts/Recursive.hex"
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive1()", []byte{})
-	require.NoError(t, err)
-	if ret != nil && ret.Receipt.EventsRoot != nil {
-		events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-		//passing in 0 still means there's 1 event
-		require.Equal(t, max(1, callCount), len(events))
-	}
-}
-func TestFEVMRecursive2(t *testing.T) {
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-	filename := "contracts/Recursive.hex"
-	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
-	_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive2()", []byte{})
-	require.NoError(t, err)
-	if ret != nil && ret.Receipt.EventsRoot != nil {
-		events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
-		//passing in 0 still means there's 1 event
-		require.Equal(t, 2, len(events))
-	}
-}
-
+//recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
+//before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-
+	expectedIterationsBeforeFailing := int(229)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", inputData)
-	if err != nil {
-		return
-	}
+
+	require.NoError(t, err)
+
 	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "totalCalls()", []byte{})
 	require.NoError(t, err)
 
@@ -149,6 +80,7 @@ func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.Te
 	require.NoError(t, err)
 
 	require.NotEqual(t, int(resultUint), int(count))
+	require.Equal(t, expectedIterationsBeforeFailing, int(resultUint))
 }
 func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
 	t.Log("Count - ", count)
@@ -167,6 +99,65 @@ func recursiveDelegatecallSuccess(ctx context.Context, t *testing.T, client *kit
 	require.Equal(t, int(count), int(resultUint))
 }
 
+// TestFEVMRecursive does a basic fevm contract installation and invocation
+func TestFEVMRecursive(t *testing.T) {
+	callCounts := []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 230, 330}
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	// Successful calls
+	for _, callCount := range callCounts {
+		callCount := callCount // linter unhappy unless callCount is local to loop
+		t.Run(fmt.Sprintf("TestFEVMRecursive%d", callCount), func(t *testing.T) {
+			_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(callCount))
+			require.NoError(t, err)
+		})
+	}
+
+}
+
+func TestFEVMRecursiveFail(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	// Unsuccessful calls
+	failCallCounts := []uint64{340, 400, 600, 850, 1000}
+	for _, failCallCount := range failCallCounts {
+		failCallCount := failCallCount // linter unhappy unless callCount is local to loop
+		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
+			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
+			require.Error(t, err)
+			require.Equal(t, exitcode.ExitCode(23), wait.Receipt.ExitCode)
+		})
+	}
+}
+
+func TestFEVMRecursive1(t *testing.T) {
+	callCount := 1
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive1()", []byte{})
+	require.NoError(t, err)
+	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+	require.Equal(t, callCount, len(events))
+}
+func TestFEVMRecursive2(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+	filename := "contracts/Recursive.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+	_, ret, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursive2()", []byte{})
+	require.NoError(t, err)
+	events := client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot)
+	require.Equal(t, 2, len(events))
+}
+
 // TestFEVMBasic does a basic fevm contract installation and invocation
 // recursive delegate call succeeds up to 238 times
 func TestFEVMRecursiveDelegatecall(t *testing.T) {
@@ -180,6 +171,8 @@ func TestFEVMRecursiveDelegatecall(t *testing.T) {
 	for i := uint64(1); i <= 238; i += 30 {
 		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
 	}
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(238))
+
 	for i := uint64(239); i <= 800; i += 40 {
 		recursiveDelegatecallFail(ctx, t, client, filename, i)
 	}
@@ -253,7 +246,6 @@ func TestFEVMDelegateCall(t *testing.T) {
 
 	//call Contract Storage which makes a delegatecall to contract Actor
 	//this contract call sets the "counter" variable to 7, from default value 0
-
 	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
@@ -265,7 +257,7 @@ func TestFEVMDelegateCall(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
-	//test the value is 7 via calling the getter
+	//test the value is 7 a second way by calling the getter
 	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "getCounter()", []byte{})
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
@@ -279,7 +271,7 @@ func TestFEVMDelegateCall(t *testing.T) {
 }
 
 // TestFEVMDelegateCallRevert makes a delegatecall action and then calls revert.
-// the state should not have changed
+// the state should not have changed because of the revert
 func TestFEVMDelegateCallRevert(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -391,7 +383,6 @@ func TestFEVMTestConstructor(t *testing.T) {
 }
 
 // TestFEVMAutoSelfDestruct creates a contract that just has a self destruct feature and calls it
-// XXX tx w destroy fails
 func TestFEVMAutoSelfDestruct(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -402,12 +393,10 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 
 	//call destroy
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
-	require.NoError(t, err) // XXX currently returns an error but should be success
-
+	require.NoError(t, err)
 }
 
 // TestFEVMTestApp creates a contract that just has a self destruct feature and calls it
-// XXX calling self destruct fails
 func TestFEVMTestSendToContract(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
@@ -415,28 +404,23 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	bal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 
-	originalBalance, err := big.FromString("100000000000000000000000000")
-	require.NoError(t, err)
-	require.Equal(t, originalBalance, bal)
-
 	//install contract TestApp
 	filenameStorage := "contracts/SelfDestruct.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//transfer 1 attoFIL to contract
-	sendAmount := big.NewInt(1)
+	//transfer half balance to contract
+
+	sendAmount := big.Div(bal, big.NewInt(2))
 	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
 
 	//call self destruct which should return balance
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
-	finalBalanceMinimum, err := big.FromString("99999999900000000000000000")
-	require.NoError(t, err)
+	finalBalanceMinimum := types.FromFil(uint64(99_999_999)) // 100 million FIL - 1 FIL for gas upper bounds
 	finalBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	require.Equal(t, true, finalBal.GreaterThan(finalBalanceMinimum))
-
 }
 
 // creates a contract that would fail when tx are sent to it
@@ -468,9 +452,8 @@ func TestFEVMSendCall(t *testing.T) {
 	filenameActor := "contracts/GasSendTest.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
-	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "x()", []byte{})
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "x()", []byte{})
 	require.NoError(t, err)
-	fmt.Println("ret - ", ret)
 }
 
 // creates a contract that would fail when tx are sent to it
@@ -489,9 +472,8 @@ func TestFEVMSendGasLimit(t *testing.T) {
 	sendAmount := big.MustFromString("1")
 
 	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
-	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDataLength()", []byte{})
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDataLength()", []byte{})
 	require.NoError(t, err)
-	fmt.Println("ret - ", ret)
 
 }
 
@@ -518,14 +500,7 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	require.Equal(t, exitcode.SysErrorIllegalArgument, wait.Receipt.ExitCode)
 
 	//assert no fatal errors but still there are errors::
-	error1 := "f01002 (method 2) -- fatal error (10)" // showing once
-	error2 := "f01002 (method 5) -- fatal error (10)" // showing 256 times
-	error3 := "f01002 (method 3) -- fatal error (10)" // showing once
-	errorAny := "fatal error"                         // showing once
-
-	require.NotContains(t, err.Error(), error1)
-	require.NotContains(t, err.Error(), error2)
-	require.NotContains(t, err.Error(), error3)
+	errorAny := "fatal error"
 	require.NotContains(t, err.Error(), errorAny)
 }
 
