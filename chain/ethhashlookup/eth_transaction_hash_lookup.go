@@ -76,6 +76,7 @@ func (ei *EthTxHashLookup) GetCidFromHash(txHash ethtypes.EthHash) (cid.Cid, err
 	if !q.Next() {
 		return cid.Undef, ErrNotFound
 	}
+	defer q.Close()
 	err = q.Scan(&c)
 	if err != nil {
 		return cid.Undef, err
@@ -93,6 +94,7 @@ func (ei *EthTxHashLookup) GetHashFromCid(c cid.Cid) (ethtypes.EthHash, error) {
 	if !q.Next() {
 		return ethtypes.EmptyEthHash, ErrNotFound
 	}
+	defer q.Close()
 	err = q.Scan(&hashString)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err
@@ -101,7 +103,8 @@ func (ei *EthTxHashLookup) GetHashFromCid(c cid.Cid) (ethtypes.EthHash, error) {
 }
 
 func (ei *EthTxHashLookup) DeleteEntriesOlderThan(days int) (int64, error) {
-	res, err := ei.db.Exec("DELETE FROM eth_tx_hashes WHERE insertion_time < datetime('now', ?);", "-"+strconv.Itoa(days)+" day")
+	res, err := ei.db.Exec("DELETE FROM eth_tx_hashes WHERE insertion_time < datetime('now', ?);",
+		"-"+strconv.Itoa(days)+" day")
 	if err != nil {
 		return 0, err
 	}
