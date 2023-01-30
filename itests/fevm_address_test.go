@@ -100,8 +100,10 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	contractFilAddr, err := ethAddr.ToFilecoinAddress()
 	require.NoError(t, err)
 
-	// Send contract address small funds to init
-	sendAmount := big.NewInt(2)
+	//transfer half the wallet balance
+	bal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
+	require.NoError(t, err)
+	sendAmount := big.Div(bal, big.NewInt(2))
 	client.EVM().TransferValueOrFail(ctx, fromAddr, contractFilAddr, sendAmount)
 
 	// Check if actor at new address is a placeholder actor
