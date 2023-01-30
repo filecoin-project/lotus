@@ -72,7 +72,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err := ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err := txArgs.ToRlpUnsignedMsg()
@@ -108,7 +108,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err = ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err = ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err = txArgs.ToRlpUnsignedMsg()
@@ -180,7 +180,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	msgFromPlaceholder.Value = abi.TokenAmount(types.MustParseFIL("1000"))
-	txArgs, err := ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err := txArgs.ToRlpUnsignedMsg()
@@ -218,7 +218,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err = ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err = ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err = txArgs.ToRlpUnsignedMsg()
