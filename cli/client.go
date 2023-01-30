@@ -1517,6 +1517,8 @@ func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
 				}
 			}(miner)
 		}
+
+		wg.Wait()
 	}()
 
 loop:
@@ -1590,6 +1592,8 @@ loop:
 				lk.Unlock()
 			}(miner)
 		}
+
+		wg.Wait()
 	}()
 
 loop2:
