@@ -67,34 +67,28 @@ func (ei *EthTxHashLookup) UpsertHash(txHash ethtypes.EthHash, c cid.Cid) error 
 }
 
 func (ei *EthTxHashLookup) GetCidFromHash(txHash ethtypes.EthHash) (cid.Cid, error) {
-	q, err := ei.db.Query("SELECT cid FROM eth_tx_hashes WHERE hash = :hash;", sql.Named("hash", txHash.String()))
-	if err != nil {
-		return cid.Undef, err
-	}
+	row := ei.db.QueryRow("SELECT cid FROM eth_tx_hashes WHERE hash = :hash;", sql.Named("hash", txHash.String()))
 
 	var c string
-	if !q.Next() {
-		return cid.Undef, ErrNotFound
-	}
-	err = q.Scan(&c)
+	err := row.Scan(&c)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return cid.Undef, ErrNotFound
+		}
 		return cid.Undef, err
 	}
 	return cid.Decode(c)
 }
 
 func (ei *EthTxHashLookup) GetHashFromCid(c cid.Cid) (ethtypes.EthHash, error) {
-	q, err := ei.db.Query("SELECT hash FROM eth_tx_hashes WHERE cid = :cid;", sql.Named("cid", c.String()))
-	if err != nil {
-		return ethtypes.EmptyEthHash, err
-	}
+	row := ei.db.QueryRow("SELECT hash FROM eth_tx_hashes WHERE cid = :cid;", sql.Named("cid", c.String()))
 
 	var hashString string
-	if !q.Next() {
-		return ethtypes.EmptyEthHash, ErrNotFound
-	}
-	err = q.Scan(&hashString)
+	err := row.Scan(&c)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return ethtypes.EmptyEthHash, ErrNotFound
+		}
 		return ethtypes.EmptyEthHash, err
 	}
 	return ethtypes.ParseEthHash(hashString)
