@@ -69,6 +69,13 @@ func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, 
 	return h, nil
 }
 
+func UserAgentOption(agent string) func() (opts Libp2pOpts, err error) {
+	return func() (opts Libp2pOpts, err error) {
+		opts.Opts = append(opts.Opts, libp2p.UserAgent(agent))
+		return
+	}
+}
+
 func MockHost(mn mocknet.Mocknet, id peer.ID, ps peerstore.Peerstore) (RawHost, error) {
 	return mn.AddPeerWithPeerstore(id, ps)
 }
@@ -113,11 +120,4 @@ func NilRouting(mctx helpers.MetricsCtx) (BaseIpfsRouting, error) {
 
 func RoutedHost(rh RawHost, r BaseIpfsRouting) host.Host {
 	return routedhost.Wrap(rh, r)
-}
-
-func UserAgentOption(agent string) func() (opts Libp2pOpts, err error) {
-	return func() (opts Libp2pOpts, err error) {
-		opts.Opts = append(opts.Opts, libp2p.UserAgent(agent))
-		return
-	}
 }
