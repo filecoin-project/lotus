@@ -278,12 +278,6 @@ var sectorsListCmd = &cli.Command{
 			Aliases: []string{"r"},
 		},
 		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-			Aliases:     []string{"c"},
-		},
-		&cli.BoolFlag{
 			Name:    "fast",
 			Usage:   "don't show on-chain info for better performance",
 			Aliases: []string{"f"},
@@ -314,10 +308,6 @@ var sectorsListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
