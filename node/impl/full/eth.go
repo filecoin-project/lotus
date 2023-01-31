@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -75,7 +77,7 @@ type EthEventAPI interface {
 	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error)
+	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
 }
 
@@ -132,6 +134,7 @@ type EthEvent struct {
 	FilterStore          filter.FilterStore
 	SubManager           *EthSubscriptionManager
 	MaxFilterHeightRange abi.ChainEpoch
+	SubscribtionCtx      context.Context
 }
 
 var _ EthEventAPI = (*EthEvent)(nil)
@@ -1100,37 +1103,45 @@ const (
 	EthSubscribeEventTypeLogs  = "logs"
 )
 
-func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) {
-	if e.SubManager == nil {
-		return nil, api.ErrNotSupported
-	}
-	// Note that go-jsonrpc will set the method field of the response to "xrpc.ch.val" but the ethereum api expects the name of the
-	// method to be "eth_subscription". This probably doesn't matter in practice.
-
-	sub, err := e.SubManager.StartSubscription(ctx)
+func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.EthSubscribeParams](p)
 	if err != nil {
-		return nil, err
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("decoding params: %w", err)
 	}
 
-	switch eventType {
+	if e.SubManager == nil {
+		return ethtypes.EthSubscriptionID{}, api.ErrNotSupported
+	}
+
+	ethCb, ok := jsonrpc.ExtractReverseClient[api.EthSubscriberMethods](ctx)
+	if !ok {
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("connection doesn't support callbacks")
+	}
+
+	sub, err := e.SubManager.StartSubscription(e.SubscribtionCtx, ethCb.EthSubscription)
+	if err != nil {
+		return ethtypes.EthSubscriptionID{}, err
+	}
+
+	switch params.EventType {
 	case EthSubscribeEventTypeHeads:
 		f, err := e.TipSetFilterManager.Install(ctx)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
-			return nil, err
+			return ethtypes.EthSubscriptionID{}, err
 		}
 		sub.addFilter(ctx, f)
 
 	case EthSubscribeEventTypeLogs:
 		keys := map[string][][]byte{}
-		if params != nil {
+		if params.Params != nil {
 			var err error
-			keys, err = parseEthTopics(params.Topics)
+			keys, err = parseEthTopics(params.Params.Topics)
 			if err != nil {
 				// clean up any previous filters added and stop the sub
 				_, _ = e.EthUnsubscribe(ctx, sub.id)
-				return nil, err
+				return ethtypes.EthSubscriptionID{}, err
 			}
 		}
 
@@ -1138,14 +1149,14 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
-			return nil, err
+			return ethtypes.EthSubscriptionID{}, err
 		}
 		sub.addFilter(ctx, f)
 	default:
-		return nil, xerrors.Errorf("unsupported event type: %s", eventType)
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("unsupported event type: %s", params.EventType)
 	}
 
-	return sub.out, nil
+	return sub.id, nil
 }
 
 func (e *EthEvent) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) {
@@ -1294,7 +1305,7 @@ type EthSubscriptionManager struct {
 	subs     map[ethtypes.EthSubscriptionID]*ethSubscription
 }
 
-func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSubscription, error) { // nolint
+func (e *EthSubscriptionManager) StartSubscription(ctx context.Context, out ethSubscriptionCallback) (*ethSubscription, error) { // nolint
 	rawid, err := uuid.NewRandom()
 	if err != nil {
 		return nil, xerrors.Errorf("new uuid: %w", err)
@@ -1310,7 +1321,7 @@ func (e *EthSubscriptionManager) StartSubscription(ctx context.Context) (*ethSub
 		ChainAPI: e.ChainAPI,
 		id:       id,
 		in:       make(chan interface{}, 200),
-		out:      make(chan ethtypes.EthSubscriptionResponse, 20),
+		out:      out,
 		quit:     quit,
 	}
 
@@ -1340,13 +1351,15 @@ func (e *EthSubscriptionManager) StopSubscription(ctx context.Context, id ethtyp
 	return sub.filters, nil
 }
 
+type ethSubscriptionCallback func(context.Context, jsonrpc.RawParams) error
+
 type ethSubscription struct {
 	Chain    *store.ChainStore
 	StateAPI StateAPI
 	ChainAPI ChainAPI
 	id       ethtypes.EthSubscriptionID
 	in       chan interface{}
-	out      chan ethtypes.EthSubscriptionResponse
+	out      ethSubscriptionCallback
 
 	mu      sync.Mutex
 	filters []filter.Filter
@@ -1390,10 +1403,15 @@ func (e *ethSubscription) start(ctx context.Context) {
 				continue
 			}
 
-			select {
-			case e.out <- resp:
-			default:
-				// Skip if client is not reading responses
+			outParam, err := json.Marshal(resp)
+			if err != nil {
+				log.Warnw("marshaling subscription response", "sub", e.id, "error", err)
+				continue
+			}
+
+			if err := e.out(ctx, outParam); err != nil {
+				log.Warnw("sending subscription response", "sub", e.id, "error", err)
+				continue
 			}
 		}
 	}
@@ -1405,7 +1423,6 @@ func (e *ethSubscription) stop() {
 
 	if e.quit != nil {
 		e.quit()
-		close(e.out)
 		e.quit = nil
 	}
 }
