@@ -114,3 +114,10 @@ func NilRouting(mctx helpers.MetricsCtx) (BaseIpfsRouting, error) {
 func RoutedHost(rh RawHost, r BaseIpfsRouting) host.Host {
 	return routedhost.Wrap(rh, r)
 }
+
+func UserAgentOption(agent string) func() (opts Libp2pOpts, err error) {
+	return func() (opts Libp2pOpts, err error) {
+		opts.Opts = append(opts.Opts, libp2p.UserAgent(agent))
+		return
+	}
+}
