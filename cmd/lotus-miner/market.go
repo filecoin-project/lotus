@@ -362,7 +362,7 @@ var storageDealsCmd = &cli.Command{
 var dealsAsyncContractDeal = &cli.Command{
 	Name:      "async-contract-deal",
 	Usage:     "Async deal with client contract",
-	ArgsUsage: "<rootCid> <commP> <commPSize> <clientAddr> <startEpoch> <duration> <carFile>",
+	ArgsUsage: "<commP> <commPSize> <clientAddr> <startEpoch> <duration> <carFile>",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
@@ -405,7 +405,6 @@ var dealsAsyncContractDeal = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println("carPath in cli: ", carPath)
 
 		return api.InitiateDealWithClient(ctx, commP, uint64(commPSize), clientAddr, abi.ChainEpoch(startEpoch), uint64(duration), carPath)
 	},
