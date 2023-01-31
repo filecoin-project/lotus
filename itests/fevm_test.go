@@ -428,7 +428,7 @@ func TestFEVMTestNotPayable(t *testing.T) {
 	//create contract A
 	filenameStorage := "contracts/NotPayable.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
-	sendAmount := big.MustFromString("10000000")
+	sendAmount := big.NewInt(10_000_000)
 
 	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
 
