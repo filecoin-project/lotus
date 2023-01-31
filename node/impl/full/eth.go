@@ -77,7 +77,7 @@ type EthEventAPI interface {
 	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error)
+	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
 }
 
@@ -1103,7 +1103,12 @@ const (
 	EthSubscribeEventTypeLogs  = "logs"
 )
 
-func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
+func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.EthSubscribeParams](p)
+	if err != nil {
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("decoding params: %w", err)
+	}
+
 	if e.SubManager == nil {
 		return ethtypes.EthSubscriptionID{}, api.ErrNotSupported
 	}
@@ -1118,7 +1123,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 		return ethtypes.EthSubscriptionID{}, err
 	}
 
-	switch eventType {
+	switch params.EventType {
 	case EthSubscribeEventTypeHeads:
 		f, err := e.TipSetFilterManager.Install(ctx)
 		if err != nil {
@@ -1130,13 +1135,13 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 
 	case EthSubscribeEventTypeLogs:
 		keys := map[string][][]byte{}
-		if params != nil {
+		if params.Params != nil {
 			var err error
-			keys, err = parseEthTopics(params.Topics)
+			keys, err = parseEthTopics(params.Params.Topics)
 			if err != nil {
 				// clean up any previous filters added and stop the sub
 				_, _ = e.EthUnsubscribe(ctx, sub.id)
-				return nil, err
+				return ethtypes.EthSubscriptionID{}, err
 			}
 		}
 
@@ -1148,7 +1153,7 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, eventType string, params *e
 		}
 		sub.addFilter(ctx, f)
 	default:
-		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("unsupported event type: %s", eventType)
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("unsupported event type: %s", params.EventType)
 	}
 
 	return sub.id, nil

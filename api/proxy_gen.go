@@ -302,7 +302,7 @@ type FullNodeMethods struct {
 
 	EthSendRawTransaction func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) `perm:"read"`
 
-	EthSubscribe func(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) `perm:"write"`
+	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) `perm:"write"`
 
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"write"`
 
@@ -704,7 +704,7 @@ type GatewayMethods struct {
 
 	EthSendRawTransaction func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) ``
 
-	EthSubscribe func(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) ``
+	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) ``
 
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) ``
 
@@ -2320,14 +2320,14 @@ func (s *FullNodeStub) EthSendRawTransaction(p0 context.Context, p1 ethtypes.Eth
 	return *new(ethtypes.EthHash), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
+func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
 	if s.Internal.EthSubscribe == nil {
 		return *new(ethtypes.EthSubscriptionID), ErrNotSupported
 	}
-	return s.Internal.EthSubscribe(p0, p1, p2)
+	return s.Internal.EthSubscribe(p0, p1)
 }
 
-func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
+func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
 	return *new(ethtypes.EthSubscriptionID), ErrNotSupported
 }
 
@@ -4465,14 +4465,14 @@ func (s *GatewayStub) EthSendRawTransaction(p0 context.Context, p1 ethtypes.EthB
 	return *new(ethtypes.EthHash), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
+func (s *GatewayStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
 	if s.Internal.EthSubscribe == nil {
 		return *new(ethtypes.EthSubscriptionID), ErrNotSupported
 	}
-	return s.Internal.EthSubscribe(p0, p1, p2)
+	return s.Internal.EthSubscribe(p0, p1)
 }
 
-func (s *GatewayStub) EthSubscribe(p0 context.Context, p1 string, p2 *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
+func (s *GatewayStub) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
 	return *new(ethtypes.EthSubscriptionID), ErrNotSupported
 }
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -117,7 +118,7 @@ type TargetAPI interface {
 	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error)
+	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
 }
 

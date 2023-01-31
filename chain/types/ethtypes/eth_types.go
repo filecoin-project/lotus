@@ -619,6 +619,43 @@ type EthLog struct {
 	BlockNumber EthUint64 `json:"blockNumber"`
 }
 
+// EthSubscribeParams handles raw jsonrpc params for eth_subscribe
+type EthSubscribeParams struct {
+	EventType string
+	Params    *EthSubscriptionParams
+}
+
+func (e *EthSubscribeParams) UnmarshalJSON(b []byte) error {
+	var params []json.RawMessage
+	err := json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	switch len(params) {
+	case 2:
+		err = json.Unmarshal(params[1], &e.Params)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 1:
+		err = json.Unmarshal(params[0], &e.EventType)
+		if err != nil {
+			return err
+		}
+	default:
+		return xerrors.Errorf("expected 1 or 2 params, got %d", len(params))
+	}
+	return nil
+}
+
+func (e EthSubscribeParams) MarshalJSON() ([]byte, error) {
+	if e.Params != nil {
+		return json.Marshal([]interface{}{e.EventType, e.Params})
+	}
+	return json.Marshal([]interface{}{e.EventType})
+}
+
 type EthSubscriptionParams struct {
 	// List of topics to be matched.
 	// Optional, default: empty list

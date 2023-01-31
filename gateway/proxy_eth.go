@@ -436,7 +436,13 @@ func (gw *Node) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID)
 	return ok, nil
 }
 
-func (gw *Node) EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (ethtypes.EthSubscriptionID, error) {
+func (gw *Node) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
+	// validate params
+	_, err := jsonrpc.DecodeParams[ethtypes.EthSubscribeParams](p)
+	if err != nil {
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("decoding params: %w", err)
+	}
+
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return ethtypes.EthSubscriptionID{}, err
 	}
@@ -458,7 +464,7 @@ func (gw *Node) EthSubscribe(ctx context.Context, eventType string, params *etht
 		return ethtypes.EthSubscriptionID{}, fmt.Errorf("too many subscriptions")
 	}
 
-	sub, err := gw.target.EthSubscribe(ctx, eventType, params)
+	sub, err := gw.target.EthSubscribe(ctx, p)
 	if err != nil {
 		return ethtypes.EthSubscriptionID{}, err
 	}

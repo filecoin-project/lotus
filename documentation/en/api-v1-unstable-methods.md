@@ -2886,14 +2886,7 @@ Perms: write
 Inputs:
 ```json
 [
-  "string value",
-  {
-    "topics": [
-      [
-        "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
-      ]
-    ]
-  }
+  "Bw=="
 ]
 ```
 
