@@ -1569,7 +1569,7 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 
 		tx.Hash, err = tx.TxHash()
 		if err != nil {
-			return ethtypes.EthTx{}, err
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to calculate hash for ethTx: %w", err)
 		}
 
 		fromAddr, err := lookupEthAddress(ctx, smsg.Message.From, sa)
