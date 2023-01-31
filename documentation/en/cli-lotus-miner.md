@@ -286,7 +286,7 @@ NAME:
    lotus-miner actor set-peer-id - set the peer id of your miner
 
 USAGE:
-   lotus-miner actor set-peer-id [command options] [arguments...]
+   lotus-miner actor set-peer-id [command options] <peer id>
 
 OPTIONS:
    --gas-limit value  set gas limit (default: 0)
@@ -2273,7 +2273,7 @@ NAME:
    lotus-miner storage attach - attach local storage path
 
 USAGE:
-   lotus-miner storage attach [command options] [arguments...]
+   lotus-miner storage attach [command options] [path]
 
 DESCRIPTION:
    Storage can be attached to the miner using this command. The storage volume
@@ -2326,7 +2326,7 @@ NAME:
    lotus-miner storage redeclare - redeclare sectors in a local storage path
 
 USAGE:
-   lotus-miner storage redeclare [command options] [arguments...]
+   lotus-miner storage redeclare [command options] [path]
 
 OPTIONS:
    --all           redeclare all storage paths (default: false)

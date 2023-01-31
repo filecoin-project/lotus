@@ -55,8 +55,9 @@ stored while moving through the sealing pipeline (references as 'seal').`,
 }
 
 var storageAttachCmd = &cli.Command{
-	Name:  "attach",
-	Usage: "attach local storage path",
+	Name:      "attach",
+	Usage:     "attach local storage path",
+	ArgsUsage: "[path]",
 	Description: `Storage can be attached to the miner using this command. The storage volume
 list is stored local to the miner in $LOTUS_MINER_PATH/storage.json. We do not
 recommend manually modifying this value without further understanding of the
@@ -115,8 +116,8 @@ over time
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return xerrors.Errorf("must specify storage path to attach")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		p, err := homedir.Expand(cctx.Args().First())
@@ -192,8 +193,8 @@ var storageDetachCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return xerrors.Errorf("must specify storage path")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		p, err := homedir.Expand(cctx.Args().First())
@@ -210,8 +211,9 @@ var storageDetachCmd = &cli.Command{
 }
 
 var storageRedeclareCmd = &cli.Command{
-	Name:  "redeclare",
-	Usage: "redeclare sectors in a local storage path",
+	Name:      "redeclare",
+	Usage:     "redeclare sectors in a local storage path",
+	ArgsUsage: "[path]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "id",
@@ -233,6 +235,10 @@ var storageRedeclareCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
 
 		if cctx.IsSet("id") && cctx.Bool("all") {
 			return xerrors.Errorf("--id and --all can't be passed at the same time")
@@ -465,6 +471,10 @@ var storageFindCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
 
 		ma, err := minerApi.ActorAddress(ctx)
 		if err != nil {
