@@ -55,9 +55,10 @@ var actorCmd = &cli.Command{
 }
 
 var actorSetAddrsCmd = &cli.Command{
-	Name:    "set-addresses",
-	Aliases: []string{"set-addrs"},
-	Usage:   "set addresses that your miner can be publicly dialed on",
+	Name:      "set-addresses",
+	Aliases:   []string{"set-addrs"},
+	Usage:     "set addresses that your miner can be publicly dialed on",
+	ArgsUsage: "<multiaddrs>",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -170,8 +171,9 @@ var actorSetAddrsCmd = &cli.Command{
 }
 
 var actorSetPeeridCmd = &cli.Command{
-	Name:  "set-peer-id",
-	Usage: "set the peer id of your miner",
+	Name:      "set-peer-id",
+	Usage:     "set the peer id of your miner",
+	ArgsUsage: "<peer id>",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "gas-limit",
@@ -193,6 +195,10 @@ var actorSetPeeridCmd = &cli.Command{
 		defer acloser()
 
 		ctx := lcli.ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
 
 		pid, err := peer.Decode(cctx.Args().Get(0))
 		if err != nil {
@@ -720,13 +726,13 @@ var actorSetOwnerCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
 		if !cctx.Bool("really-do-it") {
 			fmt.Println("Pass --really-do-it to actually execute this action")
 			return nil
-		}
-
-		if cctx.NArg() != 2 {
-			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)

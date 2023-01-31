@@ -120,8 +120,8 @@ var sectorsStatusCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify sector number to get status of")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
@@ -1145,9 +1145,6 @@ var sectorsTerminateCmd = &cli.Command{
 		sectorsTerminatePendingCmd,
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("really-do-it") {
-			return xerrors.Errorf("pass --really-do-it to confirm this action")
-		}
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -1156,6 +1153,10 @@ var sectorsTerminateCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("pass --really-do-it to confirm this action")
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -1490,8 +1491,8 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
-		if cctx.NArg() < 2 {
-			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number and new state"))
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
