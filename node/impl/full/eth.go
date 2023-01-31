@@ -1909,7 +1909,7 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 			continue
 		}
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
-		key := fmt.Sprintf("topic%d", idx+1)
+		key := fmt.Sprintf("t%d", idx+1)
 		for _, v := range vals {
 			encodedVal, err := cborEncodeTopicValue(v[:])
 			if err != nil {

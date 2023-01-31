@@ -287,6 +287,9 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Add
 type FVM struct {
 	fvm *ffi.FVM
 	nv  network.Version
+
+	// returnEvents specifies whether to parse and return events when applying messages.
+	returnEvents bool
 }
 
 func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
@@ -335,10 +338,13 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil, xerrors.Errorf("failed to create FVM: %w", err)
 	}
 
-	return &FVM{
-		fvm: fvm,
-		nv:  opts.NetworkVersion,
-	}, nil
+	ret := &FVM{
+		fvm:          fvm,
+		nv:           opts.NetworkVersion,
+		returnEvents: opts.ReturnEvents,
+	}
+
+	return ret, nil
 }
 
 func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
@@ -438,10 +444,13 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil, err
 	}
 
-	return &FVM{
-		fvm: fvm,
-		nv:  opts.NetworkVersion,
-	}, nil
+	ret := &FVM{
+		fvm:          fvm,
+		nv:           opts.NetworkVersion,
+		returnEvents: opts.ReturnEvents,
+	}
+
+	return ret, nil
 }
 
 func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
@@ -493,7 +502,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		et.Error = aerr.Error()
 	}
 
-	return &ApplyRet{
+	applyRet := &ApplyRet{
 		MessageReceipt: receipt,
 		GasCosts: &GasOutputs{
 			BaseFeeBurn:        ret.BaseFeeBurn,
@@ -507,7 +516,16 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		ActorErr:       aerr,
 		ExecutionTrace: et,
 		Duration:       duration,
-	}, nil
+	}
+
+	if vm.returnEvents && len(ret.EventsBytes) > 0 {
+		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
+		}
+	}
+
+	return applyRet, nil
 }
 
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
@@ -565,6 +583,13 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		Duration:       duration,
 	}
 
+	if len(ret.EventsBytes) > 0 && vm.returnEvents {
+		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
+		}
+	}
+
 	if ret.ExitCode != 0 {
 		return applyRet, fmt.Errorf("implicit message failed with exit code: %d and error: %w", ret.ExitCode, applyRet.ActorErr)
 	}
@@ -573,7 +598,11 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 }
 
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
-	return vm.fvm.Flush()
+	root, err := vm.fvm.Flush()
+	if err != nil {
+		return root, err
+	}
+	return root, err
 }
 
 type dualExecutionFVM struct {
