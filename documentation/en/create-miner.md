@@ -2,7 +2,7 @@
 
 This document explains the code flow of the [storage miner](https://filecoin-project.github.io/specs/#systems__filecoin_mining) creation process. It describes the flow on two dimensions: at the network level, from the local node to the rest of the Filecoin network, and at the VM level, from the CLI commands to the new chain state. It assumes the reader is already familiar with the general Lotus [architecture](architecture-2.md), relying especially on the descriptions of the CLI/API interface and the VM chain state.
 
-Note we are not following the [Storage Mining](https://lotu.sh/en+mining) user documentation where the miner is created along with the owner through the faucet, but we do those in separate stages try to exercise what will be the closest code path to Mainnet, using the `createStorageMiner()` call in the CLI (when `--actor` is not provided).
+Note we are not following the [Storage Mining](https://lotu.sh/en+mining) user documentation where the miner is created along with the owner through the faucet, but we do those in separate stages to try to exercise what will be the closest code path to Mainnet, using the `createStorageMiner()` call in the CLI (when `--actor` is not provided).
 
 FIXME: Check that all the information it assumes throughout this document is actually present in the main architecture doc.
 
