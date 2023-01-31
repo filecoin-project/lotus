@@ -53,15 +53,6 @@ func buildInputFromuint64(number uint64) []byte {
 	return inputDataFromArray(binaryNumber)
 }
 
-// math.Max is weird needs float
-func max(x int, y int) int {
-	max := x
-	if y > max {
-		max = y
-	}
-	return max
-}
-
 //recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
 //before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
