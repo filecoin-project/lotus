@@ -77,16 +77,10 @@ func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
 		return EthTx{}, xerrors.Errorf("failed to recover signature: %w", err)
 	}
 
-	fromAddr, err := EthAddressFromFilecoinAddress(smsg.Message.From)
-	if err != nil {
-		return EthTx{}, xerrors.Errorf("failed to get from: %w", err)
-	}
-
 	return EthTx{
 		Nonce:                EthUint64(txArgs.Nonce),
 		ChainID:              EthUint64(txArgs.ChainID),
 		To:                   txArgs.To,
-		From:                 fromAddr,
 		Value:                EthBigInt(txArgs.Value),
 		Type:                 Eip1559TxType,
 		Gas:                  EthUint64(txArgs.GasLimit),

@@ -1571,6 +1571,13 @@ func newEthTxFromSignedMessage(ctx context.Context, smsg *types.SignedMessage, s
 		if err != nil {
 			return ethtypes.EthTx{}, err
 		}
+
+		fromAddr, err := lookupEthAddress(ctx, smsg.Message.From, sa)
+		if err != nil {
+			return ethtypes.EthTx{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
+		}
+
+		tx.From = fromAddr
 	} else if smsg.Signature.Type == crypto.SigTypeSecp256k1 { // Secp Filecoin Message
 		tx = ethTxFromNativeMessage(ctx, smsg.VMMessage(), sa)
 		tx.Hash, err = ethtypes.EthHashFromCid(smsg.Cid())
