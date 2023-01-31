@@ -1,6 +1,7 @@
 package kit
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -10,15 +11,18 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/node"
 )
 
@@ -42,6 +46,10 @@ type TestFullNode struct {
 	Pkey *Libp2p
 
 	Stop node.StopFunc
+
+	// gateway handler makes it convenient to register callbalks per topic, so we
+	// also use it for tests
+	EthSubRouter *gateway.EthSubHandler
 
 	options nodeOpts
 }
@@ -122,6 +130,50 @@ func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn
 
 func (f *TestFullNode) AssignPrivKey(pkey *Libp2p) {
 	f.Pkey = pkey
+}
+
+type SendCall struct {
+	Method abi.MethodNum
+	Params []byte
+}
+
+func (f *TestFullNode) MakeSendCall(m abi.MethodNum, params cbg.CBORMarshaler) SendCall {
+	var b bytes.Buffer
+	err := params.MarshalCBOR(&b)
+	require.NoError(f.t, err)
+	return SendCall{
+		Method: m,
+		Params: b.Bytes(),
+	}
+}
+
+func (f *TestFullNode) ExpectSend(ctx context.Context, from, to address.Address, value types.BigInt, errContains string, sc ...SendCall) *types.SignedMessage {
+	msg := &types.Message{From: from, To: to, Value: value}
+
+	if len(sc) == 1 {
+		msg.Method = sc[0].Method
+		msg.Params = sc[0].Params
+	}
+
+	_, err := f.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+	if errContains != "" {
+		require.ErrorContains(f.t, err, errContains)
+		return nil
+	}
+	require.NoError(f.t, err)
+
+	if errContains == "" {
+		m, err := f.MpoolPushMessage(ctx, msg, nil)
+		require.NoError(f.t, err)
+
+		r, err := f.StateWaitMsg(ctx, m.Cid(), 1, api.LookbackNoLimit, true)
+		require.NoError(f.t, err)
+
+		require.Equal(f.t, exitcode.Ok, r.Receipt.ExitCode)
+		return m
+	}
+
+	return nil
 }
 
 // ChainPredicate encapsulates a chain condition.

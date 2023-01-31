@@ -118,4 +118,8 @@ func (e *EthModuleDummy) EthSendRawTransaction(ctx context.Context, rawTx ethtyp
 	return ethtypes.EthHash{}, ErrModuleDisabled
 }
 
+func (e *EthModuleDummy) Web3ClientVersion(ctx context.Context) (string, error) {
+	return "", ErrModuleDisabled
+}
+
 var _ EthModuleAPI = &EthModuleDummy{}

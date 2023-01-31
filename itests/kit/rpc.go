@@ -13,6 +13,8 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/node"
@@ -52,7 +54,12 @@ func fullRpc(t *testing.T, f *TestFullNode) (*TestFullNode, Closer) {
 	fmt.Printf("FULLNODE RPC ENV FOR CLI DEBUGGING `export FULLNODE_API_INFO=%s`\n", "ws://"+srv.Listener.Addr().String())
 	sendItestdNotif("FULLNODE_API_INFO", t.Name(), "ws://"+srv.Listener.Addr().String())
 
-	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
+	rpcOpts := []jsonrpc.Option{
+		jsonrpc.WithClientHandler("Filecoin", f.EthSubRouter),
+		jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"),
+	}
+
+	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil, rpcOpts...)
 	require.NoError(t, err)
 	f.ListenAddr, f.ListenURL, f.FullNode = maddr, srv.URL, cl
 
