@@ -83,6 +83,11 @@ func TestValueTransferValidSignature(t *testing.T) {
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	ethTx, err := client.EthGetTransactionByHash(ctx, &hash)
+	require.Nil(t, err)
+	require.EqualValues(t, ethAddr, ethTx.From)
+
 }
 
 func TestLegacyTransaction(t *testing.T) {

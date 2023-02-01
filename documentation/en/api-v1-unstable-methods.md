@@ -2342,7 +2342,7 @@ Inputs:
 Response:
 ```json
 {
-  "oldestBlock": "0x5",
+  "oldestBlock": 42,
   "baseFeePerGas": [
     "0x0"
   ],
@@ -2407,7 +2407,7 @@ Response:
   "gasLimit": "0x5",
   "gasUsed": "0x5",
   "timestamp": "0x5",
-  "extraData": "0x07",
+  "extraData": "Ynl0ZSBhcnJheQ==",
   "mixHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
   "nonce": "0x0707070707070707",
   "baseFeePerGas": "0x0",
@@ -2451,7 +2451,7 @@ Response:
   "gasLimit": "0x5",
   "gasUsed": "0x5",
   "timestamp": "0x5",
-  "extraData": "0x07",
+  "extraData": "Ynl0ZSBhcnJheQ==",
   "mixHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
   "nonce": "0x0707070707070707",
   "baseFeePerGas": "0x0",
@@ -2886,24 +2886,11 @@ Perms: write
 Inputs:
 ```json
 [
-  "string value",
-  {
-    "topics": [
-      [
-        "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
-      ]
-    ]
-  }
+  "Bw=="
 ]
 ```
 
-Response:
-```json
-{
-  "subscription": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
-  "result": {}
-}
-```
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthUninstallFilter
 Uninstalls a filter with given id.

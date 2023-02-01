@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -19,6 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -27,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
+	res "github.com/filecoin-project/lotus/lib/result"
 )
 
 func TestEthNewPendingTransactionFilter(t *testing.T) {
@@ -389,15 +392,15 @@ func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
 	t.Logf("actor ID address is %s", idAddr)
 
 	// install filter
-	respCh, err := client.EthSubscribe(ctx, "logs", nil)
+	subId, err := client.EthSubscribe(ctx, res.Wrap[jsonrpc.RawParams](json.Marshal(ethtypes.EthSubscribeParams{EventType: "logs"})).Assert(require.NoError))
 	require.NoError(err)
 
-	subResponses := []ethtypes.EthSubscriptionResponse{}
-	go func() {
-		for resp := range respCh {
-			subResponses = append(subResponses, resp)
-		}
-	}()
+	var subResponses []ethtypes.EthSubscriptionResponse
+	err = client.EthSubRouter.AddSub(ctx, subId, func(ctx context.Context, resp *ethtypes.EthSubscriptionResponse) error {
+		subResponses = append(subResponses, *resp)
+		return nil
+	})
+	require.NoError(err)
 
 	const iterations = 10
 	ethContractAddr, messages := invokeLogFourData(t, client, iterations)
@@ -518,50 +521,42 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 	testResponses := map[string]chan ethtypes.EthSubscriptionResponse{}
 
-	// quit is used to signal that we're ready to start testing collected results
-	quit := make(chan struct{})
-
 	// Create all the filters
 	for _, tc := range testCases {
-
 		// subscribe to topics in filter
-		subCh, err := client.EthSubscribe(ctx, "logs", &ethtypes.EthSubscriptionParams{Topics: tc.spec.Topics})
+		subParam, err := json.Marshal(ethtypes.EthSubscribeParams{
+			EventType: "logs",
+			Params:    &ethtypes.EthSubscriptionParams{Topics: tc.spec.Topics},
+		})
+		require.NoError(err)
+
+		subId, err := client.EthSubscribe(ctx, subParam)
 		require.NoError(err)
 
 		responseCh := make(chan ethtypes.EthSubscriptionResponse, len(invocations))
 		testResponses[tc.name] = responseCh
 
-		// start a goroutine to forward responses from subscription to a buffered channel with guaranteed capacity
-		go func(subCh <-chan ethtypes.EthSubscriptionResponse, responseCh chan<- ethtypes.EthSubscriptionResponse, quit chan struct{}) {
-			defer func() {
-				close(responseCh)
-			}()
-			for {
-				select {
-				case resp := <-subCh:
-					responseCh <- resp
-				case <-quit:
-					return
-				case <-ctx.Done():
-					return
-				}
-			}
-		}(subCh, responseCh, quit)
-
+		err = client.EthSubRouter.AddSub(ctx, subId, func(ctx context.Context, resp *ethtypes.EthSubscriptionResponse) error {
+			responseCh <- *resp
+			return nil
+		})
+		require.NoError(err)
 	}
 
 	// Perform all the invocations
 	messages := invokeAndWaitUntilAllOnChain(t, client, invocations)
 
-	// wait a little for subscriptions to gather results and then tell all the goroutines to stop
+	// wait a little for subscriptions to gather results
 	time.Sleep(blockTime * 6)
-	close(quit)
 
 	for _, tc := range testCases {
 		tc := tc // appease the lint despot
 		t.Run(tc.name, func(t *testing.T) {
 			responseCh, ok := testResponses[tc.name]
 			require.True(ok)
+
+			// don't expect any more responses
+			close(responseCh)
 
 			var elogs []*ethtypes.EthLog
 			for resp := range responseCh {
@@ -1055,7 +1050,8 @@ func invokeAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, invoca
 				}
 			}
 		}
-		ret := client.EVM().InvokeSolidity(ctx, inv.Sender, inv.Target, inv.Selector, inv.Data)
+		ret, err := client.EVM().InvokeSolidity(ctx, inv.Sender, inv.Target, inv.Selector, inv.Data)
+		require.NoError(err)
 		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 
 		invocationMap[ret.Message] = inv

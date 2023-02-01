@@ -75,7 +75,7 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 	m := mux.NewRouter()
 
 	serveRpc := func(path string, hnd interface{}) {
-		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithServerErrors(api.RPCErrors))...)
+		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithReverseClient[api.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(api.RPCErrors))...)
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
@@ -94,8 +94,9 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		fnapi = api.PermissionedFullAPI(fnapi)
 	}
 
+	var v0 v0api.FullNode = &(struct{ v0api.FullNode }{&v0api.WrapperV1Full{FullNode: fnapi}})
 	serveRpc("/rpc/v1", fnapi)
-	serveRpc("/rpc/v0", &v0api.WrapperV1Full{FullNode: fnapi})
+	serveRpc("/rpc/v0", v0)
 
 	// Import handler
 	handleImportFunc := handleImport(a.(*impl.FullNodeAPI))
