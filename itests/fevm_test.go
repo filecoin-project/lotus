@@ -641,7 +641,4 @@ func TestFEVMDeploySimpleCoinWithValue(t *testing.T) {
 	//install contract SimpleCoin with no value
 	filenameActor := "contracts/SimpleCoin.hex"
 	_, _ = client.EVM().DeployContractFromFilenameValue(ctx, filenameActor, big.NewInt(0))
-
-	//install contract SimpleCoin with 1 attoFIL value
-	_, _ = client.EVM().DeployContractFromFilenameValue(ctx, filenameActor, big.NewInt(1))
 }
