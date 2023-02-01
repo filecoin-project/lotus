@@ -35,10 +35,10 @@ func NewFullNodeRPCV0(ctx context.Context, addr string, requestHeader http.Heade
 }
 
 // NewFullNodeRPCV1 creates a new http jsonrpc client.
-func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Header) (api.FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNodeRPCV1(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (api.FullNode, jsonrpc.ClientCloser, error) {
 	var res v1api.FullNodeStruct
 	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin",
-		api.GetInternalStructs(&res), requestHeader, jsonrpc.WithErrors(api.RPCErrors))
+		api.GetInternalStructs(&res), requestHeader, append([]jsonrpc.Option{jsonrpc.WithErrors(api.RPCErrors)}, opts...)...)
 
 	return &res, closer, err
 }
