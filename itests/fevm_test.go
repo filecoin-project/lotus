@@ -54,8 +54,8 @@ func buildInputFromuint64(number uint64) []byte {
 	return inputDataFromArray(binaryNumber)
 }
 
-//recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
-//before running out of gas
+// recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
+// before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
 	expectedIterationsBeforeFailing := int(229)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
