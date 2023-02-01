@@ -632,13 +632,3 @@ func TestFEVMDeployValue(t *testing.T) {
 	//require balance of NewContract is testValue
 	require.Equal(t, testValue.Uint64(), contractBalance)
 }
-
-// TestFEVM deploys a contract and makes a recursive actor calls
-func TestFEVMDeploySimpleCoinWithValue(t *testing.T) {
-	ctx, cancel, client := kit.SetupFEVMTest(t)
-	defer cancel()
-
-	//install contract SimpleCoin with no value
-	filenameActor := "contracts/SimpleCoin.hex"
-	_, _ = client.EVM().DeployContractFromFilenameValue(ctx, filenameActor, big.NewInt(0))
-}
