@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -134,6 +135,12 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 		return nil, err
 	}
 
+	if !wait.Receipt.ExitCode.IsSuccess() {
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		e.t.Log(result.Error)
+	}
+
 	return wait, nil
 }
 
@@ -251,7 +258,9 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, wait, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, wait, fmt.Errorf("contract execution failed - %v", wait.Receipt.ExitCode)
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		return nil, wait, errors.New(result.Error)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {
