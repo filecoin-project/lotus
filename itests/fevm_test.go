@@ -607,12 +607,12 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=251,r=171-fails", testN(251, 171, exitcode.ExitCode(33)))
 }
 
-// TestFEVM deploys a contract and makes a recursive actor calls
+// TestFEVM deploys a contract while sending value to it
 func TestFEVMDeployValue(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//testValue is the amoutn sent when the contract is created
+	//testValue is the amount sent when the contract is created
 	//at the end we check that the new contract has a balance of testValue
 	testValue := big.NewInt(20)
 
