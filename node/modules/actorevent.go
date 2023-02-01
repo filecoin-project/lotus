@@ -40,6 +40,7 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 		ee := &full.EthEvent{
 			Chain:                cs,
 			MaxFilterHeightRange: abi.ChainEpoch(cfg.Events.MaxFilterHeightRange),
+			SubscribtionCtx:      ctx,
 		}
 
 		if !cfg.EnableEthRPC || cfg.Events.DisableRealTimeFilterAPI {
