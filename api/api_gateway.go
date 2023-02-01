@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -102,6 +103,6 @@ type Gateway interface {
 	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error)
+	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
 }
