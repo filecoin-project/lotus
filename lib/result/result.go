@@ -30,6 +30,12 @@ func Wrap[T any](value T, err error) Result[T] {
 	}
 }
 
-func (r *Result[T]) Unwrap() (T, error) {
+func (r Result[T]) Unwrap() (T, error) {
 	return r.Value, r.Error
+}
+
+func (r Result[T]) Assert(noErrFn func(err error, msgAndArgs ...interface{})) T {
+	noErrFn(r.Error)
+
+	return r.Value
 }
