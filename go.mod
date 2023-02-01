@@ -62,7 +62,7 @@ require (
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/gdamore/tcell/v2 v2.2.0
 	github.com/go-kit/kit v0.12.0
-	github.com/go-openapi/spec v0.20.8
+	github.com/go-openapi/spec v0.19.11
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -171,6 +171,8 @@ require (
 
 require (
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
+	github.com/PuerkitoBio/purell v1.1.1 // indirect
+	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
 	github.com/akavel/rsrc v0.8.0 // indirect
@@ -212,9 +214,9 @@ require (
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
-	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.20.0 // indirect
-	github.com/go-openapi/swag v0.21.1 // indirect
+	github.com/go-openapi/jsonpointer v0.19.3 // indirect
+	github.com/go-openapi/jsonreference v0.19.4 // indirect
+	github.com/go-openapi/swag v0.19.11 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

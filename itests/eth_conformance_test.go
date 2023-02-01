@@ -498,7 +498,8 @@ func waitForMessageWithEvents(ctx context.Context, t *testing.T, client *kit.Tes
 	}
 
 	// send a message that exercises event logs
-	ret := client.EVM().InvokeSolidity(ctx, sender, target, kit.EventMatrixContract.Fn["logEventThreeIndexedWithData"], inputData)
+	ret, err := client.EVM().InvokeSolidity(ctx, sender, target, kit.EventMatrixContract.Fn["logEventThreeIndexedWithData"], inputData)
+	require.NoError(t, err)
 	require.True(t, ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 
 	msgHash, err := client.EthGetTransactionHashByCid(ctx, ret.Message)
