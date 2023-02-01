@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/node"
 )
 
@@ -45,6 +46,10 @@ type TestFullNode struct {
 	Pkey *Libp2p
 
 	Stop node.StopFunc
+
+	// gateway handler makes it convenient to register callbalks per topic, so we
+	// also use it for tests
+	EthSubRouter *gateway.EthSubHandler
 
 	options nodeOpts
 }
