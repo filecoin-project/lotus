@@ -134,13 +134,11 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	if err != nil {
 		return nil, err
 	}
-
 	if !wait.Receipt.ExitCode.IsSuccess() {
 		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
 		require.NoError(e.t, err)
 		e.t.Log(result.Error)
 	}
-
 	return wait, nil
 }
 
