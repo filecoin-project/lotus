@@ -4,7 +4,6 @@ package itests
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -18,9 +17,8 @@ func TestEthFilterAPIDisabledViaConfig(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	// don't pass kit.RealTimeFilterAPI() so ActorEvent.EnableRealTimeFilterAPI is false
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
-	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+	// pass kit.DisableEthRPC() so RealTimeFilterAPI will not be enabled
+	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
 
 	_, err := client.EthNewPendingTransactionFilter(ctx)
 	require.NotNil(t, err)
