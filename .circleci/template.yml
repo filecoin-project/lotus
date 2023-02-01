@@ -426,6 +426,10 @@ jobs:
     steps:
       - setup_remote_docker
       - checkout
+      - git_fetch_all_tags
+      - run: git submodule sync
+      - run: git submodule update --init
+
       - docker/check:
           docker-username: DOCKERHUB_USERNAME
           docker-password: DOCKERHUB_PASSWORD
@@ -473,7 +477,7 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
-                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
                         if [["[[ ! -z $CIRCLE_SHA ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
                           docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>

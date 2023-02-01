@@ -93,6 +93,48 @@ func TestEthHash(t *testing.T) {
 		h1, err := EthHashFromCid(c)
 		require.Nil(t, err)
 		require.Equal(t, h, h1)
+
+		jm, err := json.Marshal(h)
+		require.NoError(t, err)
+		require.Equal(t, hash, string(jm))
+	}
+}
+
+func TestEthFilterID(t *testing.T) {
+	testcases := []string{
+		`"0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"`,
+		`"0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"`,
+	}
+
+	for _, hash := range testcases {
+		var h EthFilterID
+		err := h.UnmarshalJSON([]byte(hash))
+
+		require.Nil(t, err)
+		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
+
+		jm, err := json.Marshal(h)
+		require.NoError(t, err)
+		require.Equal(t, hash, string(jm))
+	}
+}
+
+func TestEthSubscriptionID(t *testing.T) {
+	testcases := []string{
+		`"0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"`,
+		`"0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"`,
+	}
+
+	for _, hash := range testcases {
+		var h EthSubscriptionID
+		err := h.UnmarshalJSON([]byte(hash))
+
+		require.Nil(t, err)
+		require.Equal(t, h.String(), strings.Replace(hash, `"`, "", -1))
+
+		jm, err := json.Marshal(h)
+		require.NoError(t, err)
+		require.Equal(t, hash, string(jm))
 	}
 }
 
