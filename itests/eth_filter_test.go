@@ -1099,7 +1099,8 @@ func invokeAndWaitUntilAllOnChain(t *testing.T, client *kit.TestFullNode, invoca
 				}
 			}
 		}
-		ret := client.EVM().InvokeSolidity(ctx, inv.Sender, inv.Target, inv.Selector, inv.Data)
+		ret, err := client.EVM().InvokeSolidity(ctx, inv.Sender, inv.Target, inv.Selector, inv.Data)
+		require.NoError(err)
 		require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 
 		invocationMap[ret.Message] = inv
