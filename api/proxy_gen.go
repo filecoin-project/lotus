@@ -680,6 +680,8 @@ type GatewayMethods struct {
 
 	EthGetLogs func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) ``
 
+	EthGetMessageCidByTransactionHash func(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) ``
+
 	EthGetStorageAt func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) ``
 
 	EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) ``
@@ -689,6 +691,8 @@ type GatewayMethods struct {
 	EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) ``
 
 	EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) ``
+
+	EthGetTransactionHashByCid func(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) ``
 
 	EthGetTransactionReceipt func(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) ``
 
@@ -761,6 +765,8 @@ type GatewayMethods struct {
 	Version func(p0 context.Context) (APIVersion, error) ``
 
 	WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
+
+	Web3ClientVersion func(p0 context.Context) (string, error) ``
 }
 
 type GatewayStub struct {
@@ -4333,6 +4339,17 @@ func (s *GatewayStub) EthGetLogs(p0 context.Context, p1 *ethtypes.EthFilterSpec)
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) {
+	if s.Internal.EthGetMessageCidByTransactionHash == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetMessageCidByTransactionHash(p0, p1)
+}
+
+func (s *GatewayStub) EthGetMessageCidByTransactionHash(p0 context.Context, p1 *ethtypes.EthHash) (*cid.Cid, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *GatewayStruct) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) {
 	if s.Internal.EthGetStorageAt == nil {
 		return *new(ethtypes.EthBytes), ErrNotSupported
@@ -4386,6 +4403,17 @@ func (s *GatewayStruct) EthGetTransactionCount(p0 context.Context, p1 ethtypes.E
 
 func (s *GatewayStub) EthGetTransactionCount(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) {
 	return *new(ethtypes.EthUint64), ErrNotSupported
+}
+
+func (s *GatewayStruct) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {
+	if s.Internal.EthGetTransactionHashByCid == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.EthGetTransactionHashByCid(p0, p1)
+}
+
+func (s *GatewayStub) EthGetTransactionHashByCid(p0 context.Context, p1 cid.Cid) (*ethtypes.EthHash, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) EthGetTransactionReceipt(p0 context.Context, p1 ethtypes.EthHash) (*EthTxReceipt, error) {
@@ -4782,6 +4810,17 @@ func (s *GatewayStruct) WalletBalance(p0 context.Context, p1 address.Address) (t
 
 func (s *GatewayStub) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *GatewayStruct) Web3ClientVersion(p0 context.Context) (string, error) {
+	if s.Internal.Web3ClientVersion == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.Web3ClientVersion(p0)
+}
+
+func (s *GatewayStub) Web3ClientVersion(p0 context.Context) (string, error) {
+	return "", ErrNotSupported
 }
 
 func (s *NetStruct) ID(p0 context.Context) (peer.ID, error) {
