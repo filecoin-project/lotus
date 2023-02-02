@@ -261,10 +261,14 @@ func ConfigFullNode(c interface{}) Option {
 
 		// in lite-mode Eth api is provided by gateway
 		ApplyIf(isFullNode,
-			Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm)),
-
-			If(cfg.Fevm.EnableEthRPC, Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm))),
-			If(!cfg.Fevm.EnableEthRPC, Override(new(full.EthModuleAPI), &full.EthModuleDummy{})),
+			If(cfg.Fevm.EnableEthRPC,
+				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
+				Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm)),
+			),
+			If(!cfg.Fevm.EnableEthRPC,
+				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
+				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+			),
 		),
 	)
 }
