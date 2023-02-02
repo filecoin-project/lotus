@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -1153,12 +1154,12 @@ var ChainExportRangeCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "head",
-			Usage: "specify tipset to start the export from",
+			Usage: "specify tipset to start the export from (higher epoch)",
 			Value: "@head",
 		},
 		&cli.StringFlag{
 			Name:  "tail",
-			Usage: "specify tipset to end the export at",
+			Usage: "specify tipset to end the export at (lower epoch)",
 			Value: "@tail",
 		},
 		&cli.BoolFlag{
@@ -1176,7 +1177,7 @@ var ChainExportRangeCmd = &cli.Command{
 			Usage: "specify if stateroots should be include",
 			Value: false,
 		},
-		&cli.Int64Flag{
+		&cli.IntFlag{
 			Name:  "workers",
 			Usage: "specify the number of workers",
 			Value: 1,
@@ -1234,10 +1235,14 @@ var ChainExportRangeCmd = &cli.Command{
 			}
 		}
 
+		if head.Height() < tail.Height() {
+			return errors.New("Height of --head tipset must be greater or equal to the height of the --tail tipset")
+		}
+
 		if cctx.Bool("internal") {
-			if err := api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), &lapi.ChainExportConfig{
+			if err := api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
 				WriteBufferSize:   cctx.Int("write-buffer"),
-				Workers:           cctx.Int64("workers"),
+				NumWorkers:        cctx.Int("workers"),
 				CacheSize:         cctx.Int("cache-size"),
 				IncludeMessages:   cctx.Bool("messages"),
 				IncludeReceipts:   cctx.Bool("receipts"),
@@ -1248,9 +1253,9 @@ var ChainExportRangeCmd = &cli.Command{
 			return nil
 		}
 
-		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), &lapi.ChainExportConfig{
+		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
 			WriteBufferSize:   cctx.Int("write-buffer"),
-			Workers:           cctx.Int64("workers"),
+			NumWorkers:        cctx.Int("workers"),
 			CacheSize:         cctx.Int("cache-size"),
 			IncludeMessages:   cctx.Bool("messages"),
 			IncludeReceipts:   cctx.Bool("receipts"),

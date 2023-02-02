@@ -399,9 +399,10 @@ func (m *MsgUuidMapType) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// ChainExportConfig holds configuration for chain ranged exports.
 type ChainExportConfig struct {
 	WriteBufferSize   int
-	Workers           int64
+	NumWorkers        int
 	CacheSize         int
 	IncludeMessages   bool
 	IncludeReceipts   bool

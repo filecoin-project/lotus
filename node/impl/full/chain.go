@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -592,7 +593,7 @@ func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.M
 	return cm.VMMessage(), nil
 }
 
-func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg *api.ChainExportConfig) error {
+func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg api.ChainExportConfig) error {
 	headTs, err := a.Chain.GetTipSetFromKey(ctx, head)
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", head, err)
@@ -601,10 +602,18 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", tail, err)
 	}
-	f, err := os.Create(fmt.Sprintf("./snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix()))
+	fileName := fmt.Sprintf("./snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix())
+	absFileName, err := filepath.Abs(fileName)
 	if err != nil {
 		return err
 	}
+
+	f, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+
+	log.Infow("Exporting chain range", "path", absFileName)
 	// buffer writes to the chain export file.
 	bw := bufio.NewWriterSize(f, cfg.WriteBufferSize)
 
@@ -617,14 +626,20 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 		}
 	}()
 
-	if err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, bw); err != nil {
+	if err := a.Chain.ExportRange(ctx,
+		bw,
+		headTs, tailTs,
+		cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots,
+		cfg.NumWorkers, cfg.CacheSize,
+	); err != nil {
 		return fmt.Errorf("exporting chain range: %w", err)
 	}
 
+	// FIXME: return progress.
 	return nil
 }
 
-func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg *api.ChainExportConfig) (<-chan []byte, error) {
+func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg api.ChainExportConfig) (<-chan []byte, error) {
 	headTs, err := a.Chain.GetTipSetFromKey(ctx, head)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", head, err)
@@ -637,8 +652,14 @@ func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetK
 	out := make(chan []byte)
 	go func() {
 		bw := bufio.NewWriterSize(w, cfg.WriteBufferSize)
-
-		err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, bw)
+		err := a.Chain.ExportRange(
+			ctx,
+			bw,
+			headTs,
+			tailTs,
+			cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots,
+			cfg.NumWorkers, cfg.CacheSize,
+		)
 		bw.Flush()            //nolint:errcheck // it is a write to a pipe
 		w.CloseWithError(err) //nolint:errcheck // it is a pipe
 	}()
