@@ -1148,12 +1148,14 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethty
 		}
 
 		var addresses []address.Address
-		for _, ea := range params.Params.Address {
-			a, err := ea.ToFilecoinAddress()
-			if err != nil {
-				return ethtypes.EthSubscriptionID{}, xerrors.Errorf("invalid address %x", ea)
+		if params.Params != nil {
+			for _, ea := range params.Params.Address {
+				a, err := ea.ToFilecoinAddress()
+				if err != nil {
+					return ethtypes.EthSubscriptionID{}, xerrors.Errorf("invalid address %x", ea)
+				}
+				addresses = append(addresses, a)
 			}
-			addresses = append(addresses, a)
 		}
 
 		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keys)
