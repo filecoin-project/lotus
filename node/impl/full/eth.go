@@ -1147,7 +1147,16 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethty
 			}
 		}
 
-		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
+		var addresses []address.Address
+		for _, ea := range params.Params.Address {
+			a, err := ea.ToFilecoinAddress()
+			if err != nil {
+				return ethtypes.EthSubscriptionID{}, xerrors.Errorf("invalid address %x", ea)
+			}
+			addresses = append(addresses, a)
+		}
+
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keys)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)

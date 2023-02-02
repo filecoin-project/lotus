@@ -660,6 +660,12 @@ type EthSubscriptionParams struct {
 	// List of topics to be matched.
 	// Optional, default: empty list
 	Topics EthTopicSpec `json:"topics,omitempty"`
+
+	// Actor address or a list of addresses from which event logs should originate.
+	// Optional, default nil.
+	// The JSON decoding must treat a string as equivalent to an array with one value, for example
+	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
+	Address EthAddressList `json:"address"`
 }
 
 type EthSubscriptionResponse struct {

@@ -52,7 +52,7 @@ func TestEthFilterAPIDisabledViaConfig(t *testing.T) {
 	require.NotNil(t, err)
 	require.Equal(t, err.Error(), api.ErrNotSupported.Error())
 
-	_, err = client.EthSubscribe(ctx, "newHeads", nil)
+	_, err = client.EthSubscribe(ctx, []byte{})
 	require.NotNil(t, err)
 	require.Equal(t, err.Error(), api.ErrNotSupported.Error())
 
