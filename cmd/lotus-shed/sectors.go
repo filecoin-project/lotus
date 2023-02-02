@@ -49,6 +49,7 @@ var sectorsCmd = &cli.Command{
 		visAllocatedSectorsCmd,
 		dumpRLESectorCmd,
 		sectorReadCmd,
+		sectorDeleteCmd,
 	},
 }
 
@@ -682,6 +683,90 @@ fr32 padding is removed from the output.`,
 	},
 }
 
+var sectorDeleteCmd = &cli.Command{
+	Name:  "delete",
+	Usage: "delete a sector file from sector storage",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "really-do-it",
+		},
+	},
+	ArgsUsage: "[sector num] [file type]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 2 {
+			return xerrors.Errorf("must pass sectornum/filetype")
+		}
+
+		sectorNum, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing sector number: %w", err)
+		}
+
+		var ft storiface.SectorFileType
+		switch cctx.Args().Get(1) {
+		case "cache":
+			ft = storiface.FTCache
+		case "sealed":
+			ft = storiface.FTSealed
+		case "unsealed":
+			ft = storiface.FTUnsealed
+		case "update-cache":
+			ft = storiface.FTUpdateCache
+		case "update":
+			ft = storiface.FTUpdate
+		default:
+			return xerrors.Errorf("invalid file type")
+		}
+
+		ctx := lcli.ReqContext(cctx)
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		maddr, err := api.ActorAddress(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting miner actor address: %w", err)
+		}
+
+		mid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return xerrors.Errorf("getting miner id: %w", err)
+		}
+
+		sid := abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: abi.SectorNumber(sectorNum),
+		}
+
+		// get remote store
+		sminfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+		if err != nil {
+			return xerrors.Errorf("could not get api info: %w", err)
+		}
+
+		localStore, err := paths.NewLocal(ctx, &emptyLocalStorage{}, api, []string{})
+		if err != nil {
+			return err
+		}
+
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("pass --really-do-it to actually perform the deletion")
+		}
+
+		remote := paths.NewRemote(localStore, api, sminfo.AuthHeader(), 10,
+			&paths.DefaultPartialFileHandler{})
+
+		err = remote.Remove(ctx, sid, ft, true, nil)
+		if err != nil {
+			return xerrors.Errorf("removing sector: %w", err)
+		}
+
+		return nil
+	},
+}
+
 type emptyLocalStorage struct {
 }
 
@@ -694,7 +779,6 @@ func (e *emptyLocalStorage) SetStorage(f func(*storiface.StorageConfig)) error {
 }
 
 func (e *emptyLocalStorage) Stat(path string) (fsutil.FsStat, error) {
-	//TODO implement me
 	panic("don't call")
 }
 
