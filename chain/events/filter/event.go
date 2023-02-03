@@ -20,7 +20,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const indexed uint8 = 0x01
+func isIndexedValue(b uint8) bool {
+	// currently we mark the full entry as indexed if either the key
+	// or the value are indexed; in the future we will need finer-grained
+	// management of indices
+	return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
+}
 
 type EventFilter struct {
 	id         types.FilterID
@@ -100,18 +105,18 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				continue
 			}
 
-			decodedEntries := make([]types.EventEntry, len(ev.Entries))
+			entries := make([]types.EventEntry, len(ev.Entries))
 			for i, entry := range ev.Entries {
-				decodedEntries[i] = types.EventEntry{
+				entries[i] = types.EventEntry{
 					Flags: entry.Flags,
 					Key:   entry.Key,
-					Value: decodeLogBytes(entry.Value),
+					Value: entry.Value,
 				}
 			}
 
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Entries:     decodedEntries,
+				Entries:     entries,
 				EmitterAddr: addr,
 				EventIdx:    evIdx,
 				Reverted:    revert,
@@ -209,7 +214,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 	matched := map[string]bool{}
 	for _, ee := range ees {
 		// Skip an entry that is not indexable
-		if ee.Flags&indexed != indexed {
+		if !isIndexedValue(ee.Flags) {
 			continue
 		}
 
@@ -221,7 +226,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 		}
 
 		wantlist, ok := f.keys[keyname]
-		if !ok {
+		if !ok || len(wantlist) == 0 {
 			continue
 		}
 

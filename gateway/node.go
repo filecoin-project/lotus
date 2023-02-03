@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
@@ -93,6 +94,8 @@ type TargetAPI interface {
 	EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthHash, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxInfo bool) (ethtypes.EthBlock, error)
 	EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error)
+	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)
+	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)
 	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error)
 	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error)
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error)
@@ -117,14 +120,16 @@ type TargetAPI interface {
 	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error)
 	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error)
-	EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error)
+	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
+	Web3ClientVersion(ctx context.Context) (string, error)
 }
 
 var _ TargetAPI = *new(api.FullNode) // gateway depends on latest
 
 type Node struct {
 	target                 TargetAPI
+	subHnd                 *EthSubHandler
 	lookbackCap            time.Duration
 	stateWaitLookbackLimit abi.ChainEpoch
 	rateLimiter            *rate.Limiter
@@ -141,7 +146,7 @@ var (
 )
 
 // NewNode creates a new gateway node.
-func NewNode(api TargetAPI, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch, rateLimit int64, rateLimitTimeout time.Duration) *Node {
+func NewNode(api TargetAPI, sHnd *EthSubHandler, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch, rateLimit int64, rateLimitTimeout time.Duration) *Node {
 	var limit rate.Limit
 	if rateLimit == 0 {
 		limit = rate.Inf
@@ -150,6 +155,7 @@ func NewNode(api TargetAPI, lookbackCap time.Duration, stateWaitLookbackLimit ab
 	}
 	return &Node{
 		target:                 api,
+		subHnd:                 sHnd,
 		lookbackCap:            lookbackCap,
 		stateWaitLookbackLimit: stateWaitLookbackLimit,
 		rateLimiter:            rate.NewLimiter(limit, stateRateLimitTokens),

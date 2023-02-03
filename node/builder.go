@@ -127,6 +127,8 @@ const (
 
 	SetApiEndpointKey
 
+	StoreEventsKey
+
 	_nInvokes // keep this last
 )
 

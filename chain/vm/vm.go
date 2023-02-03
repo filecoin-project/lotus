@@ -236,6 +236,8 @@ type VMOpts struct {
 	LookbackState  LookbackStateGetter
 	TipSetGetter   TipSetGetter
 	Tracing        bool
+	// ReturnEvents decodes and returns emitted events.
+	ReturnEvents bool
 }
 
 func NewLegacyVM(ctx context.Context, opts *VMOpts) (*LegacyVM, error) {
@@ -282,6 +284,7 @@ type ApplyRet struct {
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
 	GasCosts       *GasOutputs
+	Events         []types.Event
 }
 
 func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtime,
