@@ -761,7 +761,7 @@ func getSectorsFromFile(filePath string) ([]abi.SectorNumber, error) {
 
 func SectorNumsToBitfield(sectors []abi.SectorNumber) bitfield.BitField {
 	var numbers []uint64
-	for sector := range sectors {
+	for _, sector := range sectors {
 		numbers = append(numbers, uint64(sector))
 	}
 
