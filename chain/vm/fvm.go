@@ -598,11 +598,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 }
 
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
-	root, err := vm.fvm.Flush()
-	if err != nil {
-		return root, err
-	}
-	return root, err
+	return vm.fvm.Flush()
 }
 
 type dualExecutionFVM struct {
