@@ -555,7 +555,7 @@ func TestFEVMRecursiveFuncCall(t *testing.T) {
 	t.Run("n=20", testN(20, exitcode.Ok))
 	t.Run("n=200", testN(200, exitcode.Ok))
 	t.Run("n=507", testN(507, exitcode.Ok))
-	t.Run("n=508", testN(508, exitcode.ExitCode(23))) // 23 means stack overflow
+	t.Run("n=508", testN(508, exitcode.ExitCode(37))) // 37 means stack overflow
 }
 
 // TestFEVMRecursiveActorCall deploys a contract and makes a recursive actor calls
@@ -584,7 +584,7 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=1", testN(200, 1, exitcode.Ok))
 	t.Run("n=251,r=1", testN(251, 1, exitcode.Ok))
 
-	t.Run("n=252,r=1-fails", testN(252, 1, exitcode.ExitCode(23))) // 23 means stack overflow
+	t.Run("n=252,r=1-fails", testN(252, 1, exitcode.ExitCode(37))) // 37 means stack overflow
 
 	t.Run("n=0,r=10", testN(0, 10, exitcode.Ok))
 	t.Run("n=1,r=10", testN(1, 10, exitcode.Ok))
@@ -592,7 +592,7 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=10", testN(200, 10, exitcode.Ok))
 	t.Run("n=251,r=10", testN(251, 10, exitcode.Ok))
 
-	t.Run("n=252,r=10-fails", testN(252, 10, exitcode.ExitCode(23)))
+	t.Run("n=252,r=10-fails", testN(252, 10, exitcode.ExitCode(37)))
 
 	t.Run("n=0,r=32", testN(0, 32, exitcode.Ok))
 	t.Run("n=1,r=32", testN(1, 32, exitcode.Ok))
@@ -601,8 +601,8 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
 
 	t.Run("n=0,r=254", testN(0, 254, exitcode.Ok))
-	t.Run("n=251,r=170", testN(251, 170, exitcode.Ok))
+	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
 
-	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
-	t.Run("n=251,r=171-fails", testN(251, 171, exitcode.ExitCode(33)))
+	t.Run("n=0,r=256-fails", testN(0, 256, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }

@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	EthTopic1 = "topic1"
-	EthTopic2 = "topic2"
-	EthTopic3 = "topic3"
-	EthTopic4 = "topic4"
+	EthTopic1 = "t1"
+	EthTopic2 = "t2"
+	EthTopic3 = "t3"
+	EthTopic4 = "t4"
 )
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
