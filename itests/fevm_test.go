@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -56,7 +57,7 @@ func buildInputFromuint64(number uint64) []byte {
 // recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
 // before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	expectedIterationsBeforeFailing := int(229)
+	expectedIterationsBeforeFailing := int(228)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
@@ -122,7 +123,7 @@ func TestFEVMRecursiveFail(t *testing.T) {
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
 			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
 			require.Error(t, err)
-			require.Equal(t, exitcode.ExitCode(23), wait.Receipt.ExitCode)
+			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
 		})
 	}
 }
@@ -149,8 +150,8 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMBasic does a basic fevm contract installation and invocation
-// recursive delegate call succeeds up to 238 times
+// TestFEVMRecursiveDelegateCall tests the maximum delegatecall recursion depth. It currently
+// succeeds succeeds up to 228 times.
 func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -158,11 +159,11 @@ func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
 
-	//success with 238 or fewer calls
-	for i := uint64(1); i <= 238; i += 30 {
+	//success with 228 or fewer calls
+	for i := uint64(1); i <= 228; i += 30 {
 		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
 	}
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(238))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(228))
 
 	for i := uint64(239); i <= 800; i += 40 {
 		recursiveDelegatecallFail(ctx, t, client, filename, i)
@@ -469,10 +470,9 @@ func TestFEVMSendGasLimit(t *testing.T) {
 }
 
 // TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
-// XXX should not be fatal errors
 func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
-	//TODO change the gas limit of this invocation and confirm that the number of errors is different
-	//also TODO should we not have fatal error show up here?
+	//TODO change the gas limit of this invocation and confirm that the number of errors is
+	// different
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
@@ -485,17 +485,16 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
-	//verify that the returned value of the call to setvars is 7
+	//verify that we run out of gas then revert.
 	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
 	require.Error(t, err)
-	require.Equal(t, exitcode.SysErrorIllegalArgument, wait.Receipt.ExitCode)
+	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
 	//assert no fatal errors but still there are errors::
 	errorAny := "fatal error"
 	require.NotContains(t, err.Error(), errorAny)
 }
 
-// XXX Currently fails as self destruct has a bug
 // TestFEVMTestSendValueThroughContracts creates A and B contract and exchanges value
 // and self destructs and accounts for value sent
 func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
@@ -555,7 +554,7 @@ func TestFEVMRecursiveFuncCall(t *testing.T) {
 	t.Run("n=20", testN(20, exitcode.Ok))
 	t.Run("n=200", testN(200, exitcode.Ok))
 	t.Run("n=507", testN(507, exitcode.Ok))
-	t.Run("n=508", testN(508, exitcode.ExitCode(23))) // 23 means stack overflow
+	t.Run("n=508", testN(508, exitcode.ExitCode(37))) // 37 means stack overflow
 }
 
 // TestFEVMRecursiveActorCall deploys a contract and makes a recursive actor calls
@@ -584,7 +583,7 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=1", testN(200, 1, exitcode.Ok))
 	t.Run("n=251,r=1", testN(251, 1, exitcode.Ok))
 
-	t.Run("n=252,r=1-fails", testN(252, 1, exitcode.ExitCode(23))) // 23 means stack overflow
+	t.Run("n=252,r=1-fails", testN(252, 1, exitcode.ExitCode(37))) // 37 means stack overflow
 
 	t.Run("n=0,r=10", testN(0, 10, exitcode.Ok))
 	t.Run("n=1,r=10", testN(1, 10, exitcode.Ok))
@@ -592,7 +591,7 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=10", testN(200, 10, exitcode.Ok))
 	t.Run("n=251,r=10", testN(251, 10, exitcode.Ok))
 
-	t.Run("n=252,r=10-fails", testN(252, 10, exitcode.ExitCode(23)))
+	t.Run("n=252,r=10-fails", testN(252, 10, exitcode.ExitCode(37)))
 
 	t.Run("n=0,r=32", testN(0, 32, exitcode.Ok))
 	t.Run("n=1,r=32", testN(1, 32, exitcode.Ok))
@@ -601,10 +600,107 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
 
 	t.Run("n=0,r=254", testN(0, 254, exitcode.Ok))
-	t.Run("n=251,r=170", testN(251, 170, exitcode.Ok))
+	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
 
-	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
-	t.Run("n=251,r=171-fails", testN(251, 171, exitcode.ExitCode(33)))
+	t.Run("n=0,r=256-fails", testN(0, 256, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
+}
+
+// TestFEVMRecursiveActorCallEstimate
+func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract Actor
+	filenameActor := "contracts/ExternalRecursiveCallSimple.hex"
+	_, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	contractAddr, err := ethtypes.EthAddressFromFilecoinAddress(actorAddr)
+	require.NoError(t, err)
+
+	// create a new Ethereum account
+	key, ethAddr, ethFilAddr := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, ethFilAddr, types.FromFil(1000))
+
+	makeParams := func(r int) []byte {
+		funcSignature := "exec1(uint256)"
+		entryPoint := kit.CalcFuncSignature(funcSignature)
+
+		inputData := make([]byte, 32)
+		binary.BigEndian.PutUint64(inputData[24:], uint64(r))
+
+		params := append(entryPoint, inputData...)
+
+		return params
+	}
+
+	testN := func(r int) func(t *testing.T) {
+		return func(t *testing.T) {
+			t.Logf("running with %d recursive calls", r)
+
+			params := makeParams(r)
+			gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+				From: &ethAddr,
+				To:   &contractAddr,
+				Data: params,
+			})
+			require.NoError(t, err)
+			require.LessOrEqual(t, int64(gaslimit), build.BlockGasLimit)
+
+			t.Logf("EthEstimateGas GasLimit=%d", gaslimit)
+
+			maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+			require.NoError(t, err)
+
+			nonce, err := client.MpoolGetNonce(ctx, ethFilAddr)
+			require.NoError(t, err)
+
+			tx := &ethtypes.EthTxArgs{
+				ChainID:              build.Eip155ChainId,
+				To:                   &contractAddr,
+				Value:                big.Zero(),
+				Nonce:                int(nonce),
+				MaxFeePerGas:         types.NanoFil,
+				MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+				GasLimit:             int(gaslimit),
+				Input:                params,
+				V:                    big.Zero(),
+				R:                    big.Zero(),
+				S:                    big.Zero(),
+			}
+
+			client.EVM().SignTransaction(tx, key.PrivateKey)
+			hash := client.EVM().SubmitTransaction(ctx, tx)
+
+			smsg, err := tx.ToSignedMessage()
+			require.NoError(t, err)
+
+			_, err = client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+			require.NoError(t, err)
+
+			receipt, err := client.EthGetTransactionReceipt(ctx, hash)
+			require.NoError(t, err)
+			require.NotNil(t, receipt)
+
+			t.Logf("Receipt GasUsed=%d", receipt.GasUsed)
+			t.Logf("Ratio %0.2f", float64(receipt.GasUsed)/float64(gaslimit))
+			t.Logf("Overestimate %0.2f", ((float64(gaslimit)/float64(receipt.GasUsed))-1)*100)
+
+			require.EqualValues(t, ethtypes.EthUint64(1), receipt.Status)
+		}
+	}
+
+	t.Run("n=1", testN(1))
+	t.Run("n=2", testN(2))
+	t.Run("n=3", testN(3))
+	t.Run("n=4", testN(4))
+	t.Run("n=5", testN(5))
+	t.Run("n=10", testN(10))
+	t.Run("n=20", testN(20))
+	t.Run("n=30", testN(30))
+	t.Run("n=40", testN(40))
+	t.Run("n=50", testN(50))
+	t.Run("n=100", testN(100))
 }
 
 // TestFEVM deploys a contract while sending value to it
