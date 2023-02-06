@@ -155,11 +155,11 @@ type EthBlock struct {
 	Uncles       []EthHash     `json:"uncles"`
 }
 
-const EthBloomBytes = 256
+const EthBloomSize = 2048
 
 var (
-	EmptyEthBloom  = [EthBloomBytes]byte{}
-	FullEthBloom   = [EthBloomBytes]byte{}
+	EmptyEthBloom  = [EthBloomSize / 8]byte{}
+	FullEthBloom   = [EthBloomSize / 8]byte{}
 	EmptyEthHash   = EthHash{}
 	EmptyUncleHash = must.One(ParseEthHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")) // Keccak-256 of an RLP of an empty array
 	EmptyRootHash  = must.One(ParseEthHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")) // Keccak-256 hash of the RLP of null
@@ -455,7 +455,7 @@ func EthBloomSet(f EthBytes, data []byte) {
 	hash := hasher.Sum(nil)
 
 	for i := 0; i < 3; i++ {
-		n := binary.BigEndian.Uint16(hash[i*2:])
+		n := binary.BigEndian.Uint16(hash[i*2:]) % EthBloomSize
 		f[n/8] |= 1 << (n % 8)
 	}
 }
