@@ -470,10 +470,9 @@ func TestFEVMSendGasLimit(t *testing.T) {
 }
 
 // TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
-// XXX should not be fatal errors
 func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
-	//TODO change the gas limit of this invocation and confirm that the number of errors is different
-	//also TODO should we not have fatal error show up here?
+	//TODO change the gas limit of this invocation and confirm that the number of errors is
+	// different
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
@@ -486,17 +485,16 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
-	//verify that the returned value of the call to setvars is 7
+	//verify that we run out of gas then revert.
 	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
 	require.Error(t, err)
-	require.Equal(t, exitcode.SysErrorIllegalArgument, wait.Receipt.ExitCode)
+	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
 	//assert no fatal errors but still there are errors::
 	errorAny := "fatal error"
 	require.NotContains(t, err.Error(), errorAny)
 }
 
-// XXX Currently fails as self destruct has a bug
 // TestFEVMTestSendValueThroughContracts creates A and B contract and exchanges value
 // and self destructs and accounts for value sent
 func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
