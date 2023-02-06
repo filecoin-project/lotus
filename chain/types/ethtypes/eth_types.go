@@ -159,12 +159,19 @@ const EthBloomBytes = 256
 
 var (
 	EmptyEthBloom  = [EthBloomBytes]byte{}
+	FullEthBloom   = [EthBloomBytes]byte{}
 	EmptyEthHash   = EthHash{}
 	EmptyUncleHash = must.One(ParseEthHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")) // Keccak-256 of an RLP of an empty array
 	EmptyRootHash  = must.One(ParseEthHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")) // Keccak-256 hash of the RLP of null
 	EmptyEthInt    = EthUint64(0)
 	EmptyEthNonce  = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 )
+
+func init() {
+	for i := range FullEthBloom {
+		FullEthBloom[i] = 0xff
+	}
+}
 
 func NewEthBlock(hasTransactions bool) EthBlock {
 	b := EthBlock{
@@ -173,7 +180,7 @@ func NewEthBlock(hasTransactions bool) EthBlock {
 		TransactionsRoot: EmptyRootHash, // TransactionsRoot set to a hardcoded value which is used by some clients to determine if has no transactions.
 		ReceiptsRoot:     EmptyEthHash,
 		Difficulty:       EmptyEthInt,
-		LogsBloom:        EmptyEthBloom[:],
+		LogsBloom:        FullEthBloom[:],
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
