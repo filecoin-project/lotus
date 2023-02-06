@@ -49,6 +49,7 @@ func main() {
 		minerCmd,
 		mpoolStatsCmd,
 		exportChainCmd,
+		ethCmd,
 		exportCarCmd,
 		consensusCmd,
 		syncCmd,

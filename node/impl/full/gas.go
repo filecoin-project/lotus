@@ -248,22 +248,23 @@ func (m *GasModule) GasEstimateGasLimit(ctx context.Context, msgIn *types.Messag
 	}
 	return gasEstimateGasLimit(ctx, m.Chain, m.Stmgr, m.Mpool, msgIn, ts)
 }
-func gasEstimateGasLimit(
+
+// gasEstimateCallWithGas invokes a message "msgIn" on the earliest available tipset with pending
+// messages in the message pool. The function returns the result of the message invocation, the
+// pending messages, the tipset used for the invocation, and an error if occurred.
+// The returned information can be used to make subsequent calls to CallWithGas with the same parameters.
+func gasEstimateCallWithGas(
 	ctx context.Context,
 	cstore *store.ChainStore,
 	smgr *stmgr.StateManager,
 	mpool *messagepool.MessagePool,
 	msgIn *types.Message,
 	currTs *types.TipSet,
-) (int64, error) {
+) (*api.InvocResult, []types.ChainMsg, *types.TipSet, error) {
 	msg := *msgIn
-	msg.GasLimit = build.BlockGasLimit
-	msg.GasFeeCap = big.Zero()
-	msg.GasPremium = big.Zero()
-
 	fromA, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
 	if err != nil {
-		return -1, xerrors.Errorf("getting key address: %w", err)
+		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting key address: %w", err)
 	}
 
 	pending, ts := mpool.PendingFor(ctx, fromA)
@@ -284,12 +285,34 @@ func gasEstimateGasLimit(
 		}
 		ts, err = cstore.GetTipSetFromKey(ctx, ts.Parents())
 		if err != nil {
-			return -1, xerrors.Errorf("getting parent tipset: %w", err)
+			return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting parent tipset: %w", err)
 		}
 	}
 	if err != nil {
-		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
+		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
+
+	return res, priorMsgs, ts, nil
+}
+
+func gasEstimateGasLimit(
+	ctx context.Context,
+	cstore *store.ChainStore,
+	smgr *stmgr.StateManager,
+	mpool *messagepool.MessagePool,
+	msgIn *types.Message,
+	currTs *types.TipSet,
+) (int64, error) {
+	msg := *msgIn
+	msg.GasLimit = build.BlockGasLimit
+	msg.GasFeeCap = big.Zero()
+	msg.GasPremium = big.Zero()
+
+	res, _, ts, err := gasEstimateCallWithGas(ctx, cstore, smgr, mpool, &msg, currTs)
+	if err != nil {
+		return -1, xerrors.Errorf("gas estimation failed: %w", err)
+	}
+
 	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
 		return -1, &api.ErrOutOfGas{}
 	}
@@ -299,6 +322,8 @@ func gasEstimateGasLimit(
 	}
 
 	ret := res.MsgRct.GasUsed
+
+	log.Infow("GasEstimateMessageGas CallWithGas Result", "GasUsed", ret, "ExitCode", res.MsgRct.ExitCode)
 
 	transitionalMulti := 1.0
 	// Overestimate gas around the upgrade
