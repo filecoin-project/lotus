@@ -447,6 +447,11 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
 
+	// StateManager.Call will panic if there is no parent
+	if ts.Height() == 0 {
+		return nil, xerrors.Errorf("block param must not specify genesis block")
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
@@ -637,7 +642,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 	}
 
 	return ethtypes.EthFeeHistory{
-		OldestBlock:   oldestBlkHeight,
+		OldestBlock:   ethtypes.EthUint64(oldestBlkHeight),
 		BaseFeePerGas: baseFeeArray,
 		GasUsedRatio:  gasUsedRatioArray,
 	}, nil
@@ -962,7 +967,6 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return ethtypes.EthBytes{}, nil
-
 	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}

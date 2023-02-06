@@ -144,7 +144,7 @@ type EthBlock struct {
 	GasLimit         EthUint64  `json:"gasLimit"`
 	GasUsed          EthUint64  `json:"gasUsed"`
 	Timestamp        EthUint64  `json:"timestamp"`
-	Extradata        []byte     `json:"extraData"`
+	Extradata        EthBytes   `json:"extraData"`
 	MixHash          EthHash    `json:"mixHash"`
 	Nonce            EthNonce   `json:"nonce"`
 	BaseFeePerGas    EthBigInt  `json:"baseFeePerGas"`
@@ -433,7 +433,7 @@ func EthHashFromTxBytes(b []byte) EthHash {
 }
 
 type EthFeeHistory struct {
-	OldestBlock   uint64         `json:"oldestBlock"`
+	OldestBlock   EthUint64      `json:"oldestBlock"`
 	BaseFeePerGas []EthBigInt    `json:"baseFeePerGas"`
 	GasUsedRatio  []float64      `json:"gasUsedRatio"`
 	Reward        *[][]EthBigInt `json:"reward,omitempty"`
