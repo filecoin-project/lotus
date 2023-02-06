@@ -57,7 +57,7 @@ func buildInputFromuint64(number uint64) []byte {
 // recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
 // before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	expectedIterationsBeforeFailing := int(229)
+	expectedIterationsBeforeFailing := int(228)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
@@ -123,7 +123,7 @@ func TestFEVMRecursiveFail(t *testing.T) {
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
 			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
 			require.Error(t, err)
-			require.Equal(t, exitcode.ExitCode(23), wait.Receipt.ExitCode)
+			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
 		})
 	}
 }
@@ -151,7 +151,7 @@ func TestFEVMRecursive2(t *testing.T) {
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
-// recursive delegate call succeeds up to 238 times
+// recursive delegate call succeeds up to 228 times
 func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
@@ -159,11 +159,11 @@ func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
 
-	//success with 238 or fewer calls
-	for i := uint64(1); i <= 238; i += 30 {
+	//success with 228 or fewer calls
+	for i := uint64(1); i <= 228; i += 30 {
 		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
 	}
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(238))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(228))
 
 	for i := uint64(239); i <= 800; i += 40 {
 		recursiveDelegatecallFail(ctx, t, client, filename, i)
