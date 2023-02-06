@@ -150,24 +150,26 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMRecursiveDelegateCall tests the maximum delegatecall recursion depth. It currently
-// succeeds succeeds up to 228 times.
-func TestFEVMRecursiveDelegatecall(t *testing.T) {
+// TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth. It currently
+// succeeds succeeds up to 237 times.
+func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
+	highestSuccessCount := uint64(237)
+
 	filename := "contracts/RecursiveDelegeatecall.hex"
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(2))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(10))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(100))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, highestSuccessCount)
 
-	//success with 228 or fewer calls
-	for i := uint64(1); i <= 228; i += 30 {
-		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
-	}
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(228))
+	recursiveDelegatecallFail(ctx, t, client, filename, highestSuccessCount+1)
+	recursiveDelegatecallFail(ctx, t, client, filename, uint64(1000))
+	recursiveDelegatecallFail(ctx, t, client, filename, uint64(10000000))
 
-	for i := uint64(239); i <= 800; i += 40 {
-		recursiveDelegatecallFail(ctx, t, client, filename, i)
-	}
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
