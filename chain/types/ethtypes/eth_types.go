@@ -22,6 +22,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 var (
@@ -157,13 +158,14 @@ type EthBlock struct {
 var (
 	EmptyEthBloom = [256]byte{}
 	EmptyEthHash  = EthHash{}
+	NoUncleHash   = must.One(ParseEthHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"))
 	EmptyEthInt   = EthUint64(0)
 	EmptyEthNonce = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 )
 
 func NewEthBlock() EthBlock {
 	return EthBlock{
-		Sha3Uncles:       EmptyEthHash,
+		Sha3Uncles:       NoUncleHash,
 		StateRoot:        EmptyEthHash,
 		TransactionsRoot: EmptyEthHash,
 		ReceiptsRoot:     EmptyEthHash,
