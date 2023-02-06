@@ -219,6 +219,11 @@ func ConfigFullNode(c interface{}) Option {
 			Override(SetupFallbackBlockstoresKey, modules.InitFallbackBlockstores),
 		),
 
+		// If the Eth JSON-RPC is enabled, enable storing events at the ChainStore.
+		// This is the case even if real-time and historic filtering are disabled,
+		// as it enables us to serve logs in eth_getTransactionReceipt.
+		If(cfg.Fevm.EnableEthRPC, Override(StoreEventsKey, modules.EnableStoringEvents)),
+
 		Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
 
 		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
@@ -258,11 +263,18 @@ func ConfigFullNode(c interface{}) Option {
 
 		// Actor event filtering support
 		Override(new(events.EventAPI), From(new(modules.EventAPI))),
-		// in lite-mode Eth event api is provided by gateway
-		ApplyIf(isFullNode, Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm))),
 
-		If(cfg.Fevm.EnableEthRPC, Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm))),
-		If(!cfg.Fevm.EnableEthRPC, Override(new(full.EthModuleAPI), &full.EthModuleDummy{})),
+		// in lite-mode Eth api is provided by gateway
+		ApplyIf(isFullNode,
+			If(cfg.Fevm.EnableEthRPC,
+				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
+				Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm)),
+			),
+			If(!cfg.Fevm.EnableEthRPC,
+				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
+				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+			),
+		),
 	)
 }
 

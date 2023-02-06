@@ -87,7 +87,19 @@ func TestValueTransferValidSignature(t *testing.T) {
 	ethTx, err := client.EthGetTransactionByHash(ctx, &hash)
 	require.Nil(t, err)
 	require.EqualValues(t, ethAddr, ethTx.From)
-
+	require.EqualValues(t, ethAddr2, *ethTx.To)
+	require.EqualValues(t, tx.ChainID, ethTx.ChainID)
+	require.EqualValues(t, tx.Nonce, ethTx.Nonce)
+	require.EqualValues(t, hash, ethTx.Hash)
+	require.EqualValues(t, tx.Value, ethTx.Value)
+	require.EqualValues(t, 2, ethTx.Type)
+	require.EqualValues(t, ethtypes.EthBytes{}, ethTx.Input)
+	require.EqualValues(t, tx.GasLimit, ethTx.Gas)
+	require.EqualValues(t, tx.MaxFeePerGas, ethTx.MaxFeePerGas)
+	require.EqualValues(t, tx.MaxPriorityFeePerGas, ethTx.MaxPriorityFeePerGas)
+	require.EqualValues(t, tx.V, ethTx.V)
+	require.EqualValues(t, tx.R, ethTx.R)
+	require.EqualValues(t, tx.S, ethTx.S)
 }
 
 func TestLegacyTransaction(t *testing.T) {

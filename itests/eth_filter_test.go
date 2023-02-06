@@ -526,7 +526,10 @@ func TestEthSubscribeLogs(t *testing.T) {
 		// subscribe to topics in filter
 		subParam, err := json.Marshal(ethtypes.EthSubscribeParams{
 			EventType: "logs",
-			Params:    &ethtypes.EthSubscriptionParams{Topics: tc.spec.Topics},
+			Params: &ethtypes.EthSubscriptionParams{
+				Topics:  tc.spec.Topics,
+				Address: tc.spec.Address,
+			},
 		})
 		require.NoError(err)
 
