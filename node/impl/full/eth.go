@@ -1598,7 +1598,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	block := ethtypes.NewEthBlock()
+	block := ethtypes.NewEthBlock(len(msgs) > 0)
 
 	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
 	gasUsed := int64(0)

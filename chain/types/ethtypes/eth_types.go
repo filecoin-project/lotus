@@ -22,6 +22,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 var (
@@ -155,17 +156,19 @@ type EthBlock struct {
 }
 
 var (
-	EmptyEthBloom = [256]byte{}
-	EmptyEthHash  = EthHash{}
-	EmptyEthInt   = EthUint64(0)
-	EmptyEthNonce = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
+	EmptyEthBloom  = [256]byte{}
+	EmptyEthHash   = EthHash{}
+	EmptyUncleHash = must.One(ParseEthHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")) // Keccak-256 of an RLP of an empty array
+	EmptyRootHash  = must.One(ParseEthHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")) // Keccak-256 hash of the RLP of null
+	EmptyEthInt    = EthUint64(0)
+	EmptyEthNonce  = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 )
 
-func NewEthBlock() EthBlock {
-	return EthBlock{
-		Sha3Uncles:       EmptyEthHash,
+func NewEthBlock(hasTransactions bool) EthBlock {
+	b := EthBlock{
+		Sha3Uncles:       EmptyUncleHash, // Sha3Uncles set to a hardcoded value which is used by some clients to determine if has no uncles.
 		StateRoot:        EmptyEthHash,
-		TransactionsRoot: EmptyEthHash,
+		TransactionsRoot: EmptyRootHash, // TransactionsRoot set to a hardcoded value which is used by some clients to determine if has no transactions.
 		ReceiptsRoot:     EmptyEthHash,
 		Difficulty:       EmptyEthInt,
 		LogsBloom:        EmptyEthBloom[:],
@@ -176,6 +179,11 @@ func NewEthBlock() EthBlock {
 		Uncles:           []EthHash{},
 		Transactions:     []interface{}{},
 	}
+	if hasTransactions {
+		b.TransactionsRoot = EmptyEthHash
+	}
+
+	return b
 }
 
 type EthCall struct {
