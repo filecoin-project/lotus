@@ -630,7 +630,7 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 		bw,
 		headTs, tailTs,
 		cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots,
-		cfg.NumWorkers, cfg.CacheSize,
+		cfg.NumWorkers,
 	); err != nil {
 		return fmt.Errorf("exporting chain range: %w", err)
 	}
@@ -658,7 +658,7 @@ func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetK
 			headTs,
 			tailTs,
 			cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots,
-			cfg.NumWorkers, cfg.CacheSize,
+			cfg.NumWorkers,
 		)
 		bw.Flush()            //nolint:errcheck // it is a write to a pipe
 		w.CloseWithError(err) //nolint:errcheck // it is a pipe

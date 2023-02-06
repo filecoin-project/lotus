@@ -508,8 +508,7 @@ func (cs *ChainStore) ExportRange(
 	w io.Writer,
 	head, tail *types.TipSet,
 	messages, receipts, stateroots bool,
-	workers int,
-	cacheSize int) error {
+	workers int) error {
 
 	h := &car.CarHeader{
 		Roots:   head.Cids(),
@@ -518,11 +517,6 @@ func (cs *ChainStore) ExportRange(
 
 	if err := car.WriteHeader(h, w); err != nil {
 		return xerrors.Errorf("failed to write car header: %s", err)
-	}
-
-	cacheStore, err := NewCachingBlockstore(cs.UnionStore(), cacheSize)
-	if err != nil {
-		return err
 	}
 
 	start := time.Now()
@@ -544,7 +538,7 @@ func (cs *ChainStore) ExportRange(
 		includeReceipts: receipts,
 	}
 
-	pw, err := newWalkScheduler(ctx, cacheStore, cfg, w)
+	pw, err := newWalkScheduler(ctx, cs.UnionStore(), cfg, w)
 	if err != nil {
 		return err
 	}
