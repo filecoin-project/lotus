@@ -150,8 +150,8 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMBasic does a basic fevm contract installation and invocation
-// recursive delegate call succeeds up to 228 times
+// TestFEVMRecursiveDelegateCall tests the maximum delegatecall recursion depth. It currently
+// succeeds succeeds up to 228 times.
 func TestFEVMRecursiveDelegatecall(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
