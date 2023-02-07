@@ -1717,13 +1717,14 @@ USAGE:
    lotus-miner sectors list [command options] [arguments...]
 
 OPTIONS:
-   --events, -e          display number of events the sector has received (default: false)
-   --fast, -f            don't show on-chain info for better performance (default: false)
-   --initial-pledge, -p  display initial pledge (default: false)
-   --seal-time, -t       display how long it took for the sector to be sealed (default: false)
-   --show-removed, -r    show removed sectors (default: false)
-   --states value        filter sectors by a comma-separated list of states
-   --unproven, -u        only show sectors which aren't in the 'Proving' state (default: false)
+   --check-parallelism value  number of parallel requests to make for checking sector states (default: 300)
+   --events, -e               display number of events the sector has received (default: false)
+   --fast, -f                 don't show on-chain info for better performance (default: false)
+   --initial-pledge, -p       display initial pledge (default: false)
+   --seal-time, -t            display how long it took for the sector to be sealed (default: false)
+   --show-removed, -r         show removed sectors (default: false)
+   --states value             filter sectors by a comma-separated list of states
+   --unproven, -u             only show sectors which aren't in the 'Proving' state (default: false)
    
 ```
 

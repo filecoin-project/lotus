@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/go-units"
@@ -33,10 +34,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/lib/strle"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
+
+const parallelSectorChecks = 300
 
 var sectorsCmd = &cli.Command{
 	Name:  "sectors",
@@ -306,9 +310,14 @@ var sectorsListCmd = &cli.Command{
 			Usage:   "only show sectors which aren't in the 'Proving' state",
 			Aliases: []string{"u"},
 		},
+		&cli.Int64Flag{
+			Name:  "check-parallelism",
+			Usage: "number of parallel requests to make for checking sector states",
+			Value: parallelSectorChecks,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
 		if err != nil {
 			return err
 		}
@@ -407,15 +416,37 @@ var sectorsListCmd = &cli.Command{
 
 		fast := cctx.Bool("fast")
 
+		throttle := make(chan struct{}, cctx.Int64("check-parallelism"))
+
+		resCh := make(chan result.Result[api.SectorInfo], len(list))
+		var wg sync.WaitGroup
 		for _, s := range list {
-			st, err := minerApi.SectorsStatus(ctx, s, !fast)
-			if err != nil {
+			throttle <- struct{}{}
+			wg.Add(1)
+			go func(s abi.SectorNumber) {
+				defer wg.Done()
+				defer func() { <-throttle }()
+				r := result.Wrap(minerApi.SectorsStatus(ctx, s, !fast))
+				if r.Error != nil {
+					r.Value.SectorID = s
+				}
+				resCh <- r
+			}(s)
+		}
+		wg.Wait()
+		close(resCh)
+
+		for rsn := range resCh {
+			if rsn.Error != nil {
 				tw.Write(map[string]interface{}{
-					"ID":    s,
+					"ID":    rsn.Value.SectorID,
 					"Error": err,
 				})
 				continue
 			}
+
+			st := rsn.Value
+			s := st.SectorID
 
 			if !showRemoved && st.State == api.SectorState(sealing.Removed) {
 				continue
