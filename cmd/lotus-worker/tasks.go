@@ -75,7 +75,7 @@ func taskAction(tf func(a api.Worker, ctx context.Context, tt sealtasks.TaskType
 			return xerrors.Errorf("Cannot use --all flag with task type argument")
 		}
 
-		if cctx.NArg() == 0 && !allFlag {
+		if cctx.NArg() != 1 && !allFlag {
 			return xerrors.Errorf("Expected 1 argument or use --all flag")
 		}
 
