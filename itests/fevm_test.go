@@ -704,3 +704,16 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	t.Run("n=50", testN(50))
 	t.Run("n=100", testN(100))
 }
+
+func TestFEVMGetBlockDifficulty(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/GetDifficulty.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDifficulty()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, len(ret), 32)
+}
