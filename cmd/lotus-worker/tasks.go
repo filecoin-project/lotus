@@ -44,7 +44,7 @@ var settableStr = func() string {
 var tasksEnableCmd = &cli.Command{
 	Name:      "enable",
 	Usage:     "Enable a task type",
-	ArgsUsage: "[" + settableStr + "]",
+	ArgsUsage: "--all | [" + settableStr + "]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "all",
