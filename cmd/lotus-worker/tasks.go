@@ -57,7 +57,7 @@ var tasksEnableCmd = &cli.Command{
 var tasksDisableCmd = &cli.Command{
 	Name:      "disable",
 	Usage:     "Disable a task type",
-	ArgsUsage: "[" + settableStr + "]",
+	ArgsUsage: "--all | [" + settableStr + "]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "all",
