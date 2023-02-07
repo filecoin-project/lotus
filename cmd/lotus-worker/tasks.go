@@ -44,7 +44,7 @@ var settableStr = func() string {
 var tasksEnableCmd = &cli.Command{
 	Name:      "enable",
 	Usage:     "Enable a task type",
-	ArgsUsage: "[" + settableStr + "]",
+	ArgsUsage: "--all | [" + settableStr + "]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "all",
@@ -57,7 +57,7 @@ var tasksEnableCmd = &cli.Command{
 var tasksDisableCmd = &cli.Command{
 	Name:      "disable",
 	Usage:     "Disable a task type",
-	ArgsUsage: "[" + settableStr + "]",
+	ArgsUsage: "--all | [" + settableStr + "]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "all",
@@ -75,7 +75,7 @@ func taskAction(tf func(a api.Worker, ctx context.Context, tt sealtasks.TaskType
 			return xerrors.Errorf("Cannot use --all flag with task type argument")
 		}
 
-		if cctx.NArg() == 0 && !allFlag {
+		if cctx.NArg() != 1 && !allFlag {
 			return xerrors.Errorf("Expected 1 argument or use --all flag")
 		}
 
