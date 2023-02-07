@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -84,6 +85,8 @@ type EthEventAPI interface {
 var (
 	_ EthModuleAPI = *new(api.FullNode)
 	_ EthEventAPI  = *new(api.FullNode)
+
+	_ EthModuleAPI = *new(api.Gateway)
 )
 
 // EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
@@ -444,6 +447,11 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
 
+	// StateManager.Call will panic if there is no parent
+	if ts.Height() == 0 {
+		return nil, xerrors.Errorf("block param must not specify genesis block")
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
@@ -634,7 +642,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 	}
 
 	return ethtypes.EthFeeHistory{
-		OldestBlock:   oldestBlkHeight,
+		OldestBlock:   ethtypes.EthUint64(oldestBlkHeight),
 		BaseFeePerGas: baseFeeArray,
 		GasUsedRatio:  gasUsedRatioArray,
 	}, nil
@@ -807,12 +815,137 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (et
 	// gas estimation actually run.
 	msg.GasLimit = 0
 
-	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+	ts := a.Chain.GetHeaviestTipSet()
+	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {
-		return ethtypes.EthUint64(0), err
+		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 
-	return ethtypes.EthUint64(msg.GasLimit), nil
+	expectedGas, err := ethGasSearch(ctx, a.Chain, a.Stmgr, a.Mpool, msg, ts)
+	if err != nil {
+		log.Errorw("expected gas", "err", err)
+	}
+
+	return ethtypes.EthUint64(expectedGas), nil
+}
+
+// gasSearch does an exponential search to find a gas value to execute the
+// message with. It first finds a high gas limit that allows the message to execute
+// by doubling the previous gas limit until it succeeds then does a binary
+// search till it gets within a range of 1%
+func gasSearch(
+	ctx context.Context,
+	smgr *stmgr.StateManager,
+	msgIn *types.Message,
+	priorMsgs []types.ChainMsg,
+	ts *types.TipSet,
+) (int64, error) {
+	msg := *msgIn
+
+	high := msg.GasLimit
+	low := msg.GasLimit
+
+	canSucceed := func(limit int64) (bool, error) {
+		msg.GasLimit = limit
+
+		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		if err != nil {
+			return false, xerrors.Errorf("CallWithGas failed: %w", err)
+		}
+
+		if res.MsgRct.ExitCode.IsSuccess() {
+			return true, nil
+		}
+
+		return false, nil
+	}
+
+	for {
+		ok, err := canSucceed(high)
+		if err != nil {
+			return -1, xerrors.Errorf("searching for high gas limit failed: %w", err)
+		}
+		if ok {
+			break
+		}
+
+		low = high
+		high = high * 2
+
+		if high > build.BlockGasLimit {
+			high = build.BlockGasLimit
+			break
+		}
+	}
+
+	checkThreshold := high / 100
+	for (high - low) > checkThreshold {
+		median := (low + high) / 2
+		ok, err := canSucceed(median)
+		if err != nil {
+			return -1, xerrors.Errorf("searching for optimal gas limit failed: %w", err)
+		}
+
+		if ok {
+			high = median
+		} else {
+			low = median
+		}
+
+		checkThreshold = median / 100
+	}
+
+	return high, nil
+}
+
+func traceContainsExitCode(et types.ExecutionTrace, ex exitcode.ExitCode) bool {
+	if et.MsgRct.ExitCode == ex {
+		return true
+	}
+
+	for _, et := range et.Subcalls {
+		if traceContainsExitCode(et, ex) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ethGasSearch executes a message for gas estimation using the previously estimated gas.
+// If the message fails due to an out of gas error then a gas search is performed.
+// See gasSearch.
+func ethGasSearch(
+	ctx context.Context,
+	cstore *store.ChainStore,
+	smgr *stmgr.StateManager,
+	mpool *messagepool.MessagePool,
+	msgIn *types.Message,
+	ts *types.TipSet,
+) (int64, error) {
+	msg := *msgIn
+	currTs := ts
+
+	res, priorMsgs, ts, err := gasEstimateCallWithGas(ctx, cstore, smgr, mpool, &msg, currTs)
+	if err != nil {
+		return -1, xerrors.Errorf("gas estimation failed: %w", err)
+	}
+
+	if res.MsgRct.ExitCode.IsSuccess() {
+		return msg.GasLimit, nil
+	}
+
+	if traceContainsExitCode(res.ExecutionTrace, exitcode.SysErrOutOfGas) {
+		ret, err := gasSearch(ctx, smgr, &msg, priorMsgs, ts)
+		if err != nil {
+			return -1, xerrors.Errorf("gas estimation search failed: %w", err)
+		}
+
+		ret = int64(float64(ret) * mpool.GetConfig().GasLimitOverestimation)
+		return ret, nil
+	}
+
+	return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 }
 
 func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) {
@@ -834,7 +967,6 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return ethtypes.EthBytes{}, nil
-
 	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
@@ -1145,7 +1277,18 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethty
 			}
 		}
 
-		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, []address.Address{}, keys)
+		var addresses []address.Address
+		if params.Params != nil {
+			for _, ea := range params.Params.Address {
+				a, err := ea.ToFilecoinAddress()
+				if err != nil {
+					return ethtypes.EthSubscriptionID{}, xerrors.Errorf("invalid address %x", ea)
+				}
+				addresses = append(addresses, a)
+			}
+		}
+
+		f, err := e.EventFilterManager.Install(ctx, -1, -1, cid.Undef, addresses, keys)
 		if err != nil {
 			// clean up any previous filters added and stop the sub
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
@@ -1455,7 +1598,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	block := ethtypes.NewEthBlock()
+	block := ethtypes.NewEthBlock(len(msgs) > 0)
 
 	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
 	gasUsed := int64(0)
@@ -1916,7 +2059,7 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 			continue
 		}
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
-		key := fmt.Sprintf("topic%d", idx+1)
+		key := fmt.Sprintf("t%d", idx+1)
 		for _, v := range vals {
 			encodedVal, err := cborEncodeTopicValue(v[:])
 			if err != nil {

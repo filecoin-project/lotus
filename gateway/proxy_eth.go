@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -18,6 +19,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return "", err
+	}
+
+	return gw.target.Web3ClientVersion(ctx)
+}
 
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
@@ -141,6 +150,22 @@ func (gw *Node) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.Et
 	}
 
 	return gw.target.EthGetTransactionByHash(ctx, txHash)
+}
+
+func (gw *Node) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	return gw.target.EthGetTransactionHashByCid(ctx, cid)
+}
+
+func (gw *Node) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	return gw.target.EthGetMessageCidByTransactionHash(ctx, txHash)
 }
 
 func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error) {
