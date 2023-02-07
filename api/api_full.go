@@ -853,7 +853,7 @@ type FullNode interface {
 // reverse interface to the client, called after EthSubscribe
 type EthSubscriber interface {
 	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
-	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error //rpc_method:eth_subscription notify:true
+	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error // rpc_method:eth_subscription notify:true
 }
 
 type StorageAsk struct {

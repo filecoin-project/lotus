@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -126,7 +127,11 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	if err != nil {
 		return nil, err
 	}
-
+	if !wait.Receipt.ExitCode.IsSuccess() {
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		e.t.Log(result.Error)
+	}
 	return wait, nil
 }
 
@@ -244,7 +249,9 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, wait, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, wait, fmt.Errorf("contract execution failed - %v", wait.Receipt.ExitCode)
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		return nil, wait, errors.New(result.Error)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {
@@ -319,7 +326,7 @@ func removeLeadingZeros(data []byte) []byte {
 }
 
 func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFullNode) {
-	//make all logs extra quiet for fevm tests
+	// make all logs extra quiet for fevm tests
 	lvl, err := logging.LevelFromString("error")
 	if err != nil {
 		panic(err)
@@ -353,4 +360,78 @@ func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address,
 	mLookup, err := e.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(e.t, err)
 	require.Equal(e.t, exitcode.Ok, mLookup.Receipt.ExitCode)
+}
+
+func NewEthFilterBuilder() *EthFilterBuilder {
+	return &EthFilterBuilder{}
+}
+
+type EthFilterBuilder struct {
+	filter ethtypes.EthFilterSpec
+}
+
+func (e *EthFilterBuilder) Filter() *ethtypes.EthFilterSpec { return &e.filter }
+
+func (e *EthFilterBuilder) FromBlock(v string) *EthFilterBuilder {
+	e.filter.FromBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) FromBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.FromBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlock(v string) *EthFilterBuilder {
+	e.filter.ToBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.ToBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) BlockHash(h ethtypes.EthHash) *EthFilterBuilder {
+	e.filter.BlockHash = &h
+	return e
+}
+
+func (e *EthFilterBuilder) AddressOneOf(as ...ethtypes.EthAddress) *EthFilterBuilder {
+	e.filter.Address = as
+	return e
+}
+
+func (e *EthFilterBuilder) Topic1OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	if len(e.filter.Topics) == 0 {
+		e.filter.Topics = make(ethtypes.EthTopicSpec, 1)
+	}
+	e.filter.Topics[0] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic2OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 2 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[1] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic3OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 3 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[2] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic4OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 4 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[3] = hs
+	return e
 }
