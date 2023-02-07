@@ -221,7 +221,7 @@ USAGE:
    lotus-worker tasks enable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --all  Enable all task types (default: false)
    
 ```
 
@@ -234,6 +234,6 @@ USAGE:
    lotus-worker tasks disable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --all  Disable all task types (default: false)
    
 ```
