@@ -298,7 +298,7 @@ actors-gen: actors-code-gen fiximports
 .PHONY: actors-gen
 
 bundle-gen:
-	$(GOCC) run ./gen/bundle
+	$(GOCC) run ./gen/bundle $(RELEASE)
 	$(GOCC) fmt ./build/...
 .PHONY: bundle-gen
 
