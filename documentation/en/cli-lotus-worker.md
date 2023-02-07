@@ -218,7 +218,7 @@ NAME:
    lotus-worker tasks enable - Enable a task type
 
 USAGE:
-   lotus-worker tasks enable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
+   lotus-worker tasks enable [command options] --all | [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
    --all  Enable all task types (default: false)
@@ -231,7 +231,7 @@ NAME:
    lotus-worker tasks disable - Disable a task type
 
 USAGE:
-   lotus-worker tasks disable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
+   lotus-worker tasks disable [command options] --all | [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
    --all  Disable all task types (default: false)
