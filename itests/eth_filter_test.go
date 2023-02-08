@@ -2153,16 +2153,6 @@ func ParseEthLog(in map[string]interface{}) (*ethtypes.EthLog, error) {
 	return el, err
 }
 
-func paddedEthBytes(orig []byte) ethtypes.EthBytes {
-	needed := 32 - len(orig)
-	if needed <= 0 {
-		return orig
-	}
-	ret := make([]byte, 32)
-	copy(ret[needed:], orig)
-	return ret
-}
-
 func paddedUint64(v uint64) ethtypes.EthBytes {
 	buf := make([]byte, 32)
 	binary.BigEndian.PutUint64(buf[24:], v)
