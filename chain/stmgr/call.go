@@ -107,22 +107,16 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		}
 	}
 
-	var vmHeight abi.ChainEpoch
-	if checkGas {
-		// Since we're simulating a future message, pretend we're applying it in the "next" tipset
-		vmHeight = ts.Height() + 1
-		if stateCid == cid.Undef {
-			stateCid, _, err = sm.TipSetState(ctx, ts)
-			if err != nil {
-				return nil, xerrors.Errorf("computing tipset state: %w", err)
-			}
+	// Unless executing on a specific state cid, apply all the messages from the current tipset
+	// first. Unfortunately, we can't just execute the tipset, because that will run cron. We
+	// don't want to apply miner messages after cron runs in a given epoch.
+	if stateCid == cid.Undef {
+		stateCid = ts.ParentState()
+		tsMsgs, err := sm.cs.MessagesForTipset(ctx, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to lookup messages for parent tipset: %w", err)
 		}
-	} else {
-		// If we're not checking gas, we don't want to have to execute the tipset like above. This saves a lot of computation time
-		vmHeight = pts.Height() + 1
-		if stateCid == cid.Undef {
-			stateCid = ts.ParentState()
-		}
+		priorMsgs = append(tsMsgs, priorMsgs...)
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
@@ -142,14 +136,14 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
-		Epoch:          vmHeight,
+		Epoch:          ts.Height(),
 		Timestamp:      ts.MinTimestamp(),
 		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, nvGetter),
 		Bstore:         buffStore,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NetworkVersion: nvGetter(ctx, vmHeight),
+		NetworkVersion: nvGetter(ctx, ts.Height()),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
