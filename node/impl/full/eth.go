@@ -1517,44 +1517,49 @@ func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
 	e.filters = append(e.filters, f)
 }
 
+func (e *ethSubscription) send(ctx context.Context, v interface{}) {
+	resp := ethtypes.EthSubscriptionResponse{
+		SubscriptionID: e.id,
+		Result:         v,
+	}
+
+	outParam, err := json.Marshal(resp)
+	if err != nil {
+		log.Warnw("marshaling subscription response", "sub", e.id, "error", err)
+		return
+	}
+
+	if err := e.out(ctx, outParam); err != nil {
+		log.Warnw("sending subscription response", "sub", e.id, "error", err)
+		return
+	}
+}
+
 func (e *ethSubscription) start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case v := <-e.in:
-			resp := ethtypes.EthSubscriptionResponse{
-				SubscriptionID: e.id,
-			}
-
-			var err error
 			switch vt := v.(type) {
 			case *filter.CollectedEvent:
-				resp.Result, err = ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
+				evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
+				if err != nil {
+					continue
+				}
+
+				for _, r := range evs.Results {
+					e.send(ctx, r)
+				}
 			case *types.TipSet:
-				eb, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
+				ev, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
 				if err != nil {
 					break
 				}
 
-				resp.Result = eb
+				e.send(ctx, ev)
 			default:
 				log.Warnf("unexpected subscription value type: %T", vt)
-			}
-
-			if err != nil {
-				continue
-			}
-
-			outParam, err := json.Marshal(resp)
-			if err != nil {
-				log.Warnw("marshaling subscription response", "sub", e.id, "error", err)
-				continue
-			}
-
-			if err := e.out(ctx, outParam); err != nil {
-				log.Warnw("sending subscription response", "sub", e.id, "error", err)
-				continue
 			}
 		}
 	}
