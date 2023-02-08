@@ -16,7 +16,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -291,7 +290,7 @@ func TestEthNewFilterDefaultSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 		{
 			Address: ethContractAddr,
@@ -301,7 +300,7 @@ func TestEthNewFilterDefaultSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 		{
 			Address: ethContractAddr,
@@ -311,7 +310,7 @@ func TestEthNewFilterDefaultSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 	}
 
@@ -350,7 +349,7 @@ func TestEthGetLogsBasic(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 	}
 
@@ -415,7 +414,7 @@ func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		}
 	}
 
@@ -1874,6 +1873,7 @@ type ExpectedEthLog struct {
 }
 
 func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedEthLog, messages map[ethtypes.EthHash]msgInTipset) {
+	t.Helper()
 	require := require.New(t)
 
 	t.Logf("got %d ethlogs, wanted %d", len(actual), len(expected))
@@ -1943,7 +1943,7 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 				buf.WriteString(fmt.Sprintf("event %d\n", i))
 				buf.WriteString(fmt.Sprintf("  emitter: %v\n", ev.Emitter))
 				for _, en := range ev.Entries {
-					buf.WriteString(fmt.Sprintf("  %s=%x\n", en.Key, decodeLogBytes(en.Value)))
+					buf.WriteString(fmt.Sprintf("  %s=%x\n", en.Key, en.Value))
 				}
 			}
 
@@ -2166,15 +2166,4 @@ func unpackUint64Values(data []byte) []uint64 {
 		vals = append(vals, v)
 	}
 	return vals
-}
-
-func decodeLogBytes(orig []byte) []byte {
-	if len(orig) == 0 {
-		return orig
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
-	}
-	return decoded
 }
