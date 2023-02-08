@@ -2,12 +2,16 @@ package kit
 
 import (
 	"golang.org/x/crypto/sha3"
+
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-func EthTopicHash(sig string) []byte {
+func EthTopicHash(sig string) ethtypes.EthHash {
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write([]byte(sig))
-	return hasher.Sum(nil)
+	var hash ethtypes.EthHash
+	copy(hash[:], hasher.Sum(nil))
+	return hash
 }
 
 func EthFunctionHash(sig string) []byte {
@@ -18,9 +22,9 @@ func EthFunctionHash(sig string) []byte {
 
 // SolidityContractDef holds information about one of the test contracts
 type SolidityContractDef struct {
-	Filename string            // filename of the hex of the contract, e.g. contracts/EventMatrix.hex
-	Fn       map[string][]byte // mapping of function names to 32-bit selector
-	Ev       map[string][]byte // mapping of event names to 256-bit signature hashes
+	Filename string                      // filename of the hex of the contract, e.g. contracts/EventMatrix.hex
+	Fn       map[string][]byte           // mapping of function names to 32-bit selector
+	Ev       map[string]ethtypes.EthHash // mapping of event names to 256-bit signature hashes
 }
 
 var EventMatrixContract = SolidityContractDef{
@@ -38,7 +42,7 @@ var EventMatrixContract = SolidityContractDef{
 		"logEventTwoIndexedWithData":   EthFunctionHash("logEventTwoIndexedWithData(uint256,uint256,uint256)"),
 		"logEventThreeIndexedWithData": EthFunctionHash("logEventThreeIndexedWithData(uint256,uint256,uint256,uint256)"),
 	},
-	Ev: map[string][]byte{
+	Ev: map[string]ethtypes.EthHash{
 		"EventZeroData":             EthTopicHash("EventZeroData()"),
 		"EventOneData":              EthTopicHash("EventOneData(uint256)"),
 		"EventTwoData":              EthTopicHash("EventTwoData(uint256,uint256)"),
@@ -60,5 +64,5 @@ var EventsContract = SolidityContractDef{
 		"log_zero_nodata": {0x00, 0x00, 0x00, 0x01},
 		"log_four_data":   {0x00, 0x00, 0x00, 0x02},
 	},
-	Ev: map[string][]byte{},
+	Ev: map[string]ethtypes.EthHash{},
 }

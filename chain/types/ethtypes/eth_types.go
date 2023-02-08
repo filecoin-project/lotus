@@ -626,7 +626,7 @@ type EthLog struct {
 	Data EthBytes `json:"data"`
 
 	// List of topics associated with the event log.
-	Topics []EthBytes `json:"topics"`
+	Topics []EthHash `json:"topics"`
 
 	// Following fields are derived from the transaction containing the log
 

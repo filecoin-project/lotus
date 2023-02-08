@@ -1376,7 +1376,12 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 				continue
 			}
 			if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
-				log.Topics = append(log.Topics, entry.Value)
+				if len(entry.Value) != 32 {
+					continue
+				}
+				var value ethtypes.EthHash
+				copy(value[:], entry.Value)
+				log.Topics = append(log.Topics, value)
 			} else {
 				log.Data = entry.Value
 			}
@@ -1913,8 +1918,13 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 					continue
 				}
 				if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
+					if len(entry.Value) != 32 {
+						continue
+					}
+					var value ethtypes.EthHash
+					copy(value[:], entry.Value)
+					l.Topics = append(l.Topics, value)
 					ethtypes.EthBloomSet(receipt.LogsBloom, entry.Value)
-					l.Topics = append(l.Topics, entry.Value)
 				} else {
 					l.Data = entry.Value
 				}
