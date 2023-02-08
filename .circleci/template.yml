@@ -797,4 +797,7 @@ workflows:
       [[- end]]
       - test-race:
           name: "Test with race detector"
+          requires:
+            - build
+
 
