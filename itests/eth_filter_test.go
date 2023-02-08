@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/bits"
 	"os"
 	"sort"
 	"strconv"
@@ -421,6 +422,51 @@ func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
 	elogs, err := parseEthLogsFromSubscriptionResponses(subResponses)
 	require.NoError(err)
 	AssertEthLogs(t, elogs, expected, messages)
+}
+
+func TestTxReceiptBloom(t *testing.T) {
+	blockTime := 50 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(
+		t,
+		kit.MockProofs(),
+		kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/EventMatrix.hex")
+
+	_, ml, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "logEventZeroData()", nil)
+	require.NoError(t, err)
+
+	th, err := client.EthGetTransactionHashByCid(ctx, ml.Message)
+	require.NoError(t, err)
+	require.NotNil(t, th)
+
+	receipt, err := client.EthGetTransactionReceipt(ctx, *th)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.Len(t, receipt.Logs, 1)
+
+	// computed by calling EventMatrix/logEventZeroData in remix
+	// note this only contains topic bits
+	matchMask := "0x00000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+	maskBytes, err := hex.DecodeString(matchMask[2:])
+	require.NoError(t, err)
+
+	bitsSet := 0
+	for i, maskByte := range maskBytes {
+		bitsSet += bits.OnesCount8(receipt.LogsBloom[i])
+
+		if maskByte > 0 {
+			require.True(t, maskByte&receipt.LogsBloom[i] > 0)
+		}
+	}
+
+	// 3 bits from the topic, 3 bits from the address
+	require.Equal(t, 6, bitsSet)
 }
 
 func TestEthGetLogs(t *testing.T) {
