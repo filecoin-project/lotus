@@ -456,7 +456,7 @@ func EthBloomSet(f EthBytes, data []byte) {
 
 	for i := 0; i < 3; i++ {
 		n := binary.BigEndian.Uint16(hash[i*2:]) % EthBloomSize
-		f[n/8] |= 1 << (n % 8)
+		f[(EthBloomSize/8)-(n/8)-1] |= 1 << (n % 8)
 	}
 }
 
