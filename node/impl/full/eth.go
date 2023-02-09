@@ -1757,6 +1757,7 @@ func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, sa StateAPI
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
 		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
+		AccessList:           []ethtypes.EthHash{},
 	}
 }
 
