@@ -11,12 +11,16 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/manifest"
+	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/evm"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -219,4 +223,32 @@ func TestDeployment(t *testing.T) {
 	require.NoError(t, err)
 
 	client.AssertActorType(ctx, contractAddr, "evm")
+
+	// Check bytecode and bytecode hash match.
+	contractAct, err := client.StateGetActor(ctx, contractAddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	bs := blockstore.NewAPIBlockstore(client)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	evmSt, err := evm.Load(ctxStore, contractAct)
+	require.NoError(t, err)
+
+	byteCodeCid, err := evmSt.GetBytecodeCID()
+	require.NoError(t, err)
+
+	byteCode, err := bs.Get(ctx, byteCodeCid)
+	require.NoError(t, err)
+
+	byteCodeHashChain, err := evmSt.GetBytecodeHash()
+	require.NoError(t, err)
+
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(byteCode.RawData())
+	byteCodeHash := hasher.Sum(nil)
+	require.Equal(t, byteCodeHashChain[:], byteCodeHash)
+
+	byteCodeSt, err := evmSt.GetBytecode()
+	require.NoError(t, err)
+	require.Equal(t, byteCode.RawData(), byteCodeSt)
 }
