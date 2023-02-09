@@ -608,19 +608,13 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 			var elogs []*ethtypes.EthLog
 			for resp := range responseCh {
-				rlist, ok := resp.Result.([]interface{})
-				require.True(ok, "expected subscription result to be []interface{}, but was %T", resp.Result)
+				rmap, ok := resp.Result.(map[string]interface{})
+				require.True(ok, "expected subscription result entry to be map[string]interface{}, but was %T", resp.Result)
 
-				for _, rentry := range rlist {
-					rmap, ok := rentry.(map[string]interface{})
-					require.True(ok, "expected subscription result entry to be map[string]interface{}, but was %T", resp.Result)
+				elog, err := ParseEthLog(rmap)
+				require.NoError(err)
 
-					elog, err := ParseEthLog(rmap)
-					require.NoError(err)
-
-					elogs = append(elogs, elog)
-				}
-
+				elogs = append(elogs, elog)
 			}
 			AssertEthLogs(t, elogs, tc.expected, messages)
 		})
@@ -2012,23 +2006,16 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 func parseEthLogsFromSubscriptionResponses(subResponses []ethtypes.EthSubscriptionResponse) ([]*ethtypes.EthLog, error) {
 	elogs := make([]*ethtypes.EthLog, 0, len(subResponses))
 	for i := range subResponses {
-		rlist, ok := subResponses[i].Result.([]interface{})
+		rmap, ok := subResponses[i].Result.(map[string]interface{})
 		if !ok {
-			return nil, xerrors.Errorf("expected subscription result to be []interface{}, but was %T", subResponses[i].Result)
+			return nil, xerrors.Errorf("expected subscription result entry to be map[string]interface{}, but was %T", subResponses[i].Result)
 		}
 
-		for _, r := range rlist {
-			rmap, ok := r.(map[string]interface{})
-			if !ok {
-				return nil, xerrors.Errorf("expected subscription result entry to be map[string]interface{}, but was %T", r)
-			}
-
-			elog, err := ParseEthLog(rmap)
-			if err != nil {
-				return nil, err
-			}
-			elogs = append(elogs, elog)
+		elog, err := ParseEthLog(rmap)
+		if err != nil {
+			return nil, err
 		}
+		elogs = append(elogs, elog)
 	}
 
 	return elogs, nil
