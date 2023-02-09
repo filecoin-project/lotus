@@ -1973,6 +1973,52 @@ func (m *EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) e
 	return nil
 }
 
+func (m *EthTxHashManager) PopulateExistingMappings(ctx context.Context, minHeight abi.ChainEpoch) error {
+	if minHeight < build.UpgradeHyggeHeight {
+		minHeight = build.UpgradeHyggeHeight
+	}
+
+	ts := m.StateAPI.Chain.GetHeaviestTipSet()
+	for ts.Height() > minHeight {
+		for _, block := range ts.Blocks() {
+			msgs, err := m.StateAPI.Chain.SecpkMessagesForBlock(ctx, block)
+			if err != nil {
+				// If we can't find the messages, we've either imported from snapshot or pruned the store
+				log.Debug("exiting message mapping population at epoch ", ts.Height())
+				return nil
+			}
+
+			for _, msg := range msgs {
+				m.ProcessSignedMessage(ctx, msg)
+			}
+		}
+
+		var err error
+		ts, err = m.StateAPI.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.SignedMessage) {
+	if msg.Signature.Type != crypto.SigTypeDelegated {
+		return
+	}
+
+	ethTx, err := newEthTxFromSignedMessage(ctx, msg, m.StateAPI)
+	if err != nil {
+		log.Errorf("error converting filecoin message to eth tx: %s", err)
+	}
+
+	err = m.TransactionHashLookup.UpsertHash(ethTx.Hash, msg.Cid())
+	if err != nil {
+		log.Errorf("error inserting tx mapping to db: %s", err)
+	}
+}
+
 func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager *EthTxHashManager) {
 	for {
 		select {
@@ -1982,19 +2028,8 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 			if u.Type != api.MpoolAdd {
 				continue
 			}
-			if u.Message.Signature.Type != crypto.SigTypeDelegated {
-				continue
-			}
 
-			ethTx, err := newEthTxFromSignedMessage(ctx, u.Message, manager.StateAPI)
-			if err != nil {
-				log.Errorf("error converting filecoin message to eth tx: %s", err)
-			}
-
-			err = manager.TransactionHashLookup.UpsertHash(ethTx.Hash, u.Message.Cid())
-			if err != nil {
-				log.Errorf("error inserting tx mapping to db: %s", err)
-			}
+			manager.ProcessSignedMessage(ctx, u.Message)
 		}
 	}
 }
