@@ -1371,14 +1371,14 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 		var err error
 
 		for _, entry := range ev.Entries {
-			value, err := cborDecodeTopicValue(entry.Value)
-			if err != nil {
-				return nil, err
+			// Skip all events that aren't "raw" data.
+			if entry.Codec != cid.Raw {
+				continue
 			}
 			if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
-				log.Topics = append(log.Topics, value)
+				log.Topics = append(log.Topics, entry.Value)
 			} else {
-				log.Data = value
+				log.Data = entry.Value
 			}
 		}
 
@@ -1907,14 +1907,14 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			}
 
 			for _, entry := range evt.Entries {
-				value, err := cborDecodeTopicValue(entry.Value)
-				if err != nil {
-					return api.EthTxReceipt{}, xerrors.Errorf("failed to decode event log value: %w", err)
+				// Ignore any non-raw values/keys.
+				if entry.Codec != cid.Raw {
+					continue
 				}
 				if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
-					l.Topics = append(l.Topics, value)
+					l.Topics = append(l.Topics, entry.Value)
 				} else {
-					l.Data = value
+					l.Data = entry.Value
 				}
 			}
 
@@ -2013,45 +2013,6 @@ func EthTxHashGC(ctx context.Context, retentionDays int, manager *EthTxHashManag
 	}
 }
 
-func leftpad32(orig []byte) []byte {
-	needed := 32 - len(orig)
-	if needed <= 0 {
-		return orig
-	}
-	ret := make([]byte, 32)
-	copy(ret[needed:], orig)
-	return ret
-}
-
-func trimLeadingZeros(b []byte) []byte {
-	for i := range b {
-		if b[i] != 0 {
-			return b[i:]
-		}
-	}
-	return []byte{}
-}
-
-func cborEncodeTopicValue(orig []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	err := cbg.WriteByteArray(&buf, trimLeadingZeros(orig))
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func cborDecodeTopicValue(orig []byte) ([]byte, error) {
-	if len(orig) == 0 {
-		return orig, nil
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return nil, err
-	}
-	return leftpad32(decoded), nil
-}
-
 func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 	keys := map[string][][]byte{}
 	for idx, vals := range topics {
@@ -2061,11 +2022,8 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 		key := fmt.Sprintf("t%d", idx+1)
 		for _, v := range vals {
-			encodedVal, err := cborEncodeTopicValue(v[:])
-			if err != nil {
-				return nil, xerrors.Errorf("failed to encode topic value")
-			}
-			keys[key] = append(keys[key], encodedVal)
+			v := v // copy the ethhash to avoid repeatedly referencing the same one.
+			keys[key] = append(keys[key], v[:])
 		}
 	}
 	return keys, nil

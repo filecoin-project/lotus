@@ -57,7 +57,7 @@ func buildInputFromuint64(number uint64) []byte {
 // recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
 // before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	expectedIterationsBeforeFailing := int(228)
+	expectedIterationsBeforeFailing := int(229)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
@@ -157,7 +157,7 @@ func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	highestSuccessCount := uint64(237)
+	highestSuccessCount := uint64(235)
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
 	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
@@ -601,10 +601,10 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=32", testN(200, 32, exitcode.Ok))
 	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
 
-	t.Run("n=0,r=254", testN(0, 254, exitcode.Ok))
+	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
 	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
 
-	t.Run("n=0,r=256-fails", testN(0, 256, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=0,r=253-fails", testN(0, 253, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }
 
