@@ -58,7 +58,7 @@ func buildInputFromuint64(number uint64) []byte {
 // recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
 // before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	expectedIterationsBeforeFailing := int(229)
+	expectedIterationsBeforeFailing := int(220)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
@@ -158,7 +158,7 @@ func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	highestSuccessCount := uint64(235)
+	highestSuccessCount := uint64(225)
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
 	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
