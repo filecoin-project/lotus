@@ -43,3 +43,11 @@ func (s *state10) Nonce() (uint64, error) {
 func (s *state10) GetState() interface{} {
 	return &s.State
 }
+
+func (s *state10) GetBytecodeCID() (cid.Cid, error) {
+	return s.State.Bytecode, nil
+}
+
+func (s *state10) GetBytecodeHash() ([32]byte, error) {
+	return s.State.BytecodeHash, nil
+}
