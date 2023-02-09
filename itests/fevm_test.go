@@ -58,7 +58,7 @@ func buildInputFromuint64(number uint64) []byte {
 // recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
 // before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	expectedIterationsBeforeFailing := int(228)
+	expectedIterationsBeforeFailing := int(229)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
@@ -151,24 +151,26 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMRecursiveDelegateCall tests the maximum delegatecall recursion depth. It currently
-// succeeds succeeds up to 228 times.
-func TestFEVMRecursiveDelegatecall(t *testing.T) {
+// TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth. It currently
+// succeeds succeeds up to 237 times.
+func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
+	highestSuccessCount := uint64(235)
+
 	filename := "contracts/RecursiveDelegeatecall.hex"
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(2))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(10))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(100))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, highestSuccessCount)
 
-	//success with 228 or fewer calls
-	for i := uint64(1); i <= 228; i += 30 {
-		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
-	}
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(228))
+	recursiveDelegatecallFail(ctx, t, client, filename, highestSuccessCount+1)
+	recursiveDelegatecallFail(ctx, t, client, filename, uint64(1000))
+	recursiveDelegatecallFail(ctx, t, client, filename, uint64(10000000))
 
-	for i := uint64(239); i <= 800; i += 40 {
-		recursiveDelegatecallFail(ctx, t, client, filename, i)
-	}
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
@@ -600,10 +602,10 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=32", testN(200, 32, exitcode.Ok))
 	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
 
-	t.Run("n=0,r=254", testN(0, 254, exitcode.Ok))
+	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
 	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
 
-	t.Run("n=0,r=256-fails", testN(0, 256, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=0,r=253-fails", testN(0, 253, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }
 
@@ -702,6 +704,32 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	t.Run("n=40", testN(40))
 	t.Run("n=50", testN(50))
 	t.Run("n=100", testN(100))
+}
+
+// TestFEVM deploys a contract while sending value to it
+func TestFEVMDeployWithValue(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//testValue is the amount sent when the contract is created
+	//at the end we check that the new contract has a balance of testValue
+	testValue := big.NewInt(20)
+
+	// deploy DeployValueTest which creates NewContract
+	// testValue is sent to DeployValueTest and that amount is
+	// also sent to NewContract
+	filenameActor := "contracts/DeployValueTest.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilenameWithValue(ctx, filenameActor, testValue)
+
+	//call getNewContractBalance to find the value of NewContract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
+	require.NoError(t, err)
+
+	contractBalance, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	//require balance of NewContract is testValue
+	require.Equal(t, testValue.Uint64(), contractBalance)
 }
 
 func TestFEVMDestroyCreate2(t *testing.T) {

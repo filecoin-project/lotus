@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -42,19 +43,18 @@ func (f *TestFullNode) EVM() *EVM {
 	return &EVM{f}
 }
 
-func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
-	var err error
+func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Address, bytecode []byte, value big.Int) eam.CreateReturn {
 	require := require.New(e.t)
 
 	method := builtintypes.MethodsEAM.CreateExternal
 	initcode := abi.CborBytes(bytecode)
-	params, err := actors.SerializeParams(&initcode)
-	require.NoError(err)
+	params, errActors := actors.SerializeParams(&initcode)
+	require.NoError(errActors)
 
 	msg := &types.Message{
 		To:     builtintypes.EthereumAddressManagerActorAddr,
 		From:   sender,
-		Value:  big.Zero(),
+		Value:  value,
 		Method: method,
 		Params: params,
 	}
@@ -76,8 +76,11 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 
 	return result
 }
+func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
+	return e.DeployContractWithValue(ctx, sender, bytecode, big.Zero())
+}
 
-func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
+func (e *EVM) DeployContractFromFilenameWithValue(ctx context.Context, binFilename string, value big.Int) (address.Address, address.Address) {
 	contractHex, err := os.ReadFile(binFilename)
 	require.NoError(e.t, err)
 
@@ -90,11 +93,14 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 	fromAddr, err := e.WalletDefaultAddress(ctx)
 	require.NoError(e.t, err)
 
-	result := e.DeployContract(ctx, fromAddr, contract)
+	result := e.DeployContractWithValue(ctx, fromAddr, contract, value)
 
 	idAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(e.t, err)
 	return fromAddr, idAddr
+}
+func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
+	return e.DeployContractFromFilenameWithValue(ctx, binFilename, big.Zero())
 }
 
 func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) (*api.MsgLookup, error) {
@@ -126,7 +132,11 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	if err != nil {
 		return nil, err
 	}
-
+	if !wait.Receipt.ExitCode.IsSuccess() {
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		e.t.Log(result.Error)
+	}
 	return wait, nil
 }
 
@@ -244,7 +254,9 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, wait, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, wait, fmt.Errorf("contract execution failed - %v", wait.Receipt.ExitCode)
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		return nil, wait, errors.New(result.Error)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {

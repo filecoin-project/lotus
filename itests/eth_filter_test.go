@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/bits"
 	"os"
 	"sort"
 	"strconv"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -291,7 +291,7 @@ func TestEthNewFilterDefaultSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 		{
 			Address: ethContractAddr,
@@ -301,7 +301,7 @@ func TestEthNewFilterDefaultSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 		{
 			Address: ethContractAddr,
@@ -311,7 +311,7 @@ func TestEthNewFilterDefaultSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 	}
 
@@ -350,7 +350,7 @@ func TestEthGetLogsBasic(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		},
 	}
 
@@ -415,13 +415,58 @@ func TestEthSubscribeLogsNoTopicSpec(t *testing.T) {
 				paddedEthBytes([]byte{0x33, 0x33}),
 				paddedEthBytes([]byte{0x44, 0x44}),
 			},
-			Data: paddedEthBytes([]byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}),
+			Data: []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 		}
 	}
 
 	elogs, err := parseEthLogsFromSubscriptionResponses(subResponses)
 	require.NoError(err)
 	AssertEthLogs(t, elogs, expected, messages)
+}
+
+func TestTxReceiptBloom(t *testing.T) {
+	blockTime := 50 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(
+		t,
+		kit.MockProofs(),
+		kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, "contracts/EventMatrix.hex")
+
+	_, ml, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "logEventZeroData()", nil)
+	require.NoError(t, err)
+
+	th, err := client.EthGetTransactionHashByCid(ctx, ml.Message)
+	require.NoError(t, err)
+	require.NotNil(t, th)
+
+	receipt, err := client.EthGetTransactionReceipt(ctx, *th)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.Len(t, receipt.Logs, 1)
+
+	// computed by calling EventMatrix/logEventZeroData in remix
+	// note this only contains topic bits
+	matchMask := "0x00000000000000000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+	maskBytes, err := hex.DecodeString(matchMask[2:])
+	require.NoError(t, err)
+
+	bitsSet := 0
+	for i, maskByte := range maskBytes {
+		bitsSet += bits.OnesCount8(receipt.LogsBloom[i])
+
+		if maskByte > 0 {
+			require.True(t, maskByte&receipt.LogsBloom[i] > 0)
+		}
+	}
+
+	// 3 bits from the topic, 3 bits from the address
+	require.Equal(t, 6, bitsSet)
 }
 
 func TestEthGetLogs(t *testing.T) {
@@ -563,19 +608,13 @@ func TestEthSubscribeLogs(t *testing.T) {
 
 			var elogs []*ethtypes.EthLog
 			for resp := range responseCh {
-				rlist, ok := resp.Result.([]interface{})
-				require.True(ok, "expected subscription result to be []interface{}, but was %T", resp.Result)
+				rmap, ok := resp.Result.(map[string]interface{})
+				require.True(ok, "expected subscription result entry to be map[string]interface{}, but was %T", resp.Result)
 
-				for _, rentry := range rlist {
-					rmap, ok := rentry.(map[string]interface{})
-					require.True(ok, "expected subscription result entry to be map[string]interface{}, but was %T", resp.Result)
+				elog, err := ParseEthLog(rmap)
+				require.NoError(err)
 
-					elog, err := ParseEthLog(rmap)
-					require.NoError(err)
-
-					elogs = append(elogs, elog)
-				}
-
+				elogs = append(elogs, elog)
 			}
 			AssertEthLogs(t, elogs, tc.expected, messages)
 		})
@@ -1874,6 +1913,7 @@ type ExpectedEthLog struct {
 }
 
 func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedEthLog, messages map[ethtypes.EthHash]msgInTipset) {
+	t.Helper()
 	require := require.New(t)
 
 	t.Logf("got %d ethlogs, wanted %d", len(actual), len(expected))
@@ -1943,7 +1983,7 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 				buf.WriteString(fmt.Sprintf("event %d\n", i))
 				buf.WriteString(fmt.Sprintf("  emitter: %v\n", ev.Emitter))
 				for _, en := range ev.Entries {
-					buf.WriteString(fmt.Sprintf("  %s=%x\n", en.Key, decodeLogBytes(en.Value)))
+					buf.WriteString(fmt.Sprintf("  %s=%x\n", en.Key, en.Value))
 				}
 			}
 
@@ -1966,23 +2006,16 @@ func AssertEthLogs(t *testing.T, actual []*ethtypes.EthLog, expected []ExpectedE
 func parseEthLogsFromSubscriptionResponses(subResponses []ethtypes.EthSubscriptionResponse) ([]*ethtypes.EthLog, error) {
 	elogs := make([]*ethtypes.EthLog, 0, len(subResponses))
 	for i := range subResponses {
-		rlist, ok := subResponses[i].Result.([]interface{})
+		rmap, ok := subResponses[i].Result.(map[string]interface{})
 		if !ok {
-			return nil, xerrors.Errorf("expected subscription result to be []interface{}, but was %T", subResponses[i].Result)
+			return nil, xerrors.Errorf("expected subscription result entry to be map[string]interface{}, but was %T", subResponses[i].Result)
 		}
 
-		for _, r := range rlist {
-			rmap, ok := r.(map[string]interface{})
-			if !ok {
-				return nil, xerrors.Errorf("expected subscription result entry to be map[string]interface{}, but was %T", r)
-			}
-
-			elog, err := ParseEthLog(rmap)
-			if err != nil {
-				return nil, err
-			}
-			elogs = append(elogs, elog)
+		elog, err := ParseEthLog(rmap)
+		if err != nil {
+			return nil, err
 		}
+		elogs = append(elogs, elog)
 	}
 
 	return elogs, nil
@@ -2166,15 +2199,4 @@ func unpackUint64Values(data []byte) []uint64 {
 		vals = append(vals, v)
 	}
 	return vals
-}
-
-func decodeLogBytes(orig []byte) []byte {
-	if len(orig) == 0 {
-		return orig
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
-	}
-	return decoded
 }
