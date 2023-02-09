@@ -92,7 +92,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 		defer closer()
 
 		backupPath := cctx.Args().First()
-		if _, err := os.Stat(backupPath); err == nil {
+		if _, err := os.Stat(backupPath); !os.IsNotExist(err) {
 			return xerrors.Errorf("backup file %s already exists. Overwriting it will corrupt the file, please specify another file name", backupPath)
 		}
 
