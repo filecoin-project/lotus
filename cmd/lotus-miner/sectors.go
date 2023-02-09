@@ -1379,8 +1379,14 @@ var sectorsStartSealCmd = &cli.Command{
 
 var sectorsSealDelayCmd = &cli.Command{
 	Name:      "set-seal-delay",
-	Usage:     "Set the time, in minutes, that a new sector waits for deals before sealing starts",
-	ArgsUsage: "<minutes>",
+	Usage:     "Set the time (in minutes) that a new sector waits for deals before sealing starts",
+	ArgsUsage: "<time>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "seconds",
+			Usage: "Specifies that the time argument should be in seconds",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -1397,7 +1403,12 @@ var sectorsSealDelayCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
-		delay := hs * uint64(time.Minute)
+		var delay uint64
+		if cctx.Bool("seconds") {
+			delay = hs * uint64(time.Second)
+		} else {
+			delay = hs * uint64(time.Minute)
+		}
 
 		return minerAPI.SectorSetSealDelay(ctx, time.Duration(delay))
 	},

@@ -1680,7 +1680,7 @@ COMMANDS:
      snap-up               Mark a committed capacity sector to be filled with deals
      abort-upgrade         Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before
      seal                  Manually start sealing a sector (filling any unused space with junk)
-     set-seal-delay        Set the time, in minutes, that a new sector waits for deals before sealing starts
+     set-seal-delay        Set the time (in minutes) that a new sector waits for deals before sealing starts
      get-cc-collateral     Get the collateral required to pledge a committed capacity sector
      batching              manage batch sector operations
      match-pending-pieces  force a refreshed match of pending pieces to open sectors without manually waiting for more deals
@@ -2002,13 +2002,13 @@ OPTIONS:
 ### lotus-miner sectors set-seal-delay
 ```
 NAME:
-   lotus-miner sectors set-seal-delay - Set the time, in minutes, that a new sector waits for deals before sealing starts
+   lotus-miner sectors set-seal-delay - Set the time (in minutes) that a new sector waits for deals before sealing starts
 
 USAGE:
-   lotus-miner sectors set-seal-delay [command options] <minutes>
+   lotus-miner sectors set-seal-delay [command options] <time>
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --seconds  Specifies that the time argument should be in seconds (default: false)
    
 ```
 
