@@ -704,3 +704,29 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	t.Run("n=50", testN(50))
 	t.Run("n=100", testN(100))
 }
+
+// TestFEVM deploys a contract while sending value to it
+func TestFEVMDeployWithValue(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//testValue is the amount sent when the contract is created
+	//at the end we check that the new contract has a balance of testValue
+	testValue := big.NewInt(20)
+
+	// deploy DeployValueTest which creates NewContract
+	// testValue is sent to DeployValueTest and that amount is
+	// also sent to NewContract
+	filenameActor := "contracts/DeployValueTest.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilenameWithValue(ctx, filenameActor, testValue)
+
+	//call getNewContractBalance to find the value of NewContract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
+	require.NoError(t, err)
+
+	contractBalance, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	//require balance of NewContract is testValue
+	require.Equal(t, testValue.Uint64(), contractBalance)
+}
