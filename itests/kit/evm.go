@@ -5,10 +5,14 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
+	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-varint"
 	"github.com/stretchr/testify/require"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -21,8 +25,10 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -38,15 +44,8 @@ func (f *TestFullNode) EVM() *EVM {
 }
 
 func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
+	var err error
 	require := require.New(e.t)
-
-	nonce, err := e.MpoolGetNonce(ctx, sender)
-	if err != nil {
-		nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
-	}
-
-	var salt [32]byte
-	binary.BigEndian.PutUint64(salt[:], nonce)
 
 	method := builtintypes.MethodsEAM.CreateExternal
 	initcode := abi.CborBytes(bytecode)
@@ -99,32 +98,41 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 	return fromAddr, idAddr
 }
 
-func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) *api.MsgLookup {
-	require := require.New(e.t)
-
+func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) (*api.MsgLookup, error) {
 	params := append(selector, inputData...)
 	var buffer bytes.Buffer
 	err := cbg.WriteByteArray(&buffer, params)
-	require.NoError(err)
+	if err != nil {
+		return nil, err
+	}
 	params = buffer.Bytes()
 
 	msg := &types.Message{
-		To:     target,
-		From:   sender,
-		Value:  big.Zero(),
-		Method: builtintypes.MethodsEVM.InvokeContract,
-		Params: params,
+		To:       target,
+		From:     sender,
+		Value:    big.Zero(),
+		Method:   builtintypes.MethodsEVM.InvokeContract,
+		GasLimit: build.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
+		Params:   params,
 	}
 
 	e.t.Log("sending invoke message")
 	smsg, err := e.MpoolPushMessage(ctx, msg, nil)
-	require.NoError(err)
+	if err != nil {
+		return nil, err
+	}
 
 	e.t.Log("waiting for message to execute")
 	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
-	require.NoError(err)
-
-	return wait
+	if err != nil {
+		return nil, err
+	}
+	if !wait.Receipt.ExitCode.IsSuccess() {
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		e.t.Log(result.Error)
+	}
+	return wait, nil
 }
 
 // LoadEvents loads all events in an event AMT.
@@ -234,13 +242,28 @@ func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
 }
 
-func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) []byte {
+func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) ([]byte, *api.MsgLookup, error) {
 	entryPoint := CalcFuncSignature(funcSignature)
-	wait := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
-	require.True(e.t, wait.Receipt.ExitCode.IsSuccess(), "contract execution failed")
+	wait, err := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
+	if err != nil {
+		return nil, wait, err
+	}
+	if !wait.Receipt.ExitCode.IsSuccess() {
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		return nil, wait, errors.New(result.Error)
+	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
-	require.NoError(e.t, err)
-	return result
+	if err != nil {
+		return nil, wait, err
+	}
+	return result, wait, nil
+}
+
+func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte, exit exitcode.ExitCode) {
+	entryPoint := CalcFuncSignature(funcSignature)
+	wait, _ := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
+	require.Equal(e.t, exit, wait.Receipt.ExitCode)
 }
 
 // function signatures are the first 4 bytes of the hash of the function name and types
@@ -300,4 +323,115 @@ func removeLeadingZeros(data []byte) []byte {
 		}
 	}
 	return data[firstNonZeroIndex:]
+}
+
+func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFullNode) {
+	// make all logs extra quiet for fevm tests
+	lvl, err := logging.LevelFromString("error")
+	if err != nil {
+		panic(err)
+	}
+	logging.SetAllLoggers(lvl)
+
+	blockTime := 100 * time.Millisecond
+	client, _, ens := EnsembleMinimal(t, MockProofs(), ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+
+	// require that the initial balance is 100 million FIL in setup
+	// this way other tests can count on this initial wallet balance
+	fromAddr := client.DefaultKey.Address
+	bal, err := client.WalletBalance(ctx, fromAddr)
+	require.NoError(t, err)
+	originalBalance := types.FromFil(uint64(100_000_000)) // 100 million FIL
+	require.Equal(t, originalBalance, bal)
+
+	return ctx, cancel, client
+}
+
+func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
+	sendMsg := &types.Message{
+		From:  fromAddr,
+		To:    toAddr,
+		Value: sendAmount,
+	}
+	signedMsg, err := e.MpoolPushMessage(ctx, sendMsg, nil)
+	require.NoError(e.t, err)
+	mLookup, err := e.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
+	require.NoError(e.t, err)
+	require.Equal(e.t, exitcode.Ok, mLookup.Receipt.ExitCode)
+}
+
+func NewEthFilterBuilder() *EthFilterBuilder {
+	return &EthFilterBuilder{}
+}
+
+type EthFilterBuilder struct {
+	filter ethtypes.EthFilterSpec
+}
+
+func (e *EthFilterBuilder) Filter() *ethtypes.EthFilterSpec { return &e.filter }
+
+func (e *EthFilterBuilder) FromBlock(v string) *EthFilterBuilder {
+	e.filter.FromBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) FromBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.FromBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlock(v string) *EthFilterBuilder {
+	e.filter.ToBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.ToBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) BlockHash(h ethtypes.EthHash) *EthFilterBuilder {
+	e.filter.BlockHash = &h
+	return e
+}
+
+func (e *EthFilterBuilder) AddressOneOf(as ...ethtypes.EthAddress) *EthFilterBuilder {
+	e.filter.Address = as
+	return e
+}
+
+func (e *EthFilterBuilder) Topic1OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	if len(e.filter.Topics) == 0 {
+		e.filter.Topics = make(ethtypes.EthTopicSpec, 1)
+	}
+	e.filter.Topics[0] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic2OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 2 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[1] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic3OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 3 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[2] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic4OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 4 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[3] = hs
+	return e
 }

@@ -22,7 +22,7 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error
 	typ := msg.Signature.Type
 	switch typ {
 	case crypto.SigTypeDelegated:
-		txArgs, err := ethtypes.EthTxArgsFromMessage(&msg.Message)
+		txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(&msg.Message)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
 		}

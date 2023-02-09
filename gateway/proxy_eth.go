@@ -3,12 +3,15 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -16,6 +19,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return "", err
+	}
+
+	return gw.target.Web3ClientVersion(ctx)
+}
 
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
@@ -139,6 +150,22 @@ func (gw *Node) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.Et
 	}
 
 	return gw.target.EthGetTransactionByHash(ctx, txHash)
+}
+
+func (gw *Node) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	return gw.target.EthGetTransactionHashByCid(ctx, cid)
+}
+
+func (gw *Node) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	return gw.target.EthGetMessageCidByTransactionHash(ctx, txHash)
 }
 
 func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error) {
@@ -352,7 +379,7 @@ func (gw *Node) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID
 		return nil, err
 	}
 
-	ft := filterTrackerFromContext(ctx)
+	ft := statefulCallFromContext(ctx)
 	ft.lk.Lock()
 	_, ok := ft.userFilters[id]
 	ft.lk.Unlock()
@@ -369,7 +396,7 @@ func (gw *Node) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (
 		return nil, err
 	}
 
-	ft := filterTrackerFromContext(ctx)
+	ft := statefulCallFromContext(ctx)
 	ft.lk.Lock()
 	_, ok := ft.userFilters[id]
 	ft.lk.Unlock()
@@ -417,7 +444,7 @@ func (gw *Node) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID)
 	}
 
 	// check if the filter belongs to this connection
-	ft := filterTrackerFromContext(ctx)
+	ft := statefulCallFromContext(ctx)
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
@@ -434,18 +461,88 @@ func (gw *Node) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID)
 	return ok, nil
 }
 
-func (gw *Node) EthSubscribe(ctx context.Context, eventType string, params *ethtypes.EthSubscriptionParams) (<-chan ethtypes.EthSubscriptionResponse, error) {
-	return nil, xerrors.Errorf("not implemented")
+func (gw *Node) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
+	// validate params
+	_, err := jsonrpc.DecodeParams[ethtypes.EthSubscribeParams](p)
+	if err != nil {
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("decoding params: %w", err)
+	}
+
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return ethtypes.EthSubscriptionID{}, err
+	}
+
+	if gw.subHnd == nil {
+		return ethtypes.EthSubscriptionID{}, xerrors.New("subscription support not enabled")
+	}
+
+	ethCb, ok := jsonrpc.ExtractReverseClient[api.EthSubscriberMethods](ctx)
+	if !ok {
+		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("connection doesn't support callbacks")
+	}
+
+	ft := statefulCallFromContext(ctx)
+	ft.lk.Lock()
+	defer ft.lk.Unlock()
+
+	if len(ft.userSubscriptions) >= EthMaxFiltersPerConn {
+		return ethtypes.EthSubscriptionID{}, fmt.Errorf("too many subscriptions")
+	}
+
+	sub, err := gw.target.EthSubscribe(ctx, p)
+	if err != nil {
+		return ethtypes.EthSubscriptionID{}, err
+	}
+
+	err = gw.subHnd.AddSub(ctx, sub, func(ctx context.Context, response *ethtypes.EthSubscriptionResponse) error {
+		outParam, err := json.Marshal(response)
+		if err != nil {
+			return err
+		}
+
+		return ethCb.EthSubscription(ctx, outParam)
+	})
+	if err != nil {
+		return ethtypes.EthSubscriptionID{}, err
+	}
+
+	ft.userSubscriptions[sub] = time.Now()
+
+	return sub, err
 }
 
 func (gw *Node) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) {
-	return false, xerrors.Errorf("not implemented")
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return false, err
+	}
+
+	// check if the filter belongs to this connection
+	ft := statefulCallFromContext(ctx)
+	ft.lk.Lock()
+	defer ft.lk.Unlock()
+
+	if _, ok := ft.userSubscriptions[id]; !ok {
+		return false, nil
+	}
+
+	ok, err := gw.target.EthUnsubscribe(ctx, id)
+	if err != nil {
+		return false, err
+	}
+
+	delete(ft.userSubscriptions, id)
+
+	if gw.subHnd != nil {
+		gw.subHnd.RemoveSub(id)
+	}
+
+	return ok, nil
 }
 
 var EthMaxFiltersPerConn = 16 // todo make this configurable
 
 func addUserFilterLimited(ctx context.Context, cb func() (ethtypes.EthFilterID, error)) (ethtypes.EthFilterID, error) {
-	ft := filterTrackerFromContext(ctx)
+	ft := statefulCallFromContext(ctx)
 	ft.lk.Lock()
 	defer ft.lk.Unlock()
 
@@ -463,19 +560,21 @@ func addUserFilterLimited(ctx context.Context, cb func() (ethtypes.EthFilterID, 
 	return id, nil
 }
 
-func filterTrackerFromContext(ctx context.Context) *filterTracker {
-	return ctx.Value(filterTrackerKey).(*filterTracker)
+func statefulCallFromContext(ctx context.Context) *statefulCallTracker {
+	return ctx.Value(statefulCallTrackerKey).(*statefulCallTracker)
 }
 
-type filterTracker struct {
+type statefulCallTracker struct {
 	lk sync.Mutex
 
-	userFilters map[ethtypes.EthFilterID]time.Time
+	userFilters       map[ethtypes.EthFilterID]time.Time
+	userSubscriptions map[ethtypes.EthSubscriptionID]time.Time
 }
 
 // called per request (ws connection)
-func newFilterTracker() *filterTracker {
-	return &filterTracker{
-		userFilters: make(map[ethtypes.EthFilterID]time.Time),
+func newStatefulCallTracker() *statefulCallTracker {
+	return &statefulCallTracker{
+		userFilters:       make(map[ethtypes.EthFilterID]time.Time),
+		userSubscriptions: make(map[ethtypes.EthSubscriptionID]time.Time),
 	}
 }

@@ -657,6 +657,12 @@ workflows:
           suite: itest-deals
           target: "./itests/deals_test.go"
       - test:
+          name: test-itest-decode_params
+          requires:
+            - build
+          suite: itest-decode_params
+          target: "./itests/decode_params_test.go"
+      - test:
           name: test-itest-dup_mpool_messages
           requires:
             - build
@@ -680,6 +686,18 @@ workflows:
             - build
           suite: itest-eth_block_hash
           target: "./itests/eth_block_hash_test.go"
+      - test:
+          name: test-itest-eth_config
+          requires:
+            - build
+          suite: itest-eth_config
+          target: "./itests/eth_config_test.go"
+      - test:
+          name: test-itest-eth_conformance
+          requires:
+            - build
+          suite: itest-eth_conformance
+          target: "./itests/eth_conformance_test.go"
       - test:
           name: test-itest-eth_deploy
           requires:
