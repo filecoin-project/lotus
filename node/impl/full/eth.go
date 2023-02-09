@@ -447,6 +447,11 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
 
+	// StateManager.Call will panic if there is no parent
+	if ts.Height() == 0 {
+		return nil, xerrors.Errorf("block param must not specify genesis block")
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
@@ -637,7 +642,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 	}
 
 	return ethtypes.EthFeeHistory{
-		OldestBlock:   oldestBlkHeight,
+		OldestBlock:   ethtypes.EthUint64(oldestBlkHeight),
 		BaseFeePerGas: baseFeeArray,
 		GasUsedRatio:  gasUsedRatioArray,
 	}, nil
@@ -962,7 +967,6 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		// As far as I can tell, the Eth API always returns empty on contract deployment
 		return ethtypes.EthBytes{}, nil
-
 	} else if len(invokeResult.MsgRct.Return) > 0 {
 		return cbg.ReadByteArray(bytes.NewReader(invokeResult.MsgRct.Return), uint64(len(invokeResult.MsgRct.Return)))
 	}
@@ -1367,14 +1371,14 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 		var err error
 
 		for _, entry := range ev.Entries {
-			value, err := cborDecodeTopicValue(entry.Value)
-			if err != nil {
-				return nil, err
+			// Skip all events that aren't "raw" data.
+			if entry.Codec != cid.Raw {
+				continue
 			}
 			if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
-				log.Topics = append(log.Topics, value)
+				log.Topics = append(log.Topics, entry.Value)
 			} else {
-				log.Data = value
+				log.Data = entry.Value
 			}
 		}
 
@@ -1513,44 +1517,49 @@ func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
 	e.filters = append(e.filters, f)
 }
 
+func (e *ethSubscription) send(ctx context.Context, v interface{}) {
+	resp := ethtypes.EthSubscriptionResponse{
+		SubscriptionID: e.id,
+		Result:         v,
+	}
+
+	outParam, err := json.Marshal(resp)
+	if err != nil {
+		log.Warnw("marshaling subscription response", "sub", e.id, "error", err)
+		return
+	}
+
+	if err := e.out(ctx, outParam); err != nil {
+		log.Warnw("sending subscription response", "sub", e.id, "error", err)
+		return
+	}
+}
+
 func (e *ethSubscription) start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case v := <-e.in:
-			resp := ethtypes.EthSubscriptionResponse{
-				SubscriptionID: e.id,
-			}
-
-			var err error
 			switch vt := v.(type) {
 			case *filter.CollectedEvent:
-				resp.Result, err = ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
+				evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
+				if err != nil {
+					continue
+				}
+
+				for _, r := range evs.Results {
+					e.send(ctx, r)
+				}
 			case *types.TipSet:
-				eb, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
+				ev, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
 				if err != nil {
 					break
 				}
 
-				resp.Result = eb
+				e.send(ctx, ev)
 			default:
 				log.Warnf("unexpected subscription value type: %T", vt)
-			}
-
-			if err != nil {
-				continue
-			}
-
-			outParam, err := json.Marshal(resp)
-			if err != nil {
-				log.Warnw("marshaling subscription response", "sub", e.id, "error", err)
-				continue
-			}
-
-			if err := e.out(ctx, outParam); err != nil {
-				log.Warnw("sending subscription response", "sub", e.id, "error", err)
-				continue
 			}
 		}
 	}
@@ -1594,7 +1603,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	block := ethtypes.NewEthBlock()
+	block := ethtypes.NewEthBlock(len(msgs) > 0)
 
 	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
 	gasUsed := int64(0)
@@ -1753,6 +1762,7 @@ func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, sa StateAPI
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
 		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
+		AccessList:           []ethtypes.EthHash{},
 	}
 }
 
@@ -1886,11 +1896,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	if len(events) > 0 {
-		// TODO return a dummy non-zero bloom to signal that there are logs
-		//  need to figure out how worth it is to populate with a real bloom
-		//  should be feasible here since we are iterating over the logs anyway
-		receipt.LogsBloom[255] = 0x01
-
 		receipt.Logs = make([]ethtypes.EthLog, 0, len(events))
 		for i, evt := range events {
 			l := ethtypes.EthLog{
@@ -1903,14 +1908,15 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 			}
 
 			for _, entry := range evt.Entries {
-				value, err := cborDecodeTopicValue(entry.Value)
-				if err != nil {
-					return api.EthTxReceipt{}, xerrors.Errorf("failed to decode event log value: %w", err)
+				// Ignore any non-raw values/keys.
+				if entry.Codec != cid.Raw {
+					continue
 				}
 				if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
-					l.Topics = append(l.Topics, value)
+					ethtypes.EthBloomSet(receipt.LogsBloom, entry.Value)
+					l.Topics = append(l.Topics, entry.Value)
 				} else {
-					l.Data = value
+					l.Data = entry.Value
 				}
 			}
 
@@ -1924,6 +1930,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 				return api.EthTxReceipt{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
 			}
 
+			ethtypes.EthBloomSet(receipt.LogsBloom, l.Address[:])
 			receipt.Logs = append(receipt.Logs, l)
 		}
 	}
@@ -1967,6 +1974,52 @@ func (m *EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) e
 	return nil
 }
 
+func (m *EthTxHashManager) PopulateExistingMappings(ctx context.Context, minHeight abi.ChainEpoch) error {
+	if minHeight < build.UpgradeHyggeHeight {
+		minHeight = build.UpgradeHyggeHeight
+	}
+
+	ts := m.StateAPI.Chain.GetHeaviestTipSet()
+	for ts.Height() > minHeight {
+		for _, block := range ts.Blocks() {
+			msgs, err := m.StateAPI.Chain.SecpkMessagesForBlock(ctx, block)
+			if err != nil {
+				// If we can't find the messages, we've either imported from snapshot or pruned the store
+				log.Debug("exiting message mapping population at epoch ", ts.Height())
+				return nil
+			}
+
+			for _, msg := range msgs {
+				m.ProcessSignedMessage(ctx, msg)
+			}
+		}
+
+		var err error
+		ts, err = m.StateAPI.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.SignedMessage) {
+	if msg.Signature.Type != crypto.SigTypeDelegated {
+		return
+	}
+
+	ethTx, err := newEthTxFromSignedMessage(ctx, msg, m.StateAPI)
+	if err != nil {
+		log.Errorf("error converting filecoin message to eth tx: %s", err)
+	}
+
+	err = m.TransactionHashLookup.UpsertHash(ethTx.Hash, msg.Cid())
+	if err != nil {
+		log.Errorf("error inserting tx mapping to db: %s", err)
+	}
+}
+
 func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager *EthTxHashManager) {
 	for {
 		select {
@@ -1976,19 +2029,8 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 			if u.Type != api.MpoolAdd {
 				continue
 			}
-			if u.Message.Signature.Type != crypto.SigTypeDelegated {
-				continue
-			}
 
-			ethTx, err := newEthTxFromSignedMessage(ctx, u.Message, manager.StateAPI)
-			if err != nil {
-				log.Errorf("error converting filecoin message to eth tx: %s", err)
-			}
-
-			err = manager.TransactionHashLookup.UpsertHash(ethTx.Hash, u.Message.Cid())
-			if err != nil {
-				log.Errorf("error inserting tx mapping to db: %s", err)
-			}
+			manager.ProcessSignedMessage(ctx, u.Message)
 		}
 	}
 }
@@ -2009,45 +2051,6 @@ func EthTxHashGC(ctx context.Context, retentionDays int, manager *EthTxHashManag
 	}
 }
 
-func leftpad32(orig []byte) []byte {
-	needed := 32 - len(orig)
-	if needed <= 0 {
-		return orig
-	}
-	ret := make([]byte, 32)
-	copy(ret[needed:], orig)
-	return ret
-}
-
-func trimLeadingZeros(b []byte) []byte {
-	for i := range b {
-		if b[i] != 0 {
-			return b[i:]
-		}
-	}
-	return []byte{}
-}
-
-func cborEncodeTopicValue(orig []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	err := cbg.WriteByteArray(&buf, trimLeadingZeros(orig))
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func cborDecodeTopicValue(orig []byte) ([]byte, error) {
-	if len(orig) == 0 {
-		return orig, nil
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return nil, err
-	}
-	return leftpad32(decoded), nil
-}
-
 func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 	keys := map[string][][]byte{}
 	for idx, vals := range topics {
@@ -2057,11 +2060,8 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 		key := fmt.Sprintf("t%d", idx+1)
 		for _, v := range vals {
-			encodedVal, err := cborEncodeTopicValue(v[:])
-			if err != nil {
-				return nil, xerrors.Errorf("failed to encode topic value")
-			}
-			keys[key] = append(keys[key], encodedVal)
+			v := v // copy the ethhash to avoid repeatedly referencing the same one.
+			keys[key] = append(keys[key], v[:])
 		}
 	}
 	return keys, nil

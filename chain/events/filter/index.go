@@ -47,6 +47,7 @@ var ddls = []string{
 		indexed INTEGER NOT NULL,
 		flags BLOB NOT NULL,
 		key TEXT NOT NULL,
+		codec INTEGER,
 		value BLOB NOT NULL
 	)`,
 
@@ -67,8 +68,8 @@ const (
 	VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
 
 	insertEntry = `INSERT OR IGNORE INTO event_entry
-	(event_id, indexed, flags, key, value)
-	VALUES(?, ?, ?, ?, ?)`
+	(event_id, indexed, flags, key, codec, value)
+	VALUES(?, ?, ?, ?, ?, ?)`
 )
 
 type EventIndex struct {
@@ -194,6 +195,7 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 					isIndexedValue(entry.Flags), // indexed
 					[]byte{entry.Flags},         // flags
 					entry.Key,                   // key
+					entry.Codec,                 // codec
 					entry.Value,                 // value
 				)
 				if err != nil {
@@ -251,7 +253,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 				subclauses := []string{}
 				for _, val := range vals {
 					subclauses = append(subclauses, fmt.Sprintf("%s.value=?", joinAlias))
-					values = append(values, trimLeadingZeros(val))
+					values = append(values, val)
 				}
 				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 			}
@@ -270,6 +272,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			event.reverted,
 			event_entry.flags,
 			event_entry.key,
+			event_entry.codec,
 			event_entry.value
 		FROM event JOIN event_entry ON event.id=event_entry.event_id`
 
@@ -319,6 +322,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			reverted     bool
 			flags        []byte
 			key          string
+			codec        uint64
 			value        []byte
 		}
 
@@ -334,6 +338,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			&row.reverted,
 			&row.flags,
 			&row.key,
+			&row.codec,
 			&row.value,
 		); err != nil {
 			return xerrors.Errorf("read prefill row: %w", err)
@@ -378,6 +383,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 		ce.Entries = append(ce.Entries, types.EventEntry{
 			Flags: row.flags[0],
 			Key:   row.key,
+			Codec: row.codec,
 			Value: row.value,
 		})
 
@@ -397,13 +403,4 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 	f.setCollectedEvents(ces)
 
 	return nil
-}
-
-func trimLeadingZeros(b []byte) []byte {
-	for i := range b {
-		if b[i] != 0 {
-			return b[i:]
-		}
-	}
-	return []byte{}
 }

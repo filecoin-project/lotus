@@ -3,6 +3,7 @@ package itests
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -123,7 +124,7 @@ func TestFEVMRecursiveFail(t *testing.T) {
 		t.Run(fmt.Sprintf("TestFEVMRecursiveFail%d", failCallCount), func(t *testing.T) {
 			_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "recursiveCall(uint256)", buildInputFromuint64(failCallCount))
 			require.Error(t, err)
-			require.Equal(t, exitcode.ExitCode(23), wait.Receipt.ExitCode)
+			require.Equal(t, exitcode.ExitCode(37), wait.Receipt.ExitCode)
 		})
 	}
 }
@@ -150,24 +151,26 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMBasic does a basic fevm contract installation and invocation
-// recursive delegate call succeeds up to 238 times
-func TestFEVMRecursiveDelegatecall(t *testing.T) {
+// TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth. It currently
+// succeeds succeeds up to 237 times.
+func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
+	highestSuccessCount := uint64(235)
+
 	filename := "contracts/RecursiveDelegeatecall.hex"
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(2))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(10))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(100))
+	recursiveDelegatecallSuccess(ctx, t, client, filename, highestSuccessCount)
 
-	//success with 238 or fewer calls
-	for i := uint64(1); i <= 238; i += 30 {
-		recursiveDelegatecallSuccess(ctx, t, client, filename, i)
-	}
-	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(238))
+	recursiveDelegatecallFail(ctx, t, client, filename, highestSuccessCount+1)
+	recursiveDelegatecallFail(ctx, t, client, filename, uint64(1000))
+	recursiveDelegatecallFail(ctx, t, client, filename, uint64(10000000))
 
-	for i := uint64(239); i <= 800; i += 40 {
-		recursiveDelegatecallFail(ctx, t, client, filename, i)
-	}
 }
 
 // TestFEVMBasic does a basic fevm contract installation and invocation
@@ -470,10 +473,9 @@ func TestFEVMSendGasLimit(t *testing.T) {
 }
 
 // TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
-// XXX should not be fatal errors
 func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
-	//TODO change the gas limit of this invocation and confirm that the number of errors is different
-	//also TODO should we not have fatal error show up here?
+	//TODO change the gas limit of this invocation and confirm that the number of errors is
+	// different
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
@@ -486,17 +488,16 @@ func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
-	//verify that the returned value of the call to setvars is 7
+	//verify that we run out of gas then revert.
 	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
 	require.Error(t, err)
-	require.Equal(t, exitcode.SysErrorIllegalArgument, wait.Receipt.ExitCode)
+	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
 	//assert no fatal errors but still there are errors::
 	errorAny := "fatal error"
 	require.NotContains(t, err.Error(), errorAny)
 }
 
-// XXX Currently fails as self destruct has a bug
 // TestFEVMTestSendValueThroughContracts creates A and B contract and exchanges value
 // and self destructs and accounts for value sent
 func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
@@ -601,10 +602,10 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=32", testN(200, 32, exitcode.Ok))
 	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
 
-	t.Run("n=0,r=254", testN(0, 254, exitcode.Ok))
+	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
 	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
 
-	t.Run("n=0,r=256-fails", testN(0, 256, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=0,r=253-fails", testN(0, 253, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }
 
@@ -703,4 +704,85 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	t.Run("n=40", testN(40))
 	t.Run("n=50", testN(50))
 	t.Run("n=100", testN(100))
+}
+
+// TestFEVM deploys a contract while sending value to it
+func TestFEVMDeployWithValue(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//testValue is the amount sent when the contract is created
+	//at the end we check that the new contract has a balance of testValue
+	testValue := big.NewInt(20)
+
+	// deploy DeployValueTest which creates NewContract
+	// testValue is sent to DeployValueTest and that amount is
+	// also sent to NewContract
+	filenameActor := "contracts/DeployValueTest.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilenameWithValue(ctx, filenameActor, testValue)
+
+	//call getNewContractBalance to find the value of NewContract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
+	require.NoError(t, err)
+
+	contractBalance, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	//require balance of NewContract is testValue
+	require.Equal(t, testValue.Uint64(), contractBalance)
+}
+
+func TestFEVMDestroyCreate2(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//deploy create2 factory contract
+	filename := "contracts/Create2Factory.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	//construct salt for create2
+	salt := make([]byte, 32)
+	_, err := rand.Read(salt)
+	require.NoError(t, err)
+
+	//deploy contract using create2 factory
+	selfDestructAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
+	require.NoError(t, err)
+
+	//convert to filecoin actor address so we can call InvokeContractByFuncName
+	ea, err := ethtypes.CastEthAddress(selfDestructAddress[12:])
+	require.NoError(t, err)
+	selfDestructAddressActor, err := ea.ToFilecoinAddress()
+	require.NoError(t, err)
+
+	//read sender property from contract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+
+	//assert contract has correct data
+	ethFromAddr := inputDataFromFrom(ctx, t, client, fromAddr)
+	require.Equal(t, ethFromAddr, ret)
+
+	//run test() which 1.calls sefldestruct 2. verifies sender() is the correct value 3. attempts and fails to deploy via create2
+	testSenderAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "test(address)", selfDestructAddress)
+	require.NoError(t, err)
+	require.Equal(t, testSenderAddress, ethFromAddr)
+
+	//read sender() but get response of 0x0 because of self destruct
+	senderAfterDestroy, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, []byte{}, senderAfterDestroy)
+
+	// deploy new contract at same address usign same salt
+	newAddressSelfDestruct, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
+	require.NoError(t, err)
+	require.Equal(t, newAddressSelfDestruct, selfDestructAddress)
+
+	//verify sender() property is correct
+	senderSecondCall, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+
+	//assert contract has correct data
+	require.Equal(t, ethFromAddr, senderSecondCall)
+
 }

@@ -20,6 +20,7 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 {{- range . }} {
 	Network: {{printf "%q" .Network}},
 	Version: {{.Version}},
+	{{if .BundleGitTag}} BundleGitTag: {{printf "%q" .BundleGitTag}}, {{end}}
 	ManifestCid: MustParseCid({{printf "%q" .ManifestCid}}),
 	Actors: map[string]cid.Cid {
 	{{- range $name, $cid := .Actors }}
@@ -35,6 +36,12 @@ func main() {
 	metadata, err := build.ReadEmbeddedBuiltinActorsMetadata()
 	if err != nil {
 		panic(err)
+	}
+
+	if len(os.Args) > 1 {
+		for _, m := range metadata {
+			m.BundleGitTag = os.Args[1]
+		}
 	}
 
 	fi, err := os.Create("./build/builtin_actors_gen.go")
