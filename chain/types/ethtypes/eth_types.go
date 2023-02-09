@@ -413,6 +413,10 @@ func DecodeHexString(s string) ([]byte, error) {
 	return b, nil
 }
 
+func DecodeHexStringTrimSpace(s string) ([]byte, error) {
+	return DecodeHexString(strings.TrimSpace(s))
+}
+
 func handleHexStringPrefix(s string) string {
 	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
 	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
