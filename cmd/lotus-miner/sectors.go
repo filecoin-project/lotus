@@ -418,25 +418,24 @@ var sectorsListCmd = &cli.Command{
 
 		throttle := make(chan struct{}, cctx.Int64("check-parallelism"))
 
-		resCh := make(chan result.Result[api.SectorInfo], len(list))
+		slist := make([]result.Result[api.SectorInfo], len(list))
 		var wg sync.WaitGroup
-		for _, s := range list {
+		for i, s := range list {
 			throttle <- struct{}{}
 			wg.Add(1)
-			go func(s abi.SectorNumber) {
+			go func(i int, s abi.SectorNumber) {
 				defer wg.Done()
 				defer func() { <-throttle }()
 				r := result.Wrap(minerApi.SectorsStatus(ctx, s, !fast))
 				if r.Error != nil {
 					r.Value.SectorID = s
 				}
-				resCh <- r
-			}(s)
+				slist[i] = r
+			}(i, s)
 		}
 		wg.Wait()
-		close(resCh)
 
-		for rsn := range resCh {
+		for _, rsn := range slist {
 			if rsn.Error != nil {
 				tw.Write(map[string]interface{}{
 					"ID":    rsn.Value.SectorID,
