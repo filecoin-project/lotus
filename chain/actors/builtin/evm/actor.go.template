@@ -50,6 +50,7 @@ type State interface {
 	Nonce() (uint64, error)
 	GetState() interface{}
 
+	GetBytecode() ([]byte, error)
 	GetBytecodeCID() (cid.Cid, error)
 	GetBytecodeHash() ([32]byte, error)
 }

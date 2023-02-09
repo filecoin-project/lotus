@@ -51,3 +51,17 @@ func (s *state{{.v}}) GetBytecodeCID() (cid.Cid, error) {
 func (s *state{{.v}}) GetBytecodeHash() ([32]byte, error) {
 	return s.State.BytecodeHash, nil
 }
+
+func (s *state{{.v}}) GetBytecode() ([]byte, error) {
+	bc, err := s.GetBytecodeCID()
+	if err != nil {
+		return nil, err
+	}
+
+	var byteCode abi.CborBytesTransparent
+	if err := s.store.Get(s.store.Context(), bc, &byteCode); err != nil {
+		return nil, err
+	}
+
+	return byteCode, nil
+}
