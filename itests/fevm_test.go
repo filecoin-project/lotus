@@ -3,6 +3,7 @@ package itests
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -729,4 +730,59 @@ func TestFEVMDeployWithValue(t *testing.T) {
 
 	//require balance of NewContract is testValue
 	require.Equal(t, testValue.Uint64(), contractBalance)
+}
+
+func TestFEVMDestroyCreate2(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//deploy create2 factory contract
+	filename := "contracts/Create2Factory.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	//construct salt for create2
+	salt := make([]byte, 32)
+	_, err := rand.Read(salt)
+	require.NoError(t, err)
+
+	//deploy contract using create2 factory
+	selfDestructAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
+	require.NoError(t, err)
+
+	//convert to filecoin actor address so we can call InvokeContractByFuncName
+	ea, err := ethtypes.CastEthAddress(selfDestructAddress[12:])
+	require.NoError(t, err)
+	selfDestructAddressActor, err := ea.ToFilecoinAddress()
+	require.NoError(t, err)
+
+	//read sender property from contract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+
+	//assert contract has correct data
+	ethFromAddr := inputDataFromFrom(ctx, t, client, fromAddr)
+	require.Equal(t, ethFromAddr, ret)
+
+	//run test() which 1.calls sefldestruct 2. verifies sender() is the correct value 3. attempts and fails to deploy via create2
+	testSenderAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "test(address)", selfDestructAddress)
+	require.NoError(t, err)
+	require.Equal(t, testSenderAddress, ethFromAddr)
+
+	//read sender() but get response of 0x0 because of self destruct
+	senderAfterDestroy, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, []byte{}, senderAfterDestroy)
+
+	// deploy new contract at same address usign same salt
+	newAddressSelfDestruct, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
+	require.NoError(t, err)
+	require.Equal(t, newAddressSelfDestruct, selfDestructAddress)
+
+	//verify sender() property is correct
+	senderSecondCall, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+
+	//assert contract has correct data
+	require.Equal(t, ethFromAddr, senderSecondCall)
+
 }
