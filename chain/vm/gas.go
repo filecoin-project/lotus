@@ -213,6 +213,16 @@ var Prices = map[abi.ChainEpoch]Pricelist{
 
 		verifyReplicaUpdate: 36316136,
 	},
+	build.UpgradeHyggeHeight: &pricelistV0{
+		computeGasMulti: 1,
+		storageGasMulti: 1300, // only applies to messages/return values.
+
+		onChainMessageComputeBase:    38863 + 475000, // includes the actor update cost
+		onChainMessageStorageBase:    36,
+		onChainMessageStoragePerByte: 1,
+
+		onChainReturnValuePerByte: 1,
+	},
 }
 
 // PricelistByEpoch finds the latest prices for the given epoch
