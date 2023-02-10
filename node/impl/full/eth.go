@@ -479,12 +479,16 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 	}
 
-	var bytecodeCid cbg.CborCid
-	if err := bytecodeCid.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+	var getBytecodeReturn evm.GetBytecodeReturn
+	if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
 		return nil, fmt.Errorf("failed to decode EVM bytecode CID: %w", err)
 	}
+	// The contract has selfdestructed, so the code is "empty".
+	if getBytecodeReturn.Cid == nil {
+		return nil, nil
+	}
 
-	blk, err := a.Chain.StateBlockstore().Get(ctx, cid.Cid(bytecodeCid))
+	blk, err := a.Chain.StateBlockstore().Get(ctx, *getBytecodeReturn.Cid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EVM bytecode: %w", err)
 	}
