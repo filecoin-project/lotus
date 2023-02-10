@@ -641,6 +641,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		GasUsedRatio:  gasUsedRatioArray,
 	}
 	if params.RewardPercentiles != nil {
+		// TODO: populate reward percentile
 		reward := make([][]ethtypes.EthBigInt, 0)
 		ret.Reward = &reward
 	}
