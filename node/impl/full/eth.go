@@ -1358,6 +1358,67 @@ type filterTipSetCollector interface {
 	TakeCollectedTipSets(context.Context) []types.TipSetKey
 }
 
+func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes.EthHash, ok bool) {
+	var (
+		topicsFound      [4]bool
+		topicsFoundCount int
+		dataFound        bool
+	)
+	for _, entry := range entries {
+		// Drop events with non-raw topics to avoid mistakes.
+		if entry.Codec != cid.Raw {
+			log.Warnw("did not expect an event entry with a non-raw codec", "codec", entry.Codec, "key", entry.Key)
+			return nil, nil, false
+		}
+		// Check if the key is t1..t4
+		if len(entry.Key) == 2 && "t1" <= entry.Key && entry.Key <= "t4" {
+			// '1' - '1' == 0, etc.
+			idx := int(entry.Key[1] - '1')
+
+			// Drop events with mis-sized topics.
+			if len(entry.Value) != 32 {
+				log.Warnw("got an EVM event topic with an invalid size", "key", entry.Key, "size", len(entry.Value))
+				return nil, nil, false
+			}
+
+			// Drop events with duplicate topics.
+			if topicsFound[idx] {
+				log.Warnw("got a duplicate EVM event topic", "key", entry.Key)
+				return nil, nil, false
+			}
+			topicsFound[idx] = true
+			topicsFoundCount++
+
+			// Extend the topics array
+			for len(topics) <= idx {
+				topics = append(topics, ethtypes.EthHash{})
+			}
+			copy(topics[idx][:], entry.Value)
+		} else if entry.Key == "d" {
+			// Drop events with duplicate data fields.
+			if dataFound {
+				log.Warnw("got duplicate EVM event data")
+				return nil, nil, false
+			}
+
+			dataFound = true
+			data = entry.Value
+		} else {
+			// Skip entries we don't understand (makes it easier to extend things).
+			// But we warn for now because we don't expect them.
+			log.Warnw("unexpected event entry", "key", entry.Key)
+		}
+
+	}
+
+	// Drop events with skipped topics.
+	if len(topics) != topicsFoundCount {
+		log.Warnw("EVM event topic length mismatch", "expected", len(topics), "actual", topicsFoundCount)
+		return nil, nil, false
+	}
+	return data, topics, true
+}
+
 func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*ethtypes.EthFilterResult, error) {
 	res := &ethtypes.EthFilterResult{}
 	for _, ev := range evs {
@@ -1367,19 +1428,14 @@ func ethFilterResultFromEvents(evs []*filter.CollectedEvent, sa StateAPI) (*etht
 			TransactionIndex: ethtypes.EthUint64(ev.MsgIdx),
 			BlockNumber:      ethtypes.EthUint64(ev.Height),
 		}
+		var (
+			err error
+			ok  bool
+		)
 
-		var err error
-
-		for _, entry := range ev.Entries {
-			value, err := cborDecodeTopicValue(entry.Value)
-			if err != nil {
-				return nil, err
-			}
-			if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
-				log.Topics = append(log.Topics, value)
-			} else {
-				log.Data = value
-			}
+		log.Data, log.Topics, ok = ethLogFromEvent(ev.Entries)
+		if !ok {
+			continue
 		}
 
 		log.Address, err = ethtypes.EthAddressFromFilecoinAddress(ev.EmitterAddr)
@@ -1517,44 +1573,49 @@ func (e *ethSubscription) addFilter(ctx context.Context, f filter.Filter) {
 	e.filters = append(e.filters, f)
 }
 
+func (e *ethSubscription) send(ctx context.Context, v interface{}) {
+	resp := ethtypes.EthSubscriptionResponse{
+		SubscriptionID: e.id,
+		Result:         v,
+	}
+
+	outParam, err := json.Marshal(resp)
+	if err != nil {
+		log.Warnw("marshaling subscription response", "sub", e.id, "error", err)
+		return
+	}
+
+	if err := e.out(ctx, outParam); err != nil {
+		log.Warnw("sending subscription response", "sub", e.id, "error", err)
+		return
+	}
+}
+
 func (e *ethSubscription) start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case v := <-e.in:
-			resp := ethtypes.EthSubscriptionResponse{
-				SubscriptionID: e.id,
-			}
-
-			var err error
 			switch vt := v.(type) {
 			case *filter.CollectedEvent:
-				resp.Result, err = ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
+				evs, err := ethFilterResultFromEvents([]*filter.CollectedEvent{vt}, e.StateAPI)
+				if err != nil {
+					continue
+				}
+
+				for _, r := range evs.Results {
+					e.send(ctx, r)
+				}
 			case *types.TipSet:
-				eb, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
+				ev, err := newEthBlockFromFilecoinTipSet(ctx, vt, true, e.Chain, e.StateAPI)
 				if err != nil {
 					break
 				}
 
-				resp.Result = eb
+				e.send(ctx, ev)
 			default:
 				log.Warnf("unexpected subscription value type: %T", vt)
-			}
-
-			if err != nil {
-				continue
-			}
-
-			outParam, err := json.Marshal(resp)
-			if err != nil {
-				log.Warnw("marshaling subscription response", "sub", e.id, "error", err)
-				continue
-			}
-
-			if err := e.out(ctx, outParam); err != nil {
-				log.Warnw("sending subscription response", "sub", e.id, "error", err)
-				continue
 			}
 		}
 	}
@@ -1757,6 +1818,7 @@ func ethTxFromNativeMessage(ctx context.Context, msg *types.Message, sa StateAPI
 		Gas:                  ethtypes.EthUint64(msg.GasLimit),
 		MaxFeePerGas:         ethtypes.EthBigInt(msg.GasFeeCap),
 		MaxPriorityFeePerGas: ethtypes.EthBigInt(msg.GasPremium),
+		AccessList:           []ethtypes.EthHash{},
 	}
 }
 
@@ -1890,11 +1952,6 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	}
 
 	if len(events) > 0 {
-		// TODO return a dummy non-zero bloom to signal that there are logs
-		//  need to figure out how worth it is to populate with a real bloom
-		//  should be feasible here since we are iterating over the logs anyway
-		receipt.LogsBloom[255] = 0x01
-
 		receipt.Logs = make([]ethtypes.EthLog, 0, len(events))
 		for i, evt := range events {
 			l := ethtypes.EthLog{
@@ -1906,17 +1963,16 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 				BlockNumber:      blockNumber,
 			}
 
-			for _, entry := range evt.Entries {
-				value, err := cborDecodeTopicValue(entry.Value)
-				if err != nil {
-					return api.EthTxReceipt{}, xerrors.Errorf("failed to decode event log value: %w", err)
-				}
-				if entry.Key == ethtypes.EthTopic1 || entry.Key == ethtypes.EthTopic2 || entry.Key == ethtypes.EthTopic3 || entry.Key == ethtypes.EthTopic4 {
-					l.Topics = append(l.Topics, value)
-				} else {
-					l.Data = value
-				}
+			data, topics, ok := ethLogFromEvent(evt.Entries)
+			if !ok {
+				// not an eth event.
+				continue
 			}
+			for _, topic := range topics {
+				ethtypes.EthBloomSet(receipt.LogsBloom, topic[:])
+			}
+			l.Data = data
+			l.Topics = topics
 
 			addr, err := address.NewIDAddress(uint64(evt.Emitter))
 			if err != nil {
@@ -1928,6 +1984,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 				return api.EthTxReceipt{}, xerrors.Errorf("failed to resolve Ethereum address: %w", err)
 			}
 
+			ethtypes.EthBloomSet(receipt.LogsBloom, l.Address[:])
 			receipt.Logs = append(receipt.Logs, l)
 		}
 	}
@@ -1971,6 +2028,52 @@ func (m *EthTxHashManager) Revert(ctx context.Context, from, to *types.TipSet) e
 	return nil
 }
 
+func (m *EthTxHashManager) PopulateExistingMappings(ctx context.Context, minHeight abi.ChainEpoch) error {
+	if minHeight < build.UpgradeHyggeHeight {
+		minHeight = build.UpgradeHyggeHeight
+	}
+
+	ts := m.StateAPI.Chain.GetHeaviestTipSet()
+	for ts.Height() > minHeight {
+		for _, block := range ts.Blocks() {
+			msgs, err := m.StateAPI.Chain.SecpkMessagesForBlock(ctx, block)
+			if err != nil {
+				// If we can't find the messages, we've either imported from snapshot or pruned the store
+				log.Debug("exiting message mapping population at epoch ", ts.Height())
+				return nil
+			}
+
+			for _, msg := range msgs {
+				m.ProcessSignedMessage(ctx, msg)
+			}
+		}
+
+		var err error
+		ts, err = m.StateAPI.Chain.GetTipSetFromKey(ctx, ts.Parents())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.SignedMessage) {
+	if msg.Signature.Type != crypto.SigTypeDelegated {
+		return
+	}
+
+	ethTx, err := newEthTxFromSignedMessage(ctx, msg, m.StateAPI)
+	if err != nil {
+		log.Errorf("error converting filecoin message to eth tx: %s", err)
+	}
+
+	err = m.TransactionHashLookup.UpsertHash(ethTx.Hash, msg.Cid())
+	if err != nil {
+		log.Errorf("error inserting tx mapping to db: %s", err)
+	}
+}
+
 func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager *EthTxHashManager) {
 	for {
 		select {
@@ -1980,19 +2083,8 @@ func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager
 			if u.Type != api.MpoolAdd {
 				continue
 			}
-			if u.Message.Signature.Type != crypto.SigTypeDelegated {
-				continue
-			}
 
-			ethTx, err := newEthTxFromSignedMessage(ctx, u.Message, manager.StateAPI)
-			if err != nil {
-				log.Errorf("error converting filecoin message to eth tx: %s", err)
-			}
-
-			err = manager.TransactionHashLookup.UpsertHash(ethTx.Hash, u.Message.Cid())
-			if err != nil {
-				log.Errorf("error inserting tx mapping to db: %s", err)
-			}
+			manager.ProcessSignedMessage(ctx, u.Message)
 		}
 	}
 }
@@ -2013,45 +2105,6 @@ func EthTxHashGC(ctx context.Context, retentionDays int, manager *EthTxHashManag
 	}
 }
 
-func leftpad32(orig []byte) []byte {
-	needed := 32 - len(orig)
-	if needed <= 0 {
-		return orig
-	}
-	ret := make([]byte, 32)
-	copy(ret[needed:], orig)
-	return ret
-}
-
-func trimLeadingZeros(b []byte) []byte {
-	for i := range b {
-		if b[i] != 0 {
-			return b[i:]
-		}
-	}
-	return []byte{}
-}
-
-func cborEncodeTopicValue(orig []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	err := cbg.WriteByteArray(&buf, trimLeadingZeros(orig))
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func cborDecodeTopicValue(orig []byte) ([]byte, error) {
-	if len(orig) == 0 {
-		return orig, nil
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return nil, err
-	}
-	return leftpad32(decoded), nil
-}
-
 func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 	keys := map[string][][]byte{}
 	for idx, vals := range topics {
@@ -2061,11 +2114,8 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 		// Ethereum topics are emitted using `LOG{0..4}` opcodes resulting in topics1..4
 		key := fmt.Sprintf("t%d", idx+1)
 		for _, v := range vals {
-			encodedVal, err := cborEncodeTopicValue(v[:])
-			if err != nil {
-				return nil, xerrors.Errorf("failed to encode topic value")
-			}
-			keys[key] = append(keys[key], encodedVal)
+			v := v // copy the ethhash to avoid repeatedly referencing the same one.
+			keys[key] = append(keys[key], v[:])
 		}
 	}
 	return keys, nil

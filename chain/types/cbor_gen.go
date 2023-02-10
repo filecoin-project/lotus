@@ -1943,7 +1943,7 @@ func (t *Event) UnmarshalCBOR(r io.Reader) (err error) {
 	return nil
 }
 
-var lengthBufEventEntry = []byte{131}
+var lengthBufEventEntry = []byte{132}
 
 func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -1971,6 +1971,12 @@ func (t *EventEntry) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := io.WriteString(w, string(t.Key)); err != nil {
+		return err
+	}
+
+	// t.Codec (uint64) (uint64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Codec)); err != nil {
 		return err
 	}
 
@@ -2008,7 +2014,7 @@ func (t *EventEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 3 {
+	if extra != 4 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2034,6 +2040,20 @@ func (t *EventEntry) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		t.Key = string(sval)
+	}
+	// t.Codec (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cr.ReadHeader()
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Codec = uint64(extra)
+
 	}
 	// t.Value ([]uint8) (slice)
 

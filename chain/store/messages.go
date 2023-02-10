@@ -256,6 +256,20 @@ func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader
 	return blsmsgs, secpkmsgs, nil
 }
 
+func (cs *ChainStore) SecpkMessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.SignedMessage, error) {
+	_, secpkcids, err := cs.ReadMsgMetaCids(ctx, b.Messages)
+	if err != nil {
+		return nil, err
+	}
+
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(ctx, secpkcids)
+	if err != nil {
+		return nil, xerrors.Errorf("loading secpk messages for block: %w", err)
+	}
+
+	return secpkmsgs, nil
+}
+
 func (cs *ChainStore) GetParentReceipt(ctx context.Context, b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	// block headers use adt0, for now.
 	a, err := blockadt.AsArray(cs.ActorStore(ctx), b.ParentMessageReceipts)

@@ -12,7 +12,7 @@ find . -name \*.sol -print0 |
 
 #for these contracts we have 2 contracts in the same solidity file 
 #this command grabs the correct bytecode for us
-for filename in Constructor TestApp ValueSender ; do
+for filename in Constructor TestApp ValueSender Create2Factory DeployValueTest; do
 	echo $filename
 	solc --bin $filename.sol | tail -n5|head -n1 | tr -d "\n" > $filename.hex
 done

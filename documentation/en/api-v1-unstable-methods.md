@@ -644,6 +644,7 @@ Response:
       {
         "Flags": 7,
         "Key": "string value",
+        "Codec": 42,
         "Value": "Ynl0ZSBhcnJheQ=="
       }
     ]
@@ -2643,7 +2644,10 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
+  "accessList": [
+    "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+  ],
+  "yParity": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2679,7 +2683,10 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
+  "accessList": [
+    "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+  ],
+  "yParity": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2714,7 +2721,10 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
+  "accessList": [
+    "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+  ],
+  "yParity": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2784,7 +2794,7 @@ Response:
       "address": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
       "data": "0x07",
       "topics": [
-        "0x07"
+        "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
       ],
       "removed": true,
       "logIndex": "0x5",

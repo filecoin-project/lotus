@@ -1040,13 +1040,6 @@ workflows:
             - build
           suite: conformance
           target: "./conformance"
-      - test-conformance:
-          name: test-conformance-bleeding-edge
-          requires:
-            - build
-          suite: conformance-bleeding-edge
-          target: "./conformance"
-          vectors-branch: specs-actors-v7
 
   release:
     jobs:
