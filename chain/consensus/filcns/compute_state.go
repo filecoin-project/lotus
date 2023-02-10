@@ -5,11 +5,13 @@ import (
 	"sync/atomic"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
@@ -90,11 +92,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	}()
 
 	ctx = blockstore.WithHotView(ctx)
-	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
+	makeVm := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
-			Timestamp:      ts.MinTimestamp(),
+			Timestamp:      timestamp,
 			Rand:           r,
 			Bstore:         sm.ChainStore().StateBlockstore(),
 			Actors:         NewActorRegistry(),
@@ -105,6 +107,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
 			TipSetGetter:   stmgr.TipSetGetterForTipset(sm.ChainStore(), ts),
 			Tracing:        vmTracing,
+			ReturnEvents:   sm.ChainStore().IsStoringEvents(),
 		}
 
 		return sm.VMConstructor()(ctx, vmopt)
@@ -139,10 +142,22 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return nil
 	}
 
+	// May get filled with the genesis block header if there are null rounds
+	// for which to backfill cron execution.
+	var genesis *types.BlockHeader
+
+	// There were null rounds in between the current epoch and the parent epoch.
 	for i := parentEpoch; i < epoch; i++ {
 		var err error
 		if i > parentEpoch {
-			vmCron, err := makeVmWithBaseStateAndEpoch(pstate, i)
+			if genesis == nil {
+				if genesis, err = sm.ChainStore().GetGenesis(ctx); err != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("failed to get genesis when backfilling null rounds: %w", err)
+				}
+			}
+
+			ts := genesis.Timestamp + build.BlockDelaySecs*(uint64(i))
+			vmCron, err := makeVm(pstate, i, ts)
 			if err != nil {
 				return cid.Undef, cid.Undef, xerrors.Errorf("making cron vm: %w", err)
 			}
@@ -169,13 +184,18 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
 
-	vmi, err := makeVmWithBaseStateAndEpoch(pstate, epoch)
+	vmi, err := makeVm(pstate, epoch, ts.MinTimestamp())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
 	}
 
-	var receipts []cbg.CBORMarshaler
-	processedMsgs := make(map[cid.Cid]struct{})
+	var (
+		receipts      []*types.MessageReceipt
+		storingEvents = sm.ChainStore().IsStoringEvents()
+		events        [][]types.Event
+		processedMsgs = make(map[cid.Cid]struct{})
+	)
+
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -193,6 +213,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			receipts = append(receipts, &r.MessageReceipt)
 			gasReward = big.Add(gasReward, r.GasCosts.MinerTip)
 			penalty = big.Add(penalty, r.GasCosts.MinerPenalty)
+
+			if storingEvents {
+				// Appends nil when no events are returned to preserve positional alignment.
+				events = append(events, r.Events)
+			}
 
 			if em != nil {
 				if err := em.MessageApplied(ctx, ts, cm.Cid(), m, r, false); err != nil {
@@ -259,6 +284,23 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
 	}
 
+	// Slice will be empty if not storing events.
+	for i, evs := range events {
+		if len(evs) == 0 {
+			continue
+		}
+		switch root, err := t.StoreEventsAMT(ctx, sm.ChainStore(), evs); {
+		case err != nil:
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to store events amt: %w", err)
+		case i >= len(receipts):
+			return cid.Undef, cid.Undef, xerrors.Errorf("assertion failed: receipt and events array lengths inconsistent")
+		case receipts[i].EventsRoot == nil:
+			return cid.Undef, cid.Undef, xerrors.Errorf("assertion failed: VM returned events with no events root")
+		case root != *receipts[i].EventsRoot:
+			return cid.Undef, cid.Undef, xerrors.Errorf("assertion failed: returned events AMT root does not match derived")
+		}
+	}
+
 	st, err := vmi.Flush(ctx)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
@@ -315,6 +357,15 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	baseFee := blks[0].ParentBaseFee
 
 	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, vmTracing, baseFee, ts)
+}
+
+func (t *TipSetExecutor) StoreEventsAMT(ctx context.Context, cs *store.ChainStore, events []types.Event) (cid.Cid, error) {
+	cst := cbor.NewCborStore(cs.ChainBlockstore())
+	objs := make([]cbg.CBORMarshaler, len(events))
+	for i := 0; i < len(events); i++ {
+		objs[i] = &events[i]
+	}
+	return amt4.FromArray(ctx, cst, objs, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 }
 
 var _ stmgr.Executor = &TipSetExecutor{}

@@ -604,6 +604,11 @@ workflows:
           target: "./itests/deals_test.go"
       
       - test:
+          name: test-itest-decode_params
+          suite: itest-decode_params
+          target: "./itests/decode_params_test.go"
+      
+      - test:
           name: test-itest-dup_mpool_messages
           suite: itest-dup_mpool_messages
           target: "./itests/dup_mpool_messages_test.go"
@@ -622,6 +627,16 @@ workflows:
           name: test-itest-eth_block_hash
           suite: itest-eth_block_hash
           target: "./itests/eth_block_hash_test.go"
+      
+      - test:
+          name: test-itest-eth_config
+          suite: itest-eth_config
+          target: "./itests/eth_config_test.go"
+      
+      - test:
+          name: test-itest-eth_conformance
+          suite: itest-eth_conformance
+          target: "./itests/eth_conformance_test.go"
       
       - test:
           name: test-itest-eth_deploy
@@ -902,11 +917,6 @@ workflows:
       - test-conformance:
           suite: conformance
           target: "./conformance"
-      - test-conformance:
-          name: test-conformance-bleeding-edge
-          suite: conformance-bleeding-edge
-          target: "./conformance"
-          vectors-branch: specs-actors-v7
 
   release:
     jobs:

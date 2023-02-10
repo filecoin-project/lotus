@@ -6,11 +6,13 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-var ErrModuleDisabled = errors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHPRC")
+var ErrModuleDisabled = errors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")
 
 type EthModuleDummy struct{}
 
@@ -122,4 +124,41 @@ func (e *EthModuleDummy) Web3ClientVersion(ctx context.Context) (string, error) 
 	return "", ErrModuleDisabled
 }
 
+func (e *EthModuleDummy) EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) {
+	return &ethtypes.EthFilterResult{}, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
+	return &ethtypes.EthFilterResult{}, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) {
+	return &ethtypes.EthFilterResult{}, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) {
+	return ethtypes.EthFilterID{}, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error) {
+	return ethtypes.EthFilterID{}, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error) {
+	return ethtypes.EthFilterID{}, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error) {
+	return false, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
+	return ethtypes.EthSubscriptionID{}, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) {
+	return false, ErrModuleDisabled
+}
+
 var _ EthModuleAPI = &EthModuleDummy{}
+var _ EthEventAPI = &EthModuleDummy{}
