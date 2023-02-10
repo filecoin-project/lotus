@@ -38,11 +38,13 @@ func main() {
 		panic(err)
 	}
 
-	if len(os.Args) > 1 {
-		for _, m := range metadata {
-			m.BundleGitTag = os.Args[1]
-		}
-	}
+	// TODO: Re-enable this when we can set the tag for ONLY the appropriate version
+	// https://github.com/filecoin-project/lotus/issues/10185#issuecomment-1422864836
+	//if len(os.Args) > 1 {
+	//	for _, m := range metadata {
+	//		m.BundleGitTag = os.Args[1]
+	//	}
+	//}
 
 	fi, err := os.Create("./build/builtin_actors_gen.go")
 	if err != nil {
