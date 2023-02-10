@@ -125,7 +125,7 @@ func TestEstimateInclusion(t *testing.T) {
 
 	// Mutate the last byte to get a new address of the same length.
 	toBytes := msg.To.Bytes()
-	toBytes[len(toBytes)-1] += 1
+	toBytes[len(toBytes)-1] += 1 //nolint:golint
 	newAddr, err := address.NewFromBytes(toBytes)
 	require.NoError(t, err)
 
@@ -158,7 +158,7 @@ func TestEstimateInclusion(t *testing.T) {
 
 	msg.Nonce = 2
 	msg.To = msg.From
-	msg.GasLimit -= 1
+	msg.GasLimit -= 1 //nolint:golint
 
 	smsg, err = client.WalletSignMessage(ctx, client.DefaultKey.Address, msg)
 	require.NoError(t, err)
