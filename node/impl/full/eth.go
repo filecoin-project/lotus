@@ -57,7 +57,7 @@ type EthModuleAPI interface {
 	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error)
 	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error)
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)
-	EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error)
+	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
@@ -581,8 +581,12 @@ func (a *EthModule) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) 
 	return ethtypes.EthUint64(build.Eip155ChainId), nil
 }
 
-func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlkNum string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error) {
-	if blkCount > 1024 {
+func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.EthFeeHistoryParams](p)
+	if err != nil {
+		return ethtypes.EthFeeHistory{}, xerrors.Errorf("decoding params: %w", err)
+	}
+	if params.BlkCount > 1024 {
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}
 
@@ -590,7 +594,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 
 	// TODO https://github.com/filecoin-project/ref-fvm/issues/1016
 	var blkNum ethtypes.EthUint64
-	err := blkNum.UnmarshalJSON([]byte(`"` + newestBlkNum + `"`))
+	err = blkNum.UnmarshalJSON([]byte(`"` + params.NewestBlkNum + `"`))
 	if err == nil && uint64(blkNum) < newestBlkHeight {
 		newestBlkHeight = uint64(blkNum)
 	}
@@ -598,8 +602,8 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 	// Deal with the case that the chain is shorter than the number of
 	// requested blocks.
 	oldestBlkHeight := uint64(1)
-	if uint64(blkCount) <= newestBlkHeight {
-		oldestBlkHeight = newestBlkHeight - uint64(blkCount) + 1
+	if uint64(params.BlkCount) <= newestBlkHeight {
+		oldestBlkHeight = newestBlkHeight - uint64(params.BlkCount) + 1
 	}
 
 	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(newestBlkHeight), nil, false)
@@ -633,7 +637,6 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 	}
 
 	// Reverse the arrays; we collected them newest to oldest; the client expects oldest to newest.
-
 	for i, j := 0, len(baseFeeArray)-1; i < j; i, j = i+1, j-1 {
 		baseFeeArray[i], baseFeeArray[j] = baseFeeArray[j], baseFeeArray[i]
 	}
@@ -641,11 +644,16 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint
 		gasUsedRatioArray[i], gasUsedRatioArray[j] = gasUsedRatioArray[j], gasUsedRatioArray[i]
 	}
 
-	return ethtypes.EthFeeHistory{
+	ret := ethtypes.EthFeeHistory{
 		OldestBlock:   ethtypes.EthUint64(oldestBlkHeight),
 		BaseFeePerGas: baseFeeArray,
 		GasUsedRatio:  gasUsedRatioArray,
-	}, nil
+	}
+	if params.RewardPercentiles != nil {
+		reward := make([][]ethtypes.EthBigInt, 0)
+		ret.Reward = &reward
+	}
+	return ret, nil
 }
 
 func (a *EthModule) NetVersion(ctx context.Context) (string, error) {

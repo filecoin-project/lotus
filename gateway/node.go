@@ -108,7 +108,7 @@ type TargetAPI interface {
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
-	EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error)
+	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error)
 	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error)
