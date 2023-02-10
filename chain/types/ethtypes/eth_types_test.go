@@ -222,7 +222,7 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 		TransactionHash:  hash1,
 		BlockHash:        hash2,
 		BlockNumber:      53,
-		Topics:           []EthBytes{hash1[:]},
+		Topics:           []EthHash{hash1},
 		Data:             EthBytes(hash1[:]),
 		Address:          addr,
 	}
