@@ -590,30 +590,21 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}
 
-	newestBlkHeight := uint64(a.Chain.GetHeaviestTipSet().Height())
-
-	// TODO https://github.com/filecoin-project/ref-fvm/issues/1016
-	var blkNum ethtypes.EthUint64
-	err = blkNum.UnmarshalJSON([]byte(`"` + params.NewestBlkNum + `"`))
-	if err == nil && uint64(blkNum) < newestBlkHeight {
-		newestBlkHeight = uint64(blkNum)
-	}
-
-	// Deal with the case that the chain is shorter than the number of
-	// requested blocks.
-	oldestBlkHeight := uint64(1)
-	if uint64(params.BlkCount) <= newestBlkHeight {
-		oldestBlkHeight = newestBlkHeight - uint64(params.BlkCount) + 1
-	}
-
-	ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(newestBlkHeight), nil, false)
+	ts, err := a.parseBlkParam(ctx, params.NewestBlkNum)
 	if err != nil {
-		return ethtypes.EthFeeHistory{}, fmt.Errorf("cannot load find block height: %v", newestBlkHeight)
+		return ethtypes.EthFeeHistory{}, fmt.Errorf("bad block parameter %s: %s", params.NewestBlkNum, err)
 	}
 
-	// FIXME: baseFeePerGas should include the next block after the newest of the returned range, because this
-	// can be inferred from the newest block. we use the newest block's baseFeePerGas for now but need to fix it
-	// In other words, due to deferred execution, we might not be returning the most useful value here for the client.
+	// Deal with the case that the chain is shorter than the number of requested blocks.
+	oldestBlkHeight := uint64(1)
+	if abi.ChainEpoch(params.BlkCount) <= ts.Height() {
+		oldestBlkHeight = uint64(ts.Height()) - uint64(params.BlkCount) + 1
+	}
+
+	// NOTE: baseFeePerGas should include the next block after the newest of the returned range,
+	//  because the next base fee can be inferred from the messages in the newest block.
+	//  However, this is NOT the case in Filecoin due to deferred execution, so the best
+	//  we can do is duplicate the last value.
 	baseFeeArray := []ethtypes.EthBigInt{ethtypes.EthBigInt(ts.Blocks()[0].ParentBaseFee)}
 	gasUsedRatioArray := []float64{}
 
