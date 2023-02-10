@@ -192,7 +192,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_feeHistory",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "", nil)
+				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "latest", nil)
 			},
 		},
 
