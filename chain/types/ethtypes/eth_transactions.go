@@ -37,7 +37,8 @@ type EthTx struct {
 	Gas                  EthUint64   `json:"gas"`
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
-	V                    EthBigInt   `json:"v"`
+	AccessList           []EthHash   `json:"accessList"`
+	V                    EthBigInt   `json:"yParity"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
 }
@@ -86,6 +87,7 @@ func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
 		Gas:                  EthUint64(txArgs.GasLimit),
 		MaxFeePerGas:         EthBigInt(txArgs.MaxFeePerGas),
 		MaxPriorityFeePerGas: EthBigInt(txArgs.MaxPriorityFeePerGas),
+		AccessList:           []EthHash{},
 		V:                    v,
 		R:                    r,
 		S:                    s,

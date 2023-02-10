@@ -112,7 +112,7 @@ var EvmCallSimulateCmd = &cli.Command{
 			return err
 		}
 
-		params, err := ethtypes.DecodeHexString(cctx.Args().Get(2))
+		params, err := ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(2))
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ var EvmGetContractAddress = &cli.Command{
 			return err
 		}
 
-		salt, err := ethtypes.DecodeHexString(cctx.Args().Get(1))
+		salt, err := ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("Could not decode salt: %w", err)
 		}
@@ -175,7 +175,7 @@ var EvmGetContractAddress = &cli.Command{
 
 			return err
 		}
-		contract, err := ethtypes.DecodeHexString(string(contractHex))
+		contract, err := ethtypes.DecodeHexStringTrimSpace(string(contractHex))
 		if err != nil {
 			return xerrors.Errorf("Could not decode contract file: %w", err)
 		}
@@ -224,7 +224,7 @@ var EvmDeployCmd = &cli.Command{
 			return xerrors.Errorf("failed to read contract: %w", err)
 		}
 		if cctx.Bool("hex") {
-			contract, err = ethtypes.DecodeHexString(string(contract))
+			contract, err = ethtypes.DecodeHexStringTrimSpace(string(contract))
 			if err != nil {
 				return xerrors.Errorf("failed to decode contract: %w", err)
 			}
@@ -346,7 +346,7 @@ var EvmInvokeCmd = &cli.Command{
 		}
 
 		var calldata []byte
-		calldata, err = ethtypes.DecodeHexString(cctx.Args().Get(1))
+		calldata, err = ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("decoding hex input data: %w", err)
 		}

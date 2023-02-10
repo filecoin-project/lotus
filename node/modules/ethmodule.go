@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 
 	"go.uber.org/fx"
@@ -24,7 +25,13 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			return nil, err
 		}
 
-		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(filepath.Join(sqlitePath, "txhash.db"))
+		dbPath := filepath.Join(sqlitePath, "txhash.db")
+
+		// Check if the db exists, if not, we'll back-fill some entries
+		_, err = os.Stat(dbPath)
+		dbAlreadyExists := err == nil
+
+		transactionHashLookup, err := ethhashlookup.NewTransactionHashLookup(dbPath)
 		if err != nil {
 			return nil, err
 		}
@@ -38,6 +45,13 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 		ethTxHashManager := full.EthTxHashManager{
 			StateAPI:              stateapi,
 			TransactionHashLookup: transactionHashLookup,
+		}
+
+		if !dbAlreadyExists {
+			err = ethTxHashManager.PopulateExistingMappings(mctx, 0)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		const ChainHeadConfidence = 1

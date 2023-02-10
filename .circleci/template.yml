@@ -527,11 +527,6 @@ workflows:
       - test-conformance:
           suite: conformance
           target: "./conformance"
-      - test-conformance:
-          name: test-conformance-bleeding-edge
-          suite: conformance-bleeding-edge
-          target: "./conformance"
-          vectors-branch: specs-actors-v7
 
   release:
     jobs:
