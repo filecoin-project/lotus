@@ -641,7 +641,11 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		GasUsedRatio:  gasUsedRatioArray,
 	}
 	if params.RewardPercentiles != nil {
-		// TODO: populate reward percentile
+		// TODO: Populate reward percentiles
+		//  https://github.com/filecoin-project/lotus/issues/10236
+		//  We need to calculate the requested percentiles of effective gas premium
+		//  based on the newest block (I presume it's the newest, we need to dig in
+		//  as it's underspecified). Effective means we're clamped at the gas_fee_cap - base_fee.
 		reward := make([][]ethtypes.EthBigInt, 0)
 		ret.Reward = &reward
 	}
