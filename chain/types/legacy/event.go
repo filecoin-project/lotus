@@ -20,20 +20,36 @@ type Event struct {
 	Entries []EventEntry
 }
 
-func (e *Event) Migrate() types.Event {
+// Adapt method assumes that all events are EVM events (which is the case for
+// nv<20, the network versions for which this code is active), and performs the
+// following adaptations:
+// - Upgrades the schema to new Events, setting codec = Raw.
+// - Removes the CBOR framing from values.
+// - Left pads EVM log topic entry values to 32 bytes.
+func (e *Event) Adapt() (types.Event, error) {
 	entries := make([]types.EventEntry, 0, len(e.Entries))
 	for _, ee := range e.Entries {
-		entries = append(entries, types.EventEntry{
+		entry := types.EventEntry{
 			Flags: ee.Flags,
 			Key:   ee.Key,
 			Codec: uint64(multicodec.Raw),
 			Value: ee.Value,
-		})
+		}
+		value, err := cbg.ReadByteArray(bytes.NewReader(ee.Value), 64)
+		if err != nil {
+			return types.Event{}, fmt.Errorf("failed to decode event value while adapting: %w", err)
+		}
+		if l := len(value); l < 32 {
+			pvalue := make([]byte, 32)
+			copy(pvalue[32-len(value):], value)
+			value = pvalue
+		}
+		entries = append(entries, entry)
 	}
 	return types.Event{
 		Emitter: e.Emitter,
 		Entries: entries,
-	}
+	}, nil
 }
 
 type EventEntry struct {
@@ -64,7 +80,11 @@ func DecodeEvents(input []byte) ([]types.Event, error) {
 		if err := evt.UnmarshalCBOR(r); err != nil {
 			return nil, fmt.Errorf("failed to parse event: %w", err)
 		}
-		events = append(events, evt.Migrate())
+		adapted, err := evt.Adapt()
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, adapted)
 	}
 	return events, nil
 }

@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/types/legacy"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -519,7 +520,11 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	}
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
-		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		if vm.nv < network.Version20 {
+			applyRet.Events, err = legacy.DecodeEvents(ret.EventsBytes)
+		} else {
+			applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
