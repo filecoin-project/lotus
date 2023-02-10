@@ -117,6 +117,17 @@ var sendCmd = &cli.Command{
 			params.From = faddr
 		}
 
+		if params.From.Protocol() == address.Delegated {
+			if !(params.To.Protocol() == address.ID || params.To.Protocol() == address.Delegated) {
+				api := srv.FullNodeAPI()
+				// Resolve id addr if possible.
+				params.To, err = api.StateLookupID(ctx, params.To, types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("f4 addresses can only send to other f4 or id addresses. could not find id address for %s", params.To.String())
+				}
+			}
+		}
+
 		if cctx.IsSet("gas-premium") {
 			gp, err := types.BigFromString(cctx.String("gas-premium"))
 			if err != nil {

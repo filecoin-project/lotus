@@ -454,8 +454,9 @@ var chainBalanceStateCmd = &cli.Command{
 	Description: "Produces a csv file of all account balances from a given stateroot",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "repo",
-			Value: "~/.lotus",
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
 		},
 		&cli.BoolFlag{
 			Name: "miner-info",
@@ -677,8 +678,9 @@ var chainPledgeCmd = &cli.Command{
 	Description: "Calculate sector pledge numbers",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "repo",
-			Value: "~/.lotus",
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
 		},
 	},
 	ArgsUsage: "[stateroot epoch]",

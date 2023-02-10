@@ -95,10 +95,11 @@ func loadManifests(netw string) error {
 }
 
 type BuiltinActorsMetadata struct {
-	Network     string
-	Version     actorstypes.Version
-	ManifestCid cid.Cid
-	Actors      map[string]cid.Cid
+	Network      string
+	Version      actorstypes.Version
+	ManifestCid  cid.Cid
+	Actors       map[string]cid.Cid
+	BundleGitTag string
 }
 
 // ReadEmbeddedBuiltinActorsMetadata reads the metadata from the embedded built-in actor bundles.

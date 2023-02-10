@@ -42,6 +42,11 @@ var datastoreListCmd = &cli.Command{
 	Description: "list datastore keys",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
+		},
+		&cli.StringFlag{
 			Name:  "repo-type",
 			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
 			Value: "FullNode",
@@ -111,6 +116,11 @@ var datastoreGetCmd = &cli.Command{
 	Description: "list datastore keys",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
+		},
+		&cli.StringFlag{
 			Name:  "repo-type",
 			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
 			Value: "FullNode",
@@ -123,7 +133,7 @@ var datastoreGetCmd = &cli.Command{
 	},
 	ArgsUsage: "[namespace key]",
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+		_ = logging.SetLogLevel("badger", "ERROR")
 
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {

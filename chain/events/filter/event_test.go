@@ -287,6 +287,7 @@ func fakeEvent(emitter abi.ActorID, indexed []kv, unindexed []kv) *types.Event {
 		ev.Entries = append(ev.Entries, types.EventEntry{
 			Flags: 0x01,
 			Key:   in.k,
+			Codec: cid.Raw,
 			Value: in.v,
 		})
 	}
@@ -295,6 +296,7 @@ func fakeEvent(emitter abi.ActorID, indexed []kv, unindexed []kv) *types.Event {
 		ev.Entries = append(ev.Entries, types.EventEntry{
 			Flags: 0x00,
 			Key:   in.k,
+			Codec: cid.Raw,
 			Value: in.v,
 		})
 	}
