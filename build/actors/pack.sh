@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet hyperspace)
+NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet)
 
 set -e
 
@@ -52,4 +52,4 @@ popd
 
 echo "Generating metadata..."
 
-make -C ../../ bundle-gen
+make -C ../../ RELEASE="$RELEASE" bundle-gen

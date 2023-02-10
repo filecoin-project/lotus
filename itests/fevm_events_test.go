@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
@@ -45,38 +46,41 @@ func TestFEVMEvents(t *testing.T) {
 	require.NoError(err)
 	t.Logf("actor ID address is %s", idAddr)
 
-	// var (
-	// 	earliest = "earliest"
-	// 	latest   = "latest"
-	// )
-	//
-	// // Install a filter.
-	// filter, err := client.EthNewFilter(ctx, &api.EthFilterSpec{
-	// 	FromBlock: &earliest,
-	// 	ToBlock:   &latest,
-	// })
-	// require.NoError(err)
-	//
-	// // No logs yet.
-	// res, err := client.EthGetFilterLogs(ctx, filter)
-	// require.NoError(err)
-	// require.Empty(res.NewLogs)
+	var (
+		earliest = "earliest"
+		latest   = "latest"
+	)
+
+	// Install a filter.
+	filter, err := client.EthNewFilter(ctx, &ethtypes.EthFilterSpec{
+		FromBlock: &earliest,
+		ToBlock:   &latest,
+	})
+	require.NoError(err)
+
+	// No logs yet.
+	res, err := client.EthGetFilterLogs(ctx, filter)
+	require.NoError(err)
+	require.Empty(res.Results)
 
 	// log a zero topic event with data
-	ret := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x00}, nil)
+	ret, err := client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x00}, nil)
+	require.NoError(err)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	require.NotNil(ret.Receipt.EventsRoot)
 	fmt.Println(ret)
 	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
 
 	// log a zero topic event with no data
-	ret = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x01}, nil)
+	ret, err = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x01}, nil)
+	require.NoError(err)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	fmt.Println(ret)
 	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))
 
 	// log a four topic event with data
-	ret = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+	ret, err = client.EVM().InvokeSolidity(ctx, fromAddr, idAddr, []byte{0x00, 0x00, 0x00, 0x02}, nil)
+	require.NoError(err)
 	require.True(ret.Receipt.ExitCode.IsSuccess(), "contract execution failed")
 	fmt.Println(ret)
 	fmt.Printf("Events:\n %+v\n", client.EVM().LoadEvents(ctx, *ret.Receipt.EventsRoot))

@@ -1,7 +1,6 @@
 package filter
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -49,6 +47,7 @@ var ddls = []string{
 		indexed INTEGER NOT NULL,
 		flags BLOB NOT NULL,
 		key TEXT NOT NULL,
+		codec INTEGER,
 		value BLOB NOT NULL
 	)`,
 
@@ -69,8 +68,8 @@ const (
 	VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
 
 	insertEntry = `INSERT OR IGNORE INTO event_entry
-	(event_id, indexed, flags, key, value)
-	VALUES(?, ?, ?, ?, ?)`
+	(event_id, indexed, flags, key, codec, value)
+	VALUES(?, ?, ?, ?, ?, ?)`
 )
 
 type EventIndex struct {
@@ -153,13 +152,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 		return xerrors.Errorf("prepare insert entry: %w", err)
 	}
 
-	isIndexedValue := func(b uint8) bool {
-		// currently we mark the full entry as indexed if either the key
-		// or the value are indexed; in the future we will need finer-grained
-		// management of indices
-		return b&(types.EventFlagIndexedKey|types.EventFlagIndexedValue) > 0
-	}
-
 	for msgIdx, em := range ems {
 		for evIdx, ev := range em.Events() {
 			addr, found := addressLookups[ev.Emitter]
@@ -198,13 +190,13 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 			}
 
 			for _, entry := range ev.Entries {
-				value := decodeLogBytes(entry.Value)
 				_, err := stmtEntry.Exec(
 					lastID,                      // event_id
 					isIndexedValue(entry.Flags), // indexed
 					[]byte{entry.Flags},         // flags
 					entry.Key,                   // key
-					value,                       // value
+					entry.Codec,                 // codec
+					entry.Value,                 // value
 				)
 				if err != nil {
 					return xerrors.Errorf("exec insert entry: %w", err)
@@ -218,21 +210,6 @@ func (ei *EventIndex) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 	}
 
 	return nil
-}
-
-// decodeLogBytes decodes a CBOR-serialized array into its original form.
-//
-// This function swallows errors and returns the original array if it failed
-// to decode.
-func decodeLogBytes(orig []byte) []byte {
-	if len(orig) == 0 {
-		return orig
-	}
-	decoded, err := cbg.ReadByteArray(bytes.NewReader(orig), uint64(len(orig)))
-	if err != nil {
-		return orig
-	}
-	return decoded
 }
 
 // PrefillFilter fills a filter's collection of events from the historic index
@@ -276,7 +253,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 				subclauses := []string{}
 				for _, val := range vals {
 					subclauses = append(subclauses, fmt.Sprintf("%s.value=?", joinAlias))
-					values = append(values, trimLeadingZeros(val))
+					values = append(values, val)
 				}
 				clauses = append(clauses, "("+strings.Join(subclauses, " OR ")+")")
 			}
@@ -295,6 +272,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			event.reverted,
 			event_entry.flags,
 			event_entry.key,
+			event_entry.codec,
 			event_entry.value
 		FROM event JOIN event_entry ON event.id=event_entry.event_id`
 
@@ -344,6 +322,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			reverted     bool
 			flags        []byte
 			key          string
+			codec        uint64
 			value        []byte
 		}
 
@@ -359,6 +338,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 			&row.reverted,
 			&row.flags,
 			&row.key,
+			&row.codec,
 			&row.value,
 		); err != nil {
 			return xerrors.Errorf("read prefill row: %w", err)
@@ -403,6 +383,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 		ce.Entries = append(ce.Entries, types.EventEntry{
 			Flags: row.flags[0],
 			Key:   row.key,
+			Codec: row.codec,
 			Value: row.value,
 		})
 
@@ -422,13 +403,4 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 	f.setCollectedEvents(ces)
 
 	return nil
-}
-
-func trimLeadingZeros(b []byte) []byte {
-	for i := range b {
-		if b[i] != 0 {
-			return b[i:]
-		}
-	}
-	return []byte{}
 }

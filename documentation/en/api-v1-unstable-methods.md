@@ -291,6 +291,8 @@
   * [WalletSignMessage](#WalletSignMessage)
   * [WalletValidateAddress](#WalletValidateAddress)
   * [WalletVerify](#WalletVerify)
+* [Web3](#Web3)
+  * [Web3ClientVersion](#Web3ClientVersion)
 ## 
 
 
@@ -642,6 +644,7 @@ Response:
       {
         "Flags": 7,
         "Key": "string value",
+        "Codec": 42,
         "Value": "Ynl0ZSBhcnJheQ=="
       }
     ]
@@ -2340,7 +2343,7 @@ Inputs:
 Response:
 ```json
 {
-  "oldestBlock": 42,
+  "oldestBlock": "0x5",
   "baseFeePerGas": [
     "0x0"
   ],
@@ -2405,7 +2408,7 @@ Response:
   "gasLimit": "0x5",
   "gasUsed": "0x5",
   "timestamp": "0x5",
-  "extraData": "Ynl0ZSBhcnJheQ==",
+  "extraData": "0x07",
   "mixHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
   "nonce": "0x0707070707070707",
   "baseFeePerGas": "0x0",
@@ -2449,7 +2452,7 @@ Response:
   "gasLimit": "0x5",
   "gasUsed": "0x5",
   "timestamp": "0x5",
-  "extraData": "Ynl0ZSBhcnJheQ==",
+  "extraData": "0x07",
   "mixHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
   "nonce": "0x0707070707070707",
   "baseFeePerGas": "0x0",
@@ -2518,40 +2521,7 @@ Perms: write
 Inputs:
 ```json
 [
-  [
-    55,
-    105,
-    12,
-    254,
-    198,
-    193,
-    191,
-    76,
-    59,
-    146,
-    136,
-    199,
-    165,
-    215,
-    131,
-    233,
-    135,
-    49,
-    233,
-    11,
-    10,
-    76,
-    23,
-    124,
-    42,
-    55,
-    76,
-    122,
-    148,
-    39,
-    53,
-    94
-  ]
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
 ]
 ```
 
@@ -2572,40 +2542,7 @@ Perms: write
 Inputs:
 ```json
 [
-  [
-    55,
-    105,
-    12,
-    254,
-    198,
-    193,
-    191,
-    76,
-    59,
-    146,
-    136,
-    199,
-    165,
-    215,
-    131,
-    233,
-    135,
-    49,
-    233,
-    11,
-    10,
-    76,
-    23,
-    124,
-    42,
-    55,
-    76,
-    122,
-    148,
-    39,
-    53,
-    94
-  ]
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
 ]
 ```
 
@@ -2707,7 +2644,10 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
+  "accessList": [
+    "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+  ],
+  "yParity": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2743,7 +2683,10 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
+  "accessList": [
+    "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+  ],
+  "yParity": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2778,7 +2721,10 @@ Response:
   "gas": "0x5",
   "maxFeePerGas": "0x0",
   "maxPriorityFeePerGas": "0x0",
-  "v": "0x0",
+  "accessList": [
+    "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
+  ],
+  "yParity": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2879,43 +2825,7 @@ Perms: write
 
 Inputs: `null`
 
-Response:
-```json
-[
-  55,
-  105,
-  12,
-  254,
-  198,
-  193,
-  191,
-  76,
-  59,
-  146,
-  136,
-  199,
-  165,
-  215,
-  131,
-  233,
-  135,
-  49,
-  233,
-  11,
-  10,
-  76,
-  23,
-  124,
-  42,
-  55,
-  76,
-  122,
-  148,
-  39,
-  53,
-  94
-]
-```
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthNewFilter
 Installs a persistent filter based on given filter spec.
@@ -2936,43 +2846,7 @@ Inputs:
 ]
 ```
 
-Response:
-```json
-[
-  55,
-  105,
-  12,
-  254,
-  198,
-  193,
-  191,
-  76,
-  59,
-  146,
-  136,
-  199,
-  165,
-  215,
-  131,
-  233,
-  135,
-  49,
-  233,
-  11,
-  10,
-  76,
-  23,
-  124,
-  42,
-  55,
-  76,
-  122,
-  148,
-  39,
-  53,
-  94
-]
-```
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthNewPendingTransactionFilter
 Installs a persistent filter to notify when new messages arrive in the message pool.
@@ -2982,43 +2856,7 @@ Perms: write
 
 Inputs: `null`
 
-Response:
-```json
-[
-  55,
-  105,
-  12,
-  254,
-  198,
-  193,
-  191,
-  76,
-  59,
-  146,
-  136,
-  199,
-  165,
-  215,
-  131,
-  233,
-  135,
-  49,
-  233,
-  11,
-  10,
-  76,
-  23,
-  124,
-  42,
-  55,
-  76,
-  122,
-  148,
-  39,
-  53,
-  94
-]
-```
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthProtocolVersion
 
@@ -3058,57 +2896,11 @@ Perms: write
 Inputs:
 ```json
 [
-  "string value",
-  {
-    "topics": [
-      [
-        "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
-      ]
-    ]
-  }
+  "Bw=="
 ]
 ```
 
-Response:
-```json
-{
-  "subscription": [
-    55,
-    105,
-    12,
-    254,
-    198,
-    193,
-    191,
-    76,
-    59,
-    146,
-    136,
-    199,
-    165,
-    215,
-    131,
-    233,
-    135,
-    49,
-    233,
-    11,
-    10,
-    76,
-    23,
-    124,
-    42,
-    55,
-    76,
-    122,
-    148,
-    39,
-    53,
-    94
-  ],
-  "result": {}
-}
-```
+Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
 ### EthUninstallFilter
 Uninstalls a filter with given id.
@@ -3119,40 +2911,7 @@ Perms: write
 Inputs:
 ```json
 [
-  [
-    55,
-    105,
-    12,
-    254,
-    198,
-    193,
-    191,
-    76,
-    59,
-    146,
-    136,
-    199,
-    165,
-    215,
-    131,
-    233,
-    135,
-    49,
-    233,
-    11,
-    10,
-    76,
-    23,
-    124,
-    42,
-    55,
-    76,
-    122,
-    148,
-    39,
-    53,
-    94
-  ]
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
 ]
 ```
 
@@ -3167,40 +2926,7 @@ Perms: write
 Inputs:
 ```json
 [
-  [
-    55,
-    105,
-    12,
-    254,
-    198,
-    193,
-    191,
-    76,
-    59,
-    146,
-    136,
-    199,
-    165,
-    215,
-    131,
-    233,
-    135,
-    49,
-    233,
-    11,
-    10,
-    76,
-    23,
-    124,
-    42,
-    55,
-    76,
-    122,
-    148,
-    39,
-    53,
-    94
-  ]
+  "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
 ]
 ```
 
@@ -9206,4 +8932,17 @@ Inputs:
 ```
 
 Response: `true`
+
+## Web3
+
+
+### Web3ClientVersion
+Returns the client version
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `"string value"`
 

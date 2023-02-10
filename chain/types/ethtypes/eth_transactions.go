@@ -12,13 +12,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -39,7 +37,8 @@ type EthTx struct {
 	Gas                  EthUint64   `json:"gas"`
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
-	V                    EthBigInt   `json:"v"`
+	AccessList           []EthHash   `json:"accessList"`
+	V                    EthBigInt   `json:"yParity"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
 }
@@ -58,11 +57,50 @@ type EthTxArgs struct {
 	S                    big.Int     `json:"s"`
 }
 
-func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
+// EthTxFromSignedEthMessage does NOT populate:
+// - BlockHash
+// - BlockNumber
+// - TransactionIndex
+// - From
+// - Hash
+func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
+	if smsg.Signature.Type != typescrypto.SigTypeDelegated {
+		return EthTx{}, xerrors.Errorf("signature is not delegated type, is type: %d", smsg.Signature.Type)
+	}
+
+	txArgs, err := EthTxArgsFromUnsignedEthMessage(&smsg.Message)
+	if err != nil {
+		return EthTx{}, xerrors.Errorf("failed to convert the unsigned message: %w", err)
+	}
+
+	r, s, v, err := RecoverSignature(smsg.Signature)
+	if err != nil {
+		return EthTx{}, xerrors.Errorf("failed to recover signature: %w", err)
+	}
+
+	return EthTx{
+		Nonce:                EthUint64(txArgs.Nonce),
+		ChainID:              EthUint64(txArgs.ChainID),
+		To:                   txArgs.To,
+		Value:                EthBigInt(txArgs.Value),
+		Type:                 Eip1559TxType,
+		Gas:                  EthUint64(txArgs.GasLimit),
+		MaxFeePerGas:         EthBigInt(txArgs.MaxFeePerGas),
+		MaxPriorityFeePerGas: EthBigInt(txArgs.MaxPriorityFeePerGas),
+		AccessList:           []EthHash{},
+		V:                    v,
+		R:                    r,
+		S:                    s,
+		Input:                txArgs.Input,
+	}, nil
+}
+
+func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
 		to           *EthAddress
 		params       []byte
 		paramsReader = bytes.NewReader(msg.Params)
+		err          error
 	)
 
 	if msg.Version != 0 {
@@ -72,11 +110,10 @@ func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
 		switch msg.Method {
 		case builtintypes.MethodsEAM.CreateExternal:
-			var create abi.CborBytes
-			if err := create.UnmarshalCBOR(paramsReader); err != nil {
-				return EthTxArgs{}, err
+			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+			if err != nil {
+				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
 			}
-			params = create
 		default:
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
@@ -103,16 +140,16 @@ func EthTxArgsFromMessage(msg *types.Message) (EthTxArgs, error) {
 			if err != nil {
 				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
 			}
-
-			if len(params) == 0 {
-				// Otherwise, we don't get a guaranteed round-trip.
-				return EthTxArgs{}, xerrors.Errorf("cannot invoke contracts with empty parameters from an eth-account")
-			}
 		}
 	}
 
 	if paramsReader.Len() != 0 {
 		return EthTxArgs{}, xerrors.Errorf("extra data found in params")
+	}
+
+	if len(params) == 0 && msg.Method != builtintypes.MethodSend {
+		// Otherwise, we don't get a guaranteed round-trip.
+		return EthTxArgs{}, xerrors.Errorf("msgs with empty parameters from an eth-account must be Sends (MethodNum: %d)", msg.Method)
 	}
 
 	return EthTxArgs{
@@ -143,12 +180,13 @@ func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, er
 		if len(tx.Input) == 0 {
 			return nil, xerrors.New("cannot call CreateExternal without params")
 		}
-		inputParams := abi.CborBytes(tx.Input)
-		params, err = actors.SerializeParams(&inputParams)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
+
+		buf := new(bytes.Buffer)
+		if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
+			return nil, xerrors.Errorf("failed to serialize Create params: %w", err)
 		}
 
+		params = buf.Bytes()
 	} else {
 		to, err = tx.To.ToFilecoinAddress()
 		if err != nil {

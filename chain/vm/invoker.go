@@ -291,7 +291,10 @@ func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, 
 
 	um := actInfo.vmActor.State()
 	if um == nil {
-		// TODO::FVM @arajasek I would like to assert that we have the empty object here
+		if act.Head != EmptyObjectCid {
+			return nil, xerrors.Errorf("actor with code %s should only have empty object (%s) as its Head, instead has %s", act.Code, EmptyObjectCid, act.Head)
+		}
+
 		return nil, nil
 	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {

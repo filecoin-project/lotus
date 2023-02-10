@@ -11,6 +11,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtin2 "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
@@ -70,7 +72,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err := ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err := txArgs.ToRlpUnsignedMsg()
@@ -106,7 +108,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err = ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err = ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err = txArgs.ToRlpUnsignedMsg()
@@ -178,7 +180,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	msgFromPlaceholder.Value = abi.TokenAmount(types.MustParseFIL("1000"))
-	txArgs, err := ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err := txArgs.ToRlpUnsignedMsg()
@@ -216,7 +218,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
 
-	txArgs, err = ethtypes.EthTxArgsFromMessage(msgFromPlaceholder)
+	txArgs, err = ethtypes.EthTxArgsFromUnsignedEthMessage(msgFromPlaceholder)
 	require.NoError(t, err)
 
 	digest, err = txArgs.ToRlpUnsignedMsg()
@@ -312,4 +314,52 @@ func TestEthAccountAbstractionFailsFromEvmActor(t *testing.T) {
 	_, err = client.GasEstimateMessageGas(ctx, msgFromContract, nil, types.EmptyTSK)
 	require.Error(t, err, "expected gas estimation to fail")
 	require.Contains(t, err.Error(), "SysErrSenderInvalid")
+}
+
+func TestEthAccountManagerPermissions(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// setup f1/f3/f4 accounts
+
+	wsp, err := client.WalletNew(ctx, types.KTSecp256k1)
+	require.NoError(t, err)
+
+	wbl, err := client.WalletNew(ctx, types.KTBLS)
+	require.NoError(t, err)
+
+	wdl, err := client.WalletNew(ctx, types.KTDelegated)
+	require.NoError(t, err)
+
+	def := client.DefaultKey.Address
+
+	// send some funds
+	client.ExpectSend(ctx, def, wsp, types.FromFil(10), "")
+	client.ExpectSend(ctx, def, wbl, types.FromFil(10), "")
+	client.ExpectSend(ctx, def, wdl, types.FromFil(10), "")
+	require.NoError(t, err)
+
+	// make sure that EAM only allows CreateExternal to be called by accounts
+	client.ExpectSend(ctx, wsp, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "not one of supported (18)", client.MakeSendCall(builtin2.MethodsEAM.Create, &eam.CreateParams{Nonce: 0}))
+	client.ExpectSend(ctx, wbl, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "not one of supported (18)", client.MakeSendCall(builtin2.MethodsEAM.Create, &eam.CreateParams{Nonce: 0}))
+	client.ExpectSend(ctx, wdl, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "not one of supported (18)", client.MakeSendCall(builtin2.MethodsEAM.Create, &eam.CreateParams{Nonce: 0}))
+
+	client.ExpectSend(ctx, wsp, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "not one of supported (18)", client.MakeSendCall(builtin2.MethodsEAM.Create2, &eam.Create2Params{}))
+	client.ExpectSend(ctx, wbl, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "not one of supported (18)", client.MakeSendCall(builtin2.MethodsEAM.Create2, &eam.Create2Params{}))
+	client.ExpectSend(ctx, wdl, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "not one of supported (18)", client.MakeSendCall(builtin2.MethodsEAM.Create2, &eam.Create2Params{}))
+
+	contractHex, err := os.ReadFile("contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+	contractParams := abi.CborBytes(contract)
+
+	client.ExpectSend(ctx, wsp, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "", client.MakeSendCall(builtin2.MethodsEAM.CreateExternal, &contractParams))
+	client.ExpectSend(ctx, wbl, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "", client.MakeSendCall(builtin2.MethodsEAM.CreateExternal, &contractParams))
+	client.ExpectSend(ctx, wdl, builtin2.EthereumAddressManagerActorAddr, big.Zero(), "", client.MakeSendCall(builtin2.MethodsEAM.CreateExternal, &contractParams))
 }

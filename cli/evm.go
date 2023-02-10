@@ -38,25 +38,13 @@ var EvmCmd = &cli.Command{
 }
 
 var EvmGetInfoCmd = &cli.Command{
-	Name:  "stat",
-	Usage: "Print eth/filecoin addrs and code cid",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "filAddr",
-			Usage: "Filecoin address",
-		},
-		&cli.StringFlag{
-			Name:  "ethAddr",
-			Usage: "Ethereum address",
-		},
-	},
+	Name:      "stat",
+	Usage:     "Print eth/filecoin addrs and code cid",
+	ArgsUsage: "address",
 	Action: func(cctx *cli.Context) error {
-
-		filAddr := cctx.String("filAddr")
-		ethAddr := cctx.String("ethAddr")
-
-		var faddr address.Address
-		var eaddr ethtypes.EthAddress
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -65,26 +53,25 @@ var EvmGetInfoCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if filAddr != "" {
-			addr, err := address.NewFromString(filAddr)
-			if err != nil {
-				return err
-			}
-			eaddr, faddr, err = ethAddrFromFilecoinAddress(ctx, addr, api)
-			if err != nil {
-				return err
-			}
-		} else if ethAddr != "" {
-			eaddr, err = ethtypes.ParseEthAddress(ethAddr)
-			if err != nil {
-				return err
+		addrString := cctx.Args().Get(0)
+
+		var faddr address.Address
+		var eaddr ethtypes.EthAddress
+		addr, err := address.NewFromString(addrString)
+		if err != nil { // This isn't a filecoin address
+			eaddr, err = ethtypes.ParseEthAddress(addrString)
+			if err != nil { // This isn't an Eth address either
+				return xerrors.Errorf("address is not a filecoin or eth address")
 			}
 			faddr, err = eaddr.ToFilecoinAddress()
 			if err != nil {
 				return err
 			}
 		} else {
-			return xerrors.Errorf("Neither filAddr nor ethAddr specified")
+			eaddr, faddr, err = ethAddrFromFilecoinAddress(ctx, addr, api)
+			if err != nil {
+				return err
+			}
 		}
 
 		actor, err := api.StateGetActor(ctx, faddr, types.EmptyTSK)
@@ -97,7 +84,6 @@ var EvmGetInfoCmd = &cli.Command{
 		fmt.Println("Code cid: ", actor.Code.String())
 
 		return nil
-
 	},
 }
 
@@ -121,7 +107,7 @@ var EvmCallSimulateCmd = &cli.Command{
 			return err
 		}
 
-		params, err := hex.DecodeString(cctx.Args().Get(2))
+		params, err := ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(2))
 		if err != nil {
 			return err
 		}
@@ -165,7 +151,7 @@ var EvmGetContractAddress = &cli.Command{
 			return err
 		}
 
-		salt, err := hex.DecodeString(cctx.Args().Get(1))
+		salt, err := ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("Could not decode salt: %w", err)
 		}
@@ -184,7 +170,7 @@ var EvmGetContractAddress = &cli.Command{
 
 			return err
 		}
-		contract, err := hex.DecodeString(string(contractHex))
+		contract, err := ethtypes.DecodeHexStringTrimSpace(string(contractHex))
 		if err != nil {
 			return xerrors.Errorf("Could not decode contract file: %w", err)
 		}
@@ -233,7 +219,7 @@ var EvmDeployCmd = &cli.Command{
 			return xerrors.Errorf("failed to read contract: %w", err)
 		}
 		if cctx.Bool("hex") {
-			contract, err = hex.DecodeString(string(contract))
+			contract, err = ethtypes.DecodeHexStringTrimSpace(string(contract))
 			if err != nil {
 				return xerrors.Errorf("failed to decode contract: %w", err)
 			}
@@ -355,7 +341,7 @@ var EvmInvokeCmd = &cli.Command{
 		}
 
 		var calldata []byte
-		calldata, err = hex.DecodeString(cctx.Args().Get(1))
+		calldata, err = ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("decoding hex input data: %w", err)
 		}

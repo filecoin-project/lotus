@@ -84,12 +84,6 @@ butterflynet: build-devnets
 interopnet: GOFLAGS+=-tags=interopnet
 interopnet: build-devnets
 
-wallabynet: GOFLAGS+=-tags=wallabynet
-wallabynet: build-devnets
-
-hyperspacenet: GOFLAGS+=-tags=hyperspacenet
-hyperspacenet: build-devnets
-
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	$(GOCC) build $(GOFLAGS) -o lotus ./cmd/lotus
@@ -304,7 +298,7 @@ actors-gen: actors-code-gen fiximports
 .PHONY: actors-gen
 
 bundle-gen:
-	$(GOCC) run ./gen/bundle
+	$(GOCC) run ./gen/bundle $(RELEASE)
 	$(GOCC) fmt ./build/...
 .PHONY: bundle-gen
 
@@ -360,7 +354,7 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 fiximports:
 	./scripts/fiximports
 
-gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
+gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

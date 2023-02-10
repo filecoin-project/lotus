@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
@@ -44,14 +43,43 @@ func effectiveEthAddressForCreate(t *testing.T, sender address.Address) ethtypes
 	panic("unreachable")
 }
 
+func createAndDeploy(ctx context.Context, t *testing.T, client *kit.TestFullNode, fromAddr address.Address, contract []byte) *api.MsgLookup {
+	// Create and deploy evm actor
+
+	method := builtintypes.MethodsEAM.CreateExternal
+	contractParams := abi.CborBytes(contract)
+	params, actorsErr := actors.SerializeParams(&contractParams)
+	require.NoError(t, actorsErr)
+
+	createMsg := &types.Message{
+		To:     builtintypes.EthereumAddressManagerActorAddr,
+		From:   fromAddr,
+		Value:  big.Zero(),
+		Method: method,
+		Params: params,
+	}
+	smsg, err := client.MpoolPushMessage(ctx, createMsg, nil)
+	require.NoError(t, err)
+
+	wait, err := client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	require.NoError(t, err)
+	require.Equal(t, exitcode.Ok, wait.Receipt.ExitCode)
+	return wait
+}
+
+func getEthAddressTX(ctx context.Context, t *testing.T, client *kit.TestFullNode, wait *api.MsgLookup, ethAddr ethtypes.EthAddress) ethtypes.EthAddress {
+	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
+	var createExternalReturn eam.CreateExternalReturn
+	err := createExternalReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
+	require.NoError(t, err)
+
+	createdEthAddr, err := ethtypes.CastEthAddress(createExternalReturn.EthAddress[:])
+	require.NoError(t, err)
+	return createdEthAddr
+}
+
 func TestAddressCreationBeforeDeploy(t *testing.T) {
-	kit.QuietMiningLogs()
-
-	blockTime := 100 * time.Millisecond
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blockTime)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
 	// install contract
@@ -72,22 +100,11 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	contractFilAddr, err := ethAddr.ToFilecoinAddress()
 	require.NoError(t, err)
 
-	// Send contract address some funds
-
+	//transfer half the wallet balance
 	bal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 	sendAmount := big.Div(bal, big.NewInt(2))
-
-	sendMsg := &types.Message{
-		From:  fromAddr,
-		To:    contractFilAddr,
-		Value: sendAmount,
-	}
-	signedMsg, err := client.MpoolPushMessage(ctx, sendMsg, nil)
-	require.NoError(t, err)
-	mLookup, err := client.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
-	require.NoError(t, err)
-	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
+	client.EVM().TransferValueOrFail(ctx, fromAddr, contractFilAddr, sendAmount)
 
 	// Check if actor at new address is a placeholder actor
 	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
@@ -95,40 +112,69 @@ func TestAddressCreationBeforeDeploy(t *testing.T) {
 	require.True(t, builtin.IsPlaceholderActor(actor.Code))
 
 	// Create and deploy evm actor
-
-	method := builtintypes.MethodsEAM.CreateExternal
-	contractParams := abi.CborBytes(contract)
-	params, err := actors.SerializeParams(&contractParams)
-	require.NoError(t, err)
-
-	createMsg := &types.Message{
-		To:     builtintypes.EthereumAddressManagerActorAddr,
-		From:   fromAddr,
-		Value:  big.Zero(),
-		Method: method,
-		Params: params,
-	}
-	smsg, err := client.MpoolPushMessage(ctx, createMsg, nil)
-	require.NoError(t, err)
-
-	wait, err := client.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
-	require.NoError(t, err)
-	require.Equal(t, exitcode.Ok, wait.Receipt.ExitCode)
+	wait := createAndDeploy(ctx, t, client, fromAddr, contract)
 
 	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
-	var createExternalReturn eam.CreateExternalReturn
-	err = createExternalReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return))
-	require.NoError(t, err)
-
-	createdEthAddr, err := ethtypes.CastEthAddress(createExternalReturn.EthAddress[:])
-	require.NoError(t, err)
+	createdEthAddr := getEthAddressTX(ctx, t, client, wait, ethAddr)
 	require.Equal(t, ethAddr, createdEthAddr)
 
 	// Check if newly deployed actor still has funds
 	actorPostCreate, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
 	require.NoError(t, err)
-
 	require.Equal(t, actorPostCreate.Balance, sendAmount)
 	require.True(t, builtin.IsEvmActor(actorPostCreate.Code))
+
+}
+
+func TestDeployAddressMultipleTimes(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	fromAddr, err := client.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	// We hash the f1/f3 address into the EVM's address space when deploying contracts from
+	// accounts.
+	effectiveEvmAddress := effectiveEthAddressForCreate(t, fromAddr)
+	ethAddr := client.EVM().ComputeContractAddress(effectiveEvmAddress, 1)
+
+	contractFilAddr, err := ethAddr.ToFilecoinAddress()
+	require.NoError(t, err)
+
+	// Send contract address small funds to init
+	sendAmount := big.NewInt(2)
+	client.EVM().TransferValueOrFail(ctx, fromAddr, contractFilAddr, sendAmount)
+
+	// Check if actor at new address is a placeholder actor
+	actor, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.True(t, builtin.IsPlaceholderActor(actor.Code))
+
+	// Create and deploy evm actor
+	wait := createAndDeploy(ctx, t, client, fromAddr, contract)
+
+	// Check if eth address returned from CreateExternal is the same as eth address predicted at the start
+	createdEthAddr := getEthAddressTX(ctx, t, client, wait, ethAddr)
+	require.Equal(t, ethAddr, createdEthAddr)
+
+	// Check if newly deployed actor still has funds
+	actorPostCreate, err := client.StateGetActor(ctx, contractFilAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, actorPostCreate.Balance, sendAmount)
+	require.True(t, builtin.IsEvmActor(actorPostCreate.Code))
+
+	// Create and deploy evm actor
+	wait = createAndDeploy(ctx, t, client, fromAddr, contract)
+
+	// Check that this time eth address returned from CreateExternal is not the same as eth address predicted at the start
+	createdEthAddr = getEthAddressTX(ctx, t, client, wait, ethAddr)
+	require.NotEqual(t, ethAddr, createdEthAddr)
 
 }

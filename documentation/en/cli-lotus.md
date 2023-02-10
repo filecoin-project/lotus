@@ -2596,11 +2596,10 @@ NAME:
    lotus evm stat - Print eth/filecoin addrs and code cid
 
 USAGE:
-   lotus evm stat [command options] [arguments...]
+   lotus evm stat [command options] address
 
 OPTIONS:
-   --ethAddr value  Ethereum address
-   --filAddr value  Filecoin address
+   --help, -h  show help (default: false)
    
 ```
 
