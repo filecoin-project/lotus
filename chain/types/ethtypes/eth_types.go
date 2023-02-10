@@ -57,7 +57,7 @@ func (e *EthUint64) UnmarshalJSON(b []byte) error {
 		*e = EthUint64(eint)
 		return nil
 	}
-	return fmt.Errorf("cannot parse %s into EthUint64", string(b))
+	return fmt.Errorf("cannot interpret %s as a hex-encoded uint64, or a number", string(b))
 }
 
 func EthUint64FromHex(s string) (EthUint64, error) {
