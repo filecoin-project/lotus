@@ -40,9 +40,10 @@ func (e EthUint64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Hex())
 }
 
-// UnmarshalJSON should be able to parse two types of input:
+// UnmarshalJSON should be able to parse these types of input:
 // 1. a JSON string containing a hex-encoded uint64 starting with 0x
-// 2. a valid string containing a uint64 in decimal
+// 2. a JSON string containing an uint64 in decimal
+// 3. a string containing an uint64 in decimal
 func (e *EthUint64) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err == nil {
@@ -737,7 +738,7 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 	return ethAddr, nil
 }
 
-// EthFeeHistoryParams handles raw jsonrpc params for eth_subscribe
+// EthFeeHistoryParams handles raw jsonrpc params for eth_feeHistory
 type EthFeeHistoryParams struct {
 	BlkCount          EthUint64
 	NewestBlkNum      string
