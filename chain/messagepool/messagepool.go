@@ -798,7 +798,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 	if err != nil {
 		return xerrors.Errorf("failedl to get network version: %w", err)
 	}
-	
+
 	if err := chain.AuthenticateMessage(m, m.Message.From, nv); err != nil {
 		return xerrors.Errorf("failed to validate signature: %w", err)
 	}

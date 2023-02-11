@@ -1,10 +1,10 @@
 package chain
 
 import (
-	"github.com/filecoin-project/go-state-types/builtin"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
