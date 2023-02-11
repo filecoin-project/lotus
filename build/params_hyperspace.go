@@ -58,6 +58,9 @@ var UpgradeHyggeHeight = abi.ChainEpoch(-21)
 // 2023-01-18T15:00:00Z
 var UpgradeHyperspaceNV19Height = abi.ChainEpoch(6840)
 
+// TODO set upgrade epoch
+var UpgradeHyperspaceNV20Height = abi.ChainEpoch(math.MaxInt64)
+
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }

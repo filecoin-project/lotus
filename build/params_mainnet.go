@@ -92,6 +92,9 @@ var UpgradeHyggeHeight = abi.ChainEpoch(math.MaxInt64 - 1)
 // ??????????????
 var UpgradeHyperspaceNV19Height = abi.ChainEpoch(math.MaxInt64)
 
+// dummy
+var UpgradeHyperspaceNV20Height = abi.ChainEpoch(math.MaxInt64)
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,

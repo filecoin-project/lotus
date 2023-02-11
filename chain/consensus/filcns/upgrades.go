@@ -249,6 +249,10 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Height:    build.UpgradeHyperspaceNV19Height,
 		Network:   network.Version19,
 		Migration: UpgradeActorsV11,
+	}, {
+		Height:    build.UpgradeHyperspaceNV20Height,
+		Network:   network.Version20,
+		Migration: UpgradeActorsV12,
 	},
 	}
 
@@ -1724,7 +1728,24 @@ func UpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, _ stmgr.Migra
 }
 
 func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
-	return cid.Undef, nil
+	oldAv := actorstypes.Version11
+	newAv := actorstypes.Version12
+	// This may change for upgrade
+	oldStateTreeVersion := types.StateTreeVersion5
+	newStateTreeVersion := types.StateTreeVersion5
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), newAv); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	newActorsManifestCid, ok := actors.GetManifest(newAv)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for actors v12 upgrade")
+	}
+
+	bstore := sm.ChainStore().StateBlockstore()
+	return LiteMigration(ctx, bstore, newActorsManifestCid, root, oldAv, newAv, oldStateTreeVersion, newStateTreeVersion)
 }
 
 func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, oldAv actorstypes.Version, newAv actorstypes.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
