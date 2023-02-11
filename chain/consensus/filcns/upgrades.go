@@ -1723,6 +1723,10 @@ func UpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, _ stmgr.Migra
 	return LiteMigration(ctx, bstore, newActorsManifestCid, root, oldAv, newAv, oldStateTreeVersion, newStateTreeVersion)
 }
 
+func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+	return cid.Undef, nil
+}
+
 func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, oldAv actorstypes.Version, newAv actorstypes.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(bstore, blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
