@@ -4,8 +4,6 @@
 package build
 
 import (
-	"math"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
