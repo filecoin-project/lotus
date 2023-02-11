@@ -592,7 +592,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}
 
-		if err := chain.AuthenticateMessage(m, kaddr); err != nil {
+		if err := chain.AuthenticateMessage(m, kaddr, nv); err != nil {
 			return xerrors.Errorf("failed to validate signature: %w", err)
 		}
 

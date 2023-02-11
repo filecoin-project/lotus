@@ -117,7 +117,13 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 		default:
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
-	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract {
+	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract || msg.Method == builtintypes.MethodSend {
+		// < nv20 (Hyperspace): The condition here is technically too lenient.
+		// The correct behavior would be to _only_ allow MethodSend on < nv20.
+		// However, snaking through the network version here is too expensive, and not worth it,
+		// given that the transition period will only last for ~24h anyway.
+		// AuthenticateMessage is the _crucial_ spot, and it's already applying a stricter check.
+		// The Eth API endpoint is also selecting the right method depending on the network version.
 		addr, err := EthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, err
