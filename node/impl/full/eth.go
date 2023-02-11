@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -768,6 +769,12 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 		}
 
 		method = builtintypes.MethodsEVM.InvokeContract
+
+		// < nv20 (Hyperspace): reset method to MethodSend if no params.
+		nv := a.StateManager.GetNetworkVersion(ctx, a.Chain.GetHeaviestTipSet().Height())
+		if nv < network.Version20 && len(tx.Data) == 0 {
+			method = builtintypes.MethodSend
+		}
 	}
 
 	return &types.Message{

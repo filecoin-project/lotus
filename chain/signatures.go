@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/filecoin-project/go-state-types/builtin"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -16,12 +17,15 @@ import (
 // SignedMessage was signed by the indicated Address, computing the correct
 // signature payload depending on the signature type. The supplied Address type
 // must be recognized by the registered verifier for the signature type.
-func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error {
+func AuthenticateMessage(msg *types.SignedMessage, signer address.Address, nv network.Version) error {
 	var digest []byte
 
 	typ := msg.Signature.Type
 	switch typ {
 	case crypto.SigTypeDelegated:
+		if msg.Message.Method == builtin.MethodSend && nv >= network.Version20 {
+			return xerrors.Errorf("nv20 and above no longer admits method 0 on messages with Ethereum delegated signatures")
+		}
 		txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(&msg.Message)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
