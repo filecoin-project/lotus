@@ -8,7 +8,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -231,33 +233,33 @@ func TestFEVMDelegateCall(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameActor := "contracts/DelegatecallActor.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	//install contract Storage
+	// install contract Storage
 	filenameStorage := "contracts/DelegatecallStorage.hex"
 	fromAddrStorage, storageAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 	require.Equal(t, fromAddr, fromAddrStorage)
 
-	//call Contract Storage which makes a delegatecall to contract Actor
-	//this contract call sets the "counter" variable to 7, from default value 0
+	// call Contract Storage which makes a delegatecall to contract Actor
+	// this contract call sets the "counter" variable to 7, from default value 0
 	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
-	//verify that the returned value of the call to setvars is 7
+	// verify that the returned value of the call to setvars is 7
 	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVars(address,uint256)", inputData)
 	require.NoError(t, err)
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000007")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
-	//test the value is 7 a second way by calling the getter
+	// test the value is 7 a second way by calling the getter
 	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "getCounter()", []byte{})
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
-	//test the value is 0 via calling the getter on the Actor contract
+	// test the value is 0 via calling the getter on the Actor contract
 	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "getCounter()", []byte{})
 	require.NoError(t, err)
 	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
@@ -271,34 +273,34 @@ func TestFEVMDelegateCallRevert(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameActor := "contracts/DelegatecallActor.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
-	//install contract Storage
+	// install contract Storage
 	filenameStorage := "contracts/DelegatecallStorage.hex"
 	fromAddrStorage, storageAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 	require.Equal(t, fromAddr, fromAddrStorage)
 
-	//call Contract Storage which makes a delegatecall to contract Actor
-	//this contract call sets the "counter" variable to 7, from default value 0
+	// call Contract Storage which makes a delegatecall to contract Actor
+	// this contract call sets the "counter" variable to 7, from default value 0
 
 	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
-	//verify that the returned value of the call to setvars is 7
+	// verify that the returned value of the call to setvars is 7
 	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "setVarsRevert(address,uint256)", inputData)
 	require.Error(t, err)
 	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
-	//test the value is 0 via calling the getter and was not set to 7
+	// test the value is 0 via calling the getter and was not set to 7
 	expectedResult, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	result, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, storageAddr, "getCounter()", []byte{})
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
 
-	//test the value is 0 via calling the getter on the Actor contract
+	// test the value is 0 via calling the getter on the Actor contract
 	result, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "getCounter()", []byte{})
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResult)
@@ -309,11 +311,11 @@ func TestFEVMSimpleRevert(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameStorage := "contracts/DelegatecallStorage.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//call revert
+	// call revert
 	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "revert()", []byte{})
 
 	require.Equal(t, wait.Receipt.ExitCode, exitcode.ExitCode(33))
@@ -325,15 +327,15 @@ func TestFEVMSelfDestruct(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameStorage := "contracts/SelfDestruct.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//call destroy
+	// call destroy
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
-	//call destroy a second time and also no error
+	// call destroy a second time and also no error
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 }
@@ -343,7 +345,7 @@ func TestFEVMTestApp(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameStorage := "contracts/TestApp.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
@@ -365,11 +367,11 @@ func TestFEVMTestConstructor(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameStorage := "contracts/Constructor.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//input = uint256{7}. set value and confirm tx success
+	// input = uint256{7}. set value and confirm tx success
 	inputData, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000007")
 	require.NoError(t, err)
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "new_Test(uint256)", inputData)
@@ -382,11 +384,11 @@ func TestFEVMAutoSelfDestruct(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameStorage := "contracts/AutoSelfDestruct.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//call destroy
+	// call destroy
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 }
@@ -399,16 +401,16 @@ func TestFEVMTestSendToContract(t *testing.T) {
 	bal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
 
-	//install contract TestApp
+	// install contract TestApp
 	filenameStorage := "contracts/SelfDestruct.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//transfer half balance to contract
+	// transfer half balance to contract
 
 	sendAmount := big.Div(bal, big.NewInt(2))
 	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
 
-	//call self destruct which should return balance
+	// call self destruct which should return balance
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "destroy()", []byte{})
 	require.NoError(t, err)
 
@@ -429,7 +431,7 @@ func TestFEVMTestNotPayable(t *testing.T) {
 	fromAddr := client.DefaultKey.Address
 	t.Log("from - ", fromAddr)
 
-	//create contract A
+	// create contract A
 	filenameStorage := "contracts/NotPayable.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 	sendAmount := big.NewInt(10_000_000)
@@ -443,7 +445,7 @@ func TestFEVMSendCall(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract
+	// install contract
 	filenameActor := "contracts/GasSendTest.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
@@ -458,12 +460,12 @@ func TestFEVMSendGasLimit(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract
+	// install contract
 	filenameActor := "contracts/GasLimitSend.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
-	//send $ to contract
-	//transfer 1 attoFIL to contract
+	// send $ to contract
+	// transfer 1 attoFIL to contract
 	sendAmount := big.MustFromString("1")
 
 	client.EVM().TransferValueOrFail(ctx, fromAddr, contractAddr, sendAmount)
@@ -474,26 +476,26 @@ func TestFEVMSendGasLimit(t *testing.T) {
 
 // TestFEVMDelegateCall deploys the two contracts in TestFEVMDelegateCall but instead of A calling B, A calls A which should cause A to cause A in an infinite loop and should give a reasonable error
 func TestFEVMDelegateCallRecursiveFail(t *testing.T) {
-	//TODO change the gas limit of this invocation and confirm that the number of errors is
+	// TODO change the gas limit of this invocation and confirm that the number of errors is
 	// different
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameActor := "contracts/DelegatecallStorage.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
-	//any data will do for this test that fails
+	// any data will do for this test that fails
 	inputDataContract := inputDataFromFrom(ctx, t, client, actorAddr)
 	inputDataValue := inputDataFromArray([]byte{7})
 	inputData := append(inputDataContract, inputDataValue...)
 
-	//verify that we run out of gas then revert.
+	// verify that we run out of gas then revert.
 	_, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, actorAddr, "setVarsSelf(address,uint256)", inputData)
 	require.Error(t, err)
 	require.Equal(t, exitcode.ExitCode(33), wait.Receipt.ExitCode)
 
-	//assert no fatal errors but still there are errors::
+	// assert no fatal errors but still there are errors::
 	errorAny := "fatal error"
 	require.NotContains(t, err.Error(), errorAny)
 }
@@ -508,11 +510,11 @@ func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
 	fromAddr := client.DefaultKey.Address
 	t.Log("from - ", fromAddr)
 
-	//create contract A
+	// create contract A
 	filenameStorage := "contracts/ValueSender.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
 
-	//create contract B
+	// create contract B
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "createB()", []byte{})
 	require.NoError(t, err)
 
@@ -522,7 +524,7 @@ func TestFEVMTestSendValueThroughContractsAndDestroy(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("contractBAddress - ", contractBAddress)
 
-	//self destruct contract B
+	// self destruct contract B
 	_, _, err = client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractBAddress, "selfDestruct()", []byte{})
 	require.NoError(t, err)
 
@@ -540,7 +542,7 @@ func TestFEVMRecursiveFuncCall(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameActor := "contracts/StackFunc.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
@@ -565,7 +567,7 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameActor := "contracts/RecCall.hex"
 	fromAddr, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
@@ -614,7 +616,7 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//install contract Actor
+	// install contract Actor
 	filenameActor := "contracts/ExternalRecursiveCallSimple.hex"
 	_, actorAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
@@ -711,8 +713,8 @@ func TestFEVMDeployWithValue(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//testValue is the amount sent when the contract is created
-	//at the end we check that the new contract has a balance of testValue
+	// testValue is the amount sent when the contract is created
+	// at the end we check that the new contract has a balance of testValue
 	testValue := big.NewInt(20)
 
 	// deploy DeployValueTest which creates NewContract
@@ -721,14 +723,14 @@ func TestFEVMDeployWithValue(t *testing.T) {
 	filenameActor := "contracts/DeployValueTest.hex"
 	fromAddr, idAddr := client.EVM().DeployContractFromFilenameWithValue(ctx, filenameActor, testValue)
 
-	//call getNewContractBalance to find the value of NewContract
+	// call getNewContractBalance to find the value of NewContract
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
 	require.NoError(t, err)
 
 	contractBalance, err := decodeOutputToUint64(ret)
 	require.NoError(t, err)
 
-	//require balance of NewContract is testValue
+	// require balance of NewContract is testValue
 	require.Equal(t, testValue.Uint64(), contractBalance)
 }
 
@@ -736,39 +738,39 @@ func TestFEVMDestroyCreate2(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	//deploy create2 factory contract
+	// deploy create2 factory contract
 	filename := "contracts/Create2Factory.hex"
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 
-	//construct salt for create2
+	// construct salt for create2
 	salt := make([]byte, 32)
 	_, err := rand.Read(salt)
 	require.NoError(t, err)
 
-	//deploy contract using create2 factory
+	// deploy contract using create2 factory
 	selfDestructAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
 	require.NoError(t, err)
 
-	//convert to filecoin actor address so we can call InvokeContractByFuncName
+	// convert to filecoin actor address so we can call InvokeContractByFuncName
 	ea, err := ethtypes.CastEthAddress(selfDestructAddress[12:])
 	require.NoError(t, err)
 	selfDestructAddressActor, err := ea.ToFilecoinAddress()
 	require.NoError(t, err)
 
-	//read sender property from contract
+	// read sender property from contract
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
 	require.NoError(t, err)
 
-	//assert contract has correct data
+	// assert contract has correct data
 	ethFromAddr := inputDataFromFrom(ctx, t, client, fromAddr)
 	require.Equal(t, ethFromAddr, ret)
 
-	//run test() which 1.calls sefldestruct 2. verifies sender() is the correct value 3. attempts and fails to deploy via create2
+	// run test() which 1.calls sefldestruct 2. verifies sender() is the correct value 3. attempts and fails to deploy via create2
 	testSenderAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "test(address)", selfDestructAddress)
 	require.NoError(t, err)
 	require.Equal(t, testSenderAddress, ethFromAddr)
 
-	//read sender() but get response of 0x0 because of self destruct
+	// read sender() but get response of 0x0 because of self destruct
 	senderAfterDestroy, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
 	require.NoError(t, err)
 	require.Equal(t, []byte{}, senderAfterDestroy)
@@ -778,11 +780,65 @@ func TestFEVMDestroyCreate2(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, newAddressSelfDestruct, selfDestructAddress)
 
-	//verify sender() property is correct
+	// verify sender() property is correct
 	senderSecondCall, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
 	require.NoError(t, err)
 
-	//assert contract has correct data
+	// assert contract has correct data
 	require.Equal(t, ethFromAddr, senderSecondCall)
 
+}
+
+func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// This contract emits an event on receiving value.
+	filename := "contracts/ValueSender.hex"
+	_, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	accctKey, accntEth, accntFil := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, accntFil, types.FromFil(10))
+
+	contractEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+		From:  &accntEth,
+		To:    &contractEth,
+		Value: ethtypes.EthBigInt(types.FromFil(1)),
+	})
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.EthTxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &contractEth,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	client.EVM().SignTransaction(&tx, accctKey.PrivateKey)
+
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
+
+	var receipt *api.EthTxReceipt
+	for i := 0; i < 1000; i++ {
+		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
+		if err != nil || receipt == nil {
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		break
+	}
+
+	require.Len(t, receipt.Logs, 1)
 }

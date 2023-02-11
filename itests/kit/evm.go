@@ -354,7 +354,7 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 	return ctx, cancel, client
 }
 
-func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
+func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) *api.MsgLookup {
 	sendMsg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,
@@ -365,6 +365,7 @@ func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address,
 	mLookup, err := e.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(e.t, err)
 	require.Equal(e.t, exitcode.Ok, mLookup.Receipt.ExitCode)
+	return mLookup
 }
 
 func NewEthFilterBuilder() *EthFilterBuilder {
