@@ -34,7 +34,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/legacy"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/oldpath"
 	"github.com/filecoin-project/lotus/lib/oldpath/oldresolver"
@@ -685,7 +684,7 @@ func (a *ChainAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]types.Ev
 
 		r := bytes.NewReader(deferred.Raw)
 		if isLegacy {
-			var evt legacy.Event
+			var evt types.LegacyEvent
 			if err := evt.UnmarshalCBOR(r); err != nil {
 				return err
 			}
@@ -724,7 +723,25 @@ func isLegacyEvents(ctx context.Context, root *amt4.Root) (bool, error) {
 		return false, xerrors.Errorf("failed to peek into events AMT: %w", err)
 	}
 
-	switch h, len, err := cbg.CborReadHeader(bytes.NewReader(obj.Raw)); {
+	r := cbg.NewCborReader(bytes.NewReader(obj.Raw))
+
+	// StampedEvent.
+	if typ, len, err := r.ReadHeader(); err != nil || typ != cbg.MajArray || len != 2 {
+		return false, xerrors.Errorf("expected cbor list with length 2 (stamped event); type: %d, size: %d, err: %w", typ, len, err)
+	}
+
+	// ActorID
+	if typ, _, err := r.ReadHeader(); err != nil || typ != cbg.MajUnsignedInt {
+		return false, xerrors.Errorf("expected cbor unsigned int (actor id); err: %w", err)
+	}
+
+	// Entries
+	if typ, len, err := r.ReadHeader(); err != nil || typ != cbg.MajArray || len == 0 {
+		return false, xerrors.Errorf("expected non-empty cbor list (entries); type: %d, size: %d, err: %w", typ, len, err)
+	}
+
+	// First entry, finally
+	switch h, len, err := r.ReadHeader(); {
 	case err != nil:
 		return false, err
 	case h != cbg.MajArray:
@@ -734,6 +751,6 @@ func isLegacyEvents(ctx context.Context, root *amt4.Root) (bool, error) {
 	case len == 4:
 		return false, nil
 	default:
-		return false, xerrors.Errorf("unexpected event tuple length: %d", h)
+		return false, xerrors.Errorf("unexpected event tuple length: %d", len)
 	}
 }

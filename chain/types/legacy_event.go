@@ -1,4 +1,4 @@
-package legacy
+package types
 
 import (
 	"bytes"
@@ -8,19 +8,17 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type Event struct {
+type LegacyEvent struct {
 	// The ID of the actor that emitted this event.
 	Emitter abi.ActorID
 
 	// Key values making up this event.
-	Entries []EventEntry
+	Entries []LegacyEventEntry
 }
 
-type EventEntry struct {
+type LegacyEventEntry struct {
 	// A bitmap conveying metadata or hints about this entry.
 	Flags uint8
 
@@ -31,16 +29,24 @@ type EventEntry struct {
 	Value []byte
 }
 
+var keyRewrites = map[string]string{
+	"topic1": "t1",
+	"topic2": "t2",
+	"topic3": "t3",
+	"topic4": "t4",
+	"data":   "d",
+}
+
 // Adapt method assumes that all events are EVM events (which is the case for
 // nv<20, the network versions for which this code is active), and performs the
 // following adaptations:
 // - Upgrades the schema to new Events, setting codec = Raw.
 // - Removes the CBOR framing from values.
 // - Left pads EVM log topic entry values to 32 bytes.
-func (e *Event) Adapt() (types.Event, error) {
-	entries := make([]types.EventEntry, 0, len(e.Entries))
+func (e *LegacyEvent) Adapt() (Event, error) {
+	entries := make([]EventEntry, 0, len(e.Entries))
 	for _, ee := range e.Entries {
-		entry := types.EventEntry{
+		entry := EventEntry{
 			Flags: ee.Flags,
 			Key:   ee.Key,
 			Codec: uint64(multicodec.Raw),
@@ -48,17 +54,37 @@ func (e *Event) Adapt() (types.Event, error) {
 		}
 		value, err := cbg.ReadByteArray(bytes.NewReader(ee.Value), 64)
 		if err != nil {
-			return types.Event{}, fmt.Errorf("failed to decode event value while adapting: %w", err)
+			return Event{}, fmt.Errorf("failed to decode event value while adapting: %w", err)
 		}
 		if l := len(value); l < 32 {
 			pvalue := make([]byte, 32)
 			copy(pvalue[32-len(value):], value)
-			value = pvalue
+			entry.Value = pvalue
+		}
+		if r, ok := keyRewrites[entry.Key]; ok {
+			entry.Key = r
 		}
 		entries = append(entries, entry)
 	}
-	return types.Event{
+	return Event{
 		Emitter: e.Emitter,
 		Entries: entries,
 	}, nil
+}
+
+// AsLegacy strips the codec off an Event object and returns a LegacyEvent.
+func (e *Event) AsLegacy() *LegacyEvent {
+	entries := make([]LegacyEventEntry, 0, len(e.Entries))
+	for _, ee := range e.Entries {
+		entry := LegacyEventEntry{
+			Flags: ee.Flags,
+			Key:   ee.Key,
+			Value: ee.Value,
+		}
+		entries = append(entries, entry)
+	}
+	return &LegacyEvent{
+		Emitter: e.Emitter,
+		Entries: entries,
+	}
 }
