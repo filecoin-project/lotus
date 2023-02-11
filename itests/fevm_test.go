@@ -806,7 +806,7 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
 		From:  &accntEth,
 		To:    &contractEth,
-		Value: ethtypes.EthBigInt(types.FromFil(1)),
+		Value: ethtypes.EthBigInt(big.NewInt(100)),
 	})
 	require.NoError(t, err)
 
@@ -833,12 +833,13 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	var receipt *api.EthTxReceipt
 	for i := 0; i < 1000; i++ {
 		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
-		if err != nil || receipt == nil {
-			time.Sleep(500 * time.Millisecond)
-			continue
+		require.NoError(t, err)
+		if receipt != nil {
+			break
 		}
-		break
+		time.Sleep(500 * time.Millisecond)
 	}
 
+	// The receive() function emits one log, that's how we know we hit it.
 	require.Len(t, receipt.Logs, 1)
 }
