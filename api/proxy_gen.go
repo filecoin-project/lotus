@@ -252,7 +252,7 @@ type FullNodeMethods struct {
 
 	EthEstimateGas func(p0 context.Context, p1 ethtypes.EthCall) (ethtypes.EthUint64, error) `perm:"read"`
 
-	EthFeeHistory func(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) `perm:"read"`
+	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) `perm:"read"`
 
 	EthGasPrice func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
 
@@ -658,7 +658,7 @@ type GatewayMethods struct {
 
 	EthEstimateGas func(p0 context.Context, p1 ethtypes.EthCall) (ethtypes.EthUint64, error) ``
 
-	EthFeeHistory func(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) ``
+	EthFeeHistory func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) ``
 
 	EthGasPrice func(p0 context.Context) (ethtypes.EthBigInt, error) ``
 
@@ -2051,14 +2051,14 @@ func (s *FullNodeStub) EthEstimateGas(p0 context.Context, p1 ethtypes.EthCall) (
 	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) {
+func (s *FullNodeStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
 		return *new(ethtypes.EthFeeHistory), ErrNotSupported
 	}
-	return s.Internal.EthFeeHistory(p0, p1, p2, p3)
+	return s.Internal.EthFeeHistory(p0, p1)
 }
 
-func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) {
+func (s *FullNodeStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	return *new(ethtypes.EthFeeHistory), ErrNotSupported
 }
 
@@ -4218,14 +4218,14 @@ func (s *GatewayStub) EthEstimateGas(p0 context.Context, p1 ethtypes.EthCall) (e
 	return *new(ethtypes.EthUint64), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthFeeHistory(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) {
+func (s *GatewayStruct) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	if s.Internal.EthFeeHistory == nil {
 		return *new(ethtypes.EthFeeHistory), ErrNotSupported
 	}
-	return s.Internal.EthFeeHistory(p0, p1, p2, p3)
+	return s.Internal.EthFeeHistory(p0, p1)
 }
 
-func (s *GatewayStub) EthFeeHistory(p0 context.Context, p1 ethtypes.EthUint64, p2 string, p3 []float64) (ethtypes.EthFeeHistory, error) {
+func (s *GatewayStub) EthFeeHistory(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	return *new(ethtypes.EthFeeHistory), ErrNotSupported
 }
 

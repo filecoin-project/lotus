@@ -80,7 +80,7 @@ func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address ethtypes.Eth
 	return ethtypes.EthBigIntZero, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error) {
+func (e *EthModuleDummy) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	return ethtypes.EthFeeHistory{}, ErrModuleDisabled
 }
 
