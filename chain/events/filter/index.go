@@ -1,15 +1,19 @@
 package filter
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	_ "github.com/mattn/go-sqlite3"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -60,7 +64,7 @@ var ddls = []string{
 	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
 }
 
-const schemaVersion = 1
+const schemaVersion = 2
 
 const (
 	insertEvent = `INSERT OR IGNORE INTO event
@@ -71,6 +75,8 @@ const (
 	(event_id, indexed, flags, key, codec, value)
 	VALUES(?, ?, ?, ?, ?, ?)`
 )
+
+var log = logging.Logger("event_index")
 
 type EventIndex struct {
 	db *sql.DB
@@ -89,6 +95,7 @@ func NewEventIndex(path string) (*EventIndex, error) {
 		}
 	}
 
+	var version int
 	q, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta';")
 	if err == sql.ErrNoRows || !q.Next() {
 		// empty database, create the schema
@@ -101,25 +108,25 @@ func NewEventIndex(path string) (*EventIndex, error) {
 	} else if err != nil {
 		_ = db.Close()
 		return nil, xerrors.Errorf("looking for _meta table: %w", err)
-	} else {
-		// Ensure we don't open a database from a different schema version
+	}
 
-		row := db.QueryRow("SELECT max(version) FROM _meta")
-		var version int
-		err := row.Scan(&version)
-		if err != nil {
-			_ = db.Close()
-			return nil, xerrors.Errorf("invalid database version: no version found")
-		}
-		if version != schemaVersion {
-			_ = db.Close()
-			return nil, xerrors.Errorf("invalid database version: got %d, expected %d", version, schemaVersion)
+	row := db.QueryRow("SELECT max(version) FROM _meta")
+	if err := row.Scan(&version); err != nil {
+		_ = db.Close()
+		return nil, xerrors.Errorf("invalid database version: no version found")
+	}
+
+	// Create the event index.
+	idx := &EventIndex{db: db}
+
+	// Run any necessary migrations.
+	if version != schemaVersion {
+		if err := idx.RunMigration(version, schemaVersion); err != nil {
+			return nil, xerrors.Errorf("failed to run event index migration from v%d to v%d: %w", version, schemaVersion, err)
 		}
 	}
 
-	return &EventIndex{
-		db: db,
-	}, nil
+	return idx, nil
 }
 
 func (ei *EventIndex) Close() error {
@@ -401,6 +408,121 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 	// sort it into height order
 	sort.Slice(ces, func(i, j int) bool { return ces[i].Height < ces[j].Height })
 	f.setCollectedEvents(ces)
+
+	return nil
+}
+
+func (ei *EventIndex) RunMigration(from, to int) error {
+	if from != 1 && to != 2 {
+		return nil
+	}
+
+	tx, err := ei.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err = tx.Exec(`ALTER TABLE event_entry ADD COLUMN codec INTEGER`); err != nil {
+		return xerrors.Errorf("failed to alter table event_entry to add codec column: %w", err)
+	}
+
+	log.Warnw("[migration v1=>v2] event_entry table schema updated")
+
+	if res, err := tx.Exec(`UPDATE event_entry SET codec = ? WHERE codec IS NULL`, 0x55); err != nil {
+		return xerrors.Errorf("failed to update table event_entry to set codec 0x55: %w", err)
+	} else {
+		n, _ := res.RowsAffected()
+		log.Warnw("[migration v1=>v2] updated %d event entries with codec=0x55", "affected", n)
+	}
+
+	var keyRewrites = [][]string{
+		{"topic1", "t1"},
+		{"topic2", "t2"},
+		{"topic3", "t3"},
+		{"topic4", "t4"},
+		{"data", "d"},
+	}
+
+	for _, r := range keyRewrites {
+		from, to := r[0], r[1]
+		if res, err := tx.Exec(`UPDATE event_entry SET key = ? WHERE key = ?`, to, from); err != nil {
+			return xerrors.Errorf("failed to update entries from key %s to key %s: %w", from, to, err)
+		} else {
+			n, _ := res.RowsAffected()
+			log.Warnw("[migration v1=>v2] rewrote entry keys", "from", from, "to", to, "affected", n)
+		}
+	}
+
+	update, err := tx.Prepare(`UPDATE event_entry SET value = ? WHERE value = ?`)
+	if err != nil {
+		return xerrors.Errorf("failed to prepare update statement: %w", err)
+	}
+
+	log.Warnw("[migration v1=>v2] processing values")
+
+	topics := map[string]struct{}{
+		"t1": {},
+		"t2": {},
+		"t3": {},
+		"t4": {},
+	}
+
+	if _, err = tx.Exec(`CREATE TABLE tmp AS SELECT key, value FROM event_entry`); err != nil {
+		return xerrors.Errorf("failed to create temporary table: %w", err)
+	}
+
+	// Pull the values out and process them in Go land before updating.
+	rows, err := tx.Query(`SELECT key, value FROM tmp`)
+	if err != nil {
+		return xerrors.Errorf("failed to select values: %w", err)
+	}
+
+	var i int
+	for rows.Next() {
+		var key string
+		var before []byte
+		if err := rows.Scan(&key, &before); err != nil {
+			return xerrors.Errorf("failed to scan from query: %w", err)
+		}
+		after, err := cbg.ReadByteArray(bytes.NewReader(before), 4<<20)
+		if err != nil {
+			return xerrors.Errorf("failed to decode cbor: %w; value: %s", err, hex.EncodeToString(before))
+		}
+		if _, ok := topics[key]; ok && len(before) < 32 {
+			// if this is a topic, leftpad to 32 bytes
+			pvalue := make([]byte, 32)
+			copy(pvalue[32-len(after):], after)
+			after = pvalue
+		}
+		if _, err := update.Exec(after, before); err != nil {
+			return xerrors.Errorf("failed to scan from query: %w", err)
+		}
+
+		if i++; i%500 == 0 {
+			log.Warnw("[migration v1=>v2] processed values", "count", i)
+		}
+	}
+
+	log.Warnw("[migration v1=>v2] processed all values", "count", i)
+
+	if _, err = tx.Exec(`DROP TABLE tmp`); err != nil {
+		return xerrors.Errorf("failed to drop temporary table: %w", err)
+	}
+
+	log.Warnw("[migration v1=>v2] dropped temporary table")
+
+	if _, err = tx.Exec(`INSERT INTO _meta (version) VALUES (2)`); err != nil {
+		return xerrors.Errorf("failed to update schema version: %w", err)
+	}
+
+	log.Warnw("[migration v1=>v2] schema version updated to v2")
+
+	if err := tx.Commit(); err != nil {
+		return xerrors.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Warnw("[migration v1=>v2] transaction committed; ALL DONE")
 
 	return nil
 }
