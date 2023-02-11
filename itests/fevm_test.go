@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -785,4 +787,59 @@ func TestFEVMDestroyCreate2(t *testing.T) {
 	//assert contract has correct data
 	require.Equal(t, ethFromAddr, senderSecondCall)
 
+}
+
+func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// This contract emits an event on receiving value.
+	filename := "contracts/ValueSender.hex"
+	_, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	accctKey, accntEth, accntFil := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, accntFil, types.FromFil(10))
+
+	contractEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+		From:  &accntEth,
+		To:    &contractEth,
+		Value: ethtypes.EthBigInt(big.NewInt(100)),
+	})
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.EthTxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &contractEth,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	client.EVM().SignTransaction(&tx, accctKey.PrivateKey)
+
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
+
+	var receipt *api.EthTxReceipt
+	for i := 0; i < 1000; i++ {
+		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
+		require.NoError(t, err)
+		if receipt != nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// The receive() function emits one log, that's how we know we hit it.
+	require.Len(t, receipt.Logs, 1)
 }

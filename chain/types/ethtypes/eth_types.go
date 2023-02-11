@@ -25,13 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/must"
 )
 
-var (
-	EthTopic1 = "t1"
-	EthTopic2 = "t2"
-	EthTopic3 = "t3"
-	EthTopic4 = "t4"
-)
-
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
 
 type EthUint64 uint64
@@ -626,7 +619,7 @@ type EthLog struct {
 	Data EthBytes `json:"data"`
 
 	// List of topics associated with the event log.
-	Topics []EthBytes `json:"topics"`
+	Topics []EthHash `json:"topics"`
 
 	// Following fields are derived from the transaction containing the log
 
