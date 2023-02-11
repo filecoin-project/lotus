@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/legacy"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/bundle"
 )
@@ -521,9 +520,9 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
 		if vm.nv < network.Version20 {
-			applyRet.Events, err = DecodeList[*legacy.Event](ret.EventsBytes)
+			applyRet.Events, err = DecodeEvents(ret.EventsBytes, true)
 		} else {
-			applyRet.Events, err = DecodeList[*types.Event](ret.EventsBytes)
+			applyRet.Events, err = DecodeEvents(ret.EventsBytes, false)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
@@ -590,9 +589,9 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
 		if vm.nv < network.Version20 {
-			applyRet.Events, err = DecodeList[*legacy.Event](ret.EventsBytes)
+			applyRet.Events, err = DecodeEvents(ret.EventsBytes, true)
 		} else {
-			applyRet.Events, err = DecodeList[*types.Event](ret.EventsBytes)
+			applyRet.Events, err = DecodeEvents(ret.EventsBytes, false)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
@@ -717,16 +716,11 @@ func (r *xRedirect) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-type CBOR interface {
-	cbg.CBORMarshaler
-	cbg.CBORUnmarshaler
-}
-
-func DecodeList[T CBOR](input []byte) ([]cbg.CBORMarshaler, error) {
+func DecodeEvents(input []byte, legacy bool) ([]cbg.CBORMarshaler, error) {
 	r := bytes.NewReader(input)
 	typ, len, err := cbg.NewCborReader(r).ReadHeader()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read list: %w", err)
+		return nil, fmt.Errorf("failed to read events: %w", err)
 	}
 	if typ != cbg.MajArray {
 		return nil, fmt.Errorf("expected a CBOR list, was major type %d", typ)
@@ -734,11 +728,15 @@ func DecodeList[T CBOR](input []byte) ([]cbg.CBORMarshaler, error) {
 
 	events := make([]cbg.CBORMarshaler, 0, len)
 	for i := 0; i < int(len); i++ {
-		var evt T
+		var evt types.Event
 		if err := evt.UnmarshalCBOR(r); err != nil {
-			return nil, fmt.Errorf("failed to parse list element: %w", err)
+			return nil, fmt.Errorf("failed to parse event: %w", err)
 		}
-		events = append(events, evt)
+		if legacy {
+			events = append(events, evt.AsLegacy())
+		} else {
+			events = append(events, &evt)
+		}
 	}
 	return events, nil
 }
