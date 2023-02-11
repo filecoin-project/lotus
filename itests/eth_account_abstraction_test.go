@@ -137,7 +137,7 @@ func TestPlaceholderPromotion(t *testing.T) {
 }
 
 // Tests that an placeholder turns into an EthAccout even if the message fails
-func TestEthAccountAbstractionFailure(t *testing.T) {
+func TestPlaceholderPromotionFailure(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
@@ -154,9 +154,10 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 
 	// create a placeholder actor at the target address
 	msgCreatePlaceholder := &types.Message{
-		From:  client.DefaultKey.Address,
-		To:    placeholderAddress,
-		Value: abi.TokenAmount(types.MustParseFIL("100")),
+		From:   client.DefaultKey.Address,
+		To:     placeholderAddress,
+		Value:  abi.TokenAmount(types.MustParseFIL("100")),
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	smCreatePlaceholder, err := client.MpoolPushMessage(ctx, msgCreatePlaceholder, nil)
 	require.NoError(t, err)
@@ -174,9 +175,10 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 
 	// send a message from the placeholder address
 	msgFromPlaceholder := &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Value: abi.TokenAmount(types.MustParseFIL("20")),
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Value:  abi.TokenAmount(types.MustParseFIL("20")),
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
@@ -211,10 +213,11 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	// Send a valid message now, it should succeed without any code CID changes
 
 	msgFromPlaceholder = &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Nonce: 1,
-		Value: abi.NewTokenAmount(1),
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Nonce:  1,
+		Value:  abi.NewTokenAmount(1),
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
@@ -247,7 +250,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 }
 
 // Tests that f4 addresess that aren't placeholders/ethaccounts can't be top-level senders
-func TestEthAccountAbstractionFailsFromEvmActor(t *testing.T) {
+func TestPlaceholderPromotionFailsFromEvmActor(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
