@@ -24,10 +24,10 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// TestPlaceholderPromotion goes over the placeholder creation and promotion workflow:
+// TestEthAccountAbstraction goes over the placeholder creation and promotion workflow:
 // - an placeholder is created when it receives a message
 // - the placeholder turns into an EOA when it sends a message
-func TestPlaceholderPromotion(t *testing.T) {
+func TestEthAccountAbstraction(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
@@ -137,7 +137,7 @@ func TestPlaceholderPromotion(t *testing.T) {
 }
 
 // Tests that an placeholder turns into an EthAccout even if the message fails
-func TestPlaceholderPromotionFailure(t *testing.T) {
+func TestEthAccountAbstractionFailure(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
@@ -250,7 +250,7 @@ func TestPlaceholderPromotionFailure(t *testing.T) {
 }
 
 // Tests that f4 addresess that aren't placeholders/ethaccounts can't be top-level senders
-func TestPlaceholderPromotionFailsFromEvmActor(t *testing.T) {
+func TestEthAccountAbstractionFailsFromEvmActor(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())

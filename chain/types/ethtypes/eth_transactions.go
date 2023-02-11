@@ -117,14 +117,7 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 		default:
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
-	} else {
-		if msg.Method != builtintypes.MethodsEVM.InvokeContract {
-			return EthTxArgs{},
-				xerrors.Errorf("invalid methodnum %d: only allowed non-send method is InvokeContract(%d)",
-					msg.Method,
-					builtintypes.MethodsEVM.InvokeContract)
-		}
-
+	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract {
 		addr, err := EthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, err
@@ -137,6 +130,10 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
 			}
 		}
+	} else {
+		return EthTxArgs{},
+			xerrors.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
+				msg.Method, builtintypes.MethodsEVM.InvokeContract)
 	}
 
 	if paramsReader.Len() != 0 {
