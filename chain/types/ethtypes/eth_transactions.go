@@ -131,9 +131,11 @@ func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 		}
 		to = &addr
 
-		params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-		if err != nil {
-			return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
+		if len(msg.Params) > 0 {
+			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+			if err != nil {
+				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
+			}
 		}
 	}
 
@@ -181,11 +183,13 @@ func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, er
 		if err != nil {
 			return nil, xerrors.Errorf("failed to convert To into filecoin addr: %w", err)
 		}
-		buf := new(bytes.Buffer)
-		if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
-			return nil, xerrors.Errorf("failed to write input args: %w", err)
+		if len(tx.Input) > 0 {
+			buf := new(bytes.Buffer)
+			if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
+				return nil, xerrors.Errorf("failed to write input args: %w", err)
+			}
+			params = buf.Bytes()
 		}
-		params = buf.Bytes()
 	}
 
 	return &types.Message{

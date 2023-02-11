@@ -755,11 +755,14 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 		}
 		to = addr
 
-		var buf bytes.Buffer
-		if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
-			return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+		if len(tx.Data) > 0 {
+			var buf bytes.Buffer
+			if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
+				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
+			}
+			params = buf.Bytes()
 		}
-		params = buf.Bytes()
+
 		method = builtintypes.MethodsEVM.InvokeContract
 	}
 

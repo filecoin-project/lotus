@@ -24,10 +24,10 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// TestEthAccountAbstraction goes over the account abstraction workflow:
+// TestPlaceholderPromotion goes over the placeholder creation and promotion workflow:
 // - an placeholder is created when it receives a message
 // - the placeholder turns into an EOA when it sends a message
-func TestEthAccountAbstraction(t *testing.T) {
+func TestPlaceholderPromotion(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
@@ -67,7 +67,8 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder := &types.Message{
 		From: placeholderAddress,
 		// self-send because an "eth tx payload" can't be to a filecoin address?
-		To: placeholderAddress,
+		To:     placeholderAddress,
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
@@ -100,9 +101,10 @@ func TestEthAccountAbstraction(t *testing.T) {
 	// Send another message, it should succeed without any code CID changes
 
 	msgFromPlaceholder = &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Nonce: 1,
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Method: builtin2.MethodsEVM.InvokeContract,
+		Nonce:  1,
 	}
 
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
