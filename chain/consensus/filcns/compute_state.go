@@ -192,7 +192,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	var (
 		receipts      []*types.MessageReceipt
 		storingEvents = sm.ChainStore().IsStoringEvents()
-		events        [][]types.Event
+		events        [][]cbg.CBORMarshaler
 		processedMsgs = make(map[cid.Cid]struct{})
 	)
 
@@ -284,12 +284,15 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
 	}
 
+	cst := cbor.NewCborStore(sm.ChainStore().ChainBlockstore())
+
 	// Slice will be empty if not storing events.
 	for i, evs := range events {
 		if len(evs) == 0 {
 			continue
 		}
-		switch root, err := t.StoreEventsAMT(ctx, sm.ChainStore(), evs); {
+
+		switch root, err := amt4.FromArray(ctx, cst, evs, amt4.UseTreeBitWidth(types.EventAMTBitwidth)); {
 		case err != nil:
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to store events amt: %w", err)
 		case i >= len(receipts):
@@ -357,15 +360,6 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	baseFee := blks[0].ParentBaseFee
 
 	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, vmTracing, baseFee, ts)
-}
-
-func (t *TipSetExecutor) StoreEventsAMT(ctx context.Context, cs *store.ChainStore, events []types.Event) (cid.Cid, error) {
-	cst := cbor.NewCborStore(cs.ChainBlockstore())
-	objs := make([]cbg.CBORMarshaler, len(events))
-	for i := 0; i < len(events); i++ {
-		objs[i] = &events[i]
-	}
-	return amt4.FromArray(ctx, cst, objs, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
 }
 
 var _ stmgr.Executor = &TipSetExecutor{}

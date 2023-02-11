@@ -20,6 +20,17 @@ type Event struct {
 	Entries []EventEntry
 }
 
+type EventEntry struct {
+	// A bitmap conveying metadata or hints about this entry.
+	Flags uint8
+
+	// The key of this event entry
+	Key string
+
+	// The event value
+	Value []byte
+}
+
 // Adapt method assumes that all events are EVM events (which is the case for
 // nv<20, the network versions for which this code is active), and performs the
 // following adaptations:
@@ -50,41 +61,4 @@ func (e *Event) Adapt() (types.Event, error) {
 		Emitter: e.Emitter,
 		Entries: entries,
 	}, nil
-}
-
-type EventEntry struct {
-	// A bitmap conveying metadata or hints about this entry.
-	Flags uint8
-
-	// The key of this event entry
-	Key string
-
-	// The event value
-	Value []byte
-}
-
-// DecodeEvents decodes legacy events and translates them into new events.
-func DecodeEvents(input []byte) ([]types.Event, error) {
-	r := bytes.NewReader(input)
-	typ, len, err := cbg.NewCborReader(r).ReadHeader()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read events: %w", err)
-	}
-	if typ != cbg.MajArray {
-		return nil, fmt.Errorf("expected a CBOR list, was major type %d", typ)
-	}
-
-	events := make([]types.Event, 0, len)
-	for i := 0; i < int(len); i++ {
-		var evt Event
-		if err := evt.UnmarshalCBOR(r); err != nil {
-			return nil, fmt.Errorf("failed to parse event: %w", err)
-		}
-		adapted, err := evt.Adapt()
-		if err != nil {
-			return nil, err
-		}
-		events = append(events, adapted)
-	}
-	return events, nil
 }

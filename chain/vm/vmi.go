@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/network"
 
