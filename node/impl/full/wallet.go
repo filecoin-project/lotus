@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
@@ -53,11 +52,7 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
 
-	keyInfo, err := a.Wallet.WalletExport(ctx, k)
-	if err != nil {
-		return nil, err
-	}
-	sb, err := messagesigner.SigningBytes(msg, key.ActSigType(keyInfo.Type))
+	sb, err := messagesigner.SigningBytes(msg, keyAddr.Protocol())
 	if err != nil {
 		return nil, err
 	}
