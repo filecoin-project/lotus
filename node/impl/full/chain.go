@@ -727,17 +727,20 @@ func isLegacyEvents(ctx context.Context, root *amt4.Root) (bool, error) {
 
 	// StampedEvent.
 	if typ, len, err := r.ReadHeader(); err != nil || typ != cbg.MajArray || len != 2 {
-		return false, xerrors.Errorf("expected cbor list with length 2 (stamped event); type: %d, size: %d, err: %w", typ, len, err)
+		return false, xerrors.Errorf("expected cbor list with length 2 (stamped event); type: %d, size: %d, err: %s", typ, len, err)
 	}
 
 	// ActorID
 	if typ, _, err := r.ReadHeader(); err != nil || typ != cbg.MajUnsignedInt {
-		return false, xerrors.Errorf("expected cbor unsigned int (actor id); err: %w", err)
+		return false, xerrors.Errorf("expected cbor unsigned int (actor id); err: %s", err)
 	}
 
 	// Entries
-	if typ, len, err := r.ReadHeader(); err != nil || typ != cbg.MajArray || len == 0 {
-		return false, xerrors.Errorf("expected non-empty cbor list (entries); type: %d, size: %d, err: %w", typ, len, err)
+	if typ, len, err := r.ReadHeader(); err != nil || typ != cbg.MajArray {
+		return false, xerrors.Errorf("expected non-empty cbor list (entries); type: %d, size: %d, err: %s", typ, len, err)
+	} else if len == 0 {
+		// if we have no entries, it doesn't matter if we're new or legacy, so we'll assume we're new
+		return true, nil
 	}
 
 	// First entry, finally
