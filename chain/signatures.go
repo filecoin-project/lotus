@@ -23,7 +23,7 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address, nv ne
 	typ := msg.Signature.Type
 	switch typ {
 	case crypto.SigTypeDelegated:
-		if msg.Message.Method == builtin.MethodSend && nv >= network.Version20 {
+		if nv >= network.Version20 && msg.Message.Method == builtin.MethodSend {
 			return xerrors.Errorf("nv20 and above no longer admits method 0 on messages with Ethereum delegated signatures")
 		}
 		txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(&msg.Message)
@@ -33,6 +33,12 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address, nv ne
 		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct filecoin msg: %w", err)
+		}
+
+		// Prior to nv20, delegated signature messages with no parameters carried MethodSend.
+		// Reset the value so we'll roundtrip.
+		if nv < network.Version20 && roundTripMsg.Method == builtin.MethodsEVM.InvokeContract && len(roundTripMsg.Params) == 0 {
+			roundTripMsg.Method = builtin.MethodSend
 		}
 
 		if !msg.Message.Equals(roundTripMsg) {
