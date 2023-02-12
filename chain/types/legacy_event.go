@@ -52,13 +52,14 @@ func (e *LegacyEvent) Adapt() (Event, error) {
 			Codec: uint64(multicodec.Raw),
 			Value: ee.Value,
 		}
-		value, err := cbg.ReadByteArray(bytes.NewReader(ee.Value), 64)
+		var err error
+		entry.Value, err = cbg.ReadByteArray(bytes.NewReader(ee.Value), 64)
 		if err != nil {
 			return Event{}, fmt.Errorf("failed to decode event value while adapting: %w", err)
 		}
-		if l := len(value); l < 32 {
+		if l := len(entry.Value); l < 32 {
 			pvalue := make([]byte, 32)
-			copy(pvalue[32-len(value):], value)
+			copy(pvalue[32-len(entry.Value):], entry.Value)
 			entry.Value = pvalue
 		}
 		if r, ok := keyRewrites[entry.Key]; ok {
