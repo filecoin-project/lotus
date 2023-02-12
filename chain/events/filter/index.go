@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -60,8 +61,8 @@ var ddls = []string{
     	version UINT64 NOT NULL UNIQUE
 	)`,
 
-	// version 1.
-	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
+	// set the version
+	`INSERT OR IGNORE INTO _meta (version) VALUES (` + strconv.Itoa(schemaVersion) + `)`,
 }
 
 const schemaVersion = 2
