@@ -51,11 +51,11 @@ const UpgradeChocolateHeight = -17
 const UpgradeOhSnapHeight = -18
 const UpgradeSkyrHeight = -19
 const UpgradeSharkHeight = abi.ChainEpoch(-20)
-const UpgradeHyggeHeight = abi.ChainEpoch(600)
+const UpgradeHyggeHeight = abi.ChainEpoch(80)
 
-var UpgradeHyperspaceNV19Height = abi.ChainEpoch(99999999999999)
+var UpgradeHyperspaceNV19Height = abi.ChainEpoch(100)
 
-var UpgradeHyperspaceNV20Height = abi.ChainEpoch(99999999999999)
+var UpgradeHyperspaceNV20Height = abi.ChainEpoch(120)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
