@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -18,6 +19,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return "", err
+	}
+
+	return gw.target.Web3ClientVersion(ctx)
+}
 
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
@@ -141,6 +150,22 @@ func (gw *Node) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.Et
 	}
 
 	return gw.target.EthGetTransactionByHash(ctx, txHash)
+}
+
+func (gw *Node) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	return gw.target.EthGetTransactionHashByCid(ctx, cid)
+}
+
+func (gw *Node) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+
+	return gw.target.EthGetMessageCidByTransactionHash(ctx, txHash)
 }
 
 func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error) {
@@ -269,20 +294,25 @@ func (gw *Node) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 
 var EthFeeHistoryMaxBlockCount = 128 // this seems to be expensive; todo: figure out what is a good number that works with everything
 
-func (gw *Node) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error) {
+func (gw *Node) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.EthFeeHistoryParams](p)
+	if err != nil {
+		return ethtypes.EthFeeHistory{}, xerrors.Errorf("decoding params: %w", err)
+	}
+
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
 
-	if err := gw.checkBlkParam(ctx, newestBlk); err != nil {
+	if err := gw.checkBlkParam(ctx, params.NewestBlkNum); err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
 
-	if blkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
+	if params.BlkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count too high")
 	}
 
-	return gw.target.EthFeeHistory(ctx, blkCount, newestBlk, rewardPercentiles)
+	return gw.target.EthFeeHistory(ctx, p)
 }
 
 func (gw *Node) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {

@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// TestEthAccountAbstraction goes over the account abstraction workflow:
+// TestEthAccountAbstraction goes over the placeholder creation and promotion workflow:
 // - an placeholder is created when it receives a message
 // - the placeholder turns into an EOA when it sends a message
 func TestEthAccountAbstraction(t *testing.T) {
@@ -67,7 +67,8 @@ func TestEthAccountAbstraction(t *testing.T) {
 	msgFromPlaceholder := &types.Message{
 		From: placeholderAddress,
 		// self-send because an "eth tx payload" can't be to a filecoin address?
-		To: placeholderAddress,
+		To:     placeholderAddress,
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
@@ -100,9 +101,10 @@ func TestEthAccountAbstraction(t *testing.T) {
 	// Send another message, it should succeed without any code CID changes
 
 	msgFromPlaceholder = &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Nonce: 1,
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Method: builtin2.MethodsEVM.InvokeContract,
+		Nonce:  1,
 	}
 
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
@@ -152,9 +154,10 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 
 	// create a placeholder actor at the target address
 	msgCreatePlaceholder := &types.Message{
-		From:  client.DefaultKey.Address,
-		To:    placeholderAddress,
-		Value: abi.TokenAmount(types.MustParseFIL("100")),
+		From:   client.DefaultKey.Address,
+		To:     placeholderAddress,
+		Value:  abi.TokenAmount(types.MustParseFIL("100")),
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	smCreatePlaceholder, err := client.MpoolPushMessage(ctx, msgCreatePlaceholder, nil)
 	require.NoError(t, err)
@@ -172,9 +175,10 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 
 	// send a message from the placeholder address
 	msgFromPlaceholder := &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Value: abi.TokenAmount(types.MustParseFIL("20")),
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Value:  abi.TokenAmount(types.MustParseFIL("20")),
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)
 	require.NoError(t, err)
@@ -209,10 +213,11 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	// Send a valid message now, it should succeed without any code CID changes
 
 	msgFromPlaceholder = &types.Message{
-		From:  placeholderAddress,
-		To:    placeholderAddress,
-		Nonce: 1,
-		Value: abi.NewTokenAmount(1),
+		From:   placeholderAddress,
+		To:     placeholderAddress,
+		Nonce:  1,
+		Value:  abi.NewTokenAmount(1),
+		Method: builtin2.MethodsEVM.InvokeContract,
 	}
 
 	msgFromPlaceholder, err = client.GasEstimateMessageGas(ctx, msgFromPlaceholder, nil, types.EmptyTSK)

@@ -1355,7 +1355,7 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"GetMethod":   getMethod,
 		"ToFil":       toFil,
 		"JsonParams":  JsonParams,
-		"JsonReturn":  jsonReturn,
+		"JsonReturn":  JsonReturn,
 		"IsSlow":      isSlow,
 		"IsVerySlow":  isVerySlow,
 		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
@@ -1441,7 +1441,7 @@ func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 	return string(b), err
 }
 
-func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
+func JsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
 	methodMeta, found := filcns.NewActorRegistry().Methods[code][method] // TODO: use remote
 	if !found {
 		return "", fmt.Errorf("method %d not found on actor %s", method, code)
@@ -1550,7 +1550,7 @@ func printReceiptReturn(ctx context.Context, api v0api.FullNode, m *types.Messag
 		return err
 	}
 
-	jret, err := jsonReturn(act.Code, m.Method, r.Return)
+	jret, err := JsonReturn(act.Code, m.Method, r.Return)
 	if err != nil {
 		return err
 	}
@@ -1690,7 +1690,7 @@ var StateCallCmd = &cli.Command{
 				return xerrors.Errorf("getting actor: %w", err)
 			}
 
-			retStr, err := jsonReturn(act.Code, abi.MethodNum(method), ret.MsgRct.Return)
+			retStr, err := JsonReturn(act.Code, abi.MethodNum(method), ret.MsgRct.Return)
 			if err != nil {
 				return xerrors.Errorf("decoding return: %w", err)
 			}

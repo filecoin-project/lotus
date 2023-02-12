@@ -291,7 +291,7 @@ func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, 
 
 	um := actInfo.vmActor.State()
 	if um == nil {
-		if act.Code != EmptyObjectCid {
+		if act.Head != EmptyObjectCid {
 			return nil, xerrors.Errorf("actor with code %s should only have empty object (%s) as its Head, instead has %s", act.Code, EmptyObjectCid, act.Head)
 		}
 

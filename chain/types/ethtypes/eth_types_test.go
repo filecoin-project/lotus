@@ -36,13 +36,19 @@ func TestEthIntUnmarshalJSON(t *testing.T) {
 		{[]byte("\"0x0\""), EthUint64(0)},
 		{[]byte("\"0x41\""), EthUint64(65)},
 		{[]byte("\"0x400\""), EthUint64(1024)},
+		{[]byte("\"0\""), EthUint64(0)},
+		{[]byte("\"41\""), EthUint64(41)},
+		{[]byte("\"400\""), EthUint64(400)},
+		{[]byte("0"), EthUint64(0)},
+		{[]byte("100"), EthUint64(100)},
+		{[]byte("1024"), EthUint64(1024)},
 	}
 
 	for _, tc := range testcases {
 		var i EthUint64
 		err := i.UnmarshalJSON(tc.Input.([]byte))
 		require.Nil(t, err)
-		require.Equal(t, i, tc.Output)
+		require.Equal(t, tc.Output, i)
 	}
 }
 
@@ -216,7 +222,7 @@ func TestEthFilterResultMarshalJSON(t *testing.T) {
 		TransactionHash:  hash1,
 		BlockHash:        hash2,
 		BlockNumber:      53,
-		Topics:           []EthBytes{hash1[:]},
+		Topics:           []EthHash{hash1},
 		Data:             EthBytes(hash1[:]),
 		Address:          addr,
 	}
