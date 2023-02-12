@@ -53,9 +53,9 @@ var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 
 const UpgradeSharkHeight = abi.ChainEpoch(-20)
 
-const UpgradeHyggeHeight = abi.ChainEpoch(99999999999999)
+const UpgradeHyggeHeight = abi.ChainEpoch(math.MaxInt64 - 2)
 
-var UpgradeHyperspaceNV19Height = abi.ChainEpoch(99999999999999)
+var UpgradeHyperspaceNV19Height = abi.ChainEpoch(math.MaxInt64 - 1)
 
 var UpgradeHyperspaceNV20Height = abi.ChainEpoch(math.MaxInt64)
 
