@@ -53,7 +53,7 @@ func (e *LegacyEvent) Adapt() (Event, error) {
 			Value: ee.Value,
 		}
 		var err error
-		entry.Value, err = cbg.ReadByteArray(bytes.NewReader(ee.Value), 64)
+		entry.Value, err = cbg.ReadByteArray(bytes.NewReader(ee.Value), 4<<20)
 		if err != nil {
 			return Event{}, fmt.Errorf("failed to decode event value while adapting: %w", err)
 		}
