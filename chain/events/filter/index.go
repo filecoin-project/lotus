@@ -422,7 +422,7 @@ func (ei *EventIndex) RunMigration(from, to int) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint
 
 	if _, err = tx.Exec(`ALTER TABLE event_entry ADD COLUMN codec INTEGER`); err != nil {
 		return xerrors.Errorf("failed to alter table event_entry to add codec column: %w", err)
@@ -430,12 +430,12 @@ func (ei *EventIndex) RunMigration(from, to int) error {
 
 	log.Warnw("[migration v1=>v2] event_entry table schema updated")
 
-	if res, err := tx.Exec(`UPDATE event_entry SET codec = ? WHERE codec IS NULL`, 0x55); err != nil {
+	res, err := tx.Exec(`UPDATE event_entry SET codec = ? WHERE codec IS NULL`, 0x55)
+	if err != nil {
 		return xerrors.Errorf("failed to update table event_entry to set codec 0x55: %w", err)
-	} else {
-		n, _ := res.RowsAffected()
-		log.Warnw("[migration v1=>v2] updated %d event entries with codec=0x55", "affected", n)
 	}
+	n, _ := res.RowsAffected()
+	log.Warnw("[migration v1=>v2] updated %d event entries with codec=0x55", "affected", n)
 
 	var keyRewrites = [][]string{
 		{"topic1", "t1"},
@@ -447,12 +447,12 @@ func (ei *EventIndex) RunMigration(from, to int) error {
 
 	for _, r := range keyRewrites {
 		from, to := r[0], r[1]
-		if res, err := tx.Exec(`UPDATE event_entry SET key = ? WHERE key = ?`, to, from); err != nil {
+		res, err := tx.Exec(`UPDATE event_entry SET key = ? WHERE key = ?`, to, from)
+		if err != nil {
 			return xerrors.Errorf("failed to update entries from key %s to key %s: %w", from, to, err)
-		} else {
-			n, _ := res.RowsAffected()
-			log.Warnw("[migration v1=>v2] rewrote entry keys", "from", from, "to", to, "affected", n)
 		}
+		n, _ := res.RowsAffected()
+		log.Warnw("[migration v1=>v2] rewrote entry keys", "from", from, "to", to, "affected", n)
 	}
 
 	update, err := tx.Prepare(`UPDATE event_entry SET value = ? WHERE value = ?`)
