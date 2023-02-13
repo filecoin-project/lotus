@@ -45,12 +45,11 @@ type EthTx struct {
 }
 
 func (tx *EthTx) Reward(blkBaseFee big.Int) EthBigInt {
-	effectivePriorityFee := big.NewInt(0)
-	effectivePriorityFee.Sub(tx.MaxFeePerGas.Int, blkBaseFee.Int)
-	if tx.MaxPriorityFeePerGas.Int.Cmp(effectivePriorityFee.Int) <= 0 {
+	availablePriorityFee := big.Sub(big.Int(tx.MaxFeePerGas), blkBaseFee)
+	if big.Cmp(big.Int(tx.MaxPriorityFeePerGas), availablePriorityFee) <= 0 {
 		return tx.MaxPriorityFeePerGas
 	}
-	return EthBigInt(effectivePriorityFee)
+	return EthBigInt(availablePriorityFee)
 }
 
 type EthTxArgs struct {

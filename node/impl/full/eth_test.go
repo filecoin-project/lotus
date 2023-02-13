@@ -150,7 +150,7 @@ func TestRewardPercentiles(t *testing.T) {
 		},
 	}
 	for _, tc := range testcases {
-		rewards, totalGasUsed := calRewardPercentiles(tc.percentiles, tc.txGasRewards)
+		rewards, totalGasUsed := calculateRewardsAndGasUsed(tc.percentiles, tc.txGasRewards)
 		gasUsed := uint64(0)
 		for _, tx := range tc.txGasRewards {
 			gasUsed += tx.gas

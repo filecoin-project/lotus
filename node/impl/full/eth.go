@@ -660,7 +660,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 			})
 		}
 
-		rewards, totalGasUsed := calRewardPercentiles(rewardPercentiles, txGasRewards)
+		rewards, totalGasUsed := calculateRewardsAndGasUsed(rewardPercentiles, txGasRewards)
 
 		// arrays should be reversed at the end
 		baseFeeArray = append(baseFeeArray, ethtypes.EthBigInt(ts.Blocks()[0].ParentBaseFee))
@@ -694,49 +694,6 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		ret.Reward = &rewardsArray
 	}
 	return ret, nil
-}
-
-func calRewardPercentiles(rewardPercentiles []float64, txGasRewards gasRewardSorter) ([]ethtypes.EthBigInt, uint64) {
-	rewards := make([]ethtypes.EthBigInt, len(rewardPercentiles))
-	for i := range rewards {
-		rewards[i] = ethtypes.EthBigIntZero
-	}
-	sort.Sort(txGasRewards)
-	totalGasUsed := uint64(0)
-	for _, tx := range txGasRewards {
-		totalGasUsed += tx.gas
-	}
-	if len(txGasRewards) > 0 {
-		idx := 0
-		sum := uint64(0)
-
-		for i, percentile := range rewardPercentiles {
-			threshold := uint64(float64(totalGasUsed) * percentile / 100)
-			for sum < threshold && idx < len(txGasRewards)-1 {
-				sum += txGasRewards[idx].gas
-				idx++
-			}
-			rewards[i] = txGasRewards[idx].reward
-		}
-	}
-	return rewards, totalGasUsed
-}
-
-type (
-	gasRewardTuple struct {
-		gas    uint64
-		reward ethtypes.EthBigInt
-	}
-	// sorted in ascending order
-	gasRewardSorter []gasRewardTuple
-)
-
-func (g gasRewardSorter) Len() int { return len(g) }
-func (g gasRewardSorter) Swap(i, j int) {
-	g[i], g[j] = g[j], g[i]
-}
-func (g gasRewardSorter) Less(i, j int) bool {
-	return g[i].reward.Int.Cmp(g[j].reward.Int) == -1
 }
 
 func (a *EthModule) NetVersion(ctx context.Context) (string, error) {
@@ -2202,4 +2159,51 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 		}
 	}
 	return keys, nil
+}
+
+func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRewardSorter) ([]ethtypes.EthBigInt, uint64) {
+	var totalGasUsed uint64
+	for _, tx := range txGasRewards {
+		totalGasUsed += tx.gas
+	}
+
+	rewards := make([]ethtypes.EthBigInt, len(rewardPercentiles))
+	for i := range rewards {
+		rewards[i] = ethtypes.EthBigIntZero
+	}
+
+	if len(txGasRewards) == 0 {
+		return rewards, totalGasUsed
+	}
+
+	sort.Sort(txGasRewards)
+
+	var idx int
+	var sum uint64
+	for i, percentile := range rewardPercentiles {
+		threshold := uint64(float64(totalGasUsed) * percentile / 100)
+		for sum < threshold && idx < len(txGasRewards)-1 {
+			sum += txGasRewards[idx].gas
+			idx++
+		}
+		rewards[i] = txGasRewards[idx].reward
+	}
+
+	return rewards, totalGasUsed
+}
+
+type gasRewardTuple struct {
+	gas    uint64
+	reward ethtypes.EthBigInt
+}
+
+// sorted in ascending order
+type gasRewardSorter []gasRewardTuple
+
+func (g gasRewardSorter) Len() int { return len(g) }
+func (g gasRewardSorter) Swap(i, j int) {
+	g[i], g[j] = g[j], g[i]
+}
+func (g gasRewardSorter) Less(i, j int) bool {
+	return g[i].reward.Int.Cmp(g[j].reward.Int) == -1
 }
