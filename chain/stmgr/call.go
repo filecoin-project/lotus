@@ -107,6 +107,14 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		}
 	}
 
+	// This isn't strictly necessary, but the underlying VM will assume that the message is
+	// valid and may not return helpful debugging information. Checking here makes message
+	// validity issues easier to debug.
+	nv := sm.GetNetworkVersion(ctx, ts.Height())
+	if err := msg.ValidForBlockInclusion(0, nv); err != nil {
+		return nil, xerrors.Errorf("message not valid for network version %d: %w", nv, err)
+	}
+
 	// Unless executing on a specific state cid, apply all the messages from the current tipset
 	// first. Unfortunately, we can't just execute the tipset, because that will run cron. We
 	// don't want to apply miner messages after cron runs in a given epoch.
