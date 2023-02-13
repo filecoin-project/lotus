@@ -39,7 +39,7 @@ type EthTx struct {
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
 	AccessList           []EthHash   `json:"accessList"`
-	V                    EthBigInt   `json:"yParity"`
+	V                    EthBigInt   `json:"v"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
 }
