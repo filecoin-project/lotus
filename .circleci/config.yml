@@ -688,9 +688,10 @@ workflows:
           target: "./itests/eth_block_hash_test.go"
       - test:
           name: test-itest-eth_bytecode
+          requires:
+            - build
           suite: itest-eth_bytecode
           target: "./itests/eth_bytecode_test.go"
-      
       - test:
           name: test-itest-eth_config
           requires:
@@ -711,9 +712,10 @@ workflows:
           target: "./itests/eth_deploy_test.go"
       - test:
           name: test-itest-eth_fee_history
+          requires:
+            - build
           suite: itest-eth_fee_history
           target: "./itests/eth_fee_history_test.go"
-      
       - test:
           name: test-itest-eth_filter
           requires:
