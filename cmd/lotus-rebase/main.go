@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -10,10 +11,10 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -36,14 +37,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// FullAPI is a JSON-RPC client targeting a full node. It's initialized in a
-// cli.BeforeFunc.
-var FullAPI v0api.FullNode
-
-// Closer is the closer for the JSON-RPC client, which must be called on
-// cli.AfterFunc.
-var Closer jsonrpc.ClientCloser
-
 var log = logging.Logger("lotus-rebase")
 
 const DefaultLotusRepoPath = "~/.lotus"
@@ -56,6 +49,8 @@ var repoFlag = cli.StringFlag{
 }
 
 func main() {
+	_ = os.Setenv("RUST_BACKTRACE", "1")
+
 	adjustLogLevels()
 
 	app := &cli.App{
@@ -78,10 +73,20 @@ func main() {
 				Usage:    "network version to rebase chain activity onto",
 				Required: true,
 			},
-			&cli.StringFlag{
-				Name:  "adapt-gas",
-				Usage: "whether to re-estimate gas on an OOG",
-				Value: "no",
+			&cli.Uint64Flag{
+				Name:  "bump-gas-factor",
+				Usage: "factor by which to bump gas to retry an OOG",
+				Value: 10,
+			},
+			&cli.BoolFlag{
+				Name:  "omit-pre-gas-bump-reporting",
+				Usage: "whether to omit reporting for errors pre gas bump",
+				Value: true,
+			},
+			&cli.BoolFlag{
+				Name:  "traces",
+				Usage: "dumps a trace in CWD for every message with exit code (except OOG), return data, or events mismatches",
+				Value: true,
 			},
 		},
 		Before: func(cctx *cli.Context) error {
@@ -102,30 +107,30 @@ func adjustLogLevels() {
 	_ = logging.SetLogLevelRegex("badger*", "ERROR")
 	_ = logging.SetLogLevel("drand", "ERROR")
 	_ = logging.SetLogLevel("chainstore", "ERROR")
+	_ = logging.SetLogLevel("statemgr", "ERROR")
+	_ = logging.SetLogLevel("fil-consensus", "ERROR")
 }
 
-func run(c *cli.Context) error {
-	const (
-		AdaptGasNo = "no"
-		AdaptGasUp = "up"
-	)
-
+func run(cctx *cli.Context) error {
 	var (
 		epochStart int
 		epochEnd   int
 		err        error
 
-		ctx = c.Context
+		omitReportingPreBump = cctx.Bool("omit-pre-gas-bump-reporting")
+		tracing              = cctx.Bool("traces")
+
+		ctx = cctx.Context
 	)
 
-	bs, mds, closeFn, err := openStores(c)
+	bs, mds, closeFn, err := openStores(cctx)
 	if err != nil {
 		return fmt.Errorf("failed to openStores: %w", err)
 	}
-	defer closeFn()
+	defer closeFn() //nolint
 
 	// Parameter: epoch
-	switch splt := strings.Split(c.String("epoch"), ".."); {
+	switch splt := strings.Split(cctx.String("epoch"), ".."); {
 	case len(splt) == 1:
 		if epochStart, err = strconv.Atoi(splt[0]); err != nil {
 			return fmt.Errorf("failed to parse single epoch: %w", err)
@@ -142,7 +147,7 @@ func run(c *cli.Context) error {
 			return fmt.Errorf("end epoch smaller (%d) than start epoch (%d)", epochEnd, epochStart)
 		}
 	default:
-		return fmt.Errorf("invalid epoch format; expected single epoch (1212), or range (1212..1234); got: %s", c.String("epoch"))
+		return fmt.Errorf("invalid epoch format; expected single epoch (1212), or range (1212..1234); got: %s", cctx.String("epoch"))
 	}
 
 	// Get a seed chainstore and state manager so we can inspect the chain first
@@ -151,6 +156,7 @@ func run(c *cli.Context) error {
 	if err := cs.Load(ctx); err != nil {
 		return fmt.Errorf("failed to load chainstore: %w", err)
 	}
+	cs.StoreEvents(true)
 
 	sm, err := stmgr.NewStateManager(cs,
 		filcns.NewTipSetExecutor(),
@@ -166,7 +172,7 @@ func run(c *cli.Context) error {
 		nvStart = sm.GetNetworkVersion(ctx, abi.ChainEpoch(epochStart))
 		nvEnd   = sm.GetNetworkVersion(ctx, abi.ChainEpoch(epochEnd))
 		// Parameter: onto-nv
-		nvTgt = network.Version(c.Uint64("onto-nv"))
+		nvTgt = network.Version(cctx.Uint64("onto-nv"))
 	)
 
 	if nvStart != nvEnd {
@@ -194,7 +200,7 @@ func run(c *cli.Context) error {
 		return fmt.Errorf("failed to setup drand: %w", err)
 	}
 
-	for i := epochStart; i <= epochEnd; i++ {
+	for i := epochStart; i <= epochEnd; {
 		color.Cyan("processing inclusion epoch %d", i)
 
 		execTs, err := cs.GetTipsetByHeight(ctx, abi.ChainEpoch(i+1), nil, false)
@@ -231,10 +237,12 @@ func run(c *cli.Context) error {
 		color.Yellow("  receipt count: %d", len(receipts))
 
 		var (
-			overlayBs = blockstore.NewBuffered(bs)
+			overlayBs = blockstore.NewTieredBstore(bs, blockstore.NewMemorySync())
+
 			// TODO overlayMds; currently writes can go to the _actual_ metadata store.
 			tmpCs = store.NewChainStore(overlayBs, overlayBs, mds, filcns.Weight, nil)
 		)
+		tmpCs.StoreEvents(true)
 
 		aggMig := func(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, oldState cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (root cid.Cid, err error) {
 			root = oldState
@@ -267,68 +275,166 @@ func run(c *cli.Context) error {
 			return fmt.Errorf("failed to get block messages: %w", err)
 		}
 
-		_, postRecRoot, err := tse.ApplyBlocks(ctx, tmpSm, incTs.Height(), incTs.ParentState(), bmsgs, incTs.Height(), r, nil, false, baseFee, incTs)
+		var traces []*api.InvocResult
+		tracer := stmgr.InvocationTracer{Trace: &traces}
+		_, postRecRoot, err := tse.ApplyBlocks(ctx, tmpSm, incTs.Height(), incTs.ParentState(), bmsgs, execTs.Height(), r, &tracer, true, baseFee, incTs)
 		if err != nil {
 			return fmt.Errorf("failed to apply blocks: %w", err)
 		}
 
-		compareReceipts(ctx, tmpCs, receipts, postRecRoot, msgs)
+		bump, out, err := compareReceipts(ctx, tmpCs, receipts, postRecRoot, msgs, tracing, traces)
+		if err != nil {
+			return fmt.Errorf("failed to compare receipts: %w", err)
+		}
+
+		bumpRequested := slices.Contains(bump, true)
+		if !bumpRequested || bumpRequested && !omitReportingPreBump {
+			fmt.Println(out)
+		}
+
+		if bumpRequested {
+			bumpfactor := cctx.Uint64("bump-gas-factor")
+
+			// Recreate the stores.
+			overlayBs = blockstore.NewTieredBstore(bs, blockstore.NewMemorySync())
+			tmpCs = store.NewChainStore(overlayBs, overlayBs, mds, filcns.Weight, nil)
+			tmpCs.StoreEvents(true)
+
+			tmpSm, err = stmgr.NewStateManager(tmpCs, tse, syscalls, upSched, drand)
+			if err != nil {
+				return fmt.Errorf("failed to setup state manager: %w", err)
+			}
+
+			var bumpIdxs []int
+			for i, b := range bump {
+				if !b {
+					continue
+				}
+				bumpIdxs = append(bumpIdxs, i)
+				cid := msgs[i].Cid()
+				for _, bmsg := range bmsgs {
+					for _, m := range append(bmsg.BlsMessages, bmsg.SecpkMessages...) {
+						if cid != m.Cid() {
+							continue
+						}
+
+						m.VMMessage().GasLimit *= int64(bumpfactor)
+					}
+				}
+			}
+			color.Blue("  gas bumps requested for messages at indices: %v", bumpIdxs)
+
+			var traces []*api.InvocResult
+			tracer := stmgr.InvocationTracer{Trace: &traces}
+			_, postRecRoot, err = tse.ApplyBlocks(ctx, tmpSm, incTs.Height(), incTs.ParentState(), bmsgs, execTs.Height(), r, &tracer, true, baseFee, incTs)
+			if err != nil {
+				return fmt.Errorf("failed to apply blocks: %w", err)
+			}
+
+			_, out, err := compareReceipts(ctx, tmpCs, receipts, postRecRoot, msgs, tracing, traces)
+			if err != nil {
+				return fmt.Errorf("failed to compare receipts: %w", err)
+			}
+			fmt.Println(out)
+		}
+
+		i = int(execTs.Height())
 	}
 
 	return nil
 }
 
-func compareReceipts(ctx context.Context, cs *store.ChainStore, oldReceipts []*types.MessageReceipt, newReceiptsRoot cid.Cid, msgs []types.ChainMsg) error {
+func compareReceipts(ctx context.Context, cs *store.ChainStore, oldReceipts []*types.MessageReceipt, newReceiptsRoot cid.Cid, msgs []types.ChainMsg, tracing bool, traces []*api.InvocResult) ([]bool, string, error) {
+	var out strings.Builder
+
 	newReceipts, err := loadReceipts(ctx, cs, newReceiptsRoot)
 	if err != nil {
-		return fmt.Errorf("failed to load receipts: %w", err)
+		return nil, "", fmt.Errorf("failed to load receipts: %w", err)
 	}
 
 	if len(oldReceipts) != len(newReceipts) {
-		return fmt.Errorf("length of receipts didn't match; %d (orig) != %d (new)", len(oldReceipts), len(newReceipts))
+		return nil, "", fmt.Errorf("length of receipts didn't match; %d (orig) != %d (new)", len(oldReceipts), len(newReceipts))
 	}
 
+	bump := make([]bool, len(msgs))
 	for i, prev := range oldReceipts {
 		new_ := newReceipts[i]
 		var failures []string
+		var dumpTrace bool
+
 		if new_.ExitCode != prev.ExitCode {
-			failures = append(failures, fmt.Sprintf("exit code mismatch: %d (new) != %d (prev)", new_.ExitCode, prev.ExitCode))
+			failures = append(failures, fmt.Sprintf("EXIT_CODE mismatch: %d (new) != %d (prev)", new_.ExitCode, prev.ExitCode))
+			isOOG := new_.ExitCode == exitcode.SysErrOutOfGas
+			bump[i] = isOOG
+			if !isOOG {
+				dumpTrace = true
+			}
 		}
+
 		if new_.GasUsed != prev.GasUsed {
-			failures = append(failures, fmt.Sprintf("gas used mismatch: %d (new) != %d (prev) [%+.4f%%]", new_.GasUsed, prev.GasUsed, (float64(new_.GasUsed-prev.GasUsed)/float64(prev.GasUsed))*100))
+			failures = append(failures, fmt.Sprintf("GAS_USED mismatch: %d (new) != %d (prev) [%+.4f%%]", new_.GasUsed, prev.GasUsed, (float64(new_.GasUsed-prev.GasUsed)/float64(prev.GasUsed))*100))
 		}
+
 		if !slices.Equal(new_.Return, prev.Return) {
-			failures = append(failures, fmt.Sprintf("return mismatch: %s (new) != %s (prev)", hex.EncodeToString(new_.Return), hex.EncodeToString(prev.Return)))
+			dumpTrace = true
+			failures = append(failures, fmt.Sprintf("RETURN mismatch: %s (new) != %s (prev)", hex.EncodeToString(new_.Return), hex.EncodeToString(prev.Return)))
 		}
-		if new_.EventsRoot != prev.EventsRoot {
-			failures = append(failures, fmt.Sprintf("events root mismatch: %s (new) != %s (prev)", new_.EventsRoot, prev.EventsRoot))
-			// Once again, this construction voodoo is not right and is highly coupled with the internals of ChainAPI.
-			newEvs, err := (&full.ChainAPI{ExposedBlockstore: cs.StateBlockstore()}).ChainGetEvents(ctx, *new_.EventsRoot)
-			if err != nil {
-				failures = append(failures, fmt.Sprintf("failed to load new events: %s", err))
-				goto Failures
+
+		if !reflect.DeepEqual(new_.EventsRoot, prev.EventsRoot) {
+			failures = append(failures, fmt.Sprintf("EVENTS_ROOT mismatch: %s (new) != %s (prev)", new_.EventsRoot, prev.EventsRoot))
+
+			var newEvs, oldEvs []types.Event
+			if new_.EventsRoot != nil {
+				// Once again, this construction voodoo is not right and is highly coupled with the internals of ChainAPI.
+				newEvs, err = (&full.ChainAPI{ExposedBlockstore: cs.StateBlockstore()}).ChainGetEvents(ctx, *new_.EventsRoot)
+				if err != nil {
+					failures = append(failures, fmt.Sprintf("failed to load new events: %s", err))
+					goto Failures
+				}
 			}
-			oldEvs, err := (&full.ChainAPI{ExposedBlockstore: cs.StateBlockstore()}).ChainGetEvents(ctx, *prev.EventsRoot)
-			if err != nil {
-				failures = append(failures, fmt.Sprintf("failed to load old events: %s", err))
-				goto Failures
+			if prev.EventsRoot != nil {
+				oldEvs, err = (&full.ChainAPI{ExposedBlockstore: cs.StateBlockstore()}).ChainGetEvents(ctx, *prev.EventsRoot)
+				if err != nil {
+					failures = append(failures, fmt.Sprintf("failed to load old events: %s", err))
+					goto Failures
+				}
 			}
+
 			if !reflect.DeepEqual(newEvs, oldEvs) {
-				failures = append(failures, fmt.Sprintf("(!) events ARE NOT not equivalent"))
+				dumpTrace = true
+				failures[len(failures)-1] += "; (!) events ARE NOT not semantically equivalent"
 			} else {
-				failures = append(failures, fmt.Sprintf("although events ARE equivalent"))
+				failures[len(failures)-1] += "; but events ARE semantically equivalent"
 			}
 		}
 
 	Failures:
 		if len(failures) == 0 {
-			color.Green("  [%d] (%s): RECEIPTS EQUAL", i, msgs[i].Cid())
+			out.WriteString(color.GreenString("  [%d] (%s): RECEIPTS EQUAL", i, msgs[i].Cid()) + "\n")
 		} else {
-			color.Red("  [%d] (%s): RECEIPTS MISMATCH", i, msgs[i].Cid())
+			out.WriteString(color.RedString("  [%d] (%s): RECEIPTS MISMATCH", i, msgs[i].Cid()) + "\n")
 			for _, f := range failures {
-				color.Red("    - " + f)
+				out.WriteString(color.RedString("    - "+f) + "\n")
 			}
 		}
+
+		if tracing && dumpTrace {
+			if err := writeTrace(msgs[i].Cid().String(), traces[i]); err != nil {
+				out.WriteString(color.RedString("  failed to write trace: %s", err))
+			}
+		}
+	}
+
+	return bump, out.String(), nil
+}
+
+func writeTrace(filename string, trace *api.InvocResult) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %w", filename, err)
+	}
+	if err := json.NewEncoder(file).Encode(trace); err != nil {
+		return fmt.Errorf("failed to encode trace: %w", err)
 	}
 	return nil
 }
@@ -402,7 +508,7 @@ func loadReceipts(ctx context.Context, cs *store.ChainStore, root cid.Cid) ([]ty
 
 	ret := make([]types.MessageReceipt, 0, a.Length())
 	var r types.MessageReceipt
-	a.ForEach(&r, func(i int64) error {
+	_ = a.ForEach(&r, func(i int64) error {
 		ret = append(ret, r)
 		return nil
 	})

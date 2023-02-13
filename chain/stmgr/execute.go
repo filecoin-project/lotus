@@ -75,7 +75,7 @@ func (sm *StateManager) ExecutionTraceWithMonitor(ctx context.Context, ts *types
 
 func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
 	var invocTrace []*api.InvocResult
-	st, err := sm.ExecutionTraceWithMonitor(ctx, ts, &InvocationTracer{trace: &invocTrace})
+	st, err := sm.ExecutionTraceWithMonitor(ctx, ts, &InvocationTracer{Trace: &invocTrace})
 	if err != nil {
 		return cid.Undef, nil, err
 	}

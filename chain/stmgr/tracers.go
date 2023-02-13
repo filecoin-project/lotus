@@ -18,7 +18,7 @@ type ExecMonitor interface {
 var _ ExecMonitor = (*InvocationTracer)(nil)
 
 type InvocationTracer struct {
-	trace *[]*api.InvocResult
+	Trace *[]*api.InvocResult
 }
 
 func (i *InvocationTracer) MessageApplied(ctx context.Context, ts *types.TipSet, mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet, implicit bool) error {
@@ -35,7 +35,7 @@ func (i *InvocationTracer) MessageApplied(ctx context.Context, ts *types.TipSet,
 	if ret.GasCosts != nil {
 		ir.GasCost = MakeMsgGasCost(msg, ret)
 	}
-	*i.trace = append(*i.trace, ir)
+	*i.Trace = append(*i.Trace, ir)
 	return nil
 }
 
