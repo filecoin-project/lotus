@@ -687,6 +687,11 @@ workflows:
           suite: itest-eth_block_hash
           target: "./itests/eth_block_hash_test.go"
       - test:
+          name: test-itest-eth_bytecode
+          suite: itest-eth_bytecode
+          target: "./itests/eth_bytecode_test.go"
+      
+      - test:
           name: test-itest-eth_config
           requires:
             - build
