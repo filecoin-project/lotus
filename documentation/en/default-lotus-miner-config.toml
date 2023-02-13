@@ -143,7 +143,7 @@
 
   # type: bool
   # env var: LOTUS_SUBSYSTEMS_ENABLEMARKETS
-  #EnableMarkets = true
+  #EnableMarkets = false
 
   # type: string
   # env var: LOTUS_SUBSYSTEMS_SEALERAPIINFO
@@ -159,37 +159,37 @@
   #
   # type: bool
   # env var: LOTUS_DEALMAKING_CONSIDERONLINESTORAGEDEALS
-  #ConsiderOnlineStorageDeals = true
+  #ConsiderOnlineStorageDeals = false
 
   # When enabled, the miner can accept offline deals
   #
   # type: bool
   # env var: LOTUS_DEALMAKING_CONSIDEROFFLINESTORAGEDEALS
-  #ConsiderOfflineStorageDeals = true
+  #ConsiderOfflineStorageDeals = false
 
   # When enabled, the miner can accept retrieval deals
   #
   # type: bool
   # env var: LOTUS_DEALMAKING_CONSIDERONLINERETRIEVALDEALS
-  #ConsiderOnlineRetrievalDeals = true
+  #ConsiderOnlineRetrievalDeals = false
 
   # When enabled, the miner can accept offline retrieval deals
   #
   # type: bool
   # env var: LOTUS_DEALMAKING_CONSIDEROFFLINERETRIEVALDEALS
-  #ConsiderOfflineRetrievalDeals = true
+  #ConsiderOfflineRetrievalDeals = false
 
   # When enabled, the miner can accept verified deals
   #
   # type: bool
   # env var: LOTUS_DEALMAKING_CONSIDERVERIFIEDSTORAGEDEALS
-  #ConsiderVerifiedStorageDeals = true
+  #ConsiderVerifiedStorageDeals = false
 
   # When enabled, the miner can accept unverified deals
   #
   # type: bool
   # env var: LOTUS_DEALMAKING_CONSIDERUNVERIFIEDSTORAGEDEALS
-  #ConsiderUnverifiedStorageDeals = true
+  #ConsiderUnverifiedStorageDeals = false
 
   # A list of Data CIDs to reject when making deals
   #
@@ -288,7 +288,7 @@
 
     [Dealmaking.RetrievalPricing.Default]
       # env var: LOTUS_DEALMAKING_RETRIEVALPRICING_DEFAULT_VERIFIEDDEALSFREETRANSFER
-      #VerifiedDealsFreeTransfer = true
+      #VerifiedDealsFreeTransfer = false
 
     [Dealmaking.RetrievalPricing.External]
       # env var: LOTUS_DEALMAKING_RETRIEVALPRICING_EXTERNAL_PATH
@@ -301,7 +301,7 @@
   #
   # type: bool
   # env var: LOTUS_INDEXPROVIDER_ENABLE
-  #Enable = true
+  #Enable = false
 
   # EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
   # entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The

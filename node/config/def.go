@@ -181,12 +181,12 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Dealmaking: DealmakingConfig{
-			ConsiderOnlineStorageDeals:     true,
-			ConsiderOfflineStorageDeals:    true,
-			ConsiderOnlineRetrievalDeals:   true,
-			ConsiderOfflineRetrievalDeals:  true,
-			ConsiderVerifiedStorageDeals:   true,
-			ConsiderUnverifiedStorageDeals: true,
+			ConsiderOnlineStorageDeals:     false,
+			ConsiderOfflineStorageDeals:    false,
+			ConsiderOnlineRetrievalDeals:   false,
+			ConsiderOfflineRetrievalDeals:  false,
+			ConsiderVerifiedStorageDeals:   false,
+			ConsiderUnverifiedStorageDeals: false,
 			PieceCidBlocklist:              []cid.Cid{},
 			// TODO: It'd be nice to set this based on sector size
 			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
@@ -204,7 +204,7 @@ func DefaultStorageMiner() *StorageMiner {
 			RetrievalPricing: &RetrievalPricing{
 				Strategy: RetrievalPricingDefaultMode,
 				Default: &RetrievalPricingDefault{
-					VerifiedDealsFreeTransfer: true,
+					VerifiedDealsFreeTransfer: false,
 				},
 				External: &RetrievalPricingExternal{
 					Path: "",
@@ -213,7 +213,7 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		IndexProvider: IndexProviderConfig{
-			Enable:               true,
+			Enable:               false,
 			EntriesCacheCapacity: 1024,
 			EntriesChunkSize:     16384,
 			// The default empty TopicName means it is inferred from network name, in the following
@@ -226,7 +226,7 @@ func DefaultStorageMiner() *StorageMiner {
 			EnableMining:        true,
 			EnableSealing:       true,
 			EnableSectorStorage: true,
-			EnableMarkets:       true,
+			EnableMarkets:       false,
 		},
 
 		Fees: MinerFeeConfig{
