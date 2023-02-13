@@ -1709,7 +1709,6 @@ func upgradeActorsV10Common(
 func UpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
 	oldAv := actorstypes.Version10
 	newAv := actorstypes.Version11
-	// This may change for upgrade
 	oldStateTreeVersion := types.StateTreeVersion5
 	newStateTreeVersion := types.StateTreeVersion5
 
@@ -1730,7 +1729,6 @@ func UpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, _ stmgr.Migra
 func UpgradeActorsV12(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
 	oldAv := actorstypes.Version11
 	newAv := actorstypes.Version12
-	// This may change for upgrade
 	oldStateTreeVersion := types.StateTreeVersion5
 	newStateTreeVersion := types.StateTreeVersion5
 
