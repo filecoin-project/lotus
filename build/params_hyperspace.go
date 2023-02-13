@@ -4,8 +4,6 @@
 package build
 
 import (
-	"math"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -60,8 +58,8 @@ var UpgradeHyggeHeight = abi.ChainEpoch(-21)
 // 2023-01-18T15:00:00Z
 var UpgradeHyperspaceNV19Height = abi.ChainEpoch(6840)
 
-// TODO set upgrade epoch
-var UpgradeHyperspaceNV20Height = abi.ChainEpoch(math.MaxInt64)
+// 2023-02-15T15:00:00Z
+var UpgradeHyperspaceNV20Height = abi.ChainEpoch(87480)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
