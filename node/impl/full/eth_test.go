@@ -138,7 +138,7 @@ func TestRewardPercentiles(t *testing.T) {
 			answer:       []int64{0, 0, 0},
 		},
 		{
-			percentiles: []float64{25, 50, 75},
+			percentiles: []float64{25, 50, 75, 100},
 			txGasRewards: []gasRewardTuple{
 				{gas: uint64(0), reward: ethtypes.EthBigInt(big.NewInt(300))},
 				{gas: uint64(100), reward: ethtypes.EthBigInt(big.NewInt(200))},
@@ -146,7 +146,7 @@ func TestRewardPercentiles(t *testing.T) {
 				{gas: uint64(500), reward: ethtypes.EthBigInt(big.NewInt(600))},
 				{gas: uint64(300), reward: ethtypes.EthBigInt(big.NewInt(700))},
 			},
-			answer: []int64{200, 700, 700},
+			answer: []int64{200, 700, 700, 700},
 		},
 	}
 	for _, tc := range testcases {

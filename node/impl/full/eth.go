@@ -2176,7 +2176,7 @@ func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRew
 		return rewards, totalGasUsed
 	}
 
-	sort.Sort(txGasRewards)
+	sort.Stable(txGasRewards)
 
 	var idx int
 	var sum uint64
