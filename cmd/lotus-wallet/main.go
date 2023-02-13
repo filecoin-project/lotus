@@ -47,6 +47,7 @@ func main() {
 	local := []*cli.Command{
 		runCmd,
 		getApiKeyCmd,
+		listCmd,
 	}
 
 	app := &cli.App{
@@ -114,6 +115,45 @@ var getApiKeyCmd = &cli.Command{
 
 		fmt.Println(string(k))
 		return nil
+	},
+}
+
+var listCmd = &cli.Command{
+	Name: "list",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "keystore",
+			Usage: "override keystore path (use --wallet-repo for wallet repos!)",
+		},
+	},
+	Category: "tools",
+	Action: func(cctx *cli.Context) error {
+		// todo make work in online mode
+
+		var ks types.KeyStore
+		if cctx.IsSet("keystore") {
+			ks = cctx.String("keystore")
+		} else {
+			lr, k, err := openRepo(cctx)
+			if err != nil {
+				return xerrors.Errorf("open repo: %w", err)
+			}
+			defer lr.Close() // nolint
+
+			ks = k
+		}
+		lw, err := wallet.NewWallet(ks)
+		if err != nil {
+			return xerrors.Errorf("open wallet: %w", err)
+		}
+
+		gw, closer, err := lcli.GetGatewayAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting gateway api: %w", err)
+		}
+		defer closer()
+
+		return lcli.WalletList(cctx, lw, gw)
 	},
 }
 
