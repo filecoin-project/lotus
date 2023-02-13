@@ -426,22 +426,6 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	// use the system actor as the caller
-	from, err := address.NewIDAddress(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
-	}
-	msg := &types.Message{
-		From:       from,
-		To:         to,
-		Value:      big.Zero(),
-		Method:     builtintypes.MethodsEVM.GetBytecode,
-		Params:     nil,
-		GasLimit:   build.BlockGasLimit,
-		GasFeeCap:  big.Zero(),
-		GasPremium: big.Zero(),
-	}
-
 	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
@@ -450,6 +434,31 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	// StateManager.Call will panic if there is no parent
 	if ts.Height() == 0 {
 		return nil, xerrors.Errorf("block param must not specify genesis block")
+	}
+
+	actor, err := a.StateManager.LoadActor(ctx, to, ts)
+	if err != nil {
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
+	}
+
+	// Not a contract. We could try to distinguish between accounts and "native" contracts here,
+	// but it's not worth it.
+	if !builtinactors.IsEvmActor(actor.Code) {
+		return nil, nil
+	}
+
+	msg := &types.Message{
+		From:       builtinactors.SystemActorAddr,
+		To:         to,
+		Value:      big.Zero(),
+		Method:     builtintypes.MethodsEVM.GetBytecode,
+		Params:     nil,
+		GasLimit:   build.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
 	}
 
 	// Try calling until we find a height with no migration.
@@ -466,9 +475,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	}
 
 	if err != nil {
-		// if the call resulted in error, this is not an EVM smart contract;
-		// return no bytecode.
-		return nil, nil
+		return nil, xerrors.Errorf("failed to call GetBytecode: %w", err)
 	}
 
 	if res.MsgRct == nil {
@@ -476,13 +483,14 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
+		return nil, xerrors.Errorf("GetBytecode failed: %s", res.Error)
 	}
 
 	var getBytecodeReturn evm.GetBytecodeReturn
 	if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
 		return nil, fmt.Errorf("failed to decode EVM bytecode CID: %w", err)
 	}
+
 	// The contract has selfdestructed, so the code is "empty".
 	if getBytecodeReturn.Cid == nil {
 		return nil, nil

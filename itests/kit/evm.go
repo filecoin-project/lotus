@@ -64,7 +64,7 @@ func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Addres
 	require.NoError(err)
 
 	e.t.Log("waiting for message to execute")
-	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 3, 0, false)
 	require.NoError(err)
 
 	require.True(wait.Receipt.ExitCode.IsSuccess(), "contract installation failed")
@@ -128,7 +128,7 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	}
 
 	e.t.Log("waiting for message to execute")
-	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 3, 0, false)
 	if err != nil {
 		return nil, err
 	}
