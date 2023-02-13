@@ -108,7 +108,7 @@ func TestEthHash(t *testing.T) {
 
 func TestEthFilterID(t *testing.T) {
 	testcases := []string{
-		`"0x013dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"`,
+		`"0x13dbb9442ca9667baccc6230fcd5c1c4b2d4d2870f4bd20681d4d47cfd15184"`,
 		`"0xab8653edf9f51785664a643b47605a7ba3d917b5339a0724e7642c114d0e4738"`,
 	}
 
