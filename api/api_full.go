@@ -786,15 +786,15 @@ type FullNode interface {
 	EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error)    //perm:read
 	EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) //perm:read
 
-	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error)                                         //perm:read
-	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error)      //perm:read
-	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)                                   //perm:read
-	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)                                                                                    //perm:read
-	NetVersion(ctx context.Context) (string, error)                                                                                                //perm:read
-	NetListening(ctx context.Context) (bool, error)                                                                                                //perm:read
-	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                            //perm:read
-	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                                                                                   //perm:read
-	EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error) //perm:read
+	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error)                                    //perm:read
+	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) //perm:read
+	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)                              //perm:read
+	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)                                                                               //perm:read
+	NetVersion(ctx context.Context) (string, error)                                                                                           //perm:read
+	NetListening(ctx context.Context) (bool, error)                                                                                           //perm:read
+	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                       //perm:read
+	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)                                                                              //perm:read
+	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)                                                   //perm:read
 
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)                      //perm:read
 	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error)          //perm:read

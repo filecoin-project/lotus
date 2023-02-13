@@ -705,6 +705,11 @@ workflows:
           suite: itest-eth_deploy
           target: "./itests/eth_deploy_test.go"
       - test:
+          name: test-itest-eth_fee_history
+          suite: itest-eth_fee_history
+          target: "./itests/eth_fee_history_test.go"
+      
+      - test:
           name: test-itest-eth_filter
           requires:
             - build
