@@ -92,11 +92,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	}()
 
 	ctx = blockstore.WithHotView(ctx)
-	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
+	makeVm := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
-			Timestamp:      ts.MinTimestamp(),
+			Timestamp:      timestamp,
 			Rand:           r,
 			Bstore:         sm.ChainStore().StateBlockstore(),
 			Actors:         NewActorRegistry(),
@@ -142,10 +142,22 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return nil
 	}
 
+	// May get filled with the genesis block header if there are null rounds
+	// for which to backfill cron execution.
+	var genesis *types.BlockHeader
+
+	// There were null rounds in between the current epoch and the parent epoch.
 	for i := parentEpoch; i < epoch; i++ {
 		var err error
 		if i > parentEpoch {
-			vmCron, err := makeVmWithBaseStateAndEpoch(pstate, i)
+			if genesis == nil {
+				if genesis, err = sm.ChainStore().GetGenesis(ctx); err != nil {
+					return cid.Undef, cid.Undef, xerrors.Errorf("failed to get genesis when backfilling null rounds: %w", err)
+				}
+			}
+
+			ts := genesis.Timestamp + build.BlockDelaySecs*(uint64(i))
+			vmCron, err := makeVm(pstate, i, ts)
 			if err != nil {
 				return cid.Undef, cid.Undef, xerrors.Errorf("making cron vm: %w", err)
 			}
@@ -172,7 +184,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
 
-	vmi, err := makeVmWithBaseStateAndEpoch(pstate, epoch)
+	vmi, err := makeVm(pstate, epoch, ts.MinTimestamp())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
 	}

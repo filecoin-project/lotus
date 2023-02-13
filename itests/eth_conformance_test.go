@@ -139,8 +139,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 	require.NoError(t, err)
 	defer closer()
 
-	const skipUntilIssue10106 = "Skipped until EthTx is updated, see https://github.com/filecoin-project/lotus/issues/10106"
-
 	testCases := []struct {
 		method     string
 		variant    string // suffix applied to the test name to distinguish different variants of a method call
@@ -194,7 +192,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		{
 			method: "eth_feeHistory",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "", nil)
+				return ethapi.EthFeeHistory(context.Background(), ethtypes.EthUint64(2), "latest", nil)
 			},
 		},
 
@@ -227,7 +225,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByHash(context.Background(), blockHashWithMessage, true)
 			},
-			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -236,7 +233,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), "earliest", true)
 			},
-			skipReason: skipUntilIssue10106,
+			skipReason: "earliest block is not supported",
 		},
 
 		{
@@ -245,7 +242,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), "pending", true)
 			},
-			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -253,7 +249,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
 			},
-			skipReason: skipUntilIssue10106,
 		},
 
 		{
@@ -329,7 +324,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByBlockHashAndIndex(context.Background(), blockHashWithMessage, ethtypes.EthUint64(0))
 			},
-			skipReason: skipUntilIssue10106,
+			skipReason: "unimplemented",
 		},
 
 		{
@@ -337,7 +332,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByBlockNumberAndIndex(context.Background(), blockNumberWithMessage, ethtypes.EthUint64(0))
 			},
-			skipReason: skipUntilIssue10106,
+			skipReason: "unimplemented",
 		},
 
 		{
@@ -345,7 +340,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetTransactionByHash(context.Background(), &messageWithEvents)
 			},
-			skipReason: skipUntilIssue10106,
 		},
 
 		{

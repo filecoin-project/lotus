@@ -3,10 +3,12 @@ package itests
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -57,7 +60,7 @@ func buildInputFromuint64(number uint64) []byte {
 // recursive delegate calls that fail due to gas limits are currently getting to 229 iterations
 // before running out of gas
 func recursiveDelegatecallFail(ctx context.Context, t *testing.T, client *kit.TestFullNode, filename string, count uint64) {
-	expectedIterationsBeforeFailing := int(228)
+	expectedIterationsBeforeFailing := int(220)
 	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
 	t.Log("recursion count - ", count)
 	inputData := buildInputFromuint64(count)
@@ -157,7 +160,7 @@ func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	highestSuccessCount := uint64(237)
+	highestSuccessCount := uint64(225)
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
 	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
@@ -601,10 +604,10 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=200,r=32", testN(200, 32, exitcode.Ok))
 	t.Run("n=251,r=32", testN(251, 32, exitcode.Ok))
 
-	t.Run("n=0,r=254", testN(0, 254, exitcode.Ok))
+	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
 	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
 
-	t.Run("n=0,r=256-fails", testN(0, 256, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=0,r=253-fails", testN(0, 253, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }
 
@@ -703,4 +706,140 @@ func TestFEVMRecursiveActorCallEstimate(t *testing.T) {
 	t.Run("n=40", testN(40))
 	t.Run("n=50", testN(50))
 	t.Run("n=100", testN(100))
+}
+
+// TestFEVM deploys a contract while sending value to it
+func TestFEVMDeployWithValue(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//testValue is the amount sent when the contract is created
+	//at the end we check that the new contract has a balance of testValue
+	testValue := big.NewInt(20)
+
+	// deploy DeployValueTest which creates NewContract
+	// testValue is sent to DeployValueTest and that amount is
+	// also sent to NewContract
+	filenameActor := "contracts/DeployValueTest.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilenameWithValue(ctx, filenameActor, testValue)
+
+	//call getNewContractBalance to find the value of NewContract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "getNewContractBalance()", []byte{})
+	require.NoError(t, err)
+
+	contractBalance, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	//require balance of NewContract is testValue
+	require.Equal(t, testValue.Uint64(), contractBalance)
+}
+
+func TestFEVMDestroyCreate2(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//deploy create2 factory contract
+	filename := "contracts/Create2Factory.hex"
+	fromAddr, idAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	//construct salt for create2
+	salt := make([]byte, 32)
+	_, err := rand.Read(salt)
+	require.NoError(t, err)
+
+	//deploy contract using create2 factory
+	selfDestructAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
+	require.NoError(t, err)
+
+	//convert to filecoin actor address so we can call InvokeContractByFuncName
+	ea, err := ethtypes.CastEthAddress(selfDestructAddress[12:])
+	require.NoError(t, err)
+	selfDestructAddressActor, err := ea.ToFilecoinAddress()
+	require.NoError(t, err)
+
+	//read sender property from contract
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+
+	//assert contract has correct data
+	ethFromAddr := inputDataFromFrom(ctx, t, client, fromAddr)
+	require.Equal(t, ethFromAddr, ret)
+
+	//run test() which 1.calls sefldestruct 2. verifies sender() is the correct value 3. attempts and fails to deploy via create2
+	testSenderAddress, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "test(address)", selfDestructAddress)
+	require.NoError(t, err)
+	require.Equal(t, testSenderAddress, ethFromAddr)
+
+	//read sender() but get response of 0x0 because of self destruct
+	senderAfterDestroy, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, []byte{}, senderAfterDestroy)
+
+	// deploy new contract at same address usign same salt
+	newAddressSelfDestruct, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, idAddr, "deploy(bytes32)", salt)
+	require.NoError(t, err)
+	require.Equal(t, newAddressSelfDestruct, selfDestructAddress)
+
+	//verify sender() property is correct
+	senderSecondCall, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, selfDestructAddressActor, "sender()", []byte{})
+	require.NoError(t, err)
+
+	//assert contract has correct data
+	require.Equal(t, ethFromAddr, senderSecondCall)
+
+}
+
+func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	// This contract emits an event on receiving value.
+	filename := "contracts/ValueSender.hex"
+	_, contractAddr := client.EVM().DeployContractFromFilename(ctx, filename)
+
+	accctKey, accntEth, accntFil := client.EVM().NewAccount()
+	kit.SendFunds(ctx, t, client, accntFil, types.FromFil(10))
+
+	contractEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+
+	gaslimit, err := client.EthEstimateGas(ctx, ethtypes.EthCall{
+		From:  &accntEth,
+		To:    &contractEth,
+		Value: ethtypes.EthBigInt(big.NewInt(100)),
+	})
+	require.NoError(t, err)
+
+	maxPriorityFeePerGas, err := client.EthMaxPriorityFeePerGas(ctx)
+	require.NoError(t, err)
+
+	tx := ethtypes.EthTxArgs{
+		ChainID:              build.Eip155ChainId,
+		Value:                big.NewInt(100),
+		Nonce:                0,
+		To:                   &contractEth,
+		MaxFeePerGas:         types.NanoFil,
+		MaxPriorityFeePerGas: big.Int(maxPriorityFeePerGas),
+		GasLimit:             int(gaslimit),
+		V:                    big.Zero(),
+		R:                    big.Zero(),
+		S:                    big.Zero(),
+	}
+
+	client.EVM().SignTransaction(&tx, accctKey.PrivateKey)
+
+	hash := client.EVM().SubmitTransaction(ctx, &tx)
+
+	var receipt *api.EthTxReceipt
+	for i := 0; i < 1000; i++ {
+		receipt, err = client.EthGetTransactionReceipt(ctx, hash)
+		require.NoError(t, err)
+		if receipt != nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// The receive() function emits one log, that's how we know we hit it.
+	require.Len(t, receipt.Logs, 1)
 }

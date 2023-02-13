@@ -294,20 +294,25 @@ func (gw *Node) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
 
 var EthFeeHistoryMaxBlockCount = 128 // this seems to be expensive; todo: figure out what is a good number that works with everything
 
-func (gw *Node) EthFeeHistory(ctx context.Context, blkCount ethtypes.EthUint64, newestBlk string, rewardPercentiles []float64) (ethtypes.EthFeeHistory, error) {
+func (gw *Node) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
+	params, err := jsonrpc.DecodeParams[ethtypes.EthFeeHistoryParams](p)
+	if err != nil {
+		return ethtypes.EthFeeHistory{}, xerrors.Errorf("decoding params: %w", err)
+	}
+
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
 
-	if err := gw.checkBlkParam(ctx, newestBlk); err != nil {
+	if err := gw.checkBlkParam(ctx, params.NewestBlkNum); err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
 
-	if blkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
+	if params.BlkCount > ethtypes.EthUint64(EthFeeHistoryMaxBlockCount) {
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count too high")
 	}
 
-	return gw.target.EthFeeHistory(ctx, blkCount, newestBlk, rewardPercentiles)
+	return gw.target.EthFeeHistory(ctx, p)
 }
 
 func (gw *Node) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {

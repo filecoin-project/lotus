@@ -30,7 +30,10 @@ type EventEntry struct {
 	// The key of this event entry
 	Key string
 
-	// Any DAG-CBOR encodeable type.
+	// The event value's codec
+	Codec uint64
+
+	// The event value
 	Value []byte
 }
 

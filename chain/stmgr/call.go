@@ -44,12 +44,12 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		msg.Value = types.NewInt(0)
 	}
 
-	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false)
+	return sm.callInternal(ctx, msg, nil, ts, cid.Undef, sm.GetNetworkVersion, false, false)
 }
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
 func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true)
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, true)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
@@ -61,13 +61,13 @@ func (sm *StateManager) CallAtStateAndVersion(ctx context.Context, msg *types.Me
 		return v
 	}
 
-	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true)
+	return sm.callInternal(ctx, msg, nil, nil, stateCid, nvGetter, true, false)
 }
 
 //   - If no tipset is specified, the first tipset without an expensive migration or one in its parent is used.
 //   - If executing a message at a given tipset or its parent would trigger an expensive migration, the call will
 //     fail with ErrExpensiveFork.
-func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid, nvGetter rand.NetworkVersionGetter, checkGas bool) (*api.InvocResult, error) {
+func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, stateCid cid.Cid, nvGetter rand.NetworkVersionGetter, checkGas, applyTsMessages bool) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.callInternal")
 	defer span.End()
 
@@ -107,22 +107,18 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		}
 	}
 
-	var vmHeight abi.ChainEpoch
-	if checkGas {
-		// Since we're simulating a future message, pretend we're applying it in the "next" tipset
-		vmHeight = ts.Height() + 1
-		if stateCid == cid.Undef {
-			stateCid, _, err = sm.TipSetState(ctx, ts)
-			if err != nil {
-				return nil, xerrors.Errorf("computing tipset state: %w", err)
-			}
+	// Unless executing on a specific state cid, apply all the messages from the current tipset
+	// first. Unfortunately, we can't just execute the tipset, because that will run cron. We
+	// don't want to apply miner messages after cron runs in a given epoch.
+	if stateCid == cid.Undef {
+		stateCid = ts.ParentState()
+	}
+	if applyTsMessages {
+		tsMsgs, err := sm.cs.MessagesForTipset(ctx, ts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to lookup messages for parent tipset: %w", err)
 		}
-	} else {
-		// If we're not checking gas, we don't want to have to execute the tipset like above. This saves a lot of computation time
-		vmHeight = pts.Height() + 1
-		if stateCid == cid.Undef {
-			stateCid = ts.ParentState()
-		}
+		priorMsgs = append(tsMsgs, priorMsgs...)
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
@@ -142,14 +138,14 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
-		Epoch:          vmHeight,
+		Epoch:          ts.Height(),
 		Timestamp:      ts.MinTimestamp(),
 		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, nvGetter),
 		Bstore:         buffStore,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NetworkVersion: nvGetter(ctx, vmHeight),
+		NetworkVersion: nvGetter(ctx, ts.Height()),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 		TipSetGetter:   TipSetGetterForTipset(sm.cs, ts),
