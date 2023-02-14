@@ -1202,11 +1202,7 @@ var ChainExportRangeCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify filename to export chain to")
-		}
-
-		head, tail := &types.TipSet{}, &types.TipSet{}
+		var head, tail *types.TipSet
 		headstr := cctx.String("head")
 		if headstr == "@head" {
 			head, err = api.ChainHead(ctx)

@@ -602,6 +602,10 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", tail, err)
 	}
+	if headTs.Height() < tailTs.Height() {
+		return xerrors.Errorf("Height of head-tipset (%d) must be greater or equal to the height of the tail-tipset (%d)", headTs.Height(), tailTs.Height())
+	}
+
 	fileName := fmt.Sprintf("./snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix())
 	absFileName, err := filepath.Abs(fileName)
 	if err != nil {
