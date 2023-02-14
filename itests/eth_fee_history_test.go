@@ -37,6 +37,7 @@ func TestEthFeeHistory(t *testing.T) {
 	require.Equal(6, len(history.BaseFeePerGas))
 	require.Equal(5, len(history.GasUsedRatio))
 	require.Equal(ethtypes.EthUint64(16-5+1), history.OldestBlock)
+	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{"5", "0x10"}),
@@ -45,6 +46,7 @@ func TestEthFeeHistory(t *testing.T) {
 	require.Equal(6, len(history.BaseFeePerGas))
 	require.Equal(5, len(history.GasUsedRatio))
 	require.Equal(ethtypes.EthUint64(16-5+1), history.OldestBlock)
+	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{"0x10", "0x12"}),
@@ -53,6 +55,7 @@ func TestEthFeeHistory(t *testing.T) {
 	require.Equal(17, len(history.BaseFeePerGas))
 	require.Equal(16, len(history.GasUsedRatio))
 	require.Equal(ethtypes.EthUint64(18-16+1), history.OldestBlock)
+	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "0x10"}),
@@ -61,6 +64,7 @@ func TestEthFeeHistory(t *testing.T) {
 	require.Equal(6, len(history.BaseFeePerGas))
 	require.Equal(5, len(history.GasUsedRatio))
 	require.Equal(ethtypes.EthUint64(16-5+1), history.OldestBlock)
+	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10"}),
@@ -69,19 +73,28 @@ func TestEthFeeHistory(t *testing.T) {
 	require.Equal(6, len(history.BaseFeePerGas))
 	require.Equal(5, len(history.GasUsedRatio))
 	require.Equal(ethtypes.EthUint64(10-5+1), history.OldestBlock)
+	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
-		json.Marshal([]interface{}{5, "10", &[]float64{0.25, 0.50, 0.75}}),
+		json.Marshal([]interface{}{5, "10", &[]float64{25, 50, 75}}),
 	).Assert(require.NoError))
 	require.NoError(err)
 	require.Equal(6, len(history.BaseFeePerGas))
 	require.Equal(5, len(history.GasUsedRatio))
 	require.Equal(ethtypes.EthUint64(10-5+1), history.OldestBlock)
 	require.NotNil(history.Reward)
-	require.Equal(0, len(*history.Reward))
+	require.Equal(5, len(*history.Reward))
+	for _, arr := range *history.Reward {
+		require.Equal(3, len(arr))
+	}
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
-		json.Marshal([]interface{}{1025, "10", &[]float64{0.25, 0.50, 0.75}}),
+		json.Marshal([]interface{}{1025, "10", &[]float64{25, 50, 75}}),
 	).Assert(require.NoError))
 	require.Error(err)
+
+	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
+		json.Marshal([]interface{}{5, "10", &[]float64{}}),
+	).Assert(require.NoError))
+	require.NoError(err)
 }
