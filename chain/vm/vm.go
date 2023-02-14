@@ -284,7 +284,7 @@ type ApplyRet struct {
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
 	GasCosts       *GasOutputs
-	Events         []types.Event
+	Events         []cbg.CBORMarshaler
 }
 
 func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtime,

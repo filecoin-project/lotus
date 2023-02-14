@@ -665,18 +665,41 @@ func (a *ChainAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]types.Ev
 	if err != nil {
 		return nil, xerrors.Errorf("load events amt: %w", err)
 	}
+	if evtArr.Len() == 0 {
+		return nil, nil
+	}
+
+	// Hyperspace nv20: we peek into the events array to figure out if these
+	// are legacy events or not.
+	isLegacy, err := isLegacyEvents(ctx, evtArr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to determine if events AMT was legacy: %w", err)
+	}
 
 	ret := make([]types.Event, 0, evtArr.Len())
-	var evt types.Event
 	err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
 		if u > math.MaxInt {
 			return xerrors.Errorf("too many events")
 		}
-		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-			return err
-		}
 
-		ret = append(ret, evt)
+		r := bytes.NewReader(deferred.Raw)
+		if isLegacy {
+			var evt types.LegacyEvent
+			if err := evt.UnmarshalCBOR(r); err != nil {
+				return err
+			}
+			adapted, err := evt.Adapt()
+			if err != nil {
+				return err
+			}
+			ret = append(ret, adapted)
+		} else {
+			var evt types.Event
+			if err := evt.UnmarshalCBOR(r); err != nil {
+				return err
+			}
+			ret = append(ret, evt)
+		}
 		return nil
 	})
 
@@ -692,4 +715,45 @@ func (a *ChainAPI) ChainPrune(ctx context.Context, opts api.PruneOpts) error {
 	}
 
 	return pruner.PruneChain(opts)
+}
+
+func isLegacyEvents(ctx context.Context, root *amt4.Root) (bool, error) {
+	var obj cbg.Deferred
+	if _, err := root.Get(ctx, 0, &obj); err != nil {
+		return false, xerrors.Errorf("failed to peek into events AMT: %w", err)
+	}
+
+	r := cbg.NewCborReader(bytes.NewReader(obj.Raw))
+
+	// StampedEvent.
+	if typ, len, err := r.ReadHeader(); err != nil || typ != cbg.MajArray || len != 2 {
+		return false, xerrors.Errorf("expected cbor list with length 2 (stamped event); type: %d, size: %d, err: %s", typ, len, err)
+	}
+
+	// ActorID
+	if typ, _, err := r.ReadHeader(); err != nil || typ != cbg.MajUnsignedInt {
+		return false, xerrors.Errorf("expected cbor unsigned int (actor id); err: %s", err)
+	}
+
+	// Entries
+	if typ, len, err := r.ReadHeader(); err != nil || typ != cbg.MajArray {
+		return false, xerrors.Errorf("expected non-empty cbor list (entries); type: %d, size: %d, err: %s", typ, len, err)
+	} else if len == 0 {
+		// if we have no entries, it doesn't matter if we're new or legacy, so we'll assume we're new
+		return true, nil
+	}
+
+	// First entry, finally
+	switch h, len, err := r.ReadHeader(); {
+	case err != nil:
+		return false, err
+	case h != cbg.MajArray:
+		return false, xerrors.Errorf("expected cbor major type %d when reading event; got: %d", cbg.MajArray, h)
+	case len == 3:
+		return true, nil
+	case len == 4:
+		return false, nil
+	default:
+		return false, xerrors.Errorf("unexpected event tuple length: %d", len)
+	}
 }

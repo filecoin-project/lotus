@@ -19,7 +19,6 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -64,7 +63,7 @@ func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Addres
 	require.NoError(err)
 
 	e.t.Log("waiting for message to execute")
-	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 3, 0, false)
 	require.NoError(err)
 
 	require.True(wait.Receipt.ExitCode.IsSuccess(), "contract installation failed")
@@ -128,7 +127,7 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	}
 
 	e.t.Log("waiting for message to execute")
-	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 3, 0, false)
 	if err != nil {
 		return nil, err
 	}
@@ -144,21 +143,10 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 func (e *EVM) LoadEvents(ctx context.Context, eventsRoot cid.Cid) []types.Event {
 	require := require.New(e.t)
 
-	s := &apiIpldStore{ctx, e}
-	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+	events, err := e.ChainGetEvents(ctx, eventsRoot)
 	require.NoError(err)
 
-	ret := make([]types.Event, 0, amt.Len())
-	err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-		var evt types.Event
-		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-			return err
-		}
-		ret = append(ret, evt)
-		return nil
-	})
-	require.NoError(err)
-	return ret
+	return events
 }
 
 func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
