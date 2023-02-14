@@ -1188,12 +1188,14 @@ var ChainExportRangeCmd = &cli.Command{
 			Value: 1 << 20,
 		},
 		&cli.BoolFlag{
-			Name:  "internal",
-			Usage: "will cause the daemon to write the file locally",
+			Name:   "internal",
+			Usage:  "write the file locally to disk",
+			Value:  true,
+			Hidden: true, // currently, non-internal export is not implemented.
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -1234,20 +1236,11 @@ var ChainExportRangeCmd = &cli.Command{
 			return errors.New("Height of --head tipset must be greater or equal to the height of the --tail tipset")
 		}
 
-		if cctx.Bool("internal") {
-			if err := api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
-				WriteBufferSize:   cctx.Int("write-buffer"),
-				NumWorkers:        cctx.Int("workers"),
-				IncludeMessages:   cctx.Bool("messages"),
-				IncludeReceipts:   cctx.Bool("receipts"),
-				IncludeStateRoots: cctx.Bool("stateroots"),
-			}); err != nil {
-				return err
-			}
-			return nil
+		if !cctx.Bool("internal") {
+			return errors.New("Non-internal exports are not implemented")
 		}
 
-		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
+		err = api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
 			WriteBufferSize:   cctx.Int("write-buffer"),
 			NumWorkers:        cctx.Int("workers"),
 			IncludeMessages:   cctx.Bool("messages"),
@@ -1257,32 +1250,6 @@ var ChainExportRangeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		fi, err := createExportFile(cctx.App, cctx.Args().First())
-		if err != nil {
-			return err
-		}
-		defer func() {
-			err := fi.Close()
-			if err != nil {
-				fmt.Printf("error closing output file: %+v", err)
-			}
-		}()
-
-		var last bool
-		for b := range stream {
-			last = len(b) == 0
-
-			_, err := fi.Write(b)
-			if err != nil {
-				return err
-			}
-		}
-
-		if !last {
-			return xerrors.Errorf("incomplete export (remote connection lost?)")
-		}
-
 		return nil
 	},
 }

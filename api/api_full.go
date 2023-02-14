@@ -173,9 +173,15 @@ type FullNode interface {
 	// If oldmsgskip is set, messages from before the requested roots are also not included.
 	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) //perm:read
 
-	ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg ChainExportConfig) (<-chan []byte, error) //perm:read
-
-	ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg ChainExportConfig) error //perm:read
+	// ChainExportRangeInternal triggers the export of a chain
+	// CAR-snapshot directly to disk. It is similar to ChainExport,
+	// except, depending on options, the snapshot can include receipts,
+	// messages and stateroots for the length between the specified head
+	// and tail, thus producing "archival-grade" snapshots that include
+	// all the on-chain data.  The header chain is included back to
+	// genesis and these snapshots can be used to initialize Filecoin
+	// nodes.
+	ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg ChainExportConfig) error //perm:admin
 
 	// ChainPrune prunes the stored chain state and garbage collects; only supported if you
 	// are using the splitstore

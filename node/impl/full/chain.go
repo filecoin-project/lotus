@@ -635,67 +635,7 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 		return fmt.Errorf("exporting chain range: %w", err)
 	}
 
-	// FIXME: return progress.
 	return nil
-}
-
-func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg api.ChainExportConfig) (<-chan []byte, error) {
-	headTs, err := a.Chain.GetTipSetFromKey(ctx, head)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", head, err)
-	}
-	tailTs, err := a.Chain.GetTipSetFromKey(ctx, tail)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tail, err)
-	}
-	r, w := io.Pipe()
-	out := make(chan []byte)
-	go func() {
-		bw := bufio.NewWriterSize(w, cfg.WriteBufferSize)
-		err := a.Chain.ExportRange(
-			ctx,
-			bw,
-			headTs,
-			tailTs,
-			cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots,
-			cfg.NumWorkers,
-		)
-		bw.Flush()            //nolint:errcheck // it is a write to a pipe
-		w.CloseWithError(err) //nolint:errcheck // it is a pipe
-	}()
-
-	go func() {
-		defer close(out)
-		for {
-			buf := make([]byte, cfg.WriteBufferSize)
-			n, err := r.Read(buf)
-			if err != nil && err != io.EOF {
-				log.Errorf("chain export pipe read failed: %s", err)
-				return
-			}
-			if n > 0 {
-				select {
-				case out <- buf[:n]:
-				case <-ctx.Done():
-					log.Warnf("export writer failed: %s", ctx.Err())
-					return
-				}
-			}
-			if err == io.EOF {
-				// send empty slice to indicate correct eof
-				select {
-				case out <- []byte{}:
-				case <-ctx.Done():
-					log.Warnf("export writer failed: %s", ctx.Err())
-					return
-				}
-
-				return
-			}
-		}
-	}()
-
-	return out, nil
 }
 
 func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
