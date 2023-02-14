@@ -30,16 +30,15 @@ func (ttt *testTracerTransport) Transport(evt TracerTransportEvent) error {
 }
 
 func TestTracer_PeerScores(t *testing.T) {
-
 	testTransport := NewTestTraceTransport(t, func(t *testing.T, evt TracerTransportEvent) {
-		require.Equal(t, peerIDA.Pretty(), evt.lotusTraceEvent.PeerID)
+		require.Equal(t, []byte(peerIDA), evt.lotusTraceEvent.PeerID)
 		require.Equal(t, "source-auth-token-test", evt.lotusTraceEvent.SourceAuth)
 		require.Equal(t, float64(32), evt.lotusTraceEvent.PeerScore.Score)
 
 		n := time.Now().UnixNano()
 		require.LessOrEqual(t, *evt.lotusTraceEvent.Timestamp, n)
 
-		require.Equal(t, peerIDA.Pretty(), evt.lotusTraceEvent.PeerScore.PeerID)
+		require.Equal(t, []byte(peerIDA), evt.lotusTraceEvent.PeerScore.PeerID)
 		require.Equal(t, 1, len(evt.lotusTraceEvent.PeerScore.Topics))
 
 		topic := evt.lotusTraceEvent.PeerScore.Topics[0]
@@ -85,7 +84,6 @@ func TestTracer_PubSubTrace(t *testing.T) {
 		PeerID:    []byte(peerIDA),
 		Timestamp: &n,
 	})
-
 }
 
 func TestTracer_MultipleTransports(t *testing.T) {
