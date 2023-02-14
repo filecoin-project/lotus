@@ -1150,7 +1150,7 @@ var ChainExportCmd = &cli.Command{
 var ChainExportRangeCmd = &cli.Command{
 	Name:      "export-range",
 	Usage:     "export chain to a car file",
-	ArgsUsage: "[outputPath]",
+	ArgsUsage: "",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "head",

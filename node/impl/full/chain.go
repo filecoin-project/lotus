@@ -42,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/oldpath"
 	"github.com/filecoin-project/lotus/lib/oldpath/oldresolver"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var log = logging.Logger("fullnode")
@@ -93,6 +94,8 @@ type ChainAPI struct {
 
 	// BaseBlockstore is the underlying blockstore
 	BaseBlockstore dtypes.BaseBlockstore
+
+	Repo repo.LockedRepo
 }
 
 func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
@@ -606,8 +609,7 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 		return xerrors.Errorf("Height of head-tipset (%d) must be greater or equal to the height of the tail-tipset (%d)", headTs.Height(), tailTs.Height())
 	}
 
-	fileName := fmt.Sprintf("./snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix())
-	absFileName, err := filepath.Abs(fileName)
+	fileName := filepath.Join(a.Repo.Path(), fmt.Sprintf("snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix()))
 	if err != nil {
 		return err
 	}
@@ -617,7 +619,7 @@ func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types
 		return err
 	}
 
-	log.Infow("Exporting chain range", "path", absFileName)
+	log.Infow("Exporting chain range", "path", fileName)
 	// buffer writes to the chain export file.
 	bw := bufio.NewWriterSize(f, cfg.WriteBufferSize)
 
