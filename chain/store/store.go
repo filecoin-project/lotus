@@ -126,6 +126,8 @@ type ChainStore struct {
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
 
+	storeEvents bool
+
 	cancelFn context.CancelFunc
 	wg       sync.WaitGroup
 }
@@ -680,7 +682,7 @@ func FlushValidationCache(ctx context.Context, ds dstore.Batching) error {
 		// If this is addressed (blockcache goes into its own sub-namespace) then
 		// strings.HasPrefix(...) below can be skipped
 		//
-		//Prefix: blockValidationCacheKeyPrefix.String()
+		// Prefix: blockValidationCacheKeyPrefix.String()
 		KeysOnly: true,
 	})
 	if err != nil {
@@ -1200,6 +1202,16 @@ func (cs *ChainStore) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.Tip
 
 func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove
 	return cs.weight(ctx, cs.StateBlockstore(), hts)
+}
+
+// StoreEvents marks this ChainStore as storing events.
+func (cs *ChainStore) StoreEvents(store bool) {
+	cs.storeEvents = store
+}
+
+// IsStoringEvents indicates if this ChainStore is storing events.
+func (cs *ChainStore) IsStoringEvents() bool {
+	return cs.storeEvents
 }
 
 // true if ts1 wins according to the filecoin tie-break rule

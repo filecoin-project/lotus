@@ -37,6 +37,8 @@ func main() {
 		types.StateInfo0{},
 		types.Event{},
 		types.EventEntry{},
+		types.LegacyEvent{},
+		types.LegacyEventEntry{},
 	)
 	if err != nil {
 		fmt.Println(err)

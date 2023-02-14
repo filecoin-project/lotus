@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	gocrypto "github.com/filecoin-project/go-crypto"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -37,9 +38,18 @@ type EthTx struct {
 	Gas                  EthUint64   `json:"gas"`
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
+	AccessList           []EthHash   `json:"accessList"`
 	V                    EthBigInt   `json:"v"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
+}
+
+func (tx *EthTx) Reward(blkBaseFee big.Int) EthBigInt {
+	availablePriorityFee := big.Sub(big.Int(tx.MaxFeePerGas), blkBaseFee)
+	if big.Cmp(big.Int(tx.MaxPriorityFeePerGas), availablePriorityFee) <= 0 {
+		return tx.MaxPriorityFeePerGas
+	}
+	return EthBigInt(availablePriorityFee)
 }
 
 type EthTxArgs struct {
@@ -86,6 +96,7 @@ func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
 		Gas:                  EthUint64(txArgs.GasLimit),
 		MaxFeePerGas:         EthBigInt(txArgs.MaxFeePerGas),
 		MaxPriorityFeePerGas: EthBigInt(txArgs.MaxPriorityFeePerGas),
+		AccessList:           []EthHash{},
 		V:                    v,
 		R:                    r,
 		S:                    s,
@@ -95,59 +106,49 @@ func EthTxFromSignedEthMessage(smsg *types.SignedMessage) (EthTx, error) {
 
 func EthTxArgsFromUnsignedEthMessage(msg *types.Message) (EthTxArgs, error) {
 	var (
-		to           *EthAddress
-		params       []byte
-		paramsReader = bytes.NewReader(msg.Params)
-		err          error
+		to     *EthAddress
+		params []byte
+		err    error
 	)
 
 	if msg.Version != 0 {
 		return EthTxArgs{}, xerrors.Errorf("unsupported msg version: %d", msg.Version)
 	}
 
+	if len(msg.Params) > 0 {
+		paramsReader := bytes.NewReader(msg.Params)
+		params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
+		if err != nil {
+			return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
+		}
+		if paramsReader.Len() != 0 {
+			return EthTxArgs{}, xerrors.Errorf("extra data found in params")
+		}
+		if len(params) == 0 {
+			return EthTxArgs{}, xerrors.Errorf("non-empty params encode empty byte array")
+		}
+	}
+
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
-		switch msg.Method {
-		case builtintypes.MethodsEAM.CreateExternal:
-			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-			if err != nil {
-				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
-			}
-		default:
+		if msg.Method != builtintypes.MethodsEAM.CreateExternal {
 			return EthTxArgs{}, fmt.Errorf("unsupported EAM method")
 		}
-	} else {
+	} else if msg.Method == builtintypes.MethodsEVM.InvokeContract || msg.Method == builtintypes.MethodSend {
+		// < nv20 (Hyperspace): The condition here is technically too lenient.
+		// The correct behavior would be to _only_ allow MethodSend on < nv20.
+		// However, snaking through the network version here is too expensive, and not worth it,
+		// given that the transition period will only last for ~24h anyway.
+		// AuthenticateMessage is the _crucial_ spot, and it's already applying a stricter check.
+		// The Eth API endpoint is also selecting the right method depending on the network version.
 		addr, err := EthAddressFromFilecoinAddress(msg.To)
 		if err != nil {
 			return EthTxArgs{}, err
 		}
 		to = &addr
-
-		if len(msg.Params) == 0 {
-			if msg.Method != builtintypes.MethodSend {
-				return EthTxArgs{}, xerrors.Errorf("cannot invoke method %d on non-EAM actor without params", msg.Method)
-			}
-		} else {
-			if msg.Method != builtintypes.MethodsEVM.InvokeContract {
-				return EthTxArgs{},
-					xerrors.Errorf("invalid methodnum %d: only allowed non-send method is InvokeContract(%d)",
-						msg.Method,
-						builtintypes.MethodsEVM.InvokeContract)
-			}
-
-			params, err = cbg.ReadByteArray(paramsReader, uint64(len(msg.Params)))
-			if err != nil {
-				return EthTxArgs{}, xerrors.Errorf("failed to read params byte array: %w", err)
-			}
-		}
-	}
-
-	if paramsReader.Len() != 0 {
-		return EthTxArgs{}, xerrors.Errorf("extra data found in params")
-	}
-
-	if len(params) == 0 && msg.Method != builtintypes.MethodSend {
-		// Otherwise, we don't get a guaranteed round-trip.
-		return EthTxArgs{}, xerrors.Errorf("msgs with empty parameters from an eth-account must be Sends (MethodNum: %d)", msg.Method)
+	} else {
+		return EthTxArgs{},
+			xerrors.Errorf("invalid methodnum %d: only allowed method is InvokeContract(%d)",
+				msg.Method, builtintypes.MethodsEVM.InvokeContract)
 	}
 
 	return EthTxArgs{
@@ -168,41 +169,26 @@ func (tx *EthTxArgs) ToUnsignedMessage(from address.Address) (*types.Message, er
 	}
 
 	var err error
-	method := builtintypes.MethodSend
 	var params []byte
-	var to address.Address
-	// nil indicates the EAM, only CreateExternal is allowed
-	if tx.To == nil {
-		to = builtintypes.EthereumAddressManagerActorAddr
-		method = builtintypes.MethodsEAM.CreateExternal
-		if len(tx.Input) == 0 {
-			return nil, xerrors.New("cannot call CreateExternal without params")
-		}
-
+	if len(tx.Input) > 0 {
 		buf := new(bytes.Buffer)
 		if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
-			return nil, xerrors.Errorf("failed to serialize Create params: %w", err)
+			return nil, xerrors.Errorf("failed to write input args: %w", err)
 		}
-
 		params = buf.Bytes()
+	}
+
+	var to address.Address
+	var method abi.MethodNum
+	// nil indicates the EAM, only CreateExternal is allowed
+	if tx.To == nil {
+		method = builtintypes.MethodsEAM.CreateExternal
+		to = builtintypes.EthereumAddressManagerActorAddr
 	} else {
+		method = builtintypes.MethodsEVM.InvokeContract
 		to, err = tx.To.ToFilecoinAddress()
 		if err != nil {
 			return nil, xerrors.Errorf("failed to convert To into filecoin addr: %w", err)
-		}
-		if len(tx.Input) == 0 {
-			// Yes, this is redundant, but let's be sure what we're doing
-			method = builtintypes.MethodSend
-			params = make([]byte, 0)
-		} else {
-			// must be InvokeContract
-			method = builtintypes.MethodsEVM.InvokeContract
-			buf := new(bytes.Buffer)
-			if err = cbg.WriteByteArray(buf, tx.Input); err != nil {
-				return nil, xerrors.Errorf("failed to write input args: %w", err)
-			}
-
-			params = buf.Bytes()
 		}
 	}
 

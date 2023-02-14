@@ -39,8 +39,9 @@ var splitstoreRollbackCmd = &cli.Command{
 	Description: "rollbacks a splitstore installation",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "repo",
-			Value: "~/.lotus",
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
 		},
 		&cli.BoolFlag{
 			Name:  "gc-coldstore",
@@ -129,8 +130,9 @@ var splitstoreClearCmd = &cli.Command{
 	Description: "clears a splitstore installation for restart from snapshot",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "repo",
-			Value: "~/.lotus",
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
 		},
 		&cli.BoolFlag{
 			Name:  "keys-only",

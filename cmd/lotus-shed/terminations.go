@@ -33,8 +33,9 @@ var terminationsCmd = &cli.Command{
 	ArgsUsage:   "[block to look back from] [lookback period (epochs)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "repo",
-			Value: "~/.lotus",
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
 		},
 	},
 	Action: func(cctx *cli.Context) error {

@@ -13,13 +13,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
 
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -112,7 +112,7 @@ var EvmCallSimulateCmd = &cli.Command{
 			return err
 		}
 
-		params, err := ethtypes.DecodeHexString(cctx.Args().Get(2))
+		params, err := ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(2))
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ var EvmGetContractAddress = &cli.Command{
 			return err
 		}
 
-		salt, err := ethtypes.DecodeHexString(cctx.Args().Get(1))
+		salt, err := ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("Could not decode salt: %w", err)
 		}
@@ -175,7 +175,7 @@ var EvmGetContractAddress = &cli.Command{
 
 			return err
 		}
-		contract, err := ethtypes.DecodeHexString(string(contractHex))
+		contract, err := ethtypes.DecodeHexStringTrimSpace(string(contractHex))
 		if err != nil {
 			return xerrors.Errorf("Could not decode contract file: %w", err)
 		}
@@ -224,7 +224,7 @@ var EvmDeployCmd = &cli.Command{
 			return xerrors.Errorf("failed to read contract: %w", err)
 		}
 		if cctx.Bool("hex") {
-			contract, err = ethtypes.DecodeHexString(string(contract))
+			contract, err = ethtypes.DecodeHexStringTrimSpace(string(contract))
 			if err != nil {
 				return xerrors.Errorf("failed to decode contract: %w", err)
 			}
@@ -329,7 +329,7 @@ var EvmInvokeCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -346,7 +346,7 @@ var EvmInvokeCmd = &cli.Command{
 		}
 
 		var calldata []byte
-		calldata, err = ethtypes.DecodeHexString(cctx.Args().Get(1))
+		calldata, err = ethtypes.DecodeHexStringTrimSpace(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("decoding hex input data: %w", err)
 		}
@@ -390,7 +390,7 @@ var EvmInvokeCmd = &cli.Command{
 		}
 
 		afmt.Println("waiting for message to execute...")
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0, build.Finality, true)
 		if err != nil {
 			return xerrors.Errorf("error waiting for message: %w", err)
 		}
@@ -415,37 +415,21 @@ var EvmInvokeCmd = &cli.Command{
 		if eventsRoot := wait.Receipt.EventsRoot; eventsRoot != nil {
 			afmt.Println("Events emitted:")
 
-			s := &apiIpldStore{ctx, api}
-			amt, err := amt4.LoadAMT(ctx, s, *eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+			events, err := api.ChainGetEvents(ctx, *eventsRoot)
 			if err != nil {
-				return err
+				return xerrors.Errorf("failed to get events: %w", err)
 			}
-
-			var evt types.Event
-			err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-				fmt.Printf("%x\n", deferred.Raw)
-				if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-					return err
-				}
-				if err != nil {
-					return err
-				}
+			for _, evt := range events {
 				fmt.Printf("\tEmitter ID: %s\n", evt.Emitter)
 				for _, e := range evt.Entries {
 					value, err := cbg.ReadByteArray(bytes.NewBuffer(e.Value), uint64(len(e.Value)))
 					if err != nil {
 						return err
 					}
-					fmt.Printf("\t\tKey: %s, Value: 0x%x, Flags: b%b\n", e.Key, value, e.Flags)
+					fmt.Printf("\t\tKey: %s, Codec: %d, Value: 0x%x, Flags: b%b\n", e.Key, e.Codec, value, e.Flags)
 				}
-				return nil
-
-			})
+			}
 		}
-		if err != nil {
-			return err
-		}
-
 		return nil
 	},
 }

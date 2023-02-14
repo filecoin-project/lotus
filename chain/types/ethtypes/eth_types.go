@@ -22,13 +22,7 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/build"
-)
-
-var (
-	EthTopic1 = "topic1"
-	EthTopic2 = "topic2"
-	EthTopic3 = "topic3"
-	EthTopic4 = "topic4"
+	"github.com/filecoin-project/lotus/lib/must"
 )
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")
@@ -39,18 +33,29 @@ func (e EthUint64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Hex())
 }
 
+// UnmarshalJSON should be able to parse these types of input:
+// 1. a JSON string containing a hex-encoded uint64 starting with 0x
+// 2. a JSON string containing an uint64 in decimal
+// 3. a string containing an uint64 in decimal
 func (e *EthUint64) UnmarshalJSON(b []byte) error {
 	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
+	if err := json.Unmarshal(b, &s); err == nil {
+		base := 10
+		if strings.HasPrefix(s, "0x") {
+			base = 16
+		}
+		parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), base, 64)
+		if err != nil {
+			return err
+		}
+		eint := EthUint64(parsedInt)
+		*e = eint
+		return nil
+	} else if eint, err := strconv.ParseUint(string(b), 10, 64); err == nil {
+		*e = EthUint64(eint)
+		return nil
 	}
-	parsedInt, err := strconv.ParseUint(strings.Replace(s, "0x", "", -1), 16, 64)
-	if err != nil {
-		return err
-	}
-	eint := EthUint64(parsedInt)
-	*e = eint
-	return nil
+	return fmt.Errorf("cannot interpret %s as a hex-encoded uint64, or a number", string(b))
 }
 
 func EthUint64FromHex(s string) (EthUint64, error) {
@@ -144,7 +149,7 @@ type EthBlock struct {
 	GasLimit         EthUint64  `json:"gasLimit"`
 	GasUsed          EthUint64  `json:"gasUsed"`
 	Timestamp        EthUint64  `json:"timestamp"`
-	Extradata        []byte     `json:"extraData"`
+	Extradata        EthBytes   `json:"extraData"`
 	MixHash          EthHash    `json:"mixHash"`
 	Nonce            EthNonce   `json:"nonce"`
 	BaseFeePerGas    EthBigInt  `json:"baseFeePerGas"`
@@ -154,21 +159,32 @@ type EthBlock struct {
 	Uncles       []EthHash     `json:"uncles"`
 }
 
+const EthBloomSize = 2048
+
 var (
-	EmptyEthBloom = [256]byte{}
-	EmptyEthHash  = EthHash{}
-	EmptyEthInt   = EthUint64(0)
-	EmptyEthNonce = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
+	EmptyEthBloom  = [EthBloomSize / 8]byte{}
+	FullEthBloom   = [EthBloomSize / 8]byte{}
+	EmptyEthHash   = EthHash{}
+	EmptyUncleHash = must.One(ParseEthHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")) // Keccak-256 of an RLP of an empty array
+	EmptyRootHash  = must.One(ParseEthHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")) // Keccak-256 hash of the RLP of null
+	EmptyEthInt    = EthUint64(0)
+	EmptyEthNonce  = [8]byte{0, 0, 0, 0, 0, 0, 0, 0}
 )
 
-func NewEthBlock() EthBlock {
-	return EthBlock{
-		Sha3Uncles:       EmptyEthHash,
+func init() {
+	for i := range FullEthBloom {
+		FullEthBloom[i] = 0xff
+	}
+}
+
+func NewEthBlock(hasTransactions bool) EthBlock {
+	b := EthBlock{
+		Sha3Uncles:       EmptyUncleHash, // Sha3Uncles set to a hardcoded value which is used by some clients to determine if has no uncles.
 		StateRoot:        EmptyEthHash,
-		TransactionsRoot: EmptyEthHash,
+		TransactionsRoot: EmptyRootHash, // TransactionsRoot set to a hardcoded value which is used by some clients to determine if has no transactions.
 		ReceiptsRoot:     EmptyEthHash,
 		Difficulty:       EmptyEthInt,
-		LogsBloom:        EmptyEthBloom[:],
+		LogsBloom:        FullEthBloom[:],
 		Extradata:        []byte{},
 		MixHash:          EmptyEthHash,
 		Nonce:            EmptyEthNonce,
@@ -176,6 +192,11 @@ func NewEthBlock() EthBlock {
 		Uncles:           []EthHash{},
 		Transactions:     []interface{}{},
 	}
+	if hasTransactions {
+		b.TransactionsRoot = EmptyEthHash
+	}
+
+	return b
 }
 
 type EthCall struct {
@@ -396,6 +417,10 @@ func DecodeHexString(s string) ([]byte, error) {
 	return b, nil
 }
 
+func DecodeHexStringTrimSpace(s string) ([]byte, error) {
+	return DecodeHexString(strings.TrimSpace(s))
+}
+
 func handleHexStringPrefix(s string) string {
 	// Strip the leading 0x or 0X prefix since hex.DecodeString does not support it.
 	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
@@ -432,8 +457,19 @@ func EthHashFromTxBytes(b []byte) EthHash {
 	return ethHash
 }
 
+func EthBloomSet(f EthBytes, data []byte) {
+	hasher := sha3.NewLegacyKeccak256()
+	hasher.Write(data)
+	hash := hasher.Sum(nil)
+
+	for i := 0; i < 3; i++ {
+		n := binary.BigEndian.Uint16(hash[i*2:]) % EthBloomSize
+		f[(EthBloomSize/8)-(n/8)-1] |= 1 << (n % 8)
+	}
+}
+
 type EthFeeHistory struct {
-	OldestBlock   uint64         `json:"oldestBlock"`
+	OldestBlock   EthUint64      `json:"oldestBlock"`
 	BaseFeePerGas []EthBigInt    `json:"baseFeePerGas"`
 	GasUsedRatio  []float64      `json:"gasUsedRatio"`
 	Reward        *[][]EthBigInt `json:"reward,omitempty"`
@@ -594,7 +630,7 @@ type EthLog struct {
 	Data EthBytes `json:"data"`
 
 	// List of topics associated with the event log.
-	Topics []EthBytes `json:"topics"`
+	Topics []EthHash `json:"topics"`
 
 	// Following fields are derived from the transaction containing the log
 
@@ -660,6 +696,12 @@ type EthSubscriptionParams struct {
 	// List of topics to be matched.
 	// Optional, default: empty list
 	Topics EthTopicSpec `json:"topics,omitempty"`
+
+	// Actor address or a list of addresses from which event logs should originate.
+	// Optional, default nil.
+	// The JSON decoding must treat a string as equivalent to an array with one value, for example
+	// "0x8888f1f195afa192cfee86069858" must be decoded as [ "0x8888f1f195afa192cfee86069858" ]
+	Address EthAddressList `json:"address"`
 }
 
 type EthSubscriptionResponse struct {
@@ -687,4 +729,46 @@ func GetContractEthAddressFromCode(sender EthAddress, salt [32]byte, initcode []
 	}
 
 	return ethAddr, nil
+}
+
+// EthFeeHistoryParams handles raw jsonrpc params for eth_feeHistory
+type EthFeeHistoryParams struct {
+	BlkCount          EthUint64
+	NewestBlkNum      string
+	RewardPercentiles *[]float64
+}
+
+func (e *EthFeeHistoryParams) UnmarshalJSON(b []byte) error {
+	var params []json.RawMessage
+	err := json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	switch len(params) {
+	case 3:
+		err = json.Unmarshal(params[2], &e.RewardPercentiles)
+		if err != nil {
+			return err
+		}
+		fallthrough
+	case 2:
+		err = json.Unmarshal(params[1], &e.NewestBlkNum)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(params[0], &e.BlkCount)
+		if err != nil {
+			return err
+		}
+	default:
+		return xerrors.Errorf("expected 2 or 3 params, got %d", len(params))
+	}
+	return nil
+}
+
+func (e EthFeeHistoryParams) MarshalJSON() ([]byte, error) {
+	if e.RewardPercentiles != nil {
+		return json.Marshal([]interface{}{e.BlkCount, e.NewestBlkNum, e.RewardPercentiles})
+	}
+	return json.Marshal([]interface{}{e.BlkCount, e.NewestBlkNum})
 }

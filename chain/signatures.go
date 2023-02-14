@@ -4,6 +4,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -16,19 +17,34 @@ import (
 // SignedMessage was signed by the indicated Address, computing the correct
 // signature payload depending on the signature type. The supplied Address type
 // must be recognized by the registered verifier for the signature type.
-func AuthenticateMessage(msg *types.SignedMessage, signer address.Address) error {
+func AuthenticateMessage(msg *types.SignedMessage, signer address.Address, nv network.Version) error {
 	var digest []byte
 
 	typ := msg.Signature.Type
 	switch typ {
 	case crypto.SigTypeDelegated:
+		if nv >= network.Version20 && msg.Message.Method == builtin.MethodSend {
+			return xerrors.Errorf("nv20 and above no longer admits method 0 on messages with Ethereum delegated signatures")
+		}
 		txArgs, err := ethtypes.EthTxArgsFromUnsignedEthMessage(&msg.Message)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
 		}
+
+		// Prior to nv20, we rejected empty initcode.
+		if len(txArgs.Input) == 0 && nv < network.Version20 && txArgs.To == nil {
+			return xerrors.Errorf("nv19 and below don't support empty initcode")
+		}
+
 		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct filecoin msg: %w", err)
+		}
+
+		// Prior to nv20, delegated signature messages with no parameters carried MethodSend.
+		// Reset the value so we'll roundtrip.
+		if nv < network.Version20 && roundTripMsg.Method == builtin.MethodsEVM.InvokeContract && len(roundTripMsg.Params) == 0 {
+			roundTripMsg.Method = builtin.MethodSend
 		}
 
 		if !msg.Message.Equals(roundTripMsg) {

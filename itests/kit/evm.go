@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -18,7 +19,6 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
@@ -42,26 +42,18 @@ func (f *TestFullNode) EVM() *EVM {
 	return &EVM{f}
 }
 
-func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
+func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Address, bytecode []byte, value big.Int) eam.CreateReturn {
 	require := require.New(e.t)
-
-	nonce, err := e.MpoolGetNonce(ctx, sender)
-	if err != nil {
-		nonce = 0 // assume a zero nonce on error (e.g. sender doesn't exist).
-	}
-
-	var salt [32]byte
-	binary.BigEndian.PutUint64(salt[:], nonce)
 
 	method := builtintypes.MethodsEAM.CreateExternal
 	initcode := abi.CborBytes(bytecode)
-	params, err := actors.SerializeParams(&initcode)
-	require.NoError(err)
+	params, errActors := actors.SerializeParams(&initcode)
+	require.NoError(errActors)
 
 	msg := &types.Message{
 		To:     builtintypes.EthereumAddressManagerActorAddr,
 		From:   sender,
-		Value:  big.Zero(),
+		Value:  value,
 		Method: method,
 		Params: params,
 	}
@@ -71,7 +63,7 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 	require.NoError(err)
 
 	e.t.Log("waiting for message to execute")
-	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 3, 0, false)
 	require.NoError(err)
 
 	require.True(wait.Receipt.ExitCode.IsSuccess(), "contract installation failed")
@@ -83,8 +75,11 @@ func (e *EVM) DeployContract(ctx context.Context, sender address.Address, byteco
 
 	return result
 }
+func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
+	return e.DeployContractWithValue(ctx, sender, bytecode, big.Zero())
+}
 
-func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
+func (e *EVM) DeployContractFromFilenameWithValue(ctx context.Context, binFilename string, value big.Int) (address.Address, address.Address) {
 	contractHex, err := os.ReadFile(binFilename)
 	require.NoError(e.t, err)
 
@@ -97,11 +92,14 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 	fromAddr, err := e.WalletDefaultAddress(ctx)
 	require.NoError(e.t, err)
 
-	result := e.DeployContract(ctx, fromAddr, contract)
+	result := e.DeployContractWithValue(ctx, fromAddr, contract, value)
 
 	idAddr, err := address.NewIDAddress(result.ActorID)
 	require.NoError(e.t, err)
 	return fromAddr, idAddr
+}
+func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
+	return e.DeployContractFromFilenameWithValue(ctx, binFilename, big.Zero())
 }
 
 func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) (*api.MsgLookup, error) {
@@ -129,11 +127,15 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	}
 
 	e.t.Log("waiting for message to execute")
-	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 0, 0, false)
+	wait, err := e.StateWaitMsg(ctx, smsg.Cid(), 3, 0, false)
 	if err != nil {
 		return nil, err
 	}
-
+	if !wait.Receipt.ExitCode.IsSuccess() {
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		e.t.Log(result.Error)
+	}
 	return wait, nil
 }
 
@@ -141,21 +143,10 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 func (e *EVM) LoadEvents(ctx context.Context, eventsRoot cid.Cid) []types.Event {
 	require := require.New(e.t)
 
-	s := &apiIpldStore{ctx, e}
-	amt, err := amt4.LoadAMT(ctx, s, eventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+	events, err := e.ChainGetEvents(ctx, eventsRoot)
 	require.NoError(err)
 
-	ret := make([]types.Event, 0, amt.Len())
-	err = amt.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-		var evt types.Event
-		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-			return err
-		}
-		ret = append(ret, evt)
-		return nil
-	})
-	require.NoError(err)
-	return ret
+	return events
 }
 
 func (e *EVM) NewAccount() (*key.Key, ethtypes.EthAddress, address.Address) {
@@ -251,7 +242,9 @@ func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Add
 		return nil, wait, err
 	}
 	if !wait.Receipt.ExitCode.IsSuccess() {
-		return nil, wait, fmt.Errorf("contract execution failed - %v", wait.Receipt.ExitCode)
+		result, err := e.StateReplay(ctx, types.EmptyTSK, wait.Message)
+		require.NoError(e.t, err)
+		return nil, wait, errors.New(result.Error)
 	}
 	result, err := cbg.ReadByteArray(bytes.NewBuffer(wait.Receipt.Return), uint64(len(wait.Receipt.Return)))
 	if err != nil {
@@ -326,7 +319,7 @@ func removeLeadingZeros(data []byte) []byte {
 }
 
 func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFullNode) {
-	//make all logs extra quiet for fevm tests
+	// make all logs extra quiet for fevm tests
 	lvl, err := logging.LevelFromString("error")
 	if err != nil {
 		panic(err)
@@ -349,7 +342,7 @@ func SetupFEVMTest(t *testing.T) (context.Context, context.CancelFunc, *TestFull
 	return ctx, cancel, client
 }
 
-func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) {
+func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address, toAddr address.Address, sendAmount big.Int) *api.MsgLookup {
 	sendMsg := &types.Message{
 		From:  fromAddr,
 		To:    toAddr,
@@ -360,4 +353,79 @@ func (e *EVM) TransferValueOrFail(ctx context.Context, fromAddr address.Address,
 	mLookup, err := e.StateWaitMsg(ctx, signedMsg.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(e.t, err)
 	require.Equal(e.t, exitcode.Ok, mLookup.Receipt.ExitCode)
+	return mLookup
+}
+
+func NewEthFilterBuilder() *EthFilterBuilder {
+	return &EthFilterBuilder{}
+}
+
+type EthFilterBuilder struct {
+	filter ethtypes.EthFilterSpec
+}
+
+func (e *EthFilterBuilder) Filter() *ethtypes.EthFilterSpec { return &e.filter }
+
+func (e *EthFilterBuilder) FromBlock(v string) *EthFilterBuilder {
+	e.filter.FromBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) FromBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.FromBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlock(v string) *EthFilterBuilder {
+	e.filter.ToBlock = &v
+	return e
+}
+
+func (e *EthFilterBuilder) ToBlockEpoch(v abi.ChainEpoch) *EthFilterBuilder {
+	s := ethtypes.EthUint64(v).Hex()
+	e.filter.ToBlock = &s
+	return e
+}
+
+func (e *EthFilterBuilder) BlockHash(h ethtypes.EthHash) *EthFilterBuilder {
+	e.filter.BlockHash = &h
+	return e
+}
+
+func (e *EthFilterBuilder) AddressOneOf(as ...ethtypes.EthAddress) *EthFilterBuilder {
+	e.filter.Address = as
+	return e
+}
+
+func (e *EthFilterBuilder) Topic1OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	if len(e.filter.Topics) == 0 {
+		e.filter.Topics = make(ethtypes.EthTopicSpec, 1)
+	}
+	e.filter.Topics[0] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic2OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 2 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[1] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic3OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 3 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[2] = hs
+	return e
+}
+
+func (e *EthFilterBuilder) Topic4OneOf(hs ...ethtypes.EthHash) *EthFilterBuilder {
+	for len(e.filter.Topics) < 4 {
+		e.filter.Topics = append(e.filter.Topics, nil)
+	}
+	e.filter.Topics[3] = hs
+	return e
 }

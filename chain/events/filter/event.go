@@ -3,16 +3,13 @@ package filter
 import (
 	"bytes"
 	"context"
-	"math"
 	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -105,18 +102,9 @@ func (f *EventFilter) CollectEvents(ctx context.Context, te *TipSetEvents, rever
 				continue
 			}
 
-			entries := make([]types.EventEntry, len(ev.Entries))
-			for i, entry := range ev.Entries {
-				entries[i] = types.EventEntry{
-					Flags: entry.Flags,
-					Key:   entry.Key,
-					Value: entry.Value,
-				}
-			}
-
 			// event matches filter, so record it
 			cev := &CollectedEvent{
-				Entries:     entries,
+				Entries:     ev.Entries,
 				EmitterAddr: addr,
 				EventIdx:    evIdx,
 				Reverted:    revert,
@@ -300,6 +288,7 @@ func (e *executedMessage) Events() []*types.Event {
 
 type EventFilterManager struct {
 	ChainStore       *cstore.ChainStore
+	EventGetter      func(context.Context, cid.Cid) ([]types.Event, error)
 	AddressResolver  func(ctx context.Context, emitter abi.ActorID, ts *types.TipSet) (address.Address, bool)
 	MaxFilterResults int
 	EventIndex       *EventIndex
@@ -458,30 +447,15 @@ func (m *EventFilterManager) loadExecutedMessages(ctx context.Context, msgTs, rc
 			continue
 		}
 
-		evtArr, err := amt4.LoadAMT(ctx, st, *rct.EventsRoot, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+		evs, err := m.EventGetter(ctx, *rct.EventsRoot)
 		if err != nil {
-			return nil, xerrors.Errorf("load events amt: %w", err)
+			return nil, xerrors.Errorf("failed to get events: %w", err)
 		}
-
-		ems[i].evs = make([]*types.Event, evtArr.Len())
-		var evt types.Event
-		err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
-			if u > math.MaxInt {
-				return xerrors.Errorf("too many events")
-			}
-			if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
-				return err
-			}
-
-			cpy := evt
-			ems[i].evs[int(u)] = &cpy //nolint:scopelint
-			return nil
-		})
-
-		if err != nil {
-			return nil, xerrors.Errorf("read events: %w", err)
+		ems[i].evs = make([]*types.Event, 0, len(evs))
+		for _, ev := range evs {
+			ev := ev
+			ems[i].evs = append(ems[i].evs, &ev)
 		}
-
 	}
 
 	return ems, nil
