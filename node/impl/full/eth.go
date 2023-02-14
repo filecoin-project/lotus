@@ -427,22 +427,6 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	// use the system actor as the caller
-	from, err := address.NewIDAddress(0)
-	if err != nil {
-		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
-	}
-	msg := &types.Message{
-		From:       from,
-		To:         to,
-		Value:      big.Zero(),
-		Method:     builtintypes.MethodsEVM.GetBytecode,
-		Params:     nil,
-		GasLimit:   build.BlockGasLimit,
-		GasFeeCap:  big.Zero(),
-		GasPremium: big.Zero(),
-	}
-
 	ts, err := a.parseBlkParam(ctx, blkParam)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
@@ -451,6 +435,31 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	// StateManager.Call will panic if there is no parent
 	if ts.Height() == 0 {
 		return nil, xerrors.Errorf("block param must not specify genesis block")
+	}
+
+	actor, err := a.StateManager.LoadActor(ctx, to, ts)
+	if err != nil {
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
+	}
+
+	// Not a contract. We could try to distinguish between accounts and "native" contracts here,
+	// but it's not worth it.
+	if !builtinactors.IsEvmActor(actor.Code) {
+		return nil, nil
+	}
+
+	msg := &types.Message{
+		From:       builtinactors.SystemActorAddr,
+		To:         to,
+		Value:      big.Zero(),
+		Method:     builtintypes.MethodsEVM.GetBytecode,
+		Params:     nil,
+		GasLimit:   build.BlockGasLimit,
+		GasFeeCap:  big.Zero(),
+		GasPremium: big.Zero(),
 	}
 
 	// Try calling until we find a height with no migration.
@@ -467,9 +476,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	}
 
 	if err != nil {
-		// if the call resulted in error, this is not an EVM smart contract;
-		// return no bytecode.
-		return nil, nil
+		return nil, xerrors.Errorf("failed to call GetBytecode: %w", err)
 	}
 
 	if res.MsgRct == nil {
@@ -477,15 +484,20 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	}
 
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
+		return nil, xerrors.Errorf("GetBytecode failed: %s", res.Error)
 	}
 
-	var bytecodeCid cbg.CborCid
-	if err := bytecodeCid.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+	var getBytecodeReturn evm.GetBytecodeReturn
+	if err := getBytecodeReturn.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
 		return nil, fmt.Errorf("failed to decode EVM bytecode CID: %w", err)
 	}
 
-	blk, err := a.Chain.StateBlockstore().Get(ctx, cid.Cid(bytecodeCid))
+	// The contract has selfdestructed, so the code is "empty".
+	if getBytecodeReturn.Cid == nil {
+		return nil, nil
+	}
+
+	blk, err := a.Chain.StateBlockstore().Get(ctx, *getBytecodeReturn.Cid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EVM bytecode: %w", err)
 	}
@@ -740,18 +752,20 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 	}
 
 	var params []byte
+	if len(tx.Data) > 0 {
+		initcode := abi.CborBytes(tx.Data)
+		params2, err := actors.SerializeParams(&initcode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize params: %w", err)
+		}
+		params = params2
+	}
+
 	var to address.Address
 	var method abi.MethodNum
 	if tx.To == nil {
 		// this is a contract creation
 		to = builtintypes.EthereumAddressManagerActorAddr
-
-		initcode := abi.CborBytes(tx.Data)
-		params2, err := actors.SerializeParams(&initcode)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
-		}
-		params = params2
 		method = builtintypes.MethodsEAM.CreateExternal
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
@@ -759,15 +773,6 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 			return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 		}
 		to = addr
-
-		if len(tx.Data) > 0 {
-			var buf bytes.Buffer
-			if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
-				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
-			}
-			params = buf.Bytes()
-		}
-
 		method = builtintypes.MethodsEVM.InvokeContract
 
 		// < nv20 (Hyperspace): reset method to MethodSend if no params.

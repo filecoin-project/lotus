@@ -30,6 +30,12 @@ func AuthenticateMessage(msg *types.SignedMessage, signer address.Address, nv ne
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct eth transaction: %w", err)
 		}
+
+		// Prior to nv20, we rejected empty initcode.
+		if len(txArgs.Input) == 0 && nv < network.Version20 && txArgs.To == nil {
+			return xerrors.Errorf("nv19 and below don't support empty initcode")
+		}
+
 		roundTripMsg, err := txArgs.ToUnsignedMessage(msg.Message.From)
 		if err != nil {
 			return xerrors.Errorf("failed to reconstruct filecoin msg: %w", err)

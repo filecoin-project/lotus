@@ -843,3 +843,15 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	// The receive() function emits one log, that's how we know we hit it.
 	require.Len(t, receipt.Logs, 1)
 }
+
+func TestFEVMProxyUpgradeable(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install transparently upgradeable proxy
+	proxyFilename := "contracts/TransparentUpgradeableProxy.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, proxyFilename)
+
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "test()", []byte{})
+	require.NoError(t, err)
+}

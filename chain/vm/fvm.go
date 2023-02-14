@@ -519,11 +519,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	}
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
-		if vm.nv < network.Version20 {
-			applyRet.Events, err = DecodeEvents(ret.EventsBytes, true)
-		} else {
-			applyRet.Events, err = DecodeEvents(ret.EventsBytes, false)
-		}
+		applyRet.Events, err = DecodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
@@ -588,11 +584,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 	}
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
-		if vm.nv < network.Version20 {
-			applyRet.Events, err = DecodeEvents(ret.EventsBytes, true)
-		} else {
-			applyRet.Events, err = DecodeEvents(ret.EventsBytes, false)
-		}
+		applyRet.Events, err = DecodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
@@ -716,9 +708,9 @@ func (r *xRedirect) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func DecodeEvents(input []byte, legacy bool) ([]cbg.CBORMarshaler, error) {
+func DecodeEvents(input []byte) ([]cbg.CBORMarshaler, error) {
 	r := bytes.NewReader(input)
-	typ, len, err := cbg.NewCborReader(r).ReadHeader()
+	typ, l, err := cbg.NewCborReader(r).ReadHeader()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read events: %w", err)
 	}
@@ -726,13 +718,14 @@ func DecodeEvents(input []byte, legacy bool) ([]cbg.CBORMarshaler, error) {
 		return nil, fmt.Errorf("expected a CBOR list, was major type %d", typ)
 	}
 
-	events := make([]cbg.CBORMarshaler, 0, len)
-	for i := 0; i < int(len); i++ {
+	events := make([]cbg.CBORMarshaler, 0, l)
+	for i := 0; i < int(l); i++ {
 		var evt types.Event
 		if err := evt.UnmarshalCBOR(r); err != nil {
 			return nil, fmt.Errorf("failed to parse event: %w", err)
 		}
-		if legacy {
+		if len(evt.Entries) > 0 && evt.Entries[0].Codec == 0 {
+			// Codec 0 means this is a legacy event.
 			events = append(events, evt.AsLegacy())
 		} else {
 			events = append(events, &evt)

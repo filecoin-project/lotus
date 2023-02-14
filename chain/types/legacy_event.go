@@ -47,7 +47,7 @@ func (e *LegacyEvent) Adapt() (Event, error) {
 	entries := make([]EventEntry, 0, len(e.Entries))
 	for _, ee := range e.Entries {
 		entry := EventEntry{
-			Flags: ee.Flags,
+			Flags: EventFlagIndexedKey | EventFlagIndexedValue, // override the flags as per final version of FIP-0054
 			Key:   ee.Key,
 			Codec: uint64(multicodec.Raw),
 			Value: ee.Value,
