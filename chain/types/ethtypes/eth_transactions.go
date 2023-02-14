@@ -39,9 +39,17 @@ type EthTx struct {
 	MaxFeePerGas         EthBigInt   `json:"maxFeePerGas"`
 	MaxPriorityFeePerGas EthBigInt   `json:"maxPriorityFeePerGas"`
 	AccessList           []EthHash   `json:"accessList"`
-	V                    EthBigInt   `json:"yParity"`
+	V                    EthBigInt   `json:"v"`
 	R                    EthBigInt   `json:"r"`
 	S                    EthBigInt   `json:"s"`
+}
+
+func (tx *EthTx) Reward(blkBaseFee big.Int) EthBigInt {
+	availablePriorityFee := big.Sub(big.Int(tx.MaxFeePerGas), blkBaseFee)
+	if big.Cmp(big.Int(tx.MaxPriorityFeePerGas), availablePriorityFee) <= 0 {
+		return tx.MaxPriorityFeePerGas
+	}
+	return EthBigInt(availablePriorityFee)
 }
 
 type EthTxArgs struct {
