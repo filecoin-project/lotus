@@ -5,6 +5,11 @@ package v0api
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -17,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -24,10 +30,6 @@ import (
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
-	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
