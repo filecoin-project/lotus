@@ -324,7 +324,7 @@ func run(cctx *cli.Context) error {
 			}
 			color.Blue("  gas bumps requested for messages at indices: %v", bumpIdxs)
 
-			var traces []*api.InvocResult
+			traces := traces[:0]
 			tracer := stmgr.InvocationTracer{Trace: &traces}
 			_, postRecRoot, err = tse.ApplyBlocks(ctx, tmpSm, incTs.Height(), incTs.ParentState(), bmsgs, execTs.Height(), r, &tracer, true, baseFee, incTs)
 			if err != nil {
@@ -361,6 +361,8 @@ func compareReceipts(ctx context.Context, cs *store.ChainStore, oldReceipts []*t
 		new_ := newReceipts[i]
 		var failures []string
 		var dumpTrace bool
+
+		deleteTrace(msgs[i].Cid().String()) //nolint
 
 		if new_.ExitCode != prev.ExitCode {
 			failures = append(failures, fmt.Sprintf("EXIT_CODE mismatch: %d (new) != %d (prev)", new_.ExitCode, prev.ExitCode))
@@ -433,10 +435,15 @@ func writeTrace(filename string, trace *api.InvocResult) error {
 	if err != nil {
 		return fmt.Errorf("failed to create file %s: %w", filename, err)
 	}
+	defer file.Close() //nolint
 	if err := json.NewEncoder(file).Encode(trace); err != nil {
 		return fmt.Errorf("failed to encode trace: %w", err)
 	}
 	return nil
+}
+
+func deleteTrace(filename string) error {
+	return os.Remove(filename)
 }
 
 func openStores(c *cli.Context) (blockstore.Blockstore, datastore.Batching, func() error, error) {
