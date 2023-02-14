@@ -750,6 +750,13 @@ func (a *EthModule) EthSendRawTransaction(ctx context.Context, rawTx ethtypes.Et
 		return ethtypes.EmptyEthHash, err
 	}
 
+	// Prior to nv20, delegated signature messages with no parameters carried MethodSend.
+	// Reset the value so the signature will roundtrip.
+	nv := a.StateManager.GetNetworkVersion(ctx, a.Chain.GetHeaviestTipSet().Height())
+	if nv < network.Version20 && smsg.Message.Method == builtintypes.MethodsEVM.InvokeContract && len(smsg.Message.Params) == 0 {
+		smsg.Message.Method = builtintypes.MethodSend
+	}
+
 	_, err = a.MpoolAPI.MpoolPush(ctx, smsg)
 	if err != nil {
 		return ethtypes.EmptyEthHash, err

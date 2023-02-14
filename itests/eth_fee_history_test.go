@@ -28,7 +28,7 @@ func TestEthFeeHistory(t *testing.T) {
 	defer cancel()
 
 	// Wait for the network to create 20 blocks
-	<-time.After(20 * blockTime)
+	client.WaitTillChain(ctx, kit.HeightAtLeast(20))
 
 	history, err := client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "0x10"}),

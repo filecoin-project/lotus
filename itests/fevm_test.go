@@ -855,3 +855,16 @@ func TestFEVMProxyUpgradeable(t *testing.T) {
 	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "test()", []byte{})
 	require.NoError(t, err)
 }
+
+func TestFEVMGetBlockDifficulty(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/GetDifficulty.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDifficulty()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, len(ret), 32)
+}
