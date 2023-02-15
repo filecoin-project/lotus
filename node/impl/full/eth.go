@@ -517,7 +517,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	}
 
 	// pad with zero bytes if smaller than 32 bytes
-	position = append(make([]byte, 32-l), position...)
+	position = append(make([]byte, 32-l, 32), position...)
 
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
@@ -591,7 +591,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	}
 
 	// pad with zero bytes if smaller than 32 bytes
-	ret = append(make([]byte, 32-len(ret)), ret...)
+	ret = append(make([]byte, 32-len(ret), 32), ret...)
 
 	return ethtypes.EthBytes(ret), nil
 }
