@@ -533,15 +533,13 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	actor, err := a.StateManager.LoadActor(ctx, to, ts)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
-			return nil, nil
+			return ethtypes.EthBytes(make([]byte, 32)), nil
 		}
 		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
 	}
 
-	// Not a contract. Technically, we should return an empty slot... but an error is more user
-	// friendly, IMO.
 	if !builtinactors.IsEvmActor(actor.Code) {
-		return nil, xerrors.Errorf("actor is not an ethereum contract")
+		return ethtypes.EthBytes(make([]byte, 32)), nil
 	}
 
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
