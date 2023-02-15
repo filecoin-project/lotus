@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +27,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
+
+// EnvDisablePreMigrations when set to '1' stops pre-migrations from running
+const EnvDisablePreMigrations = "LOTUS_DISABLE_PRE_MIGRATIONS"
 
 // MigrationCache can be used to cache information used by a migration. This is primarily useful to
 // "pre-compute" some migration state ahead of time, and make it accessible in the migration itself.
@@ -217,6 +222,11 @@ func (sm *StateManager) hasExpensiveFork(height abi.ChainEpoch) bool {
 func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv16.MemMigrationCache, ts *types.TipSet) {
 	height := ts.Height()
 	parent := ts.ParentState()
+
+	if disabled := os.Getenv(EnvDisablePreMigrations); strings.TrimSpace(disabled) == "1" {
+		log.Warnw("SKIPPING pre-migration", "height", height)
+		return
+	}
 
 	startTime := time.Now()
 
