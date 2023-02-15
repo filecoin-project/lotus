@@ -526,7 +526,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	}
 
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
-		StorageKey: position,
+		StorageKey: *(*[32]byte)(position),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
