@@ -38,7 +38,7 @@ With FEVM on Filecoin, we aim to provide full compatibility with the existing EV
 
 **Enable Ethereum JSON RPC API**
 
-Note that Ethereum APIs are only support in lotus v1 APIs, meaning for any node operators who want to enable Eth API services can must be using v1 apis, instead of v0 apis. To enable Eth RPC, simply set `EnableEthRPC` to `true` in your node config.toml file; or set env var `LOTUS_FEVM_ENABLEETHRPC` to `1` before starting your lotus node.
+Note that Ethereum APIs are only supported in the lotus v1 API, meaning that any node operator who wants to enable Eth API services must be using the v1 API, instead of the v0 API. To enable Eth RPC, simply set `EnableEthRPC` to `true` in your node config.toml file; or set env var `LOTUS_FEVM_ENABLEETHRPC` to `1` before starting your lotus node.
 
 **Eth tx hash and Filecoin message CID**
 
