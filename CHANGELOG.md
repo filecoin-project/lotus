@@ -29,7 +29,6 @@ The creation of EVM actors is managed by **the new** [Ethereum Address Manager a
 
 This release candidate sets the calibration-net nv18 Hygge upgrade at epoch 322354, 22023-02-21T16:30:00Z. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
 (located at `build/actors/v10.tar.zst`) upon/post migration, manifest CID `bafy2bzaced25ta3j6ygs34roprilbtb3f6mxifyfnm7z7ndquaruxzdq3y7lo`.
-.
 
 ## Node Operators
 
