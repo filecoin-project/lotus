@@ -146,14 +146,9 @@ var keyinfoImportCmd = &cli.Command{
    Examples
 
    env LOTUS_PATH=/var/lib/lotus lotus-shed keyinfo import libp2p-host.keyinfo`,
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
-		},
-	},
 	Action: func(cctx *cli.Context) error {
+		flagRepo := cctx.String("repo")
+
 		var input io.Reader
 		if cctx.NArg() == 0 {
 			input = os.Stdin
@@ -182,7 +177,7 @@ var keyinfoImportCmd = &cli.Command{
 			return err
 		}
 
-		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		fsrepo, err := repo.NewFS(flagRepo)
 		if err != nil {
 			return err
 		}
