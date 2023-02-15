@@ -265,6 +265,20 @@ func TestFEVMDelegateCall(t *testing.T) {
 	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResultActor)
+
+	// The implementation's storage should not have been updated.
+	actorAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(actorAddr)
+	require.NoError(t, err)
+	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(make([]byte, 32)), value)
+
+	// The storage actor's storage _should_ have been updated
+	storageAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(storageAddr)
+	require.NoError(t, err)
+	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(expectedResult), value)
 }
 
 // TestFEVMDelegateCallRevert makes a delegatecall action and then calls revert.

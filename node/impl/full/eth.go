@@ -506,13 +506,18 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 }
 
 func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
+	ts, err := a.parseBlkParam(ctx, blkParam)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+	}
+
 	l := len(position)
 	if l > 32 {
 		return nil, fmt.Errorf("supplied storage key is too long")
 	}
 
 	// pad with zero bytes if smaller than 32 bytes
-	position = append(make([]byte, 32-l, 32-l), position...)
+	position = append(make([]byte, 32-l), position...)
 
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
@@ -523,6 +528,20 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	from, err := address.NewIDAddress(0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct system sender address: %w", err)
+	}
+
+	actor, err := a.StateManager.LoadActor(ctx, to, ts)
+	if err != nil {
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+		return nil, xerrors.Errorf("failed to lookup contract %s: %w", ethAddr, err)
+	}
+
+	// Not a contract. Technically, we should return an empty slot... but an error is more user
+	// friendly, IMO.
+	if !builtinactors.IsEvmActor(actor.Code) {
+		return nil, xerrors.Errorf("actor is not an ethereum contract")
 	}
 
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
@@ -543,8 +562,6 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 		GasPremium: big.Zero(),
 	}
 
-	ts := a.Chain.GetHeaviestTipSet()
-
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
@@ -563,10 +580,22 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	}
 
 	if res.MsgRct == nil {
-		return nil, fmt.Errorf("no message receipt")
+		return nil, xerrors.Errorf("no message receipt")
 	}
 
-	return res.MsgRct.Return, nil
+	if res.MsgRct.ExitCode.IsError() {
+		return nil, xerrors.Errorf("failed to lookup storage slot: %s", res.Error)
+	}
+
+	var ret abi.CborBytes
+	if err := ret.UnmarshalCBOR(bytes.NewReader(res.MsgRct.Return)); err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal storage slot: %w", err)
+	}
+
+	// pad with zero bytes if smaller than 32 bytes
+	ret = append(make([]byte, 32-len(ret)), ret...)
+
+	return ethtypes.EthBytes(ret), nil
 }
 
 func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error) {
