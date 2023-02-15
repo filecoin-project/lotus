@@ -34,7 +34,7 @@ This release candidate sets the calibration-net nv18 Hygge upgrade at epoch 3223
 
 FVM has been running in lotus since v1.16.0 and up, and the new FEVM does not increase any node hardware spec requirement.
 
-With FEVM on Filecoin, we aim to provide full compatibility with the existing EVM ecosystem and its tooling out of box and thus, lotus now provides a full set of [Ethereum-styled APIs](https://github.com/filecoin-project/lotus/blob/release/v1.20.0/node/impl/full/eth.go) for developers and token holders to interact Filecoin network as well. We recommend node and api service providers and dApp developers to enable the following node configuration.
+With FEVM on Filecoin, we aim to provide full compatibility with the existing EVM ecosystem and its tooling out of box and thus, lotus now provides a full set of [Ethereum-styled APIs](https://github.com/filecoin-project/lotus/blob/release/v1.20.0/node/impl/full/eth.go) for developers and token holders to interact with the Filecoin network as well.
 
 **Enable Ethereum JSON RPC API**
 
