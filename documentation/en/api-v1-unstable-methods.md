@@ -2643,7 +2643,7 @@ Response:
   "accessList": [
     "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
   ],
-  "yParity": "0x0",
+  "v": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2682,7 +2682,7 @@ Response:
   "accessList": [
     "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
   ],
-  "yParity": "0x0",
+  "v": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2720,7 +2720,7 @@ Response:
   "accessList": [
     "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
   ],
-  "yParity": "0x0",
+  "v": "0x0",
   "r": "0x0",
   "s": "0x0"
 }

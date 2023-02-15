@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -525,7 +526,7 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	}
 
 	params, err := actors.SerializeParams(&evm.GetStorageAtParams{
-		StorageKey: position,
+		StorageKey: *(*[32]byte)(position),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
@@ -601,6 +602,18 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	if params.BlkCount > 1024 {
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("block count should be smaller than 1024")
 	}
+	rewardPercentiles := make([]float64, 0)
+	if params.RewardPercentiles != nil {
+		rewardPercentiles = append(rewardPercentiles, *params.RewardPercentiles...)
+	}
+	for i, rp := range rewardPercentiles {
+		if rp < 0 || rp > 100 {
+			return ethtypes.EthFeeHistory{}, fmt.Errorf("invalid reward percentile: %f should be between 0 and 100", rp)
+		}
+		if i > 0 && rp < rewardPercentiles[i-1] {
+			return ethtypes.EthFeeHistory{}, fmt.Errorf("invalid reward percentile: %f should be larger than %f", rp, rewardPercentiles[i-1])
+		}
+	}
 
 	ts, err := a.parseBlkParam(ctx, params.NewestBlkNum)
 	if err != nil {
@@ -619,18 +632,40 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	//  we can do is duplicate the last value.
 	baseFeeArray := []ethtypes.EthBigInt{ethtypes.EthBigInt(ts.Blocks()[0].ParentBaseFee)}
 	gasUsedRatioArray := []float64{}
+	rewardsArray := make([][]ethtypes.EthBigInt, 0)
 
 	for ts.Height() >= abi.ChainEpoch(oldestBlkHeight) {
 		// Unfortunately we need to rebuild the full message view so we can
 		// totalize gas used in the tipset.
-		block, err := newEthBlockFromFilecoinTipSet(ctx, ts, false, a.Chain, a.StateAPI)
+		msgs, err := a.Chain.MessagesForTipset(ctx, ts)
 		if err != nil {
-			return ethtypes.EthFeeHistory{}, fmt.Errorf("cannot create eth block: %v", err)
+			return ethtypes.EthFeeHistory{}, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 		}
 
-		// both arrays should be reversed at the end
+		txGasRewards := gasRewardSorter{}
+		for txIdx, msg := range msgs {
+			msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), api.LookbackNoLimit, false)
+			if err != nil || msgLookup == nil {
+				return ethtypes.EthFeeHistory{}, nil
+			}
+
+			tx, err := newEthTxFromMessageLookup(ctx, msgLookup, txIdx, a.Chain, a.StateAPI)
+			if err != nil {
+				return ethtypes.EthFeeHistory{}, nil
+			}
+
+			txGasRewards = append(txGasRewards, gasRewardTuple{
+				reward: tx.Reward(ts.Blocks()[0].ParentBaseFee),
+				gas:    uint64(msgLookup.Receipt.GasUsed),
+			})
+		}
+
+		rewards, totalGasUsed := calculateRewardsAndGasUsed(rewardPercentiles, txGasRewards)
+
+		// arrays should be reversed at the end
 		baseFeeArray = append(baseFeeArray, ethtypes.EthBigInt(ts.Blocks()[0].ParentBaseFee))
-		gasUsedRatioArray = append(gasUsedRatioArray, float64(block.GasUsed)/float64(build.BlockGasLimit))
+		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(build.BlockGasLimit))
+		rewardsArray = append(rewardsArray, rewards)
 
 		parentTsKey := ts.Parents()
 		ts, err = a.Chain.LoadTipSet(ctx, parentTsKey)
@@ -646,6 +681,9 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	for i, j := 0, len(gasUsedRatioArray)-1; i < j; i, j = i+1, j-1 {
 		gasUsedRatioArray[i], gasUsedRatioArray[j] = gasUsedRatioArray[j], gasUsedRatioArray[i]
 	}
+	for i, j := 0, len(rewardsArray)-1; i < j; i, j = i+1, j-1 {
+		rewardsArray[i], rewardsArray[j] = rewardsArray[j], rewardsArray[i]
+	}
 
 	ret := ethtypes.EthFeeHistory{
 		OldestBlock:   ethtypes.EthUint64(oldestBlkHeight),
@@ -653,13 +691,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		GasUsedRatio:  gasUsedRatioArray,
 	}
 	if params.RewardPercentiles != nil {
-		// TODO: Populate reward percentiles
-		//  https://github.com/filecoin-project/lotus/issues/10236
-		//  We need to calculate the requested percentiles of effective gas premium
-		//  based on the newest block (I presume it's the newest, we need to dig in
-		//  as it's underspecified). Effective means we're clamped at the gas_fee_cap - base_fee.
-		reward := make([][]ethtypes.EthBigInt, 0)
-		ret.Reward = &reward
+		ret.Reward = &rewardsArray
 	}
 	return ret, nil
 }
@@ -751,18 +783,20 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 	}
 
 	var params []byte
+	if len(tx.Data) > 0 {
+		initcode := abi.CborBytes(tx.Data)
+		params2, err := actors.SerializeParams(&initcode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize params: %w", err)
+		}
+		params = params2
+	}
+
 	var to address.Address
 	var method abi.MethodNum
 	if tx.To == nil {
 		// this is a contract creation
 		to = builtintypes.EthereumAddressManagerActorAddr
-
-		initcode := abi.CborBytes(tx.Data)
-		params2, err := actors.SerializeParams(&initcode)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize Create params: %w", err)
-		}
-		params = params2
 		method = builtintypes.MethodsEAM.CreateExternal
 	} else {
 		addr, err := tx.To.ToFilecoinAddress()
@@ -770,15 +804,6 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 			return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 		}
 		to = addr
-
-		if len(tx.Data) > 0 {
-			var buf bytes.Buffer
-			if err := cbg.WriteByteArray(&buf, tx.Data); err != nil {
-				return nil, fmt.Errorf("failed to encode tx input into a cbor byte-string")
-			}
-			params = buf.Bytes()
-		}
-
 		method = builtintypes.MethodsEVM.InvokeContract
 	}
 
@@ -1246,8 +1271,9 @@ func (e *EthEvent) uninstallFilter(ctx context.Context, f filter.Filter) error {
 }
 
 const (
-	EthSubscribeEventTypeHeads = "newHeads"
-	EthSubscribeEventTypeLogs  = "logs"
+	EthSubscribeEventTypeHeads               = "newHeads"
+	EthSubscribeEventTypeLogs                = "logs"
+	EthSubscribeEventTypePendingTransactions = "newPendingTransactions"
 )
 
 func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
@@ -1309,6 +1335,15 @@ func (e *EthEvent) EthSubscribe(ctx context.Context, p jsonrpc.RawParams) (ethty
 			_, _ = e.EthUnsubscribe(ctx, sub.id)
 			return ethtypes.EthSubscriptionID{}, err
 		}
+		sub.addFilter(ctx, f)
+	case EthSubscribeEventTypePendingTransactions:
+		f, err := e.MemPoolFilterManager.Install(ctx)
+		if err != nil {
+			// clean up any previous filters added and stop the sub
+			_, _ = e.EthUnsubscribe(ctx, sub.id)
+			return ethtypes.EthSubscriptionID{}, err
+		}
+
 		sub.addFilter(ctx, f)
 	default:
 		return ethtypes.EthSubscriptionID{}, xerrors.Errorf("unsupported event type: %s", params.EventType)
@@ -1629,6 +1664,15 @@ func (e *ethSubscription) start(ctx context.Context) {
 				}
 
 				e.send(ctx, ev)
+			case *types.SignedMessage: // mpool txid
+				evs, err := ethFilterResultFromMessages([]*types.SignedMessage{vt}, e.StateAPI)
+				if err != nil {
+					continue
+				}
+
+				for _, r := range evs.Results {
+					e.send(ctx, r)
+				}
 			default:
 				log.Warnf("unexpected subscription value type: %T", vt)
 			}
@@ -2134,4 +2178,51 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 		}
 	}
 	return keys, nil
+}
+
+func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRewardSorter) ([]ethtypes.EthBigInt, uint64) {
+	var totalGasUsed uint64
+	for _, tx := range txGasRewards {
+		totalGasUsed += tx.gas
+	}
+
+	rewards := make([]ethtypes.EthBigInt, len(rewardPercentiles))
+	for i := range rewards {
+		rewards[i] = ethtypes.EthBigIntZero
+	}
+
+	if len(txGasRewards) == 0 {
+		return rewards, totalGasUsed
+	}
+
+	sort.Stable(txGasRewards)
+
+	var idx int
+	var sum uint64
+	for i, percentile := range rewardPercentiles {
+		threshold := uint64(float64(totalGasUsed) * percentile / 100)
+		for sum < threshold && idx < len(txGasRewards)-1 {
+			sum += txGasRewards[idx].gas
+			idx++
+		}
+		rewards[i] = txGasRewards[idx].reward
+	}
+
+	return rewards, totalGasUsed
+}
+
+type gasRewardTuple struct {
+	gas    uint64
+	reward ethtypes.EthBigInt
+}
+
+// sorted in ascending order
+type gasRewardSorter []gasRewardTuple
+
+func (g gasRewardSorter) Len() int { return len(g) }
+func (g gasRewardSorter) Swap(i, j int) {
+	g[i], g[j] = g[j], g[i]
+}
+func (g gasRewardSorter) Less(i, j int) bool {
+	return g[i].reward.Int.Cmp(g[j].reward.Int) == -1
 }
