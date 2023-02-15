@@ -317,6 +317,7 @@ var sectorsListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		// http mode allows for parallel json decoding/encoding, which was a bottleneck here
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
 		if err != nil {
 			return err
