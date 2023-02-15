@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.20.0 / 2023-02-14
+# 1.20.0-rc1 / 2023-02-14
 
 This is the first release candidate for the upcoming MANDATORY 1.20.0 release of Lotus. This release will deliver the Hygge network upgrade, introducing Filecoin network version 18. The centerpiece of the upgrade is the introduction of the [Filecoin Virtual Machine (FVM)’s Milestone 2.1](https://fvm.filecoin.io/), which will allow for EVM-compatible contracts to be deployed on the Filecoin network. This upgrade delivers user-programmablity to the Filecoin network for the first time!
 
