@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -486,11 +485,15 @@ func (ei *EventIndex) RunMigration(from, to int) error {
 		if err := rows.Scan(&key, &before); err != nil {
 			return xerrors.Errorf("failed to scan from query: %w", err)
 		}
-		after, err := cbg.ReadByteArray(bytes.NewReader(before), 4<<20)
-		if err != nil {
-			return xerrors.Errorf("failed to decode cbor: %w; value: %s", err, hex.EncodeToString(before))
+		reader := bytes.NewReader(before)
+		after, err := cbg.ReadByteArray(reader, 4<<20)
+		if err != nil || reader.Len() > 0 {
+			// Before Jan 23 we decoded events before putting them into the database. So
+			// we're just going to assume that that's what's happening here, log an
+			// error, and continue.
+			after = before
 		}
-		if _, ok := topics[key]; ok && len(before) < 32 {
+		if _, ok := topics[key]; ok && len(after) < 32 {
 			// if this is a topic, leftpad to 32 bytes
 			pvalue := make([]byte, 32)
 			copy(pvalue[32-len(after):], after)
