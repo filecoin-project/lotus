@@ -843,3 +843,28 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	// The receive() function emits one log, that's how we know we hit it.
 	require.Len(t, receipt.Logs, 1)
 }
+
+func TestFEVMProxyUpgradeable(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install transparently upgradeable proxy
+	proxyFilename := "contracts/TransparentUpgradeableProxy.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, proxyFilename)
+
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "test()", []byte{})
+	require.NoError(t, err)
+}
+
+func TestFEVMGetBlockDifficulty(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/GetDifficulty.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDifficulty()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, len(ret), 32)
+}
