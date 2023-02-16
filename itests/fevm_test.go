@@ -868,3 +868,30 @@ func TestFEVMGetBlockDifficulty(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, len(ret), 32)
 }
+
+func TestFEVMErrorParsing(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	e := client.EVM()
+
+	_, contractAddr := e.DeployContractFromFilename(ctx, "contracts/Errors.hex")
+	contractAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+	for sig, expected := range map[string]string{
+		"failRevertEmpty()":  "none",
+		"failRevertReason()": "Error(my reason)",
+		"failAssert()":       "Assert()",
+		"failDivZero()":      "DivideByZero()",
+		"failCustom()":       "0x09caebf3",
+	} {
+		t.Run(sig, func(t *testing.T) {
+			entryPoint := kit.CalcFuncSignature(sig)
+			_, err := e.EthCall(ctx, ethtypes.EthCall{
+				To:   &contractAddrEth,
+				Data: entryPoint,
+			}, "latest")
+			require.ErrorContains(t, err, fmt.Sprintf("exit 33, revert reason: %s, vm error", expected))
+		})
+	}
+}
