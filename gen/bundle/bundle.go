@@ -45,24 +45,34 @@ func main() {
 		panic(err)
 	}
 
+	var metadataSpecificVersion []*build.BuiltinActorsMetadata
+
 	// see ./build/actors/pack.sh
 	// expected args are git bundle tag then number of per network overrides
 	// overrides are in the format network_name=override
-	overrides := map[string]string{}
-	for _, override := range os.Args[2:] {
-		network, version := splitOverride(override)
-		overrides[network] = version
-	}
 
 	if len(os.Args) > 1 {
+		version := os.Args[1]
+		overrides := map[string]string{}
+		for _, override := range os.Args[3:] {
+			k, v := splitOverride(override)
+			overrides[k] = v
+		}
 		for _, m := range metadata {
-			override, ok := overrides[m.Network]
-			if ok && strings.HasPrefix(override, fmt.Sprintf("v%d", m.Version)) {
-				m.BundleGitTag = override
-			} else {
-				m.BundleGitTag = os.Args[1]
+			if strings.HasPrefix(version, fmt.Sprintf("v%d", m.Version)) {
+				// correct version
+				override, ok := overrides[m.Network]
+				if ok {
+					m.BundleGitTag = override
+				} else {
+					m.BundleGitTag = os.Args[2]
+				}
+				fmt.Println("hi")
+				metadataSpecificVersion = append(metadataSpecificVersion, m)
 			}
 		}
+		metadata = metadataSpecificVersion
+
 	}
 
 	fi, err := os.Create("./build/builtin_actors_gen.go")
