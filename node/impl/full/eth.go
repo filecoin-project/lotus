@@ -181,6 +181,10 @@ func (a *EthModule) EthAccounts(context.Context) ([]ethtypes.EthAddress, error) 
 	return []ethtypes.EthAddress{}, nil
 }
 
+func (a *EthAPI) EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) {
+	return ethAddress.ToFilecoinAddress()
+}
+
 func (a *EthModule) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, error) {
 	blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
 	if err != nil {
