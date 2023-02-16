@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/filecoin-project/lotus/build"
@@ -32,19 +33,36 @@ var EmbeddedBuiltinActorsMetadata []*BuiltinActorsMetadata = []*BuiltinActorsMet
 }
 `))
 
+func splitOverride(override string) (string, string) {
+	x := strings.Split(override, "=")
+	return x[0], x[1]
+}
+
 func main() {
 	metadata, err := build.ReadEmbeddedBuiltinActorsMetadata()
 	if err != nil {
 		panic(err)
 	}
 
-	// TODO: Re-enable this when we can set the tag for ONLY the appropriate version
-	// https://github.com/filecoin-project/lotus/issues/10185#issuecomment-1422864836
-	//if len(os.Args) > 1 {
-	//	for _, m := range metadata {
-	//		m.BundleGitTag = os.Args[1]
-	//	}
-	//}
+  // see ./build/actors/pack.sh
+  // expected args are git bundle tag then number of per network overrides
+  // overrides are in the format network_name=override
+	overrides := map[string]string{}
+	for _, override := range os.Args[2:] {
+		network, version := splitOverride(override)
+		overrides[network] = version
+	}
+
+	if len(os.Args) > 1 {
+		for _, m := range metadata {
+			override, ok := overrides[m.Network]
+			if ok {
+				m.BundleGitTag = override
+			} else {
+				m.BundleGitTag = os.Args[1]
+			}
+		}
+	}
 
 	fi, err := os.Create("./build/builtin_actors_gen.go")
 	if err != nil {
