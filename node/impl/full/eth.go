@@ -2186,6 +2186,8 @@ const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
 
 // Parse an ABI encoded revert reason. This reason should be encoded as if it were the parameters to
 // an `Error(string)` function call.
+//
+// See https://docs.soliditylang.org/en/latest/control-structures.html#panic-via-assert-and-error-via-require
 func parseEthRevert(ret []byte) string {
 	if len(ret) == 0 {
 		return "none"
@@ -2211,7 +2213,6 @@ func parseEthRevert(ret []byte) string {
 			codeInt := big.PositiveFromUnsignedBytes(cbytes)
 			return fmt.Sprintf("Panic(%s)", ethtypes.EthBigInt(codeInt).String())
 		}
-		// Otherwise, switch.
 		switch code {
 		case 0x00:
 			return "Panic()"
