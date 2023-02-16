@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"text/template"
@@ -56,7 +57,7 @@ func main() {
 	if len(os.Args) > 1 {
 		for _, m := range metadata {
 			override, ok := overrides[m.Network]
-			if ok {
+			if ok && strings.HasPrefix(override, fmt.Sprintf("v%d", m.Version)) {
 				m.BundleGitTag = override
 			} else {
 				m.BundleGitTag = os.Args[1]
