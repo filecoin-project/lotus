@@ -885,6 +885,8 @@ func TestFEVMErrorParsing(t *testing.T) {
 		"failDivZero()":      "DivideByZero()",
 		"failCustom()":       "0x09caebf3",
 	} {
+		sig := sig
+		expected := expected
 		t.Run(sig, func(t *testing.T) {
 			entryPoint := kit.CalcFuncSignature(sig)
 			_, err := e.EthCall(ctx, ethtypes.EthCall{
