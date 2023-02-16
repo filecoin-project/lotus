@@ -44,9 +44,9 @@ func main() {
 		panic(err)
 	}
 
-  // see ./build/actors/pack.sh
-  // expected args are git bundle tag then number of per network overrides
-  // overrides are in the format network_name=override
+	// see ./build/actors/pack.sh
+	// expected args are git bundle tag then number of per network overrides
+	// overrides are in the format network_name=override
 	overrides := map[string]string{}
 	for _, override := range os.Args[2:] {
 		network, version := splitOverride(override)
