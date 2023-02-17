@@ -2228,9 +2228,8 @@ func parseEthRevert(ret []byte) string {
 		}
 		if s, ok := panicErrorCodes[uint64(code)]; ok {
 			return s
-		} else {
-			return fmt.Sprintf("Panic(0x%x)", code)
 		}
+		return fmt.Sprintf("Panic(0x%x)", code)
 	case errorFunctionSelector:
 		cbytes := cbytes[4:]
 		cbytesLen := ethtypes.EthUint64(len(cbytes))
