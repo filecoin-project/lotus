@@ -2183,6 +2183,19 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 
 const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
 const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
+// Eth ABI (solidity) panic codes.
+var panicErrorCodes map[uint64]string = map[uint64]string{
+	0x00: "Panic()",
+	0x01: "Assert()",
+	0x11: "ArithmeticOverflow()",
+	0x12: "DivideByZero()",
+	0x21: "InvalidEnumVariant()",
+	0x22: "InvalidStorageArray()",
+	0x31: "PopEmptyArray()",
+	0x32: "ArrayIndexOutOfBounds()",
+	0x41: "OutOfMemory()",
+	0x51: "CalledUninitializedFunction()",
+}
 
 // Parse an ABI encoded revert reason. This reason should be encoded as if it were the parameters to
 // an `Error(string)` function call.
@@ -2213,28 +2226,9 @@ func parseEthRevert(ret []byte) string {
 			codeInt := big.PositiveFromUnsignedBytes(cbytes)
 			return fmt.Sprintf("Panic(%s)", ethtypes.EthBigInt(codeInt).String())
 		}
-		switch code {
-		case 0x00:
-			return "Panic()"
-		case 0x01:
-			return "Assert()"
-		case 0x11:
-			return "ArithmeticOverflow()"
-		case 0x12:
-			return "DivideByZero()"
-		case 0x21:
-			return "InvalidEnumVariant()"
-		case 0x22:
-			return "InvalidStorageArray()"
-		case 0x31:
-			return "PopEmptyArray()"
-		case 0x32:
-			return "ArrayIndexOutOfBounds()"
-		case 0x41:
-			return "OutOfMemory()"
-		case 0x51:
-			return "CalledUninitializedFunction()"
-		default:
+		if s, ok := panicErrorCodes[uint64(code)]; ok {
+			return s
+		} else {
 			return fmt.Sprintf("Panic(0x%x)", code)
 		}
 	case errorFunctionSelector:
