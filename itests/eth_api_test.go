@@ -16,7 +16,8 @@ import (
 )
 
 func TestEthAddressToFilecoinAddress(t *testing.T) {
-	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	// Disable EthRPC to confirm that this method does NOT need the EthEnableRPC config set to true
+	client, _, _ := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC(), kit.DisableEthRPC())
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

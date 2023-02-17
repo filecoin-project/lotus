@@ -265,6 +265,20 @@ func TestFEVMDelegateCall(t *testing.T) {
 	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResultActor)
+
+	// The implementation's storage should not have been updated.
+	actorAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(actorAddr)
+	require.NoError(t, err)
+	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(make([]byte, 32)), value)
+
+	// The storage actor's storage _should_ have been updated
+	storageAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(storageAddr)
+	require.NoError(t, err)
+	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(expectedResult), value)
 }
 
 // TestFEVMDelegateCallRevert makes a delegatecall action and then calls revert.
@@ -895,5 +909,35 @@ func TestFEVMGetChainProperties(t *testing.T) {
 		ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, functionName, []byte{})
 		require.NoError(t, err)
 		require.Equal(t, len(ret), 32)
+	}
+}
+
+func TestFEVMErrorParsing(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	e := client.EVM()
+
+	_, contractAddr := e.DeployContractFromFilename(ctx, "contracts/Errors.hex")
+	contractAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+	customError := ethtypes.EthBytes(kit.CalcFuncSignature("CustomError()")).String()
+	for sig, expected := range map[string]string{
+		"failRevertEmpty()":  "none",
+		"failRevertReason()": "Error(my reason)",
+		"failAssert()":       "Assert()",
+		"failDivZero()":      "DivideByZero()",
+		"failCustom()":       customError,
+	} {
+		sig := sig
+		expected := expected
+		t.Run(sig, func(t *testing.T) {
+			entryPoint := kit.CalcFuncSignature(sig)
+			_, err := e.EthCall(ctx, ethtypes.EthCall{
+				To:   &contractAddrEth,
+				Data: entryPoint,
+			}, "latest")
+			require.ErrorContains(t, err, fmt.Sprintf("exit 33, revert reason: %s, vm error", expected))
+		})
 	}
 }

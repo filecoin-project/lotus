@@ -66,6 +66,18 @@ func EthUint64FromHex(s string) (EthUint64, error) {
 	return EthUint64(parsedInt), nil
 }
 
+// Parse a uint64 from big-endian encoded bytes.
+func EthUint64FromBytes(b []byte) (EthUint64, error) {
+	if len(b) != 32 {
+		return 0, xerrors.Errorf("eth int must be 32 bytes long")
+	}
+	var zeros [32 - 8]byte
+	if !bytes.Equal(b[:len(zeros)], zeros[:]) {
+		return 0, xerrors.Errorf("eth int overflows 64 bits")
+	}
+	return EthUint64(binary.BigEndian.Uint64(b[len(zeros):])), nil
+}
+
 func (e EthUint64) Hex() string {
 	if e == 0 {
 		return "0x0"
@@ -78,11 +90,15 @@ type EthBigInt big.Int
 
 var EthBigIntZero = EthBigInt{Int: big.Zero().Int}
 
-func (e EthBigInt) MarshalJSON() ([]byte, error) {
+func (e EthBigInt) String() string {
 	if e.Int == nil || e.Int.BitLen() == 0 {
-		return json.Marshal("0x0")
+		return "0x0"
 	}
-	return json.Marshal(fmt.Sprintf("0x%x", e.Int))
+	return fmt.Sprintf("0x%x", e.Int)
+}
+
+func (e EthBigInt) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.String())
 }
 
 func (e *EthBigInt) UnmarshalJSON(b []byte) error {
@@ -106,12 +122,15 @@ func (e *EthBigInt) UnmarshalJSON(b []byte) error {
 // EthBytes represent arbitrary bytes. A nil or empty slice serializes to "0x".
 type EthBytes []byte
 
-func (e EthBytes) MarshalJSON() ([]byte, error) {
+func (e EthBytes) String() string {
 	if len(e) == 0 {
-		return json.Marshal("0x")
+		return "0x"
 	}
-	s := hex.EncodeToString(e)
-	return json.Marshal("0x" + s)
+	return "0x" + hex.EncodeToString(e)
+}
+
+func (e EthBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.String())
 }
 
 func (e *EthBytes) UnmarshalJSON(b []byte) error {
