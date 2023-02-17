@@ -888,7 +888,7 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (et
 	msg.GasLimit = 0
 
 	ts := a.Chain.GetHeaviestTipSet()
-	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
+	gassedMsg, err := a.GasAPI.GasEstimateMessageGas(ctx, msg, nil, ts.Key())
 	if err != nil {
 		// On failure, GasEstimateMessageGas doesn't actually return the invocation result,
 		// it just returns an error. That means we can't get the revert reason.
@@ -896,13 +896,14 @@ func (a *EthModule) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (et
 		// So we re-execute the message with EthCall (well, applyMessage which contains the
 		// guts of EthCall). This will give us an ethereum specific error with revert
 		// information.
+		msg.GasLimit = build.BlockGasLimit
 		if _, err2 := a.applyMessage(ctx, msg, ts.Key()); err2 != nil {
 			err = err2
 		}
 		return ethtypes.EthUint64(0), xerrors.Errorf("failed to estimate gas: %w", err)
 	}
 
-	expectedGas, err := ethGasSearch(ctx, a.Chain, a.Stmgr, a.Mpool, msg, ts)
+	expectedGas, err := ethGasSearch(ctx, a.Chain, a.Stmgr, a.Mpool, gassedMsg, ts)
 	if err != nil {
 		log.Errorw("expected gas", "err", err)
 	}

@@ -901,14 +901,23 @@ func TestFEVMErrorParsing(t *testing.T) {
 		"failCustom()":       customError,
 	} {
 		sig := sig
-		expected := expected
+		expected := fmt.Sprintf("exit 33, revert reason: %s, vm error", expected)
 		t.Run(sig, func(t *testing.T) {
 			entryPoint := kit.CalcFuncSignature(sig)
-			_, err := e.EthCall(ctx, ethtypes.EthCall{
-				To:   &contractAddrEth,
-				Data: entryPoint,
-			}, "latest")
-			require.ErrorContains(t, err, fmt.Sprintf("exit 33, revert reason: %s, vm error", expected))
+			t.Run("EthCall", func(t *testing.T) {
+				_, err := e.EthCall(ctx, ethtypes.EthCall{
+					To:   &contractAddrEth,
+					Data: entryPoint,
+				}, "latest")
+				require.ErrorContains(t, err, expected)
+			})
+			t.Run("EthEstimateGas", func(t *testing.T) {
+				_, err := e.EthEstimateGas(ctx, ethtypes.EthCall{
+					To:   &contractAddrEth,
+					Data: entryPoint,
+				})
+				require.ErrorContains(t, err, expected)
+			})
 		})
 	}
 }
