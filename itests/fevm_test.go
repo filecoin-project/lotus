@@ -911,7 +911,7 @@ func TestFEVMGetChainPropertiesBlockTimestamp(t *testing.T) {
 	timestampFromSolidity, err := decodeOutputToUint64(ret)
 	require.NoError(t, err)
 
-	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
 
 	require.Equal(t, ethBlock.Timestamp, ethtypes.EthUint64(timestampFromSolidity))
 }
@@ -931,7 +931,7 @@ func TestFEVMGetChainPropertiesBlockNumber(t *testing.T) {
 	blockHeightFromSolidity, err := decodeOutputToUint64(ret)
 	require.NoError(t, err)
 
-	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
 
 	require.Equal(t, ethBlock.Number, ethtypes.EthUint64(blockHeightFromSolidity))
 }
@@ -949,27 +949,10 @@ func TestFEVMGetChainPropertiesBlockHash(t *testing.T) {
 	expectedBlockHash := hex.EncodeToString(ret)
 	require.NoError(t, err)
 
-	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
 	//in solidity we get the parent block hash because the current block hash doesnt exist at that execution context yet
 	//so we compare the parent hash here in the test
 	require.Equal(t, "0x"+expectedBlockHash, ethBlock.ParentHash.String())
-}
-
-// return eth block from a wait return
-// this necessarily goes back one parent in the chain because wait is one block ahead of execution
-func getEthBlockFromWait(ctx context.Context, t *testing.T, client *kit.TestFullNode, wait *api.MsgLookup) ethtypes.EthBlock {
-	c, err := wait.TipSet.Cid()
-	require.NoError(t, err)
-	hash, err := ethtypes.EthHashFromCid(c)
-	require.NoError(t, err)
-
-	ethBlockParent, err := client.EVM().EthGetBlockByHash(ctx, hash, true)
-	require.NoError(t, err)
-	ethBlock, err := client.EVM().EthGetBlockByHash(ctx, ethBlockParent.ParentHash, true)
-	require.NoError(t, err)
-
-	return ethBlock
-
 }
 
 func TestFEVMGetChainPropertiesBaseFee(t *testing.T) {
@@ -985,7 +968,7 @@ func TestFEVMGetChainPropertiesBaseFee(t *testing.T) {
 	baseFeeRet, err := decodeOutputToUint64(ret)
 	require.NoError(t, err)
 
-	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
 
 	require.Equal(t, ethBlock.BaseFeePerGas, ethtypes.EthBigInt(big.NewInt(int64(baseFeeRet))))
 }
