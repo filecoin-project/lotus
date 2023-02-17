@@ -43,9 +43,8 @@ var gasTraceCmd = &cli.Command{
 	ArgsUsage:   "[migratedStateRootCid networkVersion messageCid]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -148,9 +147,8 @@ var replayOfflineCmd = &cli.Command{
 	ArgsUsage:   "[messageCid]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.Int64Flag{
 			Name:  "lookback-limit",

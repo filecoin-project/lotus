@@ -21,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -75,13 +76,18 @@ var EvmGetInfoCmd = &cli.Command{
 		}
 
 		actor, err := api.StateGetActor(ctx, faddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
 		fmt.Println("Filecoin address: ", faddr)
 		fmt.Println("Eth address: ", eaddr)
-		fmt.Println("Code cid: ", actor.Code.String())
+		if err != nil {
+			fmt.Printf("Actor lookup failed for faddr %s with error: %s\n", faddr, err)
+		} else {
+			idAddr, err := api.StateLookupID(ctx, faddr, types.EmptyTSK)
+			if err == nil {
+				fmt.Println("ID address: ", idAddr)
+				fmt.Println("Code cid: ", actor.Code.String())
+				fmt.Println("Actor Type: ", builtin.ActorNameByCode(actor.Code))
+			}
+		}
 
 		return nil
 	},
