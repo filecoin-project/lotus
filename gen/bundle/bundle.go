@@ -47,7 +47,7 @@ func main() {
 
 	var metadataSpecificVersion []*build.BuiltinActorsMetadata
 	// see ./build/actors/pack.sh
-  // expected args are:
+	// expected args are:
 	// $(GOCC) run ./gen/bundle $(VERSION) $(RELEASE) $(RELEASE_OVERRIDES)
 	// overrides are in the format network_name=override
 
