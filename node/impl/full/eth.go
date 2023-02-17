@@ -369,26 +369,28 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 	}
 
 	// First, handle the case where the "sender" is an EVM actor.
-	actor, err := a.StateManager.LoadActor(ctx, addr, ts)
-	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
-			return 0, nil
-		}
-		return 0, xerrors.Errorf("failed to lookup contract %s: %w", sender, err)
-	}
-
-	if builtinactors.IsEvmActor(actor.Code) {
-		evmState, err := builtinevm.Load(a.Chain.ActorStore(ctx), actor)
+	{
+		actor, err := a.StateManager.LoadActor(ctx, addr, ts)
 		if err != nil {
-			return 0, xerrors.Errorf("failed to load evm state: %w", err)
+			if xerrors.Is(err, types.ErrActorNotFound) {
+				return 0, nil
+			}
+			return 0, xerrors.Errorf("failed to lookup contract %s: %w", sender, err)
 		}
-		if alive, err := evmState.IsAlive(); err != nil {
-			return 0, err
-		} else if !alive {
-			return 0, nil
+
+		if builtinactors.IsEvmActor(actor.Code) {
+			evmState, err := builtinevm.Load(a.Chain.ActorStore(ctx), actor)
+			if err != nil {
+				return 0, xerrors.Errorf("failed to load evm state: %w", err)
+			}
+			if alive, err := evmState.IsAlive(); err != nil {
+				return 0, err
+			} else if !alive {
+				return 0, nil
+			}
+			nonce, err := evmState.Nonce()
+			return ethtypes.EthUint64(nonce), err
 		}
-		nonce, err := evmState.Nonce()
-		return ethtypes.EthUint64(nonce), err
 	}
 
 	nonce, err := a.Mpool.GetNonce(ctx, addr, ts.Key())
