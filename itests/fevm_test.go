@@ -868,3 +868,32 @@ func TestFEVMGetBlockDifficulty(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, len(ret), 32)
 }
+
+func TestFEVMTestCorrectChainID(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	//run test
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testChainID()", []byte{})
+	require.NoError(t, err)
+}
+
+func TestFEVMGetChainProperties(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	functionNames := []string{"getChainID()", "getBlockhash()", "getBasefee()", "getBlockNumber()", "getTimestamp()"}
+	for _, functionName := range functionNames {
+		ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, functionName, []byte{})
+		require.NoError(t, err)
+		require.Equal(t, len(ret), 32)
+	}
+}
