@@ -48,6 +48,7 @@ type State interface {
 	cbor.Marshaler
 
 	Nonce() (uint64, error)
+	IsAlive() (bool, error)
 	GetState() interface{}
 
 	GetBytecode() ([]byte, error)

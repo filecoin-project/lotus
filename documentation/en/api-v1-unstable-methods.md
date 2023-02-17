@@ -68,6 +68,7 @@
   * [CreateBackup](#CreateBackup)
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
+  * [EthAddressToFilecoinAddress](#EthAddressToFilecoinAddress)
   * [EthBlockNumber](#EthBlockNumber)
   * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
@@ -2261,6 +2262,21 @@ Response:
   "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
 ]
 ```
+
+### EthAddressToFilecoinAddress
+EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+]
+```
+
+Response: `"f01234"`
 
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet
