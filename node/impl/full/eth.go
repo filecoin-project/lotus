@@ -2219,7 +2219,7 @@ func parseEthRevert(ret []byte) string {
 		case 0x01:
 			return "Assert()"
 		case 0x11:
-			return "ArithmaticOverflow()"
+			return "ArithmeticOverflow()"
 		case 0x12:
 			return "DivideByZero()"
 		case 0x21:
