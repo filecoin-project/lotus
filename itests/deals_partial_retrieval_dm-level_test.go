@@ -166,7 +166,7 @@ func testDMExportAsFile(ctx context.Context, client *kit.TestFullNode, expDirect
 func testV0RetrievalAsFile(ctx context.Context, client *kit.TestFullNode, retOrder api0.RetrievalOrder, tempDir string) error {
 	out := tempDir + string(os.PathSeparator) + "exp-test" + retOrder.Root.String()
 
-	cv0 := &api0.WrapperV1Full{client.FullNode} //nolint:govet
+	cv0 := &api0.WrapperV1Full{FullNode: client.FullNode}
 	err := cv0.ClientRetrieve(ctx, retOrder, &api.FileRef{
 		Path: out,
 	})
@@ -220,7 +220,7 @@ func tesV0RetrievalAsCar(ctx context.Context, client *kit.TestFullNode, retOrder
 	}
 	defer out.Close() //nolint:errcheck
 
-	cv0 := &api0.WrapperV1Full{client.FullNode} //nolint:govet
+	cv0 := &api0.WrapperV1Full{FullNode: client.FullNode}
 	err = cv0.ClientRetrieve(ctx, retOrder, &api.FileRef{
 		Path:  out.Name(),
 		IsCAR: true,

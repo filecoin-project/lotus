@@ -117,7 +117,7 @@ type EthSubscriberStruct struct {
 }
 
 type EthSubscriberMethods struct {
-	EthSubscription func(p0 context.Context, p1 jsonrpc.RawParams) error `notify:"true"rpc_method:"eth_subscription"`
+	EthSubscription func(p0 context.Context, p1 jsonrpc.RawParams) error `notify:"true" rpc_method:"eth_subscription"`
 }
 
 type EthSubscriberStub struct {
