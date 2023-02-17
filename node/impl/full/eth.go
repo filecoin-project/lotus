@@ -871,7 +871,8 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 		return nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
 	if res.MsgRct.ExitCode.IsError() {
-		return nil, xerrors.Errorf("message execution failed: exit %s, msg receipt: %s, reason: %s", res.MsgRct.ExitCode, res.MsgRct.Return, res.Error)
+		reason := parseEthRevert(res.MsgRct.Return)
+		return nil, xerrors.Errorf("message execution failed: exit %s, revert reason: %s, vm error: %s", res.MsgRct.ExitCode, reason, res.Error)
 	}
 	return res, nil
 }
@@ -1032,7 +1033,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to apply message: %w", err)
+		return nil, err
 	}
 
 	if msg.To == builtintypes.EthereumAddressManagerActorAddr {
@@ -2209,6 +2210,85 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 		}
 	}
 	return keys, nil
+}
+
+const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
+const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
+// Eth ABI (solidity) panic codes.
+var panicErrorCodes map[uint64]string = map[uint64]string{
+	0x00: "Panic()",
+	0x01: "Assert()",
+	0x11: "ArithmeticOverflow()",
+	0x12: "DivideByZero()",
+	0x21: "InvalidEnumVariant()",
+	0x22: "InvalidStorageArray()",
+	0x31: "PopEmptyArray()",
+	0x32: "ArrayIndexOutOfBounds()",
+	0x41: "OutOfMemory()",
+	0x51: "CalledUninitializedFunction()",
+}
+
+// Parse an ABI encoded revert reason. This reason should be encoded as if it were the parameters to
+// an `Error(string)` function call.
+//
+// See https://docs.soliditylang.org/en/latest/control-structures.html#panic-via-assert-and-error-via-require
+func parseEthRevert(ret []byte) string {
+	if len(ret) == 0 {
+		return "none"
+	}
+	var cbytes abi.CborBytes
+	if err := cbytes.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+		return "ERROR: revert reason is not cbor encoded bytes"
+	}
+	if len(cbytes) == 0 {
+		return "none"
+	}
+	// If it's not long enough to contain an ABI encoded response, return immediately.
+	if len(cbytes) < 4+32 {
+		return ethtypes.EthBytes(cbytes).String()
+	}
+	switch string(cbytes[:4]) {
+	case panicFunctionSelector:
+		cbytes := cbytes[4 : 4+32]
+		// Read the and check the code.
+		code, err := ethtypes.EthUint64FromBytes(cbytes)
+		if err != nil {
+			// If it's too big, just return the raw value.
+			codeInt := big.PositiveFromUnsignedBytes(cbytes)
+			return fmt.Sprintf("Panic(%s)", ethtypes.EthBigInt(codeInt).String())
+		}
+		if s, ok := panicErrorCodes[uint64(code)]; ok {
+			return s
+		}
+		return fmt.Sprintf("Panic(0x%x)", code)
+	case errorFunctionSelector:
+		cbytes := cbytes[4:]
+		cbytesLen := ethtypes.EthUint64(len(cbytes))
+		// Read the and check the offset.
+		offset, err := ethtypes.EthUint64FromBytes(cbytes[:32])
+		if err != nil {
+			break
+		}
+		if cbytesLen < offset {
+			break
+		}
+
+		// Read and check the length.
+		if cbytesLen-offset < 32 {
+			break
+		}
+		start := offset + 32
+		length, err := ethtypes.EthUint64FromBytes(cbytes[offset : offset+32])
+		if err != nil {
+			break
+		}
+		if cbytesLen-start < length {
+			break
+		}
+		// Slice the error message.
+		return fmt.Sprintf("Error(%s)", cbytes[start:start+length])
+	}
+	return ethtypes.EthBytes(cbytes).String()
 }
 
 func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRewardSorter) ([]ethtypes.EthBigInt, uint64) {
