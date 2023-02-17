@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
