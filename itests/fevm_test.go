@@ -878,12 +878,13 @@ func TestFEVMErrorParsing(t *testing.T) {
 	_, contractAddr := e.DeployContractFromFilename(ctx, "contracts/Errors.hex")
 	contractAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
 	require.NoError(t, err)
+	customError := ethtypes.EthBytes(kit.CalcFuncSignature("CustomError()")).String()
 	for sig, expected := range map[string]string{
 		"failRevertEmpty()":  "none",
 		"failRevertReason()": "Error(my reason)",
 		"failAssert()":       "Assert()",
 		"failDivZero()":      "DivideByZero()",
-		"failCustom()":       "0x09caebf3",
+		"failCustom()":       customError,
 	} {
 		sig := sig
 		expected := expected
