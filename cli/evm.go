@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/specs-actors/v8/actors/builtin"
+
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -75,13 +77,18 @@ var EvmGetInfoCmd = &cli.Command{
 		}
 
 		actor, err := api.StateGetActor(ctx, faddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
 		fmt.Println("Filecoin address: ", faddr)
 		fmt.Println("Eth address: ", eaddr)
-		fmt.Println("Code cid: ", actor.Code.String())
+		if err != nil {
+			fmt.Printf("Actor lookup failed for faddr %s with error: %s\n", faddr, err)
+		} else {
+			idAddr, err := api.StateLookupID(ctx, faddr, types.EmptyTSK)
+			if err == nil {
+				fmt.Println("ID address: ", idAddr)
+				fmt.Println("Code cid: ", actor.Code.String())
+				fmt.Println("Actor Type: ", builtin.ActorNameByCode(actor.Code))
+			}
+		}
 
 		return nil
 	},
