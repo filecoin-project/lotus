@@ -46,9 +46,9 @@ func main() {
 	}
 
 	var metadataSpecificVersion []*build.BuiltinActorsMetadata
-
 	// see ./build/actors/pack.sh
-	// expected args are git bundle tag then number of per network overrides
+  // expected args are:
+	// $(GOCC) run ./gen/bundle $(VERSION) $(RELEASE) $(RELEASE_OVERRIDES)
 	// overrides are in the format network_name=override
 
 	if len(os.Args) > 1 {
@@ -67,7 +67,6 @@ func main() {
 				} else {
 					m.BundleGitTag = os.Args[2]
 				}
-				fmt.Println("hi")
 				metadataSpecificVersion = append(metadataSpecificVersion, m)
 			}
 		}
