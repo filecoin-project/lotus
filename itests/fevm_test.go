@@ -896,7 +896,7 @@ func TestFEVMTestCorrectChainID(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestFEVMGetChainProperties(t *testing.T) {
+func TestFEVMGetChainPropertiesBlockTimestamp(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
@@ -904,12 +904,90 @@ func TestFEVMGetChainProperties(t *testing.T) {
 	filenameActor := "contracts/Blocktest.hex"
 	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
 
-	functionNames := []string{"getChainID()", "getBlockhash()", "getBasefee()", "getBlockNumber()", "getTimestamp()"}
-	for _, functionName := range functionNames {
-		ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, functionName, []byte{})
-		require.NoError(t, err)
-		require.Equal(t, len(ret), 32)
-	}
+	// block number check
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getTimestamp()", []byte{})
+	require.NoError(t, err)
+
+	timestampFromSolidity, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+
+	require.Equal(t, ethBlock.Timestamp, ethtypes.EthUint64(timestampFromSolidity))
+}
+
+func TestFEVMGetChainPropertiesBlockNumber(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	// block number check
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBlockNumber()", []byte{})
+	require.NoError(t, err)
+
+	blockHeightFromSolidity, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+
+	require.Equal(t, ethBlock.Number, ethtypes.EthUint64(blockHeightFromSolidity))
+}
+
+func TestFEVMGetChainPropertiesBlockHash(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	//block hash check
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBlockhashPrevious()", []byte{})
+	expectedBlockHash := hex.EncodeToString(ret)
+	require.NoError(t, err)
+
+	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+	//in solidity we get the parent block hash because the current block hash doesnt exist at that execution context yet
+	//so we compare the parent hash here in the test
+	require.Equal(t, "0x"+expectedBlockHash, ethBlock.ParentHash.String())
+}
+
+// return eth block from a wait return
+// this necessarily goes back one parent in the chain because wait is one block ahead of execution
+func getEthBlockFromWait(ctx context.Context, t *testing.T, client *kit.TestFullNode, wait *api.MsgLookup) ethtypes.EthBlock {
+	c, err := wait.TipSet.Cid()
+	require.NoError(t, err)
+	hash, err := ethtypes.EthHashFromCid(c)
+	require.NoError(t, err)
+
+	ethBlockParent, err := client.EVM().EthGetBlockByHash(ctx, hash, true)
+	require.NoError(t, err)
+	ethBlock, err := client.EVM().EthGetBlockByHash(ctx, ethBlockParent.ParentHash, true)
+	require.NoError(t, err)
+
+	return ethBlock
+
+}
+
+func TestFEVMGetChainPropertiesBaseFee(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBasefee()", []byte{})
+	require.NoError(t, err)
+	baseFeeRet, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	ethBlock := getEthBlockFromWait(ctx, t, client, wait)
+
+	require.Equal(t, ethBlock.BaseFeePerGas, ethtypes.EthBigInt(big.NewInt(int64(baseFeeRet))))
 }
 
 func TestFEVMErrorParsing(t *testing.T) {

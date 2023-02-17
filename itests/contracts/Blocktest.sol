@@ -7,16 +7,14 @@ contract BlockTest {
         require(block.chainid == 314);
     }
 
-    function getChainID() public view returns (uint256){
-        return block.chainid;
+    function getBlockhashPrevious() public view returns (bytes32) {
+        return blockhash(block.number-1);
     }
 
-    function getBlockhash() public view returns (bytes32) {
-        return blockhash(block.number);
-    }
     function getBasefee() public view returns (uint256){
         return block.basefee;
     }
+
     function getBlockNumber() public view returns (uint256){
         return block.number;
     }
