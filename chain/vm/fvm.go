@@ -24,6 +24,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -275,7 +276,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Add
 		return address.Undef, gasUsed, err
 	}
 
-	raddr, err := ResolveToKeyAddr(stateTree, cstWithGas, info.Worker)
+	raddr, err := ResolveToDeterministicAddr(stateTree, cstWithGas, info.Worker)
 	if err != nil {
 		return address.Undef, gasUsed, err
 	}
@@ -285,6 +286,10 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Add
 
 type FVM struct {
 	fvm *ffi.FVM
+	nv  network.Version
+
+	// returnEvents specifies whether to parse and return events when applying messages.
+	returnEvents bool
 }
 
 func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
@@ -309,11 +314,14 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 			epoch:      opts.Epoch,
 		},
 		Epoch:          opts.Epoch,
+		Timestamp:      opts.Timestamp,
+		ChainID:        build.Eip155ChainId,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.StateBase,
 		Tracing:        opts.Tracing || EnableDetailedTracing,
+		Debug:          build.ActorDebugging,
 	}, nil
 
 }
@@ -324,29 +332,19 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil, xerrors.Errorf("creating fvm opts: %w", err)
 	}
 
-	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
-		av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
-		if err != nil {
-			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
-		}
-
-		c, ok := actors.GetManifest(av)
-		if !ok {
-			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
-		}
-
-		fvmOpts.Manifest = c
-	}
-
 	fvm, err := ffi.CreateFVM(fvmOpts)
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create FVM: %w", err)
 	}
 
-	return &FVM{
-		fvm: fvm,
-	}, nil
+	ret := &FVM{
+		fvm:          fvm,
+		nv:           opts.NetworkVersion,
+		returnEvents: opts.ReturnEvents,
+	}
+
+	return ret, nil
 }
 
 func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
@@ -446,9 +444,13 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil, err
 	}
 
-	return &FVM{
-		fvm: fvm,
-	}, nil
+	ret := &FVM{
+		fvm:          fvm,
+		nv:           opts.NetworkVersion,
+		returnEvents: opts.ReturnEvents,
+	}
+
+	return ret, nil
 }
 
 func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
@@ -466,10 +468,12 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	}
 
 	duration := time.Since(start)
-	receipt := types.MessageReceipt{
-		Return:   ret.Return,
-		ExitCode: exitcode.ExitCode(ret.ExitCode),
-		GasUsed:  ret.GasUsed,
+
+	var receipt types.MessageReceipt
+	if vm.nv >= network.Version18 {
+		receipt = types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
+	} else {
+		receipt = types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
 	}
 
 	var aerr aerrors.ActorError
@@ -498,7 +502,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		et.Error = aerr.Error()
 	}
 
-	return &ApplyRet{
+	applyRet := &ApplyRet{
 		MessageReceipt: receipt,
 		GasCosts: &GasOutputs{
 			BaseFeeBurn:        ret.BaseFeeBurn,
@@ -512,7 +516,16 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		ActorErr:       aerr,
 		ExecutionTrace: et,
 		Duration:       duration,
-	}, nil
+	}
+
+	if vm.returnEvents && len(ret.EventsBytes) > 0 {
+		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
+		}
+	}
+
+	return applyRet, nil
 }
 
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
@@ -530,10 +543,12 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 	}
 
 	duration := time.Since(start)
-	receipt := types.MessageReceipt{
-		Return:   ret.Return,
-		ExitCode: exitcode.ExitCode(ret.ExitCode),
-		GasUsed:  ret.GasUsed,
+
+	var receipt types.MessageReceipt
+	if vm.nv >= network.Version18 {
+		receipt = types.NewMessageReceiptV1(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed, ret.EventsRoot)
+	} else {
+		receipt = types.NewMessageReceiptV0(exitcode.ExitCode(ret.ExitCode), ret.Return, ret.GasUsed)
 	}
 
 	var aerr aerrors.ActorError
@@ -566,6 +581,13 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		ActorErr:       aerr,
 		ExecutionTrace: et,
 		Duration:       duration,
+	}
+
+	if vm.returnEvents && len(ret.EventsBytes) > 0 {
+		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
+		}
 	}
 
 	if ret.ExitCode != 0 {

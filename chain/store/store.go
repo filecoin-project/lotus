@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,11 +12,11 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	block "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
@@ -124,6 +125,8 @@ type ChainStore struct {
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
+
+	storeEvents bool
 
 	cancelFn context.CancelFunc
 	wg       sync.WaitGroup
@@ -375,17 +378,27 @@ func (cs *ChainStore) SetGenesis(ctx context.Context, b *types.BlockHeader) erro
 }
 
 func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
-	for _, b := range ts.Blocks() {
-		if err := cs.PersistBlockHeaders(ctx, b); err != nil {
-			return err
-		}
+	if err := cs.PersistTipset(ctx, ts); err != nil {
+		return xerrors.Errorf("failed to persist tipset: %w", err)
 	}
 
 	expanded, err := cs.expandTipset(ctx, ts.Blocks()[0])
 	if err != nil {
 		return xerrors.Errorf("errored while expanding tipset: %w", err)
 	}
-	log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
+
+	if expanded.Key() != ts.Key() {
+		log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
+
+		tsBlk, err := expanded.Key().ToStorageBlock()
+		if err != nil {
+			return xerrors.Errorf("failed to get tipset key block: %w", err)
+		}
+
+		if err = cs.chainLocalBlockstore.Put(ctx, tsBlk); err != nil {
+			return xerrors.Errorf("failed to put tipset key block: %w", err)
+		}
+	}
 
 	if err := cs.MaybeTakeHeavierTipSet(ctx, expanded); err != nil {
 		return xerrors.Errorf("MaybeTakeHeavierTipSet failed in PutTipSet: %w", err)
@@ -646,7 +659,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 
 	if err := cs.writeHead(ctx, ts); err != nil {
 		log.Errorf("failed to write chain head: %s", err)
-		return nil
+		return err
 	}
 
 	return nil
@@ -669,7 +682,7 @@ func FlushValidationCache(ctx context.Context, ds dstore.Batching) error {
 		// If this is addressed (blockcache goes into its own sub-namespace) then
 		// strings.HasPrefix(...) below can be skipped
 		//
-		//Prefix: blockValidationCacheKeyPrefix.String()
+		// Prefix: blockValidationCacheKeyPrefix.String()
 		KeysOnly: true,
 	})
 	if err != nil {
@@ -958,7 +971,24 @@ func (cs *ChainStore) AddToTipSetTracker(ctx context.Context, b *types.BlockHead
 	return nil
 }
 
-func (cs *ChainStore) PersistBlockHeaders(ctx context.Context, b ...*types.BlockHeader) error {
+func (cs *ChainStore) PersistTipset(ctx context.Context, ts *types.TipSet) error {
+	if err := cs.persistBlockHeaders(ctx, ts.Blocks()...); err != nil {
+		return xerrors.Errorf("failed to persist block headers: %w", err)
+	}
+
+	tsBlk, err := ts.Key().ToStorageBlock()
+	if err != nil {
+		return xerrors.Errorf("failed to get tipset key block: %w", err)
+	}
+
+	if err = cs.chainLocalBlockstore.Put(ctx, tsBlk); err != nil {
+		return xerrors.Errorf("failed to put tipset key block: %w", err)
+	}
+
+	return nil
+}
+
+func (cs *ChainStore) persistBlockHeaders(ctx context.Context, b ...*types.BlockHeader) error {
 	sbs := make([]block.Block, len(b))
 
 	for i, header := range b {
@@ -1026,23 +1056,6 @@ func (cs *ChainStore) expandTipset(ctx context.Context, b *types.BlockHeader) (*
 	return types.NewTipSet(all)
 }
 
-func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error {
-	if err := cs.PersistBlockHeaders(ctx, b); err != nil {
-		return err
-	}
-
-	ts, err := cs.expandTipset(ctx, b)
-	if err != nil {
-		return err
-	}
-
-	if err := cs.MaybeTakeHeavierTipSet(ctx, ts); err != nil {
-		return xerrors.Errorf("MaybeTakeHeavierTipSet failed: %w", err)
-	}
-
-	return nil
-}
-
 func (cs *ChainStore) GetGenesis(ctx context.Context) (*types.BlockHeader, error) {
 	data, err := cs.metadataDs.Get(ctx, dstore.NewKey("0"))
 	if err != nil {
@@ -1096,6 +1109,10 @@ func (cs *ChainStore) ChainBlockstore() bstore.Blockstore {
 // caching policies, but in the future they will segregate.
 func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
 	return cs.stateBlockstore
+}
+
+func (cs *ChainStore) ChainLocalBlockstore() bstore.Blockstore {
+	return cs.chainLocalBlockstore
 }
 
 func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
@@ -1165,8 +1182,36 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	return cs.LoadTipSet(ctx, lbts.Parents())
 }
 
+func (cs *ChainStore) GetTipSetByCid(ctx context.Context, c cid.Cid) (*types.TipSet, error) {
+	blk, err := cs.chainBlockstore.Get(ctx, c)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot find tipset with cid %s: %w", c, err)
+	}
+
+	tsk := new(types.TipSetKey)
+	if err := tsk.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+		return nil, xerrors.Errorf("cannot unmarshal block into tipset key: %w", err)
+	}
+
+	ts, err := cs.GetTipSetFromKey(ctx, *tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("cannot get tipset from key: %w", err)
+	}
+	return ts, nil
+}
+
 func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove
 	return cs.weight(ctx, cs.StateBlockstore(), hts)
+}
+
+// StoreEvents marks this ChainStore as storing events.
+func (cs *ChainStore) StoreEvents(store bool) {
+	cs.storeEvents = store
+}
+
+// IsStoringEvents indicates if this ChainStore is storing events.
+func (cs *ChainStore) IsStoringEvents() bool {
+	return cs.storeEvents
 }
 
 // true if ts1 wins according to the filecoin tie-break rule

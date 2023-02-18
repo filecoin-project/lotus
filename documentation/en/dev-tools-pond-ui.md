@@ -19,7 +19,7 @@ Now go to `http://127.0.0.1:2222`.
 ## What can I test?
 
 - The `Spawn Node` button starts a new **Lotus Node** in a new draggable window.
-- Click `[Spawn Miner]` to start a **Lotus Miner**. This require's the node's wallet to have funds.
+- Click `[Spawn Miner]` to start a **Lotus Miner**. This requires the node's wallet to have funds.
 - Click on `[Client]` to open the **Lotus Node**'s client interface and propose a deal with an existing Miner. If successful you'll see a payment channel open up with that Miner.
 
 Don't leave Pond unattended for more than 10 hours, the web client will eventually consume all available RAM.

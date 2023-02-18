@@ -20,6 +20,7 @@ import (
 
 var NetworkBundle = "caterpillarnet"
 var BundleOverrides map[actorstypes.Version]string
+var ActorDebugging = false
 
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"
@@ -49,7 +50,9 @@ var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 
-const UpgradeSharkHeight = abi.ChainEpoch(99999999999999)
+const UpgradeSharkHeight = abi.ChainEpoch(-20)
+
+const UpgradeHyggeHeight = abi.ChainEpoch(99999999999999)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -104,6 +107,7 @@ func init() {
 	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
 	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
 	UpgradeSharkHeight = getUpgradeHeight("LOTUS_SHARK_HEIGHT", UpgradeSharkHeight)
+	UpgradeHyggeHeight = getUpgradeHeight("LOTUS_HYGGE_HEIGHT", UpgradeHyggeHeight)
 
 	BuildType |= BuildInteropnet
 	SetAddressNetwork(address.Testnet)
@@ -117,5 +121,10 @@ const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2
+
+// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
+// As per https://github.com/ethereum-lists/chains
+// TODO same as butterfly for now, as we didn't submit an assignment for interopnet.
+const Eip155ChainId = 3141592
 
 var WhitelistedBlock = cid.Undef

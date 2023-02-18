@@ -26,6 +26,7 @@ import (
 var SystemActorAddr = builtin.SystemActorAddr
 var BurntFundsActorAddr = builtin.BurntFundsActorAddr
 var CronActorAddr = builtin.CronActorAddr
+var EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
@@ -269,6 +270,33 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 
 	if c == builtin7.PaymentChannelActorCodeID {
 		return true
+	}
+
+	return false
+}
+
+func IsPlaceholderActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.PlaceholderKey
+	}
+
+	return false
+}
+
+func IsEvmActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EvmKey
+	}
+
+	return false
+}
+
+func IsEthAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EthAccountKey
 	}
 
 	return false

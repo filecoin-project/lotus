@@ -19,7 +19,7 @@ export LOTUS_JAEGER_AGENT_ENDPOINT=127.0.0.1:6831
 lotus daemon
 ```
 
-Alternatively, the agent endpoint can also be configured by a pair of environemnt variables to provide the host and port. The following snipit is functionally equivilent to the previous.
+Alternatively, the agent endpoint can also be configured by a pair of environment variables to provide the host and port. The following snippet is functionally equivalent to the previous.
 
 ```bash
 export LOTUS_JAEGER_AGENT_HOST=127.0.0.1

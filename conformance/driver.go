@@ -28,7 +28,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance/chaos"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls" // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )

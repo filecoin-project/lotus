@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/system"
 )
 
 const (
@@ -37,6 +38,7 @@ const (
 	fsDatastore     = "datastore"
 	fsLock          = "repo.lock"
 	fsKeystore      = "keystore"
+	fsSqlite        = "sqlite"
 )
 
 func NewRepoTypeFromString(t string) RepoType {
@@ -411,6 +413,10 @@ type fsLockedRepo struct {
 	ssErr  error
 	ssOnce sync.Once
 
+	sqlPath string
+	sqlErr  error
+	sqlOnce sync.Once
+
 	storageLk sync.Mutex
 	configLk  sync.Mutex
 }
@@ -474,19 +480,8 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 			return
 		}
 
-		//
-		// Tri-state environment variable LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC
-		// - unset == the default (currently fsync enabled)
-		// - set with a false-y value == fsync enabled no matter what a future default is
-		// - set with any other value == fsync is disabled ignored defaults (recommended for day-to-day use)
-		//
-		if nosyncBs, nosyncBsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC"); nosyncBsSet {
-			nosyncBs = strings.ToLower(nosyncBs)
-			if nosyncBs == "" || nosyncBs == "0" || nosyncBs == "false" || nosyncBs == "no" {
-				opts.SyncWrites = true
-			} else {
-				opts.SyncWrites = false
-			}
+		if system.BadgerFsyncDisable {
+			opts.SyncWrites = false
 		}
 
 		bs, err := badgerbs.Open(opts)
@@ -513,6 +508,21 @@ func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
 	})
 
 	return fsr.ssPath, fsr.ssErr
+}
+
+func (fsr *fsLockedRepo) SqlitePath() (string, error) {
+	fsr.sqlOnce.Do(func() {
+		path := fsr.join(fsSqlite)
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.sqlErr = err
+			return
+		}
+
+		fsr.sqlPath = path
+	})
+
+	return fsr.sqlPath, fsr.sqlErr
 }
 
 // join joins path elements with fsr.path

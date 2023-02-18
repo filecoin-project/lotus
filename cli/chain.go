@@ -112,8 +112,8 @@ var ChainGetBlock = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass cid of block to print")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
@@ -149,7 +149,7 @@ var ChainGetBlock = &cli.Command{
 		recpts, err := api.ChainGetParentReceipts(ctx, bcid)
 		if err != nil {
 			log.Warn(err)
-			//return xerrors.Errorf("failed to get receipts: %w", err)
+			// return xerrors.Errorf("failed to get receipts: %w", err)
 		}
 
 		cblock := struct {
@@ -198,6 +198,10 @@ var ChainReadObjCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {
 			return fmt.Errorf("failed to parse cid input: %s", err)
@@ -232,6 +236,10 @@ var ChainDeleteObjCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -276,6 +284,10 @@ var ChainStatObjCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		obj, err := cid.Decode(cctx.Args().First())
 		if err != nil {
 			return fmt.Errorf("failed to parse cid input: %s", err)
@@ -308,8 +320,8 @@ var ChainGetMsgCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass a cid of a message to get")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -373,6 +385,10 @@ var ChainSetHeadCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		var ts *types.TipSet
 
@@ -734,6 +750,10 @@ var ChainGetCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		p := path.Clean(cctx.Args().First())
 		if strings.HasPrefix(p, "/pstate") {
 			p = p[len("/pstate"):]
@@ -1071,8 +1091,8 @@ var ChainExportCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify filename to export chain to")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		rsrs := abi.ChainEpoch(cctx.Int64("recent-stateroots"))

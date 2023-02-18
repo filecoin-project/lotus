@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var sendCmd = &cli.Command{
@@ -23,6 +24,10 @@ var sendCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "optionally specify the account to send funds from",
+		},
+		&cli.StringFlag{
+			Name:  "from-eth-addr",
+			Usage: "optionally specify the eth addr to send funds from",
 		},
 		&cli.StringFlag{
 			Name:  "gas-premium",
@@ -98,6 +103,29 @@ var sendCmd = &cli.Command{
 			}
 
 			params.From = addr
+		} else if from := cctx.String("from-eth-addr"); from != "" {
+			eaddr, err := ethtypes.ParseEthAddress(from)
+			if err != nil {
+				return err
+			}
+			faddr, err := eaddr.ToFilecoinAddress()
+			if err != nil {
+				fmt.Println("error on conversion to faddr")
+				return err
+			}
+			fmt.Println("f4 addr: ", faddr)
+			params.From = faddr
+		}
+
+		if params.From.Protocol() == address.Delegated {
+			if !(params.To.Protocol() == address.ID || params.To.Protocol() == address.Delegated) {
+				api := srv.FullNodeAPI()
+				// Resolve id addr if possible.
+				params.To, err = api.StateLookupID(ctx, params.To, types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("f4 addresses can only send to other f4 or id addresses. could not find id address for %s", params.To.String())
+				}
+			}
 		}
 
 		if cctx.IsSet("gas-premium") {

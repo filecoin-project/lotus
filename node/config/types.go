@@ -27,6 +27,7 @@ type FullNode struct {
 	Fees       FeeConfig
 	Chainstore Chainstore
 	Cluster    UserRaftConfig
+	Fevm       FevmConfig
 }
 
 // // Common
@@ -168,7 +169,6 @@ type DealmakingConfig struct {
 }
 
 type IndexProviderConfig struct {
-
 	// Enable set whether to enable indexing announcement to the network and expose endpoints that
 	// allow indexer nodes to process announcements. Enabled by default.
 	Enable bool
@@ -657,4 +657,53 @@ type UserRaftConfig struct {
 	BackupsRotate int
 	// Tracing enables propagation of contexts across binary boundaries.
 	Tracing bool
+}
+
+type FevmConfig struct {
+	// EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
+	EnableEthRPC bool
+
+	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+	// Set to 0 to keep all mappings
+	EthTxHashMappingLifetimeDays int
+
+	Events Events
+}
+
+type Events struct {
+	// EnableEthRPC enables APIs that
+	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	DisableRealTimeFilterAPI bool
+
+	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	DisableHistoricFilterAPI bool
+
+	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+	// this time become eligible for automatic deletion.
+	FilterTTL Duration
+
+	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	MaxFilters int
+
+	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+	MaxFilterResults int
+
+	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+	// the entire chain)
+	MaxFilterHeightRange uint64
+
+	// DatabasePath is the full path to a sqlite database that will be used to index actor events to
+	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
+	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+	// relative to the CWD (current working directory).
+	DatabasePath string
+
+	// Others, not implemented yet:
+	// Set a limit on the number of active websocket subscriptions (may be zero)
+	// Set a timeout for subscription clients
+	// Set upper bound on index size
 }

@@ -706,11 +706,15 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 	}
 
 	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
-
-	return storiface.WindowPoStResult{
+	r := storiface.WindowPoStResult{
 		PoStProofs: res,
 		Skipped:    skipped,
-	}, err
+	}
+	if err != nil {
+		log.Errorw("generating window PoSt failed", "error", err)
+		return r, xerrors.Errorf("generate window PoSt with vanilla proofs: %w", err)
+	}
+	return r, nil
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {

@@ -11,7 +11,9 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	address "github.com/filecoin-project/go-address"
+	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
+	verifreg "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	network "github.com/filecoin-project/go-state-types/network"
 
 	api "github.com/filecoin-project/lotus/api"
@@ -84,6 +86,21 @@ func (m *MockPreCommitBatcherApi) StateAccountKey(arg0 context.Context, arg1 add
 func (mr *MockPreCommitBatcherApiMockRecorder) StateAccountKey(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAccountKey", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateAccountKey), arg0, arg1, arg2)
+}
+
+// StateGetAllocationForPendingDeal mocks base method.
+func (m *MockPreCommitBatcherApi) StateGetAllocationForPendingDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*verifreg.Allocation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetAllocationForPendingDeal", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*verifreg.Allocation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetAllocationForPendingDeal indicates an expected call of StateGetAllocationForPendingDeal.
+func (mr *MockPreCommitBatcherApiMockRecorder) StateGetAllocationForPendingDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocationForPendingDeal", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateGetAllocationForPendingDeal), arg0, arg1, arg2)
 }
 
 // StateLookupID mocks base method.

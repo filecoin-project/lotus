@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -205,6 +205,10 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 
 	if m.GasLimit > build.BlockGasLimit {
 		return xerrors.Errorf("'GasLimit' field cannot be greater than a block's gas limit (%d > %d)", m.GasLimit, build.BlockGasLimit)
+	}
+
+	if m.GasLimit <= 0 {
+		return xerrors.Errorf("'GasLimit' field %d must be positive", m.GasLimit)
 	}
 
 	// since prices might vary with time, this is technically semantic validation

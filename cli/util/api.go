@@ -319,9 +319,31 @@ func GetFullNodeAPIV1Single(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientClo
 	return v1API, closer, nil
 }
 
-func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+type GetFullNodeOptions struct {
+	ethSubHandler api.EthSubscriber
+}
+
+type GetFullNodeOption func(*GetFullNodeOptions)
+
+func FullNodeWithEthSubscribtionHandler(sh api.EthSubscriber) GetFullNodeOption {
+	return func(opts *GetFullNodeOptions) {
+		opts.ethSubHandler = sh
+	}
+}
+
+func GetFullNodeAPIV1(ctx *cli.Context, opts ...GetFullNodeOption) (v1api.FullNode, jsonrpc.ClientCloser, error) {
 	if tn, ok := ctx.App.Metadata["testnode-full"]; ok {
 		return tn.(v1api.FullNode), func() {}, nil
+	}
+
+	var options GetFullNodeOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var rpcOpts []jsonrpc.Option
+	if options.ethSubHandler != nil {
+		rpcOpts = append(rpcOpts, jsonrpc.WithClientHandler("Filecoin", options.ethSubHandler), jsonrpc.WithClientHandlerAlias("eth_subscription", "Filecoin.EthSubscription"))
 	}
 
 	heads, err := GetRawAPIMulti(ctx, repo.FullNode, "v1")
@@ -337,7 +359,7 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 	var closers []jsonrpc.ClientCloser
 
 	for _, head := range heads {
-		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header)
+		v1api, closer, err := client.NewFullNodeRPCV1(ctx.Context, head.addr, head.header, rpcOpts...)
 		if err != nil {
 			log.Warnf("Not able to establish connection to node with addr: ", head.addr)
 			continue

@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
@@ -145,9 +146,14 @@ var keyinfoImportCmd = &cli.Command{
    Examples
 
    env LOTUS_PATH=/var/lib/lotus lotus-shed keyinfo import libp2p-host.keyinfo`,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "repo",
+			Value:   "~/.lotus",
+			EnvVars: []string{"LOTUS_PATH"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		flagRepo := cctx.String("repo")
-
 		var input io.Reader
 		if cctx.NArg() == 0 {
 			input = os.Stdin
@@ -176,7 +182,7 @@ var keyinfoImportCmd = &cli.Command{
 			return err
 		}
 
-		fsrepo, err := repo.NewFS(flagRepo)
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return err
 		}
