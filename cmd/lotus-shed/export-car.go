@@ -35,9 +35,8 @@ var exportCarCmd = &cli.Command{
 	Description: "Export a car from repo",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 	ArgsUsage: "[outfile] [root cid]",

@@ -675,6 +675,12 @@ workflows:
           suite: itest-eth_account_abstraction
           target: "./itests/eth_account_abstraction_test.go"
       - test:
+          name: test-itest-eth_api
+          requires:
+            - build
+          suite: itest-eth_api
+          target: "./itests/eth_api_test.go"
+      - test:
           name: test-itest-eth_balance
           requires:
             - build

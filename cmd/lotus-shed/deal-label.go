@@ -24,9 +24,8 @@ var dealLabelCmd = &cli.Command{
 	Usage: "Scrape state to report on how many deals have non UTF-8 labels",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

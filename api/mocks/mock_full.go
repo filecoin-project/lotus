@@ -953,6 +953,21 @@ func (mr *MockFullNodeMockRecorder) EthAccounts(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAccounts", reflect.TypeOf((*MockFullNode)(nil).EthAccounts), arg0)
 }
 
+// EthAddressToFilecoinAddress mocks base method.
+func (m *MockFullNode) EthAddressToFilecoinAddress(arg0 context.Context, arg1 ethtypes.EthAddress) (address.Address, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthAddressToFilecoinAddress", arg0, arg1)
+	ret0, _ := ret[0].(address.Address)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthAddressToFilecoinAddress indicates an expected call of EthAddressToFilecoinAddress.
+func (mr *MockFullNodeMockRecorder) EthAddressToFilecoinAddress(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthAddressToFilecoinAddress", reflect.TypeOf((*MockFullNode)(nil).EthAddressToFilecoinAddress), arg0, arg1)
+}
+
 // EthBlockNumber mocks base method.
 func (m *MockFullNode) EthBlockNumber(arg0 context.Context) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()

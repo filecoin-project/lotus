@@ -17,6 +17,12 @@ import (
 var noncefix = &cli.Command{
 	Name: "noncefix",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "repo",
+			EnvVars: []string{"LOTUS_PATH"},
+			Hidden:  true,
+			Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+		},
 		&cli.Uint64Flag{
 			Name: "start",
 		},

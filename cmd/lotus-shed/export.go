@@ -42,9 +42,8 @@ var exportChainCmd = &cli.Command{
 	Description: "Export chain from repo (requires node to be offline)",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.StringFlag{
 			Name:  "tipset",
@@ -147,9 +146,8 @@ var exportRawCmd = &cli.Command{
 	Description: "Export raw blocks from repo (requires node to be offline)",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.StringFlag{
 			Name:  "car-size",

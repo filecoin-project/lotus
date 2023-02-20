@@ -55,9 +55,8 @@ var migrationsCmd = &cli.Command{
 	ArgsUsage:   "[new network version, block to look back from]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.BoolFlag{
 			Name: "skip-pre-migration",
