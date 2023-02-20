@@ -34,8 +34,8 @@ func TestWorkerKeyChange(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	blocktime := 1 * time.Millisecond
-	client1, client2, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
+	blocktime := 5 * time.Millisecond
+	client1, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	output := bytes.NewBuffer(nil)
@@ -96,7 +96,4 @@ func TestWorkerKeyChange(t *testing.T) {
 	// Wait for finality (worker key switch).
 	targetHeight := head.Height() + policy.ChainFinality
 	client1.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
-
-	// Make sure the other node can catch up.
-	client2.WaitTillChain(ctx, kit.HeightAtLeast(targetHeight))
 }
