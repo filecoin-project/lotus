@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.20.0-rc1 / 2023-02-14
+# 1.20.0-rc2 / 2023-02-17
 
-This is the first release candidate for the upcoming MANDATORY 1.20.0 release of Lotus. This release will deliver the Hygge network upgrade, introducing Filecoin network version 18. The centerpiece of the upgrade is the introduction of the [Filecoin Virtual Machine (FVM)’s Milestone 2.1](https://fvm.filecoin.io/), which will allow for EVM-compatible contracts to be deployed on the Filecoin network. This upgrade delivers user-programmablity to the Filecoin network for the first time!
+This is the second release candidate for the upcoming MANDATORY 1.20.0 release of Lotus. This release will deliver the Hygge network upgrade, introducing Filecoin network version 18. The centerpiece of the upgrade is the introduction of the [Filecoin Virtual Machine (FVM)’s Milestone 2.1](https://fvm.filecoin.io/), which will allow for EVM-compatible contracts to be deployed on the Filecoin network. This upgrade delivers user-programmablity to the Filecoin network for the first time!
 
 Note that this release candidate does NOT set the epoch at which mainnet will upgrade; that detail will be finalized in the 1.20.0 release.
 
@@ -14,6 +14,14 @@ The Hygge upgrade introduces the following Filecoin Improvement Proposals (FIPs)
 - [FIP-0054](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0054.md): Filecoin EVM runtime (FEVM)
 - [FIP-0055](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0055.md): Supporting Ethereum Accounts, Addresses, and Transactions
 - [FIP-0057](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0057.md): Update gas charging schedule and system limits for FEVM
+
+## Changes since v1.20.0-rc1
+
+- feat: API: Add an endpoint to convert Ethereum-like addresses to Filecoin (f410) addresses (#10286)
+- fix: EthAPI: correctly decode EthGetStorageAt output (#10284)
+- feat: EthAPI: parse revert data in EthCall (#10295)
+- chore: deps: bump go-libipfs to v0.4.1
+- feat: EthAPI: return revert data on failed gas estimation #10298
 
 ## Filecoin Ethereum Virtual Machine (FEVM)
 
@@ -27,8 +35,8 @@ The creation of EVM actors is managed by **the new** [Ethereum Address Manager a
 
 ## Calibration nv18 Hygge Upgrade
 
-This release candidate sets the calibration-net nv18 Hygge upgrade at epoch 322354, 22023-02-21T16:30:00Z. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
-(located at `build/actors/v10.tar.zst`) upon/post migration, manifest CID `bafy2bzaced25ta3j6ygs34roprilbtb3f6mxifyfnm7z7ndquaruxzdq3y7lo`.
+This release candidate sets the calibration-net nv18 Hygge upgrade at epoch 322354, 2023-02-21T16:30:00Z. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
+(located at `build/actors/v10.tar.zst`) upon/post migration, manifest CID `bafy2bzaced25ta3j6ygs34roprilbtb3f6mxifyfnm7z7ndquaruxzdq3y7lo`.
 
 ## Node Operators
 
@@ -44,12 +52,11 @@ Note that Ethereum APIs are only supported in the lotus v1 API, meaning that any
 
 Most of the Eth APIs take Eth accounts and tx has as an input, and they start with `0x` , and that is what Ethereum tooling support. However, in Filecoin, we have Filecoin account formats where things start with `f` (`f410` specifically for eth accounts on Filecoin) and the messages are in the format of CIDs. To enable a smooth developer experience, Lotus internally converts between Ethereum address and Filecoin account address as needed. In addition, lotus also keeps a Eth tx hash <> Filecoin message CID map and stores them in a SQLite database as node sees a FEVM messages. The database is initiated and the maps are populated  automatically in `~/<lotus_repo>/sqlite/txhash.db` for any node that as Eth RPC enabled. Node operators can configure how many historical mappings they wanna store by configuring `EthTxHashMappingLifetimeDays` .
 
-**Events***
+**Events**
 
 [FIP-0049 introduces actor events](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md) that can be emitted and externally observable during message execution. An `events.db` is created automatically under `~/<lotus_repo>/sqlite` to store these events if the node has Eth RPC enabled. Node operators can configure the events support base on their needs by configuration `Events` configurations.
 
 Note: All three features are new and we welcome user feedbacks, create an issue if you have any enhancements that you’d like to see!
-
 # 1.19.0 / 2022-12-07
 
 This is an optional feature release of Lotus. This feature release includes the SplitStore beta, the experimental Lotus node cluster feature, as well as numerous enhancments and bugfixes.
