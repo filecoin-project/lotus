@@ -679,6 +679,11 @@ workflows:
           target: "./itests/fevm_address_test.go"
       
       - test:
+          name: test-itest-fevm_disable
+          suite: itest-fevm_disable
+          target: "./itests/fevm_disable_test.go"
+      
+      - test:
           name: test-itest-fevm_events
           suite: itest-fevm_events
           target: "./itests/fevm_events_test.go"

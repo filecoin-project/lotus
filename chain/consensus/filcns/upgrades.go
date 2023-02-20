@@ -245,6 +245,10 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			StopWithin:      5,
 		}},
 		Expensive: true,
+	}, {
+		Height:    build.UpgradeNV19Height,
+		Network:   network.Version19,
+		Migration: UpgradeActorsV11,
 	},
 	}
 
@@ -1698,29 +1702,26 @@ func upgradeActorsV10Common(
 	return newRoot, nil
 }
 
-// Example upgrade function if upgrade requires only code changes
-//func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
-//	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
-//
-//	av := actors.Version9
-//	// This may change for upgrade
-//	newStateTreeVersion := types.StateTreeVersion4
-//
-//	// ensure that the manifest is loaded in the blockstore
-//	if err := bundle.FetchAndLoadBundles(ctx, buf, map[actors.Version]build.Bundle{
-//		av: build.BuiltinActorReleases[av],
-//	}); err != nil {
-//		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
-//	}
-//
-//	newActorsManifestCid, ok := actors.GetManifest(av)
-//	if !ok {
-//		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
-//	}
-//
-//	bstore := sm.ChainStore().StateBlockstore()
-//	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, types.StateTreeVersion4, newStateTreeVersion)
-//}
+func UpgradeActorsV11(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+	oldAv := actorstypes.Version10
+	newAv := actorstypes.Version11
+	// This may change for upgrade
+	oldStateTreeVersion := types.StateTreeVersion5
+	newStateTreeVersion := types.StateTreeVersion5
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), newAv); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	newActorsManifestCid, ok := actors.GetManifest(newAv)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
+	}
+
+	bstore := sm.ChainStore().StateBlockstore()
+	return LiteMigration(ctx, bstore, newActorsManifestCid, root, oldAv, newAv, oldStateTreeVersion, newStateTreeVersion)
+}
 
 func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, oldAv actorstypes.Version, newAv actorstypes.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(bstore, blockstore.NewMemorySync())
@@ -1813,6 +1814,7 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 			Head:    head,
 			Nonce:   actorIn.Nonce,
 			Balance: actorIn.Balance,
+			Address: actorIn.Address,
 		}
 		err = actorsOut.SetActor(addr, &newActor)
 		if err != nil {

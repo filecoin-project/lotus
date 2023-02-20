@@ -303,6 +303,11 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		return nil, xerrors.Errorf("calculating circ supply: %w", err)
 	}
 
+	nv := opts.NetworkVersion
+	if nv == network.Version19 {
+		nv = network.Version18
+	}
+
 	return &ffi.FVMOpts{
 		FVMVersion: 0,
 		Externs: &FvmExtern{
@@ -318,7 +323,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		ChainID:        build.Eip155ChainId,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
-		NetworkVersion: opts.NetworkVersion,
+		NetworkVersion: nv,
 		StateBase:      opts.StateBase,
 		Tracing:        opts.Tracing || EnableDetailedTracing,
 		Debug:          build.ActorDebugging,
