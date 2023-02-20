@@ -240,8 +240,8 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Migration: UpgradeActorsV10,
 		PreMigrations: []stmgr.PreMigration{{
 			PreMigration:    PreUpgradeActorsV10,
-			StartWithin:     180,
-			DontStartWithin: 60,
+			StartWithin:     60,
+			DontStartWithin: 10,
 			StopWithin:      5,
 		}},
 		Expensive: true,

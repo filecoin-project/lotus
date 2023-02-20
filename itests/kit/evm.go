@@ -235,6 +235,22 @@ func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64)
 	return *(*ethtypes.EthAddress)(hasher.Sum(nil)[12:])
 }
 
+// return eth block from a wait return
+// this necessarily goes back one parent in the chain because wait is one block ahead of execution
+func (e *EVM) GetEthBlockFromWait(ctx context.Context, wait *api.MsgLookup) ethtypes.EthBlock {
+	c, err := wait.TipSet.Cid()
+	require.NoError(e.t, err)
+	hash, err := ethtypes.EthHashFromCid(c)
+	require.NoError(e.t, err)
+
+	ethBlockParent, err := e.EthGetBlockByHash(ctx, hash, true)
+	require.NoError(e.t, err)
+	ethBlock, err := e.EthGetBlockByHash(ctx, ethBlockParent.ParentHash, true)
+	require.NoError(e.t, err)
+
+	return ethBlock
+}
+
 func (e *EVM) InvokeContractByFuncName(ctx context.Context, fromAddr address.Address, idAddr address.Address, funcSignature string, inputData []byte) ([]byte, *api.MsgLookup, error) {
 	entryPoint := CalcFuncSignature(funcSignature)
 	wait, err := e.InvokeSolidity(ctx, fromAddr, idAddr, entryPoint, inputData)
