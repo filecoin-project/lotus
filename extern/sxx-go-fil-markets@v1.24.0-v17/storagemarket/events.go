@@ -219,8 +219,6 @@ const (
 	// ProviderEventVerifiedData happens when received data is verified as matching the pieceCID in a deal proposal
 	ProviderEventVerifiedData
 
-	ProviderEventVerifiedDataOfSxx
-
 	// ProviderEventSendResponseFailed happens when a response cannot be sent to a deal
 	ProviderEventSendResponseFailed
 
@@ -295,6 +293,12 @@ const (
 	// waiting for a data transfer to restart. If transfer hasn't restarted, the provider will fail the deal
 	ProviderEventAwaitTransferRestartTimeout
 
+	ProviderEventVerifiedDataOfSxx
+
+	ProviderEventFundedOfSxx
+
+	ProviderEventDealPublishInitiatedOfSxx
+
 	ProviderEventDealPublishedOfSxx
 )
 
@@ -311,6 +315,7 @@ var ProviderEvents = map[ProviderEvent]string{
 	ProviderEventFundsReleased:               "ProviderEventFundsReleased",
 	ProviderEventFundingInitiated:            "ProviderEventFundingInitiated",
 	ProviderEventFunded:                      "ProviderEventFunded",
+	ProviderEventFundedOfSxx:                 "ProviderEventFundedOfSxx",
 	ProviderEventDataTransferFailed:          "ProviderEventDataTransferFailed",
 	ProviderEventDataRequested:               "ProviderEventDataRequested",
 	ProviderEventDataTransferInitiated:       "ProviderEventDataTransferInitiated",
@@ -321,6 +326,7 @@ var ProviderEvents = map[ProviderEvent]string{
 	ProviderEventVerifiedDataOfSxx:           "ProviderEventVerifiedDataOfSxx",
 	ProviderEventSendResponseFailed:          "ProviderEventSendResponseFailed",
 	ProviderEventDealPublishInitiated:        "ProviderEventDealPublishInitiated",
+	ProviderEventDealPublishInitiatedOfSxx:   "ProviderEventDealPublishInitiatedOfSxx",
 	ProviderEventDealPublished:               "ProviderEventDealPublished",
 	ProviderEventDealPublishedOfSxx:          "ProviderEventDealPublishedOfSxx",
 	ProviderEventDealPublishError:            "ProviderEventDealPublishError",

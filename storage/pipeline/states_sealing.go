@@ -209,6 +209,14 @@ func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) e
 	})
 }
 
+func (m *Sealing) handleWaitPC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
+func (m *Sealing) handleWaitC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkPieces(ctx.Context(), m.maddr, sector.SectorNumber, sector.Pieces, m.Api, false); err != nil { // Sanity check state
 		switch err.(type) {

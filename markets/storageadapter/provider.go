@@ -103,6 +103,7 @@ func (n *ProviderNodeAdapter) OnDealCompleteOfSxx(ctx context.Context, deal stor
 		},
 		KeepUnsealed: deal.FastRetrieval,
 		RemoteFilepath: deal.RemoteFilepath,
+		Worker: deal.Worker,
 	}
 
 	// Attempt to add the piece to the sector

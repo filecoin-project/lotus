@@ -278,6 +278,35 @@ func ReserveProviderFunds(ctx fsm.Context, environment ProviderDealEnvironment, 
 	return ctx.Trigger(storagemarket.ProviderEventFundingInitiated, mcid)
 }
 
+func ReserveProviderFundsOfSxx(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {
+	log.Errorf("zlin ReserveProviderFunds %+v", deal.Worker)
+	node := environment.Node()
+
+	tok, _, err := node.GetChainHead(ctx.Context())
+	if err != nil {
+		return ctx.Trigger(storagemarket.ProviderEventNodeErrored, xerrors.Errorf("acquiring chain head: %w", err))
+	}
+
+	waddr, err := node.GetMinerWorkerAddress(ctx.Context(), deal.Proposal.Provider, tok)
+	if err != nil {
+		return ctx.Trigger(storagemarket.ProviderEventNodeErrored, xerrors.Errorf("looking up miner worker: %w", err))
+	}
+
+	mcid, err := node.ReserveFunds(ctx.Context(), waddr, deal.Proposal.Provider, deal.Proposal.ProviderCollateral)
+	if err != nil {
+		return ctx.Trigger(storagemarket.ProviderEventNodeErrored, xerrors.Errorf("reserving funds: %w", err))
+	}
+
+	_ = ctx.Trigger(storagemarket.ProviderEventFundsReserved, deal.Proposal.ProviderCollateral)
+
+	// if no message was sent, and there was no error, funds were already available
+	if mcid == cid.Undef {
+		return ctx.Trigger(storagemarket.ProviderEventFundedOfSxx, deal.Worker)
+	}
+
+	return ctx.Trigger(storagemarket.ProviderEventFundingInitiated, mcid)
+}
+
 // WaitForFunding waits for a message posted to add funds to the StorageMarketActor to appear on chain
 func WaitForFunding(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {
 	node := environment.Node()
@@ -316,6 +345,29 @@ func PublishDeal(ctx fsm.Context, environment ProviderDealEnvironment, deal stor
 	return ctx.Trigger(storagemarket.ProviderEventDealPublishInitiated, mcid)
 }
 
+func PublishDealOfSxx(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {
+	log.Errorf("zlin PublishDeal %+v", deal.Worker)
+	smDeal := storagemarket.MinerDeal{
+		Client:             deal.Client,
+		ClientDealProposal: deal.ClientDealProposal,
+		ProposalCid:        deal.ProposalCid,
+		State:              deal.State,
+		Ref:                deal.Ref,
+	}
+
+	mcid, err := environment.Node().PublishDeals(ctx.Context(), smDeal)
+	if err != nil {
+		if strings.Contains(err.Error(), "not enough funds") {
+			log.Warnf("publishing deal failed due to lack of funds: %s", err)
+
+			return nil
+		}
+		return ctx.Trigger(storagemarket.ProviderEventNodeErrored, xerrors.Errorf("publishing deal: %w", err))
+	}
+
+	return ctx.Trigger(storagemarket.ProviderEventDealPublishInitiatedOfSxx, mcid, deal.Worker)
+}
+
 // WaitForPublish waits for the publish message on chain and saves the deal id
 // so it can be sent back to the client
 func WaitForPublish(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {
@@ -342,9 +394,33 @@ func WaitForPublish(ctx fsm.Context, environment ProviderDealEnvironment, deal s
 	return ctx.Trigger(storagemarket.ProviderEventDealPublished, res.DealID, res.FinalCid)
 }
 
+func WaitForPublishOfSxx(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {
+	log.Errorf("zlin WaitForPublish %+v", deal.Worker)
+	if deal.PublishCid == nil {
+		log.Errorw("zlin: WaitForPublish deal %+v don't have PublishCid", deal.ProposalCid)
+		return ctx.Trigger(storagemarket.ProviderEventDealPublishError, xerrors.Errorf("PublishStorageDeals errored:  deal.PublishCid is nil"))
+	}
+	res, err := environment.Node().WaitForPublishDeals(ctx.Context(), *deal.PublishCid, deal.Proposal)
+	if err != nil {
+		return ctx.Trigger(storagemarket.ProviderEventDealPublishError, xerrors.Errorf("PublishStorageDeals errored: %w", err))
+	}
+
+	// Once the deal has been published, release funds that were reserved
+	// for deal publishing
+	releaseReservedFunds(ctx, environment, deal)
+
+	// add by lin
+	if os.Getenv("LOTUS_OF_SXX") == "1" && strings.HasPrefix(string(deal.PiecePath), "/"){
+		return ctx.Trigger(storagemarket.ProviderEventDealPublishedOfSxx, res.DealID, res.FinalCid, deal.Worker)
+	}
+	// end
+
+	return ctx.Trigger(storagemarket.ProviderEventDealPublished, res.DealID, res.FinalCid)
+}
+
 // add by lin
 func HandoffDealOfSxx(ctx fsm.Context, environment ProviderDealEnvironment, deal storagemarket.MinerDeal) error {
-	log.Errorw("zlin: HandoffDealOfSxx")
+	log.Errorf("zlin: HandoffDealOfSxx %+v", string(deal.Worker))
 	carFilePath := string(deal.PiecePath)
 	if deal.PiecePath == "" {
 		err := xerrors.Errorf("our path of deal car is nil")
@@ -367,6 +443,7 @@ func HandoffDealOfSxx(ctx fsm.Context, environment ProviderDealEnvironment, deal
 				DealID:             deal.DealID,
 				FastRetrieval:      deal.FastRetrieval,
 				RemoteFilepath:     carFilePath,
+				Worker:             deal.Worker,
 			},
 			deal.Proposal.PieceSize.Unpadded(),
 			reader,

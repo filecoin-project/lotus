@@ -720,7 +720,7 @@ type StorageMinerStruct struct {
 
 		DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
 
-		DealsImportDataOfSxx func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
+		DealsImportDataOfSxx func(p0 context.Context, p1 cid.Cid, p2 string, p3 string) error `perm:"admin"`
 
 		DealsList func(p0 context.Context) ([]*MarketDeal, error) `perm:"admin"`
 
@@ -895,6 +895,8 @@ type StorageMinerStruct struct {
 		SectorsUnsealPiece func(p0 context.Context, p1 storiface.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error `perm:"admin"`
 
 		SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error `perm:"admin"`
+
+		SectorsUpdateOfSxx func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState, p3 string) error `perm:"admin"`
 
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -4363,14 +4365,14 @@ func (s *StorageMinerStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 st
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string) error {
+func (s *StorageMinerStruct) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string, p3 string) error {
 	if s.Internal.DealsImportDataOfSxx == nil {
 		return ErrNotSupported
 	}
-	return s.Internal.DealsImportDataOfSxx(p0, p1, p2)
+	return s.Internal.DealsImportDataOfSxx(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string) error {
+func (s *StorageMinerStub) DealsImportDataOfSxx(p0 context.Context, p1 cid.Cid, p2 string, p3 string) error {
 	return ErrNotSupported
 }
 
@@ -5328,6 +5330,17 @@ func (s *StorageMinerStruct) SectorsUpdate(p0 context.Context, p1 abi.SectorNumb
 }
 
 func (s *StorageMinerStub) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorsUpdateOfSxx(p0 context.Context, p1 abi.SectorNumber, p2 SectorState, p3 string) error {
+	if s.Internal.SectorsUpdateOfSxx == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorsUpdateOfSxx(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SectorsUpdateOfSxx(p0 context.Context, p1 abi.SectorNumber, p2 SectorState, p3 string) error {
 	return ErrNotSupported
 }
 

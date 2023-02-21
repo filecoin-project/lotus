@@ -6,7 +6,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
 type WindowSelector func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int
@@ -72,16 +71,22 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 			for wnd, windowRequest := range sh.OpenWindows {
 
-				// add by pan
+				// add by pan/lin
 				var skip = false
 
-				if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate {
-					i := sh.findWorker(task)
-					if i > -1 {
-						wnd = i
-						windowRequest = sh.OpenWindows[i]
-						skip = true
-					}
+				// if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate {
+				// 	i := sh.findWorker(task)
+				// 	if i > -1 {
+				// 		wnd = i
+				// 		windowRequest = sh.OpenWindows[i]
+				// 		skip = true
+				// 	}
+				// }
+				i := sh.findWorker(task)
+				if i > -1 {
+					wnd = i
+					windowRequest = sh.OpenWindows[i]
+					skip = true
 				}
 				// end
 

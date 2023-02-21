@@ -116,6 +116,7 @@ type MinerDeal struct {
 
 	InboundCAR string
 	RemoteFilepath string
+	Worker string
 }
 
 // NewDealStages creates a new DealStages object ready to be used.

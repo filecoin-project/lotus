@@ -331,7 +331,7 @@ func (p *Provider) Stop() error {
 }
 
 // add by lin
-func (p *Provider) ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, fname string) error {
+func (p *Provider) ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, fname string, worker string) error {
 	// TODO: be able to check if we have enough disk space
 	var d storagemarket.MinerDeal
 	if err := p.deals.Get(propCid).Get(&d); err != nil {
@@ -348,7 +348,7 @@ func (p *Provider) ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, 
 		_ = tempfi.Close()
 	}
 
-	log.Debugw("zlin data.Path: ", fname)
+	log.Errorf("zlin ImportDataForDealOfSxx worker: %+v", worker)
 
 	filestat, _ := tempfi.Stat()
 	carSize := uint64(filestat.Size())
@@ -395,7 +395,7 @@ func (p *Provider) ImportDataForDealOfSxx(ctx context.Context, propCid cid.Cid, 
 
 	log.Debugw("will fire ProviderEventVerifiedDataOfSxx for file", "propCid", propCid)
 
-	return p.deals.Send(propCid, storagemarket.ProviderEventVerifiedDataOfSxx, filestore.Path(fname), filestore.Path(""))
+	return p.deals.Send(propCid, storagemarket.ProviderEventVerifiedDataOfSxx, filestore.Path(fname), filestore.Path(""), worker)
 }
 // end
 

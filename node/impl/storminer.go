@@ -384,6 +384,10 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
+func (sm *StorageMinerAPI) SectorsUpdateOfSxx(ctx context.Context, id abi.SectorNumber, state api.SectorState, worker string) error {
+	return sm.Miner.ForceSectorStateOfSxx(ctx, id, sealing.SectorState(state), worker)
+}
+
 func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
 	return sm.Miner.RemoveSector(ctx, id)
 }
@@ -1225,9 +1229,9 @@ func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context,
 }
 
 // add by lin
-func (sm *StorageMinerAPI) DealsImportDataOfSxx(ctx context.Context, deal cid.Cid, fname string) error {
+func (sm *StorageMinerAPI) DealsImportDataOfSxx(ctx context.Context, deal cid.Cid, fname string, worker string) error {
 
-	return sm.StorageProvider.ImportDataForDealOfSxx(ctx, deal, fname)
+	return sm.StorageProvider.ImportDataForDealOfSxx(ctx, deal, fname, worker)
 }
 // end
 

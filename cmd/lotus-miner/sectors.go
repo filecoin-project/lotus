@@ -1763,7 +1763,9 @@ var sectorsUpdateCmd = &cli.Command{
 			return nil
 		}
 
-		return minerAPI.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
+		fmt.Printf("new worker :%+v", cctx.Args().Get(2))
+		// return minerAPI.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
+		return minerAPI.SectorsUpdateOfSxx(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)), cctx.Args().Get(2))
 	},
 }
 

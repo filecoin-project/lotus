@@ -110,6 +110,12 @@ const (
 	// StorageDealTransferQueued means the data transfer request has been queued and will be executed soon.
 	StorageDealTransferQueued
 
+	StorageDealReserveProviderFundsOfSxx
+
+	StorageDealPublishOfSxx
+
+	StorageDealPublishingOfSxx
+
 	StorageDealStagedOfSxx
 
 )
@@ -138,11 +144,14 @@ var DealStates = map[StorageDealStatus]string{
 	StorageDealWaitingForData:               "StorageDealWaitingForData",
 	StorageDealVerifyData:                   "StorageDealVerifyData",
 	StorageDealReserveProviderFunds:         "StorageDealReserveProviderFunds",
+	StorageDealReserveProviderFundsOfSxx:    "StorageDealReserveProviderFundsOfSxx",
 	StorageDealReserveClientFunds:           "StorageDealReserveClientFunds",
 	StorageDealProviderFunding:              "StorageDealProviderFunding",
 	StorageDealClientFunding:                "StorageDealClientFunding",
 	StorageDealPublish:                      "StorageDealPublish",
+	StorageDealPublishOfSxx:                 "StorageDealPublishOfSxx",
 	StorageDealPublishing:                   "StorageDealPublishing",
+	StorageDealPublishingOfSxx:              "StorageDealPublishingOfSxx",
 	StorageDealError:                        "StorageDealError",
 	StorageDealFinalizing:                   "StorageDealFinalizing",
 	StorageDealClientTransferRestart:        "StorageDealClientTransferRestart",
@@ -174,11 +183,14 @@ var DealStatesDescriptions = map[StorageDealStatus]string{
 	StorageDealWaitingForData:               "Waiting for data",
 	StorageDealVerifyData:                   "Verifying data",
 	StorageDealReserveProviderFunds:         "Reserving provider funds",
+	StorageDealReserveProviderFundsOfSxx:    "Reserving provider funds",
 	StorageDealReserveClientFunds:           "Reserving client funds",
 	StorageDealProviderFunding:              "Provider funding",
 	StorageDealClientFunding:                "Client funding",
 	StorageDealPublish:                      "Publish",
+	StorageDealPublishOfSxx:                 "Publish",
 	StorageDealPublishing:                   "Publishing",
+	StorageDealPublishingOfSxx:              "Publishing",
 	StorageDealError:                        "Error",
 	StorageDealFinalizing:                   "Finalizing",
 	StorageDealClientTransferRestart:        "Client transfer restart",
