@@ -115,8 +115,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		return nil
 	}
 
-	// Prioritize hot store compaction over cold store prune
-
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
 		s.beginTxnProtect()
@@ -132,7 +130,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 
 			log.Infow("compaction done", "took", time.Since(start))
 		}()
-		// only prune if auto prune is enabled and after at least one compaction
 	} else {
 		// no compaction necessary
 		atomic.StoreInt32(&s.compacting, 0)
@@ -639,6 +636,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// some stats for logging
 	var hotCnt, coldCnt, purgeCnt int
+	var hotSize int
 	err = s.hot.ForEachKey(func(c cid.Cid) error {
 		// was it marked?
 		mark, err := markSet.Has(c)
@@ -648,6 +646,11 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 		if mark {
 			hotCnt++
+			sz, err := s.hot.GetSize(s.ctx, c)
+			if err != nil {
+				log.Errorf("Error measure size of %s which should be in hot store %w", c, err)
+			}
+			hotSize += sz
 			return nil
 		}
 
@@ -690,6 +693,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	log.Infow("cold collection done", "took", time.Since(startCollect))
 
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt)
+	log.Infow("hot store size should be ~%d after compaction (+ badger gc) it will a little bigger if cold blocks are accessed and brought back to hot before critical section ", hotSize)
 	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
@@ -904,7 +908,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	copy(toWalk, ts.Cids())
 	walkCnt := new(int64)
 	scanCnt := new(int64)
-
+	latest := ts.Height()
 	tsRef := func(blkCids []cid.Cid) (cid.Cid, error) {
 		return types.NewTipSetKey(blkCids...).Cid()
 	}
@@ -987,6 +991,12 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if hdr.Height > 0 {
 			mx.Lock()
 			toWalk = append(toWalk, hdr.Parents...)
+			if hdr.Height < latest {
+				latest = hdr.Height
+				if latest%1000 == 0 {
+					log.Debugf("Chain walk reached epoch %d", latest)
+				}
+			}
 			mx.Unlock()
 		}
 

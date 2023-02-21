@@ -397,7 +397,11 @@ var splitstoreInfoCmd = &cli.Command{
 		for k, v := range info {
 			fmt.Print(k)
 			fmt.Print(": ")
-			fmt.Println(v)
+			if i, ok := v.(int64); ok {
+				fmt.Printf("%d\n", i)
+			} else {
+				fmt.Println(v)
+			}
 		}
 
 		return nil

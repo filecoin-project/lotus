@@ -329,9 +329,9 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	}
 
 	s.pruneIndex++
-	err = s.ds.Put(s.ctx, pruneIndexKey, int64ToBytes(s.compactionIndex))
+	err = s.ds.Put(s.ctx, pruneIndexKey, int64ToBytes(s.pruneIndex))
 	if err != nil {
-		return xerrors.Errorf("error saving compaction index: %w", err)
+		return xerrors.Errorf("error saving prune index: %w", err)
 	}
 
 	return nil
