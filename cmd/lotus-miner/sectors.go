@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -709,7 +710,7 @@ type PseudoExtendSectorExpirationParams struct {
 	Extensions []PseudoExpirationExtension
 }
 
-func NewPseudoExtendParams(p *miner.ExtendSectorExpirationParams) (*PseudoExtendSectorExpirationParams, error) {
+func NewPseudoExtendParams(p *miner.ExtendSectorExpiration2Params) (*PseudoExtendSectorExpirationParams, error) {
 	res := PseudoExtendSectorExpirationParams{}
 	for _, ext := range p.Extensions {
 		scount, err := ext.Sectors.Count()
@@ -833,6 +834,10 @@ var sectorsExtendCmd = &cli.Command{
 			Name:  "only-cc",
 			Usage: "only extend CC sectors (useful for making sector ready for snap upgrade)",
 		},
+		&cli.BoolFlag{
+			Name:  "drop-claims",
+			Usage: "drop claims for sectors that can be extended, but only by dropping some of their verified power claims",
+		},
 		&cli.Int64Flag{
 			Name:  "tolerance",
 			Usage: "don't try to extend sectors by fewer than this number of epochs, defaults to 7 days",
@@ -845,7 +850,7 @@ var sectorsExtendCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "max-sectors",
-			Usage: "the maximum number of sectors contained in each message message",
+			Usage: "the maximum number of sectors contained in each message",
 		},
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -900,7 +905,8 @@ var sectorsExtendCmd = &cli.Command{
 		}
 
 		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
-		mas, err := lminer.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		adtStore := adt.WrapStore(ctx, cbor.NewCborStore(tbs))
+		mas, err := lminer.Load(adtStore, mact)
 		if err != nil {
 			return err
 		}
@@ -1051,44 +1057,124 @@ var sectorsExtendCmd = &cli.Command{
 			}
 		}
 
-		var params []miner.ExtendSectorExpirationParams
+		verifregAct, err := fullApi.StateGetActor(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to lookup verifreg actor: %w", err)
+		}
 
-		p := miner.ExtendSectorExpirationParams{}
+		verifregSt, err := verifreg.Load(adtStore, verifregAct)
+		if err != nil {
+			return xerrors.Errorf("failed to load verifreg state: %w", err)
+		}
+
+		claimsMap, err := verifregSt.GetClaims(maddr)
+		if err != nil {
+			return xerrors.Errorf("failed to lookup claims for miner: %w", err)
+		}
+
+		claimIdsBySector, err := verifregSt.GetClaimIdsBySector(maddr)
+		if err != nil {
+			return xerrors.Errorf("failed to lookup claim IDs by sector: %w", err)
+		}
+
+		sectorsMax, err := policy.GetAddressedSectorsMax(nv)
+		if err != nil {
+			return err
+		}
+
+		declMax, err := policy.GetDeclarationsMax(nv)
+		if err != nil {
+			return err
+		}
+
+		addrSectors := sectorsMax
+		if cctx.Int("max-sectors") != 0 {
+			addrSectors = cctx.Int("max-sectors")
+			if addrSectors > sectorsMax {
+				return xerrors.Errorf("the specified max-sectors exceeds the maximum limit")
+			}
+		}
+
+		var params []miner.ExtendSectorExpiration2Params
+
+		p := miner.ExtendSectorExpiration2Params{}
 		scount := 0
 
 		for l, exts := range extensions {
 			for newExp, numbers := range exts {
-				scount += len(numbers)
-				var addrSectors int
-				sectorsMax, err := policy.GetAddressedSectorsMax(nv)
-				if err != nil {
-					return err
-				}
-				if cctx.Int("max-sectors") == 0 {
-					addrSectors = sectorsMax
-				} else {
-					addrSectors = cctx.Int("max-sectors")
-					if addrSectors > sectorsMax {
-						return xerrors.Errorf("the specified max-sectors exceeds the maximum limit")
+				sectorsWithoutClaimsToExtend := bitfield.New()
+				var sectorsWithClaims []miner.SectorClaim
+				for _, sectorNumber := range numbers {
+					claimIdsToMaintain := make([]verifreg.ClaimId, 0)
+					claimIdsToDrop := make([]verifreg.ClaimId, 0)
+					cannotExtendSector := false
+					claimIds, ok := claimIdsBySector[sectorNumber]
+					// Nothing to check, add to ccSectors
+					if !ok {
+						sectorsWithoutClaimsToExtend.Set(uint64(sectorNumber))
+					} else {
+						for _, claimId := range claimIds {
+							claim, ok := claimsMap[claimId]
+							if !ok {
+								return xerrors.Errorf("failed to find claim for claimId %d", claimId)
+							}
+							claimExpiration := claim.TermStart + claim.TermMax
+							// can be maintained in the extended sector
+							if claimExpiration > newExp {
+								claimIdsToMaintain = append(claimIdsToMaintain, claimId)
+							} else {
+								sectorInfo, ok := activeSectorsInfo[sectorNumber]
+								if !ok {
+									return xerrors.Errorf("failed to find sector in active sector set: %w", err)
+								}
+								if !cctx.Bool("drop-claims") ||
+									// FIP-0045 requires the claim minimum duration to have passed
+									currEpoch <= (claim.TermStart+claim.TermMin) ||
+									// FIP-0045 requires the sector to be in its last 30 days of life
+									(currEpoch <= sectorInfo.Expiration-builtin.EndOfLifeClaimDropPeriod) {
+									fmt.Printf("skipping sector %d because claim %d does not live long enough \n", sectorNumber, claimId)
+									cannotExtendSector = true
+									break
+								}
+
+								claimIdsToDrop = append(claimIdsToDrop, claimId)
+							}
+						}
+						if cannotExtendSector {
+							continue
+						}
+
+						if len(claimIdsToMaintain)+len(claimIdsToDrop) != 0 {
+							sectorsWithClaims = append(sectorsWithClaims, miner.SectorClaim{
+								SectorNumber:   sectorNumber,
+								MaintainClaims: claimIdsToMaintain,
+								DropClaims:     claimIdsToDrop,
+							})
+						}
 					}
 				}
 
-				declMax, err := policy.GetDeclarationsMax(nv)
+				sectorsWithoutClaimsCount, err := sectorsWithoutClaimsToExtend.Count()
 				if err != nil {
-					return err
-				}
-				if scount > addrSectors || len(p.Extensions) == declMax {
-					params = append(params, p)
-					p = miner.ExtendSectorExpirationParams{}
-					scount = len(numbers)
+					return xerrors.Errorf("failed to count cc sectors: %w", err)
 				}
 
-				p.Extensions = append(p.Extensions, miner.ExpirationExtension{
-					Deadline:      l.Deadline,
-					Partition:     l.Partition,
-					Sectors:       SectorNumsToBitfield(numbers),
-					NewExpiration: newExp,
+				sectorsInDecl := int(sectorsWithoutClaimsCount) + len(sectorsWithClaims)
+
+				if scount+sectorsInDecl > addrSectors || len(p.Extensions) >= declMax {
+					params = append(params, p)
+					p = miner.ExtendSectorExpiration2Params{}
+					scount = sectorsInDecl
+				}
+
+				p.Extensions = append(p.Extensions, miner.ExpirationExtension2{
+					Deadline:          l.Deadline,
+					Partition:         l.Partition,
+					Sectors:           SectorNumsToBitfield(numbers),
+					SectorsWithClaims: sectorsWithClaims,
+					NewExpiration:     newExp,
 				})
+
 			}
 		}
 
