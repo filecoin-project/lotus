@@ -33,18 +33,11 @@ v18:build lotus:
     paths: [lotus, lotus-miner, lotus-worker, lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
   before_script:
     # ci cache will create empty dir, which should not exist
-    - ls -alh extern
-    - echo "ls"
-    - ls extern/serialization-vectors
-    - echo "determine empty:"
-    - '[ -z "$(ls extern/serialization-vectors)" ] && echo empty'
     - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors'
     - '[ -z "$(ls extern/test-vectors)" ] && rm -r extern/test-vectors'
     - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
-    - ls -alh extern
     - mkdir -p .go
   script:
-    - ls -alh && echo "\n" && ls -alh build && echo "\n" && ls -alh extern
     - make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
   only:
     refs:
