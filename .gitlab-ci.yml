@@ -1,0 +1,31 @@
+default:
+  image: registry.sxxfuture.net/lib/docker/lotus-builder/debian:230224-002040
+
+stages:
+  - build
+
+v18:build lotus:
+  tags: [docker, x86, merak]
+  stage: build
+  variables:
+    HTTP_PROXY=$DEFAULT_PROXY
+    HTTPS_PROXY=$DEFAULT_PROXY
+    http_proxy=$DEFAULT_PROXY
+    https_proxy=$DEFAULT_PROXY
+    RUSTFLAGS=""
+    GOFLAGS=""
+  cache:
+    key: build-deps-$CI_COMMIT_REF_SLUG
+    paths:
+      - build/.update-modules
+      - build/.filecoin-install
+      - extern/serialization-vectors/
+      - extern/test-vectors/
+      - extern/filecoin-ffi/
+  artifacts:
+    paths: [lotus, lotus-miner, lotus-worker, lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
+  script:
+    - make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
+  only:
+    refs:
+      - v18_of_car_filbase
