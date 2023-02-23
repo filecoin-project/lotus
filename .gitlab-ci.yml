@@ -4,7 +4,7 @@ default:
 stages:
   - build
 
-v18:build lotus:
+.build-snippet:
   tags: [docker, x86, merak]
   stage: build
   variables:
@@ -22,6 +22,7 @@ v18:build lotus:
           - go.sum
       paths:
         - .go/
+      when: always
     - key: build-deps-$CI_COMMIT_REF_SLUG
       paths:
         - build/.update-modules
@@ -29,16 +30,32 @@ v18:build lotus:
         - extern/serialization-vectors/
         - extern/test-vectors/
         - extern/filecoin-ffi/
-  artifacts:
-    paths: [lotus, lotus-miner, lotus-worker, lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
   before_script:
     # ci cache will create empty dir, which should not exist
     - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors'
     - '[ -z "$(ls extern/test-vectors)" ] && rm -r extern/test-vectors'
     - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
     - mkdir -p .go
+
+"v18: build":
+  extends: .build-snippet
+  artifacts:
+    name: "v18 binaries"
+    paths: [lotus, lotus-miner, lotus-worker]
   script:
-    - make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
+    - make lotus lotus-miner lotus-worker
   only:
     refs:
       - v18_of_car_filbase
+
+"v18: build external binaries":
+  extends: .build-snippet
+  artifacts:
+    name: "v18 external binaries"
+    paths: [lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
+  script:
+    - make lotus-shed lotus-wallet lotus-gateway lotus-stats
+  only:
+    refs:
+      - v18_of_car_filbase
+  when: manual
