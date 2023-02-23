@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 
-	scServer "github.com/moran666666/sector-counter/server"
+	scServer "git.sxxfuture.net/external-archive/github/moran666666/sector-counter/server"
 )
 
 var runCmd = &cli.Command{
