@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -56,6 +57,7 @@ var ChainCmd = &cli.Command{
 		ChainGetCmd,
 		ChainBisectCmd,
 		ChainExportCmd,
+		ChainExportRangeCmd,
 		SlashConsensusFault,
 		ChainGasPriceCmd,
 		ChainInspectUsage,
@@ -1141,6 +1143,109 @@ var ChainExportCmd = &cli.Command{
 			return xerrors.Errorf("incomplete export (remote connection lost?)")
 		}
 
+		return nil
+	},
+}
+
+var ChainExportRangeCmd = &cli.Command{
+	Name:      "export-range",
+	Usage:     "export chain to a car file",
+	ArgsUsage: "",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "head",
+			Usage: "specify tipset to start the export from (higher epoch)",
+			Value: "@head",
+		},
+		&cli.StringFlag{
+			Name:  "tail",
+			Usage: "specify tipset to end the export at (lower epoch)",
+			Value: "@tail",
+		},
+		&cli.BoolFlag{
+			Name:  "messages",
+			Usage: "specify if messages should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "receipts",
+			Usage: "specify if receipts should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "stateroots",
+			Usage: "specify if stateroots should be include",
+			Value: false,
+		},
+		&cli.IntFlag{
+			Name:  "workers",
+			Usage: "specify the number of workers",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "write-buffer",
+			Usage: "specify write buffer size",
+			Value: 1 << 20,
+		},
+		&cli.BoolFlag{
+			Name:   "internal",
+			Usage:  "write the file locally to disk",
+			Value:  true,
+			Hidden: true, // currently, non-internal export is not implemented.
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var head, tail *types.TipSet
+		headstr := cctx.String("head")
+		if headstr == "@head" {
+			head, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			head, err = ParseTipSetRef(ctx, api, headstr)
+			if err != nil {
+				return fmt.Errorf("parsing head: %w", err)
+			}
+		}
+		tailstr := cctx.String("tail")
+		if tailstr == "@tail" {
+			tail, err = api.ChainGetGenesis(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			tail, err = ParseTipSetRef(ctx, api, tailstr)
+			if err != nil {
+				return fmt.Errorf("parsing tail: %w", err)
+			}
+		}
+
+		if head.Height() < tail.Height() {
+			return errors.New("Height of --head tipset must be greater or equal to the height of the --tail tipset")
+		}
+
+		if !cctx.Bool("internal") {
+			return errors.New("Non-internal exports are not implemented")
+		}
+
+		err = api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
+			WriteBufferSize:   cctx.Int("write-buffer"),
+			NumWorkers:        cctx.Int("workers"),
+			IncludeMessages:   cctx.Bool("messages"),
+			IncludeReceipts:   cctx.Bool("receipts"),
+			IncludeStateRoots: cctx.Bool("stateroots"),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	},
 }

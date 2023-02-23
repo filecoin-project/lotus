@@ -2110,6 +2110,7 @@ COMMANDS:
      get                               Get chain DAG node by path
      bisect                            bisect chain for an event
      export                            export chain to a car file
+     export-range                      export chain to a car file
      slash-consensus                   Report consensus fault
      gas-price                         Estimate gas prices
      inspect-usage                     Inspect block space usage of a given tipset
@@ -2288,6 +2289,25 @@ OPTIONS:
    --recent-stateroots value  specify the number of recent state roots to include in the export (default: 0)
    --skip-old-msgs            (default: false)
    --tipset value             specify tipset to start the export from (default: "@head")
+   
+```
+
+### lotus chain export-range
+```
+NAME:
+   lotus chain export-range - export chain to a car file
+
+USAGE:
+   lotus chain export-range [command options] [arguments...]
+
+OPTIONS:
+   --head value          specify tipset to start the export from (higher epoch) (default: "@head")
+   --messages            specify if messages should be include (default: false)
+   --receipts            specify if receipts should be include (default: false)
+   --stateroots          specify if stateroots should be include (default: false)
+   --tail value          specify tipset to end the export at (lower epoch) (default: "@tail")
+   --workers value       specify the number of workers (default: 1)
+   --write-buffer value  specify write buffer size (default: 1048576)
    
 ```
 

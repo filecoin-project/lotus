@@ -13,6 +13,7 @@
   * [ChainCheckBlockstore](#ChainCheckBlockstore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
+  * [ChainExportRangeInternal](#ChainExportRangeInternal)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
   * [ChainGetEvents](#ChainGetEvents)
@@ -472,6 +473,50 @@ Inputs:
 ```
 
 Response: `"Ynl0ZSBhcnJheQ=="`
+
+### ChainExportRangeInternal
+ChainExportRangeInternal triggers the export of a chain
+CAR-snapshot directly to disk. It is similar to ChainExport,
+except, depending on options, the snapshot can include receipts,
+messages and stateroots for the length between the specified head
+and tail, thus producing "archival-grade" snapshots that include
+all the on-chain data.  The header chain is included back to
+genesis and these snapshots can be used to initialize Filecoin
+nodes.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  {
+    "WriteBufferSize": 123,
+    "NumWorkers": 123,
+    "IncludeMessages": true,
+    "IncludeReceipts": true,
+    "IncludeStateRoots": true
+  }
+]
+```
+
+Response: `{}`
 
 ### ChainGetBlock
 ChainGetBlock returns the block specified by the given CID.
