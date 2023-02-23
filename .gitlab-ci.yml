@@ -16,17 +16,26 @@ v18:build lotus:
     RUSTFLAGS: ""
     GOFLAGS: ""
   cache:
-    key: build-deps-$CI_COMMIT_REF_SLUG
-    paths:
-      - .go/
-      - build/.update-modules
-      - build/.filecoin-install
-      - extern/serialization-vectors/
-      - extern/test-vectors/
-      - extern/filecoin-ffi/
+    - key:
+        files:
+          - go.mod
+          - go.sum
+      paths:
+        - .go/
+    - key: build-deps-$CI_COMMIT_REF_SLUG
+      paths:
+        - build/.update-modules
+        - build/.filecoin-install
+        - extern/serialization-vectors/
+        - extern/test-vectors/
+        - extern/filecoin-ffi/
   artifacts:
     paths: [lotus, lotus-miner, lotus-worker, lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
   before_script:
+    # ci cache will create empty dir, which should not exist 
+    - '[ -z "$(ls -A extern/serialization-vectors)" ] && rm -r extern/serialization-vectors'
+    - '[ -z "$(ls -A extern/test-vectors)" ] && rm -r extern/test-vectors'
+    - '[ -z "$(ls -A extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
     - mkdir -p .go
   script:
     - ls -alh && echo "\n" && ls -alh build && echo "\n" && ls -alh extern
