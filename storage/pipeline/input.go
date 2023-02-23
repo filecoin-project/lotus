@@ -3,10 +3,11 @@ package sealing
 import (
 	"context"
 	"os"
-	"sort"
-	"time"
-	"strings"
 	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
 	// "io/ioutil"
 
 	"github.com/ipfs/go-cid"
@@ -30,7 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 
-	scClient "github.com/moran666666/sector-counter/client"
+	scClient "git.sxxfuture.net/external-archive/github/moran666666/sector-counter/client"
 )
 
 func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) error {
@@ -853,7 +854,7 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 		sid = sid0
 	}
 	// end
- 
+
 	err := m.sealer.NewSector(ctx, m.minerSector(sp, sid))
 	if err != nil {
 		return 0, xerrors.Errorf("initializing sector: %w", err)
