@@ -7,6 +7,7 @@ stages:
 .build-snippet:
   tags: [docker, x86, merak]
   stage: build
+  needs: []
   variables:
     GOPATH: $CI_PROJECT_DIR/.go
     HTTP_PROXY: $DEFAULT_PROXY
@@ -37,13 +38,35 @@ stages:
     - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
     - mkdir -p .go
 
-"v18: build":
+"v18: build lotus":
   extends: .build-snippet
   artifacts:
     name: "v18 binaries"
-    paths: [lotus, lotus-miner, lotus-worker]
+    paths: [lotus]
   script:
-    - make lotus lotus-miner lotus-worker
+    - make lotus
+  only:
+    refs:
+      - v18_of_car_filbase
+
+"v18: build lotus-miner":
+  extends: .build-snippet
+  artifacts:
+    name: "v18 binaries"
+    paths: [lotus-miner]
+  script:
+    - make lotus-miner
+  only:
+    refs:
+      - v18_of_car_filbase
+
+"v18: build lotus-worker":
+  extends: .build-snippet
+  artifacts:
+    name: "v18 binaries"
+    paths: [lotus-worker]
+  script:
+    - make lotus-worker
   only:
     refs:
       - v18_of_car_filbase
