@@ -2,13 +2,11 @@ default:
   image: registry.sxxfuture.net/lib/docker/lotus-builder/debian:230224-002040
 
 stages:
-  - build deps
   - build
 
 .build-snippet:
   tags: [docker, x86, merak]
   stage: build
-  needs: ["build deps"]
   variables:
     GOPATH: $CI_PROJECT_DIR/.go
     HTTP_PROXY: $DEFAULT_PROXY
@@ -24,7 +22,6 @@ stages:
           - go.sum
       paths:
         - .go/
-      policy: pull
     - key: build-deps-$CI_COMMIT_REF_SLUG
       paths:
         - build/.update-modules
@@ -32,7 +29,6 @@ stages:
         - extern/serialization-vectors/
         - extern/test-vectors/
         - extern/filecoin-ffi/
-      policy: pull
   before_script:
     # ci cache will create empty dir, which should not exist
     - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors'
@@ -40,59 +36,13 @@ stages:
     - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
     - mkdir -p .go
 
-"build deps":
-  extends: .build-snippet
-  stage: build deps
-  needs: []
-  cache:
-    - key:
-        files:
-          - go.mod
-          - go.sum
-      paths:
-        - .go/
-      policy: pull-push
-    - key: build-deps-$CI_COMMIT_REF_SLUG
-      paths:
-        - build/.update-modules
-        - build/.filecoin-install
-        - extern/serialization-vectors/
-        - extern/test-vectors/
-        - extern/filecoin-ffi/
-      policy: pull-push
-  script:
-    - go mod download
-    - make deps
-
 "v18: build lotus":
   extends: .build-snippet
   artifacts:
-    name: "v18 lotus"
-    paths: [lotus]
+    name: "v18 binaries"
+    paths: [lotus, lotus-miner, lotus-worker]
   script:
-    - make lotus
-  only:
-    refs:
-      - v18_of_car_filbase
-
-"v18: build lotus-miner":
-  extends: .build-snippet
-  artifacts:
-    name: "v18 lotus-miner"
-    paths: [lotus-miner]
-  script:
-    - make lotus-miner
-  only:
-    refs:
-      - v18_of_car_filbase
-
-"v18: build lotus-worker":
-  extends: .build-snippet
-  artifacts:
-    name: "v18 lotus-worker"
-    paths: [lotus-worker]
-  script:
-    - make lotus-worker
+    - make lotus lotus-miner lotus-worker
   only:
     refs:
       - v18_of_car_filbase
