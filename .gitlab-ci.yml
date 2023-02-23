@@ -25,6 +25,7 @@ v18:build lotus:
   artifacts:
     paths: [lotus, lotus-miner, lotus-worker, lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
   script:
+    - make deps
     - make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
   only:
     refs:
