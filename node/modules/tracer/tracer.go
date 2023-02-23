@@ -77,8 +77,8 @@ func (lt *lotusTracer) PeerScores(scores map[peer.ID]*pubsub.PeerScoreSnapshot) 
 
 		evt := &LotusTraceEvent{
 			Type:       *TraceEventPeerScores.Enum(),
-			PeerID:     []byte(lt.pid),
 			Timestamp:  &now,
+			PeerID:     []byte(lt.pid),
 			SourceAuth: lt.sa,
 			PeerScore: TraceEventPeerScore{
 				PeerID:             []byte(pid),
