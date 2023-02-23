@@ -33,9 +33,8 @@ var diffMinerStates = &cli.Command{
 	ArgsUsage: "<stateCidA> <stateCidB>",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

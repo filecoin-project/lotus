@@ -265,6 +265,20 @@ func TestFEVMDelegateCall(t *testing.T) {
 	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResultActor)
+
+	// The implementation's storage should not have been updated.
+	actorAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(actorAddr)
+	require.NoError(t, err)
+	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(make([]byte, 32)), value)
+
+	// The storage actor's storage _should_ have been updated
+	storageAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(storageAddr)
+	require.NoError(t, err)
+	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(expectedResult), value)
 }
 
 // TestFEVMDelegateCallRevert makes a delegatecall action and then calls revert.
@@ -842,4 +856,101 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 
 	// The receive() function emits one log, that's how we know we hit it.
 	require.Len(t, receipt.Logs, 1)
+}
+
+// This test ensures that we can deploy new contracts from a solidity call to `transfer` without
+// exceeding the 10M gas limit.
+func TestFEVMTestDeployOnTransfer(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	fromAddr := client.DefaultKey.Address
+	t.Log("from - ", fromAddr)
+
+	//create contract A
+	filenameStorage := "contracts/ValueSender.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
+
+	//send to some random address.
+	params := [32]byte{}
+	params[30] = 0xff
+	randomAddr, err := ethtypes.CastEthAddress(params[12:])
+	value := big.NewInt(100)
+	entryPoint := kit.CalcFuncSignature("sendEthToB(address)")
+	require.NoError(t, err)
+	ret, err := client.EVM().InvokeSolidityWithValue(ctx, fromAddr, contractAddr, entryPoint, params[:], value)
+	require.NoError(t, err)
+	require.True(t, ret.Receipt.ExitCode.IsSuccess())
+
+	balance, err := client.EVM().EthGetBalance(ctx, randomAddr, "latest")
+	require.NoError(t, err)
+	require.Equal(t, value.Int, balance.Int)
+
+	filAddr, err := randomAddr.ToFilecoinAddress()
+	require.NoError(t, err)
+	client.AssertActorType(ctx, filAddr, manifest.PlaceholderKey)
+}
+
+func TestFEVMProxyUpgradeable(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install transparently upgradeable proxy
+	proxyFilename := "contracts/TransparentUpgradeableProxy.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, proxyFilename)
+
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "test()", []byte{})
+	require.NoError(t, err)
+}
+
+func TestFEVMGetBlockDifficulty(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/GetDifficulty.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDifficulty()", []byte{})
+	require.NoError(t, err)
+	require.Equal(t, len(ret), 32)
+}
+
+func TestFEVMErrorParsing(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	e := client.EVM()
+
+	_, contractAddr := e.DeployContractFromFilename(ctx, "contracts/Errors.hex")
+	contractAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+	customError := ethtypes.EthBytes(kit.CalcFuncSignature("CustomError()")).String()
+	for sig, expected := range map[string]string{
+		"failRevertEmpty()":  "none",
+		"failRevertReason()": "Error(my reason)",
+		"failAssert()":       "Assert()",
+		"failDivZero()":      "DivideByZero()",
+		"failCustom()":       customError,
+	} {
+		sig := sig
+		expected := fmt.Sprintf("exit 33, revert reason: %s, vm error", expected)
+		t.Run(sig, func(t *testing.T) {
+			entryPoint := kit.CalcFuncSignature(sig)
+			t.Run("EthCall", func(t *testing.T) {
+				_, err := e.EthCall(ctx, ethtypes.EthCall{
+					To:   &contractAddrEth,
+					Data: entryPoint,
+				}, "latest")
+				require.ErrorContains(t, err, expected)
+			})
+			t.Run("EthEstimateGas", func(t *testing.T) {
+				_, err := e.EthEstimateGas(ctx, ethtypes.EthCall{
+					To:   &contractAddrEth,
+					Data: entryPoint,
+				})
+				require.ErrorContains(t, err, expected)
+			})
+		})
+	}
 }

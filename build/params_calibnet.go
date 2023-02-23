@@ -4,7 +4,6 @@
 package build
 
 import (
-	"math"
 	"os"
 	"strconv"
 
@@ -71,7 +70,8 @@ const UpgradeSkyrHeight = 510
 
 const UpgradeSharkHeight = 16800 // 6 days after genesis
 
-const UpgradeHyggeHeight = math.MaxInt64
+// 2023-02-21T16:30:00Z
+const UpgradeHyggeHeight = 322354
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

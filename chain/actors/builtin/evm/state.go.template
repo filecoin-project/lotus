@@ -4,6 +4,8 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	evm{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}evm"
 )
@@ -38,6 +40,10 @@ type state{{.v}} struct {
 
 func (s *state{{.v}}) Nonce() (uint64, error) {
 	return s.State.Nonce, nil
+}
+
+func (s *state{{.v}}) IsAlive() (bool, error) {
+	return s.State.Tombstone == nil, nil
 }
 
 func (s *state{{.v}}) GetState() interface{} {

@@ -178,7 +178,7 @@
 													"s",
 													"type",
 													"value",
-													"yParity"
+													"v"
 												],
 												"properties": {
 													"type": {
@@ -253,8 +253,8 @@
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "Chain ID that this transaction is valid on."
 													},
-													"yParity": {
-														"title": "yParity",
+													"v": {
+														"title": "v",
 														"type": "string",
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -285,7 +285,7 @@
 													"s",
 													"type",
 													"value",
-													"yParity"
+													"v"
 												],
 												"properties": {
 													"type": {
@@ -354,8 +354,8 @@
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "Chain ID that this transaction is valid on."
 													},
-													"yParity": {
-														"title": "yParity",
+													"v": {
+														"title": "v",
 														"type": "string",
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -649,7 +649,7 @@
 													"s",
 													"type",
 													"value",
-													"yParity"
+													"v"
 												],
 												"properties": {
 													"type": {
@@ -724,8 +724,8 @@
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "Chain ID that this transaction is valid on."
 													},
-													"yParity": {
-														"title": "yParity",
+													"v": {
+														"title": "v",
 														"type": "string",
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -756,7 +756,7 @@
 													"s",
 													"type",
 													"value",
-													"yParity"
+													"v"
 												],
 												"properties": {
 													"type": {
@@ -825,8 +825,8 @@
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "Chain ID that this transaction is valid on."
 													},
-													"yParity": {
-														"title": "yParity",
+													"v": {
+														"title": "v",
 														"type": "string",
 														"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 														"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -1794,9 +1794,9 @@
 			"result": {
 				"name": "Filter Identifier",
 				"schema": {
-					"title": "hex encoded unsigned integer",
+					"title": "32 byte hex value",
 					"type": "string",
-					"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+					"pattern": "^0x[0-9a-f]{64}$"
 				}
 			}
 		},
@@ -1807,9 +1807,9 @@
 			"result": {
 				"name": "Filter Identifier",
 				"schema": {
-					"title": "hex encoded unsigned integer",
+					"title": "32 byte hex value",
 					"type": "string",
-					"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+					"pattern": "^0x[0-9a-f]{64}$"
 				}
 			}
 		},
@@ -1820,9 +1820,9 @@
 			"result": {
 				"name": "Filter Identifier",
 				"schema": {
-					"title": "hex encoded unsigned integer",
+					"title": "32 byte hex value",
 					"type": "string",
-					"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+					"pattern": "^0x[0-9a-f]{64}$"
 				}
 			}
 		},
@@ -1833,9 +1833,9 @@
 				{
 					"name": "Filter Identifier",
 					"schema": {
-						"title": "hex encoded unsigned integer",
+						"title": "32 byte hex value",
 						"type": "string",
-						"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+						"pattern": "^0x[0-9a-f]{64}$"
 					}
 				}
 			],
@@ -1853,9 +1853,9 @@
 				{
 					"name": "Filter Identifier",
 					"schema": {
-						"title": "hex encoded unsigned integer",
+						"title": "32 byte hex value",
 						"type": "string",
-						"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+						"pattern": "^0x[0-9a-f]{64}$"
 					}
 				}
 			],
@@ -1954,9 +1954,9 @@
 				{
 					"name": "Filter Identifier",
 					"schema": {
-						"title": "hex encoded unsigned integer",
+						"title": "32 byte hex value",
 						"type": "string",
-						"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$"
+						"pattern": "^0x[0-9a-f]{64}$"
 					}
 				}
 			],
@@ -3009,7 +3009,7 @@
 								"s",
 								"type",
 								"value",
-								"yParity"
+								"v"
 							],
 							"properties": {
 								"type": {
@@ -3084,8 +3084,8 @@
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "Chain ID that this transaction is valid on."
 								},
-								"yParity": {
-									"title": "yParity",
+								"v": {
+									"title": "v",
 									"type": "string",
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -3116,7 +3116,7 @@
 								"s",
 								"type",
 								"value",
-								"yParity"
+								"v"
 							],
 							"properties": {
 								"type": {
@@ -3185,8 +3185,8 @@
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "Chain ID that this transaction is valid on."
 								},
-								"yParity": {
-									"title": "yParity",
+								"v": {
+									"title": "v",
 									"type": "string",
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -3359,7 +3359,7 @@
 								"s",
 								"type",
 								"value",
-								"yParity"
+								"v"
 							],
 							"properties": {
 								"type": {
@@ -3434,8 +3434,8 @@
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "Chain ID that this transaction is valid on."
 								},
-								"yParity": {
-									"title": "yParity",
+								"v": {
+									"title": "v",
 									"type": "string",
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -3466,7 +3466,7 @@
 								"s",
 								"type",
 								"value",
-								"yParity"
+								"v"
 							],
 							"properties": {
 								"type": {
@@ -3535,8 +3535,8 @@
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "Chain ID that this transaction is valid on."
 								},
-								"yParity": {
-									"title": "yParity",
+								"v": {
+									"title": "v",
 									"type": "string",
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -3726,7 +3726,7 @@
 								"s",
 								"type",
 								"value",
-								"yParity"
+								"v"
 							],
 							"properties": {
 								"type": {
@@ -3801,8 +3801,8 @@
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "Chain ID that this transaction is valid on."
 								},
-								"yParity": {
-									"title": "yParity",
+								"v": {
+									"title": "v",
 									"type": "string",
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."
@@ -3833,7 +3833,7 @@
 								"s",
 								"type",
 								"value",
-								"yParity"
+								"v"
 							],
 							"properties": {
 								"type": {
@@ -3902,8 +3902,8 @@
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "Chain ID that this transaction is valid on."
 								},
-								"yParity": {
-									"title": "yParity",
+								"v": {
+									"title": "v",
 									"type": "string",
 									"pattern": "^0x([1-9a-f]+[0-9a-f]*|0)$",
 									"description": "The parity (0 for even, 1 for odd) of the y-value of the secp256k1 signature."

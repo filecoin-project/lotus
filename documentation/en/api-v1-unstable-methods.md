@@ -69,6 +69,7 @@
   * [CreateBackup](#CreateBackup)
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
+  * [EthAddressToFilecoinAddress](#EthAddressToFilecoinAddress)
   * [EthBlockNumber](#EthBlockNumber)
   * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
@@ -2307,6 +2308,21 @@ Response:
 ]
 ```
 
+### EthAddressToFilecoinAddress
+EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+]
+```
+
+Response: `"f01234"`
+
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet
 
@@ -2688,7 +2704,7 @@ Response:
   "accessList": [
     "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
   ],
-  "yParity": "0x0",
+  "v": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2727,7 +2743,7 @@ Response:
   "accessList": [
     "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
   ],
-  "yParity": "0x0",
+  "v": "0x0",
   "r": "0x0",
   "s": "0x0"
 }
@@ -2765,7 +2781,7 @@ Response:
   "accessList": [
     "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"
   ],
-  "yParity": "0x0",
+  "v": "0x0",
   "r": "0x0",
   "s": "0x0"
 }

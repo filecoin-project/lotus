@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"testing"
 
@@ -534,4 +535,71 @@ func TestForkPreMigration(t *testing.T) {
 	// We have 5 pre-migration steps, and the migration. They should all have written something
 	// to this channel.
 	require.Equal(t, 6, len(counter))
+}
+
+func TestDisablePreMigration(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelInfo)
+
+	cg, err := gen.NewGenerator()
+	require.NoError(t, err)
+
+	err = os.Setenv(EnvDisablePreMigrations, "1")
+	require.NoError(t, err)
+
+	defer func() {
+		err := os.Unsetenv(EnvDisablePreMigrations)
+		require.NoError(t, err)
+	}()
+
+	counter := make(chan struct{}, 10)
+
+	sm, err := NewStateManager(
+		cg.ChainStore(),
+		consensus.NewTipSetExecutor(filcns.RewardFunc),
+		cg.StateManager().VMSys(),
+		UpgradeSchedule{{
+			Network: network.Version1,
+			Height:  testForkHeight,
+			Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
+				root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+
+				counter <- struct{}{}
+
+				return root, nil
+			},
+			PreMigrations: []PreMigration{{
+				StartWithin: 20,
+				PreMigration: func(ctx context.Context, _ *StateManager, _ MigrationCache,
+					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+					panic("should be skipped")
+				},
+			}}},
+		},
+		cg.BeaconSchedule(),
+	)
+	require.NoError(t, err)
+	require.NoError(t, sm.Start(context.Background()))
+	defer func() {
+		require.NoError(t, sm.Stop(context.Background()))
+	}()
+
+	inv := consensus.NewActorRegistry()
+	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
+	inv.Register(actorstypes.Version0, nil, registry)
+
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
+		require.NoError(t, err)
+		nvm.SetInvoker(inv)
+		return nvm, nil
+	})
+
+	cg.SetStateManager(sm)
+
+	for i := 0; i < 50; i++ {
+		_, err := cg.NextTipSet()
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, 1, len(counter))
 }
