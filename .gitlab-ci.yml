@@ -8,12 +8,12 @@ v18:build lotus:
   tags: [docker, x86, merak]
   stage: build
   variables:
-    HTTP_PROXY=$DEFAULT_PROXY
-    HTTPS_PROXY=$DEFAULT_PROXY
-    http_proxy=$DEFAULT_PROXY
-    https_proxy=$DEFAULT_PROXY
-    RUSTFLAGS=""
-    GOFLAGS=""
+    HTTP_PROXY: $DEFAULT_PROXY
+    HTTPS_PROXY: $DEFAULT_PROXY
+    http_proxy: $DEFAULT_PROXY
+    https_proxy: $DEFAULT_PROXY
+    RUSTFLAGS: ""
+    GOFLAGS: ""
   cache:
     key: build-deps-$CI_COMMIT_REF_SLUG
     paths:
