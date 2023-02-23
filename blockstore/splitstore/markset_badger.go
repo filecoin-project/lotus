@@ -351,7 +351,7 @@ func (s *BadgerMarkSet) write(seqno int) (err error) {
 	persist := s.persist
 	s.mx.RUnlock()
 
-	if persist && !system.BadgerFsyncDisable {
+	if persist && !system.BadgerFsyncDisable { // WARNING: disabling sync makes recovery from crash during critical section unsound
 		return s.db.Sync()
 	}
 

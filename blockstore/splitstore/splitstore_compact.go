@@ -115,8 +115,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		return nil
 	}
 
-	// Prioritize hot store compaction over cold store prune
-
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
 		s.beginTxnProtect()
@@ -176,6 +174,8 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 		timestamp := time.Unix(int64(curTs.MinTimestamp()), 0)
 		doSync := time.Since(timestamp) < SyncWaitTime
 		go func() {
+			// we are holding the txnLk while marking
+			// so critical section cannot delete
 			if doSync {
 				defer func() {
 					s.txnSyncMx.Lock()
@@ -689,7 +689,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("cold collection done", "took", time.Since(startCollect))
 
-	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt)
+	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "purge", purgeCnt)
 	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
@@ -787,6 +787,9 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 	if err := os.Remove(s.coldSetPath()); err != nil {
 		log.Warnf("error removing coldset: %s", err)
+	}
+	if err := os.Remove(s.discardSetPath()); err != nil {
+		log.Warnf("error removing discardset: %s", err)
 	}
 
 	// we are done; do some housekeeping
@@ -939,8 +942,8 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if err != nil {
 			return xerrors.Errorf("error computing cid reference to parent tipset")
 		}
-		if err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk); err != nil {
-			return xerrors.Errorf("error walking parent tipset cid reference")
+		if err := fHot(pRef); err != nil {
+			return xerrors.Errorf("error marking parent tipset cid reference")
 		}
 
 		// message are retained if within the inclMsgs boundary
@@ -998,8 +1001,8 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	if err != nil {
 		return xerrors.Errorf("error computing cid reference to parent tipset")
 	}
-	if err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk); err != nil {
-		return xerrors.Errorf("error walking parent tipset cid reference")
+	if err := fHot(hRef); err != nil {
+		return xerrors.Errorf("error marking parent tipset cid reference")
 	}
 
 	for len(toWalk) > 0 {
