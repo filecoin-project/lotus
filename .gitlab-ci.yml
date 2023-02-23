@@ -8,6 +8,7 @@ v18:build lotus:
   tags: [docker, x86, merak]
   stage: build
   variables:
+    GOPATH: $CI_PROJECT_DIR/.go
     HTTP_PROXY: $DEFAULT_PROXY
     HTTPS_PROXY: $DEFAULT_PROXY
     http_proxy: $DEFAULT_PROXY
@@ -17,6 +18,7 @@ v18:build lotus:
   cache:
     key: build-deps-$CI_COMMIT_REF_SLUG
     paths:
+      - .go/
       - build/.update-modules
       - build/.filecoin-install
       - extern/serialization-vectors/
@@ -24,8 +26,10 @@ v18:build lotus:
       - extern/filecoin-ffi/
   artifacts:
     paths: [lotus, lotus-miner, lotus-worker, lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
+  before_script:
+    - mkdir -p .go
   script:
-    - ls && ls build && ls extern
+    - ls -alh && echo "\n" && ls -alh build && echo "\n" && ls -alh extern
     - make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
   only:
     refs:
