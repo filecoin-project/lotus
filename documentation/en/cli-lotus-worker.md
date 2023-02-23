@@ -10,15 +10,14 @@ VERSION:
    1.21.0-dev
 
 COMMANDS:
-   run         Start lotus worker
-   stop        Stop a running lotus worker
-   info        Print worker info
-   storage     manage sector storage
-   set         Manage worker settings
-   wait-quiet  Block until all running tasks exit
-   resources   Manage resource table overrides
-   tasks       Manage task processing
-   help, h     Shows a list of commands or help for one command
+   run        Start lotus worker
+   stop       Stop a running lotus worker
+   info       Print worker info
+   storage    manage sector storage
+   set        Manage worker settings
+   resources  Manage resource table overrides
+   tasks      Manage task processing
+   help, h    Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --enable-gpu-proving                     enable use of GPU for mining operations (default: true) [$LOTUS_WORKER_ENABLE_GPU_PROVING]
@@ -164,19 +163,6 @@ USAGE:
 
 OPTIONS:
    --enabled  enable/disable new task processing (default: true)
-   
-```
-
-## lotus-worker wait-quiet
-```
-NAME:
-   lotus-worker wait-quiet - Block until all running tasks exit
-
-USAGE:
-   lotus-worker wait-quiet [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help (default: false)
    
 ```
 
