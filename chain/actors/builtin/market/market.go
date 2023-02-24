@@ -58,6 +58,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version12:
 			return load12(store, act.Head)
 
+		case actorstypes.Version13:
+			return load13(store, act.Head)
+
 		}
 	}
 
@@ -127,6 +130,9 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 
 	case actorstypes.Version12:
 		return make12(store)
+
+	case actorstypes.Version13:
+		return make13(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -226,6 +232,9 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	case actorstypes.Version12:
 		return decodePublishStorageDealsReturn12(b)
 
+	case actorstypes.Version13:
+		return decodePublishStorageDealsReturn13(b)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -313,5 +322,6 @@ func AllCodes() []cid.Cid {
 		(&state10{}).Code(),
 		(&state11{}).Code(),
 		(&state12{}).Code(),
+		(&state13{}).Code(),
 	}
 }
