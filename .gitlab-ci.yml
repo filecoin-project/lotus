@@ -71,6 +71,7 @@ stages:
   only:
     refs:
       - v18_of_car_filbase
+  when: manual
 
 "v18-2k: build external binaries":
   extends: .build-snippet
