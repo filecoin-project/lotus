@@ -65,7 +65,7 @@ stages:
     GOFLAGS: "-tags=2k"
   artifacts:
     name: "v18-2k binaries"
-    paths: [lotus-shed, lotus, lotus-miner, lotus-worker]
+    paths: [lotus-shed, lotus, lotus-miner, lotus-worker, lotus-seed]
   script:
     - make lotus-shed lotus lotus-miner lotus-worker
   only:
