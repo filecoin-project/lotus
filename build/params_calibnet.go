@@ -75,10 +75,13 @@ const UpgradeSharkHeight = 16800 // 6 days after genesis
 const UpgradeHyggeHeight = 322354
 
 // dummy
-var UpgradeHyperspaceNV19Height = abi.ChainEpoch(math.MaxInt64 - 1)
+var UpgradeHyperspaceNV19Height = abi.ChainEpoch(math.MaxInt64 - 2)
 
 // dummy
-var UpgradeHyperspaceNV20Height = abi.ChainEpoch(math.MaxInt64)
+var UpgradeHyperspaceNV20Height = abi.ChainEpoch(math.MaxInt64 - 1)
+
+// dummy
+var UpgradeHyperspaceNV21Height = abi.ChainEpoch(math.MaxInt64)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
