@@ -170,6 +170,19 @@ func (a *ActiveResources) utilization(wr storiface.WorkerResources) float64 { //
 	return max
 }
 
+func (a *ActiveResources) taskCount(tt *sealtasks.SealTaskType) int {
+	// nil means all tasks
+	if tt == nil {
+		var count int
+		for _, c := range a.taskCounters {
+			count += c
+		}
+		return count
+	}
+
+	return a.taskCounters[*tt]
+}
+
 func (wh *WorkerHandle) Utilization() float64 {
 	wh.lk.Lock()
 	u := wh.active.utilization(wh.Info.Resources)
@@ -178,6 +191,34 @@ func (wh *WorkerHandle) Utilization() float64 {
 	wh.wndLk.Lock()
 	for _, window := range wh.activeWindows {
 		u += window.Allocated.utilization(wh.Info.Resources)
+	}
+	wh.wndLk.Unlock()
+
+	return u
+}
+
+func (wh *WorkerHandle) TaskCounts() int {
+	wh.lk.Lock()
+	u := wh.active.taskCount(nil)
+	u += wh.preparing.taskCount(nil)
+	wh.lk.Unlock()
+	wh.wndLk.Lock()
+	for _, window := range wh.activeWindows {
+		u += window.Allocated.taskCount(nil)
+	}
+	wh.wndLk.Unlock()
+
+	return u
+}
+
+func (wh *WorkerHandle) TaskCount(tt *sealtasks.SealTaskType) int {
+	wh.lk.Lock()
+	u := wh.active.taskCount(tt)
+	u += wh.preparing.taskCount(tt)
+	wh.lk.Unlock()
+	wh.wndLk.Lock()
+	for _, window := range wh.activeWindows {
+		u += window.Allocated.taskCount(tt)
 	}
 	wh.wndLk.Unlock()
 

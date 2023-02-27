@@ -157,7 +157,15 @@ func newScheduler(ctx context.Context, assigner string) (*Scheduler, error) {
 	case "", "utilization":
 		a = NewLowestUtilizationAssigner()
 	case "spread":
-		a = NewSpreadAssigner()
+		a = NewSpreadAssigner(false)
+	case "experiment-spread-qcount":
+		a = NewSpreadAssigner(true)
+	case "experiment-spread-tasks":
+		a = NewSpreadTasksAssigner(false)
+	case "experiment-spread-tasks-qcount":
+		a = NewSpreadTasksAssigner(true)
+	case "experiment-random":
+		a = NewRandomAssigner()
 	default:
 		return nil, xerrors.Errorf("unknown assigner '%s'", assigner)
 	}
