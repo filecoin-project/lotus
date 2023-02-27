@@ -84,7 +84,7 @@ const (
 	stateOpen bsState = iota
 	// stateClosing signifies a blockstore that is currently closing
 	stateClosing
-	// stateClosed signifies a blockstore that has been colosed
+	// stateClosed signifies a blockstore that has been closed
 	stateClosed
 )
 
@@ -237,7 +237,7 @@ func (b *Blockstore) unlockMove(state bsMoveState) {
 // a symlink from the current path to the new path; the old blockstore is deleted.
 //
 // The blockstore MUST accept new writes during the move and ensure that these
-// are persisted to the new blockstore; if a failure occurs aboring the move,
+// are persisted to the new blockstore; if a failure occurs aborting the move,
 // then they must be peristed to the old blockstore.
 // In short, the blockstore must not lose data from new writes during the move.
 func (b *Blockstore) movingGC() error {
@@ -443,21 +443,14 @@ func (b *Blockstore) onlineGC() error {
 	b.lockDB()
 	defer b.unlockDB()
 
-	// compact first to gather the necessary statistics for GC
-	nworkers := runtime.NumCPU() / 2
-	if nworkers < 2 {
-		nworkers = 2
-	}
+	// RunValueLogGC will not reclaim all possible space if enough badger compactions
+	// have not been run to generate internal stats of vlog files.  This is probably ok
+	// since 1) it will get better over time as more badger compactions happen 2) moving
+	// GC will eventually be used as fallback
 
-	err := b.db.Flatten(nworkers)
-	if err != nil {
-		return err
-	}
-
-	for err == nil {
-		err = b.db.RunValueLogGC(0.125)
-	}
-
+	// @vyzo: 0.125 set empiricaly based on speed
+	// it starts taking more time than a moving gc if it is at .0625
+	err := b.db.RunValueLogGC(0.125)
 	if err == badger.ErrNoRewrite {
 		// not really an error in this case, it signals the end of GC
 		return nil
