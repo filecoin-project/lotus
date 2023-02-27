@@ -108,7 +108,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 
 		cs      = store.NewChainStore(bs, bs, ds, filcns.Weight, nil)
 		tse     = consensus.NewTipSetExecutor(filcns.RewardFunc)
-		sm, err = stmgr.NewStateManager(cs, tse, syscalls, filcns.DefaultUpgradeSchedule(), nil)
+		sm, err = stmgr.NewStateManager(cs, tse, syscalls, filcns.DefaultUpgradeSchedule(), nil, ds)
 	)
 	if err != nil {
 		return nil, err

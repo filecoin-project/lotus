@@ -2,9 +2,11 @@ package stmgr
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/ipfs/go-cid"
+	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -54,6 +56,48 @@ type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
 	cache         *nv16.MemMigrationCache
+	resultCache   *resultCache
+}
+
+type resultCache struct {
+	ds        dstore.Batching
+	keyPrefix string
+}
+
+func (m *resultCache) Result(ctx context.Context, root cid.Cid) (cid.Cid, bool, error) {
+	kStr := fmt.Sprintf("%s-%s", m.keyPrefix, root)
+	k := dstore.NewKey(kStr)
+
+	found, err := m.ds.Has(ctx, k)
+	if err != nil {
+		return cid.Undef, false, xerrors.Errorf("error looking up migration result: %w", err)
+	}
+
+	if !found {
+		return cid.Undef, false, nil
+	}
+
+	bs, err := m.ds.Get(ctx, k)
+	if err != nil {
+		return cid.Undef, false, xerrors.Errorf("error loading migration result: %w", err)
+	}
+
+	c, err := cid.Parse(bs)
+	if err != nil {
+		return cid.Undef, false, xerrors.Errorf("error parsing migration result: %w", err)
+	}
+
+	return c, true, nil
+}
+
+func (m *resultCache) Store(ctx context.Context, root cid.Cid, resultCid cid.Cid) error {
+	kStr := fmt.Sprintf("%s-%s", m.keyPrefix, root)
+	k := dstore.NewKey(kStr)
+	if err := m.ds.Put(ctx, k, resultCid.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type Executor interface {
@@ -103,7 +147,7 @@ type treeCache struct {
 	tree *state.StateTree
 }
 
-func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule) (*StateManager, error) {
+func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule, metadataDs dstore.Batching) (*StateManager, error) {
 	// If we have upgrades, make sure they're in-order and make sense.
 	if err := us.Validate(); err != nil {
 		return nil, err
@@ -122,12 +166,18 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
 					cache:         nv16.NewMemMigrationCache(),
+					resultCache: &resultCache{
+						keyPrefix: fmt.Sprintf("nv%d-%d", upgrade.Network, upgrade.Height),
+						ds:        metadataDs,
+					},
 				}
+
 				stateMigrations[upgrade.Height] = migration
 			}
 			if upgrade.Expensive {
 				expensiveUpgrades[upgrade.Height] = struct{}{}
 			}
+
 			networkVersions = append(networkVersions, versionSpec{
 				networkVersion: lastVersion,
 				atOrBelow:      upgrade.Height,
@@ -155,8 +205,8 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 	}, nil
 }
 
-func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor) (*StateManager, error) {
-	sm, err := NewStateManager(cs, exec, sys, us, b)
+func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor, metadataDs dstore.Batching) (*StateManager, error) {
+	sm, err := NewStateManager(cs, exec, sys, us, b, metadataDs)
 	if err != nil {
 		return nil, err
 	}
