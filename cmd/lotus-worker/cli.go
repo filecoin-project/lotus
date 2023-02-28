@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -35,9 +37,11 @@ var setCmd = &cli.Command{
 }
 
 var waitQuietCmd = &cli.Command{
-	Name:  "wait-quiet",
-	Usage: "Block until all running tasks exit",
+	Name:   "wait-quiet",
+	Usage:  "Block until all running tasks exit",
+	Hidden: true,
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This command will be removed in the future")
 		api, closer, err := lcli.GetWorkerAPI(cctx)
 		if err != nil {
 			return err
