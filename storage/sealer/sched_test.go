@@ -288,25 +288,30 @@ func TestSched(t *testing.T) {
 					ProofType: spt,
 				}
 
-				err := sched.Schedule(ctx, sectorRef, taskType, sel, func(ctx context.Context, w Worker) error {
-					wi, err := w.Info(ctx)
-					require.NoError(t, err)
+				prep := PrepareAction{
+					Action: func(ctx context.Context, w Worker) error {
+						wi, err := w.Info(ctx)
+						require.NoError(t, err)
 
-					require.Equal(t, expectWorker, wi.Hostname)
+						require.Equal(t, expectWorker, wi.Hostname)
 
-					log.Info("IN  ", taskName)
+						log.Info("IN  ", taskName)
 
-					for {
-						_, ok := <-done
-						if !ok {
-							break
+						for {
+							_, ok := <-done
+							if !ok {
+								break
+							}
 						}
-					}
 
-					log.Info("OUT ", taskName)
+						log.Info("OUT ", taskName)
 
-					return nil
-				}, noopAction)
+						return nil
+					},
+					PrepType: taskType,
+				}
+
+				err := sched.Schedule(ctx, sectorRef, taskType, sel, prep, noopAction)
 				if err != context.Canceled {
 					require.NoError(t, err, fmt.Sprint(l, l2))
 				}
