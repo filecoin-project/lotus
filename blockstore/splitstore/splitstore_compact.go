@@ -942,8 +942,8 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if err != nil {
 			return xerrors.Errorf("error computing cid reference to parent tipset")
 		}
-		if err := fHot(pRef); err != nil {
-			return xerrors.Errorf("error marking parent tipset cid reference")
+		if err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk); err != nil {
+			return xerrors.Errorf("error walking parent tipset cid reference")
 		}
 
 		// message are retained if within the inclMsgs boundary
@@ -1001,8 +1001,8 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	if err != nil {
 		return xerrors.Errorf("error computing cid reference to parent tipset")
 	}
-	if err := fHot(hRef); err != nil {
-		return xerrors.Errorf("error marking parent tipset cid reference")
+	if err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk); err != nil {
+		return xerrors.Errorf("error walking parent tipset cid reference")
 	}
 
 	for len(toWalk) > 0 {
