@@ -47,7 +47,7 @@ OPTIONS:
    --no-local-storage            don't use storageminer repo for sector storage (default: false) [$LOTUS_WORKER_NO_LOCAL_STORAGE]
    --no-swap                     don't use swap (default: false) [$LOTUS_WORKER_NO_SWAP]
    --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5) [$LOTUS_WORKER_PARALLEL_FETCH_LIMIT]
-   --post-parallel-reads value   maximum number of parallel challenge reads (0 = no limit) (default: 128) [$LOTUS_WORKER_POST_PARALLEL_READS]
+   --post-parallel-reads value   maximum number of parallel challenge reads (0 = no limit) (default: 32) [$LOTUS_WORKER_POST_PARALLEL_READS]
    --post-read-timeout value     time limit for reading PoSt challenges (0 = no limit) (default: 0s) [$LOTUS_WORKER_POST_READ_TIMEOUT]
    --precommit1                  enable precommit1 (default: true) [$LOTUS_WORKER_PRECOMMIT1]
    --precommit2                  enable precommit2 (default: true) [$LOTUS_WORKER_PRECOMMIT2]

@@ -257,7 +257,7 @@ var runCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:    "post-parallel-reads",
 			Usage:   "maximum number of parallel challenge reads (0 = no limit)",
-			Value:   128,
+			Value:   32,
 			EnvVars: []string{"LOTUS_WORKER_POST_PARALLEL_READS"},
 		},
 		&cli.DurationFlag{
