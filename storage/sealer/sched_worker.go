@@ -30,12 +30,14 @@ func newWorkerHandle(ctx context.Context, w Worker) (*WorkerHandle, error) {
 		return nil, xerrors.Errorf("getting worker info: %w", err)
 	}
 
+	tc := newTaskCounter()
+
 	worker := &WorkerHandle{
 		workerRpc: w,
 		Info:      info,
 
-		preparing: NewActiveResources(),
-		active:    NewActiveResources(),
+		preparing: NewActiveResources(tc),
+		active:    NewActiveResources(tc),
 		Enabled:   true,
 
 		closingMgr: make(chan struct{}),

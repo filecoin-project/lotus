@@ -639,8 +639,8 @@ func BenchmarkTrySched(b *testing.B) {
 						Resources: decentWorkerResources,
 					},
 					Enabled:   true,
-					preparing: NewActiveResources(),
-					active:    NewActiveResources(),
+					preparing: NewActiveResources(newTaskCounter()),
+					active:    NewActiveResources(newTaskCounter()),
 				}
 
 				for i := 0; i < windows; i++ {
@@ -685,7 +685,7 @@ func TestWindowCompact(t *testing.T) {
 
 			for _, windowTasks := range start {
 				window := &SchedWindow{
-					Allocated: *NewActiveResources(),
+					Allocated: *NewActiveResources(newTaskCounter()),
 				}
 
 				for _, task := range windowTasks {
@@ -708,7 +708,7 @@ func TestWindowCompact(t *testing.T) {
 			require.Equal(t, len(start)-len(expect), -sw.windowsRequested)
 
 			for wi, tasks := range expect {
-				expectRes := NewActiveResources()
+				expectRes := NewActiveResources(newTaskCounter())
 
 				for ti, task := range tasks {
 					require.Equal(t, task, wh.activeWindows[wi].Todo[ti].TaskType, "%d, %d", wi, ti)
