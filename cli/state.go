@@ -22,7 +22,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -1325,7 +1324,7 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"IsVerySlow":  isVerySlow,
 		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
 		"sumGas":      types.SumGas,
-		"CodeStr":     codeStr,
+		"CodeStr":     builtin.ActorNameByCode,
 		"Call":        call,
 		"PrintTiming": func() bool { return printTiming },
 	}).Parse(compStateTemplate)
@@ -1355,14 +1354,6 @@ func call(e types.ExecutionTrace, subcall bool, hash string) callMeta {
 		Subcall:        subcall,
 		Hash:           hash,
 	}
-}
-
-func codeStr(c cid.Cid) string {
-	cmh, err := multihash.Decode(c.Hash())
-	if err != nil {
-		panic(err)
-	}
-	return string(cmh.Digest)
 }
 
 func getMethod(code cid.Cid, method abi.MethodNum) string {
