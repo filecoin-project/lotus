@@ -1234,7 +1234,7 @@ var compStateTemplate = `
   <div>State CID: <b>{{.Comp.Root}}</b></div>
   <div>Calls</div>
   {{range .Comp.Trace}}
-   {{template "message" (Call .ExecutionTrace false .Msg.Cid.String)}}
+   {{template "message" (Call .ExecutionTrace false .MsgCid.String)}}
   {{end}}
  </body>
 </html>
@@ -1260,15 +1260,11 @@ var compStateMsg = `
  </div>
 
  <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}} FIL), M{{.Msg.Method}}</div>
- {{if not .Subcall}}<div><small>Msg CID: {{.Msg.Cid}}</small></div>{{end}}
+ {{if not .Subcall}}<div><small>Msg CID: {{.Hash}}</small></div>{{end}}
  {{if gt (len .Msg.Params) 0}}
   <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
  {{end}}
- {{if PrintTiming}}
-  <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
- {{else}}
   <div><span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
- {{end}}
  {{if gt (len .MsgRct.Return) 0}}
   <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
  {{end}}
@@ -1280,62 +1276,26 @@ var compStateMsg = `
 <details>
 <summary>Gas Trace</summary>
 <table>
- <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
- {{define "virt" -}}
- {{- if . -}}
- <span class="deemp">+({{.}})</span>
- {{- end -}}
- {{- end}}
+ <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th></tr>
 
  {{define "gasC" -}}
- <td>{{.TotalGas}}{{template "virt" .TotalVirtualGas }}/{{.ComputeGas}}{{template "virt" .VirtualComputeGas}}/{{.StorageGas}}{{template "virt" .VirtualStorageGas}}</td>
+ <td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td>
  {{- end}}
 
  {{range .GasCharges}}
- <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
- {{template "gasC" .}}
- <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
-  <td>
-   {{ $fImp := FirstImportant .Location }}
-   {{ if $fImp }}
-   <details>
-    <summary>{{ $fImp }}</summary><hr />
-	{{ $elipOn := false }}
-    {{ range $index, $ele := .Location -}}
-     {{- if $index }}<br />{{end -}}
-     {{- if .Show -}}
-	  {{ if $elipOn }}
-	   {{ $elipOn = false }}
-       </span></label>
-	  {{end}}
-
-      {{- if .Important }}<b>{{end -}}
-      {{- . -}}
-      {{if .Important }}</b>{{end}}
-     {{else}}
-	  {{ if not $elipOn }}
-	    {{ $elipOn = true }}
-        <label class="ellipsis-toggle"><input type="checkbox" /><span class="ellipsis">[…]<br /></span>
-		<span class="ellipsis-content">
-	  {{end}}
-      {{- "" -}}
-      {{- . -}}
-     {{end}}
-    {{end}}
-	{{ if $elipOn }}
-	  {{ $elipOn = false }}
-      </span></label>
-	{{end}}
-   </details>
-  {{end}}
-  </td></tr>
-  {{end}}
-  {{with sumGas .GasCharges}}
-  <tr class="sum"><td><b>Sum</b></td>
-  {{template "gasC" .}}
-  <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
-  <td></td></tr>
-  {{end}}
+  <tr>
+   <td>{{.Name}}</td>
+   {{template "gasC" .}}
+   <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
+  </tr>
+ {{end}}
+ {{with sumGas .GasCharges}}
+  <tr class="sum">
+    <td><b>Sum</b></td>
+    {{template "gasC" .}}
+    <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
+  </tr>
+ {{end}}
 </table>
 </details>
 
@@ -1343,8 +1303,8 @@ var compStateMsg = `
  {{if gt (len .Subcalls) 0}}
   <div>Subcalls:</div>
   {{$hash := .Hash}}
-  {{range .Subcalls}}
-   {{template "message" (Call . true (printf "%s-%s" $hash .Msg.Cid.String))}}
+  {{range $i, $call := .Subcalls}}
+   {{template "message" (Call $call true (printf "%s-%d" $hash $i))}}
   {{end}}
  {{end}}
 </div>`
@@ -1368,17 +1328,6 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"CodeStr":     codeStr,
 		"Call":        call,
 		"PrintTiming": func() bool { return printTiming },
-		"FirstImportant": func(locs []types.Loc) *types.Loc {
-			if len(locs) != 0 {
-				for _, l := range locs {
-					if l.Important() {
-						return &l
-					}
-				}
-				return &locs[0]
-			}
-			return nil
-		},
 	}).Parse(compStateTemplate)
 	if err != nil {
 		return err
