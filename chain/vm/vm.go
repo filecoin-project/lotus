@@ -146,12 +146,12 @@ func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent 
 		allowInternal:    true,
 		callerValidated:  false,
 		executionTrace: types.ExecutionTrace{Msg: types.MessageTrace{
-			From:   msg.From,
-			To:     msg.To,
-			Value:  msg.Value,
-			Method: msg.Method,
-			Params: msg.Params,
-			Codec:  paramsCodec,
+			From:        msg.From,
+			To:          msg.To,
+			Value:       msg.Value,
+			Method:      msg.Method,
+			Params:      msg.Params,
+			ParamsCodec: paramsCodec,
 		}},
 	}
 
@@ -386,9 +386,9 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 		retCodec = CborCodec
 	}
 	rt.executionTrace.MsgRct = types.ReturnTrace{
-		ExitCode: aerrors.RetCode(err),
-		Return:   ret,
-		Codec:    retCodec,
+		ExitCode:    aerrors.RetCode(err),
+		Return:      ret,
+		ReturnCodec: retCodec,
 	}
 
 	return ret, err, rt

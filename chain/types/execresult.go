@@ -18,18 +18,18 @@ type GasTrace struct {
 }
 
 type MessageTrace struct {
-	From   address.Address
-	To     address.Address
-	Value  abi.TokenAmount
-	Method abi.MethodNum
-	Params []byte
-	Codec  uint64
+	From        address.Address
+	To          address.Address
+	Value       abi.TokenAmount
+	Method      abi.MethodNum
+	Params      []byte
+	ParamsCodec uint64
 }
 
 type ReturnTrace struct {
-	ExitCode exitcode.ExitCode
-	Return   []byte
-	Codec    uint64
+	ExitCode    exitcode.ExitCode
+	Return      []byte
+	ReturnCodec uint64
 }
 
 type ExecutionTrace struct {

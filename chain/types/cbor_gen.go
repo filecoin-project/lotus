@@ -2337,9 +2337,9 @@ func (t *MessageTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Codec (uint64) (uint64)
+	// t.ParamsCodec (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Codec)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ParamsCodec)); err != nil {
 		return err
 	}
 
@@ -2431,7 +2431,7 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	if _, err := io.ReadFull(cr, t.Params[:]); err != nil {
 		return err
 	}
-	// t.Codec (uint64) (uint64)
+	// t.ParamsCodec (uint64) (uint64)
 
 	{
 
@@ -2442,7 +2442,7 @@ func (t *MessageTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.Codec = uint64(extra)
+		t.ParamsCodec = uint64(extra)
 
 	}
 	return nil
@@ -2486,9 +2486,9 @@ func (t *ReturnTrace) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Codec (uint64) (uint64)
+	// t.ReturnCodec (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Codec)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ReturnCodec)); err != nil {
 		return err
 	}
 
@@ -2564,7 +2564,7 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	if _, err := io.ReadFull(cr, t.Return[:]); err != nil {
 		return err
 	}
-	// t.Codec (uint64) (uint64)
+	// t.ReturnCodec (uint64) (uint64)
 
 	{
 
@@ -2575,7 +2575,7 @@ func (t *ReturnTrace) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.Codec = uint64(extra)
+		t.ReturnCodec = uint64(extra)
 
 	}
 	return nil

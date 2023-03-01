@@ -6186,12 +6186,12 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "Codec": 42
+      "ParamsCodec": 42
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "Codec": 42
+      "ReturnCodec": 42
     },
     "GasCharges": [
       {
@@ -6210,12 +6210,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "Codec": 42
+          "ParamsCodec": 42
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "Codec": 42
+          "ReturnCodec": 42
         },
         "GasCharges": [
           {
@@ -6416,12 +6416,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "Codec": 42
+          "ParamsCodec": 42
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "Codec": 42
+          "ReturnCodec": 42
         },
         "GasCharges": [
           {
@@ -6440,12 +6440,12 @@ Response:
               "Value": "0",
               "Method": 1,
               "Params": "Ynl0ZSBhcnJheQ==",
-              "Codec": 42
+              "ParamsCodec": 42
             },
             "MsgRct": {
               "ExitCode": 0,
               "Return": "Ynl0ZSBhcnJheQ==",
-              "Codec": 42
+              "ReturnCodec": 42
             },
             "GasCharges": [
               {
@@ -7885,12 +7885,12 @@ Response:
       "Value": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "Codec": 42
+      "ParamsCodec": 42
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "Codec": 42
+      "ReturnCodec": 42
     },
     "GasCharges": [
       {
@@ -7909,12 +7909,12 @@ Response:
           "Value": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "Codec": 42
+          "ParamsCodec": 42
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "Codec": 42
+          "ReturnCodec": 42
         },
         "GasCharges": [
           {
