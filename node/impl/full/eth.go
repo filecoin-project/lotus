@@ -186,6 +186,10 @@ func (a *EthAPI) EthAddressToFilecoinAddress(ctx context.Context, ethAddress eth
 	return ethAddress.ToFilecoinAddress()
 }
 
+func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) {
+	return ethtypes.EthAddressFromFilecoinAddress(filecoinAddress)
+}
+
 func (a *EthModule) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, error) {
 	blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
 	if err != nil {
@@ -632,7 +636,12 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 		return ethtypes.EthBigInt{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
 
-	actor, err := a.StateGetActor(ctx, filAddr, ts.Key())
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to compute tipset state: %w", err)
+	}
+
+	actor, err := a.StateManager.LoadActorRaw(ctx, filAddr, st)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return ethtypes.EthBigIntZero, nil
 	} else if err != nil {
