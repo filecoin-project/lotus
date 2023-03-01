@@ -1,13 +1,18 @@
 package reward
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
@@ -92,4 +97,21 @@ func (s *state0) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate,
 
 func (s *state0) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state0) ActorKey() string {
+	return manifest.RewardKey
+}
+
+func (s *state0) ActorVersion() actorstypes.Version {
+	return actorstypes.Version0
+}
+
+func (s *state0) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

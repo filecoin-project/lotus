@@ -1,6 +1,9 @@
 package verifreg
 
 import (
+    "fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -22,6 +25,9 @@ import (
 {{end}}
 {{if (ge .v 9)}}
 	"github.com/filecoin-project/go-state-types/big"
+{{if (gt .v 9)}}
+    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+{{end}}
 {{else}}
     verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 {{end}}
@@ -116,34 +122,67 @@ func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
-    return s.FindAllocation(s.store, clientIdAddr, allocationId)
-{{end}}
+	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg{{.v}}.AllocationId(allocationId))
+	return (*Allocation)(alloc), ok, err{{end}}
 }
 
-func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
 {{if (le .v 8)}}
     return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
-	return s.LoadAllocationsToMap(s.store, clientIdAddr)
+	v{{.v}}Map, err := s.LoadAllocationsToMap(s.store, clientIdAddr)
+
+	retMap := make(map[AllocationId]Allocation, len(v{{.v}}Map))
+	for k, v := range v{{.v}}Map {
+		retMap[AllocationId(k)] = Allocation(v)
+	}
+
+	return retMap, err
 {{end}}
 }
 
-func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 {{if (le .v 8)}}
     return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
-	return s.FindClaim(s.store, providerIdAddr, claimId)
+	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg{{.v}}.ClaimId(claimId))
+	return (*Claim)(claim), ok, err
 {{end}}
 }
 
-func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
 {{if (le .v 8)}}
     return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
 {{else}}
-	return s.LoadClaimsToMap(s.store, providerIdAddr)
+	v{{.v}}Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[ClaimId]Claim, len(v{{.v}}Map))
+	for k, v := range v{{.v}}Map {
+		retMap[ClaimId(k)] = Claim(v)
+	}
+
+	return retMap, err
+
 {{end}}
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return manifest.VerifregKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

@@ -341,10 +341,85 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
+	"Events": []DocField{
+		{
+			Name: "DisableRealTimeFilterAPI",
+			Type: "bool",
+
+			Comment: `EnableEthRPC enables APIs that
+DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "DisableHistoricFilterAPI",
+			Type: "bool",
+
+			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "FilterTTL",
+			Type: "Duration",
+
+			Comment: `FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+this time become eligible for automatic deletion.`,
+		},
+		{
+			Name: "MaxFilters",
+			Type: "int",
+
+			Comment: `MaxFilters specifies the maximum number of filters that may exist at any one time.`,
+		},
+		{
+			Name: "MaxFilterResults",
+			Type: "int",
+
+			Comment: `MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.`,
+		},
+		{
+			Name: "MaxFilterHeightRange",
+			Type: "uint64",
+
+			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+the entire chain)`,
+		},
+		{
+			Name: "DatabasePath",
+			Type: "string",
+
+			Comment: `DatabasePath is the full path to a sqlite database that will be used to index actor events to
+support the historic filter APIs. If the database does not exist it will be created. The directory containing
+the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+relative to the CWD (current working directory).`,
+		},
+	},
 	"FeeConfig": []DocField{
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
+
+			Comment: ``,
+		},
+	},
+	"FevmConfig": []DocField{
+		{
+			Name: "EnableEthRPC",
+			Type: "bool",
+
+			Comment: `EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
+		},
+		{
+			Name: "EthTxHashMappingLifetimeDays",
+			Type: "int",
+
+			Comment: `EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+Set to 0 to keep all mappings`,
+		},
+		{
+			Name: "Events",
+			Type: "Events",
 
 			Comment: ``,
 		},
@@ -377,6 +452,12 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 		{
 			Name: "Cluster",
 			Type: "UserRaftConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Fevm",
+			Type: "FevmConfig",
 
 			Comment: ``,
 		},
@@ -787,6 +868,35 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 			Type: "string",
 
 			Comment: ``,
+		},
+		{
+			Name: "JsonTracer",
+			Type: "string",
+
+			Comment: `Path to file that will be used to output tracer content in JSON format.
+If present tracer will save data to defined file.
+Format: file path`,
+		},
+		{
+			Name: "ElasticSearchTracer",
+			Type: "string",
+
+			Comment: `Connection string for elasticsearch instance.
+If present tracer will save data to elasticsearch.
+Format: https://<username>:<password>@<elasticsearch_url>:<port>/`,
+		},
+		{
+			Name: "ElasticSearchIndex",
+			Type: "string",
+
+			Comment: `Name of elasticsearch index that will be used to save tracer data.
+This property is used only if ElasticSearchTracer propery is set.`,
+		},
+		{
+			Name: "TracerSourceAuth",
+			Type: "string",
+
+			Comment: `Auth token that will be passed with logs to elasticsearch - used for weighted peers score.`,
 		},
 	},
 	"RetrievalPricing": []DocField{

@@ -1,12 +1,16 @@
 package datacap
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	datacap9 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -58,4 +62,21 @@ func (s *state9) verifiedClients() (adt.Map, error) {
 
 func (s *state9) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
 	return getDataCap(s.store, actors.Version9, s.verifiedClients, addr)
+}
+
+func (s *state9) ActorKey() string {
+	return manifest.DatacapKey
+}
+
+func (s *state9) ActorVersion() actorstypes.Version {
+	return actorstypes.Version9
+}
+
+func (s *state9) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

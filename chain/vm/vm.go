@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	block "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -45,9 +45,11 @@ var (
 	gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 )
 
-// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
-func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
+// ResolveToDeterministicAddr returns the public key type of address
+// (`BLS`/`SECP256K1`) of an actor identified by `addr`, or its
+// delegated address.
+func ResolveToDeterministicAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
+	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
 		return addr, nil
 	}
 
@@ -56,12 +58,19 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
+	if state.Version() >= types.StateTreeVersion5 {
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
+		}
+	}
+
 	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
-
 	return aast.PubkeyAddress()
+
 }
 
 var (
@@ -192,6 +201,7 @@ type (
 	CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
 	NtwkVersionGetter    func(context.Context, abi.ChainEpoch) network.Version
 	LookbackStateGetter  func(context.Context, abi.ChainEpoch) (*state.StateTree, error)
+	TipSetGetter         func(context.Context, abi.ChainEpoch) (types.TipSetKey, error)
 )
 
 var _ Interface = (*LegacyVM)(nil)
@@ -215,6 +225,7 @@ type LegacyVM struct {
 type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Rand           Rand
 	Bstore         blockstore.Blockstore
 	Actors         *ActorRegistry
@@ -223,7 +234,10 @@ type VMOpts struct {
 	NetworkVersion network.Version
 	BaseFee        abi.TokenAmount
 	LookbackState  LookbackStateGetter
+	TipSetGetter   TipSetGetter
 	Tracing        bool
+	// ReturnEvents decodes and returns emitted events.
+	ReturnEvents bool
 }
 
 func NewLegacyVM(ctx context.Context, opts *VMOpts) (*LegacyVM, error) {
@@ -270,6 +284,7 @@ type ApplyRet struct {
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
 	GasCosts       *GasOutputs
+	Events         []types.Event
 }
 
 func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtime,

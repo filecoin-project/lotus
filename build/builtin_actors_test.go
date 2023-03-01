@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -16,7 +17,13 @@ func TestEmbeddedMetadata(t *testing.T) {
 	metadata, err := build.ReadEmbeddedBuiltinActorsMetadata()
 	require.NoError(t, err)
 
-	require.Equal(t, metadata, build.EmbeddedBuiltinActorsMetadata)
+	for i, v1 := range metadata {
+		v2 := build.EmbeddedBuiltinActorsMetadata[i]
+		require.Equal(t, v1.Network, v2.Network)
+		require.Equal(t, v1.Version, v2.Version)
+		require.Equal(t, v1.ManifestCid, v2.ManifestCid)
+		require.Equal(t, v1.Actors, v2.Actors)
+	}
 }
 
 // Test that we're registering the manifest correctly.
@@ -26,7 +33,7 @@ func TestRegistration(t *testing.T) {
 		require.True(t, found)
 		require.True(t, manifestCid.Defined())
 
-		for _, key := range actors.GetBuiltinActorsKeys(av) {
+		for _, key := range manifest.GetBuiltinActorsKeys(av) {
 			actorCid, found := actors.GetActorCodeID(av, key)
 			require.True(t, found)
 			name, version, found := actors.GetActorMetaByCode(actorCid)

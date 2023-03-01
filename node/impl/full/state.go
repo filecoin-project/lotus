@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -507,7 +508,7 @@ func (m *StateModule) StateAccountKey(ctx context.Context, addr address.Address,
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return m.StateManager.ResolveToKeyAddress(ctx, addr, ts)
+	return m.StateManager.ResolveToDeterministicAddress(ctx, addr, ts)
 }
 
 func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
@@ -615,16 +616,22 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 
 		vmsg := cmsg.VMMessage()
 
-		t, err := stmgr.GetReturnType(ctx, m.StateManager, vmsg.To, vmsg.Method, ts)
-		if err != nil {
+		switch t, err := stmgr.GetReturnType(ctx, m.StateManager, vmsg.To, vmsg.Method, ts); {
+		case errors.Is(err, stmgr.ErrMetadataNotFound):
+			// This is not necessarily an error -- EVM methods (and in the future native actors) may
+			// return just bytes, and in the not so distant future we'll have native wasm actors
+			// that are by definition not in the registry.
+			// So in this case, log a debug message and retun the raw bytes.
+			log.Debugf("failed to get return type: %s", err)
+			returndec = recpt.Return
+		case err != nil:
 			return nil, xerrors.Errorf("failed to get return type: %w", err)
+		default:
+			if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
+				return nil, err
+			}
+			returndec = t
 		}
-
-		if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
-			return nil, err
-		}
-
-		returndec = t
 	}
 
 	return &api.MsgLookup{
@@ -771,7 +778,7 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
 }
 
-func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifreg.Allocation, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -798,7 +805,7 @@ func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId 
 	return a.StateGetAllocation(ctx, dealState.Proposal.Client, allocationId, tsk)
 }
 
-func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error) {
+func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifreg.AllocationId, tsk types.TipSetKey) (*verifreg.Allocation, error) {
 	idAddr, err := a.StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -825,7 +832,7 @@ func (a *StateAPI) StateGetAllocation(ctx context.Context, clientAddr address.Ad
 	return allocation, nil
 }
 
-func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error) {
+func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.Address, tsk types.TipSetKey) (map[verifreg.AllocationId]verifreg.Allocation, error) {
 	idAddr, err := a.StateLookupID(ctx, clientAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -849,7 +856,7 @@ func (a *StateAPI) StateGetAllocations(ctx context.Context, clientAddr address.A
 	return allocations, nil
 }
 
-func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifregtypes.ClaimId, tsk types.TipSetKey) (*verifregtypes.Claim, error) {
+func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Address, claimId verifreg.ClaimId, tsk types.TipSetKey) (*verifreg.Claim, error) {
 	idAddr, err := a.StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -876,7 +883,7 @@ func (a *StateAPI) StateGetClaim(ctx context.Context, providerAddr address.Addre
 	return claim, nil
 }
 
-func (a *StateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifregtypes.ClaimId]verifregtypes.Claim, error) {
+func (a *StateAPI) StateGetClaims(ctx context.Context, providerAddr address.Address, tsk types.TipSetKey) (map[verifreg.ClaimId]verifreg.Claim, error) {
 	idAddr, err := a.StateLookupID(ctx, providerAddr, tsk)
 	if err != nil {
 		return nil, err
@@ -1046,6 +1053,7 @@ func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.A
 	return pci, err
 }
 
+// Returns nil, nil if sector is not found
 func (m *StateModule) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1799,6 +1807,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeOhSnapHeight:      build.UpgradeOhSnapHeight,
 			UpgradeSkyrHeight:        build.UpgradeSkyrHeight,
 			UpgradeSharkHeight:       build.UpgradeSharkHeight,
+			UpgradeHyggeHeight:       build.UpgradeHyggeHeight,
 		},
 	}, nil
 }

@@ -3,9 +3,13 @@ package mock
 import (
 	"io"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 )
@@ -16,6 +20,18 @@ type mockState struct {
 	settlingAt abi.ChainEpoch
 	toSend     abi.TokenAmount
 	lanes      map[uint64]paych.LaneState
+}
+
+func (ms *mockState) Code() cid.Cid {
+	panic("paych mock does not have CID")
+}
+
+func (ms *mockState) ActorKey() string {
+	return manifest.PaychKey
+}
+
+func (ms *mockState) ActorVersion() actorstypes.Version {
+	panic("paych mock is unversioned")
 }
 
 func (ms *mockState) GetState() interface{} {

@@ -133,7 +133,7 @@ func TestMultisigReentrant(t *testing.T) {
 	sl, err := client.StateReplay(ctx, types.EmptyTSK, pm.Cid())
 	require.NoError(t, err, "failed to replay reentrant propose message (StateWaitMsg)")
 
-	require.Equal(t, 1025, countDepth(sl.ExecutionTrace))
+	require.Equal(t, 1024, countDepth(sl.ExecutionTrace), "failed: %s", sl.Error)
 }
 
 func countDepth(trace types.ExecutionTrace) int {

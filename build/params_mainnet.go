@@ -25,6 +25,9 @@ var NetworkBundle = "mainnet"
 // NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
 var BundleOverrides map[actorstypes.Version]string
 
+// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
+const ActorDebugging = false
+
 const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "mainnet.pi"
@@ -56,6 +59,7 @@ const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 const UpgradeOrangeHeight = 336458
 
 // 2020-12-22T02:00:00Z
+// var because of wdpost_test.go
 var UpgradeClausHeight = abi.ChainEpoch(343200)
 
 // 2021-03-04T00:00:30Z
@@ -80,14 +84,16 @@ const UpgradeOhSnapHeight = 1594680
 const UpgradeSkyrHeight = 1960320
 
 // 2022-11-30T14:00:00Z
-var UpgradeSharkHeight = abi.ChainEpoch(2383680)
+const UpgradeSharkHeight = 2383680
+
+// 2023-03-14T15:14:00Z
+var UpgradeHyggeHeight = abi.ChainEpoch(2683348)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
-var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 var PropagationDelaySecs = uint64(10)
 
@@ -96,8 +102,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_SHARK") == "1" {
-		UpgradeSharkHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_HYGGE") == "1" {
+		UpgradeHyggeHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,
@@ -124,6 +130,10 @@ const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4
+
+// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
+// As per https://github.com/ethereum-lists/chains
+const Eip155ChainId = 314
 
 // we skip checks on message validity in this block to sidestep the zero-bls signature
 var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")

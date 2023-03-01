@@ -1,6 +1,7 @@
 package power
 
 import (
+	"github.com/ipfs/go-cid"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 {{range .versions}}
     {{if (le . 7)}}
@@ -30,7 +32,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.PowerKey {
+       if name != manifest.PowerKey {
           return nil, xerrors.Errorf("actor code is not power: %s", name)
        }
 
@@ -68,6 +70,10 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 
 type State interface {
 	cbor.Marshaler
+
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
 
 	TotalLocked() (abi.TokenAmount, error)
 	TotalPower() (Claim, error)
@@ -108,4 +114,11 @@ func AddClaims(a Claim, b Claim) Claim {
 		RawBytePower:    big.Add(a.RawBytePower, b.RawBytePower),
 		QualityAdjPower: big.Add(a.QualityAdjPower, b.QualityAdjPower),
 	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

@@ -2,16 +2,20 @@ package power
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
@@ -183,4 +187,21 @@ func fromV7Claim(v7 power7.Claim) Claim {
 		RawBytePower:    v7.RawBytePower,
 		QualityAdjPower: v7.QualityAdjPower,
 	}
+}
+
+func (s *state7) ActorKey() string {
+	return manifest.PowerKey
+}
+
+func (s *state7) ActorVersion() actorstypes.Version {
+	return actorstypes.Version7
+}
+
+func (s *state7) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

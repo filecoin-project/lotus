@@ -149,7 +149,7 @@ var ChainGetBlock = &cli.Command{
 		recpts, err := api.ChainGetParentReceipts(ctx, bcid)
 		if err != nil {
 			log.Warn(err)
-			//return xerrors.Errorf("failed to get receipts: %w", err)
+			// return xerrors.Errorf("failed to get receipts: %w", err)
 		}
 
 		cblock := struct {
@@ -1477,11 +1477,6 @@ var ChainPruneCmd = &cli.Command{
 			Name:  "moving-gc",
 			Value: false,
 			Usage: "use moving gc for garbage collecting the coldstore",
-		},
-		&cli.StringFlag{
-			Name:  "move-to",
-			Value: "",
-			Usage: "specify new path for coldstore during moving gc",
 		},
 		&cli.IntFlag{
 			Name:  "retention",

@@ -16,7 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls" // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
 )
 
@@ -140,7 +141,7 @@ func (w *LocalWallet) WalletExport(ctx context.Context, addr address.Address) (*
 		return nil, xerrors.Errorf("failed to find key to export: %w", err)
 	}
 	if k == nil {
-		return nil, xerrors.Errorf("key not found")
+		return nil, xerrors.Errorf("key not found for %s", addr)
 	}
 
 	return &k.KeyInfo, nil

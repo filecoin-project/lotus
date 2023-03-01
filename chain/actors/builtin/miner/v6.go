@@ -3,6 +3,7 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,12 +12,14 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -88,6 +91,7 @@ func (s *state6) PreCommitDeposits() (abi.TokenAmount, error) {
 	return s.State.PreCommitDeposits, nil
 }
 
+// Returns nil, nil if sector is not found
 func (s *state6) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 	info, ok, err := s.State.GetSector(s.store, num)
 	if !ok || err != nil {
@@ -195,7 +199,7 @@ func (s *state6) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 	return &out, nil
 }
 
-func (s *state6) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state6) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
 	info, ok, err := s.State.GetPrecommittedSector(s.store, num)
 	if !ok || err != nil {
 		return nil, err
@@ -206,7 +210,7 @@ func (s *state6) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.Sector
 	return &ret, nil
 }
 
-func (s *state6) ForEachPrecommittedSector(cb func(minertypes.SectorPreCommitOnChainInfo) error) error {
+func (s *state6) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
 	precommitted, err := adt6.AsMap(s.store, s.State.PreCommittedSectors, builtin6.DefaultHamtBitwidth)
 	if err != nil {
 		return err
@@ -414,11 +418,11 @@ func (s *state6) precommits() (adt.Map, error) {
 	return adt6.AsMap(s.store, s.PreCommittedSectors, builtin6.DefaultHamtBitwidth)
 }
 
-func (s *state6) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state6) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreCommitOnChainInfo, error) {
 	var sp miner6.SectorPreCommitOnChainInfo
 	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, err
+		return SectorPreCommitOnChainInfo{}, err
 	}
 
 	return fromV6SectorPreCommitOnChainInfo(sp), nil
@@ -540,9 +544,9 @@ func fromV6SectorOnChainInfo(v6 miner6.SectorOnChainInfo) SectorOnChainInfo {
 	return info
 }
 
-func fromV6SectorPreCommitOnChainInfo(v6 miner6.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	return minertypes.SectorPreCommitOnChainInfo{
-		Info: minertypes.SectorPreCommitInfo{
+func fromV6SectorPreCommitOnChainInfo(v6 miner6.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+	ret := SectorPreCommitOnChainInfo{
+		Info: SectorPreCommitInfo{
 			SealProof:     v6.Info.SealProof,
 			SectorNumber:  v6.Info.SectorNumber,
 			SealedCID:     v6.Info.SealedCID,
@@ -554,8 +558,27 @@ func fromV6SectorPreCommitOnChainInfo(v6 miner6.SectorPreCommitOnChainInfo) mine
 		PreCommitDeposit: v6.PreCommitDeposit,
 		PreCommitEpoch:   v6.PreCommitEpoch,
 	}
+
+	return ret
 }
 
 func (s *state6) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state6) ActorKey() string {
+	return manifest.MinerKey
+}
+
+func (s *state6) ActorVersion() actorstypes.Version {
+	return actorstypes.Version6
+}
+
+func (s *state6) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

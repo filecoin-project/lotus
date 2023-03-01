@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-state-types/manifest"
 {{range .versions}}
     {{if (le . 7)}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
@@ -28,7 +29,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.InitKey {
+       if name != manifest.InitKey {
           return nil, xerrors.Errorf("actor code is not init: %s", name)
        }
 
@@ -67,6 +68,10 @@ func MakeState(store adt.Store, av actorstypes.Version, networkName string) (Sta
 type State interface {
 	cbor.Marshaler
 
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	ResolveAddress(address address.Address) (address.Address, bool, error)
 	MapAddressToNewID(address address.Address) (address.Address, error)
 	NetworkName() (dtypes.NetworkName, error)
@@ -87,6 +92,16 @@ type State interface {
 	// Sets the address map for the init actor. This should only be used for testing.
 	SetAddressMap(mcid cid.Cid) error
 
-	AddressMap() (adt.Map, error)
 	GetState() interface{}
+
+	AddressMap() (adt.Map, error)
+	AddressMapBitWidth() int
+	AddressMapHashFunction() func(input []byte) []byte
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

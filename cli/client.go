@@ -627,7 +627,13 @@ uiLoop:
 
 			minDealDurationDays := uint64(build.MinDealDuration) / (builtin.SecondsInDay / build.BlockDelaySecs)
 			if days < int(minDealDurationDays) {
-				printErr(xerrors.Errorf("minimum duration is %d days", minDealDurationDays))
+				printErr(xerrors.Errorf("minimum duration is %d days, got %d", minDealDurationDays, days))
+				continue
+			}
+
+			maxDealDurationDays := uint64(build.MaxDealDuration) / (builtin.SecondsInDay / build.BlockDelaySecs)
+			if days > int(maxDealDurationDays) {
+				printErr(xerrors.Errorf("maximum duration is %d days, got %d", maxDealDurationDays, days))
 				continue
 			}
 
@@ -1511,6 +1517,8 @@ func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
 				}
 			}(miner)
 		}
+
+		wg.Wait()
 	}()
 
 loop:
@@ -1584,6 +1592,8 @@ loop:
 				lk.Unlock()
 			}(miner)
 		}
+
+		wg.Wait()
 	}()
 
 loop2:

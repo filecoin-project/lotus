@@ -754,7 +754,10 @@ Response:
   {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   }
 ]
 ```
@@ -1247,7 +1250,9 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  null
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
@@ -1259,7 +1264,9 @@ Response:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Piece": null,
+    "Piece": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "Size": 42,
     "MinPrice": "0",
     "UnsealPrice": "0",
@@ -1270,7 +1277,9 @@ Response:
     "MinerPeer": {
       "Address": "f01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "PieceCID": null
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     }
   }
 ]
@@ -1341,7 +1350,9 @@ Response:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "PieceCid": null,
+    "PieceCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "PieceSize": 1024,
     "RawBlockSize": 42
   },
@@ -1445,7 +1456,9 @@ Response:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "PieceCid": null,
+    "PieceCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "PieceSize": 1024,
     "RawBlockSize": 42
   },
@@ -1510,7 +1523,9 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "ID": 5,
-  "PieceCID": null,
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "PricePerByte": "0",
   "UnsealPrice": "0",
   "Status": 0,
@@ -1683,7 +1698,9 @@ Response:
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
-      "PieceCid": null,
+      "PieceCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "PieceSize": 1024,
       "RawBlockSize": 42
     },
@@ -1748,7 +1765,9 @@ Response:
   {
     "Key": 50,
     "Err": "string value",
-    "Root": null,
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "Source": "string value",
     "FilePath": "string value",
     "CARPath": "string value"
@@ -1773,7 +1792,9 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "ID": 5,
-    "PieceCID": null,
+    "PieceCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "PricePerByte": "0",
     "UnsealPrice": "0",
     "Status": 0,
@@ -1834,7 +1855,9 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  null
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
@@ -1845,7 +1868,9 @@ Response:
   "Root": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Piece": null,
+  "Piece": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Size": 42,
   "MinPrice": "0",
   "UnsealPrice": "0",
@@ -1856,7 +1881,9 @@ Response:
   "MinerPeer": {
     "Address": "f01234",
     "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "PieceCID": null
+    "PieceCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   }
 }
 ```
@@ -1933,7 +1960,9 @@ Inputs:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Piece": null,
+    "Piece": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
     "Size": 42,
     "FromLocalCAR": "string value",
@@ -1946,7 +1975,9 @@ Inputs:
     "MinerPeer": {
       "Address": "f01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "PieceCID": null
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     }
   },
   {
@@ -1988,7 +2019,9 @@ Inputs:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "Piece": null,
+    "Piece": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
     "Size": 42,
     "FromLocalCAR": "string value",
@@ -2001,7 +2034,9 @@ Inputs:
     "MinerPeer": {
       "Address": "f01234",
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "PieceCID": null
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     }
   },
   {
@@ -2037,7 +2072,9 @@ Inputs:
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
-      "PieceCid": null,
+      "PieceCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "PieceSize": 1024,
       "RawBlockSize": 42
     },
@@ -2053,7 +2090,12 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### ClientStatelessDeal
 ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
@@ -2070,7 +2112,9 @@ Inputs:
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
-      "PieceCid": null,
+      "PieceCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "PieceSize": 1024,
       "RawBlockSize": 42
     },
@@ -2086,7 +2130,12 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ## Create
 
@@ -2613,7 +2662,9 @@ Response:
     {
       "SealProof": 8,
       "SectorNumber": 9,
-      "SectorKey": null,
+      "SectorKey": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "SealedCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
@@ -4156,7 +4207,9 @@ Response:
   "PendingAmt": "0",
   "NonReservedAmt": "0",
   "PendingAvailableAmt": "0",
-  "PendingWaitSentinel": null,
+  "PendingWaitSentinel": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
 }
@@ -4185,7 +4238,9 @@ Response:
   "PendingAmt": "0",
   "NonReservedAmt": "0",
   "PendingAvailableAmt": "0",
-  "PendingWaitSentinel": null,
+  "PendingWaitSentinel": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
 }
@@ -4672,7 +4727,7 @@ Perms: read
 Inputs:
 ```json
 [
-  17
+  18
 ]
 ```
 
@@ -4687,7 +4742,7 @@ Perms: read
 Inputs:
 ```json
 [
-  17
+  18
 ]
 ```
 
@@ -4792,7 +4847,10 @@ Response:
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "GasCost": {
     "Message": {
@@ -4825,7 +4883,10 @@ Response:
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -4869,7 +4930,10 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -4932,7 +4996,8 @@ Response:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Nonce": 42,
-    "Balance": "0"
+    "Balance": "0",
+    "Address": "\u003cempty\u003e"
   }
 }
 ```
@@ -5058,7 +5123,10 @@ Response:
       "MsgRct": {
         "ExitCode": 0,
         "Return": "Ynl0ZSBhcnJheQ==",
-        "GasUsed": 9
+        "GasUsed": 9,
+        "EventsRoot": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        }
       },
       "GasCost": {
         "Message": {
@@ -5091,7 +5159,10 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -5135,7 +5206,10 @@ Response:
             "MsgRct": {
               "ExitCode": 0,
               "Return": "Ynl0ZSBhcnJheQ==",
-              "GasUsed": 9
+              "GasUsed": 9,
+              "EventsRoot": {
+                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+              }
             },
             "Error": "string value",
             "Duration": 60000000000,
@@ -5257,7 +5331,8 @@ Response:
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
   "Nonce": 42,
-  "Balance": "0"
+  "Balance": "0",
+  "Address": "\u003cempty\u003e"
 }
 ```
 
@@ -5458,7 +5533,8 @@ Response:
     "UpgradeChocolateHeight": 10101,
     "UpgradeOhSnapHeight": 10101,
     "UpgradeSkyrHeight": 10101,
-    "UpgradeSharkHeight": 10101
+    "UpgradeSharkHeight": 10101,
+    "UpgradeHyggeHeight": 10101
   }
 }
 ```
@@ -5549,7 +5625,10 @@ Response:
 {
   "ExitCode": 0,
   "Return": "Ynl0ZSBhcnJheQ==",
-  "GasUsed": 9
+  "GasUsed": 9,
+  "EventsRoot": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 }
 ```
 
@@ -5862,7 +5941,9 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null,
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "SimpleQAPower": true
   }
 ]
@@ -6030,7 +6111,9 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   [
     {
@@ -6152,7 +6235,9 @@ Inputs:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   [
     {
@@ -6335,7 +6420,9 @@ Response:
     "ExpectedStoragePledge": "0",
     "ReplacedSectorAge": 10101,
     "ReplacedDayReward": "0",
-    "SectorKeyCID": null,
+    "SectorKeyCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "SimpleQAPower": true
   }
 ]
@@ -6371,7 +6458,7 @@ Inputs:
 ]
 ```
 
-Response: `17`
+Response: `18`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -6468,7 +6555,10 @@ Response:
   "MsgRct": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "GasCost": {
     "Message": {
@@ -6501,7 +6591,10 @@ Response:
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "GasUsed": 9
+      "GasUsed": 9,
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "Error": "string value",
     "Duration": 60000000000,
@@ -6545,7 +6638,10 @@ Response:
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "GasUsed": 9
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
         "Error": "string value",
         "Duration": 60000000000,
@@ -6616,7 +6712,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -6670,7 +6769,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -6759,7 +6861,9 @@ Response:
   "ExpectedStoragePledge": "0",
   "ReplacedSectorAge": 10101,
   "ReplacedDayReward": "0",
-  "SectorKeyCID": null,
+  "SectorKeyCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "SimpleQAPower": true
 }
 ```
@@ -6830,7 +6934,9 @@ Response:
       5432
     ],
     "Expiration": 10101,
-    "UnsealedCid": null
+    "UnsealedCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "PreCommitDeposit": "0",
   "PreCommitEpoch": 10101
@@ -6982,7 +7088,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [
@@ -7039,7 +7148,10 @@ Response:
   "Receipt": {
     "ExitCode": 0,
     "Return": "Ynl0ZSBhcnJheQ==",
-    "GasUsed": 9
+    "GasUsed": 9,
+    "EventsRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   "ReturnDec": {},
   "TipSet": [

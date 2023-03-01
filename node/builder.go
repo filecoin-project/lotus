@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
@@ -124,6 +125,8 @@ const (
 	GoRPCServer
 
 	SetApiEndpointKey
+
+	StoreEventsKey
 
 	_nInvokes // keep this last
 )

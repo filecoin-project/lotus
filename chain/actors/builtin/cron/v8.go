@@ -1,10 +1,15 @@
 package cron
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
+	"github.com/filecoin-project/go-state-types/manifest"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -32,4 +37,21 @@ type state8 struct {
 
 func (s *state8) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state8) ActorKey() string {
+	return manifest.CronKey
+}
+
+func (s *state8) ActorVersion() actorstypes.Version {
+	return actorstypes.Version8
+}
+
+func (s *state8) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

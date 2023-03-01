@@ -52,4 +52,4 @@ popd
 
 echo "Generating metadata..."
 
-make -C ../../ bundle-gen
+make -C ../../ VERSION="$VERSION" RELEASE="$RELEASE" RELEASE_OVERRIDES="${RELEASE_OVERRIDES[*]}" bundle-gen

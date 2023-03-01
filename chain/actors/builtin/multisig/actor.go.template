@@ -2,6 +2,7 @@ package multisig
 
 import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
 	"fmt"
 
 	"github.com/minio/blake2b-simd"
@@ -20,6 +21,7 @@ import (
 {{end}}
 
     builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -28,7 +30,7 @@ import (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.MultisigKey {
+       if name != manifest.MultisigKey {
           return nil, xerrors.Errorf("actor code is not multisig: %s", name)
        }
 
@@ -66,6 +68,10 @@ func MakeState(store adt.Store, av actorstypes.Version, signers []address.Addres
 
 type State interface {
 	cbor.Marshaler
+
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
 
 	LockedBalance(epoch abi.ChainEpoch) (abi.TokenAmount, error)
 	StartEpoch() (abi.ChainEpoch, error)
@@ -140,4 +146,11 @@ func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	}
 
 	return actors.SerializeParams(&params)
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

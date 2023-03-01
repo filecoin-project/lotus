@@ -3,6 +3,7 @@ package multisig
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -10,10 +11,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	msig5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/multisig"
 	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -114,4 +118,21 @@ func (s *state5) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
 
 func (s *state5) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state5) ActorKey() string {
+	return manifest.MultisigKey
+}
+
+func (s *state5) ActorVersion() actorstypes.Version {
+	return actorstypes.Version5
+}
+
+func (s *state5) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

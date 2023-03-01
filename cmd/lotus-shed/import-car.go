@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -110,7 +111,7 @@ func TestChainExportImport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewMemory()
+	nbs := blockstore.NewMemorySync()
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
@@ -121,6 +122,51 @@ func TestChainExportImport(t *testing.T) {
 
 	if !root.Equals(last) {
 		t.Fatal("imported chain differed from exported chain")
+	}
+}
+
+// Test to check if tipset key cids are being stored on snapshot
+func TestChainImportTipsetKeyCid(t *testing.T) {
+
+	ctx := context.Background()
+	cg, err := gen.NewGenerator()
+	require.NoError(t, err)
+
+	buf := new(bytes.Buffer)
+	var last *types.TipSet
+	var tsKeys []types.TipSetKey
+	for i := 0; i < 10; i++ {
+		ts, err := cg.NextTipSet()
+		require.NoError(t, err)
+		last = ts.TipSet.TipSet()
+		tsKeys = append(tsKeys, last.Key())
+	}
+
+	if err := cg.ChainStore().Export(ctx, last, last.Height(), false, buf); err != nil {
+		t.Fatal(err)
+	}
+
+	nbs := blockstore.NewMemorySync()
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
+	defer cs.Close() //nolint:errcheck
+
+	root, err := cs.Import(ctx, buf)
+	require.NoError(t, err)
+
+	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
+
+	err = cs.SetHead(ctx, last)
+	require.NoError(t, err)
+
+	for _, tsKey := range tsKeys {
+		_, err := cs.LoadTipSet(ctx, tsKey)
+		require.NoError(t, err)
+
+		tsCid, err := tsKey.Cid()
+		require.NoError(t, err)
+		_, err = cs.ChainLocalBlockstore().Get(ctx, tsCid)
+		require.NoError(t, err)
+
 	}
 }
 
@@ -148,7 +194,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewMemory()
+	nbs := blockstore.NewMemorySync()
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 

@@ -93,7 +93,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println("Enabled subsystems (from markets API):", subsystems)
 
-	start, err := fullapi.StartTime(ctx)
+	start, err := minerApi.StartTime(ctx)
 	if err != nil {
 		return err
 	}

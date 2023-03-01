@@ -53,7 +53,7 @@ func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
 }
 
 type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
-type nativeCode map[uint64]invokeFunc
+type nativeCode map[abi.MethodNum]invokeFunc
 
 type actorInfo struct {
 	methods nativeCode
@@ -78,10 +78,10 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 	if err := act.predicate(rt, codeCid); err != nil {
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "unsupported actor: %s", err)
 	}
-	if act.methods[uint64(method)] == nil {
+	if act.methods[method] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	return act.methods[uint64(method)](rt, params)
+	return act.methods[method](rt, params)
 
 }
 
@@ -156,7 +156,7 @@ func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, v
 				mm.Params = et.In(0)
 			}
 
-			methods[abi.MethodNum(number)] = mm
+			methods[number] = mm
 		}
 		if realCode.Defined() {
 			ar.Methods[realCode] = methods
@@ -185,7 +185,7 @@ func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, 
 }
 
 type invokee interface {
-	Exports() map[uint64]builtinst.MethodMeta
+	Exports() map[abi.MethodNum]builtinst.MethodMeta
 }
 
 func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
@@ -284,16 +284,19 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, error) {
-	if builtin.IsAccountActor(act.Code) { // Account code special case
-		return nil, nil
-	}
-
 	actInfo, ok := i.actors[act.Code]
 	if !ok {
 		return nil, xerrors.Errorf("state type for actor %s not found", act.Code)
 	}
 
 	um := actInfo.vmActor.State()
+	if um == nil {
+		if act.Head != EmptyObjectCid {
+			return nil, xerrors.Errorf("actor with code %s should only have empty object (%s) as its Head, instead has %s", act.Code, EmptyObjectCid, act.Head)
+		}
+
+		return nil, nil
+	}
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, xerrors.Errorf("unmarshaling actor state: %w", err)
 	}

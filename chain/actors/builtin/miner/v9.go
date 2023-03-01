@@ -3,6 +3,7 @@ package miner
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -11,12 +12,14 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/manifest"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -88,6 +91,7 @@ func (s *state9) PreCommitDeposits() (abi.TokenAmount, error) {
 	return s.State.PreCommitDeposits, nil
 }
 
+// Returns nil, nil if sector is not found
 func (s *state9) GetSector(num abi.SectorNumber) (*SectorOnChainInfo, error) {
 	info, ok, err := s.State.GetSector(s.store, num)
 	if !ok || err != nil {
@@ -194,7 +198,7 @@ func (s *state9) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 	return &out, nil
 }
 
-func (s *state9) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state9) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
 	info, ok, err := s.State.GetPrecommittedSector(s.store, num)
 	if !ok || err != nil {
 		return nil, err
@@ -205,7 +209,7 @@ func (s *state9) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.Sector
 	return &ret, nil
 }
 
-func (s *state9) ForEachPrecommittedSector(cb func(minertypes.SectorPreCommitOnChainInfo) error) error {
+func (s *state9) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
 	precommitted, err := adt9.AsMap(s.store, s.State.PreCommittedSectors, builtin9.DefaultHamtBitwidth)
 	if err != nil {
 		return err
@@ -384,8 +388,8 @@ func (s *state9) Info() (MinerInfo, error) {
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
 
 		Beneficiary:            info.Beneficiary,
-		BeneficiaryTerm:        info.BeneficiaryTerm,
-		PendingBeneficiaryTerm: info.PendingBeneficiaryTerm,
+		BeneficiaryTerm:        BeneficiaryTerm(info.BeneficiaryTerm),
+		PendingBeneficiaryTerm: (*PendingBeneficiaryChange)(info.PendingBeneficiaryTerm),
 	}
 
 	return mi, nil
@@ -417,11 +421,11 @@ func (s *state9) precommits() (adt.Map, error) {
 	return adt9.AsMap(s.store, s.PreCommittedSectors, builtin9.DefaultHamtBitwidth)
 }
 
-func (s *state9) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
+func (s *state9) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreCommitOnChainInfo, error) {
 	var sp miner9.SectorPreCommitOnChainInfo
 	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, err
+		return SectorPreCommitOnChainInfo{}, err
 	}
 
 	return fromV9SectorPreCommitOnChainInfo(sp), nil
@@ -545,10 +549,43 @@ func fromV9SectorOnChainInfo(v9 miner9.SectorOnChainInfo) SectorOnChainInfo {
 	return info
 }
 
-func fromV9SectorPreCommitOnChainInfo(v9 miner9.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
-	return v9
+func fromV9SectorPreCommitOnChainInfo(v9 miner9.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
+	ret := SectorPreCommitOnChainInfo{
+		Info: SectorPreCommitInfo{
+			SealProof:     v9.Info.SealProof,
+			SectorNumber:  v9.Info.SectorNumber,
+			SealedCID:     v9.Info.SealedCID,
+			SealRandEpoch: v9.Info.SealRandEpoch,
+			DealIDs:       v9.Info.DealIDs,
+			Expiration:    v9.Info.Expiration,
+			UnsealedCid:   nil,
+		},
+		PreCommitDeposit: v9.PreCommitDeposit,
+		PreCommitEpoch:   v9.PreCommitEpoch,
+	}
+
+	ret.Info.UnsealedCid = v9.Info.UnsealedCid
+
+	return ret
 }
 
 func (s *state9) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state9) ActorKey() string {
+	return manifest.MinerKey
+}
+
+func (s *state9) ActorVersion() actorstypes.Version {
+	return actorstypes.Version9
+}
+
+func (s *state9) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

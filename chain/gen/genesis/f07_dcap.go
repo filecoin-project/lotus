@@ -10,6 +10,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
@@ -41,7 +42,7 @@ func SetupDatacapActor(ctx context.Context, bs bstore.Blockstore, av actorstypes
 		return nil, err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.DatacapKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.DatacapKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get datacap actor code ID for actors version %d", av)
 	}

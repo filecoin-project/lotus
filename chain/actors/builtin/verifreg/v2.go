@@ -1,12 +1,16 @@
 package verifreg
 
 import (
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 
@@ -90,26 +94,43 @@ func (s *state2) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state2) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*verifreg9.Allocation, bool, error) {
+func (s *state2) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v2")
 
 }
 
-func (s *state2) GetAllocations(clientIdAddr address.Address) (map[verifreg9.AllocationId]verifreg9.Allocation, error) {
+func (s *state2) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
 
 	return nil, xerrors.Errorf("unsupported in actors v2")
 
 }
 
-func (s *state2) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*verifreg9.Claim, bool, error) {
+func (s *state2) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
 
 	return nil, false, xerrors.Errorf("unsupported in actors v2")
 
 }
 
-func (s *state2) GetClaims(providerIdAddr address.Address) (map[verifreg9.ClaimId]verifreg9.Claim, error) {
+func (s *state2) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
 
 	return nil, xerrors.Errorf("unsupported in actors v2")
 
+}
+
+func (s *state2) ActorKey() string {
+	return manifest.VerifregKey
+}
+
+func (s *state2) ActorVersion() actorstypes.Version {
+	return actorstypes.Version2
+}
+
+func (s *state2) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"golang.org/x/sync/errgroup"
@@ -905,6 +905,10 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	walkCnt := new(int64)
 	scanCnt := new(int64)
 
+	tsRef := func(blkCids []cid.Cid) (cid.Cid, error) {
+		return types.NewTipSetKey(blkCids...).Cid()
+	}
+
 	stopWalk := func(_ cid.Cid) error { return errStopWalk }
 
 	walkBlock := func(c cid.Cid) error {
@@ -926,9 +930,17 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		err = s.view(c, func(data []byte) error {
 			return hdr.UnmarshalCBOR(bytes.NewBuffer(data))
 		})
-
 		if err != nil {
 			return xerrors.Errorf("error unmarshaling block header (cid: %s): %w", c, err)
+		}
+
+		// tipset CID references are retained
+		pRef, err := tsRef(hdr.Parents)
+		if err != nil {
+			return xerrors.Errorf("error computing cid reference to parent tipset")
+		}
+		if err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk); err != nil {
+			return xerrors.Errorf("error walking parent tipset cid reference")
 		}
 
 		// message are retained if within the inclMsgs boundary
@@ -979,6 +991,15 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		}
 
 		return nil
+	}
+
+	// retain ref to chain head
+	hRef, err := tsRef(ts.Cids())
+	if err != nil {
+		return xerrors.Errorf("error computing cid reference to parent tipset")
+	}
+	if err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk); err != nil {
+		return xerrors.Errorf("error walking parent tipset cid reference")
 	}
 
 	for len(toWalk) > 0 {
