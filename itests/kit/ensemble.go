@@ -47,6 +47,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
+	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
@@ -210,7 +211,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		n.genesis.accounts = append(n.genesis.accounts, genacc)
 	}
 
-	*full = TestFullNode{t: n.t, options: options, DefaultKey: key}
+	*full = TestFullNode{t: n.t, options: options, DefaultKey: key, EthSubRouter: gateway.NewEthSubHandler()}
 
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
 	return n
@@ -708,6 +709,7 @@ func (n *Ensemble) Start() *Ensemble {
 					scfg.Storage.AllowPreCommit1 = false
 					scfg.Storage.AllowPreCommit2 = false
 					scfg.Storage.AllowCommit = false
+					scfg.Storage.AllowUnseal = false
 				}
 
 				scfg.Storage.Assigner = assigner

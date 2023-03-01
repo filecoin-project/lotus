@@ -290,7 +290,7 @@ var actorWithdrawCmd = &cli.Command{
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")))
 		if err != nil {
-			return xerrors.Errorf("Timeout waiting for withdrawal message %s", wait.Message)
+			return xerrors.Errorf("Timeout waiting for withdrawal message %s", res)
 		}
 
 		if wait.Receipt.ExitCode.IsError() {
@@ -1133,7 +1133,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ConfirmUpdateWorkerKey,
+			Method: builtin.MethodsMiner.ConfirmChangeWorkerAddress,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {

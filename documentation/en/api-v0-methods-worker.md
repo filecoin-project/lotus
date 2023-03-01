@@ -1601,13 +1601,7 @@ Inputs:
       "Number": 9
     },
     "ProofType": 8
-  },
-  [
-    {
-      "Offset": 1024,
-      "Size": 1024
-    }
-  ]
+  }
 ]
 ```
 
@@ -1636,13 +1630,7 @@ Inputs:
       "Number": 9
     },
     "ProofType": 8
-  },
-  [
-    {
-      "Offset": 1024,
-      "Size": 1024
-    }
-  ]
+  }
 ]
 ```
 

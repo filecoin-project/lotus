@@ -111,6 +111,7 @@ var Prices = map[abi.ChainEpoch]Pricelist{
 		verifySignature: map[crypto.SigType]int64{
 			crypto.SigTypeBLS:       16598605,
 			crypto.SigTypeSecp256k1: 1637292,
+			crypto.SigTypeDelegated: 1637292,
 		},
 
 		hashingBase:                  31355,
@@ -211,6 +212,16 @@ var Prices = map[abi.ChainEpoch]Pricelist{
 		verifyConsensusFault: 495422,
 
 		verifyReplicaUpdate: 36316136,
+	},
+	build.UpgradeHyggeHeight: &pricelistV0{
+		computeGasMulti: 1,
+		storageGasMulti: 1300, // only applies to messages/return values.
+
+		onChainMessageComputeBase:    38863 + 475000, // includes the actor update cost
+		onChainMessageStorageBase:    36,
+		onChainMessageStoragePerByte: 1,
+
+		onChainReturnValuePerByte: 1,
 	},
 }
 

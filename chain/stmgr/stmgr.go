@@ -42,7 +42,7 @@ type StateManagerAPI interface {
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
-	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 }
 
 type versionSpec struct {
@@ -207,11 +207,11 @@ func (sm *StateManager) Beacon() beacon.Schedule {
 	return sm.beacon
 }
 
-// ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
+// ResolveToDeterministicAddress is similar to `vm.ResolveToDeterministicAddr` but does not allow `Actor` type of addresses.
 // Uses the `TipSet` `ts` to generate the VM state.
-func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (sm *StateManager) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
-	case address.BLS, address.SECP256K1:
+	case address.BLS, address.SECP256K1, address.Delegated:
 		return addr, nil
 	case address.Actor:
 		return address.Undef, xerrors.New("cannot resolve actor address to key address")
@@ -230,7 +230,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to load parent state tree at tipset %s: %w", ts.Parents(), err)
 	}
 
-	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
+	resolved, err := vm.ResolveToDeterministicAddr(tree, cst, addr)
 	if err == nil {
 		return resolved, nil
 	}
@@ -246,14 +246,14 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to load state tree at tipset %s: %w", ts, err)
 	}
 
-	return vm.ResolveToKeyAddr(tree, cst, addr)
+	return vm.ResolveToDeterministicAddr(tree, cst, addr)
 }
 
-// ResolveToKeyAddressAtFinality is similar to stmgr.ResolveToKeyAddress but fails if the ID address being resolved isn't reorg-stable yet.
+// ResolveToDeterministicAddressAtFinality is similar to stmgr.ResolveToDeterministicAddress but fails if the ID address being resolved isn't reorg-stable yet.
 // It should not be used for consensus-critical subsystems.
-func (sm *StateManager) ResolveToKeyAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (sm *StateManager) ResolveToDeterministicAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
-	case address.BLS, address.SECP256K1:
+	case address.BLS, address.SECP256K1, address.Delegated:
 		return addr, nil
 	case address.Actor:
 		return address.Undef, xerrors.New("cannot resolve actor address to key address")
@@ -287,7 +287,7 @@ func (sm *StateManager) ResolveToKeyAddressAtFinality(ctx context.Context, addr 
 		}
 	}
 
-	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
+	resolved, err := vm.ResolveToDeterministicAddr(tree, cst, addr)
 	if err == nil {
 		return resolved, nil
 	}
@@ -296,7 +296,7 @@ func (sm *StateManager) ResolveToKeyAddressAtFinality(ctx context.Context, addr 
 }
 
 func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk []byte, err error) {
-	kaddr, err := sm.ResolveToKeyAddress(ctx, addr, ts)
+	kaddr, err := sm.ResolveToDeterministicAddress(ctx, addr, ts)
 	if err != nil {
 		return pubk, xerrors.Errorf("failed to resolve address to key address: %w", err)
 	}

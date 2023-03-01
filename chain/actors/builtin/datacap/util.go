@@ -54,6 +54,9 @@ func forEachClient(store adt.Store, ver actors.Version, root rootFunc, cb func(a
 		}
 
 		a, err := address.NewIDAddress(id)
+		if err != nil {
+			return xerrors.Errorf("creating ID address from actor ID: %w", err)
+		}
 
 		return cb(a, big.Div(dcap, verifreg.DataCapGranularity))
 	})

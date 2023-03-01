@@ -27,7 +27,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance/chaos"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls" // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
@@ -203,6 +204,9 @@ type ExecuteMessageParams struct {
 
 	// Lookback is the LookbackStateGetter; returns the state tree at a given epoch.
 	Lookback vm.LookbackStateGetter
+
+	// TipSetGetter returns the tipset key at any given epoch.
+	TipSetGetter vm.TipSetGetter
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
@@ -217,15 +221,26 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		params.Rand = NewFixedRand()
 	}
 
-	// TODO: This lookback state returns the supplied precondition state tree, unconditionally.
-	//  This is obviously not correct, but the lookback state tree is only used to validate the
-	//  worker key when verifying a consensus fault. If the worker key hasn't changed in the
-	//  current finality window, this workaround is enough.
-	//  The correct solutions are documented in https://github.com/filecoin-project/ref-fvm/issues/381,
-	//  but they're much harder to implement, and the tradeoffs aren't clear.
-	var lookback vm.LookbackStateGetter = func(ctx context.Context, epoch abi.ChainEpoch) (*state.StateTree, error) {
-		cst := cbor.NewCborStore(bs)
-		return state.LoadStateTree(cst, params.Preroot)
+	if params.TipSetGetter == nil {
+		// TODO: If/when we start writing conformance tests against the EVM, we'll need to
+		// actually implement this and (unfortunately) capture any tipsets looked up by
+		// messages.
+		params.TipSetGetter = func(context.Context, abi.ChainEpoch) (types.TipSetKey, error) {
+			return types.EmptyTSK, nil
+		}
+	}
+
+	if params.Lookback == nil {
+		// TODO: This lookback state returns the supplied precondition state tree, unconditionally.
+		//  This is obviously not correct, but the lookback state tree is only used to validate the
+		//  worker key when verifying a consensus fault. If the worker key hasn't changed in the
+		//  current finality window, this workaround is enough.
+		//  The correct solutions are documented in https://github.com/filecoin-project/ref-fvm/issues/381,
+		//  but they're much harder to implement, and the tradeoffs aren't clear.
+		params.Lookback = func(ctx context.Context, epoch abi.ChainEpoch) (*state.StateTree, error) {
+			cst := cbor.NewCborStore(bs)
+			return state.LoadStateTree(cst, params.Preroot)
+		}
 	}
 
 	vmOpts := &vm.VMOpts{
@@ -239,7 +254,8 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		Rand:           params.Rand,
 		BaseFee:        params.BaseFee,
 		NetworkVersion: params.NetworkVersion,
-		LookbackState:  lookback,
+		LookbackState:  params.Lookback,
+		TipSetGetter:   params.TipSetGetter,
 	}
 
 	var vmi vm.Interface

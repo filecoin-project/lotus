@@ -1,7 +1,9 @@
 package paych
 
 import (
+	"github.com/ipfs/go-cid"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
 	"encoding/base64"
 	"fmt"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
@@ -29,7 +32,7 @@ import (
 // Load returns an abstract copy of payment channel state, irregardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.PaychKey {
+       if name != manifest.PaychKey {
           return nil, xerrors.Errorf("actor code is not paych: %s", name)
        }
 
@@ -59,6 +62,11 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 // versions
 type State interface {
 	cbor.Marshaler
+
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	// Channel owner, who has funded the actor
 	From() (address.Address, error)
 	// Recipient of payouts from channel
@@ -132,4 +140,11 @@ func toV0SignedVoucher(sv paychtypes.SignedVoucher) paych0.SignedVoucher {
 		Merges:          nil,
 		Signature:       sv.Signature,
 	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	block "github.com/ipfs/go-libipfs/blocks"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -254,6 +254,20 @@ func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader
 	}
 
 	return blsmsgs, secpkmsgs, nil
+}
+
+func (cs *ChainStore) SecpkMessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.SignedMessage, error) {
+	_, secpkcids, err := cs.ReadMsgMetaCids(ctx, b.Messages)
+	if err != nil {
+		return nil, err
+	}
+
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(ctx, secpkcids)
+	if err != nil {
+		return nil, xerrors.Errorf("loading secpk messages for block: %w", err)
+	}
+
+	return secpkmsgs, nil
 }
 
 func (cs *ChainStore) GetParentReceipt(ctx context.Context, b *types.BlockHeader, i int) (*types.MessageReceipt, error) {

@@ -42,6 +42,7 @@ func TestAbortUpgradeAvailable(t *testing.T) {
 	{
 		si, err := client.StateSectorGetInfo(ctx, maddr, CCUpgrade, types.EmptyTSK)
 		require.NoError(t, err)
+		require.NotNil(t, si)
 		require.Less(t, 50000, int(si.Expiration))
 	}
 	client.WaitForSectorActive(ctx, t, CCUpgrade, maddr)

@@ -58,7 +58,16 @@ var DefaultNodeOpts = nodeOpts{
 	sectors:    DefaultPresealsPerBootstrapMiner,
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 
-	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize},
+	cfgOpts: []CfgOption{
+		func(cfg *config.FullNode) error {
+			// test defaults
+
+			cfg.Fevm.EnableEthRPC = true
+			return nil
+		},
+	},
+
+	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed},
 	workerStorageOpt: func(store paths.Store) paths.Store { return store },
 }
 
@@ -229,7 +238,7 @@ func WithWorkerName(n string) NodeOpt {
 	}
 }
 
-var WithSealWorkerTasks = WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})
+var WithSealWorkerTasks = WithTaskTypes(append([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTDataCid, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}, DefaultNodeOpts.workerTasks...))
 
 func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	return func(opts *nodeOpts) error {
@@ -277,6 +286,20 @@ func SplitstoreMessges() NodeOpt {
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "messages"  // universal bs is coldstore, and it accepts messages
+		return nil
+	})
+}
+
+func WithEthRPC() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Fevm.EnableEthRPC = true
+		return nil
+	})
+}
+
+func DisableEthRPC() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Fevm.EnableEthRPC = false
 		return nil
 	})
 }

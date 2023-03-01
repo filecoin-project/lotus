@@ -11,10 +11,10 @@ import (
 
 	"github.com/Gurpartap/async"
 	"github.com/hashicorp/go-multierror"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -228,7 +228,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
-	if err := syncer.store.PersistBlockHeaders(ctx, fts.TipSet().Blocks()...); err != nil {
+	if err := syncer.store.PersistTipset(ctx, fts.TipSet()); err != nil {
 		log.Warn("failed to persist incoming block header: ", err)
 		return false
 	}
@@ -1145,7 +1145,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 		}
 	}
 	for _, m := range bst.Secpk {
-		if m.Signature.Type != crypto.SigTypeSecp256k1 {
+		if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
 			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())
@@ -1198,16 +1198,13 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 
 	ss.SetStage(api.StagePersistHeaders)
 
-	toPersist := make([]*types.BlockHeader, 0, len(headers)*int(build.BlocksPerEpoch))
 	for _, ts := range headers {
-		toPersist = append(toPersist, ts.Blocks()...)
+		if err := syncer.store.PersistTipset(ctx, ts); err != nil {
+			err = xerrors.Errorf("failed to persist synced tipset to the chainstore: %w", err)
+			ss.Error(err)
+			return err
+		}
 	}
-	if err := syncer.store.PersistBlockHeaders(ctx, toPersist...); err != nil {
-		err = xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
-		ss.Error(err)
-		return err
-	}
-	toPersist = nil
 
 	ss.SetStage(api.StageMessages)
 

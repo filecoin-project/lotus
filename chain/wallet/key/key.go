@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
@@ -50,6 +51,22 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
+	case types.KTDelegated:
+		// Transitory Delegated signature verification as per FIP-0055
+		ethAddr, err := ethtypes.EthAddressFromPubKey(k.PublicKey)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to calculate Eth address from public key: %w", err)
+		}
+
+		ea, err := ethtypes.CastEthAddress(ethAddr)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create ethereum address from bytes: %w", err)
+		}
+
+		k.Address, err = ea.ToFilecoinAddress()
+		if err != nil {
+			return nil, xerrors.Errorf("converting Delegated to address: %w", err)
+		}
 	case types.KTBLS:
 		k.Address, err = address.NewBLSAddress(k.PublicKey)
 		if err != nil {
@@ -58,6 +75,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	default:
 		return nil, xerrors.Errorf("unsupported key type: %s", k.Type)
 	}
+
 	return k, nil
 
 }
@@ -68,6 +86,8 @@ func ActSigType(typ types.KeyType) crypto.SigType {
 		return crypto.SigTypeBLS
 	case types.KTSecp256k1:
 		return crypto.SigTypeSecp256k1
+	case types.KTDelegated:
+		return crypto.SigTypeDelegated
 	default:
 		return crypto.SigTypeUnknown
 	}

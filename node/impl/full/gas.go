@@ -248,22 +248,23 @@ func (m *GasModule) GasEstimateGasLimit(ctx context.Context, msgIn *types.Messag
 	}
 	return gasEstimateGasLimit(ctx, m.Chain, m.Stmgr, m.Mpool, msgIn, ts)
 }
-func gasEstimateGasLimit(
+
+// gasEstimateCallWithGas invokes a message "msgIn" on the earliest available tipset with pending
+// messages in the message pool. The function returns the result of the message invocation, the
+// pending messages, the tipset used for the invocation, and an error if occurred.
+// The returned information can be used to make subsequent calls to CallWithGas with the same parameters.
+func gasEstimateCallWithGas(
 	ctx context.Context,
 	cstore *store.ChainStore,
 	smgr *stmgr.StateManager,
 	mpool *messagepool.MessagePool,
 	msgIn *types.Message,
 	currTs *types.TipSet,
-) (int64, error) {
+) (*api.InvocResult, []types.ChainMsg, *types.TipSet, error) {
 	msg := *msgIn
-	msg.GasLimit = build.BlockGasLimit
-	msg.GasFeeCap = big.Zero()
-	msg.GasPremium = big.Zero()
-
-	fromA, err := smgr.ResolveToKeyAddress(ctx, msgIn.From, currTs)
+	fromA, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
 	if err != nil {
-		return -1, xerrors.Errorf("getting key address: %w", err)
+		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting key address: %w", err)
 	}
 
 	pending, ts := mpool.PendingFor(ctx, fromA)
@@ -284,12 +285,34 @@ func gasEstimateGasLimit(
 		}
 		ts, err = cstore.GetTipSetFromKey(ctx, ts.Parents())
 		if err != nil {
-			return -1, xerrors.Errorf("getting parent tipset: %w", err)
+			return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting parent tipset: %w", err)
 		}
 	}
 	if err != nil {
-		return -1, xerrors.Errorf("CallWithGas failed: %w", err)
+		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
+
+	return res, priorMsgs, ts, nil
+}
+
+func gasEstimateGasLimit(
+	ctx context.Context,
+	cstore *store.ChainStore,
+	smgr *stmgr.StateManager,
+	mpool *messagepool.MessagePool,
+	msgIn *types.Message,
+	currTs *types.TipSet,
+) (int64, error) {
+	msg := *msgIn
+	msg.GasLimit = build.BlockGasLimit
+	msg.GasFeeCap = big.Zero()
+	msg.GasPremium = big.Zero()
+
+	res, _, ts, err := gasEstimateCallWithGas(ctx, cstore, smgr, mpool, &msg, currTs)
+	if err != nil {
+		return -1, xerrors.Errorf("gas estimation failed: %w", err)
+	}
+
 	if res.MsgRct.ExitCode == exitcode.SysErrOutOfGas {
 		return -1, &api.ErrOutOfGas{}
 	}
@@ -300,12 +323,19 @@ func gasEstimateGasLimit(
 
 	ret := res.MsgRct.GasUsed
 
+	log.Infow("GasEstimateMessageGas CallWithGas Result", "GasUsed", ret, "ExitCode", res.MsgRct.ExitCode)
+
 	transitionalMulti := 1.0
 	// Overestimate gas around the upgrade
-	if ts.Height() <= build.UpgradeSkyrHeight && (build.UpgradeSkyrHeight-ts.Height() <= 20) {
-		transitionalMulti = 2.0
-
+	if ts.Height() <= build.UpgradeHyggeHeight && (build.UpgradeHyggeHeight-ts.Height() <= 20) {
 		func() {
+
+			// Bare transfers get about 3x more expensive: https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0057.md#product-considerations
+			if msgIn.Method == builtin.MethodSend {
+				transitionalMulti = 3.0
+				return
+			}
+
 			st, err := smgr.ParentState(ts)
 			if err != nil {
 				return
@@ -317,26 +347,27 @@ func gasEstimateGasLimit(
 
 			if lbuiltin.IsStorageMinerActor(act.Code) {
 				switch msgIn.Method {
-				case 5:
-					transitionalMulti = 3.954
+				case 3:
+					transitionalMulti = 1.92
+				case 4:
+					transitionalMulti = 1.72
 				case 6:
-					transitionalMulti = 4.095
+					transitionalMulti = 1.06
 				case 7:
-					// skip, stay at 2.0
-					//transitionalMulti = 1.289
-				case 11:
-					transitionalMulti = 17.8758
+					transitionalMulti = 1.2
 				case 16:
-					transitionalMulti = 2.1704
-				case 25:
-					transitionalMulti = 3.1177
+					transitionalMulti = 1.19
+				case 18:
+					transitionalMulti = 1.73
+				case 23:
+					transitionalMulti = 1.73
 				case 26:
-					transitionalMulti = 2.3322
+					transitionalMulti = 1.15
+				case 27:
+					transitionalMulti = 1.18
 				default:
 				}
 			}
-
-			// skip storage market, 80th percentie for everything ~1.9, leave it at 2.0
 		}()
 	}
 	ret = (ret * int64(transitionalMulti*1024)) >> 10

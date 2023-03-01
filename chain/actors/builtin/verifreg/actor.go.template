@@ -1,7 +1,9 @@
 package verifreg
 
 import (
+	"github.com/ipfs/go-cid"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -28,7 +30,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.VerifregKey {
+       if name != manifest.VerifregKey {
           return nil, xerrors.Errorf("actor code is not verifreg: %s", name)
        }
 
@@ -67,15 +69,31 @@ func MakeState(store adt.Store, av actorstypes.Version, rootKeyAddress address.A
 type State interface {
 	cbor.Marshaler
 
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	RootKey() (address.Address, error)
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
 	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
-	GetAllocation(clientIdAddr address.Address, allocationId verifregtypes.AllocationId) (*verifregtypes.Allocation, bool, error)
-	GetAllocations(clientIdAddr address.Address) (map[verifregtypes.AllocationId]verifregtypes.Allocation, error)
-	GetClaim(providerIdAddr address.Address, claimId verifregtypes.ClaimId) (*verifregtypes.Claim, bool, error)
-	GetClaims(providerIdAddr address.Address) (map[verifregtypes.ClaimId]verifregtypes.Claim, error)
+	GetAllocation(clientIdAddr address.Address, allocationId AllocationId) (*Allocation, bool, error)
+	GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error)
+	GetClaim(providerIdAddr address.Address, claimId ClaimId) (*Claim, bool, error)
+	GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error)
 	GetState() interface{}
 }
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+type Allocation = verifregtypes.Allocation
+type AllocationId = verifregtypes.AllocationId
+type Claim = verifregtypes.Claim
+type ClaimId = verifregtypes.ClaimId

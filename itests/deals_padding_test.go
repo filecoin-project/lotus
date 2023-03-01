@@ -33,7 +33,7 @@ func TestDealPadding(t *testing.T) {
 	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	ctx := context.Background()
-	client.WaitTillChain(ctx, kit.BlockMinedBy(miner.ActorAddr))
+	client.WaitTillChain(ctx, kit.BlocksMinedByAll(miner.ActorAddr))
 
 	// Create a random file, would originally be a 256-byte sector
 	res, inFile := client.CreateImportFile(ctx, 1, 200)

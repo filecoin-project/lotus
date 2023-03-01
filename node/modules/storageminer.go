@@ -233,7 +233,7 @@ func PreflightChecks(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			return xerrors.New("key for worker not found in local wallet")
 		}
 
-		log.Infof("starting up miner %s, worker addr %s", maddr, workerKey)
+		log.Infof("starting up miner %s, worker addr %s", address.Address(maddr), workerKey)
 		return nil
 	}})
 

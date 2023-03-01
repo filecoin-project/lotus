@@ -21,12 +21,14 @@
 First steps:
 
   - [ ] Fork a new branch (`release/vX.Y.Z`) from `master` and make any further release related changes to this branch. If any "non-trivial" changes get added to the release, uncheck all the checkboxes and return to this stage.
-  - [ ] Bump the version in `build/version.go` in the `master` branch to `vX.Y.(Z+1)-dev` (bump from feature release) or `vX.(Y+1).0-dev` (bump from mandatory release) 
+  - [ ] Bump the version in `build/version.go` in the `master` branch to `vX.Y.(Z+1)-dev` (bump from feature release) or `vX.(Y+1).0-dev` (bump from mandatory release). Run make gen and make docsgen-cli before committing changes
     
 Prepping an RC:
 
-- [ ] version string in `build/version.go` has been updated (in the `release/vX.Y.Z` branch).
+- [ ] version string in `build/version.go` has been updated (in the `release/vX.Y.Z` branch)
 - [ ] run `make gen && make docsgen-cli`
+- [ ] Generate changelog using the script at scripts/mkreleaselog
+- [ ] Add contents of generated text to lotus/CHANGELOG.md in addition to other details
 - [ ] tag commit with `vX.Y.Z-rcN`
 - [ ] cut a pre-release [here](https://github.com/filecoin-project/lotus/releases/new?prerelease=true)
 

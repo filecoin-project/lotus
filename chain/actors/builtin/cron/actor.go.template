@@ -1,11 +1,13 @@
 package cron
 
 import (
+	"github.com/ipfs/go-cid"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"golang.org/x/xerrors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 {{range .versions}}
     {{if (le . 7)}}
@@ -17,7 +19,7 @@ import (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.CronKey {
+       if name != manifest.CronKey {
           return nil, xerrors.Errorf("actor code is not cron: %s", name)
        }
 
@@ -60,5 +62,16 @@ var (
 
 
 type State interface {
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
 	GetState() interface{}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
 }

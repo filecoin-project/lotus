@@ -324,7 +324,11 @@ func (i *Index) StorageReportHealth(ctx context.Context, id storiface.ID, report
 	ent.lastHeartbeat = time.Now()
 
 	if report.Stat.Capacity > 0 {
-		ctx, _ = tag.New(ctx, tag.Upsert(metrics.StorageID, string(id)))
+		ctx, _ = tag.New(ctx,
+			tag.Upsert(metrics.StorageID, string(id)),
+			tag.Upsert(metrics.PathStorage, fmt.Sprint(ent.info.CanStore)),
+			tag.Upsert(metrics.PathSeal, fmt.Sprint(ent.info.CanSeal)),
+		)
 
 		stats.Record(ctx, metrics.StorageFSAvailable.M(float64(report.Stat.FSAvailable)/float64(report.Stat.Capacity)))
 		stats.Record(ctx, metrics.StorageAvailable.M(float64(report.Stat.Available)/float64(report.Stat.Capacity)))

@@ -164,7 +164,7 @@ func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storiface.
 		return nil, xerrors.Errorf("commit: %w", err)
 	}
 
-	if err := sb.FinalizeSector(context.TODO(), sid, nil); err != nil {
+	if err := sb.FinalizeSector(context.TODO(), sid); err != nil {
 		return nil, xerrors.Errorf("trim cache: %w", err)
 	}
 

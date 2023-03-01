@@ -27,13 +27,16 @@ func main() {
 		types.Message{},
 		types.SignedMessage{},
 		types.MsgMeta{},
-		types.Actor{},
-		types.MessageReceipt{},
+		types.ActorV4{},
+		types.ActorV5{},
+		// types.MessageReceipt{}, // Custom serde to deal with versioning.
 		types.BlockMsg{},
 		types.ExpTipSet{},
 		types.BeaconEntry{},
 		types.StateRoot{},
 		types.StateInfo0{},
+		types.Event{},
+		types.EventEntry{},
 	)
 	if err != nil {
 		fmt.Println(err)

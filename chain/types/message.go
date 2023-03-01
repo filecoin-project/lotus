@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"

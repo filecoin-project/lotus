@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -36,7 +37,7 @@ func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (ty
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
-	keyAddr, err := a.StateManagerAPI.ResolveToKeyAddress(ctx, k, nil)
+	keyAddr, err := a.StateManagerAPI.ResolveToDeterministicAddress(ctx, k, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
@@ -46,17 +47,21 @@ func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byt
 }
 
 func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
-	keyAddr, err := a.StateManagerAPI.ResolveToKeyAddress(ctx, k, nil)
+	keyAddr, err := a.StateManagerAPI.ResolveToDeterministicAddress(ctx, k, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve ID address: %w", keyAddr)
 	}
 
+	sb, err := messagesigner.SigningBytes(msg, keyAddr.Protocol())
+	if err != nil {
+		return nil, err
+	}
 	mb, err := msg.ToStorageBlock()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing message: %w", err)
 	}
 
-	sig, err := a.Wallet.WalletSign(ctx, keyAddr, mb.Cid().Bytes(), api.MsgMeta{
+	sig, err := a.Wallet.WalletSign(ctx, keyAddr, sb, api.MsgMeta{
 		Type:  api.MTChainMsg,
 		Extra: mb.RawData(),
 	})

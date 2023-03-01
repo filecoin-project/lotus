@@ -51,6 +51,7 @@ func MonitorShutdown(triggerCh <-chan struct{}, handlers ...ShutdownHandler) <-c
 		close(out)
 	}()
 
+	signal.Reset(syscall.SIGTERM, syscall.SIGINT)
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
 	return out
 }
