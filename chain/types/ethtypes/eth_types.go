@@ -295,6 +295,19 @@ func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
 	return ethAddr, nil
 }
 
+func IsEthAddress(addr address.Address) bool {
+	if addr.Protocol() != address.Delegated {
+		return false
+	}
+	payload := addr.Payload()
+	namespace, _, err := varint.FromUvarint(payload)
+	if err != nil {
+		return false
+	}
+
+	return namespace == builtintypes.EthereumAddressManagerActorID
+}
+
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 	switch addr.Protocol() {
 	case address.ID:
