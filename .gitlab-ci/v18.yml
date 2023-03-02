@@ -39,11 +39,12 @@
   image: geektr/yumemi:builder-20221213
   tags: [docker, x86, merak]
   stage: build
+  needs: ["v18: build lotus (2k)"]
   dependencies: ["v18: build lotus (2k)"]
   variables:
     # DOCKER_BUILDKIT: 1
-    docker_file: .gitlabci/Dockerfile.debian
-    docker_tag: "@repo/v18:debian-2k-@datetime"
+    docker_file: .gitlab-ci/Dockerfile
+    docker_tag: "@repo/v18:2k-aio-@datetime"
   script:
     - yumemi gitlab-ci docker build
   only:

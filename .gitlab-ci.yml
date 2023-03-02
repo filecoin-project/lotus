@@ -36,5 +36,6 @@ stages:
     - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
     - mkdir -p .go
 
-include: '.gitlab-ci/v18.yml'
-include: '.gitlab-ci/v18-filbase.yml'
+include:
+  - '.gitlab-ci/v18.yml'
+  - '.gitlab-ci/v18-filbase.yml'
