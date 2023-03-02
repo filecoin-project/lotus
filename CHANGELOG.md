@@ -1,6 +1,7 @@
 # Lotus changelog
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # v1.21.0-rc3 / 2023-04-10
 
 This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
@@ -242,6 +243,9 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 - chore: ci: Update codeql to v2 ([filecoin-project/lotus#10120](https://github.com/filecoin-project/lotus/pull/10120))
 - feat: ci: make ci more efficient ([filecoin-project/lotus#9910](https://github.com/filecoin-project/lotus/pull/9910))
 - feat: scripts: go.mod dep diff script ([filecoin-project/lotus#9711](https://github.com/filecoin-project/lotus/pull/9711))
+=======
+# UNRELEASED
+>>>>>>> f6add2f72 (feat: vm: switch to the new exec trace format (#10372))
 
 ## Execution Trace Format Changes
 
@@ -395,6 +399,7 @@ New <code>ExecutionTrace</code>:
 
 </details>
 
+<<<<<<< HEAD
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
@@ -460,6 +465,8 @@ This is a HIGHLY RECOMMENDED patch release for node operators/API service provid
 - feat: mempool: Reduce minimum replace fee from 1.25x to 1.1x #10416
 - We recommend storage providers to update your nodes to this patch, that will help improve developers who use Ethereum tooling's experience.
 =======
+=======
+>>>>>>> f6add2f72 (feat: vm: switch to the new exec trace format (#10372))
 # v1.20.4 / 2023-03-17
 
 This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade. 
