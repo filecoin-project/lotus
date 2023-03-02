@@ -134,6 +134,24 @@ func (s *state10) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, 
 
 }
 
+func (s *state10) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+
+	v10Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[abi.SectorNumber][]ClaimId)
+	for k, v := range v10Map {
+		claims, ok := retMap[v.Sector]
+		if !ok {
+			retMap[v.Sector] = []ClaimId{ClaimId(k)}
+		} else {
+			retMap[v.Sector] = append(claims, ClaimId(k))
+		}
+	}
+
+	return retMap, err
+
+}
+
 func (s *state10) ActorKey() string {
 	return manifest.VerifregKey
 }

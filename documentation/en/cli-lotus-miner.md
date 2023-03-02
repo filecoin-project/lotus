@@ -1889,11 +1889,12 @@ USAGE:
    lotus-miner sectors extend [command options] <sectorNumbers...(optional)>
 
 OPTIONS:
+   --drop-claims           drop claims for sectors that can be extended, but only by dropping some of their verified power claims (default: false)
    --exclude value         optionally provide a file containing excluding sectors
    --extension value       try to extend selected sectors by this number of epochs, defaults to 540 days (default: 1555200)
    --from value            only consider sectors whose current expiration epoch is in the range of [from, to], <from> defaults to: now + 120 (1 hour) (default: 0)
    --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
-   --max-sectors value     the maximum number of sectors contained in each message message (default: 0)
+   --max-sectors value     the maximum number of sectors contained in each message (default: 0)
    --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
    --only-cc               only extend CC sectors (useful for making sector ready for snap upgrade) (default: false)
    --really-do-it          pass this flag to really extend sectors, otherwise will only print out json representation of parameters (default: false)
