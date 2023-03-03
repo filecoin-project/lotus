@@ -2117,7 +2117,7 @@ COMMANDS:
      decode                            decode various types
      encode                            encode various types
      disputer                          interact with the window post disputer
-     prune                             prune the stored chain state and perform garbage collection
+     prune                             splitstore gc
      help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2465,15 +2465,47 @@ OPTIONS:
 ### lotus chain prune
 ```
 NAME:
-   lotus chain prune - prune the stored chain state and perform garbage collection
+   lotus chain prune - splitstore gc
 
 USAGE:
-   lotus chain prune [command options] [arguments...]
+   lotus chain prune command [command options] [arguments...]
+
+COMMANDS:
+     compact-cold  force splitstore compaction on cold store state and run gc
+     hot           run online (badger vlog) garbage collection on hotstore
+     help, h       Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus chain prune compact-cold
+```
+NAME:
+   lotus chain prune compact-cold - force splitstore compaction on cold store state and run gc
+
+USAGE:
+   lotus chain prune compact-cold [command options] [arguments...]
 
 OPTIONS:
    --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
    --online-gc        use online gc for garbage collecting the coldstore (default: false)
    --retention value  specify state retention policy (default: -1)
+   
+```
+
+#### lotus chain prune hot
+```
+NAME:
+   lotus chain prune hot - run online (badger vlog) garbage collection on hotstore
+
+USAGE:
+   lotus chain prune hot [command options] [arguments...]
+
+OPTIONS:
+   --periodic         Run periodic gc over multiple vlogs. Otherwise run gc once (default: false)
+   --threshold value  Threshold of vlog garbage for gc (default: 0.01)
    
 ```
 

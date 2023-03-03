@@ -172,6 +172,8 @@ type FullNodeMethods struct {
 
 	ChainHead func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
+	ChainHotGC func(p0 context.Context, p1 HotGCOpts) error `perm:"admin"`
+
 	ChainNotify func(p0 context.Context) (<-chan []*HeadChange, error) `perm:"read"`
 
 	ChainPrune func(p0 context.Context, p1 PruneOpts) error `perm:"admin"`
@@ -1615,6 +1617,17 @@ func (s *FullNodeStruct) ChainHead(p0 context.Context) (*types.TipSet, error) {
 
 func (s *FullNodeStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainHotGC(p0 context.Context, p1 HotGCOpts) error {
+	if s.Internal.ChainHotGC == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ChainHotGC(p0, p1)
+}
+
+func (s *FullNodeStub) ChainHotGC(p0 context.Context, p1 HotGCOpts) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {

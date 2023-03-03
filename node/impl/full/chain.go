@@ -748,3 +748,14 @@ func (a *ChainAPI) ChainPrune(ctx context.Context, opts api.PruneOpts) error {
 
 	return pruner.PruneChain(opts)
 }
+
+func (a *ChainAPI) ChainHotGC(ctx context.Context, opts api.HotGCOpts) error {
+	pruner, ok := a.BaseBlockstore.(interface {
+		GCHotStore(api.HotGCOpts) error
+	})
+	if !ok {
+		return xerrors.Errorf("base blockstore does not support hot GC (%T)", a.BaseBlockstore)
+	}
+
+	return pruner.GCHotStore(opts)
+}
