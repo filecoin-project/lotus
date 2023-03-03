@@ -76,7 +76,7 @@ require (
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/ipfs/bbloom v0.0.4
-	github.com/ipfs/go-blockservice v0.4.0
+	github.com/ipfs/go-blockservice v0.5.0
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-cidutil v0.1.0
 	github.com/ipfs/go-datastore v0.6.0
@@ -97,15 +97,15 @@ require (
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
-	github.com/ipfs/go-libipfs v0.4.1
+	github.com/ipfs/go-libipfs v0.5.0
 	github.com/ipfs/go-log/v2 v2.5.1
-	github.com/ipfs/go-merkledag v0.8.1
+	github.com/ipfs/go-merkledag v0.9.0
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-unixfs v0.4.3
 	github.com/ipfs/go-unixfsnode v1.5.2
-	github.com/ipfs/interface-go-ipfs-core v0.7.0
-	github.com/ipld/go-car v0.4.0
+	github.com/ipfs/interface-go-ipfs-core v0.10.0
+	github.com/ipld/go-car v0.5.0
 	github.com/ipld/go-car/v2 v2.5.0
 	github.com/ipld/go-codec-dagpb v1.5.0
 	github.com/ipld/go-ipld-prime v0.20.0
@@ -114,17 +114,17 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
-	github.com/libp2p/go-libp2p v0.25.0
+	github.com/libp2p/go-libp2p v0.25.1
 	github.com/libp2p/go-libp2p-consensus v0.0.1
 	github.com/libp2p/go-libp2p-gorpc v0.4.0
-	github.com/libp2p/go-libp2p-kad-dht v0.18.0
+	github.com/libp2p/go-libp2p-kad-dht v0.21.0
 	github.com/libp2p/go-libp2p-pubsub v0.8.2
 	github.com/libp2p/go-libp2p-raft v0.1.8
 	github.com/libp2p/go-libp2p-record v0.2.0
-	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
+	github.com/libp2p/go-libp2p-routing-helpers v0.4.0
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/libp2p/go-msgio v0.3.0
-	github.com/mattn/go-isatty v0.0.16
+	github.com/mattn/go-isatty v0.0.17
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -143,12 +143,12 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/urfave/cli/v2 v2.16.3
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20221021053955-c138aae13722
+	github.com/whyrusleeping/cbor-gen v0.0.0-20221220214510-0333c149dec0
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
-	go.opencensus.io v0.23.0
+	go.opencensus.io v0.24.0
 	go.opentelemetry.io/otel v1.11.1
 	go.opentelemetry.io/otel/bridge/opencensus v0.33.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.2.0
@@ -292,7 +292,7 @@ require (
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
 	github.com/multiformats/go-multicodec v0.8.0 // indirect
-	github.com/multiformats/go-multistream v0.4.0 // indirect
+	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/nikkolasg/hexjson v0.0.0-20181101101858-78e39397e00c // indirect
 	github.com/nkovacs/streamquote v1.0.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.5.1 // indirect
