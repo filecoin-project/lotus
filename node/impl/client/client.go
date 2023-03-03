@@ -44,7 +44,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/writer"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -1302,8 +1302,8 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 		return nil, err
 	}
 	for _, s := range ps {
-		if strings.HasPrefix(s, dealProtoPrefix) {
-			res.DealProtocols = append(res.DealProtocols, s)
+		if strings.HasPrefix(string(s), dealProtoPrefix) {
+			res.DealProtocols = append(res.DealProtocols, string(s))
 		}
 	}
 	sort.Strings(res.DealProtocols)
