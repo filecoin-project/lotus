@@ -444,7 +444,7 @@ func (b *Blockstore) deleteDB(path string) {
 	}
 }
 
-func (b *Blockstore) onlineGC(ctx context.Context, threshold float64) error {
+func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq time.Duration, check func() error) error {
 	b.lockDB()
 	defer b.unlockDB()
 
@@ -461,11 +461,15 @@ func (b *Blockstore) onlineGC(ctx context.Context, threshold float64) error {
 	if err != nil {
 		return err
 	}
-
+	checkTick := time.NewTimer(checkFreq)
+	defer checkTick.Stop()
 	for err == nil {
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
+		case <-checkTick.C:
+			check()
+			checkTick.Reset(checkFreq)
 		default:
 			err = b.db.RunValueLogGC(threshold)
 		}
@@ -502,7 +506,17 @@ func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.Bloc
 	if threshold == 0 {
 		threshold = defaultGCThreshold
 	}
-	return b.onlineGC(ctx, threshold)
+	checkFreq := options.CheckFreq
+	if checkFreq < 30*time.Second { // disallow checking more frequently than block time
+		checkFreq = 30 * time.Second
+	}
+	check := options.Check
+	if check == nil {
+		check = func() error {
+			return nil
+		}
+	}
+	return b.onlineGC(ctx, threshold, checkFreq, check)
 }
 
 // GCOnce runs garbage collection on the value log;
