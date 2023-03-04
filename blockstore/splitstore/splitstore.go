@@ -195,6 +195,17 @@ type SplitStore struct {
 
 	// registered protectors
 	protectors []func(func(cid.Cid) error) error
+
+	// dag sizes measured during latest compaction
+	// logged and used for GC strategy
+
+	// protected by compaction lock
+	szWalk          int64
+	szProtectedTxns int64
+	szToPurge       int64 // expected purges before critical section protections and live marking
+
+	// protected by txnLk
+	szMarkedLiveRefs int64
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
