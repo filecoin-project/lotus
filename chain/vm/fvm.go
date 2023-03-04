@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -347,7 +348,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	return ret, nil
 }
 
-func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+func NewDebugFVM(ctx context.Context, opts *VMOpts, executeInNextVersion bool) (*FVM, error) {
 	baseBstore := opts.Bstore
 	overlayBstore := blockstore.NewMemorySync()
 	cborStore := cbor.NewCborStore(overlayBstore)
@@ -360,6 +361,9 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	fvmOpts.Debug = true
+	if executeInNextVersion {
+		fvmOpts.NetworkVersion += 1
+	}
 
 	putMapping := func(ar map[cid.Cid]cid.Cid) (cid.Cid, error) {
 		var mapping xMapping
@@ -426,12 +430,14 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil
 	}
 
-	av, err := actorstypes.VersionForNetwork(opts.NetworkVersion)
+	av, err := actorstypes.VersionForNetwork(fvmOpts.NetworkVersion)
 	if err != nil {
-		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
+		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", fvmOpts.NetworkVersion, err)
 	}
+	envName := fmt.Sprintf("LOTUS_FVM_DEBUG_BUNDLE_V%d", av)
+	log.Warnf("looking for bundle for debug execution under env: %s", envName)
 
-	debugBundlePath := os.Getenv(fmt.Sprintf("LOTUS_FVM_DEBUG_BUNDLE_V%d", av))
+	debugBundlePath := os.Getenv(envName)
 	if debugBundlePath != "" {
 		if err := createMapping(debugBundlePath); err != nil {
 			log.Errorf("failed to create v%d debug mapping", av)
@@ -608,13 +614,15 @@ type dualExecutionFVM struct {
 
 var _ Interface = (*dualExecutionFVM)(nil)
 
+var useFvmDebugForward = os.Getenv("LOTUS_FVM_DEVELOPER_DEBUG_FORWARD") == "1"
+
 func NewDualExecutionFVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	main, err := NewFVM(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	debug, err := NewDebugFVM(ctx, opts)
+	debug, err := NewDebugFVM(ctx, opts, useFvmDebugForward)
 	if err != nil {
 		return nil, err
 	}
@@ -623,6 +631,37 @@ func NewDualExecutionFVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 		main:  main,
 		debug: debug,
 	}, nil
+}
+
+var traceFile *os.File
+var traceEncoder *json.Encoder
+var traceLock sync.Mutex
+
+func getTraceFile() (*os.File, *json.Encoder, func()) {
+	traceLock.Lock()
+	if traceFile == nil {
+		var err error
+		traceFile, err = os.OpenFile("dual_execution_results.ndjson", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+		if err != nil {
+			log.Errorf("opening trace file: %+v", err)
+			traceLock.Unlock()
+			return nil, nil, func() {}
+		}
+		traceEncoder = json.NewEncoder(traceFile)
+	}
+
+	return traceFile, traceEncoder, traceLock.Unlock
+}
+
+func traceDump(key string, value interface{}) {
+	d := map[string]interface{}{"type": key, "value": value}
+	_, e, c := getTraceFile()
+	defer c()
+	err := e.Encode(d)
+	if err != nil {
+		log.Errorf("encoding trace dump: %+v", err)
+	}
+	return
 }
 
 func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (ret *ApplyRet, err error) {
@@ -635,14 +674,22 @@ func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMs
 		ret, err = vm.main.ApplyMessage(ctx, cmsg)
 	}()
 
+	var ret2 *ApplyRet
+	var err2 error
+
 	go func() {
 		defer wg.Done()
-		if _, err := vm.debug.ApplyMessage(ctx, cmsg); err != nil {
-			log.Errorf("debug execution failed: %w", err)
-		}
+		ret2, err2 = vm.debug.ApplyMessage(ctx, cmsg)
 	}()
 
 	wg.Wait()
+
+	if err2 != nil {
+		traceDump("executionError", err2.Error())
+		log.Errorf("debug execution failed: %+v", err2)
+	} else {
+		traceDump("dualExec", map[string]*ApplyRet{"active": ret, "debug": ret2})
+	}
 	return ret, err
 }
 
@@ -656,14 +703,21 @@ func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types
 		ret, err = vm.main.ApplyImplicitMessage(ctx, msg)
 	}()
 
+	var ret2 *ApplyRet
+	var err2 error
 	go func() {
 		defer wg.Done()
-		if _, err := vm.debug.ApplyImplicitMessage(ctx, msg); err != nil {
-			log.Errorf("debug execution failed: %s", err)
-		}
+		ret2, err2 = vm.debug.ApplyImplicitMessage(ctx, msg)
 	}()
 
 	wg.Wait()
+
+	if err2 != nil {
+		traceDump("executionError", err2.Error())
+		log.Errorf("debug execution failed: %+v", err2)
+	} else {
+		traceDump("dualExec", map[string]*ApplyRet{"active": ret, "debug": ret2})
+	}
 	return ret, err
 }
 
