@@ -187,6 +187,11 @@ type SplitStore struct {
 	ctx    context.Context
 	cancel func()
 
+	outOfSync         int32 // for fast checking
+	chainSyncMx       sync.RWMutex
+	chainSyncCond     sync.Cond
+	chainSyncFinished bool // protected by chainSyncMx
+
 	debug *debugLog
 
 	// transactional protection for concurrent read/writes during compaction
@@ -261,6 +266,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 
 	ss.txnViewsCond.L = &ss.txnViewsMx
 	ss.txnSyncCond.L = &ss.txnSyncMx
+	ss.chainSyncCond.L = &ss.chainSyncMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
 
 	ss.reifyCond.L = &ss.reifyMx
@@ -821,6 +827,11 @@ func (s *SplitStore) Close() error {
 		s.txnSync = true
 		s.txnSyncCond.Broadcast()
 		s.txnSyncMx.Unlock()
+
+		s.chainSyncMx.Lock()
+		s.chainSyncFinished = true
+		s.chainSyncCond.Broadcast()
+		s.chainSyncMx.Unlock()
 
 		log.Warn("close with ongoing compaction in progress; waiting for it to finish...")
 		for atomic.LoadInt32(&s.compacting) == 1 {
