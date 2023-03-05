@@ -10,8 +10,9 @@ import (
 )
 
 var setCmd = &cli.Command{
-	Name:  "set",
-	Usage: "Manage worker settings",
+	Name:   "set",
+	Usage:  "Manage worker settings",
+	Hidden: true,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "enabled",
@@ -20,6 +21,7 @@ var setCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("DEPRECATED: This command will be removed in the future")
 		api, closer, err := lcli.GetWorkerAPI(cctx)
 		if err != nil {
 			return err

@@ -14,7 +14,6 @@ COMMANDS:
    stop       Stop a running lotus worker
    info       Print worker info
    storage    manage sector storage
-   set        Manage worker settings
    resources  Manage resource table overrides
    tasks      Manage task processing
    help, h    Shows a list of commands or help for one command
@@ -150,19 +149,6 @@ OPTIONS:
    --all           redeclare all storage paths (default: false)
    --drop-missing  Drop index entries with missing files (default: false)
    --id value      storage path ID
-   
-```
-
-## lotus-worker set
-```
-NAME:
-   lotus-worker set - Manage worker settings
-
-USAGE:
-   lotus-worker set [command options] [arguments...]
-
-OPTIONS:
-   --enabled  enable/disable new task processing (default: true)
    
 ```
 
