@@ -1620,6 +1620,22 @@ var chainPruneHotGCCmd = &cli.Command{
 	},
 }
 
+var chainPruneHotMovingGCCmd = &cli.Command{
+	Name:  "hot-moving",
+	Usage: "run moving gc on hotstore",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		opts := lapi.HotGCOpts{}
+		opts.Moving = true
+		return api.ChainHotGC(ctx, opts)
+	},
+}
+
 var chainPruneColdCmd = &cli.Command{
 	Name:  "compact-cold",
 	Usage: "force splitstore compaction on cold store state and run gc",

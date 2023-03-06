@@ -49,8 +49,12 @@ var (
 
 // GCHotstore runs online GC on the chain state in the hotstore according the to options specified
 func (s *SplitStore) GCHotStore(opts api.HotGCOpts) error {
-	gcOpts := []bstore.BlockstoreGCOption{bstore.WithThreshold(opts.Threshold)}
+	if opts.Moving {
+		gcOpts := []bstore.BlockstoreGCOption{bstore.WithFullGC(true)}
+		return s.gcBlockstore(s.hot, gcOpts)
+	}
 
+	gcOpts := []bstore.BlockstoreGCOption{bstore.WithThreshold(opts.Threshold)}
 	var err error
 	if opts.Periodic {
 		err = s.gcBlockstore(s.hot, gcOpts)

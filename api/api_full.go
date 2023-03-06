@@ -1361,6 +1361,7 @@ type PruneOpts struct {
 type HotGCOpts struct {
 	Threshold float64
 	Periodic  bool
+	Moving    bool
 }
 
 type EthTxReceipt struct {
