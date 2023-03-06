@@ -408,6 +408,13 @@ func TestWindowPostWorkerDisconnected(t *testing.T) {
 	var goodWorker kit.TestWorker
 	ens.Worker(miner, &goodWorker, kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}), kit.ThroughRPC()).Start()
 
+	// wait for all workers
+	require.Eventually(t, func() bool {
+		w, err := miner.WorkerStats(ctx)
+		require.NoError(t, err)
+		return len(w) == 3 // 2 post + 1 miner-builtin
+	}, 10*time.Second, 100*time.Millisecond)
+
 	tryDl := func(dl uint64) {
 		p, err := miner.ComputeWindowPoSt(ctx, dl, types.EmptyTSK)
 		require.NoError(t, err)
