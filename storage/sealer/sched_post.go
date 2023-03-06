@@ -3,14 +3,14 @@ package sealer
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/hashicorp/go-multierror"
 	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/storage/paths"

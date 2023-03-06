@@ -399,7 +399,7 @@ func TestWindowPostWorkerDisconnected(t *testing.T) {
 
 	sectors := 2 * 48 * 2
 
-	client, miner, badWorker, ens := kit.EnsembleWorker(t,
+	_, miner, badWorker, ens := kit.EnsembleWorker(t,
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
@@ -407,14 +407,6 @@ func TestWindowPostWorkerDisconnected(t *testing.T) {
 
 	var goodWorker kit.TestWorker
 	ens.Worker(miner, &goodWorker, kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}), kit.ThroughRPC()).Start()
-
-	maddr, err := miner.ActorAddress(ctx)
-	require.NoError(t, err)
-
-	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	require.NoError(t, err)
-
-	di = di.NextNotElapsed()
 
 	tryDl := func(dl uint64) {
 		p, err := miner.ComputeWindowPoSt(ctx, dl, types.EmptyTSK)
@@ -424,7 +416,7 @@ func TestWindowPostWorkerDisconnected(t *testing.T) {
 	}
 	tryDl(0) // this will run on the not-yet-bad badWorker
 
-	err = badWorker.Stop(ctx)
+	err := badWorker.Stop(ctx)
 	require.NoError(t, err)
 
 	tryDl(10) // will fail on the badWorker, then should retry on the goodWorker
