@@ -1,5 +1,14 @@
 # Lotus changelog
 
+# v1.20.1 / 2023-03-06
+
+This an optional patch releases for node operators/API service providers that run ETH RPC service.
+
+## Bug fixes
+- fix: EthAPI: Correctly get parent hash #10389
+- fix: EthAPI: Make newEthBlockFromFilecoinTipSet faster and correct #10380
+- fix: state: short-circuit genesis state computation
+
 # 1.20.0 / 2023-02-28
 
 This is a MANDATORY release of Lotus that delivers the [Hygge network upgrade](https://github.com/filecoin-project/community/discussions/74?sort=top#discussioncomment-4313888), introducing Filecoin network version 18. The centerpiece of the upgrade is the introduction of the [Filecoin Virtual Machine (FVM)’s Milestone 2.1](https://fvm.filecoin.io/), which will allow for EVM-compatible contracts to be deployed on the Filecoin network. This upgrade delivers user-programmablity to the Filecoin network for the first time!
