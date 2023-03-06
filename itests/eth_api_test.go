@@ -87,3 +87,25 @@ func TestFilecoinAddressToEthAddress(t *testing.T) {
 
 	require.ErrorContains(t, err, ethtypes.ErrInvalidAddress.Error())
 }
+
+func TestEthGetGenesis(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	ethBlk, err := client.EVM().EthGetBlockByNumber(ctx, "0x0", true)
+	require.NoError(t, err)
+
+	genesis, err := client.ChainGetGenesis(ctx)
+	require.NoError(t, err)
+
+	genesisCid, err := genesis.Key().Cid()
+	require.NoError(t, err)
+
+	genesisHash, err := ethtypes.EthHashFromCid(genesisCid)
+	require.NoError(t, err)
+	require.Equal(t, ethBlk.Hash, genesisHash)
+}

@@ -1763,11 +1763,7 @@ func (e *ethSubscription) stop() {
 }
 
 func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs *store.ChainStore, sa StateAPI) (ethtypes.EthBlock, error) {
-	parent, err := cs.LoadTipSet(ctx, ts.Parents())
-	if err != nil {
-		return ethtypes.EthBlock{}, err
-	}
-	parentKeyCid, err := parent.Key().Cid()
+	parentKeyCid, err := ts.Parents().Cid()
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
