@@ -1595,6 +1595,7 @@ var ChainPruneCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		chainPruneColdCmd,
 		chainPruneHotGCCmd,
+		chainPruneHotMovingGCCmd,
 	},
 }
 
@@ -1616,7 +1617,11 @@ var chainPruneHotGCCmd = &cli.Command{
 		opts.Periodic = cctx.Bool("periodic")
 		opts.Threshold = cctx.Float64("threshold")
 
-		return api.ChainHotGC(ctx, opts)
+		gcStart := time.Now()
+		err = api.ChainHotGC(ctx, opts)
+		gcTime := time.Since(gcStart)
+		fmt.Printf("Online GC took %v (periodic <%t> threshold <%f>)", gcTime, opts.Periodic, opts.Threshold)
+		return err
 	},
 }
 
@@ -1632,7 +1637,12 @@ var chainPruneHotMovingGCCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 		opts := lapi.HotGCOpts{}
 		opts.Moving = true
-		return api.ChainHotGC(ctx, opts)
+
+		gcStart := time.Now()
+		err = api.ChainHotGC(ctx, opts)
+		gcTime := time.Since(gcStart)
+		fmt.Printf("Moving GC took %v", gcTime)
+		return err
 	},
 }
 

@@ -1087,7 +1087,8 @@ Inputs:
 [
   {
     "Threshold": 12.3,
-    "Periodic": true
+    "Periodic": true,
+    "Moving": true
   }
 ]
 ```

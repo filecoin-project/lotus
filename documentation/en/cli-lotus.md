@@ -2473,6 +2473,7 @@ USAGE:
 COMMANDS:
      compact-cold  force splitstore compaction on cold store state and run gc
      hot           run online (badger vlog) garbage collection on hotstore
+     hot-moving    run moving gc on hotstore
      help, h       Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2506,6 +2507,19 @@ USAGE:
 OPTIONS:
    --periodic         Run periodic gc over multiple vlogs. Otherwise run gc once (default: false)
    --threshold value  Threshold of vlog garbage for gc (default: 0.01)
+   
+```
+
+#### lotus chain prune hot-moving
+```
+NAME:
+   lotus chain prune hot-moving - run moving gc on hotstore
+
+USAGE:
+   lotus chain prune hot-moving [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 
