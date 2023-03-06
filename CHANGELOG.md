@@ -7,6 +7,7 @@ This an optional patch releases for node operators/API service providers that ru
 ## Bug fixes
 - fix: EthAPI: Correctly get parent hash #10389
 - fix: EthAPI: Make newEthBlockFromFilecoinTipSet faster and correct #10380
+- fix: state: short-circuit genesis state computation
 
 # 1.20.0 / 2023-02-28
 
