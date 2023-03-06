@@ -676,7 +676,7 @@ It will not send any messages to the chain.`,
 			postParams = append(postParams, postParam)
 		}
 
-		jr, err := json.Marshal(postParams)
+		jr, err := json.MarshalIndent(postParams, "", "  ")
 		if err != nil {
 			return err
 		}
