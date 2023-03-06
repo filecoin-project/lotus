@@ -124,6 +124,11 @@ func (ps *poStScheduler) readyWorkers(spt abi.RegisteredSealProof) (bool, []cand
 	for wid, wr := range ps.workers {
 		needRes := wr.Info.Resources.ResourceSpec(spt, ps.postType)
 
+		if !wr.Enabled {
+			log.Debugf("sched: not scheduling on PoSt-worker %s, worker disabled", wid)
+			continue
+		}
+
 		if !wr.active.CanHandleRequest(ps.postType.SealTask(spt), needRes, wid, "post-readyWorkers", wr.Info) {
 			continue
 		}
