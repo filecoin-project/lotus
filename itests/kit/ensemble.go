@@ -336,6 +336,8 @@ func (n *Ensemble) Worker(minerNode *TestMiner, worker *TestWorker, opts ...Node
 		MinerNode:      minerNode,
 		RemoteListener: rl,
 		options:        options,
+
+		Stop: func(ctx context.Context) error { return nil },
 	}
 
 	n.inactive.workers = append(n.inactive.workers, worker)
