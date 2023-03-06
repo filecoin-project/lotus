@@ -235,7 +235,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 		rErr := t.reward(ctx, vmi, em, epoch, ts, params)
 		if rErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", err)
+			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", rErr)
 		}
 	}
 
@@ -306,6 +306,14 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 						blks[i].Miner, blks[j].Miner)
 			}
 		}
+	}
+
+	if ts.Height() == 0 {
+		// NB: This is here because the process that executes blocks requires that the
+		// block miner reference a valid miner in the state tree. Unless we create some
+		// magical genesis miner, this won't work properly, so we short circuit here
+		// This avoids the question of 'who gets paid the genesis block reward'
+		return blks[0].ParentStateRoot, blks[0].ParentMessageReceipts, nil
 	}
 
 	var parentEpoch abi.ChainEpoch
