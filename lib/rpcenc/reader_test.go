@@ -326,8 +326,6 @@ func testReaderRedirectDrop(t *testing.T) {
 	// kill redirecting server connection
 	testServ.CloseClientConnections()
 
-	//time.Sleep(200 * time.Millisecond)
-
 	// ReadAllWaiting should fail
 	done.Wait()
 
