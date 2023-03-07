@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -306,6 +307,13 @@ func (gw *Node) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, t
 		return nil, err
 	}
 	return gw.target.StateMarketStorageDeal(ctx, dealId, tsk)
+}
+
+func (gw *Node) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return *new(dtypes.NetworkName), err
+	}
+	return gw.target.StateNetworkName(ctx)
 }
 
 func (gw *Node) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
