@@ -21,7 +21,7 @@ import (
 )
 
 func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
 		return "", err
 	}
 
@@ -34,7 +34,7 @@ func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) 
 }
 
 func (gw *Node) EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return 0, err
 	}
 
@@ -109,11 +109,7 @@ func (gw *Node) checkBlkParam(ctx context.Context, blkParam string) error {
 }
 
 func (gw *Node) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return 0, err
-	}
-
-	if err := gw.checkBlkHash(ctx, blkHash); err != nil {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return 0, err
 	}
 
@@ -161,7 +157,7 @@ func (gw *Node) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*e
 }
 
 func (gw *Node) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}
 
@@ -186,34 +182,6 @@ func (gw *Node) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.Et
 	}
 
 	return gw.target.EthGetTransactionReceipt(ctx, txHash)
-}
-
-func (gw *Node) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthTx{}, err
-	}
-
-	if err := gw.checkBlkHash(ctx, blkHash); err != nil {
-		return ethtypes.EthTx{}, err
-	}
-
-	return gw.target.EthGetTransactionByBlockHashAndIndex(ctx, blkHash, txIndex)
-}
-
-func (gw *Node) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return ethtypes.EthTx{}, err
-	}
-
-	head, err := gw.target.ChainHead(ctx)
-	if err != nil {
-		return ethtypes.EthTx{}, err
-	}
-	if err := gw.checkTipsetHeight(head, abi.ChainEpoch(blkNum)); err != nil {
-		return ethtypes.EthTx{}, err
-	}
-
-	return gw.target.EthGetTransactionByBlockNumberAndIndex(ctx, blkNum, txIndex)
 }
 
 func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {
@@ -253,7 +221,7 @@ func (gw *Node) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, 
 }
 
 func (gw *Node) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
 		return 0, err
 	}
 
@@ -269,7 +237,7 @@ func (gw *Node) NetVersion(ctx context.Context) (string, error) {
 }
 
 func (gw *Node) NetListening(ctx context.Context) (bool, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
 		return false, err
 	}
 
@@ -285,7 +253,7 @@ func (gw *Node) EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, err
 }
 
 func (gw *Node) EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
@@ -316,7 +284,7 @@ func (gw *Node) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtype
 }
 
 func (gw *Node) EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error) {
-	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
