@@ -20,7 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-legs/dtsync"
+	"github.com/ipni/storetheindex/announce/message"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -497,7 +497,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		return pubsub.ValidationIgnore
 	}
 
-	idxrMsg := dtsync.Message{}
+	idxrMsg := message.Message{}
 	err := idxrMsg.UnmarshalCBOR(bytes.NewBuffer(msg.Data))
 	if err != nil {
 		log.Errorw("Could not decode indexer pubsub message", "err", err)

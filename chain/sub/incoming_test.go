@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-legs/dtsync"
+	"github.com/ipni/storetheindex/announce/message"
 
 	"github.com/filecoin-project/lotus/api/mocks"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -105,7 +105,7 @@ func TestIndexerMessageValidator_Validate(t *testing.T) {
 			mc := gomock.NewController(t)
 			node := mocks.NewMockFullNode(mc)
 			subject := NewIndexerMessageValidator(peer.ID(tc.selfPID), node, node)
-			message := dtsync.Message{
+			message := message.Message{
 				Cid:       validCid,
 				Addrs:     nil,
 				ExtraData: tc.extraData,
