@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -53,32 +54,29 @@ type versionSpec struct {
 }
 
 type migration struct {
-	upgrade       MigrationFunc
-	preMigrations []PreMigration
-	cache         *nv16.MemMigrationCache
-	resultCache   *resultCache
+	upgrade              MigrationFunc
+	preMigrations        []PreMigration
+	cache                *nv16.MemMigrationCache
+	migrationResultCache *migrationResultCache
 }
 
-type resultCache struct {
+type migrationResultCache struct {
 	ds        dstore.Batching
 	keyPrefix string
 }
 
-func (m *resultCache) Result(ctx context.Context, root cid.Cid) (cid.Cid, bool, error) {
-	kStr := fmt.Sprintf("%s-%s", m.keyPrefix, root)
-	k := dstore.NewKey(kStr)
+func (m *migrationResultCache) keyForMigration(root cid.Cid) dstore.Key {
+	kStr := fmt.Sprintf("%s/%s", m.keyPrefix, root)
+	return dstore.NewKey(kStr)
+}
 
-	found, err := m.ds.Has(ctx, k)
-	if err != nil {
-		return cid.Undef, false, xerrors.Errorf("error looking up migration result: %w", err)
-	}
-
-	if !found {
-		return cid.Undef, false, nil
-	}
+func (m *migrationResultCache) Get(ctx context.Context, root cid.Cid) (cid.Cid, bool, error) {
+	k := m.keyForMigration(root)
 
 	bs, err := m.ds.Get(ctx, k)
-	if err != nil {
+	if ipld.IsNotFound(err) {
+		return cid.Undef, false, nil
+	} else if err != nil {
 		return cid.Undef, false, xerrors.Errorf("error loading migration result: %w", err)
 	}
 
@@ -90,9 +88,8 @@ func (m *resultCache) Result(ctx context.Context, root cid.Cid) (cid.Cid, bool, 
 	return c, true, nil
 }
 
-func (m *resultCache) Store(ctx context.Context, root cid.Cid, resultCid cid.Cid) error {
-	kStr := fmt.Sprintf("%s-%s", m.keyPrefix, root)
-	k := dstore.NewKey(kStr)
+func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCid cid.Cid) error {
+	k := m.keyForMigration(root)
 	if err := m.ds.Put(ctx, k, resultCid.Bytes()); err != nil {
 		return err
 	}
@@ -166,8 +163,8 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
 					cache:         nv16.NewMemMigrationCache(),
-					resultCache: &resultCache{
-						keyPrefix: fmt.Sprintf("nv%d-%d", upgrade.Network, upgrade.Height),
+					migrationResultCache: &migrationResultCache{
+						keyPrefix: fmt.Sprintf("/migration-cache/nv%d", upgrade.Network),
 						ds:        metadataDs,
 					},
 				}

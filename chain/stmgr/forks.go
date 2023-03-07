@@ -176,9 +176,9 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 	retCid := root
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
-		migCid, ok, err := u.resultCache.Result(ctx, root)
+		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
 		if err == nil && ok {
-			log.Warnw("CACHED migration", "height", height, "from", root, "to", migCid)
+			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
 			return migCid, nil
 		} else if err != nil {
 			log.Errorw("failed to lookup previous migration result", "err", err)
@@ -206,7 +206,7 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 		)
 
 		// Only set if migration ran, we do not want a root => root mapping
-		if err := u.resultCache.Store(ctx, root, retCid); err != nil {
+		if err := u.migrationResultCache.Store(ctx, root, retCid); err != nil {
 			log.Errorw("failed to store migration result", "err", err)
 		}
 	}
