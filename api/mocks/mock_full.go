@@ -394,6 +394,20 @@ func (mr *MockFullNodeMockRecorder) ChainHead(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainHead", reflect.TypeOf((*MockFullNode)(nil).ChainHead), arg0)
 }
 
+// ChainHotGC mocks base method.
+func (m *MockFullNode) ChainHotGC(arg0 context.Context, arg1 api.HotGCOpts) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainHotGC", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChainHotGC indicates an expected call of ChainHotGC.
+func (mr *MockFullNodeMockRecorder) ChainHotGC(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainHotGC", reflect.TypeOf((*MockFullNode)(nil).ChainHotGC), arg0, arg1)
+}
+
 // ChainNotify mocks base method.
 func (m *MockFullNode) ChainNotify(arg0 context.Context) (<-chan []*api.HeadChange, error) {
 	m.ctrl.T.Helper()

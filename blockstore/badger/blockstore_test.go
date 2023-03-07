@@ -145,7 +145,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 		return nil
 	})
 	g.Go(func() error {
-		return db.CollectGarbage(blockstore.WithFullGC(true))
+		return db.CollectGarbage(ctx, blockstore.WithFullGC(true))
 	})
 
 	err = g.Wait()
@@ -230,7 +230,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	checkPath()
 
 	// now do another FullGC to test the double move and following of symlinks
-	if err := db.CollectGarbage(blockstore.WithFullGC(true)); err != nil {
+	if err := db.CollectGarbage(ctx, blockstore.WithFullGC(true)); err != nil {
 		t.Fatal(err)
 	}
 

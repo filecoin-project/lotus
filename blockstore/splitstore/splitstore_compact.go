@@ -794,7 +794,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// we are done; do some housekeeping
 	s.endTxnProtect()
-	s.gcHotstore()
+	s.gcHotAfterCompaction()
 
 	err = s.setBaseEpoch(boundaryEpoch)
 	if err != nil {
