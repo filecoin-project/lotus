@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -59,6 +60,7 @@ type Gateway interface {
 	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
+	StateNetworkName(context.Context) (dtypes.NetworkName, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (abinetwork.Version, error)
 	StateSearchMsg(ctx context.Context, msg cid.Cid) (*api.MsgLookup, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error)

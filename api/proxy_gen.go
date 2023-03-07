@@ -7,15 +7,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
-	"github.com/libp2p/go-libp2p/core/metrics"
-	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -32,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -45,6 +35,14 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
+	"github.com/libp2p/go-libp2p/core/metrics"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -751,6 +749,8 @@ type GatewayMethods struct {
 	StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) ``
 
 	StateMinerProvingDeadline func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) ``
+
+        StateNetworkName func(p0 context.Context) (dtypes.NetworkName, error) ``
 
 	StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) ``
 
@@ -4735,6 +4735,17 @@ func (s *GatewayStruct) StateMinerProvingDeadline(p0 context.Context, p1 address
 
 func (s *GatewayStub) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
+	if s.Internal.StateNetworkName == nil {
+		return *new(dtypes.NetworkName), ErrNotSupported
+	}
+	return s.Internal.StateNetworkName(p0)
+}
+
+func (s *GatewayStub) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
+	return *new(dtypes.NetworkName), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
