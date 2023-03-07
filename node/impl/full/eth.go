@@ -187,6 +187,10 @@ func (a *EthAPI) EthAddressToFilecoinAddress(ctx context.Context, ethAddress eth
 	return ethAddress.ToFilecoinAddress()
 }
 
+func (a *EthAPI) FilecoinAddressToEthAddress(ctx context.Context, filecoinAddress address.Address) (ethtypes.EthAddress, error) {
+	return ethtypes.EthAddressFromFilecoinAddress(filecoinAddress)
+}
+
 func (a *EthModule) countTipsetMsgs(ctx context.Context, ts *types.TipSet) (int, error) {
 	blkMsgs, err := a.Chain.BlockMsgsForTipset(ctx, ts)
 	if err != nil {
@@ -633,7 +637,12 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 		return ethtypes.EthBigInt{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
 
-	actor, err := a.StateGetActor(ctx, filAddr, ts.Key())
+	st, _, err := a.StateManager.TipSetState(ctx, ts)
+	if err != nil {
+		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to compute tipset state: %w", err)
+	}
+
+	actor, err := a.StateManager.LoadActorRaw(ctx, filAddr, st)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return ethtypes.EthBigIntZero, nil
 	} else if err != nil {
@@ -1768,11 +1777,7 @@ func (e *ethSubscription) stop() {
 }
 
 func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTxInfo bool, cs *store.ChainStore, sa StateAPI) (ethtypes.EthBlock, error) {
-	parent, err := cs.LoadTipSet(ctx, ts.Parents())
-	if err != nil {
-		return ethtypes.EthBlock{}, err
-	}
-	parentKeyCid, err := parent.Key().Cid()
+	parentKeyCid, err := ts.Parents().Cid()
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
@@ -1780,6 +1785,8 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
+
+	bn := ethtypes.EthUint64(ts.Height())
 
 	blkCid, err := ts.Key().Cid()
 	if err != nil {
@@ -1797,19 +1804,34 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 
 	block := ethtypes.NewEthBlock(len(msgs) > 0)
 
-	// this seems to be a very expensive way to get gasUsed of the block. may need to find an efficient way to do it
 	gasUsed := int64(0)
-	for txIdx, msg := range msgs {
-		msgLookup, err := sa.StateSearchMsg(ctx, types.EmptyTSK, msg.Cid(), api.LookbackNoLimit, false)
-		if err != nil || msgLookup == nil {
-			return ethtypes.EthBlock{}, nil
-		}
-		gasUsed += msgLookup.Receipt.GasUsed
+	compOutput, err := sa.StateCompute(ctx, ts.Height(), nil, ts.Key())
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("failed to compute state: %w", err)
+	}
 
-		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, txIdx, cs, sa)
-		if err != nil {
-			return ethtypes.EthBlock{}, nil
+	for txIdx, msg := range compOutput.Trace {
+		// skip system messages like reward application and cron
+		if msg.Msg.From == builtintypes.SystemActorAddr {
+			continue
 		}
+
+		gasUsed += msg.MsgRct.GasUsed
+		smsgCid, err := getSignedMessage(ctx, cs, msg.MsgCid)
+		if err != nil {
+			return ethtypes.EthBlock{}, xerrors.Errorf("failed to get signed msg %s: %w", msg.MsgCid, err)
+		}
+		tx, err := newEthTxFromSignedMessage(ctx, smsgCid, sa)
+		if err != nil {
+			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
+		}
+
+		ti := ethtypes.EthUint64(txIdx)
+
+		tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
+		tx.BlockHash = &blkHash
+		tx.BlockNumber = &bn
+		tx.TransactionIndex = &ti
 
 		if fullTxInfo {
 			block.Transactions = append(block.Transactions, tx)
@@ -1819,7 +1841,7 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 	}
 
 	block.Hash = blkHash
-	block.Number = ethtypes.EthUint64(ts.Height())
+	block.Number = bn
 	block.ParentHash = parentBlkHash
 	block.Timestamp = ethtypes.EthUint64(ts.Blocks()[0].Timestamp)
 	block.BaseFeePerGas = ethtypes.EthBigInt{Int: ts.Blocks()[0].ParentBaseFee.Int}
@@ -2000,20 +2022,9 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 		return ethtypes.EthTx{}, err
 	}
 
-	smsg, err := cs.GetSignedMessage(ctx, msgLookup.Message)
+	smsg, err := getSignedMessage(ctx, cs, msgLookup.Message)
 	if err != nil {
-		// We couldn't find the signed message, it might be a BLS message, so search for a regular message.
-		msg, err := cs.GetMessage(ctx, msgLookup.Message)
-		if err != nil {
-			return ethtypes.EthTx{}, err
-		}
-		smsg = &types.SignedMessage{
-			Message: *msg,
-			Signature: crypto.Signature{
-				Type: crypto.SigTypeBLS,
-				Data: nil,
-			},
-		}
+		return ethtypes.EthTx{}, xerrors.Errorf("failed to get signed msg: %w", err)
 	}
 
 	tx, err := newEthTxFromSignedMessage(ctx, smsg, sa)
@@ -2367,6 +2378,25 @@ func calculateRewardsAndGasUsed(rewardPercentiles []float64, txGasRewards gasRew
 	}
 
 	return rewards, totalGasUsed
+}
+
+func getSignedMessage(ctx context.Context, cs *store.ChainStore, msgCid cid.Cid) (*types.SignedMessage, error) {
+	smsg, err := cs.GetSignedMessage(ctx, msgCid)
+	if err != nil {
+		// We couldn't find the signed message, it might be a BLS message, so search for a regular message.
+		msg, err := cs.GetMessage(ctx, msgCid)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find msg %s: %w", msgCid, err)
+		}
+		smsg = &types.SignedMessage{
+			Message: *msg,
+			Signature: crypto.Signature{
+				Type: crypto.SigTypeBLS,
+			},
+		}
+	}
+
+	return smsg, nil
 }
 
 type gasRewardTuple struct {

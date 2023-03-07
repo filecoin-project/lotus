@@ -339,6 +339,14 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 		}
 	}
 
+	if ts.Height() == 0 {
+		// NB: This is here because the process that executes blocks requires that the
+		// block miner reference a valid miner in the state tree. Unless we create some
+		// magical genesis miner, this won't work properly, so we short circuit here
+		// This avoids the question of 'who gets paid the genesis block reward'
+		return blks[0].ParentStateRoot, blks[0].ParentMessageReceipts, nil
+	}
+
 	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
 	if blks[0].Height > 0 {
