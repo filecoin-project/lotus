@@ -188,6 +188,13 @@ func (gw *Node) GasEstimateMessageGas(ctx context.Context, msg *types.Message, s
 	return gw.target.GasEstimateMessageGas(ctx, msg, spec, tsk)
 }
 
+func (gw *Node) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+        if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+                return 0, err
+        }
+        return gw.target.MpoolGetNonce(ctx, addr)
+}
+
 func (gw *Node) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return cid.Cid{}, err
