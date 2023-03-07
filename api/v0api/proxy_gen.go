@@ -5,11 +5,6 @@ package v0api
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -22,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -30,6 +24,10 @@ import (
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -480,6 +478,8 @@ type GatewayMethods struct {
 	StateMinerPower func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*api.MinerPower, error) ``
 
 	StateMinerProvingDeadline func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) ``
+
+        StateNetworkName func(p0 context.Context) (dtypes.NetworkName, error) ``
 
 	StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (abinetwork.Version, error) ``
 
@@ -2840,6 +2840,17 @@ func (s *GatewayStruct) StateMinerProvingDeadline(p0 context.Context, p1 address
 
 func (s *GatewayStub) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
+        if s.Internal.StateNetworkName == nil {
+                return *new(dtypes.NetworkName), ErrNotSupported
+        }
+        return s.Internal.StateNetworkName(p0)
+}
+
+func (s *GatewayStub) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
+        return *new(dtypes.NetworkName), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (abinetwork.Version, error) {
