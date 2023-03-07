@@ -115,6 +115,14 @@ type Config struct {
 	// A positive value is the number of compactions before a full GC is performed;
 	// a value of 1 will perform full GC in every compaction.
 	HotStoreFullGCFrequency uint64
+
+	// HotstoreMaxSpaceTarget suggests the max allowed space the hotstore can take.
+	// This is not a hard limit, it is possible for the hotstore to exceed the target
+	// for example if state grows massively between compactions. The splitstore
+	// will make a best effort to avoid overflowing the target and in practice should
+	// never overflow.  This field is used when doing GC at the end of a compaction to
+	// adaptively choose moving GC
+	HotstoreMaxSpaceTarget uint64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -165,6 +173,7 @@ type SplitStore struct {
 
 	compactionIndex int64
 	pruneIndex      int64
+	onlineGCCnt     int64
 
 	ctx    context.Context
 	cancel func()
@@ -203,6 +212,7 @@ type SplitStore struct {
 	szWalk          int64
 	szProtectedTxns int64
 	szToPurge       int64 // expected purges before critical section protections and live marking
+	szKeys          int64 // approximate, not counting keys protected when entering critical section
 
 	// protected by txnLk
 	szMarkedLiveRefs int64

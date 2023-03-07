@@ -7,17 +7,56 @@ import (
 	bstore "github.com/filecoin-project/lotus/blockstore"
 )
 
+const (
+	// When < 150 GB of space would remain during moving GC, trigger moving GC
+	targetThreshold = 150_000_000_000
+	// Don't attempt moving GC with 50 GB or less would remain during moving GC
+	targetBuffer = 50_000_000_000
+	// Fraction of garbage in badger vlog for online GC traversal to collect garbage
+	aggressiveOnlineGCThreshold = 0.0001
+)
+
 func (s *SplitStore) gcHotAfterCompaction() {
-	// TODO size aware GC
-	// 1. Add a config value to specify targetted max number of bytes M
-	// 2. Use measurement of marked hotstore size H (we now have this), actual hostore size T (need to compute this), total move size H + T, approximate purged size P
-	// 3. Trigger moving GC whenever H + T is within 50 GB of M
-	// 4. if H + T > M use aggressive online threshold
-	// 5. Use threshold that covers 3 std devs of vlogs when doing aggresive online.  Mean == (H + P) / T, assume normal distribution
-	// 6. Use threshold that covers 1 or 2 std devs of vlogs when doing regular online GC
+	// Measure hotstore size, determine if we should do full GC, determine if we can do full GC.
+	// We should do full GC if
+	//  FullGCFrequency is specified and compaction index matches frequency
+	//  OR HotstoreMaxSpaceTarget is specified and total moving space is within 150 GB of target
+	// We can do full if
+	//  HotstoreMaxSpaceTarget is not specified
+	//  OR total moving space would not exceed 50 GB below target
+	//
+	// 	a) If we should not do full GC => online GC
+	//  b) If we should do full GC and can => moving GC
+	//  c) If we should do full GC and can't => aggressive online GC
+	var hotSize int64
+	var err error
+	sizer, ok := s.hot.(bstore.BlockstoreSize)
+	if ok {
+		hotSize, err = sizer.Size()
+		if err != nil {
+			log.Warnf("error getting hotstore size: %s, estimating empty hot store for targeting", err)
+			hotSize = 0
+		}
+	} else {
+		hotSize = 0
+	}
+
+	copySizeApprox := s.szKeys + s.szMarkedLiveRefs + s.szProtectedTxns + s.szWalk
+	shouldTarget := s.cfg.HotstoreMaxSpaceTarget > 0 && hotSize+copySizeApprox > int64(s.cfg.HotstoreMaxSpaceTarget)-targetThreshold
+	shouldFreq := s.cfg.HotStoreFullGCFrequency > 0 && s.compactionIndex%int64(s.cfg.HotStoreFullGCFrequency) == 0
+	shouldDoFull := shouldTarget || shouldFreq
+	canDoFull := s.cfg.HotstoreMaxSpaceTarget == 0 || hotSize+copySizeApprox < int64(s.cfg.HotstoreMaxSpaceTarget)-targetBuffer
+	log.Infof("measured hot store size: %d, approximate new size: %d, should do full %t, can do full %t", hotSize, copySizeApprox, shouldDoFull, canDoFull)
+
 	var opts []bstore.BlockstoreGCOption
-	if s.cfg.HotStoreFullGCFrequency > 0 && s.compactionIndex%int64(s.cfg.HotStoreFullGCFrequency) == 0 {
+	if shouldDoFull && canDoFull {
 		opts = append(opts, bstore.WithFullGC(true))
+	} else if shouldDoFull && !canDoFull {
+		log.Warnf("Attention! Estimated moving GC size %d is not within safety buffer %d of target max %d, performing aggressive online GC to attempt to bring hotstore size down safely", copySizeApprox, targetBuffer, s.cfg.HotstoreMaxSpaceTarget)
+		log.Warn("If problem continues you can 1) temporarily allocate more disk space to hotstore and 2) reflect in HotstoreMaxSpaceTarget OR trigger manual move with `lotus chain prune hot-moving`")
+		log.Warn("If problem continues and you do not have any more disk space you can run continue to manually trigger online GC at agressive thresholds (< 0.01) with `lotus chain prune hot`")
+
+		opts = append(opts, bstore.WithThreshold(aggressiveOnlineGCThreshold))
 	}
 
 	if err := s.gcBlockstore(s.hot, opts); err != nil {

@@ -66,7 +66,8 @@ var (
 )
 
 const (
-	batchSize = 16384
+	batchSize  = 16384
+	cidKeySize = 32
 )
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
@@ -518,6 +519,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		// might be potentially inconsistent; abort compaction and notify the user to intervene.
 		return xerrors.Errorf("checkpoint exists; aborting compaction")
 	}
+	s.clearSizeMeasurements()
 
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
@@ -709,6 +711,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "purge", purgeCnt, "purge size", szPurge)
 	s.szToPurge = int64(szPurge)
+	s.szKeys = int64(hotCnt) * cidKeySize
 	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
@@ -1473,8 +1476,9 @@ func (s *SplitStore) completeCompaction() error {
 	}
 	s.compactType = none
 
-	// Note: at this point we can start the splitstore; a compaction should run on
-	//       the first head change, which will trigger gc on the hotstore.
+	// Note: at this point we can start the splitstore; base epoch is not
+	//       incremented here so a compaction should run on the first head
+	//       change, which will trigger gc on the hotstore.
 	//       We don't mind the second (back-to-back) compaction as the head will
 	//       have advanced during marking and coldset accumulation.
 	return nil
@@ -1530,6 +1534,14 @@ func (s *SplitStore) completePurge(coldr *ColdSetReader, checkpoint *Checkpoint,
 	}
 
 	return nil
+}
+
+func (s *SplitStore) clearSizeMeasurements() {
+	s.szKeys = 0
+	s.szMarkedLiveRefs = 0
+	s.szProtectedTxns = 0
+	s.szToPurge = 0
+	s.szWalk = 0
 }
 
 // I really don't like having this code, but we seem to have some occasional DAG references with

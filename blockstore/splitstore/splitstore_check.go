@@ -95,7 +95,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	}
 	defer visitor.Close() //nolint
 
-	size, err := s.walkChain(curTs, boundaryEpoch, boundaryEpoch, visitor,
+	size := s.walkChain(curTs, boundaryEpoch, boundaryEpoch, visitor,
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk

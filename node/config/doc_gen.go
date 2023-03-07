@@ -1286,6 +1286,17 @@ the compaction boundary; default is 0.`,
 A value of 0 disables, while a value 1 will do full GC in every compaction.
 Default is 20 (about once a week).`,
 		},
+		{
+			Name: "HotStoreMaxSpaceTarget",
+			Type: "uint64",
+
+			Comment: `HotStoreMaxSpaceTarget sets a target max disk size for the hotstore. Splitstore GC
+will run moving GC if disk utilization gets within a threshold (150 GB) of the target.
+Splitstore GC will NOT run moving GC if the total size of the move would get
+within 50 GB of the target, and instead will run a more aggressive online GC.
+If both HotStoreFullGCFrequency and HotStoreMaxSpaceTarget are set then splitstore
+GC will trigger moving GC if either configuration condition is met.`,
+		},
 	},
 	"StorageMiner": []DocField{
 		{
