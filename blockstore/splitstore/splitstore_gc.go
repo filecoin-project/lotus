@@ -54,7 +54,7 @@ func (s *SplitStore) gcHotAfterCompaction() {
 	} else if shouldDoFull && !canDoFull {
 		log.Warnf("Attention! Estimated moving GC size %d is not within safety buffer %d of target max %d, performing aggressive online GC to attempt to bring hotstore size down safely", copySizeApprox, targetBuffer, s.cfg.HotstoreMaxSpaceTarget)
 		log.Warn("If problem continues you can 1) temporarily allocate more disk space to hotstore and 2) reflect in HotstoreMaxSpaceTarget OR trigger manual move with `lotus chain prune hot-moving`")
-		log.Warn("If problem continues and you do not have any more disk space you can run continue to manually trigger online GC at agressive thresholds (< 0.01) with `lotus chain prune hot`")
+		log.Warn("If problem continues and you do not have any more disk space you can run continue to manually trigger online GC at aggressive thresholds (< 0.01) with `lotus chain prune hot`")
 
 		opts = append(opts, bstore.WithThreshold(aggressiveOnlineGCThreshold))
 	}

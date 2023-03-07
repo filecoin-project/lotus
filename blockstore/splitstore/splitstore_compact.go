@@ -660,16 +660,16 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			hotCnt++
 			return nil
 		}
-		if sz, err := s.hot.GetSize(s.ctx, c); err != nil {
+		sz, err := s.hot.GetSize(s.ctx, c)
+		if err != nil {
 			if ipld.IsNotFound(err) {
 				log.Warnf("hotstore missing expected block %s", c)
 				return nil
 			}
 
 			return xerrors.Errorf("error retrieving block %s from hotstore: %w", c, err)
-		} else {
-			szPurge += sz
 		}
+		szPurge += sz
 
 		// it needs to be removed from hot store, mark it as candidate for purge
 		if err := purgew.Write(c); err != nil {
@@ -965,64 +965,64 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if err != nil {
 			return xerrors.Errorf("error computing cid reference to parent tipset")
 		}
-		if sz, err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk); err != nil {
+		sz, err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk)
+		if err != nil {
 			return xerrors.Errorf("error walking parent tipset cid reference")
-		} else {
-			atomic.AddInt64(szWalk, int64(sz))
 		}
+		atomic.AddInt64(szWalk, int64(sz))
 
 		// message are retained if within the inclMsgs boundary
 		if hdr.Height >= inclMsgs && hdr.Height > 0 {
 			if inclMsgs < inclState {
 				// we need to use walkObjectIncomplete here, as messages/receipts may be missing early on if we
 				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
-				if sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fHot, stopWalk); err != nil {
+				sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fHot, stopWalk)
+				if err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
-				} else {
-					atomic.AddInt64(szWalk, int64(sz))
 				}
+				atomic.AddInt64(szWalk, int64(sz))
 
-				if sz, err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk); err != nil {
+				sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk)
+				if err != nil {
 					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
-				} else {
-					atomic.AddInt64(szWalk, int64(sz))
 				}
+				atomic.AddInt64(szWalk, int64(sz))
 			} else {
-				if sz, err := s.walkObject(hdr.Messages, visitor, fHot); err != nil {
+				sz, err = s.walkObject(hdr.Messages, visitor, fHot)
+				if err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
-				} else {
-					atomic.AddInt64(szWalk, int64(sz))
 				}
+				atomic.AddInt64(szWalk, int64(sz))
 
-				if sz, err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot); err != nil {
+				sz, err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot)
+				if err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
-				} else {
-					atomic.AddInt64(szWalk, int64(sz))
 				}
+				atomic.AddInt64(szWalk, int64(sz))
 			}
 		}
 
 		// messages and receipts outside of inclMsgs are included in the cold store
 		if hdr.Height < inclMsgs && hdr.Height > 0 {
-			if sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk); err != nil {
+			sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk)
+			if err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
-			} else {
-				atomic.AddInt64(szWalk, int64(sz))
 			}
-			if sz, err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk); err != nil {
+			atomic.AddInt64(szWalk, int64(sz))
+			sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk)
+			if err != nil {
 				return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
-			} else {
-				atomic.AddInt64(szWalk, int64(sz))
 			}
+			atomic.AddInt64(szWalk, int64(sz))
 		}
 
 		// state is only retained if within the inclState boundary, with the exception of genesis
 		if hdr.Height >= inclState || hdr.Height == 0 {
-			if sz, err := s.walkObject(hdr.ParentStateRoot, visitor, fHot); err != nil {
+			sz, err := s.walkObject(hdr.ParentStateRoot, visitor, fHot)
+			if err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
-			} else {
-				atomic.AddInt64(szWalk, int64(sz))
 			}
+			atomic.AddInt64(szWalk, int64(sz))
 			atomic.AddInt64(scanCnt, 1)
 		}
 
@@ -1040,11 +1040,11 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	if err != nil {
 		return xerrors.Errorf("error computing cid reference to parent tipset")
 	}
-	if sz, err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk); err != nil {
+	sz, err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk)
+	if err != nil {
 		return xerrors.Errorf("error walking parent tipset cid reference")
-	} else {
-		atomic.AddInt64(szWalk, int64(sz))
 	}
+	atomic.AddInt64(szWalk, int64(sz))
 
 	for len(toWalk) > 0 {
 		// walking can take a while, so check this with every opportunity
