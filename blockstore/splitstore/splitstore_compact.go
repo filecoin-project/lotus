@@ -419,7 +419,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 		if err := g.Wait(); err != nil {
 			return err
 		}
-
+		s.szProtectedTxns += *sz
 		log.Infow("protecting transactional refs done", "took", time.Since(startProtect), "protected", count, "protected size", sz)
 	}
 }

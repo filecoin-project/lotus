@@ -46,6 +46,7 @@ func (s *SplitStore) gcHotAfterCompaction() {
 	shouldFreq := s.cfg.HotStoreFullGCFrequency > 0 && s.compactionIndex%int64(s.cfg.HotStoreFullGCFrequency) == 0
 	shouldDoFull := shouldTarget || shouldFreq
 	canDoFull := s.cfg.HotstoreMaxSpaceTarget == 0 || hotSize+copySizeApprox < int64(s.cfg.HotstoreMaxSpaceTarget)-targetBuffer
+	log.Debugw("approximating new hot store size", "key size", s.szKeys, "marked live refs", s.szMarkedLiveRefs, "protected txns", s.szProtectedTxns, "walked DAG", s.szWalk)
 	log.Infof("measured hot store size: %d, approximate new size: %d, should do full %t, can do full %t", hotSize, copySizeApprox, shouldDoFull, canDoFull)
 
 	var opts []bstore.BlockstoreGCOption
