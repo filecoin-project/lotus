@@ -796,7 +796,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 	log.Infow("purging cold objects from hotstore done", "took", time.Since(startPurge))
 	s.endCriticalSection()
-	log.Infow("total protected size", s.szProtectedTxns, "total marked live size", s.szMarkedLiveRefs)
+	log.Infow("critical section done", "total protected size", s.szProtectedTxns, "total marked live size", s.szMarkedLiveRefs)
 
 	if err := checkpoint.Close(); err != nil {
 		log.Warnf("error closing checkpoint: %s", err)
