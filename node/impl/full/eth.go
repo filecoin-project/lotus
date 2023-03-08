@@ -1796,11 +1796,15 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to compute state: %w", err)
 	}
 
-	for txIdx, msg := range compOutput.Trace {
+	txIdx := 0
+	for _, msg := range compOutput.Trace {
 		// skip system messages like reward application and cron
 		if msg.Msg.From == builtintypes.SystemActorAddr {
 			continue
 		}
+
+		ti := ethtypes.EthUint64(txIdx)
+		txIdx++
 
 		gasUsed += msg.MsgRct.GasUsed
 		smsgCid, err := getSignedMessage(ctx, cs, msg.MsgCid)
@@ -1811,8 +1815,6 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		if err != nil {
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
 		}
-
-		ti := ethtypes.EthUint64(txIdx)
 
 		tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
 		tx.BlockHash = &blkHash
