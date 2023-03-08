@@ -39,7 +39,7 @@ body:
   validations:
     required: true
 - type: textarea
-  id: Repro Steps
+  id: repro
   attributes:
     label: Repro Steps
     description: "Steps to reproduce the behavior"
