@@ -539,20 +539,8 @@ func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]*api.MarketDe
 	return sm.listDeals(ctx)
 }
 
-func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
-	var out []retrievalmarket.ProviderDealState
-	deals := sm.RetrievalProvider.ListDeals()
-
-	for _, deal := range deals {
-		if deal.ChannelID != nil {
-			if deal.ChannelID.Initiator == "" || deal.ChannelID.Responder == "" {
-				deal.ChannelID = nil // don't try to push unparsable peer IDs over jsonrpc
-			}
-		}
-		out = append(out, deal)
-	}
-
-	return out, nil
+func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]struct{}, error) {
+	return []struct{}{}, nil
 }
 
 func (sm *StorageMinerAPI) MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error) {

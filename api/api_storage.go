@@ -212,9 +212,11 @@ type StorageMiner interface {
 	StorageDetachLocal(ctx context.Context, path string) error                           //perm:admin
 	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin
 
-	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
-	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read
-	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                           //perm:read
+	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error //perm:write
+	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                   //perm:read
+
+	// MarketListRetrievalDeals is deprecated, returns empty list
+	MarketListRetrievalDeals(ctx context.Context) ([]struct{}, error)                                                                                                                    //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                    //perm:read
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                                    //perm:read
 	MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin

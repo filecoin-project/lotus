@@ -9,12 +9,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/ipfs/go-cid"
 	blocks "github.com/ipfs/go-libipfs/blocks"
+	"github.com/ipni/storetheindex/announce/message"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/ipni/storetheindex/announce/message"
 
 	"github.com/filecoin-project/lotus/api/mocks"
 	"github.com/filecoin-project/lotus/chain/types"

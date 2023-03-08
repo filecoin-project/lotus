@@ -150,11 +150,6 @@ var infoAllCmd = &cli.Command{
 			}
 		}
 
-		fmt.Println("\n#: Retrieval Deals")
-		if err := retrievalDealsListCmd.Action(cctx); err != nil {
-			fmt.Println("ERROR: ", err)
-		}
-
 		fmt.Println("\n#: Data Transfers")
 		{
 			fs := &flag.FlagSet{}

@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipni/storetheindex/announce/message"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -20,7 +21,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/ipni/storetheindex/announce/message"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
