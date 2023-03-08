@@ -256,6 +256,16 @@ func (gw *Node) StateAccountKey(ctx context.Context, addr address.Address, tsk t
 	return gw.target.StateAccountKey(ctx, addr, tsk)
 }
 
+func (gw *Node) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.StateCall(ctx, msg, tsk)
+}
+
 func (gw *Node) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return api.DealCollateralBounds{}, err
@@ -264,6 +274,16 @@ func (gw *Node) StateDealProviderCollateralBounds(ctx context.Context, size abi.
 		return api.DealCollateralBounds{}, err
 	}
 	return gw.target.StateDealProviderCollateralBounds(ctx, size, verified, tsk)
+}
+
+func (gw *Node) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
+        if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+                return nil, err
+        }
+        if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+                return nil, err
+        }
+        return gw.target.StateDecodeParams(ctx, toAddr, method, params, tsk)
 }
 
 func (gw *Node) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
