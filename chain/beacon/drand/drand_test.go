@@ -24,7 +24,7 @@ func TestPrintGroupInfo(t *testing.T) {
 	})
 	chain, err := cg.FetchChainInfo(nil)
 	assert.NoError(t, err)
-	err = chain.ToJSON(os.Stdout)
+	err = chain.ToJSON(os.Stdout, nil)
 	assert.NoError(t, err)
 }
 
