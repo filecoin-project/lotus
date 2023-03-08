@@ -22,6 +22,8 @@ body:
         required: false
       - label: lotus FVM - Lotus FVM interactions
         required: false
+      - label: FEVM tooling
+        required: false
       - label:  Other
         required: false
 - type: textarea
