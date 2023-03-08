@@ -82,11 +82,13 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 				// 		skip = true
 				// 	}
 				// }
-				i := sh.findWorker(task)
-				if i > -1 {
-					wnd = i
-					windowRequest = sh.OpenWindows[i]
-					skip = true
+				if !(task.TaskType == sealtasks.TTCommit1) {
+					i := sh.findWorker(task)
+					if i > -1 {
+						wnd = i
+						windowRequest = sh.OpenWindows[i]
+						skip = true
+					}
 				}
 				// end
 
