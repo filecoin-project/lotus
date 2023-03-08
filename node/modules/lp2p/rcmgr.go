@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	rcmgrObs "github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
@@ -114,11 +115,8 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 			return nil, fmt.Errorf("error creating resource manager stats reporter: %w", err)
 		}
 
-		// TODO: Libp2p converted to native prometheus metrics -- how do we register them
-		//err = view.Register(obs.DefaultViews...)
-		//if err != nil {
-		//	return nil, fmt.Errorf("error registering rcmgr metrics: %w", err)
-		//}
+		fmt.Println("registering prometheus metrics")
+		rcmgrObs.MustRegisterWith(prometheus.DefaultRegisterer)
 
 		// Metrics
 		opts = append(opts, rcmgr.WithMetrics(rcmgrMetrics{}), rcmgr.WithTraceReporter(str))
