@@ -62,7 +62,7 @@ body:
   validations:
     required: true
 - type: textarea
-  id: extraInfo
+  id: toolingInfo
   attributes:
     label: Tooling
     render: text
