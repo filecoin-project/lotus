@@ -3,12 +3,14 @@ package itests
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
@@ -16,6 +18,21 @@ import (
 	"github.com/filecoin-project/lotus/lib/result"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
+
+func getAnswer(tsHeights []int, requestAmount, startHeight int) (count, oldestHeight int) {
+	idx := sort.SearchInts(tsHeights, startHeight)
+	// handle null rounds
+	for tsHeights[idx] > startHeight {
+		idx--
+	}
+	cnt := requestAmount
+	oldestIdx := idx - requestAmount + 1
+	if idx < cnt {
+		cnt = idx + 1
+		oldestIdx = 0
+	}
+	return cnt, tsHeights[oldestIdx]
+}
 
 func TestEthFeeHistory(t *testing.T) {
 	require := require.New(t)
@@ -29,66 +46,86 @@ func TestEthFeeHistory(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	// Wait for the network to create 20 blocks
+	heads, err := client.ChainNotify(ctx)
+	require.NoError(err)
+
+	// Save the full view of the tipsets to calculate the answer when there are null rounds
+	tsHeights := []int{1}
+	go func() {
+		for chg := range heads {
+			for _, c := range chg {
+				tsHeights = append(tsHeights, int(c.Val.Height()))
+			}
+		}
+	}()
+
+	miner[0].InjectNulls(abi.ChainEpoch(1))
+	<-time.After(5 * blockTime)
+	miner[0].InjectNulls(abi.ChainEpoch(3))
+	<-time.After(2 * blockTime)
+	miner[0].InjectNulls(abi.ChainEpoch(1))
+
+	// Wait for the network to create at least 20 blocks
 	client.WaitTillChain(ctx, kit.HeightAtLeast(20))
 	for _, m := range miner {
 		m.Pause()
+	}
+	<-time.After(5 * blockTime)
+
+	sort.Ints(tsHeights)
+
+	latestBlk := ethtypes.EthUint64(tsHeights[len(tsHeights)-2])
+	blk, err := client.EthGetBlockByNumber(ctx, "latest", false)
+	require.NoError(err)
+	require.Equal(blk.Number, latestBlk)
+
+	assertHistory := func(history *ethtypes.EthFeeHistory, requestAmount, startHeight int) {
+		amount, oldest := getAnswer(tsHeights, requestAmount, startHeight)
+		require.Equal(amount+1, len(history.BaseFeePerGas))
+		require.Equal(amount, len(history.GasUsedRatio))
+		require.Equal(ethtypes.EthUint64(oldest), history.OldestBlock)
 	}
 
 	history, err := client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "0x10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(6, len(history.BaseFeePerGas))
-	require.Equal(5, len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(16-5+1), history.OldestBlock)
+	assertHistory(&history, 5, 16)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{"5", "0x10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(6, len(history.BaseFeePerGas))
-	require.Equal(5, len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(16-5+1), history.OldestBlock)
+	assertHistory(&history, 5, 16)
 	require.Nil(history.Reward)
 
-	latestBlk, err := client.EthGetBlockByNumber(ctx, "latest", false)
-	require.NoError(err)
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "latest"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(6, len(history.BaseFeePerGas))
-	require.Equal(5, len(history.GasUsedRatio))
-	require.Equal(latestBlk.Number-5+1, history.OldestBlock)
+	assertHistory(&history, 5, int(latestBlk))
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{"0x10", "0x12"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(17, len(history.BaseFeePerGas))
-	require.Equal(16, len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(18-16+1), history.OldestBlock)
+	assertHistory(&history, 16, 18)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "0x10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(6, len(history.BaseFeePerGas))
-	require.Equal(5, len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(16-5+1), history.OldestBlock)
+	assertHistory(&history, 5, 16)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(6, len(history.BaseFeePerGas))
-	require.Equal(5, len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(10-5+1), history.OldestBlock)
+	assertHistory(&history, 5, 10)
 	require.Nil(history.Reward)
 
 	// test when the requested number of blocks is longer than chain length
@@ -96,9 +133,7 @@ func TestEthFeeHistory(t *testing.T) {
 		json.Marshal([]interface{}{"0x30", "latest"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(int(latestBlk.Number)+1, len(history.BaseFeePerGas))
-	require.Equal(int(latestBlk.Number), len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(1), history.OldestBlock)
+	assertHistory(&history, 48, int(latestBlk))
 	require.Nil(history.Reward)
 
 	// test when the requested number of blocks is longer than chain length
@@ -106,18 +141,14 @@ func TestEthFeeHistory(t *testing.T) {
 		json.Marshal([]interface{}{"0x30", "10"}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(10+1, len(history.BaseFeePerGas))
-	require.Equal(10, len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(1), history.OldestBlock)
+	assertHistory(&history, 48, 10)
 	require.Nil(history.Reward)
 
 	history, err = client.EthFeeHistory(ctx, result.Wrap[jsonrpc.RawParams](
 		json.Marshal([]interface{}{5, "10", &[]float64{25, 50, 75}}),
 	).Assert(require.NoError))
 	require.NoError(err)
-	require.Equal(6, len(history.BaseFeePerGas))
-	require.Equal(5, len(history.GasUsedRatio))
-	require.Equal(ethtypes.EthUint64(10-5+1), history.OldestBlock)
+	assertHistory(&history, 5, 10)
 	require.NotNil(history.Reward)
 	require.Equal(5, len(*history.Reward))
 	for _, arr := range *history.Reward {

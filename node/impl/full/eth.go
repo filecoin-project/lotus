@@ -252,7 +252,7 @@ func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string) (tipset 
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
-		ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), nil, false)
+		ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), nil, true)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
 		}
@@ -691,7 +691,8 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	gasUsedRatioArray := []float64{}
 	rewardsArray := make([][]ethtypes.EthBigInt, 0)
 
-	for len(gasUsedRatioArray) < int(params.BlkCount) && ts.Height() > 0 {
+	blockCount := 0
+	for blockCount < int(params.BlkCount) && ts.Height() > 0 {
 		compOutput, err := a.StateCompute(ctx, ts.Height(), nil, ts.Key())
 		if err != nil {
 			return ethtypes.EthFeeHistory{}, xerrors.Errorf("cannot lookup the status of tipset: %v: %w", ts, err)
@@ -726,6 +727,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(build.BlockGasLimit))
 		rewardsArray = append(rewardsArray, rewards)
 		oldestBlkHeight = uint64(ts.Height())
+		blockCount++
 
 		parentTsKey := ts.Parents()
 		ts, err = a.Chain.LoadTipSet(ctx, parentTsKey)
