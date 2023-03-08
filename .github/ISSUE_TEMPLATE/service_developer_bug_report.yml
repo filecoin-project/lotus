@@ -56,7 +56,7 @@ body:
     label: Describe the Bug
     description: |
       This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information:
-      * What you were doing when you experienced the bug?
+      * What you were doing when you experienced the bug? What are you trying to build?
       * Any *error* messages and logs you saw, *where* you saw them, and what you believe may have caused them (if you have any ideas).
       * What is the expected behaviour? Links to the actual code?
   validations:
