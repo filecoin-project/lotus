@@ -20,7 +20,7 @@ body:
     options:
       - label: lotus Ethereum RPC
         required: false
-      - label: lotus evm - Lotus EVM interactions
+      - label: lotus FVM - Lotus FVM interactions
         required: false
       - label:  Other
         required: false
