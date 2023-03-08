@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -268,6 +269,76 @@ func TestContractInvocation(t *testing.T) {
 
 	// Success.
 	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+}
+
+func TestGetBlockByNumber(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+
+	bms := ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	// install contract
+	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
+	require.NoError(t, err)
+
+	contract, err := hex.DecodeString(string(contractHex))
+	require.NoError(t, err)
+
+	// create a new Ethereum account
+	key, ethAddr, deployer := client.EVM().NewAccount()
+	// send some funds to the f410 address
+	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
+
+	// DEPLOY CONTRACT
+	tx, err := deployContractTx(ctx, client, ethAddr, contract)
+	require.NoError(t, err)
+
+	client.EVM().SignTransaction(tx, key.PrivateKey)
+	hash := client.EVM().SubmitTransaction(ctx, tx)
+
+	receipt, err := waitForEthTxReceipt(ctx, client, hash)
+	require.NoError(t, err)
+	require.NotNil(t, receipt)
+	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+
+	latest, err := client.EthBlockNumber(ctx)
+	require.NoError(t, err)
+
+	// can get the latest block
+	_, err = client.EthGetBlockByNumber(ctx, latest.Hex(), true)
+	require.NoError(t, err)
+
+	// fail to get a future block
+	_, err = client.EthGetBlockByNumber(ctx, (latest + 10000).Hex(), true)
+	require.Error(t, err)
+
+	// inject 10 null rounds
+	bms[0].InjectNulls(10)
+
+	// wait until we produce blocks again
+	tctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	ch, err := client.ChainNotify(tctx)
+	require.NoError(t, err)
+	hc := <-ch // current
+	hc = <-ch  // wait for next block
+	require.Equal(t, store.HCApply, hc[0].Type)
+
+	afterNullHeight := hc[0].Val.Height()
+
+	// Fail when trying to fetch a null round.
+	_, err = client.EthGetBlockByNumber(ctx, (ethtypes.EthUint64(afterNullHeight - 1)).Hex(), true)
+	require.Error(t, err)
+
+	// Fetch balance on a null round; should not fail and should return previous balance.
+	// Should be lower than original balance.
+	bal, err := client.EthGetBalance(ctx, ethAddr, (ethtypes.EthUint64(afterNullHeight - 1)).Hex())
+	require.NoError(t, err)
+	require.NotEqual(t, big.Zero(), bal)
+	require.Equal(t, -1, bal.Cmp(types.FromFil(10).Int))
 }
 
 func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthTxArgs, error) {
