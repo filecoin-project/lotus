@@ -701,8 +701,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "purge", purgeCnt)
 	s.szKeys = hotCnt * cidKeySize
-	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
-	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
+	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(hotCnt))
+	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(coldCnt))
 
 	if err := s.checkClosing(); err != nil {
 		return err
@@ -975,7 +975,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 				if err != nil {
 					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
-				atomic.AddInt64(szWalk, int64(sz))
+				atomic.AddInt64(szWalk, sz)
 			} else {
 				sz, err = s.walkObject(hdr.Messages, visitor, fHot)
 				if err != nil {
