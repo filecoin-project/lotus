@@ -13,7 +13,13 @@ import (
 type Percent int64
 
 func (p Percent) String() string {
-	return fmt.Sprintf(`%d.%d`, p/100, p%100)
+	abs := p
+	sign := ""
+	if abs < 0 {
+		abs = -abs
+		sign = "-"
+	}
+	return fmt.Sprintf(`%s%d.%d`, sign, abs/100, abs%100)
 }
 
 func (p Percent) MarshalJSON() ([]byte, error) {

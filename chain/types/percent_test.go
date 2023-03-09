@@ -15,7 +15,10 @@ func TestPercent(t *testing.T) {
 		{100, "1.0"},
 		{111, "1.11"},
 		{12, "0.12"},
+		{-12, "-0.12"},
 		{1012, "10.12"},
+		{-1012, "-10.12"},
+		{0, "0.0"},
 	} {
 		tc := tc
 		t.Run(fmt.Sprintf("%d <> %s", tc.p, tc.s), func(t *testing.T) {
