@@ -691,8 +691,8 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	gasUsedRatioArray := []float64{}
 	rewardsArray := make([][]ethtypes.EthBigInt, 0)
 
-	blockCount := 0
-	for blockCount < int(params.BlkCount) && ts.Height() > 0 {
+	blocksIncluded := 0
+	for blocksIncluded < int(params.BlkCount) && ts.Height() > 0 {
 		compOutput, err := a.StateCompute(ctx, ts.Height(), nil, ts.Key())
 		if err != nil {
 			return ethtypes.EthFeeHistory{}, xerrors.Errorf("cannot lookup the status of tipset: %v: %w", ts, err)
@@ -727,7 +727,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		gasUsedRatioArray = append(gasUsedRatioArray, float64(totalGasUsed)/float64(build.BlockGasLimit))
 		rewardsArray = append(rewardsArray, rewards)
 		oldestBlkHeight = uint64(ts.Height())
-		blockCount++
+		blocksIncluded++
 
 		parentTsKey := ts.Parents()
 		ts, err = a.Chain.LoadTipSet(ctx, parentTsKey)

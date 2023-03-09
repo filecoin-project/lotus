@@ -19,16 +19,21 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
-func getAnswer(tsHeights []int, requestAmount, startHeight int) (count, oldestHeight int) {
-	idx := sort.SearchInts(tsHeights, startHeight)
-	// handle null rounds
-	for tsHeights[idx] > startHeight {
-		idx--
+// calculateExpectations calculates the expected number of items to be included in the response
+// of eth_feeHistory. It takes care of null rounds by finding the closet tipset with height
+// smaller than startHeight, and then looks back at requestAmount of items. It also considers
+// scenarios where there are not enough items to look back.
+func calculateExpectations(tsHeights []int, requestAmount, startHeight int) (count, oldestHeight int) {
+	latestIdx := sort.SearchInts(tsHeights, startHeight)
+	// SearchInts returns the index of the number that's larger than the target if the target
+	// doesn't exist. However, we're looking for the closet number that's smaller that the target
+	for tsHeights[latestIdx] > startHeight {
+		latestIdx--
 	}
 	cnt := requestAmount
-	oldestIdx := idx - requestAmount + 1
-	if idx < cnt {
-		cnt = idx + 1
+	oldestIdx := latestIdx - requestAmount + 1
+	if oldestIdx < 0 {
+		cnt = latestIdx + 1
 		oldestIdx = 0
 	}
 	return cnt, tsHeights[oldestIdx]
@@ -41,7 +46,6 @@ func TestEthFeeHistory(t *testing.T) {
 
 	blockTime := 100 * time.Millisecond
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
-	miner := ens.InterconnectAll().BeginMining(blockTime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -59,28 +63,44 @@ func TestEthFeeHistory(t *testing.T) {
 		}
 	}()
 
-	miner[0].InjectNulls(abi.ChainEpoch(1))
-	<-time.After(5 * blockTime)
-	miner[0].InjectNulls(abi.ChainEpoch(3))
-	<-time.After(2 * blockTime)
-	miner[0].InjectNulls(abi.ChainEpoch(1))
+	miner := ens.InterconnectAll().BeginMining(blockTime)
 
-	// Wait for the network to create at least 20 blocks
+	client.WaitTillChain(ctx, kit.HeightAtLeast(7))
+	miner[0].InjectNulls(abi.ChainEpoch(5))
+
+	// Wait for the network to create at least 20 tipsets
 	client.WaitTillChain(ctx, kit.HeightAtLeast(20))
 	for _, m := range miner {
 		m.Pause()
 	}
-	<-time.After(5 * blockTime)
+
+	ch, err := client.ChainNotify(ctx)
+	require.NoError(err)
+
+	// Wait for 5 seconds of inactivity
+	func() {
+		for {
+			select {
+			case <-ch:
+				continue
+			case <-time.After(5 * time.Second):
+				return
+			}
+		}
+	}()
 
 	sort.Ints(tsHeights)
 
+	// because of the deferred execution, the last tipset is not executed yet,
+	// and the one before the last one is the last executed tipset,
+	// which corresponds to the "latest" tag in EthGetBlockByNumber
 	latestBlk := ethtypes.EthUint64(tsHeights[len(tsHeights)-2])
 	blk, err := client.EthGetBlockByNumber(ctx, "latest", false)
 	require.NoError(err)
 	require.Equal(blk.Number, latestBlk)
 
 	assertHistory := func(history *ethtypes.EthFeeHistory, requestAmount, startHeight int) {
-		amount, oldest := getAnswer(tsHeights, requestAmount, startHeight)
+		amount, oldest := calculateExpectations(tsHeights, requestAmount, startHeight)
 		require.Equal(amount+1, len(history.BaseFeePerGas))
 		require.Equal(amount, len(history.GasUsedRatio))
 		require.Equal(ethtypes.EthUint64(oldest), history.OldestBlock)
