@@ -96,6 +96,12 @@ func workerRpc(t *testing.T, m *TestWorker) *TestWorker {
 	require.NoError(t, err)
 	t.Cleanup(stop)
 
+	m.Stop = func(ctx context.Context) error {
+		srv.Close()
+		srv.CloseClientConnections()
+		return nil
+	}
+
 	m.ListenAddr, m.Worker = maddr, cl
 	return m
 }

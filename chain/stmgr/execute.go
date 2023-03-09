@@ -52,14 +52,6 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 
 	sm.stlk.Unlock()
 
-	if ts.Height() == 0 {
-		// NB: This is here because the process that executes blocks requires that the
-		// block miner reference a valid miner in the state tree. Unless we create some
-		// magical genesis miner, this won't work properly, so we short circuit here
-		// This avoids the question of 'who gets paid the genesis block reward'
-		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
-	}
-
 	st, rec, err = sm.tsExec.ExecuteTipSet(ctx, sm, ts, sm.tsExecMonitor, false)
 	if err != nil {
 		return cid.Undef, cid.Undef, err

@@ -3,8 +3,8 @@ package rpcenc
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -77,7 +77,12 @@ func (h *ReaderHandler) CloseReader(ctx context.Context, r io.Reader) error {
 }
 
 func (h *ReaderHandler) ReadAll(ctx context.Context, r io.Reader) ([]byte, error) {
-	return ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, xerrors.Errorf("readall: %w", err)
+	}
+
+	return b, nil
 }
 
 func (h *ReaderHandler) ReadNullLen(ctx context.Context, r io.Reader) (int64, error) {
@@ -219,9 +224,15 @@ func TestReaderRedirect(t *testing.T) {
 }
 
 func TestReaderRedirectDrop(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("test %d", i), testReaderRedirectDrop)
+	}
+}
+
+func testReaderRedirectDrop(t *testing.T) {
 	// lower timeout so that the dangling connection between client and reader is dropped quickly
 	// after the test. Otherwise httptest.Close is blocked.
-	Timeout = 200 * time.Millisecond
+	Timeout = 90 * time.Millisecond
 
 	var allClient struct {
 		ReadAll func(ctx context.Context, r io.Reader) ([]byte, error)
@@ -294,6 +305,8 @@ func TestReaderRedirectDrop(t *testing.T) {
 
 	done.Wait()
 
+	fmt.Println("---------------------")
+
 	// Redir client drops before subcall
 	done.Add(1)
 
@@ -322,5 +335,9 @@ func TestReaderRedirectDrop(t *testing.T) {
 	// wait for subcall to finish
 	<-contCh
 
-	require.ErrorContains(t, allServerHandler.subErr, "decoding params for 'ReaderHandler.ReadAll' (param: 0; custom decoder): context canceled")
+	estr := allServerHandler.subErr.Error()
+
+	require.True(t,
+		strings.Contains(estr, "decoding params for 'ReaderHandler.ReadAll' (param: 0; custom decoder): context canceled") ||
+			strings.Contains(estr, "readall: unexpected EOF"), "unexpected error: %s", estr)
 }

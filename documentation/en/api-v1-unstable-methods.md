@@ -29,6 +29,7 @@
   * [ChainGetTipSetByHeight](#ChainGetTipSetByHeight)
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
+  * [ChainHotGC](#ChainHotGC)
   * [ChainNotify](#ChainNotify)
   * [ChainPrune](#ChainPrune)
   * [ChainPutObj](#ChainPutObj)
@@ -1074,6 +1075,26 @@ Response:
 }
 ```
 
+### ChainHotGC
+ChainHotGC does online (badger) GC on the hot store; only supported if you are using
+the splitstore
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Threshold": 12.3,
+    "Periodic": true,
+    "Moving": true
+  }
+]
+```
+
+Response: `{}`
+
 ### ChainNotify
 ChainNotify returns channel with chain head updates.
 First message is guaranteed to be of len == 1, and type == 'current'.
@@ -1098,7 +1119,7 @@ Response:
 ```
 
 ### ChainPrune
-ChainPrune prunes the stored chain state and garbage collects; only supported if you
+ChainPrune forces compaction on cold store and garbage collects; only supported if you
 are using the splitstore
 
 

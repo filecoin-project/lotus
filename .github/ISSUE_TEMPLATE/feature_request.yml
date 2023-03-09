@@ -7,8 +7,6 @@ body:
     label: Checklist
     description: Please check off the following boxes before continuing to create a new feature request!
     options:
-      - label: This is **not** a new feature or an enhancement to the Filecoin protocol. If it is,  please open an [FIP issue](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0001.md).
-        required: true
       - label: This is **not** brainstorming ideas. If you have an idea you'd like to discuss, please open a new discussion on [the lotus forum](https://github.com/filecoin-project/lotus/discussions/categories/ideas) and select the category as `Ideas`.
         required: true
       - label: I **have** a specific, actionable, and well motivated feature request to propose.
@@ -20,19 +18,11 @@ body:
     options:
       - label: lotus daemon - chain sync
         required: false
-      - label: lotus miner - mining and block production
+      - label: lotus fvm/fevm - Lotus FVM and FEVM interactions
         required: false
       - label: lotus miner/worker - sealing
         required: false
-      - label: lotus miner - proving(WindowPoSt)
-        required: false
-      - label: lotus miner/market - storage deal
-        required: false
-      - label: lotus miner/market - retrieval deal
-        required: false
-      - label: lotus miner/market - data transfer
-        required: false
-      - label: lotus client
+      - label: lotus miner - proving(WindowPoSt/WinningPoSt)
         required: false
       - label: lotus JSON-RPC API
         required: false
@@ -56,7 +46,7 @@ body:
   validations:
     required: true
 - type: textarea
-  id: alternates
+  id: alternatives
   attributes:
     label: Describe alternatives you've considered
     description: A clear and concise description of any alternative solutions or features you've considered.
@@ -69,4 +59,3 @@ body:
     description: Add any other context, design docs or screenshots about the feature request here.
   validations:
     required: false
-

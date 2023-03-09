@@ -2,12 +2,15 @@ package sealer
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/storage/paths"
@@ -102,15 +105,31 @@ func (ps *poStScheduler) Schedule(ctx context.Context, primary bool, spt abi.Reg
 		}
 	}()
 
-	selected := candidates[0]
-	worker := ps.workers[selected.id]
+	var rpcErrs error
 
-	return worker.active.withResources(selected.id, worker.Info, ps.postType.SealTask(spt), selected.res, &ps.lk, func() error {
-		ps.lk.Unlock()
-		defer ps.lk.Lock()
+	for i, selected := range candidates {
+		worker := ps.workers[selected.id]
 
-		return work(ctx, worker.workerRpc)
-	})
+		err := worker.active.withResources(selected.id, worker.Info, ps.postType.SealTask(spt), selected.res, &ps.lk, func() error {
+			ps.lk.Unlock()
+			defer ps.lk.Lock()
+
+			return work(ctx, worker.workerRpc)
+		})
+		if err == nil {
+			return nil
+		}
+
+		// if the error is RPCConnectionError, try another worker, if not, return the error
+		if !errors.As(err, new(*jsonrpc.RPCConnectionError)) {
+			return err
+		}
+
+		log.Warnw("worker RPC connection error, will retry with another candidate if possible", "error", err, "worker", selected.id, "candidate", i, "candidates", len(candidates))
+		rpcErrs = multierror.Append(rpcErrs, err)
+	}
+
+	return xerrors.Errorf("got RPC errors from all workers: %w", rpcErrs)
 }
 
 type candidateWorker struct {
@@ -123,6 +142,11 @@ func (ps *poStScheduler) readyWorkers(spt abi.RegisteredSealProof) (bool, []cand
 	//if the gpus of the worker are insufficient or it's disabled, it cannot be scheduled
 	for wid, wr := range ps.workers {
 		needRes := wr.Info.Resources.ResourceSpec(spt, ps.postType)
+
+		if !wr.Enabled {
+			log.Debugf("sched: not scheduling on PoSt-worker %s, worker disabled", wid)
+			continue
+		}
 
 		if !wr.active.CanHandleRequest(ps.postType.SealTask(spt), needRes, wid, "post-readyWorkers", wr.Info) {
 			continue

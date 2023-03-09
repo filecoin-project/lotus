@@ -1591,7 +1591,64 @@ func createExportFile(app *cli.App, path string) (io.WriteCloser, error) {
 
 var ChainPruneCmd = &cli.Command{
 	Name:  "prune",
-	Usage: "prune the stored chain state and perform garbage collection",
+	Usage: "splitstore gc",
+	Subcommands: []*cli.Command{
+		chainPruneColdCmd,
+		chainPruneHotGCCmd,
+		chainPruneHotMovingGCCmd,
+	},
+}
+
+var chainPruneHotGCCmd = &cli.Command{
+	Name:  "hot",
+	Usage: "run online (badger vlog) garbage collection on hotstore",
+	Flags: []cli.Flag{
+		&cli.Float64Flag{Name: "threshold", Value: 0.01, Usage: "Threshold of vlog garbage for gc"},
+		&cli.BoolFlag{Name: "periodic", Value: false, Usage: "Run periodic gc over multiple vlogs. Otherwise run gc once"},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		opts := lapi.HotGCOpts{}
+		opts.Periodic = cctx.Bool("periodic")
+		opts.Threshold = cctx.Float64("threshold")
+
+		gcStart := time.Now()
+		err = api.ChainHotGC(ctx, opts)
+		gcTime := time.Since(gcStart)
+		fmt.Printf("Online GC took %v (periodic <%t> threshold <%f>)", gcTime, opts.Periodic, opts.Threshold)
+		return err
+	},
+}
+
+var chainPruneHotMovingGCCmd = &cli.Command{
+	Name:  "hot-moving",
+	Usage: "run moving gc on hotstore",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		opts := lapi.HotGCOpts{}
+		opts.Moving = true
+
+		gcStart := time.Now()
+		err = api.ChainHotGC(ctx, opts)
+		gcTime := time.Since(gcStart)
+		fmt.Printf("Moving GC took %v", gcTime)
+		return err
+	},
+}
+
+var chainPruneColdCmd = &cli.Command{
+	Name:  "compact-cold",
+	Usage: "force splitstore compaction on cold store state and run gc",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "online-gc",

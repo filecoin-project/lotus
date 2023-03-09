@@ -7,7 +7,7 @@ import (
 	bstore "github.com/filecoin-project/lotus/blockstore"
 )
 
-func (s *SplitStore) gcHotstore() {
+func (s *SplitStore) gcHotAfterCompaction() {
 	var opts []bstore.BlockstoreGCOption
 	if s.cfg.HotStoreFullGCFrequency > 0 && s.compactionIndex%int64(s.cfg.HotStoreFullGCFrequency) == 0 {
 		opts = append(opts, bstore.WithFullGC(true))
@@ -23,7 +23,7 @@ func (s *SplitStore) gcBlockstore(b bstore.Blockstore, opts []bstore.BlockstoreG
 		log.Info("garbage collecting blockstore")
 		startGC := time.Now()
 
-		if err := gc.CollectGarbage(opts...); err != nil {
+		if err := gc.CollectGarbage(s.ctx, opts...); err != nil {
 			return err
 		}
 
@@ -32,4 +32,20 @@ func (s *SplitStore) gcBlockstore(b bstore.Blockstore, opts []bstore.BlockstoreG
 	}
 
 	return fmt.Errorf("blockstore doesn't support garbage collection: %T", b)
+}
+
+func (s *SplitStore) gcBlockstoreOnce(b bstore.Blockstore, opts []bstore.BlockstoreGCOption) error {
+	if gc, ok := b.(bstore.BlockstoreGCOnce); ok {
+		log.Debug("gc blockstore once")
+		startGC := time.Now()
+
+		if err := gc.GCOnce(s.ctx, opts...); err != nil {
+			return err
+		}
+
+		log.Debugw("gc blockstore once done", "took", time.Since(startGC))
+		return nil
+	}
+
+	return fmt.Errorf("blockstore doesn't support gc once: %T", b)
 }

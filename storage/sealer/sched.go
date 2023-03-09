@@ -42,6 +42,10 @@ func WithPriority(ctx context.Context, priority int) context.Context {
 const mib = 1 << 20
 
 type WorkerAction func(ctx context.Context, w Worker) error
+type PrepareAction struct {
+	Action   WorkerAction
+	PrepType sealtasks.TaskType
+}
 
 type SchedWorker interface {
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
@@ -130,7 +134,7 @@ type WorkerRequest struct {
 	Sel      WorkerSelector
 	SchedId  uuid.UUID
 
-	prepare WorkerAction
+	prepare PrepareAction
 	work    WorkerAction
 
 	start time.Time
@@ -157,7 +161,15 @@ func newScheduler(ctx context.Context, assigner string) (*Scheduler, error) {
 	case "", "utilization":
 		a = NewLowestUtilizationAssigner()
 	case "spread":
-		a = NewSpreadAssigner()
+		a = NewSpreadAssigner(false)
+	case "experiment-spread-qcount":
+		a = NewSpreadAssigner(true)
+	case "experiment-spread-tasks":
+		a = NewSpreadTasksAssigner(false)
+	case "experiment-spread-tasks-qcount":
+		a = NewSpreadTasksAssigner(true)
+	case "experiment-random":
+		a = NewRandomAssigner()
 	default:
 		return nil, xerrors.Errorf("unknown assigner '%s'", assigner)
 	}
@@ -189,7 +201,7 @@ func newScheduler(ctx context.Context, assigner string) (*Scheduler, error) {
 	}, nil
 }
 
-func (sh *Scheduler) Schedule(ctx context.Context, sector storiface.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
+func (sh *Scheduler) Schedule(ctx context.Context, sector storiface.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare PrepareAction, work WorkerAction) error {
 	ret := make(chan workerResponse)
 
 	select {
@@ -235,6 +247,13 @@ func (r *WorkerRequest) respond(err error) {
 func (r *WorkerRequest) SealTask() sealtasks.SealTaskType {
 	return sealtasks.SealTaskType{
 		TaskType:            r.TaskType,
+		RegisteredSealProof: r.Sector.ProofType,
+	}
+}
+
+func (r *WorkerRequest) PrepSealTask() sealtasks.SealTaskType {
+	return sealtasks.SealTaskType{
+		TaskType:            r.prepare.PrepType,
 		RegisteredSealProof: r.Sector.ProofType,
 	}
 }

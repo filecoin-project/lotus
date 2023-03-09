@@ -183,9 +183,13 @@ type FullNode interface {
 	// nodes.
 	ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg ChainExportConfig) error //perm:admin
 
-	// ChainPrune prunes the stored chain state and garbage collects; only supported if you
+	// ChainPrune forces compaction on cold store and garbage collects; only supported if you
 	// are using the splitstore
 	ChainPrune(ctx context.Context, opts PruneOpts) error //perm:admin
+
+	// ChainHotGC does online (badger) GC on the hot store; only supported if you are using
+	// the splitstore
+	ChainHotGC(ctx context.Context, opts HotGCOpts) error //perm:admin
 
 	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
 	// if supported by the underlying implementation.
@@ -1352,6 +1356,12 @@ type MsigTransaction struct {
 type PruneOpts struct {
 	MovingGC    bool
 	RetainState int64
+}
+
+type HotGCOpts struct {
+	Threshold float64
+	Periodic  bool
+	Moving    bool
 }
 
 type EthTxReceipt struct {
