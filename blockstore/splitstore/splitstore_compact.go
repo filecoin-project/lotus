@@ -67,7 +67,7 @@ var (
 
 const (
 	batchSize  = 16384
-	cidKeySize = 32
+	cidKeySize = 128
 )
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
