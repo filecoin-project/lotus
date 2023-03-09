@@ -13,7 +13,11 @@ import (
 )
 
 var (
-	ReplaceByFeeRatioDefault  = 1.25
+	ReplaceByFeePercentageMinimum types.Percent = 110
+	ReplaceByFeePercentageDefault types.Percent = 125
+)
+
+var (
 	MemPoolSizeLimitHiDefault = 30000
 	MemPoolSizeLimitLoDefault = 20000
 	PruneCooldownDefault      = time.Minute
@@ -60,9 +64,9 @@ func (mp *MessagePool) getConfig() *types.MpoolConfig {
 }
 
 func validateConfg(cfg *types.MpoolConfig) error {
-	if cfg.ReplaceByFeeRatio < ReplaceByFeeRatioDefault {
-		return fmt.Errorf("'ReplaceByFeeRatio' is less than required %f < %f",
-			cfg.ReplaceByFeeRatio, ReplaceByFeeRatioDefault)
+	if cfg.ReplaceByFeeRatio < ReplaceByFeePercentageMinimum {
+		return fmt.Errorf("'ReplaceByFeeRatio' is less than required %s < %s",
+			cfg.ReplaceByFeeRatio, ReplaceByFeePercentageMinimum)
 	}
 	if cfg.GasLimitOverestimation < 1 {
 		return fmt.Errorf("'GasLimitOverestimation' cannot be less than 1")
@@ -91,7 +95,7 @@ func DefaultConfig() *types.MpoolConfig {
 	return &types.MpoolConfig{
 		SizeLimitHigh:          MemPoolSizeLimitHiDefault,
 		SizeLimitLow:           MemPoolSizeLimitLoDefault,
-		ReplaceByFeeRatio:      ReplaceByFeeRatioDefault,
+		ReplaceByFeeRatio:      ReplaceByFeePercentageDefault,
 		PruneCooldown:          PruneCooldownDefault,
 		GasLimitOverestimation: GasLimitOverestimation,
 	}
