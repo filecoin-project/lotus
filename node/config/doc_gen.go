@@ -1295,7 +1295,10 @@ will run moving GC if disk utilization gets within a threshold (150 GB) of the t
 Splitstore GC will NOT run moving GC if the total size of the move would get
 within 50 GB of the target, and instead will run a more aggressive online GC.
 If both HotStoreFullGCFrequency and HotStoreMaxSpaceTarget are set then splitstore
-GC will trigger moving GC if either configuration condition is met.`,
+GC will trigger moving GC if either configuration condition is met.
+A reasonable minimum is 2x fully GCed hotstore size + 50 G buffer.
+At this minimum size moving GC happens every time, any smaller and moving GC won't
+be able to run. In spring 2023 this minimum is ~550 GB.`,
 		},
 	},
 	"StorageMiner": []DocField{

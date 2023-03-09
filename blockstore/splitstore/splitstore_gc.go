@@ -28,18 +28,21 @@ func (s *SplitStore) gcHotAfterCompaction() {
 	// 	a) If we should not do full GC => online GC
 	//  b) If we should do full GC and can => moving GC
 	//  c) If we should do full GC and can't => aggressive online GC
-	var hotSize int64
-	var err error
-	sizer, ok := s.hot.(bstore.BlockstoreSize)
-	if ok {
-		hotSize, err = sizer.Size()
-		if err != nil {
-			log.Warnf("error getting hotstore size: %s, estimating empty hot store for targeting", err)
-			hotSize = 0
+	getSize := func() int64 {
+		sizer, ok := s.hot.(bstore.BlockstoreSize)
+		if ok {
+			size, err := sizer.Size()
+			if err != nil {
+				log.Warnf("error getting hotstore size: %s, estimating empty hot store for targeting", err)
+				return 0
+			}
+			return size
+		} else {
+			log.Errorf("Could not measure hotstore size, assuming it is 0 bytes, which it is not")
+			return 0
 		}
-	} else {
-		hotSize = 0
 	}
+	hotSize := getSize()
 
 	copySizeApprox := s.szKeys + s.szMarkedLiveRefs + s.szProtectedTxns + s.szWalk
 	shouldTarget := s.cfg.HotstoreMaxSpaceTarget > 0 && hotSize+copySizeApprox > int64(s.cfg.HotstoreMaxSpaceTarget)-targetThreshold
@@ -63,6 +66,7 @@ func (s *SplitStore) gcHotAfterCompaction() {
 	if err := s.gcBlockstore(s.hot, opts); err != nil {
 		log.Warnf("error garbage collecting hostore: %s", err)
 	}
+	log.Infof("measured hot store size after GC: %d", getSize())
 }
 
 func (s *SplitStore) gcBlockstore(b bstore.Blockstore, opts []bstore.BlockstoreGCOption) error {

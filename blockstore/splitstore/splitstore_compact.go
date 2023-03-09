@@ -204,7 +204,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 
 	count := new(int32)
 	visitor := newConcurrentVisitor()
-	walkObject := func(c cid.Cid) (int, error) {
+	walkObject := func(c cid.Cid) (int64, error) {
 		return s.walkObjectIncomplete(c, visitor,
 			func(c cid.Cid) error {
 				if isUnitaryObject(c) {
@@ -426,7 +426,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
-func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int, error) {
+func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) {
 	if err := s.checkClosing(); err != nil {
 		return 0, err
 	}
@@ -1082,8 +1082,8 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	return nil
 }
 
-func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid) error) (int, error) {
-	var sz int
+func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid) error) (int64, error) {
+	var sz int64
 	visit, err := visitor.Visit(c)
 	if err != nil {
 		return 0, xerrors.Errorf("error visiting object: %w", err)
@@ -1112,7 +1112,7 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 
 	var links []cid.Cid
 	err = s.view(c, func(data []byte) error {
-		sz += len(data)
+		sz += int64(len(data))
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
@@ -1134,8 +1134,8 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 }
 
 // like walkObject, but the object may be potentially incomplete (references missing)
-func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) (int, error) {
-	sz := 0
+func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) (int64, error) {
+	sz := int64(0)
 	visit, err := visitor.Visit(c)
 	if err != nil {
 		return 0, xerrors.Errorf("error visiting object: %w", err)
@@ -1181,7 +1181,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 
 	var links []cid.Cid
 	err = s.view(c, func(data []byte) error {
-		sz += len(data)
+		sz += int64(len(data))
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
