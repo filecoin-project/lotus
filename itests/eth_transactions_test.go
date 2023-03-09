@@ -323,8 +323,8 @@ func TestGetBlockByNumber(t *testing.T) {
 	defer cancel()
 	ch, err := client.ChainNotify(tctx)
 	require.NoError(t, err)
-	hc := <-ch // current
-	hc = <-ch  // wait for next block
+	<-ch       // current
+	hc := <-ch // wait for next block
 	require.Equal(t, store.HCApply, hc[0].Type)
 
 	afterNullHeight := hc[0].Val.Height()
