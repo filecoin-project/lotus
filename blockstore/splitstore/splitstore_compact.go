@@ -997,7 +997,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			if err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 			}
-			atomic.AddInt64(szWalk, int64(sz))
+			atomic.AddInt64(szWalk, sz)
 			sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk)
 			if err != nil {
 				return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
@@ -1011,7 +1011,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			if err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
-			atomic.AddInt64(szWalk, int64(sz))
+			atomic.AddInt64(szWalk, sz)
 			atomic.AddInt64(scanCnt, 1)
 		}
 
