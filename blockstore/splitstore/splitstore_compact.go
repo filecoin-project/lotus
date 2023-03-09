@@ -648,7 +648,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	defer purgew.Close() //nolint:errcheck
 
 	// some stats for logging
-	var hotCnt, coldCnt, purgeCnt, szPurge int
+	var hotCnt, coldCnt, purgeCnt int64
 	err = s.hot.ForEachKey(func(c cid.Cid) error {
 		// was it marked?
 		mark, err := markSet.Has(c)
@@ -660,16 +660,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			hotCnt++
 			return nil
 		}
-		sz, err := s.hot.GetSize(s.ctx, c)
-		if err != nil {
-			if ipld.IsNotFound(err) {
-				log.Warnf("hotstore missing expected block %s", c)
-				return nil
-			}
-
-			return xerrors.Errorf("error retrieving block %s from hotstore: %w", c, err)
-		}
-		szPurge += sz
 
 		// it needs to be removed from hot store, mark it as candidate for purge
 		if err := purgew.Write(c); err != nil {
@@ -709,9 +699,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("cold collection done", "took", time.Since(startCollect))
 
-	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "purge", purgeCnt, "purge size", szPurge)
-	s.szToPurge = int64(szPurge)
-	s.szKeys = int64(hotCnt) * cidKeySize
+	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "purge", purgeCnt)
+	s.szKeys = hotCnt * cidKeySize
 	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
 	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
@@ -1540,7 +1529,6 @@ func (s *SplitStore) clearSizeMeasurements() {
 	s.szKeys = 0
 	s.szMarkedLiveRefs = 0
 	s.szProtectedTxns = 0
-	s.szToPurge = 0
 	s.szWalk = 0
 }
 

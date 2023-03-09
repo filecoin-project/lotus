@@ -211,7 +211,6 @@ type SplitStore struct {
 	// protected by compaction lock
 	szWalk          int64
 	szProtectedTxns int64
-	szToPurge       int64 // expected purges before critical section protections and live marking
 	szKeys          int64 // approximate, not counting keys protected when entering critical section
 
 	// protected by txnLk
