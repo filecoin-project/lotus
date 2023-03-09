@@ -191,7 +191,7 @@
 [Chainstore]
   # type: bool
   # env var: LOTUS_CHAINSTORE_ENABLESPLITSTORE
-  #EnableSplitstore = false
+  #EnableSplitstore = true
 
   [Chainstore.Splitstore]
     # ColdStoreType specifies the type of the coldstore.
@@ -199,7 +199,7 @@
     #
     # type: string
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_COLDSTORETYPE
-    #ColdStoreType = "messages"
+    #ColdStoreType = "discard"
 
     # HotStoreType specifies the type of the hotstore.
     # Only currently supported value is "badger".
