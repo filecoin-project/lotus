@@ -1300,6 +1300,21 @@ A reasonable minimum is 2x fully GCed hotstore size + 50 G buffer.
 At this minimum size moving GC happens every time, any smaller and moving GC won't
 be able to run. In spring 2023 this minimum is ~550 GB.`,
 		},
+		{
+			Name: "HotStoreMaxSpaceThreshold",
+			Type: "uint64",
+
+			Comment: `When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold`,
+		},
+		{
+			Name: "HotstoreMaxSpaceSafetyBuffer",
+			Type: "uint64",
+
+			Comment: `Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+is set.  Moving GC will not occur when total moving size exceeds
+HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
+		},
 	},
 	"StorageMiner": []DocField{
 		{

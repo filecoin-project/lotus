@@ -8,10 +8,6 @@ import (
 )
 
 const (
-	// When < 150 GB of space would remain during moving GC, trigger moving GC
-	targetThreshold = 150_000_000_000
-	// Don't attempt moving GC with 50 GB or less would remain during moving GC
-	targetBuffer = 50_000_000_000
 	// Fraction of garbage in badger vlog for online GC traversal to collect garbage
 	AggressiveOnlineGCThreshold = 0.0001
 )
@@ -55,7 +51,7 @@ func (s *SplitStore) gcHotAfterCompaction() {
 	if shouldDoFull && canDoFull {
 		opts = append(opts, bstore.WithFullGC(true))
 	} else if shouldDoFull && !canDoFull {
-		log.Warnf("Attention! Estimated moving GC size %d is not within safety buffer %d of target max %d, performing aggressive online GC to attempt to bring hotstore size down safely", copySizeApprox, targetBuffer, s.cfg.HotstoreMaxSpaceTarget)
+		log.Warnf("Attention! Estimated moving GC size %d is not within safety buffer %d of target max %d, performing aggressive online GC to attempt to bring hotstore size down safely", copySizeApprox, s.cfg.HotstoreMaxSpaceSafetyBuffer, s.cfg.HotstoreMaxSpaceTarget)
 		log.Warn("If problem continues you can 1) temporarily allocate more disk space to hotstore and 2) reflect in HotstoreMaxSpaceTarget OR trigger manual move with `lotus chain prune hot-moving`")
 		log.Warn("If problem continues and you do not have any more disk space you can run continue to manually trigger online GC at aggressive thresholds (< 0.01) with `lotus chain prune hot`")
 
