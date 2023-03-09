@@ -280,29 +280,10 @@ func TestGetBlockByNumber(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	// install contract
-	contractHex, err := os.ReadFile("./contracts/SimpleCoin.hex")
-	require.NoError(t, err)
-
-	contract, err := hex.DecodeString(string(contractHex))
-	require.NoError(t, err)
-
 	// create a new Ethereum account
-	key, ethAddr, deployer := client.EVM().NewAccount()
+	_, ethAddr, filAddr := client.EVM().NewAccount()
 	// send some funds to the f410 address
-	kit.SendFunds(ctx, t, client, deployer, types.FromFil(10))
-
-	// DEPLOY CONTRACT
-	tx, err := deployContractTx(ctx, client, ethAddr, contract)
-	require.NoError(t, err)
-
-	client.EVM().SignTransaction(tx, key.PrivateKey)
-	hash := client.EVM().SubmitTransaction(ctx, tx)
-
-	receipt, err := waitForEthTxReceipt(ctx, client, hash)
-	require.NoError(t, err)
-	require.NotNil(t, receipt)
-	require.EqualValues(t, ethtypes.EthUint64(0x1), receipt.Status)
+	kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
 
 	latest, err := client.EthBlockNumber(ctx)
 	require.NoError(t, err)
@@ -338,7 +319,7 @@ func TestGetBlockByNumber(t *testing.T) {
 	bal, err := client.EthGetBalance(ctx, ethAddr, (ethtypes.EthUint64(afterNullHeight - 1)).Hex())
 	require.NoError(t, err)
 	require.NotEqual(t, big.Zero(), bal)
-	require.Equal(t, -1, bal.Cmp(types.FromFil(10).Int))
+	require.Equal(t, types.FromFil(10).Int, bal.Int)
 }
 
 func deployContractTx(ctx context.Context, client *kit.TestFullNode, ethAddr ethtypes.EthAddress, contract []byte) (*ethtypes.EthTxArgs, error) {
