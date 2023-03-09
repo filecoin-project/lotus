@@ -37,10 +37,9 @@ func (s *SplitStore) gcHotAfterCompaction() {
 				return 0
 			}
 			return size
-		} else {
-			log.Errorf("Could not measure hotstore size, assuming it is 0 bytes, which it is not")
-			return 0
 		}
+		log.Errorf("Could not measure hotstore size, assuming it is 0 bytes, which it is not")
+		return 0
 	}
 	hotSize := getSize()
 

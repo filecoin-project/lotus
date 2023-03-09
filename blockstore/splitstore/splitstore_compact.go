@@ -236,7 +236,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 			log.Errorf("error marking tipset refs: %s", err)
 		}
 		log.Debugw("marking live refs done", "took", time.Since(startMark), "marked", *count)
-		atomic.AddInt64(szMarked, int64(sz))
+		atomic.AddInt64(szMarked, sz)
 		return
 	}
 
@@ -252,7 +252,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 			if err != nil {
 				return err
 			}
-			atomic.AddInt64(szMarked, int64(sz))
+			atomic.AddInt64(szMarked, sz)
 		}
 
 		return nil
@@ -969,7 +969,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 				if err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
-				atomic.AddInt64(szWalk, int64(sz))
+				atomic.AddInt64(szWalk, sz)
 
 				sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk)
 				if err != nil {
