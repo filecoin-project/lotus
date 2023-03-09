@@ -13,7 +13,7 @@ const (
 	// Don't attempt moving GC with 50 GB or less would remain during moving GC
 	targetBuffer = 50_000_000_000
 	// Fraction of garbage in badger vlog for online GC traversal to collect garbage
-	aggressiveOnlineGCThreshold = 0.0001
+	AggressiveOnlineGCThreshold = 0.0001
 )
 
 func (s *SplitStore) gcHotAfterCompaction() {
@@ -59,7 +59,7 @@ func (s *SplitStore) gcHotAfterCompaction() {
 		log.Warn("If problem continues you can 1) temporarily allocate more disk space to hotstore and 2) reflect in HotstoreMaxSpaceTarget OR trigger manual move with `lotus chain prune hot-moving`")
 		log.Warn("If problem continues and you do not have any more disk space you can run continue to manually trigger online GC at aggressive thresholds (< 0.01) with `lotus chain prune hot`")
 
-		opts = append(opts, bstore.WithThreshold(aggressiveOnlineGCThreshold))
+		opts = append(opts, bstore.WithThreshold(AggressiveOnlineGCThreshold))
 	}
 
 	if err := s.gcBlockstore(s.hot, opts); err != nil {

@@ -276,7 +276,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 	}
 
 	log.Debugw("marking live refs done", "took", time.Since(startMark), "marked", *count, "size marked", *szMarked)
-	s.szMarkedLiveRefs += *szMarked
+	s.szMarkedLiveRefs += atomic.LoadInt64(szMarked)
 }
 
 // transactionally protect a view
@@ -419,7 +419,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 		if err := g.Wait(); err != nil {
 			return err
 		}
-		s.szProtectedTxns += *sz
+		s.szProtectedTxns += atomic.LoadInt64(sz)
 		log.Infow("protecting transactional refs done", "took", time.Since(startProtect), "protected", count, "protected size", sz)
 	}
 }
@@ -1078,7 +1078,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	}
 
 	log.Infow("chain walk done", "walked", *walkCnt, "scanned", *scanCnt, "walk size", szWalk)
-	s.szWalk = *szWalk
+	s.szWalk = atomic.LoadInt64(szWalk)
 	return nil
 }
 
