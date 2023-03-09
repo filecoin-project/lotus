@@ -611,6 +611,15 @@ type Splitstore struct {
 	// At this minimum size moving GC happens every time, any smaller and moving GC won't
 	// be able to run. In spring 2023 this minimum is ~550 GB.
 	HotStoreMaxSpaceTarget uint64
+
+	// When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+	// exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold
+	HotStoreMaxSpaceThreshold uint64
+
+	// Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+	// is set.  Moving GC will not occur when total moving size exceeds
+	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
+	HotstoreMaxSpaceSafetyBuffer uint64
 }
 
 // // Full Node

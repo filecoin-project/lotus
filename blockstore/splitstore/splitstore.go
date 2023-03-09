@@ -123,6 +123,15 @@ type Config struct {
 	// never overflow.  This field is used when doing GC at the end of a compaction to
 	// adaptively choose moving GC
 	HotstoreMaxSpaceTarget uint64
+
+	// Moving GC will be triggered when total moving size exceeds
+	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold
+	HotstoreMaxSpaceThreshold uint64
+
+	// Safety buffer to prevent moving GC from overflowing disk.
+	// Moving GC will not occur when total moving size exceeds
+	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
+	HotstoreMaxSpaceSafetyBuffer uint64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
