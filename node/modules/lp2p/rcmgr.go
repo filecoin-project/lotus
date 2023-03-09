@@ -7,6 +7,7 @@ import (
 	"math/bits"
 	"os"
 	"path/filepath"
+	"sync"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -23,6 +24,8 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var rcmgrMetricsOnce sync.Once
 
 func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
 	return func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
@@ -115,8 +118,9 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 			return nil, fmt.Errorf("error creating resource manager stats reporter: %w", err)
 		}
 
-		fmt.Println("registering prometheus metrics")
-		rcmgrObs.MustRegisterWith(prometheus.DefaultRegisterer)
+		rcmgrMetricsOnce.Do(func() {
+			rcmgrObs.MustRegisterWith(prometheus.DefaultRegisterer)
+		})
 
 		// Metrics
 		opts = append(opts, rcmgr.WithMetrics(rcmgrMetrics{}), rcmgr.WithTraceReporter(str))
