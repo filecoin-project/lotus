@@ -244,9 +244,18 @@
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREMAXSPACETARGET
     #HotStoreMaxSpaceTarget = 0
 
+    # When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+    # exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold
+    #
+    # type: uint64
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREMAXSPACETHRESHOLD
     #HotStoreMaxSpaceThreshold = 150000000000
 
+    # Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+    # is set.  Moving GC will not occur when total moving size exceeds
+    # HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
+    #
+    # type: uint64
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREMAXSPACESAFETYBUFFER
     #HotstoreMaxSpaceSafetyBuffer = 50000000000
 
