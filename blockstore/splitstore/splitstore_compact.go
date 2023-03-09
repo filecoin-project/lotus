@@ -406,7 +406,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 				if err != nil {
 					return xerrors.Errorf("error protecting transactional references to %s: %w", c, err)
 				}
-				atomic.AddInt64(sz, int64(szTxn))
+				atomic.AddInt64(sz, szTxn)
 			}
 			return nil
 		}
@@ -958,7 +958,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if err != nil {
 			return xerrors.Errorf("error walking parent tipset cid reference")
 		}
-		atomic.AddInt64(szWalk, int64(sz))
+		atomic.AddInt64(szWalk, sz)
 
 		// message are retained if within the inclMsgs boundary
 		if hdr.Height >= inclMsgs && hdr.Height > 0 {
@@ -981,13 +981,13 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 				if err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
-				atomic.AddInt64(szWalk, int64(sz))
+				atomic.AddInt64(szWalk, sz)
 
 				sz, err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot)
 				if err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
-				atomic.AddInt64(szWalk, int64(sz))
+				atomic.AddInt64(szWalk, sz)
 			}
 		}
 
@@ -1002,7 +1002,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			if err != nil {
 				return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 			}
-			atomic.AddInt64(szWalk, int64(sz))
+			atomic.AddInt64(szWalk, sz)
 		}
 
 		// state is only retained if within the inclState boundary, with the exception of genesis
@@ -1033,7 +1033,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	if err != nil {
 		return xerrors.Errorf("error walking parent tipset cid reference")
 	}
-	atomic.AddInt64(szWalk, int64(sz))
+	atomic.AddInt64(szWalk, sz)
 
 	for len(toWalk) > 0 {
 		// walking can take a while, so check this with every opportunity
@@ -1135,7 +1135,7 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 
 // like walkObject, but the object may be potentially incomplete (references missing)
 func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) (int64, error) {
-	sz := int64(0)
+	var sz int64
 	visit, err := visitor.Visit(c)
 	if err != nil {
 		return 0, xerrors.Errorf("error visiting object: %w", err)
