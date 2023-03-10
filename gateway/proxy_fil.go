@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 func (gw *Node) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
@@ -187,6 +188,13 @@ func (gw *Node) GasEstimateMessageGas(ctx context.Context, msg *types.Message, s
 	return gw.target.GasEstimateMessageGas(ctx, msg, spec, tsk)
 }
 
+func (gw *Node) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return 0, err
+	}
+	return gw.target.MpoolGetNonce(ctx, addr)
+}
+
 func (gw *Node) MpoolPush(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return cid.Cid{}, err
@@ -248,6 +256,16 @@ func (gw *Node) StateAccountKey(ctx context.Context, addr address.Address, tsk t
 	return gw.target.StateAccountKey(ctx, addr, tsk)
 }
 
+func (gw *Node) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.StateCall(ctx, msg, tsk)
+}
+
 func (gw *Node) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (api.DealCollateralBounds, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return api.DealCollateralBounds{}, err
@@ -256,6 +274,16 @@ func (gw *Node) StateDealProviderCollateralBounds(ctx context.Context, size abi.
 		return api.DealCollateralBounds{}, err
 	}
 	return gw.target.StateDealProviderCollateralBounds(ctx, size, verified, tsk)
+}
+
+func (gw *Node) StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.StateDecodeParams(ctx, toAddr, method, params, tsk)
 }
 
 func (gw *Node) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
@@ -306,6 +334,13 @@ func (gw *Node) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, t
 		return nil, err
 	}
 	return gw.target.StateMarketStorageDeal(ctx, dealId, tsk)
+}
+
+func (gw *Node) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return *new(dtypes.NetworkName), err
+	}
+	return gw.target.StateNetworkName(ctx)
 }
 
 func (gw *Node) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {

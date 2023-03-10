@@ -401,6 +401,10 @@ func init() {
 		FromBlock: pstring("2301220"),
 		Address:   []ethtypes.EthAddress{ethaddr},
 	})
+
+	percent := types.Percent(123)
+	addExample(percent)
+	addExample(&percent)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

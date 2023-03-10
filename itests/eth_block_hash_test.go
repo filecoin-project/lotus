@@ -3,6 +3,7 @@ package itests
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,6 +56,10 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 		hex := fmt.Sprintf("0x%x", i)
 
 		ethBlockA, err := n2.EthGetBlockByNumber(ctx, hex, true)
+		// Cannot use static ErrFullRound error for comparison since it gets reserialized as a JSON RPC error.
+		if err != nil && strings.Contains(err.Error(), "null round") {
+			continue
+		}
 		require.NoError(t, err)
 
 		ethBlockB, err := n2.EthGetBlockByHash(ctx, ethBlockA.Hash, true)
