@@ -1286,6 +1286,35 @@ the compaction boundary; default is 0.`,
 A value of 0 disables, while a value 1 will do full GC in every compaction.
 Default is 20 (about once a week).`,
 		},
+		{
+			Name: "HotStoreMaxSpaceTarget",
+			Type: "uint64",
+
+			Comment: `HotStoreMaxSpaceTarget sets a target max disk size for the hotstore. Splitstore GC
+will run moving GC if disk utilization gets within a threshold (150 GB) of the target.
+Splitstore GC will NOT run moving GC if the total size of the move would get
+within 50 GB of the target, and instead will run a more aggressive online GC.
+If both HotStoreFullGCFrequency and HotStoreMaxSpaceTarget are set then splitstore
+GC will trigger moving GC if either configuration condition is met.
+A reasonable minimum is 2x fully GCed hotstore size + 50 G buffer.
+At this minimum size moving GC happens every time, any smaller and moving GC won't
+be able to run. In spring 2023 this minimum is ~550 GB.`,
+		},
+		{
+			Name: "HotStoreMaxSpaceThreshold",
+			Type: "uint64",
+
+			Comment: `When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold`,
+		},
+		{
+			Name: "HotstoreMaxSpaceSafetyBuffer",
+			Type: "uint64",
+
+			Comment: `Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+is set.  Moving GC will not occur when total moving size exceeds
+HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
+		},
 	},
 	"StorageMiner": []DocField{
 		{

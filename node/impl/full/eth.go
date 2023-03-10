@@ -153,6 +153,8 @@ type EthAPI struct {
 	EthEventAPI
 }
 
+var ErrNullRound = errors.New("requested epoch was a null round")
+
 func (a *EthModule) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
 	return stmgr.GetNetworkName(ctx, a.StateManager, a.Chain.GetHeaviestTipSet().ParentState())
 }
@@ -231,7 +233,7 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
-func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string) (tipset *types.TipSet, err error) {
+func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
 	if blkParam == "earliest" {
 		return nil, fmt.Errorf("block param \"earliest\" is not supported")
 	}
@@ -252,16 +254,22 @@ func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string) (tipset 
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
-		ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), nil, true)
+		if abi.ChainEpoch(num) > head.Height()-1 {
+			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+		}
+		ts, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(num), head.Key())
 		if err != nil {
 			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
+		}
+		if strict && ts.Height() != abi.ChainEpoch(num) {
+			return nil, ErrNullRound
 		}
 		return ts, nil
 	}
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, true)
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
@@ -367,7 +375,7 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 		return ethtypes.EthUint64(0), nil
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return ethtypes.EthUint64(0), xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -433,7 +441,7 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 		}
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, replay, events, a.StateAPI)
+	receipt, err := newEthTxReceipt(ctx, tx, replay, events, a.StateAPI)
 	if err != nil {
 		return nil, nil
 	}
@@ -456,7 +464,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -535,7 +543,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 }
 
 func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -631,7 +639,7 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 		return ethtypes.EthBigInt{}, err
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return ethtypes.EthBigInt{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -676,7 +684,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		}
 	}
 
-	ts, err := a.parseBlkParam(ctx, params.NewestBlkNum)
+	ts, err := a.parseBlkParam(ctx, params.NewestBlkNum, false)
 	if err != nil {
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("bad block parameter %s: %s", params.NewestBlkNum, err)
 	}
@@ -1067,7 +1075,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam)
+	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
 	}
@@ -1797,11 +1805,15 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to compute state: %w", err)
 	}
 
-	for txIdx, msg := range compOutput.Trace {
+	txIdx := 0
+	for _, msg := range compOutput.Trace {
 		// skip system messages like reward application and cron
 		if msg.Msg.From == builtintypes.SystemActorAddr {
 			continue
 		}
+
+		ti := ethtypes.EthUint64(txIdx)
+		txIdx++
 
 		gasUsed += msg.MsgRct.GasUsed
 		smsgCid, err := getSignedMessage(ctx, cs, msg.MsgCid)
@@ -1812,8 +1824,6 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		if err != nil {
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
 		}
-
-		ti := ethtypes.EthUint64(txIdx)
 
 		tx.ChainID = ethtypes.EthUint64(build.Eip155ChainId)
 		tx.BlockHash = &blkHash
@@ -2031,7 +2041,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, replay *api.InvocResult, events []types.Event, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, replay *api.InvocResult, events []types.Event, sa StateAPI) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -2060,25 +2070,25 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 		LogsBloom:        ethtypes.EmptyEthBloom[:],
 	}
 
-	if lookup.Receipt.ExitCode.IsSuccess() {
+	if replay.MsgRct.ExitCode.IsSuccess() {
 		receipt.Status = 1
 	}
-	if lookup.Receipt.ExitCode.IsError() {
+	if replay.MsgRct.ExitCode.IsError() {
 		receipt.Status = 0
 	}
 
-	receipt.GasUsed = ethtypes.EthUint64(lookup.Receipt.GasUsed)
+	receipt.GasUsed = ethtypes.EthUint64(replay.MsgRct.GasUsed)
 
 	// TODO: handle CumulativeGasUsed
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(lookup.Receipt.GasUsed))
+	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(replay.MsgRct.GasUsed))
 	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
 
-	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
+	if receipt.To == nil && replay.MsgRct.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
+		if err := ret.UnmarshalCBOR(bytes.NewReader(replay.MsgRct.Return)); err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)

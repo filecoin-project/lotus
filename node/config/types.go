@@ -601,6 +601,25 @@ type Splitstore struct {
 	// A value of 0 disables, while a value 1 will do full GC in every compaction.
 	// Default is 20 (about once a week).
 	HotStoreFullGCFrequency uint64
+	// HotStoreMaxSpaceTarget sets a target max disk size for the hotstore. Splitstore GC
+	// will run moving GC if disk utilization gets within a threshold (150 GB) of the target.
+	// Splitstore GC will NOT run moving GC if the total size of the move would get
+	// within 50 GB of the target, and instead will run a more aggressive online GC.
+	// If both HotStoreFullGCFrequency and HotStoreMaxSpaceTarget are set then splitstore
+	// GC will trigger moving GC if either configuration condition is met.
+	// A reasonable minimum is 2x fully GCed hotstore size + 50 G buffer.
+	// At this minimum size moving GC happens every time, any smaller and moving GC won't
+	// be able to run. In spring 2023 this minimum is ~550 GB.
+	HotStoreMaxSpaceTarget uint64
+
+	// When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+	// exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold
+	HotStoreMaxSpaceThreshold uint64
+
+	// Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+	// is set.  Moving GC will not occur when total moving size exceeds
+	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
+	HotstoreMaxSpaceSafetyBuffer uint64
 }
 
 // // Full Node

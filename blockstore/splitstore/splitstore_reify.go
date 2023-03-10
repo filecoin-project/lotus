@@ -101,7 +101,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 	defer s.txnLk.RUnlock()
 
 	count := 0
-	err := s.walkObjectIncomplete(c, newTmpVisitor(),
+	_, err := s.walkObjectIncomplete(c, newTmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
