@@ -254,7 +254,10 @@ func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string, strict b
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse block number: %v", err)
 		}
-		ts, err := a.Chain.GetTipsetByHeight(ctx, abi.ChainEpoch(num), nil, true)
+		if abi.ChainEpoch(num) > head.Height()-1 {
+			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+		}
+		ts, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(num), head.Key())
 		if err != nil {
 			return nil, fmt.Errorf("cannot get tipset at height: %v", num)
 		}
