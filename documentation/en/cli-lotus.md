@@ -2647,6 +2647,7 @@ COMMANDS:
      stat              Print eth/filecoin addrs and code cid
      call              Simulate an eth contract call
      contract-address  Generate contract address from smart contract code
+     bytecode          Write the bytecode of a smart contract to a file
      help, h           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2718,6 +2719,19 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus evm bytecode
+```
+NAME:
+   lotus evm bytecode - Write the bytecode of a smart contract to a file
+
+USAGE:
+   lotus evm bytecode [command options] [contract-address] [file-name]
+
+OPTIONS:
+   --bin  write the bytecode as raw binary and don't hex-encode (default: false)
    
 ```
 

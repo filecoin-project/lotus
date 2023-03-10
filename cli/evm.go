@@ -35,6 +35,7 @@ var EvmCmd = &cli.Command{
 		EvmGetInfoCmd,
 		EvmCallSimulateCmd,
 		EvmGetContractAddress,
+		EvmGetBytecode,
 	},
 }
 
@@ -485,4 +486,52 @@ func ethAddrFromFilecoinAddress(ctx context.Context, addr address.Address, fnapi
 	}
 
 	return ethAddr, faddr, nil
+}
+
+var EvmGetBytecode = &cli.Command{
+	Name:      "bytecode",
+	Usage:     "Write the bytecode of a smart contract to a file",
+	ArgsUsage: "[contract-address] [file-name]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "bin",
+			Usage: "write the bytecode as raw binary and don't hex-encode",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		contractAddr, err := ethtypes.ParseEthAddress(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		fileName := cctx.Args().Get(1)
+
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		code, err := api.EthGetCode(ctx, contractAddr, "latest")
+		if err != nil {
+			return err
+		}
+		if !cctx.Bool("bin") {
+			newCode := make([]byte, hex.EncodedLen(len(code)))
+			hex.Encode(newCode, code)
+			code = newCode
+		}
+		if err := os.WriteFile(fileName, code, 0o666); err != nil {
+			return xerrors.Errorf("failed to write bytecode to file %s: %w", fileName, err)
+		}
+
+		fmt.Printf("Code for %s written to %s\n", contractAddr, fileName)
+		return nil
+	},
 }
