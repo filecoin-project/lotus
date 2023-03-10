@@ -1797,30 +1797,42 @@ func newEthBlockFromFilecoinTipSet(ctx context.Context, ts *types.TipSet, fullTx
 		return ethtypes.EthBlock{}, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	block := ethtypes.NewEthBlock(len(msgs) > 0)
-
-	gasUsed := int64(0)
-	compOutput, err := sa.StateCompute(ctx, ts.Height(), nil, ts.Key())
+	_, rcptRoot, err := sa.StateManager.TipSetState(ctx, ts)
 	if err != nil {
 		return ethtypes.EthBlock{}, xerrors.Errorf("failed to compute state: %w", err)
 	}
 
-	txIdx := 0
-	for _, msg := range compOutput.Trace {
-		// skip system messages like reward application and cron
-		if msg.Msg.From == builtintypes.SystemActorAddr {
-			continue
-		}
+	rcpts, err := cs.ReadReceipts(ctx, rcptRoot)
+	if err != nil {
+		return ethtypes.EthBlock{}, xerrors.Errorf("error loading receipts for tipset: %v: %w", ts, err)
+	}
 
-		ti := ethtypes.EthUint64(txIdx)
-		txIdx++
+	if len(msgs) != len(rcpts) {
+		return ethtypes.EthBlock{}, xerrors.Errorf("receipts and message array lengths didn't match for tipset: %v: %w", ts, err)
+	}
 
-		gasUsed += msg.MsgRct.GasUsed
-		smsgCid, err := getSignedMessage(ctx, cs, msg.MsgCid)
-		if err != nil {
-			return ethtypes.EthBlock{}, xerrors.Errorf("failed to get signed msg %s: %w", msg.MsgCid, err)
+	block := ethtypes.NewEthBlock(len(msgs) > 0)
+
+	gasUsed := int64(0)
+	for i, msg := range msgs {
+		rcpt := rcpts[i]
+		ti := ethtypes.EthUint64(i)
+		gasUsed += rcpt.GasUsed
+		var smsg *types.SignedMessage
+		switch msg := msg.(type) {
+		case *types.SignedMessage:
+			smsg = msg
+		case *types.Message:
+			smsg = &types.SignedMessage{
+				Message: *msg,
+				Signature: crypto.Signature{
+					Type: crypto.SigTypeBLS,
+				},
+			}
+		default:
+			return ethtypes.EthBlock{}, xerrors.Errorf("failed to get signed msg %s: %w", msg.Cid(), err)
 		}
-		tx, err := newEthTxFromSignedMessage(ctx, smsgCid, sa)
+		tx, err := newEthTxFromSignedMessage(ctx, smsg, sa)
 		if err != nil {
 			return ethtypes.EthBlock{}, xerrors.Errorf("failed to convert msg to ethTx: %w", err)
 		}
