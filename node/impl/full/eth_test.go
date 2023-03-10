@@ -135,7 +135,7 @@ func TestRewardPercentiles(t *testing.T) {
 		{
 			percentiles:  []float64{25, 50, 75},
 			txGasRewards: []gasRewardTuple{},
-			answer:       []int64{0, 0, 0},
+			answer:       []int64{MinGasPremium, MinGasPremium, MinGasPremium},
 		},
 		{
 			percentiles: []float64{25, 50, 75, 100},

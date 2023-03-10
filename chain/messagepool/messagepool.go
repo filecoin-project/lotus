@@ -48,10 +48,8 @@ var log = logging.Logger("messagepool")
 
 var futureDebug = false
 
-var rbfNumBig = types.NewInt(uint64((ReplaceByFeeRatioDefault - 1) * RbfDenom))
-var rbfDenomBig = types.NewInt(RbfDenom)
-
-const RbfDenom = 256
+var rbfNumBig = types.NewInt(uint64(ReplaceByFeePercentageMinimum))
+var rbfDenomBig = types.NewInt(100)
 
 var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
 
@@ -198,7 +196,13 @@ func newMsgSet(nonce uint64) *msgSet {
 }
 
 func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
-	minPrice := types.BigAdd(curPrem, types.BigDiv(types.BigMul(curPrem, rbfNumBig), rbfDenomBig))
+	minPrice := types.BigDiv(types.BigMul(curPrem, rbfNumBig), rbfDenomBig)
+	return types.BigAdd(minPrice, types.NewInt(1))
+}
+
+func ComputeRBF(curPrem abi.TokenAmount, replaceByFeeRatio types.Percent) abi.TokenAmount {
+	rbfNumBig := types.NewInt(uint64(replaceByFeeRatio))
+	minPrice := types.BigDiv(types.BigMul(curPrem, rbfNumBig), rbfDenomBig)
 	return types.BigAdd(minPrice, types.NewInt(1))
 }
 
