@@ -111,7 +111,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, self p
 			// If we are the block proposers we don't need to wait for delivery, we know the blocks are
 			// honest.
 			if src != self {
-				log.Infof("Waiting for consistent broadcast of block in height: %v", blk.Header.Height)
+				log.Debugf("Waiting for consistent broadcast of block in height: %v", blk.Header.Height)
 				if err := cb.WaitForDelivery(blk.Header); err != nil {
 					log.Errorf("couldn't deliver block to syncer over pubsub: %s; source: %s", err, src)
 					return
@@ -119,7 +119,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, self p
 			}
 			// Garbage collect the broadcast state
 			cb.GarbageCollect(blk.Header.Height)
-			log.Infof("Block in height %v delivered successfully (cid=)", blk.Header.Height, blk.Cid())
+			log.Debugf("Block in height %v delivered successfully (cid=)", blk.Header.Height, blk.Cid())
 
 			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
 				Header:        blk.Header,

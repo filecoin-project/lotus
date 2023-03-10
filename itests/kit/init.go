@@ -3,7 +3,6 @@ package kit
 import (
 	"fmt"
 	"os"
-	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -41,11 +40,10 @@ func init() {
 
 	build.InsecurePoStValidation = true
 
-	// NOTE: If we want the payment channel itests to pass that use a
-	// block time of 5*millisecond, we need to set the consistent broadcast
-	// delay to something lower than that block time.
-	// todo: configure such a low delay only for paych tests.
-	build.CBDeliveryDelay = 2 * time.Millisecond
+	// Disabling consistent broadcast in itests. Many tests use really fast
+	// block times, and adding this additional delay for block delivery
+	// would make these tests to fail.
+	build.CBDeliveryDelay = 0
 
 	if err := os.Setenv("BELLMAN_NO_GPU", "1"); err != nil {
 		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
