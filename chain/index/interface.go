@@ -15,9 +15,7 @@ type MsgInfo struct {
 	Epoch abi.ChainEpoch
 	// the tipset where this messages executed
 	Tipset cid.Cid
-	// the first block in the tipset where the message was executed
-	Block cid.Cid
-	// the index of the message in the block
+	// the canonical execution order of the message in the tipset
 	Index int
 }
 
