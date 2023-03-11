@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 )
 
@@ -15,7 +14,7 @@ type MsgInfo struct {
 	// the epoch whre this message was executed
 	Epoch abi.ChainEpoch
 	// the tipset where this messages executed
-	Tipset types.TipSetKey
+	Tipset cid.Cid
 	// the first block in the tipset where the message was executed
 	Block cid.Cid
 	// the index of the message in the block
