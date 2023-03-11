@@ -49,9 +49,6 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// let the chain run a little bit longer to minimise the chance of reorgs
 	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
 
-	head, err = n2.ChainHead(context.Background())
-	require.NoError(t, err)
-
 	for i := 1; i <= int(head.Height()); i++ {
 		hex := fmt.Sprintf("0x%x", i)
 
