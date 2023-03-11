@@ -9,6 +9,7 @@ import (
 )
 
 var ErrNotFound = errors.New("message not found")
+var ErrClosed = errors.New("index closed")
 
 // MsgInfo is the Message metadata the index tracks.
 type MsgInfo struct {
