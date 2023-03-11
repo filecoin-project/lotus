@@ -18,8 +18,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// chain store interface; we could use store.ChainStore directly,
+// but this simplifies unit testing.
+type ChainStore interface {
+	SubscribeHeadChanges(f store.ReorgNotifee)
+}
+
+var _ ChainStore = (*store.ChainStore)(nil)
+
 type msgIndex struct {
-	cs *store.ChainStore
+	cs ChainStore
 
 	db *sql.DB
 }
@@ -36,7 +44,7 @@ var (
 	coalesceMergeInterval = 100 * time.Millisecond
 )
 
-func NewMsgIndex(basePath string, cs *store.ChainStore) (MsgIndex, error) {
+func NewMsgIndex(basePath string, cs ChainStore) (MsgIndex, error) {
 	var (
 		mkdb   bool
 		dbPath string
@@ -113,7 +121,7 @@ func createTables(db *sql.DB) error {
 	return errors.New("TODO: index.createTables")
 }
 
-func reconcileIndex(db *sql.DB, cs *store.ChainStore) error {
+func reconcileIndex(db *sql.DB, cs ChainStore) error {
 	// TODO
 	return errors.New("TODO: index.reconcileIndex")
 }
