@@ -77,6 +77,10 @@ var computeStateRangeCmd = &cli.Command{
 			return err
 		}
 
+		// StateCompute doesn't write the resulting state to the blockstore,
+		// hence state write overheads that would otherwise apply during block
+		// validation will not be observed here.
+
 		fmt.Printf("computing tipset at height %d (start)\n", startTs.Height())
 		if _, err := api.StateCompute(ctx, startTs.Height(), nil, startTs.Key()); err != nil {
 			return err

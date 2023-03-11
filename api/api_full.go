@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
+	"github.com/ipfs/go-libipfs/blocks"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
@@ -606,6 +606,9 @@ type FullNode interface {
 	//
 	// Messages in the `apply` parameter must have the correct nonces, and gas
 	// values set.
+	//
+	// This method does not write the resulting state to the blockstore. Usually
+	// that state will already exist.
 	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*ComputeStateOutput, error) //perm:read
 	// StateVerifierStatus returns the data cap for the given address.
 	// Returns nil if there is no entry in the data cap table for the
