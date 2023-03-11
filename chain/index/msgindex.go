@@ -37,7 +37,7 @@ type msgIndex struct {
 
 var _ MsgIndex = (*msgIndex)(nil)
 
-var log = logging.Logger("chain/index")
+var log = logging.Logger("msgindex")
 
 var (
 	dbName = "msgindex.db"
