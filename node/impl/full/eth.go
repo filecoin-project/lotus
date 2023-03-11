@@ -234,14 +234,13 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 }
 
 func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
-	if blkParam == "earliest" {
-		return nil, fmt.Errorf("block param \"earliest\" is not supported")
+	switch blkParam {
+	case "earliest", "pending":
+		return nil, fmt.Errorf("block param %q is not supported", blkParam)
 	}
 
 	head := a.Chain.GetHeaviestTipSet()
 	switch blkParam {
-	case "pending":
-		return head, nil
 	case "latest":
 		parent, err := a.Chain.GetTipSetFromKey(ctx, head.Parents())
 		if err != nil {
