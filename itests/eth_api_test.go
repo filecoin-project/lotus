@@ -2,9 +2,11 @@ package itests
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -108,4 +110,17 @@ func TestEthGetGenesis(t *testing.T) {
 	genesisHash, err := ethtypes.EthHashFromCid(genesisCid)
 	require.NoError(t, err)
 	require.Equal(t, ethBlk.Hash, genesisHash)
+}
+
+func TestNetVersion(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	version, err := client.NetVersion(ctx)
+	require.NoError(t, err)
+	require.Equal(t, strconv.Itoa(build.Eip155ChainId), version)
 }
