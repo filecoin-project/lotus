@@ -16,7 +16,7 @@ type MsgInfo struct {
 	// the message this record refers to
 	Message cid.Cid
 	// the tipset where this messages was executed
-	Tipset cid.Cid
+	TipSet cid.Cid
 	// the epoch whre this message was executed
 	Epoch abi.ChainEpoch
 	// the canonical execution order of the message in the tipset

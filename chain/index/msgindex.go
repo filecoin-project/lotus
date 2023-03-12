@@ -73,13 +73,6 @@ func NewMsgIndex(basePath string, cs ChainStore) (MsgIndex, error) {
 		err    error
 	)
 
-	if basePath == ":memory:" {
-		// for testing
-		mkdb = true
-		dbPath = basePath
-		goto opendb
-	}
-
 	err = os.MkdirAll(basePath, 0755)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating msgindex base directory: %w", err)
@@ -95,7 +88,6 @@ func NewMsgIndex(basePath string, cs ChainStore) (MsgIndex, error) {
 		return nil, xerrors.Errorf("error stating msgindex database: %w", err)
 	}
 
-opendb:
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		// TODO [nice to have]: automaticaly delete corrupt databases
@@ -232,21 +224,21 @@ func reconcileIndex(db *sql.DB, cs ChainStore) error {
 }
 
 func (x *msgIndex) prepareStatements() error {
-	stmt, err := x.db.Prepare("SELECT (tipset, xepoch, xindex) FROM Messages WHERE cid = ?")
+	stmt, err := x.db.Prepare("SELECT tipset, xepoch, xindex FROM Messages WHERE cid = ?")
 	if err != nil {
-		return err
+		return xerrors.Errorf("prepare selectMsgStmt: %w", err)
 	}
 	x.selectMsgStmt = stmt
 
 	stmt, err = x.db.Prepare("INSERT INTO Messages VALUES (?, ?, ?, ?)")
 	if err != nil {
-		return err
+		return xerrors.Errorf("prepare insertMsgStmt: %w", err)
 	}
 	x.insertMsgStmt = stmt
 
 	stmt, err = x.db.Prepare("DELETE FROM Messages WHERE tipset = ?")
 	if err != nil {
-		return err
+		return xerrors.Errorf("prepare deleteTipSetStmt: %w", err)
 	}
 	x.deleteTipSetStmt = stmt
 
@@ -417,7 +409,7 @@ func (x *msgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
 
 	return MsgInfo{
 		Message: m,
-		Tipset:  tipsetCid,
+		TipSet:  tipsetCid,
 		Epoch:   abi.ChainEpoch(epoch),
 		Index:   int(index),
 	}, nil
