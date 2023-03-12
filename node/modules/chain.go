@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -123,7 +124,7 @@ func NetworkName(mctx helpers.MetricsCtx,
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	sm, err := stmgr.NewStateManager(cs, tsexec, syscalls, us, nil, nil)
+	sm, err := stmgr.NewStateManager(cs, tsexec, syscalls, us, nil, nil, index.DummyMsgIndex)
 	if err != nil {
 		return "", err
 	}
