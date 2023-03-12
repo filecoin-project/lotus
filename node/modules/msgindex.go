@@ -29,3 +29,7 @@ func MsgIndex(lc fx.Lifecycle, cs *store.ChainStore, r repo.LockedRepo) (index.M
 
 	return msgIndex, nil
 }
+
+func DummyMsgIndex() (index.MsgIndex, error) {
+	return index.DummyMsgIndex, nil
+}
