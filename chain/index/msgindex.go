@@ -292,42 +292,42 @@ func (x *msgIndex) processHeadChanges(ctx context.Context) error {
 	x.pend = nil
 	x.mx.Unlock()
 
-	txn, err := x.db.Begin()
+	tx, err := x.db.Begin()
 	if err != nil {
 		return xerrors.Errorf("error creating transaction: %w", err)
 	}
 
 	for _, hc := range pend {
 		for _, ts := range hc.rev {
-			if err := x.doRevert(ctx, ts); err != nil {
-				txn.Rollback()
+			if err := x.doRevert(ctx, tx, ts); err != nil {
+				tx.Rollback()
 				return xerrors.Errorf("error reverting %s: %w", ts, err)
 			}
 		}
 
 		for _, ts := range hc.app {
-			if err := x.doApply(ctx, ts); err != nil {
-				txn.Rollback()
+			if err := x.doApply(ctx, tx, ts); err != nil {
+				tx.Rollback()
 				return xerrors.Errorf("error applying %s: %w", ts, err)
 			}
 		}
 	}
 
-	return txn.Commit()
+	return tx.Commit()
 }
 
-func (x *msgIndex) doRevert(ctx context.Context, ts *types.TipSet) error {
+func (x *msgIndex) doRevert(ctx context.Context, tx *sql.Tx, ts *types.TipSet) error {
 	tskey, err := ts.Key().Cid()
 	if err != nil {
 		return xerrors.Errorf("error computing tipset cid: %w", err)
 	}
 
 	key := tskey.String()
-	_, err = x.deleteTipSetStmt.Exec(key)
+	_, err = tx.Stmt(x.deleteTipSetStmt).Exec(key)
 	return err
 }
 
-func (x *msgIndex) doApply(ctx context.Context, ts *types.TipSet) error {
+func (x *msgIndex) doApply(ctx context.Context, tx *sql.Tx, ts *types.TipSet) error {
 	tscid, err := ts.Key().Cid()
 	if err != nil {
 		return xerrors.Errorf("error computing tipset cid: %w", err)
@@ -343,7 +343,7 @@ func (x *msgIndex) doApply(ctx context.Context, ts *types.TipSet) error {
 			return nil
 		}
 
-		if _, err := x.insertMsgStmt.Exec(key, tskey, xepoch, xindex); err != nil {
+		if _, err := tx.Stmt(x.insertMsgStmt).Exec(key, tskey, xepoch, xindex); err != nil {
 			return err
 		}
 		seen[key] = struct{}{}
