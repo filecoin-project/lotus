@@ -78,7 +78,8 @@ func TestReorgMsgIndex(t *testing.T) {
 	require.NoError(t, err)
 	cs.setHead(reorgmeParent)
 	reorgmeChild := cs.makeBlk()
-	cs.reorg([]*types.TipSet{reorgme}, []*types.TipSet{reorgmeChild})
+	err = cs.reorg([]*types.TipSet{reorgme}, []*types.TipSet{reorgmeChild})
+	require.NoError(t, err)
 	time.Sleep(coalesceMinDelay + 10*time.Millisecond)
 
 	t.Log("verifying index")
@@ -124,7 +125,8 @@ func TestReconcileMsgIndex(t *testing.T) {
 	require.NoError(t, err)
 	cs.setHead(reorgmeParent)
 	reorgmeChild := cs.makeBlk()
-	cs.reorg([]*types.TipSet{reorgme}, []*types.TipSet{reorgmeChild})
+	err = cs.reorg([]*types.TipSet{reorgme}, []*types.TipSet{reorgmeChild})
+	require.NoError(t, err)
 
 	// reopen to reconcile
 	msgIndex, err = NewMsgIndex(tmp, cs)
