@@ -8,14 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-libipfs/blocks"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-libipfs/blocks"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestBasicMsgIndex(t *testing.T) {

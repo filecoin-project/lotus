@@ -10,14 +10,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
 )
 
 var log = logging.Logger("msgindex")

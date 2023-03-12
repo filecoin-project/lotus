@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var ErrNotFound = errors.New("message not found")
