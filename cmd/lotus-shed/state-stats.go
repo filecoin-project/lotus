@@ -308,7 +308,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 		}
 
 		tsExec := consensus.NewTipSetExecutor(filcns.RewardFunc)
-		sm, err := stmgr.NewStateManager(cs, tsExec, vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil)
+		sm, err := stmgr.NewStateManager(cs, tsExec, vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds)
 		if err != nil {
 			return err
 		}

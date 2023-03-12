@@ -3,20 +3,26 @@ package sealer
 import (
 	"math"
 
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-func NewSpreadAssigner(queued bool) Assigner {
+func NewSpreadTasksAssigner(queued bool) Assigner {
 	return &AssignerCommon{
-		WindowSel: SpreadWS(queued),
+		WindowSel: SpreadTasksWS(queued),
 	}
 }
 
-func SpreadWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int {
+type widTask struct {
+	wid storiface.WorkerID
+	tt  sealtasks.TaskType
+}
+
+func SpreadTasksWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int {
 	return func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int {
 		scheduled := 0
 		rmQueue := make([]int, 0, queueLen)
-		workerAssigned := map[storiface.WorkerID]int{}
+		workerAssigned := map[widTask]int{}
 
 		for sqi := 0; sqi < queueLen; sqi++ {
 			task := (*sh.SchedQueue)[sqi]
@@ -24,7 +30,7 @@ func SpreadWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWindows [
 			selectedWindow := -1
 			var needRes storiface.Resources
 			var info storiface.WorkerInfo
-			var bestWid storiface.WorkerID
+			var bestWid widTask
 			bestAssigned := math.MaxInt // smaller = better
 
 			for i, wnd := range acceptableWindows[task.IndexHeap] {
@@ -39,10 +45,13 @@ func SpreadWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWindows [
 					continue
 				}
 
-				wu, found := workerAssigned[wid]
+				wt := widTask{wid: wid, tt: task.TaskType}
+
+				wu, found := workerAssigned[wt]
 				if !found && queued {
-					wu = w.TaskCounts()
-					workerAssigned[wid] = wu
+					st := task.SealTask()
+					wu = w.TaskCount(&st)
+					workerAssigned[wt] = wu
 				}
 				if wu >= bestAssigned {
 					continue
@@ -50,7 +59,7 @@ func SpreadWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWindows [
 
 				info = w.Info
 				needRes = res
-				bestWid = wid
+				bestWid = wt
 				selectedWindow = wnd
 				bestAssigned = wu
 			}
@@ -61,7 +70,7 @@ func SpreadWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWindows [
 			}
 
 			log.Debugw("SCHED ASSIGNED",
-				"assigner", "spread",
+				"assigner", "spread-tasks",
 				"spread-queued", queued,
 				"sqi", sqi,
 				"sector", task.Sector.ID.Number,

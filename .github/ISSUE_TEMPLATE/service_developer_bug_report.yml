@@ -1,0 +1,83 @@
+name: "Bug Report - developer/service provider"
+description: "Bug report template about FEVM/FVM for developers/service providers"
+labels: [need/triage, kind/bug, area/fevm]
+body:
+- type: checkboxes
+  attributes:
+    label: Checklist
+    description: Please check off the following boxes before continuing to file a bug report!
+    options:
+      - label: This is **not** a security-related bug/issue. If it is, please follow please follow the [security policy](https://github.com/filecoin-project/lotus/security/policy).
+        required: true
+      - label: I **have** searched on the [issue tracker](https://github.com/filecoin-project/lotus/issues) and the [lotus forum](https://github.com/filecoin-project/lotus/discussions), and there is no existing related issue or discussion.
+        required: true
+      - label: I did not make any code changes to lotus.
+        required: false
+- type: checkboxes
+  attributes:
+    label: Lotus component
+    description: Please select the lotus component you are filing a bug for
+    options:
+      - label: lotus Ethereum RPC
+        required: false
+      - label: lotus FVM - Lotus FVM interactions
+        required: false
+      - label: FEVM tooling
+        required: false
+      - label:  Other
+        required: false
+- type: textarea
+  id: version
+  attributes:
+    label: Lotus Version
+    render: text
+    description: Enter the output of `lotus version` if applicable.
+    placeholder: |
+      e.g. 
+      Daemon:  1.19.0+mainnet+git.64059ca87+api1.5.0
+      Local: lotus-miner version 1.19.0+mainnet+git.64059ca87
+  validations:
+    required: true
+- type: textarea
+  id: repro
+  attributes:
+    label: Repro Steps
+    description: "Steps to reproduce the behavior"
+    value: |
+      1. Run '...'
+      2. Do '...'
+      3. See error '...'
+      ...
+  validations:
+    required: false
+- type: textarea
+  id: Description
+  attributes:
+    label: Describe the Bug
+    description: |
+      This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information:
+      * What you were doing when you experienced the bug? What are you trying to build?
+      * Any *error* messages and logs you saw, *where* you saw them, and what you believe may have caused them (if you have any ideas).
+      * What is the expected behaviour? Links to the actual code?
+  validations:
+    required: true
+- type: textarea
+  id: toolingInfo
+  attributes:
+    label: Tooling
+    render: text
+    description: |
+      What kind of tooling are you using:
+      * Are you using ether.js, Alchemy, Hardhat, etc.
+  validations:
+    required: true
+- type: textarea
+  id: extraInfo
+  attributes:
+    label: Configuration Options
+    render: text
+    description: |
+      Please provide your updated FEVM related configuration options, or custome enviroment variables related to Lotus FEVM
+      * lotus: use `lotus config updated` to get your configuration options, and copy the [FEVM] section
+  validations:
+    required: true
