@@ -30,3 +30,15 @@ type MsgIndex interface {
 	// Close closes the index
 	Close() error
 }
+
+type dummyMsgIndex struct{}
+
+func (_ dummyMsgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
+	return MsgInfo{}, ErrNotFound
+}
+
+func (_ dummyMsgIndex) Close() error {
+	return nil
+}
+
+var DummyMsgIndex MsgIndex = dummyMsgIndex{}

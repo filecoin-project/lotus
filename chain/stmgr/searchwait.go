@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -145,7 +146,20 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 		return head, r, foundMsg, nil
 	}
 
-	fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head, msg, lookbackLimit, allowReplaced)
+	fts, r, foundMsg, err := sm.searchForIndexedMsg(ctx, mcid, msg)
+
+	switch {
+	case err == nil:
+		return fts, r, foundMsg, nil
+
+	case errors.Is(err, index.ErrNotFound):
+		// ok for the index to have incomplete data
+
+	default:
+		log.Warnf("error searching message index: %s", err)
+	}
+
+	fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head, msg, lookbackLimit, allowReplaced)
 
 	if err != nil {
 		log.Warnf("failed to look back through chain for message %s", mcid)
@@ -157,6 +171,21 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 	}
 
 	return fts, r, foundMsg, nil
+}
+
+func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+	minfo, err := sm.msgIndex.GetMsgInfo(ctx, mcid)
+	if err != nil {
+		return nil, nil, cid.Undef, err
+	}
+
+	ts, err := sm.cs.GetTipSetByCid(ctx, minfo.TipSet)
+	if err != nil {
+		return nil, nil, cid.Undef, err
+	}
+
+	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, ts, mcid, m.VMMessage(), false)
+	return ts, r, foundMsg, err
 }
 
 // searchBackForMsg searches up to limit tipsets backwards from the given

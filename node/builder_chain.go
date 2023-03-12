@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
@@ -79,6 +80,7 @@ var ChainNode = Options(
 	Override(new(stmgr.Executor), consensus.NewTipSetExecutor(filcns.RewardFunc)),
 	Override(new(consensus.Consensus), filcns.NewFilecoinExpectedConsensus),
 	Override(new(*store.ChainStore), modules.ChainStore),
+	Override(new(index.MsgIndex), modules.MsgIndex),
 	Override(new(*stmgr.StateManager), modules.StateManager),
 	Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
 	Override(new(dtypes.ChainBlockService), modules.ChainBlockService), // todo: unused
