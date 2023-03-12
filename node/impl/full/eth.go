@@ -42,6 +42,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+var ErrUnsupported = errors.New("unsupported method")
+
 type EthModuleAPI interface {
 	EthBlockNumber(ctx context.Context) (ethtypes.EthUint64, error)
 	EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error)
@@ -439,12 +441,12 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 	return &receipt, nil
 }
 
-func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(ctx context.Context, blkHash ethtypes.EthHash, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, nil
+func (a *EthAPI) EthGetTransactionByBlockHashAndIndex(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return ethtypes.EthTx{}, ErrUnsupported
 }
 
-func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(ctx context.Context, blkNum ethtypes.EthUint64, txIndex ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return ethtypes.EthTx{}, nil
+func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (ethtypes.EthTx, error) {
+	return ethtypes.EthTx{}, ErrUnsupported
 }
 
 // EthGetCode returns string value of the compiled bytecode
