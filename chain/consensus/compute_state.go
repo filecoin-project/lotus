@@ -79,8 +79,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	bms []FilecoinBlockMessages,
 	epoch abi.ChainEpoch,
 	r vm.Rand,
-	em stmgr.ExecMonitor,
-	vmTracing bool,
+	opts *stmgr.ExecutorOpts,
 	baseFee abi.TokenAmount,
 	ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
@@ -91,6 +90,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		partDone()
 	}()
 
+	bs := sm.ChainStore().StateBlockstore()
+	if opts.DiscardState {
+		bs = blockstore.NewBuffered(bs)
+	}
+
 	ctx = blockstore.WithHotView(ctx)
 	makeVm := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
@@ -98,7 +102,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			Epoch:          e,
 			Timestamp:      timestamp,
 			Rand:           r,
-			Bstore:         sm.ChainStore().StateBlockstore(),
+			Bstore:         bs,
 			Actors:         NewActorRegistry(),
 			Syscalls:       sm.Syscalls,
 			CircSupplyCalc: sm.GetVMCirculatingSupply,
@@ -106,7 +110,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
 			TipSetGetter:   stmgr.TipSetGetterForTipset(sm.ChainStore(), ts),
-			Tracing:        vmTracing,
+			Tracing:        opts.VmTracing,
 			ReturnEvents:   sm.ChainStore().IsStoringEvents(),
 		}
 
@@ -130,7 +134,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			return xerrors.Errorf("running cron: %w", err)
 		}
 
-		if em != nil {
+		if em := opts.ExecMonitor; em != nil {
 			if err := em.MessageApplied(ctx, ts, cronMsg.Cid(), cronMsg, ret, true); err != nil {
 				return xerrors.Errorf("callback failed on cron message: %w", err)
 			}
@@ -175,7 +179,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 		// handle state forks
 		// XXX: The state tree
-		pstate, err = sm.HandleStateForks(ctx, pstate, i, em, ts)
+		pstate, err = sm.HandleStateForks(ctx, pstate, i, opts.ExecMonitor, ts)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
 		}
@@ -219,7 +223,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 				events = append(events, r.Events)
 			}
 
-			if em != nil {
+			if em := opts.ExecMonitor; em != nil {
 				if err := em.MessageApplied(ctx, ts, cm.Cid(), m, r, false); err != nil {
 					return cid.Undef, cid.Undef, err
 				}
@@ -233,7 +237,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			GasReward: gasReward,
 			WinCount:  b.WinCount,
 		}
-		rErr := t.reward(ctx, vmi, em, epoch, ts, params)
+		rErr := t.reward(ctx, vmi, opts.ExecMonitor, epoch, ts, params)
 		if rErr != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", rErr)
 		}
@@ -291,8 +295,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	sm *stmgr.StateManager,
 	ts *types.TipSet,
-	em stmgr.ExecMonitor,
-	vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
+	opts *stmgr.ExecutorOpts) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
@@ -340,7 +343,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
 	}
 	baseFee := blks[0].ParentBaseFee
 
-	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, vmTracing, baseFee, ts)
+	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, opts, baseFee, ts)
 }
 
 func (t *TipSetExecutor) StoreEventsAMT(ctx context.Context, cs *store.ChainStore, events []types.Event) (cid.Cid, error) {

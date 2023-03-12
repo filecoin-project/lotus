@@ -13,6 +13,15 @@ import (
 )
 
 func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st cid.Cid, rec cid.Cid, err error) {
+	return sm.TipSetStateWithOpts(ctx, ts, &TipSetStateOpts{})
+}
+
+type TipSetStateOpts struct {
+	// DiscardState: see ExecutorOpts.DiscardState.
+	DiscardState bool
+}
+
+func (sm *StateManager) TipSetStateWithOpts(ctx context.Context, ts *types.TipSet, opts *TipSetStateOpts) (st cid.Cid, rec cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "tipSetState")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -59,7 +68,10 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 		return st, rec, nil
 	}
 
-	st, rec, err = sm.tsExec.ExecuteTipSet(ctx, sm, ts, sm.tsExecMonitor, false)
+	st, rec, err = sm.tsExec.ExecuteTipSet(ctx, sm, ts, &ExecutorOpts{
+		ExecMonitor:  sm.tsExecMonitor,
+		DiscardState: opts.DiscardState,
+	})
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
@@ -113,7 +125,11 @@ func tryLookupTipsetState(ctx context.Context, cs *store.ChainStore, ts *types.T
 }
 
 func (sm *StateManager) ExecutionTraceWithMonitor(ctx context.Context, ts *types.TipSet, em ExecMonitor) (cid.Cid, error) {
-	st, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, em, true)
+	st, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &ExecutorOpts{
+		ExecMonitor:  em,
+		VmTracing:    true,
+		DiscardState: true, // safe to discard the output state since we're creating no new state anyway.
+	})
 	return st, err
 }
 

@@ -172,8 +172,10 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		blocks,
 		params.ExecEpoch,
 		params.Rand,
-		recordOutputs,
-		true,
+		&stmgr.ExecutorOpts{
+			ExecMonitor: recordOutputs,
+			VmTracing:   true,
+		},
 		params.BaseFee,
 		nil,
 	)

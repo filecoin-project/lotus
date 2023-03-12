@@ -263,7 +263,11 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	// message to find
 	finder.mcid = mcid
 
-	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder, true)
+	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &ExecutorOpts{
+		ExecMonitor:  &finder,
+		VmTracing:    true,
+		DiscardState: true, // safe to skip the write since this is throwaway state.
+	})
 	if err != nil && !xerrors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}

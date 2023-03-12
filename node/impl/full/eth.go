@@ -1843,7 +1843,7 @@ func messagesAndReceipts(ctx context.Context, ts *types.TipSet, cs *store.ChainS
 		return nil, nil, xerrors.Errorf("error loading messages for tipset: %v: %w", ts, err)
 	}
 
-	_, rcptRoot, err := sa.StateManager.TipSetState(ctx, ts)
+	_, rcptRoot, err := sa.StateManager.TipSetStateWithOpts(ctx, ts, &stmgr.TipSetStateOpts{DiscardState: true})
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to compute state: %w", err)
 	}

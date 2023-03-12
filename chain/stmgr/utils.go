@@ -17,6 +17,7 @@ import (
 	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
@@ -86,13 +87,14 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
+	bs := blockstore.NewBuffered(sm.cs.StateBlockstore())
 	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,
 		Timestamp:      ts.MinTimestamp(),
 		Rand:           r,
-		Bstore:         sm.cs.StateBlockstore(),
+		Bstore:         bs,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,

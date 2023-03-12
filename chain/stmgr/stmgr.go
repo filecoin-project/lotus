@@ -97,9 +97,19 @@ func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCi
 	return nil
 }
 
+// ExecutorOpts defines options for the execution.
+type ExecutorOpts struct {
+	ExecMonitor ExecMonitor
+	VmTracing   bool
+	// DiscardState, when enabled, skips writing the output state tree into the
+	// blockstore. This is useful when requesting execution traces for tipsets
+	// already in the chain, or for speculative executions.
+	DiscardState bool
+}
+
 type Executor interface {
 	NewActorRegistry() *vm.ActorRegistry
-	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor, vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error)
+	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, opts *ExecutorOpts) (stateroot cid.Cid, rectsroot cid.Cid, err error)
 }
 
 type StateManager struct {
