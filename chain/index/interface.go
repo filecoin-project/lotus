@@ -34,11 +34,11 @@ type MsgIndex interface {
 
 type dummyMsgIndex struct{}
 
-func (_ dummyMsgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
+func (dummyMsgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
 	return MsgInfo{}, ErrNotFound
 }
 
-func (_ dummyMsgIndex) Close() error {
+func (dummyMsgIndex) Close() error {
 	return nil
 }
 
