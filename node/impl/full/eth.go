@@ -710,10 +710,6 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 
 		txGasRewards := gasRewardSorter{}
 		for i, msg := range msgs {
-			if msg.VMMessage().From == builtintypes.SystemActorAddr {
-				continue
-			}
-
 			effectivePremium := msg.VMMessage().EffectiveGasPremium(basefee)
 			txGasRewards = append(txGasRewards, gasRewardTuple{
 				premium: effectivePremium,
