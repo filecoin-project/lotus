@@ -356,7 +356,7 @@ func (x *msgIndex) doApply(ctx context.Context, tx *sql.Tx, ts *types.TipSet) er
 	for _, blk := range ts.Blocks() {
 		bmsgs, smsgs, err := x.cs.MessagesForBlock(ctx, blk)
 		if err != nil {
-			return xerrors.Errorf("error retrieving messages for block %s in %s: %w", blk, ts, err)
+			return xerrors.Errorf("error retrieving messages for block %s in %s: %w", blk.Cid(), ts, err)
 		}
 
 		for _, m := range bmsgs {
