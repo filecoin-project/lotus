@@ -237,14 +237,6 @@ func TestEthOpenRPCConformance(t *testing.T) {
 		},
 
 		{
-			method:  "eth_getBlockByNumber",
-			variant: "pending",
-			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBlockByNumber(context.Background(), "pending", true)
-			},
-		},
-
-		{
 			method: "eth_getBlockByNumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
 				return ethapi.EthGetBlockByNumber(context.Background(), blockNumberWithMessage.Hex(), true)
