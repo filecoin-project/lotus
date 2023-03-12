@@ -126,7 +126,7 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 	if err != nil {
 		return nil, err
 	}
-	sm, err := stmgr.NewStateManager(nd.Chainstore, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(mock.Verifier), filcns.DefaultUpgradeSchedule(), nil, nd.MetadataDS)
+	sm, err := stmgr.NewStateManager(nd.Chainstore, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(mock.Verifier), filcns.DefaultUpgradeSchedule(), nil, nd.MetadataDS, index.DummyMsgIndex)
 	if err != nil {
 		return nil, xerrors.Errorf("creating state manager: %w", err)
 	}
