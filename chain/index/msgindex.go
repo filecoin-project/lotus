@@ -332,14 +332,18 @@ func (x *msgIndex) processHeadChanges(ctx context.Context) error {
 	for _, hc := range pend {
 		for _, ts := range hc.rev {
 			if err := x.doRevert(ctx, tx, ts); err != nil {
-				tx.Rollback() //nolint
+				if err := tx.Rollback(); err != nil {
+					log.Errorf("error rolling back transaction: %s", err)
+				}
 				return xerrors.Errorf("error reverting %s: %w", ts, err)
 			}
 		}
 
 		for _, ts := range hc.app {
 			if err := x.doApply(ctx, tx, ts); err != nil {
-				tx.Rollback() //nolint
+				if err := tx.Rollback(); err != nil {
+					log.Errorf("error rolling back transaction: %s", err)
+				}
 				return xerrors.Errorf("error applying %s: %w", ts, err)
 			}
 		}
