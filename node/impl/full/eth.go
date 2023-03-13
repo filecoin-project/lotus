@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -427,20 +428,15 @@ func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtype
 		return nil, nil
 	}
 
-	replay, err := a.StateAPI.StateReplay(ctx, types.EmptyTSK, c)
-	if err != nil {
-		return nil, nil
-	}
-
 	var events []types.Event
-	if rct := replay.MsgRct; rct != nil && rct.EventsRoot != nil {
+	if rct := msgLookup.Receipt; rct.EventsRoot != nil {
 		events, err = a.ChainAPI.ChainGetEvents(ctx, *rct.EventsRoot)
 		if err != nil {
 			return nil, nil
 		}
 	}
 
-	receipt, err := newEthTxReceipt(ctx, tx, replay, events, a.StateAPI)
+	receipt, err := newEthTxReceipt(ctx, tx, msgLookup, events, a.Chain, a.StateAPI)
 	if err != nil {
 		return nil, nil
 	}
@@ -2046,7 +2042,7 @@ func newEthTxFromMessageLookup(ctx context.Context, msgLookup *api.MsgLookup, tx
 	return tx, nil
 }
 
-func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, replay *api.InvocResult, events []types.Event, sa StateAPI) (api.EthTxReceipt, error) {
+func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLookup, events []types.Event, cs *store.ChainStore, sa StateAPI) (api.EthTxReceipt, error) {
 	var (
 		transactionIndex ethtypes.EthUint64
 		blockHash        ethtypes.EthHash
@@ -2075,25 +2071,34 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, replay *api.InvocRe
 		LogsBloom:        ethtypes.EmptyEthBloom[:],
 	}
 
-	if replay.MsgRct.ExitCode.IsSuccess() {
+	if lookup.Receipt.ExitCode.IsSuccess() {
 		receipt.Status = 1
-	}
-	if replay.MsgRct.ExitCode.IsError() {
+	} else {
 		receipt.Status = 0
 	}
 
-	receipt.GasUsed = ethtypes.EthUint64(replay.MsgRct.GasUsed)
+	receipt.GasUsed = ethtypes.EthUint64(lookup.Receipt.GasUsed)
 
 	// TODO: handle CumulativeGasUsed
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
-	effectiveGasPrice := big.Div(replay.GasCost.TotalCost, big.NewInt(replay.MsgRct.GasUsed))
+	// TODO: avoid loading the tipset twice (once here, once in the when we convert the message to a txn)
+	ts, err := cs.GetTipSetFromKey(ctx, lookup.TipSet)
+	if err != nil {
+		return api.EthTxReceipt{}, err
+	}
+
+	baseFee := ts.Blocks()[0].ParentBaseFee
+	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.MaxFeePerGas), big.Int(tx.MaxPriorityFeePerGas), true)
+	totalBurnt := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
+
+	effectiveGasPrice := big.Div(totalBurnt, big.NewInt(lookup.Receipt.GasUsed))
 	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
 
-	if receipt.To == nil && replay.MsgRct.ExitCode.IsSuccess() {
+	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
 		// Create and Create2 return the same things.
 		var ret eam.CreateExternalReturn
-		if err := ret.UnmarshalCBOR(bytes.NewReader(replay.MsgRct.Return)); err != nil {
+		if err := ret.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
 			return api.EthTxReceipt{}, xerrors.Errorf("failed to parse contract creation result: %w", err)
 		}
 		addr := ethtypes.EthAddress(ret.EthAddress)
