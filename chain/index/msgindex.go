@@ -189,7 +189,7 @@ func reconcileIndex(db *sql.DB, cs ChainStore) error {
 	// Invariant: after reconciliation, every tipset in the index is in the current chain; ie either
 	//  the chain head or reachable by walking the chain.
 	// Algorithm:
-	//  1. Count mesages in index; if none, trivially reconciled.
+	//  1. Count messages in index; if none, trivially reconciled.
 	//     TODO we may consider populating the index in that case
 	//  2. Find the minimum tipset in the index; this will mark the end of the reconciliation walk
 	//  3. Walk from current tipset until we find a tipset in the index.
