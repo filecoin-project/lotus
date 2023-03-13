@@ -12,7 +12,7 @@ import (
 	gclient "github.com/drand/drand/lp2p/client"
 	"github.com/drand/kyber"
 	kzap "github.com/go-kit/kit/log/zap"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/zap/zapcore"
@@ -61,7 +61,7 @@ type DrandBeacon struct {
 	filGenTime   uint64
 	filRoundTime uint64
 
-	localCache *lru.Cache
+	localCache *lru.Cache[uint64, *types.BeaconEntry]
 }
 
 // DrandHTTPClient interface overrides the user agent used by drand
@@ -110,7 +110,7 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		return nil, xerrors.Errorf("creating drand client: %w", err)
 	}
 
-	lc, err := lru.New(1024)
+	lc, err := lru.New[uint64, *types.BeaconEntry](1024)
 	if err != nil {
 		return nil, err
 	}
@@ -160,16 +160,12 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	return out
 }
 func (db *DrandBeacon) cacheValue(e types.BeaconEntry) {
-	db.localCache.Add(e.Round, e)
+	db.localCache.Add(e.Round, &e)
 }
 
 func (db *DrandBeacon) getCachedValue(round uint64) *types.BeaconEntry {
-	v, ok := db.localCache.Get(round)
-	if !ok {
-		return nil
-	}
-	e, _ := v.(types.BeaconEntry)
-	return &e
+	v, _ := db.localCache.Get(round)
+	return v
 }
 
 func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntry) error {

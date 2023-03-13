@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -120,8 +120,8 @@ type ChainStore struct {
 	reorgCh        chan<- reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	mmCache *lru.ARCCache // msg meta cache (mh.Messages -> secp, bls []cid)
-	tsCache *lru.ARCCache
+	mmCache *lru.ARCCache[cid.Cid, mmCids]
+	tsCache *lru.ARCCache[types.TipSetKey, *types.TipSet]
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -133,8 +133,8 @@ type ChainStore struct {
 }
 
 func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
-	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
-	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
+	c, _ := lru.NewARC[cid.Cid, mmCids](DefaultMsgMetaCacheSize)
+	tsc, _ := lru.NewARC[types.TipSetKey, *types.TipSet](DefaultTipSetCacheSize)
 	if j == nil {
 		j = journal.NilJournal()
 	}
@@ -818,9 +818,8 @@ func (cs *ChainStore) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHead
 }
 
 func (cs *ChainStore) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
-	v, ok := cs.tsCache.Get(tsk)
-	if ok {
-		return v.(*types.TipSet), nil
+	if ts, ok := cs.tsCache.Get(tsk); ok {
+		return ts, nil
 	}
 
 	// Fetch tipset block headers from blockstore in parallel

@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -61,7 +61,7 @@ type GasAPI struct {
 
 func NewGasPriceCache() *GasPriceCache {
 	// 50 because we usually won't access more than 40
-	c, err := lru.New2Q(50)
+	c, err := lru.New2Q[types.TipSetKey, []GasMeta](50)
 	if err != nil {
 		// err only if parameter is bad
 		panic(err)
@@ -73,7 +73,7 @@ func NewGasPriceCache() *GasPriceCache {
 }
 
 type GasPriceCache struct {
-	c *lru.TwoQueueCache
+	c *lru.TwoQueueCache[types.TipSetKey, []GasMeta]
 }
 
 type GasMeta struct {
@@ -84,7 +84,7 @@ type GasMeta struct {
 func (g *GasPriceCache) GetTSGasStats(ctx context.Context, cstore *store.ChainStore, ts *types.TipSet) ([]GasMeta, error) {
 	i, has := g.c.Get(ts.Key())
 	if has {
-		return i.([]GasMeta), nil
+		return i, nil
 	}
 
 	var prices []GasMeta

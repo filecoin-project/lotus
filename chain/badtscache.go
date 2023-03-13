@@ -3,14 +3,14 @@ package chain
 import (
 	"fmt"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/build"
 )
 
 type BadBlockCache struct {
-	badBlocks *lru.ARCCache
+	badBlocks *lru.ARCCache[cid.Cid, BadBlockReason]
 }
 
 type BadBlockReason struct {
@@ -43,7 +43,7 @@ func (bbr BadBlockReason) String() string {
 }
 
 func NewBadBlockCache() *BadBlockCache {
-	cache, err := lru.NewARC(build.BadBlockCacheSize)
+	cache, err := lru.NewARC[cid.Cid, BadBlockReason](build.BadBlockCacheSize)
 	if err != nil {
 		panic(err) // ok
 	}
@@ -66,10 +66,5 @@ func (bts *BadBlockCache) Purge() {
 }
 
 func (bts *BadBlockCache) Has(c cid.Cid) (BadBlockReason, bool) {
-	rval, ok := bts.badBlocks.Get(c)
-	if !ok {
-		return BadBlockReason{}, false
-	}
-
-	return rval.(BadBlockReason), true
+	return bts.badBlocks.Get(c)
 }
