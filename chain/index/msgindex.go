@@ -53,9 +53,9 @@ const (
 
 // coalescer configuration (TODO: use observer instead)
 var (
-	coalesceMinDelay      = 100 * time.Millisecond
-	coalesceMaxDelay      = time.Second
-	coalesceMergeInterval = 100 * time.Millisecond
+	coalesceMinDelay      = time.Second
+	coalesceMaxDelay      = 15 * time.Second
+	coalesceMergeInterval = time.Second
 )
 
 // chain store interface; we could use store.ChainStore directly,

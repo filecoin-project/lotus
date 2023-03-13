@@ -198,6 +198,12 @@ var rng *rand.Rand
 func init() {
 	systemAddr, _ = address.NewIDAddress(0)
 	rng = rand.New(rand.NewSource(314159))
+
+	// adjust those to make tests snappy
+	coalesceMinDelay = time.Millisecond
+	coalesceMaxDelay = 10 * time.Millisecond
+	coalesceMergeInterval = time.Millisecond
+
 }
 
 func newMockChainStore() *mockChainStore {
