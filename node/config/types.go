@@ -28,6 +28,7 @@ type FullNode struct {
 	Chainstore Chainstore
 	Cluster    UserRaftConfig
 	Fevm       FevmConfig
+	Index      IndexConfig
 }
 
 // // Common
@@ -725,4 +726,9 @@ type Events struct {
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
 	// Set upper bound on index size
+}
+
+type IndexConfig struct {
+	// EnableMsgIndex enables indexing of messages on chain.
+	EnableMsgIndex bool
 }

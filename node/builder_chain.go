@@ -80,7 +80,6 @@ var ChainNode = Options(
 	Override(new(stmgr.Executor), consensus.NewTipSetExecutor(filcns.RewardFunc)),
 	Override(new(consensus.Consensus), filcns.NewFilecoinExpectedConsensus),
 	Override(new(*store.ChainStore), modules.ChainStore),
-	Override(new(index.MsgIndex), modules.MsgIndex),
 	Override(new(*stmgr.StateManager), modules.StateManager),
 	Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
 	Override(new(dtypes.ChainBlockService), modules.ChainBlockService), // todo: unused
@@ -277,6 +276,10 @@ func ConfigFullNode(c interface{}) Option {
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
 			),
 		),
+
+		// enable message index for full node when configured by the user, otherwise use dummy.
+		If(cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.MsgIndex)),
+		If(!cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.DummyMsgIndex)),
 	)
 }
 
