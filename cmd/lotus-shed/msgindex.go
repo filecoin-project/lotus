@@ -83,6 +83,10 @@ var msgindexBackfillCmd = &cli.Command{
 		}
 
 		insertStmt, err := tx.Prepare("INSERT INTO messages VALUES (?, ?, ?)")
+		if err != nil {
+			return err
+		}
+
 		insertMsg := func(cid, tsCid cid.Cid, epoch abi.ChainEpoch) error {
 			key := cid.String()
 			tskey := tsCid.String()
@@ -190,7 +194,7 @@ var msgindexPruneCmd = &cli.Command{
 			return err
 		}
 
-		if _, err := tx.Exec("DELETE FROM messages WHERE epoch < ?", int64(startHeight)); err != nil {
+		if _, err := tx.Exec("DELETE FROM messages WHERE epoch < ?", startHeight); err != nil {
 			if err := tx.Rollback(); err != nil {
 				fmt.Printf("ERROR: rollback: %s", err)
 			}
