@@ -16,12 +16,10 @@ var ErrClosed = errors.New("index closed")
 type MsgInfo struct {
 	// the message this record refers to
 	Message cid.Cid
-	// the tipset where this messages was executed
+	// the tipset where this messages was included
 	TipSet cid.Cid
-	// the epoch whre this message was executed
+	// the epoch whre this message was included
 	Epoch abi.ChainEpoch
-	// the canonical execution order of the message in the tipset
-	Index int
 }
 
 // MsgIndex is the interface to the message index
