@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
@@ -16,7 +16,7 @@ import (
 type ApiIpldStore struct {
 	ctx       context.Context
 	api       apiIpldStoreApi
-	cache     *lru.TwoQueueCache
+	cache     *lru.TwoQueueCache[cid.Cid, []byte]
 	cacheSize int
 }
 
@@ -31,7 +31,7 @@ func NewApiIpldStore(ctx context.Context, api apiIpldStoreApi, cacheSize int) (*
 		cacheSize: cacheSize,
 	}
 
-	cache, err := lru.New2Q(store.cacheSize)
+	cache, err := lru.New2Q[cid.Cid, []byte](store.cacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (ht *ApiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) err
 
 	if a, ok := ht.cache.Get(c); ok {
 		stats.Record(ctx, metrics.IpldStoreCacheHit.M(1))
-		raw = a.([]byte)
+		raw = a
 	} else {
 		bs, err := ht.read(ctx, c)
 		if err != nil {

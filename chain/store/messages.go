@@ -207,9 +207,7 @@ type mmCids struct {
 }
 
 func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
-	o, ok := cs.mmCache.Get(mmc)
-	if ok {
-		mmcids := o.(*mmCids)
+	if mmcids, ok := cs.mmCache.Get(mmc); ok {
 		return mmcids.bls, mmcids.secpk, nil
 	}
 
@@ -229,7 +227,7 @@ func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.C
 		return nil, nil, xerrors.Errorf("loading secpk message cids for block: %w", err)
 	}
 
-	cs.mmCache.Add(mmc, &mmCids{
+	cs.mmCache.Add(mmc, mmCids{
 		bls:   blscids,
 		secpk: secpkcids,
 	})
