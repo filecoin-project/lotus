@@ -217,9 +217,6 @@ func (gw *Node) MsigGetVested(ctx context.Context, addr address.Address, start t
 	if err := gw.limit(ctx, walletRateLimitTokens); err != nil {
 		return types.BigInt{}, err
 	}
-	if err := gw.checkTipsetKey(ctx, start); err != nil {
-		return types.NewInt(0), err
-	}
 	if err := gw.checkTipsetKey(ctx, end); err != nil {
 		return types.NewInt(0), err
 	}
