@@ -25,6 +25,8 @@ type MsgInfo struct {
 // MsgIndex is the interface to the message index
 type MsgIndex interface {
 	// GetMsgInfo retrieves the message metadata through the index.
+	// The lookup is done using the onchain message Cid; that is the signed message Cid
+	// for SECP messages and unsigned message Cid for BLS messages.
 	GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error)
 	// Close closes the index
 	Close() error
