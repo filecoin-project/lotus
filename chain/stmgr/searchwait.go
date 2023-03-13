@@ -179,6 +179,13 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 		return nil, nil, cid.Undef, err
 	}
 
+	// check the height against the current tipset; minimum confidence requires that the inclusion
+	// tipset height is lower than the current head
+	curTs := sm.cs.GetHeaviestTipSet()
+	if curTs.Height() <= minfo.Epoch {
+		return nil, nil, cid.Undef, xerrors.Errorf("indexed message does not appear before the current tipset; index epoch: %d, current epoch: %d", minfo.Epoch, curTs.Height())
+	}
+
 	ts, err := sm.cs.GetTipSetByCid(ctx, minfo.TipSet)
 	if err != nil {
 		return nil, nil, cid.Undef, err
