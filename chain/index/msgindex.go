@@ -94,7 +94,7 @@ type headChange struct {
 	app []*types.TipSet
 }
 
-func NewMsgIndex(basePath string, cs ChainStore) (MsgIndex, error) {
+func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex, error) {
 	var (
 		dbPath string
 		exists bool
@@ -136,7 +136,7 @@ func NewMsgIndex(basePath string, cs ChainStore) (MsgIndex, error) {
 		}
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(lctx)
 
 	msgIndex := &msgIndex{
 		db:     db,

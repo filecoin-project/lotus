@@ -30,7 +30,7 @@ func TestBasicMsgIndex(t *testing.T) {
 	tmp := t.TempDir()
 	t.Cleanup(func() { _ = os.RemoveAll(tmp) })
 
-	msgIndex, err := NewMsgIndex(tmp, cs)
+	msgIndex, err := NewMsgIndex(context.Background(), tmp, cs)
 	require.NoError(t, err)
 
 	defer msgIndex.Close() //nolint
@@ -58,7 +58,7 @@ func TestReorgMsgIndex(t *testing.T) {
 	tmp := t.TempDir()
 	t.Cleanup(func() { _ = os.RemoveAll(tmp) })
 
-	msgIndex, err := NewMsgIndex(tmp, cs)
+	msgIndex, err := NewMsgIndex(context.Background(), tmp, cs)
 	require.NoError(t, err)
 
 	defer msgIndex.Close() //nolint
@@ -102,7 +102,7 @@ func TestReconcileMsgIndex(t *testing.T) {
 	tmp := t.TempDir()
 	t.Cleanup(func() { _ = os.RemoveAll(tmp) })
 
-	msgIndex, err := NewMsgIndex(tmp, cs)
+	msgIndex, err := NewMsgIndex(context.Background(), tmp, cs)
 	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
@@ -129,7 +129,7 @@ func TestReconcileMsgIndex(t *testing.T) {
 	require.NoError(t, err)
 
 	// reopen to reconcile
-	msgIndex, err = NewMsgIndex(tmp, cs)
+	msgIndex, err = NewMsgIndex(context.Background(), tmp, cs)
 	require.NoError(t, err)
 
 	defer msgIndex.Close() //nolint

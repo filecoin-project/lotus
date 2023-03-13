@@ -7,16 +7,17 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func MsgIndex(lc fx.Lifecycle, cs *store.ChainStore, r repo.LockedRepo) (index.MsgIndex, error) {
+func MsgIndex(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r repo.LockedRepo) (index.MsgIndex, error) {
 	basePath, err := r.SqlitePath()
 	if err != nil {
 		return nil, err
 	}
 
-	msgIndex, err := index.NewMsgIndex(basePath, cs)
+	msgIndex, err := index.NewMsgIndex(helpers.LifecycleCtx(mctx, lc), basePath, cs)
 	if err != nil {
 		return nil, err
 	}
