@@ -147,9 +147,8 @@ func NewMsgIndex(basePath string, cs ChainStore) (MsgIndex, error) {
 
 	err = msgIndex.prepareStatements()
 	if err != nil {
-		err2 := db.Close()
-		if err2 != nil {
-			log.Errorf("error closing msgindex database: %s", err2)
+		if err := db.Close(); err != nil {
+			log.Errorf("error closing msgindex database: %s", err)
 		}
 
 		return nil, xerrors.Errorf("error preparing msgindex database statements: %w", err)
