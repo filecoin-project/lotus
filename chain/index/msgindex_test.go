@@ -154,17 +154,13 @@ func verifyIndex(t *testing.T, cs *mockChainStore, msgIndex MsgIndex) {
 		tsCid, err := ts.Key().Cid()
 		require.NoError(t, err)
 
-		xindex := 0
-		for _, blk := range blks {
-			msgs, _, _ := cs.MessagesForBlock(context.Background(), blk)
-			for _, m := range msgs {
-				minfo, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
-				require.NoError(t, err)
-				require.Equal(t, tsCid, minfo.TipSet)
-				require.Equal(t, ts.Height(), minfo.Epoch)
-				require.Equal(t, xindex, minfo.Index)
-				xindex++
-			}
+		msgs, err := cs.MessagesForTipset(context.Background(), ts)
+		require.NoError(t, err)
+		for _, m := range msgs {
+			minfo, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
+			require.NoError(t, err)
+			require.Equal(t, tsCid, minfo.TipSet)
+			require.Equal(t, ts.Height(), minfo.Epoch)
 		}
 
 		parents := ts.Parents()
@@ -175,12 +171,11 @@ func verifyIndex(t *testing.T, cs *mockChainStore, msgIndex MsgIndex) {
 
 func verifyMissing(t *testing.T, cs *mockChainStore, msgIndex MsgIndex, missing ...*types.TipSet) {
 	for _, ts := range missing {
-		for _, blk := range ts.Blocks() {
-			msgs, _, _ := cs.MessagesForBlock(context.Background(), blk)
-			for _, m := range msgs {
-				_, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
-				require.Equal(t, ErrNotFound, err)
-			}
+		msgs, err := cs.MessagesForTipset(context.Background(), ts)
+		require.NoError(t, err)
+		for _, m := range msgs {
+			_, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
+			require.Equal(t, ErrNotFound, err)
 		}
 	}
 }
@@ -188,9 +183,9 @@ func verifyMissing(t *testing.T, cs *mockChainStore, msgIndex MsgIndex, missing 
 type mockChainStore struct {
 	notify store.ReorgNotifee
 
-	curTs     *types.TipSet
-	tipsets   map[types.TipSetKey]*types.TipSet
-	blockMsgs map[cid.Cid][]*types.Message
+	curTs   *types.TipSet
+	tipsets map[types.TipSetKey]*types.TipSet
+	msgs    map[types.TipSetKey][]types.ChainMsg
 
 	nonce uint64
 }
@@ -207,15 +202,15 @@ func init() {
 
 func newMockChainStore() *mockChainStore {
 	return &mockChainStore{
-		tipsets:   make(map[types.TipSetKey]*types.TipSet),
-		blockMsgs: make(map[cid.Cid][]*types.Message),
+		tipsets: make(map[types.TipSetKey]*types.TipSet),
+		msgs:    make(map[types.TipSetKey][]types.ChainMsg),
 	}
 }
 
 func (cs *mockChainStore) genesis() {
 	genBlock := mock.MkBlock(nil, 0, 0)
-	cs.blockMsgs[genBlock.Cid()] = nil
 	genTs := mock.TipSet(genBlock)
+	cs.msgs[genTs.Key()] = nil
 	cs.setHead(genTs)
 }
 
@@ -252,11 +247,13 @@ func (cs *mockChainStore) makeBlk() *types.TipSet {
 
 	blk := mock.MkBlock(cs.curTs, uint64(height), uint64(height))
 	blk.Messages = cs.makeGarbageCid()
+
+	ts := mock.TipSet(blk)
 	msg1 := cs.makeMsg()
 	msg2 := cs.makeMsg()
-	cs.blockMsgs[blk.Cid()] = []*types.Message{msg1, msg2}
+	cs.msgs[ts.Key()] = []types.ChainMsg{msg1, msg2}
 
-	return mock.TipSet(blk)
+	return ts
 }
 
 func (cs *mockChainStore) makeMsg() *types.Message {
@@ -274,13 +271,13 @@ func (cs *mockChainStore) SubscribeHeadChanges(f store.ReorgNotifee) {
 	cs.notify = f
 }
 
-func (cs *mockChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	msgs, ok := cs.blockMsgs[b.Cid()]
+func (cs *mockChainStore) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
+	msgs, ok := cs.msgs[ts.Key()]
 	if !ok {
-		return nil, nil, errors.New("unknown block")
+		return nil, errors.New("unknown tipset")
 	}
 
-	return msgs, nil, nil
+	return msgs, nil
 }
 
 func (cs *mockChainStore) GetHeaviestTipSet() *types.TipSet {
