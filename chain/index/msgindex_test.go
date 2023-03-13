@@ -200,9 +200,9 @@ func init() {
 	rng = rand.New(rand.NewSource(314159))
 
 	// adjust those to make tests snappy
-	CoalesceMinDelay = time.Millisecond
-	CoalesceMaxDelay = 10 * time.Millisecond
-	CoalesceMergeInterval = time.Millisecond
+	CoalesceMinDelay = 100 * time.Millisecond
+	CoalesceMaxDelay = time.Second
+	CoalesceMergeInterval = 100 * time.Millisecond
 }
 
 func newMockChainStore() *mockChainStore {
