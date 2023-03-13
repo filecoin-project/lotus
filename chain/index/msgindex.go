@@ -52,10 +52,11 @@ const (
 )
 
 // coalescer configuration (TODO: use observer instead)
+// these are exposed to make tests snappy
 var (
-	coalesceMinDelay      = time.Second
-	coalesceMaxDelay      = 15 * time.Second
-	coalesceMergeInterval = time.Second
+	CoalesceMinDelay      = time.Second
+	CoalesceMaxDelay      = 15 * time.Second
+	CoalesceMergeInterval = time.Second
 )
 
 // chain store interface; we could use store.ChainStore directly,
@@ -156,9 +157,9 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 
 	rnf := store.WrapHeadChangeCoalescer(
 		msgIndex.onHeadChange,
-		coalesceMinDelay,
-		coalesceMaxDelay,
-		coalesceMergeInterval,
+		CoalesceMinDelay,
+		CoalesceMaxDelay,
+		CoalesceMergeInterval,
 	)
 	cs.SubscribeHeadChanges(rnf)
 
@@ -439,4 +440,19 @@ func (x *msgIndex) Close() error {
 	x.workers.Wait()
 
 	return x.db.Close()
+}
+
+// informal apis for itests; not exposed in the main interface
+func (x *msgIndex) CountMessages() (int64, error) {
+	x.closeLk.RLock()
+	defer x.closeLk.RUnlock()
+
+	if x.closed {
+		return 0, ErrClosed
+	}
+
+	var result int64
+	row := x.db.QueryRow(dbqCountMessages)
+	err := row.Scan(&result)
+	return result, err
 }

@@ -40,7 +40,7 @@ func TestBasicMsgIndex(t *testing.T) {
 		err := cs.advance()
 		require.NoError(t, err)
 		// wait for the coalescer to notify
-		time.Sleep(coalesceMinDelay + 10*time.Millisecond)
+		time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
 	}
 
 	t.Log("verifying index")
@@ -68,7 +68,7 @@ func TestReorgMsgIndex(t *testing.T) {
 		err := cs.advance()
 		require.NoError(t, err)
 		// wait for the coalescer to notify
-		time.Sleep(coalesceMinDelay + 10*time.Millisecond)
+		time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
 	}
 
 	// a simple reorg
@@ -80,7 +80,7 @@ func TestReorgMsgIndex(t *testing.T) {
 	reorgmeChild := cs.makeBlk()
 	err = cs.reorg([]*types.TipSet{reorgme}, []*types.TipSet{reorgmeChild})
 	require.NoError(t, err)
-	time.Sleep(coalesceMinDelay + 10*time.Millisecond)
+	time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
 
 	t.Log("verifying index")
 	verifyIndex(t, cs, msgIndex)
@@ -110,7 +110,7 @@ func TestReconcileMsgIndex(t *testing.T) {
 		err := cs.advance()
 		require.NoError(t, err)
 		// wait for the coalescer to notify
-		time.Sleep(coalesceMinDelay + 10*time.Millisecond)
+		time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
 	}
 
 	// Close it and reorg
@@ -200,10 +200,9 @@ func init() {
 	rng = rand.New(rand.NewSource(314159))
 
 	// adjust those to make tests snappy
-	coalesceMinDelay = time.Millisecond
-	coalesceMaxDelay = 10 * time.Millisecond
-	coalesceMergeInterval = time.Millisecond
-
+	CoalesceMinDelay = time.Millisecond
+	CoalesceMaxDelay = 10 * time.Millisecond
+	CoalesceMergeInterval = time.Millisecond
 }
 
 func newMockChainStore() *mockChainStore {
