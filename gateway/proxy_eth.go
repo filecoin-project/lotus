@@ -80,32 +80,36 @@ func (gw *Node) checkBlkHash(ctx context.Context, blkHash ethtypes.EthHash) erro
 	return gw.checkTipsetKey(ctx, tsk)
 }
 
-func (gw *Node) checkBlkParam(ctx context.Context, blkParam string) error {
+func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
 	if blkParam == "earliest" {
 		// also not supported in node impl
 		return fmt.Errorf("block param \"earliest\" is not supported")
 	}
 
-	switch blkParam {
-	case "pending", "latest":
-		// those will be recent enough, so we don't need to check
-		return nil
-	default:
-		var num ethtypes.EthUint64
-		err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`))
-		if err != nil {
-			return fmt.Errorf("cannot parse block number: %v", err)
-		}
-		head, err := gw.target.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-		if err := gw.checkTipsetHeight(head, abi.ChainEpoch(num)); err != nil {
-			return err
-		}
+	head, err := gw.target.ChainHead(ctx)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	var num ethtypes.EthUint64
+	switch blkParam {
+	case "pending", "latest":
+		// Head is always ok.
+		if lookback == 0 {
+			return nil
+		}
+		// Can't look beyond 0 anyways.
+		if lookback > ethtypes.EthUint64(head.Height()) {
+			break
+		}
+		num = ethtypes.EthUint64(head.Height()) - lookback
+	default:
+		if err := num.UnmarshalJSON([]byte(`"` + blkParam + `"`)); err != nil {
+			return fmt.Errorf("cannot parse block number: %v", err)
+		}
+
+	}
+	return gw.checkTipsetHeight(head, abi.ChainEpoch(num))
 }
 
 func (gw *Node) EthGetBlockTransactionCountByHash(ctx context.Context, blkHash ethtypes.EthHash) (ethtypes.EthUint64, error) {
@@ -133,7 +137,7 @@ func (gw *Node) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxIn
 		return ethtypes.EthBlock{}, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkNum); err != nil {
+	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
 		return ethtypes.EthBlock{}, err
 	}
 
@@ -169,7 +173,7 @@ func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthA
 		return 0, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkOpt); err != nil {
+	if err := gw.checkBlkParam(ctx, blkOpt, 0); err != nil {
 		return 0, err
 	}
 
@@ -189,7 +193,7 @@ func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blk
 		return nil, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkOpt); err != nil {
+	if err := gw.checkBlkParam(ctx, blkOpt, 0); err != nil {
 		return nil, err
 	}
 
@@ -201,7 +205,7 @@ func (gw *Node) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress
 		return nil, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkParam); err != nil {
+	if err := gw.checkBlkParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -213,7 +217,7 @@ func (gw *Node) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, 
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkParam); err != nil {
+	if err := gw.checkBlkParam(ctx, blkParam, 0); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
@@ -272,7 +276,7 @@ func (gw *Node) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtype
 		return ethtypes.EthFeeHistory{}, err
 	}
 
-	if err := gw.checkBlkParam(ctx, params.NewestBlkNum); err != nil {
+	if err := gw.checkBlkParam(ctx, params.NewestBlkNum, params.BlkCount); err != nil {
 		return ethtypes.EthFeeHistory{}, err
 	}
 
@@ -305,7 +309,7 @@ func (gw *Node) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam strin
 		return nil, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkParam); err != nil {
+	if err := gw.checkBlkParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
@@ -327,12 +331,12 @@ func (gw *Node) EthGetLogs(ctx context.Context, filter *ethtypes.EthFilterSpec) 
 	}
 
 	if filter.FromBlock != nil {
-		if err := gw.checkBlkParam(ctx, *filter.FromBlock); err != nil {
+		if err := gw.checkBlkParam(ctx, *filter.FromBlock, 0); err != nil {
 			return nil, err
 		}
 	}
 	if filter.ToBlock != nil {
-		if err := gw.checkBlkParam(ctx, *filter.ToBlock); err != nil {
+		if err := gw.checkBlkParam(ctx, *filter.ToBlock, 0); err != nil {
 			return nil, err
 		}
 	}
