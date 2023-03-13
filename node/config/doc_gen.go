@@ -461,6 +461,20 @@ Set to 0 to keep all mappings`,
 
 			Comment: ``,
 		},
+		{
+			Name: "Index",
+			Type: "IndexConfig",
+
+			Comment: ``,
+		},
+	},
+	"IndexConfig": []DocField{
+		{
+			Name: "EnableMsgIndex",
+			Type: "bool",
+
+			Comment: `EnableMsgIndex enables indexing of messages on chain.`,
+		},
 	},
 	"IndexProviderConfig": []DocField{
 		{
