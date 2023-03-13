@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/ipfs/go-cid"
 )
 
 var msgindexCmd = &cli.Command{
