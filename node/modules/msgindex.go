@@ -31,6 +31,6 @@ func MsgIndex(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, r 
 	return msgIndex, nil
 }
 
-func DummyMsgIndex() (index.MsgIndex, error) {
-	return index.DummyMsgIndex, nil
+func DummyMsgIndex() index.MsgIndex {
+	return index.DummyMsgIndex
 }
