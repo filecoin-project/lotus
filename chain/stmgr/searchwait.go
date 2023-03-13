@@ -187,6 +187,7 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 	}
 
 	// now get the execution tipset
+	// TODO optimization: the index should have it implicitly so we can return it in the msginfo.
 	xts, err := sm.cs.GetTipsetByHeight(ctx, minfo.Epoch+1, curTs, false)
 	if err != nil {
 		return nil, nil, cid.Undef, err
