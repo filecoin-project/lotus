@@ -9,10 +9,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
+
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 func init() {
@@ -85,6 +90,35 @@ func TestMsgIndex(t *testing.T) {
 }
 
 func testSearchMsgWithIndex(t *testing.T, makeMsgIndex func(cs *store.ChainStore) (index.MsgIndex, error)) {
-	suite := apiSuite{opts: []interface{}{kit.ConstructorOpts(node.Override(new(index.MsgIndex), makeMsgIndex))}}
-	suite.testSearchMsg(t)
+	// copy of apiSuite.testSearchMsgWith; needs to be copied or else CI is angry, tests are built individually there
+	ctx := context.Background()
+
+	full, _, ens := kit.EnsembleMinimal(t, kit.ConstructorOpts(node.Override(new(index.MsgIndex), makeMsgIndex)))
+
+	senderAddr, err := full.WalletDefaultAddress(ctx)
+	require.NoError(t, err)
+
+	msg := &types.Message{
+		From:  senderAddr,
+		To:    senderAddr,
+		Value: big.Zero(),
+	}
+
+	ens.BeginMining(100 * time.Millisecond)
+
+	sm, err := full.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	//stm: @CHAIN_STATE_WAIT_MSG_001
+	res, err := full.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+
+	require.Equal(t, exitcode.Ok, res.Receipt.ExitCode, "message not successful")
+
+	//stm: @CHAIN_STATE_SEARCH_MSG_001
+	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.NotNil(t, searchRes)
+
+	require.Equalf(t, res.TipSet, searchRes.TipSet, "search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
 }
