@@ -179,20 +179,32 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 		return nil, nil, cid.Undef, err
 	}
 
-	// check the height against the current tipset; minimum confidence requires that the inclusion
-	// tipset height is lower than the current head
+	// check the height against the current tipset; minimum execution confidence requires that the
+	// inclusion tipset height is lower than the current head + 1
 	curTs := sm.cs.GetHeaviestTipSet()
-	if curTs.Height() <= minfo.Epoch {
+	if curTs.Height() <= minfo.Epoch+1 {
 		return nil, nil, cid.Undef, xerrors.Errorf("indexed message does not appear before the current tipset; index epoch: %d, current epoch: %d", minfo.Epoch, curTs.Height())
 	}
 
-	ts, err := sm.cs.GetTipSetByCid(ctx, minfo.TipSet)
+	// now get the execution tipset
+	xts, err := sm.cs.GetTipsetByHeight(ctx, minfo.Epoch+1, curTs, false)
 	if err != nil {
 		return nil, nil, cid.Undef, err
 	}
 
-	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, ts, mcid, m.VMMessage(), false)
-	return ts, r, foundMsg, err
+	// check that it is indeed the parent of the inclusion tipset
+	parent := xts.Parents()
+	parentCid, err := parent.Cid()
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("error computing tipset cid: %w", err)
+	}
+
+	if !parentCid.Equals(minfo.TipSet) {
+		return nil, nil, cid.Undef, xerrors.Errorf("inclusion tipset mismatch: have %s, expected %s", parentCid, minfo.TipSet)
+	}
+
+	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, xts, mcid, m.VMMessage(), false)
+	return xts, r, foundMsg, err
 }
 
 // searchBackForMsg searches up to limit tipsets backwards from the given
