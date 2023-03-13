@@ -2082,17 +2082,17 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	// TODO: handle CumulativeGasUsed
 	receipt.CumulativeGasUsed = ethtypes.EmptyEthInt
 
-	// TODO: avoid loading the tipset twice (once here, once in the when we convert the message to a txn)
+	// TODO: avoid loading the tipset twice (once here, once when we convert the message to a txn)
 	ts, err := cs.GetTipSetFromKey(ctx, lookup.TipSet)
 	if err != nil {
-		return api.EthTxReceipt{}, err
+		return api.EthTxReceipt{}, xerrors.Errorf("failed to lookup tipset %s when constructing the eth txn receipt: %w", lookup.TipSet, err)
 	}
 
 	baseFee := ts.Blocks()[0].ParentBaseFee
 	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.MaxFeePerGas), big.Int(tx.MaxPriorityFeePerGas), true)
-	totalBurnt := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
+	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
 
-	effectiveGasPrice := big.Div(totalBurnt, big.NewInt(lookup.Receipt.GasUsed))
+	effectiveGasPrice := big.Div(totalSpent, big.NewInt(lookup.Receipt.GasUsed))
 	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
 
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
