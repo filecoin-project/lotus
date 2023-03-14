@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -78,6 +79,11 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			},
 		})
 
+		feeHistoryCache, err := full.NewEthFeeHistoryCache(cfg.EthFeeHistoryCacheCapacity)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to construct the fee history cache: %w", err)
+		}
+
 		return &full.EthModule{
 			Chain:        cs,
 			Mpool:        mp,
@@ -87,7 +93,8 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			MpoolAPI: mpoolapi,
 			StateAPI: stateapi,
 
-			EthTxHashManager: &ethTxHashManager,
+			EthTxHashManager:   &ethTxHashManager,
+			EthFeeHistoryCache: feeHistoryCache,
 		}, nil
 	}
 }

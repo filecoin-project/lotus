@@ -337,6 +337,9 @@
   # env var: LOTUS_FEVM_ETHTXHASHMAPPINGLIFETIMEDAYS
   #EthTxHashMappingLifetimeDays = 0
 
+  # env var: LOTUS_FEVM_ETHFEEHISTORYCACHECAPACITY
+  #EthFeeHistoryCacheCapacity = 1024
+
   [Fevm.Events]
     # EnableEthRPC enables APIs that
     # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.

@@ -418,6 +418,12 @@ This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, bu
 Set to 0 to keep all mappings`,
 		},
 		{
+			Name: "EthFeeHistoryCacheCapacity",
+			Type: "int",
+
+			Comment: `EthFeeHistoryCacheCapacity is the maximum size of the fee history cache (in tipsets).`,
+		},
+		{
 			Name: "Events",
 			Type: "Events",
 

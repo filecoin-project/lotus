@@ -687,6 +687,9 @@ type FevmConfig struct {
 	// Set to 0 to keep all mappings
 	EthTxHashMappingLifetimeDays int
 
+	// EthFeeHistoryCacheCapacity is the maximum size of the fee history cache (in tipsets).
+	EthFeeHistoryCacheCapacity int
+
 	Events Events
 }
 

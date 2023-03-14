@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
@@ -120,10 +121,11 @@ var (
 // accepts as the best parent tipset, based on the blocks it is accumulating
 // within the HEAD tipset.
 type EthModule struct {
-	Chain            *store.ChainStore
-	Mpool            *messagepool.MessagePool
-	StateManager     *stmgr.StateManager
-	EthTxHashManager *EthTxHashManager
+	Chain              *store.ChainStore
+	Mpool              *messagepool.MessagePool
+	StateManager       *stmgr.StateManager
+	EthTxHashManager   *EthTxHashManager
+	EthFeeHistoryCache *EthFeeHistoryCache
 
 	ChainAPI
 	MpoolAPI
@@ -699,21 +701,29 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 	)
 
 	for blocksIncluded < int(params.BlkCount) && ts.Height() > 0 {
-		msgs, rcpts, err := messagesAndReceipts(ctx, ts, a.Chain, a.StateAPI)
-		if err != nil {
-			return ethtypes.EthFeeHistory{}, xerrors.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)
-		}
+		basefee = ts.Blocks()[0].ParentBaseFee
 
-		txGasRewards := gasRewardSorter{}
-		for i, msg := range msgs {
-			effectivePremium := msg.VMMessage().EffectiveGasPremium(basefee)
-			txGasRewards = append(txGasRewards, gasRewardTuple{
-				premium: effectivePremium,
-				gasUsed: rcpts[i].GasUsed,
-			})
-		}
+		tsk := ts.Key()
+		feeHistoryEntry, ok := a.EthFeeHistoryCache.get(tsk)
+		if !ok {
+			msgs, rcpts, err := messagesAndReceipts(ctx, ts, a.Chain, a.StateAPI)
+			if err != nil {
+				return ethtypes.EthFeeHistory{}, xerrors.Errorf("failed to retrieve messages and receipts for height %d: %w", ts.Height(), err)
+			}
 
-		rewards, totalGasUsed := calculateRewardsAndGasUsed(rewardPercentiles, txGasRewards)
+			txGasRewards := gasRewardSorter{}
+			for i, msg := range msgs {
+				effectivePremium := msg.VMMessage().EffectiveGasPremium(basefee)
+				txGasRewards = append(txGasRewards, gasRewardTuple{
+					premium: effectivePremium,
+					gasUsed: rcpts[i].GasUsed,
+				})
+			}
+
+			feeHistoryEntry = a.EthFeeHistoryCache.insert(tsk, txGasRewards)
+		}
+		rewards := feeHistoryEntry.approximateRewards(rewardPercentiles)
+		totalGasUsed := feeHistoryEntry.gasUsed
 
 		// arrays should be reversed at the end
 		baseFeeArray = append(baseFeeArray, ethtypes.EthBigInt(basefee))
@@ -2228,6 +2238,68 @@ func (m *EthTxHashManager) ProcessSignedMessage(ctx context.Context, msg *types.
 		log.Errorf("error inserting tx mapping to db: %s", err)
 		return
 	}
+}
+
+type EthFeeHistoryCache struct {
+	cache *lru.ARCCache[types.TipSetKey, *feeHistoryCacheEntry]
+}
+
+type feeHistoryCacheEntry struct {
+	gasUsed ethtypes.EthUint64
+	rewards []ethtypes.EthBigInt
+}
+
+const feeHistoryCachePercentileStep = 5
+
+var cacheRewardPercentiles []float64 = (func() []float64 {
+	out := make([]float64, 100/feeHistoryCachePercentileStep)
+	for i := range out {
+		out[i] = float64(i+1) * feeHistoryCachePercentileStep
+	}
+	return out
+})()
+
+func (h *EthFeeHistoryCache) insert(tsk types.TipSetKey, entries []gasRewardTuple) *feeHistoryCacheEntry {
+	rewards, totalGasUsed := calculateRewardsAndGasUsed(cacheRewardPercentiles, entries)
+	entry := &feeHistoryCacheEntry{
+		rewards: rewards,
+		gasUsed: ethtypes.EthUint64(totalGasUsed),
+	}
+	h.cache.Add(tsk, entry)
+	return entry
+}
+
+func (h *EthFeeHistoryCache) get(tsk types.TipSetKey) (entry *feeHistoryCacheEntry, ok bool) {
+	return h.cache.Get(tsk)
+}
+
+func (e *feeHistoryCacheEntry) approximateRewards(percentiles []float64) []ethtypes.EthBigInt {
+	out := make([]ethtypes.EthBigInt, len(percentiles))
+	// Approximate the requested percentiles to the next nearest 5% (feeHistoryCachePercentileStep).
+	for i, p := range percentiles {
+		pi := int(p) / feeHistoryCachePercentileStep
+		if pi > len(e.rewards) {
+			// (95, infinity) -> 19
+			pi = len(e.rewards)
+		} else if pi <= 0 {
+			// (-infinity, 5] -> 0
+			pi = 0
+		} else if (int(p) % feeHistoryCachePercentileStep) == 0 {
+			// (0, 5]  -> 0
+			// (5, 10] -> 1
+			pi--
+		}
+		out[i] = e.rewards[pi]
+	}
+	return out
+}
+
+func NewEthFeeHistoryCache(size int) (*EthFeeHistoryCache, error) {
+	cache, err := lru.NewARC[types.TipSetKey, *feeHistoryCacheEntry](size)
+	if err != nil {
+		return nil, err
+	}
+	return &EthFeeHistoryCache{cache: cache}, nil
 }
 
 func WaitForMpoolUpdates(ctx context.Context, ch <-chan api.MpoolUpdate, manager *EthTxHashManager) {
