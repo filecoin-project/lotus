@@ -95,9 +95,7 @@ func DefaultFullNode() *FullNode {
 				HotStoreType:  "badger",
 				MarkSetType:   "badger",
 
-				HotStoreFullGCFrequency:      20,
-				HotStoreMaxSpaceThreshold:    150_000_000_000,
-				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
+				HotStoreFullGCFrequency: 20,
 			},
 		},
 		Cluster: *DefaultUserRaftConfig(),

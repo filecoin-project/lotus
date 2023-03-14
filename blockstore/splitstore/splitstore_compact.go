@@ -66,8 +66,7 @@ var (
 )
 
 const (
-	batchSize  = 16384
-	cidKeySize = 128
+	batchSize = 16384
 )
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
@@ -200,11 +199,9 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 	log.Debugf("marking %d live refs", len(cids))
 	startMark := time.Now()
 
-	szMarked := new(int64)
-
 	count := new(int32)
 	visitor := newConcurrentVisitor()
-	walkObject := func(c cid.Cid) (int64, error) {
+	walkObject := func(c cid.Cid) error {
 		return s.walkObjectIncomplete(c, visitor,
 			func(c cid.Cid) error {
 				if isUnitaryObject(c) {
@@ -231,12 +228,10 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 
 	// optimize the common case of single put
 	if len(cids) == 1 {
-		sz, err := walkObject(cids[0])
-		if err != nil {
+		if err := walkObject(cids[0]); err != nil {
 			log.Errorf("error marking tipset refs: %s", err)
 		}
 		log.Debugw("marking live refs done", "took", time.Since(startMark), "marked", *count)
-		atomic.AddInt64(szMarked, sz)
 		return
 	}
 
@@ -248,11 +243,9 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 
 	worker := func() error {
 		for c := range workch {
-			sz, err := walkObject(c)
-			if err != nil {
+			if err := walkObject(c); err != nil {
 				return err
 			}
-			atomic.AddInt64(szMarked, sz)
 		}
 
 		return nil
@@ -275,8 +268,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 		log.Errorf("error marking tipset refs: %s", err)
 	}
 
-	log.Debugw("marking live refs done", "took", time.Since(startMark), "marked", *count, "size marked", *szMarked)
-	s.szMarkedLiveRefs += atomic.LoadInt64(szMarked)
+	log.Debugw("marking live refs done", "took", time.Since(startMark), "marked", *count)
 }
 
 // transactionally protect a view
@@ -369,7 +361,6 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 
 		log.Infow("protecting transactional references", "refs", len(txnRefs))
 		count := 0
-		sz := new(int64)
 		workch := make(chan cid.Cid, len(txnRefs))
 		startProtect := time.Now()
 
@@ -402,11 +393,10 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 
 		worker := func() error {
 			for c := range workch {
-				szTxn, err := s.doTxnProtect(c, markSet)
+				err := s.doTxnProtect(c, markSet)
 				if err != nil {
 					return xerrors.Errorf("error protecting transactional references to %s: %w", c, err)
 				}
-				atomic.AddInt64(sz, szTxn)
 			}
 			return nil
 		}
@@ -419,16 +409,16 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 		if err := g.Wait(); err != nil {
 			return err
 		}
-		s.szProtectedTxns += atomic.LoadInt64(sz)
-		log.Infow("protecting transactional refs done", "took", time.Since(startProtect), "protected", count, "protected size", sz)
+
+		log.Infow("protecting transactional refs done", "took", time.Since(startProtect), "protected", count)
 	}
 }
 
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
-func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) {
+func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
 	if err := s.checkClosing(); err != nil {
-		return 0, err
+		return err
 	}
 
 	// Note: cold objects are deleted heaviest first, so the consituents of an object
@@ -519,7 +509,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		// might be potentially inconsistent; abort compaction and notify the user to intervene.
 		return xerrors.Errorf("checkpoint exists; aborting compaction")
 	}
-	s.clearSizeMeasurements()
 
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
@@ -609,6 +598,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 
 	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch, &noopVisitor{}, fHot, fCold)
+
 	if err != nil {
 		return xerrors.Errorf("error marking: %w", err)
 	}
@@ -648,7 +638,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	defer purgew.Close() //nolint:errcheck
 
 	// some stats for logging
-	var hotCnt, coldCnt, purgeCnt int64
+	var hotCnt, coldCnt, purgeCnt int
 	err = s.hot.ForEachKey(func(c cid.Cid) error {
 		// was it marked?
 		mark, err := markSet.Has(c)
@@ -700,9 +690,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	log.Infow("cold collection done", "took", time.Since(startCollect))
 
 	log.Infow("compaction stats", "hot", hotCnt, "cold", coldCnt, "purge", purgeCnt)
-	s.szKeys = hotCnt * cidKeySize
-	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(hotCnt))
-	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(coldCnt))
+	stats.Record(s.ctx, metrics.SplitstoreCompactionHot.M(int64(hotCnt)))
+	stats.Record(s.ctx, metrics.SplitstoreCompactionCold.M(int64(coldCnt)))
 
 	if err := s.checkClosing(); err != nil {
 		return err
@@ -784,8 +773,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return xerrors.Errorf("error purging cold objects: %w", err)
 	}
 	log.Infow("purging cold objects from hotstore done", "took", time.Since(startPurge))
+
 	s.endCriticalSection()
-	log.Infow("critical section done", "total protected size", s.szProtectedTxns, "total marked live size", s.szMarkedLiveRefs)
 
 	if err := checkpoint.Close(); err != nil {
 		log.Warnf("error closing checkpoint: %s", err)
@@ -918,7 +907,6 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	copy(toWalk, ts.Cids())
 	walkCnt := new(int64)
 	scanCnt := new(int64)
-	szWalk := new(int64)
 
 	tsRef := func(blkCids []cid.Cid) (cid.Cid, error) {
 		return types.NewTipSetKey(blkCids...).Cid()
@@ -954,64 +942,48 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if err != nil {
 			return xerrors.Errorf("error computing cid reference to parent tipset")
 		}
-		sz, err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk)
-		if err != nil {
+		if err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk); err != nil {
 			return xerrors.Errorf("error walking parent tipset cid reference")
 		}
-		atomic.AddInt64(szWalk, sz)
 
 		// message are retained if within the inclMsgs boundary
 		if hdr.Height >= inclMsgs && hdr.Height > 0 {
 			if inclMsgs < inclState {
 				// we need to use walkObjectIncomplete here, as messages/receipts may be missing early on if we
 				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
-				sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fHot, stopWalk)
-				if err != nil {
+				if err := s.walkObjectIncomplete(hdr.Messages, visitor, fHot, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
-				atomic.AddInt64(szWalk, sz)
 
-				sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk)
-				if err != nil {
+				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
-				atomic.AddInt64(szWalk, sz)
 			} else {
-				sz, err = s.walkObject(hdr.Messages, visitor, fHot)
-				if err != nil {
+				if err := s.walkObject(hdr.Messages, visitor, fHot); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
-				atomic.AddInt64(szWalk, sz)
 
-				sz, err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot)
-				if err != nil {
+				if err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot); err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
-				atomic.AddInt64(szWalk, sz)
 			}
 		}
 
 		// messages and receipts outside of inclMsgs are included in the cold store
 		if hdr.Height < inclMsgs && hdr.Height > 0 {
-			sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk)
-			if err != nil {
+			if err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk); err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 			}
-			atomic.AddInt64(szWalk, sz)
-			sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk)
-			if err != nil {
+			if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk); err != nil {
 				return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 			}
-			atomic.AddInt64(szWalk, sz)
 		}
 
 		// state is only retained if within the inclState boundary, with the exception of genesis
 		if hdr.Height >= inclState || hdr.Height == 0 {
-			sz, err := s.walkObject(hdr.ParentStateRoot, visitor, fHot)
-			if err != nil {
+			if err := s.walkObject(hdr.ParentStateRoot, visitor, fHot); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
-			atomic.AddInt64(szWalk, sz)
 			atomic.AddInt64(scanCnt, 1)
 		}
 
@@ -1029,11 +1001,9 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	if err != nil {
 		return xerrors.Errorf("error computing cid reference to parent tipset")
 	}
-	sz, err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk)
-	if err != nil {
+	if err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk); err != nil {
 		return xerrors.Errorf("error walking parent tipset cid reference")
 	}
-	atomic.AddInt64(szWalk, sz)
 
 	for len(toWalk) > 0 {
 		// walking can take a while, so check this with every opportunity
@@ -1077,129 +1047,123 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		}
 	}
 
-	log.Infow("chain walk done", "walked", *walkCnt, "scanned", *scanCnt, "walk size", szWalk)
-	s.szWalk = atomic.LoadInt64(szWalk)
+	log.Infow("chain walk done", "walked", *walkCnt, "scanned", *scanCnt)
+
 	return nil
 }
 
-func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid) error) (int64, error) {
-	var sz int64
+func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid) error) error {
 	visit, err := visitor.Visit(c)
 	if err != nil {
-		return 0, xerrors.Errorf("error visiting object: %w", err)
+		return xerrors.Errorf("error visiting object: %w", err)
 	}
 
 	if !visit {
-		return sz, nil
+		return nil
 	}
 
 	if err := f(c); err != nil {
 		if err == errStopWalk {
-			return sz, nil
+			return nil
 		}
 
-		return 0, err
+		return err
 	}
 
 	if c.Prefix().Codec != cid.DagCBOR {
-		return sz, nil
+		return nil
 	}
 
 	// check this before recursing
 	if err := s.checkClosing(); err != nil {
-		return 0, err
+		return err
 	}
 
 	var links []cid.Cid
 	err = s.view(c, func(data []byte) error {
-		sz += int64(len(data))
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
 	})
 
 	if err != nil {
-		return 0, xerrors.Errorf("error scanning linked block (cid: %s): %w", c, err)
+		return xerrors.Errorf("error scanning linked block (cid: %s): %w", c, err)
 	}
 
 	for _, c := range links {
-		szLink, err := s.walkObject(c, visitor, f)
+		err := s.walkObject(c, visitor, f)
 		if err != nil {
-			return 0, xerrors.Errorf("error walking link (cid: %s): %w", c, err)
+			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
 		}
-		sz += szLink
 	}
 
-	return sz, nil
+	return nil
 }
 
 // like walkObject, but the object may be potentially incomplete (references missing)
-func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) (int64, error) {
-	var sz int64
+func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) error {
 	visit, err := visitor.Visit(c)
 	if err != nil {
-		return 0, xerrors.Errorf("error visiting object: %w", err)
+		return xerrors.Errorf("error visiting object: %w", err)
 	}
 
 	if !visit {
-		return sz, nil
+		return nil
 	}
 
 	// occurs check -- only for DAGs
 	if c.Prefix().Codec == cid.DagCBOR {
 		has, err := s.has(c)
 		if err != nil {
-			return 0, xerrors.Errorf("error occur checking %s: %w", c, err)
+			return xerrors.Errorf("error occur checking %s: %w", c, err)
 		}
 
 		if !has {
 			err = missing(c)
 			if err == errStopWalk {
-				return sz, nil
+				return nil
 			}
 
-			return 0, err
+			return err
 		}
 	}
 
 	if err := f(c); err != nil {
 		if err == errStopWalk {
-			return sz, nil
+			return nil
 		}
 
-		return 0, err
+		return err
 	}
 
 	if c.Prefix().Codec != cid.DagCBOR {
-		return sz, nil
+		return nil
 	}
 
 	// check this before recursing
 	if err := s.checkClosing(); err != nil {
-		return sz, err
+		return err
 	}
 
 	var links []cid.Cid
 	err = s.view(c, func(data []byte) error {
-		sz += int64(len(data))
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
 	})
 
 	if err != nil {
-		return 0, xerrors.Errorf("error scanning linked block (cid: %s): %w", c, err)
+		return xerrors.Errorf("error scanning linked block (cid: %s): %w", c, err)
 	}
 
 	for _, c := range links {
-		szLink, err := s.walkObjectIncomplete(c, visitor, f, missing)
+		err := s.walkObjectIncomplete(c, visitor, f, missing)
 		if err != nil {
-			return 0, xerrors.Errorf("error walking link (cid: %s): %w", c, err)
+			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
 		}
-		sz += szLink
 	}
 
-	return sz, nil
+	return nil
 }
 
 // internal version used during compaction and related operations
@@ -1465,9 +1429,8 @@ func (s *SplitStore) completeCompaction() error {
 	}
 	s.compactType = none
 
-	// Note: at this point we can start the splitstore; base epoch is not
-	//       incremented here so a compaction should run on the first head
-	//       change, which will trigger gc on the hotstore.
+	// Note: at this point we can start the splitstore; a compaction should run on
+	//       the first head change, which will trigger gc on the hotstore.
 	//       We don't mind the second (back-to-back) compaction as the head will
 	//       have advanced during marking and coldset accumulation.
 	return nil
@@ -1525,13 +1488,6 @@ func (s *SplitStore) completePurge(coldr *ColdSetReader, checkpoint *Checkpoint,
 	return nil
 }
 
-func (s *SplitStore) clearSizeMeasurements() {
-	s.szKeys = 0
-	s.szMarkedLiveRefs = 0
-	s.szProtectedTxns = 0
-	s.szWalk = 0
-}
-
 // I really don't like having this code, but we seem to have some occasional DAG references with
 // missing constituents. During testing in mainnet *some* of these references *sometimes* appeared
 // after a little bit.
@@ -1572,7 +1528,7 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 		missing = make(map[cid.Cid]struct{})
 
 		for c := range towalk {
-			_, err := s.walkObjectIncomplete(c, visitor,
+			err := s.walkObjectIncomplete(c, visitor,
 				func(c cid.Cid) error {
 					if isUnitaryObject(c) {
 						return errStopWalk
