@@ -74,6 +74,11 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 // NOTE: This _won't_ recursively walk the receipt/state trees. It assumes that having the root
 // implies having the rest of the tree. However, lotus generally makes that assumption anyways.
 func tryLookupTipsetState(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) (cid.Cid, cid.Cid, bool) {
+	if ts.Height() == 0 {
+		// Genesis state is cheaper to compute than to look up.
+		return cid.Undef, cid.Undef, false
+	}
+
 	nextTs, err := cs.GetTipsetByHeight(ctx, ts.Height()+1, nil, false)
 	if err != nil {
 		// Nothing to see here. The requested height may be beyond the current head.
