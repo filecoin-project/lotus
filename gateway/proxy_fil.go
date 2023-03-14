@@ -489,6 +489,16 @@ func (gw *Node) StateVerifiedClientStatus(ctx context.Context, addr address.Addr
 	return gw.target.StateVerifiedClientStatus(ctx, addr, tsk)
 }
 
+func (gw *Node) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.StateVerifierStatus(ctx, addr, tsk)
+}
+
 func (gw *Node) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return api.CirculatingSupply{}, err

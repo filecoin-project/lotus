@@ -772,6 +772,8 @@ type GatewayMethods struct {
 
 	StateVerifiedClientStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
+	StateVerifierStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
+
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
 
 	Version func(p0 context.Context) (APIVersion, error) ``
@@ -4854,6 +4856,17 @@ func (s *GatewayStruct) StateVerifiedClientStatus(p0 context.Context, p1 address
 }
 
 func (s *GatewayStub) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateVerifierStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	if s.Internal.StateVerifierStatus == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateVerifierStatus(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateVerifierStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
 	return nil, ErrNotSupported
 }
 
