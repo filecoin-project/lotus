@@ -91,6 +91,8 @@ type EthEventAPI interface {
 var (
 	_ EthModuleAPI = *new(api.FullNode)
 	_ EthEventAPI  = *new(api.FullNode)
+
+	_ EthModuleAPI = *new(api.Gateway)
 )
 
 // EthModule provides the default implementation of the standard Ethereum JSON-RPC API.
