@@ -53,6 +53,16 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 
 	sm.stlk.Unlock()
 
+	if ts.Height() == 0 {
+		// NB: This is here because the process that executes blocks requires that the
+		// block miner reference a valid miner in the state tree. Unless we create some
+		// magical genesis miner, this won't work properly, so we short circuit here
+		// This avoids the question of 'who gets paid the genesis block reward'.
+		// This also makes us not attempt to lookup the tipset state with
+		// tryLookupTipsetState, which would cause a very long, very slow walk.
+		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
+	}
+
 	// First, try to find the tipset in the current chain. If found, we can avoid re-executing
 	// it.
 	if st, rec, found := tryLookupTipsetState(ctx, sm.cs, ts); found {
@@ -74,11 +84,6 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 // NOTE: This _won't_ recursively walk the receipt/state trees. It assumes that having the root
 // implies having the rest of the tree. However, lotus generally makes that assumption anyways.
 func tryLookupTipsetState(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) (cid.Cid, cid.Cid, bool) {
-	if ts.Height() == 0 {
-		// Genesis state is cheaper to compute than to look up.
-		return cid.Undef, cid.Undef, false
-	}
-
 	nextTs, err := cs.GetTipsetByHeight(ctx, ts.Height()+1, nil, false)
 	if err != nil {
 		// Nothing to see here. The requested height may be beyond the current head.
