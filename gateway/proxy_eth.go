@@ -149,7 +149,7 @@ func (gw *Node) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.Et
 		return nil, err
 	}
 
-	return gw.target.EthGetTransactionByHash(ctx, txHash)
+	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, gw.stateWaitLookbackLimit)
 }
 
 func (gw *Node) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
@@ -185,7 +185,7 @@ func (gw *Node) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.Et
 		return nil, err
 	}
 
-	return gw.target.EthGetTransactionReceipt(ctx, txHash)
+	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, gw.stateWaitLookbackLimit)
 }
 
 func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {
