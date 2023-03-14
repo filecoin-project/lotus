@@ -299,7 +299,7 @@ func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *
 	}
 
 	// first, try to get the cid from mined transactions
-	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, api.LookbackNoLimit, true)
+	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err == nil && msgLookup != nil {
 		tx, err := newEthTxFromMessageLookup(ctx, msgLookup, -1, a.Chain, a.StateAPI)
 		if err == nil {
@@ -428,7 +428,7 @@ func (a *EthModule) EthGetTransactionReceiptLimited(ctx context.Context, txHash 
 		c = txHash.ToCid()
 	}
 
-	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, api.LookbackNoLimit, true)
+	msgLookup, err := a.StateAPI.StateSearchMsg(ctx, types.EmptyTSK, c, limit, true)
 	if err != nil || msgLookup == nil {
 		return nil, nil
 	}
