@@ -16,14 +16,14 @@ func TestDecodeNothing(t *testing.T) {
 	assert := assert.New(t)
 
 	{
-		cfg, err := FromFile(os.DevNull, DefaultFullNode())
+		cfg, err := FromFile(os.DevNull, DefaultFullNode(), LoadabilityCheckNone())
 		assert.Nil(err, "error should be nil")
 		assert.Equal(DefaultFullNode(), cfg,
 			"config from empty file should be the same as default")
 	}
 
 	{
-		cfg, err := FromFile("./does-not-exist.toml", DefaultFullNode())
+		cfg, err := FromFile("./does-not-exist.toml", DefaultFullNode(), LoadabilityCheckNone())
 		assert.Nil(err, "error should be nil")
 		assert.Equal(DefaultFullNode(), cfg,
 			"config from not exisiting file should be the same as default")
@@ -58,7 +58,7 @@ func TestParitalConfig(t *testing.T) {
 		assert.NoError(err, "closing tmp file should not error")
 		defer os.Remove(fname) //nolint:errcheck
 
-		cfg, err := FromFile(fname, DefaultFullNode())
+		cfg, err := FromFile(fname, DefaultFullNode(), LoadabilityCheckNone())
 		assert.Nil(err, "error should be nil")
 		assert.Equal(expected, cfg,
 			"config from reader should contain changes")

@@ -545,7 +545,11 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
-	return config.FromFile(fsr.configPath, fsr.repoType.Config())
+	loadabilityCheck := config.LoadabilityCheckNone()
+	if fsr.repoType == FullNode {
+		loadabilityCheck = config.DefaultFullNodeLoadabilityCheck()
+	}
+	return config.FromFile(fsr.configPath, fsr.repoType.Config(), loadabilityCheck)
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {

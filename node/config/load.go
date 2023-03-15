@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
@@ -17,15 +18,40 @@ import (
 
 // FromFile loads config from a specified file overriding defaults specified in
 // the def parameter. If file does not exist or is empty defaults are assumed.
-func FromFile(path string, def interface{}) (interface{}, error) {
+func FromFile(path string, def interface{}, lc loadabilityCheck) (interface{}, error) {
+	// check for loadability
 	file, err := os.Open(path)
 	switch {
 	case os.IsNotExist(err):
+		if err := lc.configNotFound(); err != nil {
+			return nil, err
+		}
 		return def, nil
 	case err != nil:
 		return nil, err
 	}
+	cfgBs, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to read config for loadability checks %w", err)
+	}
+	s := string(cfgBs)
+	if err := lc.configOk(s); err != nil {
+		return nil, xerrors.Errorf("config failed loadability check: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return nil, err
+	}
 
+	file, err = os.Open(path)
+	switch {
+	case os.IsNotExist(err):
+		if err := lc.configNotFound(); err != nil {
+			return nil, err
+		}
+		return def, nil
+	case err != nil:
+		return nil, err
+	}
 	defer file.Close() //nolint:errcheck // The file is RO
 	return FromReader(file, def)
 }
@@ -46,9 +72,39 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 	return cfg, nil
 }
 
+// function from raw config string to loadability
+type loadabilityCheck struct {
+	configOk       func(string) error
+	configNotFound func() error
+}
+
+func DefaultFullNodeLoadabilityCheck() loadabilityCheck {
+	configOk := func(cfgRaw string) error {
+		poisonStr := "#EnableSplitstore =" // splitstore must be set explicitly
+		if strings.Contains(cfgRaw, poisonStr) {
+			return xerrors.Errorf("Config contains disallowed string %s, refusing to load. Please explicitly set EnableSplitstore. Set it to false to keep chain management unchanged from March 2023 set it to true if you want to discard old state by default", poisonStr)
+		}
+		return nil
+	}
+	configNotFound := func() error {
+		return xerrors.Errorf("FullNode config not found and fallback to default disallowed.  Set up config and explicitly set EnableSplitstore.  Set it to false to keep chain management unchanged from March 2023 set it to true if you want to discard old state by default ")
+	}
+	return loadabilityCheck{
+		configOk:       configOk,
+		configNotFound: configNotFound,
+	}
+}
+
+func LoadabilityCheckNone() loadabilityCheck {
+	return loadabilityCheck{
+		configOk:       func(string) error { return nil },
+		configNotFound: func() error { return nil },
+	}
+}
+
 type keepUncommented func(string) bool
 
-func CommentFilterDefault() keepUncommented {
+func DefaultFullNodeCommentFilter() keepUncommented {
 	return func(s string) bool {
 		return strings.Contains(s, "EnableSplitstore")
 	}
@@ -173,5 +229,5 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, filter keepUncomment
 }
 
 func ConfigComment(t interface{}) ([]byte, error) {
-	return ConfigUpdate(t, nil, true, CommentFilterDefault())
+	return ConfigUpdate(t, nil, true, DefaultFullNodeCommentFilter())
 }
