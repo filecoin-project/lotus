@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/filecoin-project/go-state-types/big"
 
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -17,9 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -62,26 +62,25 @@ var evmBalanceCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		bs, err := lkrepo.Blockstore(ctx, repo.HotBlockstore)
-		if err != nil {
-			return fmt.Errorf("failed to open blockstore: %w", err)
-		}
-
-		defer func() {
-			if c, ok := bs.(io.Closer); ok {
-				if err := c.Close(); err != nil {
-					log.Warnf("failed to close blockstore: %s", err)
-				}
-			}
-		}()
-
-		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
+		path, err := lkrepo.SplitstorePath()
 		if err != nil {
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
-		defer cs.Close() //nolint:errcheck
+		path = filepath.Join(path, "hot.badger")
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return err
+		}
+
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly())
+		if err != nil {
+			return err
+		}
+
+		bs, err := badgerbs.Open(opts)
+		if err != nil {
+			return err
+		}
 
 		cst := cbor.NewCborStore(bs)
 		st, err := state.LoadStateTree(cst, sroot)
