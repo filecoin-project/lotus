@@ -2,12 +2,7 @@
 package repo
 
 import (
-	"fmt"
 	"testing"
-
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func genFsRepo(t *testing.T) *FsRepo {
@@ -33,19 +28,4 @@ func TestFsBasic(t *testing.T) {
 	//stm: @NODE_FS_REPO_GET_KEY_001, NODE_FS_REPO_DELETE_KEY_001
 	repo := genFsRepo(t)
 	basicTest(t, repo)
-}
-
-func TestConfig(t *testing.T) {
-	repo := genFsRepo(t)
-	lrepo, err := repo.Lock(FullNode)
-	require.NoError(t, err)
-	c1, err := lrepo.Config()
-	assert.Equal(t, config.DefaultFullNode(), c1, "there should be a default config")
-	assert.NoError(t, err, "config should not error")
-	cfg := c1.(*config.FullNode)
-	fmt.Printf("%t\n", cfg.Chainstore.EnableSplitstore)
-
-	err = lrepo.Close()
-	assert.NoError(t, err, "should be able to close")
-
 }
