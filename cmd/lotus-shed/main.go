@@ -85,6 +85,7 @@ func main() {
 		gasTraceCmd,
 		replayOfflineCmd,
 		msgindexCmd,
+		evmBalanceCmd,
 	}
 
 	app := &cli.App{
