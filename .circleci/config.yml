@@ -454,9 +454,13 @@ jobs:
                       command: |
                         CUSTOM_DOCKER_TAG="<<parameters.custom_docker_tag>>"
                         if [[ ! -z $CUSTOM_DOCKER_TAG ]]; then
+                          echo "Pushing custom docker image: filecoin/<<parameters.image>>:${CUSTOM_DOCKER_TAG}"
                           # docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CUSTOM_DOCKER_TAG}"
                           docker push filecoin/<<parameters.image>>:"${CUSTOM_DOCKER_TAG}"
+                          exit 0
                         fi
+                        echo "short circuiting build"
+                        exit 1
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>
                         if [[ ! -z $CIRCLE_SHA ]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
