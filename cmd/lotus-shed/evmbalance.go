@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,7 +39,6 @@ var evmBalanceCmd = &cli.Command{
 			return xerrors.New("only needs state root")
 		}
 
-		ctx := context.TODO()
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass state root")
 		}
