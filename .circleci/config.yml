@@ -452,6 +452,7 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
+                        set -xeo pipefail
                         CUSTOM_DOCKER_TAG="<<parameters.custom_docker_tag>>"
                         if [[ ! -z $CUSTOM_DOCKER_TAG ]]; then
                           echo "Pushing custom docker image: filecoin/<<parameters.image>>:${CUSTOM_DOCKER_TAG}"
