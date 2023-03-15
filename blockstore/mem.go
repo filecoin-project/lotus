@@ -17,6 +17,8 @@ func NewMemory() MemBlockstore {
 // To match behavior of badger blockstore we index by multihash only.
 type MemBlockstore map[string]blocks.Block
 
+func (MemBlockstore) Flush(context.Context) error { return nil }
+
 func (m MemBlockstore) DeleteBlock(ctx context.Context, k cid.Cid) error {
 	delete(m, string(k.Hash()))
 	return nil
