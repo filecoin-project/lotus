@@ -516,7 +516,7 @@ workflows:
           name: "Docker build (lotus-all-in-one / mainnet)"
           image: lotus-all-in-one
           network: mainnet
-          push: false
+          push: true
           custom_docker_tag: "v1.20.3-rpc-p01-hf02"
           filters:
             branches:
