@@ -627,6 +627,15 @@ workflows:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-docker:
+          name: "Docker build (lotus-all-in-one / [[.]])"
+          image: lotus-all-in-one
+          network: [[.]]
+          push: false
+          filters:
+            branches:
+              only:
+                - /^v1.20.3-rpc-p01-hf02-docker-build/
       [[- end]]
       - build-docker:
           name: "Docker push (lotus / stable / mainnet)"
