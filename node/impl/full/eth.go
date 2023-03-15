@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/zyedidia/generic/queue"
 	"sort"
 	"strconv"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"github.com/zyedidia/generic/queue"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
