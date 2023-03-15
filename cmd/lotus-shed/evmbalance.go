@@ -113,10 +113,10 @@ var evmBalanceCmd = &cli.Command{
 			return nil
 		})
 
-		fmt.Println("TVL in Eth contracts: ", tvlEvm)
-		fmt.Println("TVL in Eth accounts: ", tvlEthAccount)
-		fmt.Println("TVL in placeholder: ", tvlPlaceholder)
-		fmt.Println("Total TVL: ", big.Add(big.Add(tvlEthAccount, tvlPlaceholder), tvlEvm))
+		fmt.Println("balances in Eth contracts: ", tvlEvm)
+		fmt.Println("balances in Eth accounts: ", tvlEthAccount)
+		fmt.Println("balances in placeholder: ", tvlPlaceholder)
+		fmt.Println("Total balanace: ", big.Add(big.Add(tvlEthAccount, tvlPlaceholder), tvlEvm))
 		return nil
 	},
 }
