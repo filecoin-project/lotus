@@ -41,10 +41,15 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		}
 
 		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/index-provider"))
+		addrs := marketHost.Addrs()
+		addrsString := make([]string, 0, len(addrs))
+		for _, addr := range addrs {
+			addrsString = append(addrsString, addr.String())
+		}
 		var opts = []engine.Option{
 			engine.WithDatastore(ipds),
 			engine.WithHost(marketHost),
-			engine.WithRetrievalAddrs(marketHost.Addrs()...),
+			engine.WithRetrievalAddrs(addrsString...),
 			engine.WithEntriesCacheCapacity(cfg.EntriesCacheCapacity),
 			engine.WithChainedEntries(cfg.EntriesChunkSize),
 			engine.WithTopicName(topicName),

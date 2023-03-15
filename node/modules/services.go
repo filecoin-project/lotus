@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/host/eventbus"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -84,7 +85,7 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 	return nil
 }
 
-func protosContains(protos []string, search string) bool {
+func protosContains(protos []protocol.ID, search protocol.ID) bool {
 	for _, p := range protos {
 		if p == search {
 			return true

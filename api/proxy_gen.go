@@ -18,7 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -953,7 +953,7 @@ type StorageMinerMethods struct {
 
 	MarketListIncompleteDeals func(p0 context.Context) ([]storagemarket.MinerDeal, error) `perm:"read"`
 
-	MarketListRetrievalDeals func(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) `perm:"read"`
+	MarketListRetrievalDeals func(p0 context.Context) ([]struct{}, error) `perm:"read"`
 
 	MarketPendingDeals func(p0 context.Context) (PendingDealInfo, error) `perm:"write"`
 
@@ -5684,15 +5684,15 @@ func (s *StorageMinerStub) MarketListIncompleteDeals(p0 context.Context) ([]stor
 	return *new([]storagemarket.MinerDeal), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
+func (s *StorageMinerStruct) MarketListRetrievalDeals(p0 context.Context) ([]struct{}, error) {
 	if s.Internal.MarketListRetrievalDeals == nil {
-		return *new([]retrievalmarket.ProviderDealState), ErrNotSupported
+		return *new([]struct{}), ErrNotSupported
 	}
 	return s.Internal.MarketListRetrievalDeals(p0)
 }
 
-func (s *StorageMinerStub) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
-	return *new([]retrievalmarket.ProviderDealState), ErrNotSupported
+func (s *StorageMinerStub) MarketListRetrievalDeals(p0 context.Context) ([]struct{}, error) {
+	return *new([]struct{}), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketPendingDeals(p0 context.Context) (PendingDealInfo, error) {
