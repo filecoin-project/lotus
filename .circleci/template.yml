@@ -423,6 +423,11 @@ jobs:
         default: false
         description: >
           When true, pushes the image to Dockerhub
+      custom_docker_tag:
+        type: string
+        default: ""
+        description: >
+          A hack to let us push custom images from the CI
     steps:
       - setup_remote_docker
       - checkout
@@ -448,6 +453,11 @@ jobs:
                       name: Docker push
                       command: |
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>
+                        CUSTOM_DOCKER_TAG="<<parameters.custom_docker_tag>>"
+                        if [[ ! -z $CUSTOM_DOCKER_TAG ]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CUSTOM_DOCKER_TAG}"
+                          docker push filecoin/<<parameters.image>>:"${CUSTOM_DOCKER_TAG}"
+                        fi
                         if [["[[ ! -z $CIRCLE_SHA ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
                           docker push filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"
@@ -477,6 +487,11 @@ jobs:
                   - run:
                       name: Docker push
                       command: |
+                        CUSTOM_DOCKER_TAG="<<parameters.custom_docker_tag>>"
+                        if [[ ! -z $CUSTOM_DOCKER_TAG ]]; then
+                          docker image tag filecoin/<<parameters.image>>:<<parameters.channel>> filecoin/<<parameters.image>>:"${CUSTOM_DOCKER_TAG}"
+                          docker push filecoin/<<parameters.image>>:"${CUSTOM_DOCKER_TAG}"
+                        fi
                         docker push filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>>
                         if [["[[ ! -z $CIRCLE_SHA ]]"]]; then
                           docker image tag filecoin/<<parameters.image>>:<<parameters.channel>>-<<parameters.network>> filecoin/<<parameters.image>>:"${CIRCLE_SHA:0:7}"-<<parameters.network>>
