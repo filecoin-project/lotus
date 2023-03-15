@@ -46,7 +46,21 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 	return cfg, nil
 }
 
-func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
+type keepUncommented func(string) bool
+
+func CommentFilterDefault() keepUncommented {
+	return func(s string) bool {
+		return strings.Contains(s, "EnableSplitstore")
+	}
+}
+
+func CommentFilterNone() keepUncommented {
+	return func(string) bool {
+		return false
+	}
+}
+
+func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, filter keepUncommented) ([]byte, error) {
 	var nodeStr, defStr string
 	if cfgDef != nil {
 		buf := new(bytes.Buffer)
@@ -131,7 +145,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 			}
 
 			// if there is the same line in the default config, comment it out it output
-			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 {
+			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 && !filter(line) {
 				line = pad + "#" + line[len(pad):]
 			}
 			outLines = append(outLines, line)
@@ -159,5 +173,5 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 }
 
 func ConfigComment(t interface{}) ([]byte, error) {
-	return ConfigUpdate(t, nil, true)
+	return ConfigUpdate(t, nil, true, CommentFilterDefault())
 }
