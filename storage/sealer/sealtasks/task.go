@@ -36,6 +36,8 @@ const (
 
 	TTGenerateWindowPoSt  TaskType = "post/v0/windowproof"
 	TTGenerateWinningPoSt TaskType = "post/v0/winningproof"
+
+	TTNoop TaskType = ""
 )
 
 var order = map[TaskType]int{

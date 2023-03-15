@@ -221,7 +221,7 @@ type RpcReader struct {
 
 	res       chan readRes
 	beginOnce *sync.Once
-	closeOnce sync.Once
+	closeOnce *sync.Once
 }
 
 var ErrHasBody = errors.New("RPCReader has body, either already read from or from a client with no redirect support")
@@ -265,6 +265,7 @@ func (w *RpcReader) beginPost() {
 		w.postBody = nr.postBody
 		w.res = nr.res
 		w.beginOnce = nr.beginOnce
+		w.closeOnce = nr.closeOnce
 	}
 }
 
@@ -355,6 +356,7 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 			res:       make(chan readRes),
 			next:      ch,
 			beginOnce: &sync.Once{},
+			closeOnce: &sync.Once{},
 		}
 
 		switch req.Method {

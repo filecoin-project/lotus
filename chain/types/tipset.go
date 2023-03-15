@@ -234,6 +234,10 @@ func (ts *TipSet) MinTicketBlock() *BlockHeader {
 	return min
 }
 
+func (ts *TipSet) ParentMessageReceipts() cid.Cid {
+	return ts.blks[0].ParentMessageReceipts
+}
+
 func (ts *TipSet) ParentState() cid.Cid {
 	return ts.blks[0].ParentStateRoot
 }

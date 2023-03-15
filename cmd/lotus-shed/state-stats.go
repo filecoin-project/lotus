@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/docker/go-units"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -50,13 +50,13 @@ type fieldItem struct {
 
 type cacheNodeGetter struct {
 	ds    format.NodeGetter
-	cache *lru.TwoQueueCache
+	cache *lru.TwoQueueCache[cid.Cid, format.Node]
 }
 
 func newCacheNodeGetter(d format.NodeGetter, size int) (*cacheNodeGetter, error) {
 	cng := &cacheNodeGetter{ds: d}
 
-	cache, err := lru.New2Q(size)
+	cache, err := lru.New2Q[cid.Cid, format.Node](size)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func newCacheNodeGetter(d format.NodeGetter, size int) (*cacheNodeGetter, error)
 
 func (cng *cacheNodeGetter) Get(ctx context.Context, c cid.Cid) (format.Node, error) {
 	if n, ok := cng.cache.Get(c); ok {
-		return n.(format.Node), nil
+		return n, nil
 	}
 
 	n, err := cng.ds.Get(ctx, c)
@@ -308,7 +308,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 		}
 
 		tsExec := consensus.NewTipSetExecutor(filcns.RewardFunc)
-		sm, err := stmgr.NewStateManager(cs, tsExec, vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil)
+		sm, err := stmgr.NewStateManager(cs, tsExec, vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds)
 		if err != nil {
 			return err
 		}

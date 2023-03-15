@@ -410,6 +410,8 @@ func (n *NetworkStore) HashOnRead(enabled bool) {
 	return
 }
 
+func (*NetworkStore) Flush(context.Context) error { return nil }
+
 func (n *NetworkStore) Stop(ctx context.Context) error {
 	close(n.closing)
 

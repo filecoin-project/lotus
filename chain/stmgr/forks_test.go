@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
@@ -35,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -166,7 +168,7 @@ func TestForkHeightTriggers(t *testing.T) {
 				}
 
 				return st.Flush(ctx)
-			}}}, cg.BeaconSchedule())
+			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +286,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				migrationCount++
 				return root, nil
-			}}}, cg.BeaconSchedule())
+			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -502,7 +504,7 @@ func TestForkPreMigration(t *testing.T) {
 					return nil
 				},
 			}}},
-		}, cg.BeaconSchedule())
+		}, cg.BeaconSchedule(), datastore.NewMapDatastore())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -576,6 +578,7 @@ func TestDisablePreMigration(t *testing.T) {
 			}}},
 		},
 		cg.BeaconSchedule(),
+		datastore.NewMapDatastore(),
 	)
 	require.NoError(t, err)
 	require.NoError(t, sm.Start(context.Background()))
@@ -602,4 +605,103 @@ func TestDisablePreMigration(t *testing.T) {
 	}
 
 	require.Equal(t, 1, len(counter))
+}
+
+func TestMigrtionCache(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelInfo)
+
+	cg, err := gen.NewGenerator()
+	require.NoError(t, err)
+
+	counter := make(chan struct{}, 10)
+	metadataDs := datastore.NewMapDatastore()
+
+	sm, err := NewStateManager(
+		cg.ChainStore(),
+		consensus.NewTipSetExecutor(filcns.RewardFunc),
+		cg.StateManager().VMSys(),
+		UpgradeSchedule{{
+			Network: network.Version1,
+			Height:  testForkHeight,
+			Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
+				root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+
+				counter <- struct{}{}
+
+				return root, nil
+			}},
+		},
+		cg.BeaconSchedule(),
+		metadataDs,
+	)
+	require.NoError(t, err)
+	require.NoError(t, sm.Start(context.Background()))
+	defer func() {
+		require.NoError(t, sm.Stop(context.Background()))
+	}()
+
+	inv := consensus.NewActorRegistry()
+	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
+	inv.Register(actorstypes.Version0, nil, registry)
+
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
+		require.NoError(t, err)
+		nvm.SetInvoker(inv)
+		return nvm, nil
+	})
+
+	cg.SetStateManager(sm)
+
+	for i := 0; i < 50; i++ {
+		_, err := cg.NextTipSet()
+		require.NoError(t, err)
+	}
+
+	ts, err := cg.ChainStore().GetTipsetByHeight(context.Background(), testForkHeight, nil, false)
+	require.NoError(t, err)
+
+	root, _, err := stmgr.ComputeState(context.Background(), sm, testForkHeight+1, []*types.Message{}, ts)
+	require.NoError(t, err)
+	t.Log(root)
+
+	require.Equal(t, 1, len(counter))
+
+	{
+		sm, err := NewStateManager(
+			cg.ChainStore(),
+			consensus.NewTipSetExecutor(filcns.RewardFunc),
+			cg.StateManager().VMSys(),
+			UpgradeSchedule{{
+				Network: network.Version1,
+				Height:  testForkHeight,
+				Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
+					root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+
+					counter <- struct{}{}
+
+					return root, nil
+				}},
+			},
+			cg.BeaconSchedule(),
+			metadataDs,
+		)
+		require.NoError(t, err)
+		sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+			nvm, err := vm.NewLegacyVM(ctx, vmopt)
+			require.NoError(t, err)
+			nvm.SetInvoker(inv)
+			return nvm, nil
+		})
+
+		ctx := context.Background()
+
+		base, _, err := sm.ExecutionTrace(ctx, ts)
+		require.NoError(t, err)
+		_, err = sm.HandleStateForks(context.Background(), base, ts.Height(), nil, ts)
+		require.NoError(t, err)
+
+		// Should not have increased as we should be using the cached results in the metadataDs
+		require.Equal(t, 1, len(counter))
+	}
 }

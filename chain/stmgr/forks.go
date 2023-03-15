@@ -174,9 +174,16 @@ func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, err
 
 func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
 	retCid := root
-	var err error
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
+		migCid, ok, err := u.migrationResultCache.Get(ctx, root)
+		if err == nil && ok {
+			log.Infow("CACHED migration", "height", height, "from", root, "to", migCid)
+			return migCid, nil
+		} else if err != nil {
+			log.Errorw("failed to lookup previous migration result", "err", err)
+		}
+
 		startTime := time.Now()
 		log.Warnw("STARTING migration", "height", height, "from", root)
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
@@ -197,6 +204,11 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 			"to", retCid,
 			"duration", time.Since(startTime),
 		)
+
+		// Only set if migration ran, we do not want a root => root mapping
+		if err := u.migrationResultCache.Store(ctx, root, retCid); err != nil {
+			log.Errorw("failed to store migration result", "err", err)
+		}
 	}
 
 	return retCid, nil

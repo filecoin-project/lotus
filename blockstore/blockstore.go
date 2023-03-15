@@ -18,12 +18,17 @@ type Blockstore interface {
 	blockstore.Blockstore
 	blockstore.Viewer
 	BatchDeleter
+	Flusher
 }
 
 // BasicBlockstore is an alias to the original IPFS Blockstore.
 type BasicBlockstore = blockstore.Blockstore
 
 type Viewer = blockstore.Viewer
+
+type Flusher interface {
+	Flush(context.Context) error
+}
 
 type BatchDeleter interface {
 	DeleteMany(ctx context.Context, cids []cid.Cid) error
@@ -105,6 +110,13 @@ type adaptedBlockstore struct {
 }
 
 var _ Blockstore = (*adaptedBlockstore)(nil)
+
+func (a *adaptedBlockstore) Flush(ctx context.Context) error {
+	if flusher, canFlush := a.Blockstore.(Flusher); canFlush {
+		return flusher.Flush(ctx)
+	}
+	return nil
+}
 
 func (a *adaptedBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
 	blk, err := a.Get(ctx, cid)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 )
 
 type TestCase struct {
@@ -176,6 +177,20 @@ func TestParseEthAddr(t *testing.T) {
 
 		require.Equal(t, addr, faddr)
 	}
+}
+
+func TestMaskedIDInF4(t *testing.T) {
+	addr, err := address.NewIDAddress(100)
+	require.NoError(t, err)
+
+	eaddr, err := EthAddressFromFilecoinAddress(addr)
+	require.NoError(t, err)
+
+	badaddr, err := address.NewDelegatedAddress(builtin.EthereumAddressManagerActorID, eaddr[:])
+	require.NoError(t, err)
+
+	_, err = EthAddressFromFilecoinAddress(badaddr)
+	require.Error(t, err)
 }
 
 func TestUnmarshalEthCall(t *testing.T) {
