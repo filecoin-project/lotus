@@ -75,7 +75,6 @@ require (
 	github.com/icza/backscanner v0.0.0-20210726202459-ac2ffc679f94
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/ipfs/bbloom v0.0.4
-	github.com/ipfs/go-block-format v0.1.1
 	github.com/ipfs/go-blockservice v0.5.0
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-cidutil v0.1.0
@@ -232,6 +231,7 @@ require (
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/iancoleman/orderedmap v0.1.0 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
+	github.com/ipfs/go-block-format v0.1.1 // indirect
 	github.com/ipfs/go-filestore v1.2.0 // indirect
 	github.com/ipfs/go-ipfs-cmds v0.8.2 // indirect
 	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect
