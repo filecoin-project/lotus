@@ -338,7 +338,13 @@
   #EthTxHashMappingLifetimeDays = 0
 
   [Fevm.Events]
-    # EnableEthRPC enables APIs that
+    # Save specifies whether or not to save and index emitted events, or discard them. Events
+    # are discarded by default unless the Eth RPC is also enabled by setting EnableEthRPC.
+    #
+    # type: bool
+    # env var: LOTUS_FEVM_EVENTS_SAVE
+    #Save = false
+
     # DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
     # The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
     #

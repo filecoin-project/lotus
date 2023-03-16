@@ -111,6 +111,7 @@ func DefaultFullNode() *FullNode {
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
 			Events: Events{
+				Save:                     false,
 				DisableRealTimeFilterAPI: false,
 				DisableHistoricFilterAPI: false,
 				FilterTTL:                Duration(time.Hour * 24),

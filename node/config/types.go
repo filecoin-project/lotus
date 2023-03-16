@@ -693,7 +693,10 @@ type FevmConfig struct {
 }
 
 type Events struct {
-	// EnableEthRPC enables APIs that
+	// Save specifies whether or not to save and index emitted events, or discard them. Events
+	// are discarded by default unless the Eth RPC is also enabled by setting EnableEthRPC.
+	Save bool
+
 	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
 	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
 	DisableRealTimeFilterAPI bool

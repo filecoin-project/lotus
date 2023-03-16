@@ -343,11 +343,17 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 	},
 	"Events": []DocField{
 		{
+			Name: "Save",
+			Type: "bool",
+
+			Comment: `Save specifies whether or not to save and index emitted events, or discard them. Events
+are discarded by default unless the Eth RPC is also enabled by setting EnableEthRPC.`,
+		},
+		{
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
 
-			Comment: `EnableEthRPC enables APIs that
-DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+			Comment: `DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
 The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
 		},
 		{
