@@ -19,7 +19,7 @@ import (
 var log = logging.Logger("sub-cb")
 
 const (
-	// GcSanityCheck determines the number of epochs that in the past
+	// GcSanityCheck determines the number of epochs in the past
 	// that will be garbage collected from the current epoch.
 	GcSanityCheck = 5
 	// GcLookback determines the number of epochs kept in the consistent
