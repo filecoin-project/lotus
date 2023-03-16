@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -64,7 +65,12 @@ var msgindexBackfillCmd = &cli.Command{
 		}
 		epochs := cctx.Int("epochs")
 
-		dbPath := path.Join(cctx.String("repo"), "sqlite", "msgindex.db")
+		basePath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		dbPath := path.Join(basePath, "sqlite", "msgindex.db")
 		db, err := sql.Open("sqlite3", dbPath)
 		if err != nil {
 			return err
@@ -176,7 +182,12 @@ var msgindexPruneCmd = &cli.Command{
 			}
 		}
 
-		dbPath := path.Join(cctx.String("repo"), "sqlite", "msgindex.db")
+		basePath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		dbPath := path.Join(basePath, "sqlite", "msgindex.db")
 		db, err := sql.Open("sqlite3", dbPath)
 		if err != nil {
 			return err
