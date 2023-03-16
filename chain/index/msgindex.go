@@ -290,8 +290,13 @@ func (x *msgIndex) onHeadChange(rev, app []*types.TipSet) error {
 	// do it in the background to avoid blocking head change processing
 	x.mx.Lock()
 	x.pend = append(x.pend, headChange{rev: rev, app: app})
-	// TODO log loudly if this is building backlog (it shouldn't but better be safe on this)
+	pendLen := len(x.pend)
 	x.mx.Unlock()
+
+	// complain loudly if this is building backlog
+	if pendLen > 10 {
+		log.Warnf("message index head change processing is building backlog: %d pending head changes", pendLen)
+	}
 
 	select {
 	case x.sema <- struct{}{}:
