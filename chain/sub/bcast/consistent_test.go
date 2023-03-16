@@ -61,7 +61,7 @@ func testSimpleDelivery(t *testing.T, cb *bcast.ConsistentBCast, epoch abi.Chain
 
 func TestSeveralEpochs(t *testing.T) {
 	cb := bcast.NewConsistentBCast(TEST_DELAY)
-	numEpochs := 5
+	numEpochs := 6
 	wg := new(sync.WaitGroup)
 	wg.Add(numEpochs)
 	for i := 0; i < numEpochs; i++ {
@@ -83,7 +83,7 @@ func TestSeveralEpochs(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
-	require.Equal(t, cb.Len(), bcast.GcLookback)
+	require.Equal(t, cb.Len(), numEpochs)
 }
 
 // bias is expected to be 0-1

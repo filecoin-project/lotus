@@ -40,7 +40,7 @@ type bcastDict struct {
 }
 
 func (bd *bcastDict) load(key []byte) (*blksInfo, bool) {
-	v, ok := bd.m.Load(key)
+	v, ok := bd.m.Load(string(key))
 	if !ok {
 		return nil, ok
 	}
@@ -48,11 +48,11 @@ func (bd *bcastDict) load(key []byte) (*blksInfo, bool) {
 }
 
 func (bd *bcastDict) store(key []byte, d *blksInfo) {
-	bd.m.Store(key, d)
+	bd.m.Store(string(key), d)
 }
 
 func (bd *bcastDict) blkLen(key []byte) int {
-	v, ok := bd.m.Load(key)
+	v, ok := bd.m.Load(string(key))
 	if !ok {
 		return 0
 	}
