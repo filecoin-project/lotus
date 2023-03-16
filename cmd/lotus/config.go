@@ -31,7 +31,7 @@ var configDefaultCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		c := config.DefaultFullNode()
 
-		cb, err := config.ConfigUpdate(c, nil, !cctx.Bool("no-comment"), config.DefaultFullNodeCommentFilter())
+		cb, err := config.ConfigUpdate(c, nil, !cctx.Bool("no-comment"), config.KeepUncommented(config.MatchEnableSplitstoreField))
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ var configUpdateCmd = &cli.Command{
 
 		cfgDef := config.DefaultFullNode()
 
-		updated, err := config.ConfigUpdate(cfgNode, cfgDef, !cctx.Bool("no-comment"), config.DefaultFullNodeCommentFilter())
+		updated, err := config.ConfigUpdate(cfgNode, cfgDef, !cctx.Bool("no-comment"), config.KeepUncommented(config.MatchEnableSplitstoreField))
 		if err != nil {
 			return err
 		}

@@ -102,23 +102,37 @@ func LoadabilityCheckNone() loadabilityCheck {
 	}
 }
 
-type keepUncommented func(string) bool
+type cfgUpdateOpts struct {
+	keepUncommented func(string) bool
+}
 
-func DefaultFullNodeCommentFilter() keepUncommented {
-	return func(s string) bool {
-		enableSplitstoreRx := regexp.MustCompile("^[\t\n\f\r ]*EnableSplitstore =")
-		match := enableSplitstoreRx.FindString(s)
-		return match != ""
+// UpdateCfgOpt is a functional option for updating the config
+type UpdateCfgOpt func(opts *cfgUpdateOpts) error
+
+// KeepUncommented sets a function for matching default valeus that should remain uncommented during
+// a config update that comments out default values.
+func KeepUncommented(f func(string) bool) UpdateCfgOpt {
+	return func(opts *cfgUpdateOpts) error {
+		opts.keepUncommented = f
+		return nil
 	}
 }
 
-func CommentFilterNone() keepUncommented {
-	return func(string) bool {
-		return false
-	}
+// Match the EnableSplitstore field
+func MatchEnableSplitstoreField(s string) bool {
+	enableSplitstoreRx := regexp.MustCompile("^[\t\n\f\r ]*EnableSplitstore =")
+	match := enableSplitstoreRx.FindString(s)
+	return match != ""
 }
 
-func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, filter keepUncommented) ([]byte, error) {
+// ConfigUpdate takes in a config and a default config and optionally comments out default values
+func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, opts ...UpdateCfgOpt) ([]byte, error) {
+	var updateOpts cfgUpdateOpts
+	for _, opt := range opts {
+		if err := opt(&updateOpts); err != nil {
+			return nil, xerrors.Errorf("failed to apply update cfg option to ConfigUpdate's config: %w")
+		}
+	}
 	var nodeStr, defStr string
 	if cfgDef != nil {
 		buf := new(bytes.Buffer)
@@ -202,8 +216,10 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, filter keepUncomment
 				}
 			}
 
+			// filter lines from options
+			optsFilter := updateOpts.keepUncommented != nil && updateOpts.keepUncommented(line)
 			// if there is the same line in the default config, comment it out it output
-			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 && !filter(line) {
+			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 && !optsFilter {
 				line = pad + "#" + line[len(pad):]
 			}
 			outLines = append(outLines, line)
@@ -231,5 +247,5 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, filter keepUncomment
 }
 
 func ConfigComment(t interface{}) ([]byte, error) {
-	return ConfigUpdate(t, nil, true, DefaultFullNodeCommentFilter())
+	return ConfigUpdate(t, nil, true, KeepUncommented(MatchEnableSplitstoreField))
 }
