@@ -2165,7 +2165,10 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 	gasOutputs := vm.ComputeGasOutputs(lookup.Receipt.GasUsed, int64(tx.Gas), baseFee, big.Int(tx.MaxFeePerGas), big.Int(tx.MaxPriorityFeePerGas), true)
 	totalSpent := big.Sum(gasOutputs.BaseFeeBurn, gasOutputs.MinerTip, gasOutputs.OverEstimationBurn)
 
-	effectiveGasPrice := big.Div(totalSpent, big.NewInt(lookup.Receipt.GasUsed))
+	effectiveGasPrice := big.Zero()
+	if lookup.Receipt.GasUsed > 0 {
+		effectiveGasPrice = big.Div(totalSpent, big.NewInt(lookup.Receipt.GasUsed))
+	}
 	receipt.EffectiveGasPrice = ethtypes.EthBigInt(effectiveGasPrice)
 
 	if receipt.To == nil && lookup.Receipt.ExitCode.IsSuccess() {
