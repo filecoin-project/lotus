@@ -176,7 +176,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
 	minfo, err := sm.msgIndex.GetMsgInfo(ctx, mcid)
 	if err != nil {
-		return nil, nil, cid.Undef, err
+		return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in index: %w", err)
 	}
 
 	// check the height against the current tipset; minimum execution confidence requires that the
@@ -190,7 +190,7 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 	// TODO optimization: the index should have it implicitly so we can return it in the msginfo.
 	xts, err := sm.cs.GetTipsetByHeight(ctx, minfo.Epoch+1, curTs, false)
 	if err != nil {
-		return nil, nil, cid.Undef, err
+		return nil, nil, cid.Undef, xerrors.Errorf("error looking up execution tipset: %w", err)
 	}
 
 	// check that it is indeed the parent of the inclusion tipset
@@ -205,7 +205,7 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 	}
 
 	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, xts, mcid, m.VMMessage(), false)
-	return xts, r, foundMsg, err
+	return xts, r, foundMsg, xerrors.Errorf("error in tipstExecutedMessage: %w", err)
 }
 
 // searchBackForMsg searches up to limit tipsets backwards from the given
