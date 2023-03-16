@@ -26,7 +26,7 @@ var log = logging.Logger("msgindex")
 var dbName = "msgindex.db"
 var dbDefs = []string{
 	`CREATE TABLE IF NOT EXISTS messages (
-     cid VARCHAR(80) PRIMARY KEY,
+     cid VARCHAR(80) PRIMARY KEY ON CONFLICT REPLACE,
      tipset_cid VARCHAR(80) NOT NULL,
      epoch INTEGER NOT NULL
    )`,
