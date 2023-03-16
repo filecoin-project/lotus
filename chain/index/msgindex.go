@@ -314,8 +314,11 @@ func (x *msgIndex) background(ctx context.Context) {
 		case <-x.sema:
 			err := x.processHeadChanges(ctx)
 			if err != nil {
-				// TODO should we shut down the index altogether? we just log for now.
-				log.Errorf("error processing head change notifications: %s", err)
+				// we can't rely on an inconsistent index, so shut it down.
+				log.Errorf("error processing head change notifications: %s; shutting down message index", err)
+				if err2 := x.Close(); err2 != nil {
+					log.Errorf("error shutting down index: %s", err2)
+				}
 			}
 
 		case <-ctx.Done():
