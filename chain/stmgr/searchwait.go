@@ -151,7 +151,17 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 
 	switch {
 	case err == nil:
-		return fts, r, foundMsg, nil
+		if r != nil && foundMsg.Defined() {
+			return fts, r, foundMsg, nil
+		}
+
+		// debug log this, it's noteworthy
+		if r == nil {
+			log.Debugf("missing receipt for message in index for %s", mcid)
+		}
+		if !foundMsg.Defined() {
+			log.Debugf("message %s not found", mcid)
+		}
 
 	case errors.Is(err, index.ErrNotFound):
 		// ok for the index to have incomplete data
