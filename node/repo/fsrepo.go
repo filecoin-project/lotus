@@ -545,11 +545,12 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
-	loadabilityCheck := config.LoadabilityCheckNone()
+	var opts []config.LoadCfgOpt
 	if fsr.repoType == FullNode {
-		loadabilityCheck = config.DefaultFullNodeLoadabilityCheck()
+		opts = append(opts, config.SetCanFallbackOnDefault(config.NoDefaultForSplitstoreTransition))
+		opts = append(opts, config.SetValidate(config.ValidateSplitstoreSet))
 	}
-	return config.FromFile(fsr.configPath, fsr.repoType.Config(), loadabilityCheck)
+	return config.FromFile(fsr.configPath, fsr.repoType.Config(), opts...)
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {

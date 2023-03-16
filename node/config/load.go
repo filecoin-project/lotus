@@ -18,42 +18,40 @@ import (
 
 // FromFile loads config from a specified file overriding defaults specified in
 // the def parameter. If file does not exist or is empty defaults are assumed.
-func FromFile(path string, def interface{}, lc loadabilityCheck) (interface{}, error) {
+func FromFile(path string, def interface{}, opts ...LoadCfgOpt) (interface{}, error) {
+	var loadOpts cfgLoadOpts
+	for _, opt := range opts {
+		if err := opt(&loadOpts); err != nil {
+			return nil, xerrors.Errorf("failed to apply load cfg option: %w", err)
+		}
+	}
+
 	// check for loadability
 	file, err := os.Open(path)
+	defer file.Close() //nolint:errcheck // The file is RO
 	switch {
 	case os.IsNotExist(err):
-		if err := lc.configNotFound(); err != nil {
-			return nil, err
+		if loadOpts.canFallbackOnDefault != nil {
+			if err := loadOpts.canFallbackOnDefault(); err != nil {
+				return nil, err
+			}
 		}
 		return def, nil
 	case err != nil:
 		return nil, err
 	}
-	cfgBs, err := ioutil.ReadAll(file)
+
+	var buf bytes.Buffer
+	tee := io.TeeReader(file, &buf)
+	cfgBs, err := ioutil.ReadAll(tee)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to read config for loadability checks %w", err)
 	}
 	s := string(cfgBs)
-	if err := lc.configOk(s); err != nil {
+	if err := loadOpts.validate(s); err != nil {
 		return nil, xerrors.Errorf("config failed loadability check: %w", err)
 	}
-	if err := file.Close(); err != nil {
-		return nil, err
-	}
-
-	file, err = os.Open(path)
-	switch {
-	case os.IsNotExist(err):
-		if err := lc.configNotFound(); err != nil {
-			return nil, err
-		}
-		return def, nil
-	case err != nil:
-		return nil, err
-	}
-	defer file.Close() //nolint:errcheck // The file is RO
-	return FromReader(file, def)
+	return FromReader(&buf, def)
 }
 
 // FromReader loads config from a reader instance.
@@ -78,6 +76,39 @@ type loadabilityCheck struct {
 	configNotFound func() error
 }
 
+type cfgLoadOpts struct {
+	canFallbackOnDefault func() error
+	validate             func(string) error
+}
+
+type LoadCfgOpt func(opts *cfgLoadOpts) error
+
+func SetCanFallbackOnDefault(f func() error) LoadCfgOpt {
+	return func(opts *cfgLoadOpts) error {
+		opts.canFallbackOnDefault = f
+		return nil
+	}
+}
+
+func SetValidate(f func(string) error) LoadCfgOpt {
+	return func(opts *cfgLoadOpts) error {
+		opts.validate = f
+		return nil
+	}
+}
+
+func NoDefaultForSplitstoreTransition() error {
+	return xerrors.Errorf("FullNode config not found and fallback to default disallowed while we transition to splitstore discard default.  Use `lotus config default` to set this repo up with a default config.  Be sure to set `EnableSplitstore` to `false` if you are running a full archive node")
+}
+
+func ValidateSplitstoreSet(cfgRaw string) error {
+	explicitSplitstoreRx := regexp.MustCompile("\n[\t\n\f\r ]*EnableSplitstore =")
+	if match := explicitSplitstoreRx.FindString(cfgRaw); match == "" {
+		return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
+	}
+	return nil
+}
+
 func DefaultFullNodeLoadabilityCheck() loadabilityCheck {
 	configOk := func(cfgRaw string) error {
 		explicitSplitstoreRx := regexp.MustCompile("\n[\t\n\f\r ]*EnableSplitstore =")
@@ -92,13 +123,6 @@ func DefaultFullNodeLoadabilityCheck() loadabilityCheck {
 	return loadabilityCheck{
 		configOk:       configOk,
 		configNotFound: configNotFound,
-	}
-}
-
-func LoadabilityCheckNone() loadabilityCheck {
-	return loadabilityCheck{
-		configOk:       func(string) error { return nil },
-		configNotFound: func() error { return nil },
 	}
 }
 

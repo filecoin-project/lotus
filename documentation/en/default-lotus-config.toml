@@ -191,7 +191,7 @@
 [Chainstore]
   # type: bool
   # env var: LOTUS_CHAINSTORE_ENABLESPLITSTORE
-  #EnableSplitstore = true
+  EnableSplitstore = true
 
   [Chainstore.Splitstore]
     # ColdStoreType specifies the type of the coldstore.

@@ -66,7 +66,7 @@ func restore(cctx *cli.Context, r repo.Repo) error {
 				return
 			}
 
-			ff, err := config.FromFile(cf, rcfg, config.LoadabilityCheckNone())
+			ff, err := config.FromFile(cf, rcfg)
 			if err != nil {
 				cerr = xerrors.Errorf("loading config: %w", err)
 				return
