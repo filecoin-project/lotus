@@ -113,13 +113,13 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, self p
 			if src != self {
 				log.Debugf("Waiting for consistent broadcast of block in height: %v", blk.Header.Height)
 				if err := cb.WaitForDelivery(blk.Header); err != nil {
-					log.Errorf("couldn't deliver block to syncer over pubsub: %s; source: %s", err, src)
+					log.Errorf("not informing syncer about new block, potential equivocation detected (cid: %s, source: %s): %s; ", blk.Header.Cid(), src, err)
 					return
 				}
 			}
 			// Garbage collect the broadcast state
 			cb.GarbageCollect(blk.Header.Height)
-			log.Debugf("Block in height %v delivered successfully (cid=)", blk.Header.Height, blk.Cid())
+			log.Debugf("Block in height %v delivered successfully (cid=%s)", blk.Header.Height, blk.Cid())
 
 			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
 				Header:        blk.Header,
