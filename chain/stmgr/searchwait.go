@@ -19,6 +19,7 @@ import (
 // happened, with an optional limit to how many epochs it will search. It guarantees that the message has been on
 // chain for at least confidence epochs without being reverted before returning.
 func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+	// TODO use the index to speed this up.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
