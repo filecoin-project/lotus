@@ -167,8 +167,10 @@ func (t walkSchedTaskType) String() string {
 }
 
 type walkTask struct {
-	c        cid.Cid
-	taskType walkSchedTaskType
+	c                cid.Cid
+	taskType         walkSchedTaskType
+	topLevelTaskType walkSchedTaskType
+	topLevelTaskCid  cid.Cid
 }
 
 // an ever growing FIFO
@@ -317,8 +319,10 @@ func newWalkScheduler(ctx context.Context, store bstore.Blockstore, cfg walkSche
 			cancel() // kill workers
 			return nil, ctx.Err()
 		case s.workerTasks.in <- walkTask{
-			c:        b.Cid(),
-			taskType: blockTask,
+			c:                b.Cid(),
+			taskType:         blockTask,
+			topLevelTaskType: blockTask,
+			topLevelTaskCid:  b.Cid(),
 		}:
 		}
 	}
@@ -417,7 +421,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 
 	blk, err := s.store.Get(s.ctx, t.c)
 	if err != nil {
-		return xerrors.Errorf("writing object to car, bs.Get: %w", err)
+		return xerrors.Errorf("writing object to car. Task: %s. Top-Level: %s (%s). bs.Get: %w", t.taskType, t.topLevelTaskType, t.topLevelTaskCid, err)
 	}
 
 	s.results <- taskResult{
@@ -427,13 +431,8 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 
 	// extract relevant dags to walk from the block
 	if t.taskType == blockTask {
-		blk := t.c
-		data, err := s.store.Get(s.ctx, blk)
-		if err != nil {
-			return err
-		}
 		var b types.BlockHeader
-		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
+		if err := b.UnmarshalCBOR(bytes.NewBuffer(blk.RawData())); err != nil {
 			return xerrors.Errorf("unmarshalling block header (cid=%s): %w", blk, err)
 		}
 		if b.Height%1_000 == 0 {
@@ -443,13 +442,17 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 			log.Info("exporting genesis block")
 			for i := range b.Parents {
 				s.enqueueIfNew(walkTask{
-					c:        b.Parents[i],
-					taskType: dagTask,
+					c:                b.Parents[i],
+					taskType:         dagTask,
+					topLevelTaskType: blockTask,
+					topLevelTaskCid:  t.c,
 				})
 			}
 			s.enqueueIfNew(walkTask{
-				c:        b.ParentStateRoot,
-				taskType: stateTask,
+				c:                b.ParentStateRoot,
+				taskType:         stateTask,
+				topLevelTaskType: stateTask,
+				topLevelTaskCid:  t.c,
 			})
 
 			return s.sendFinish(workerN)
@@ -457,33 +460,41 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 		// enqueue block parents
 		for i := range b.Parents {
 			s.enqueueIfNew(walkTask{
-				c:        b.Parents[i],
-				taskType: blockTask,
+				c:                b.Parents[i],
+				taskType:         blockTask,
+				topLevelTaskType: blockTask,
+				topLevelTaskCid:  t.c,
 			})
 		}
 		if s.cfg.tail.Height() >= b.Height {
-			log.Debugw("tail reached: only blocks will be exported from now until genesis", "cid", blk.String())
+			log.Debugw("tail reached: only blocks will be exported from now until genesis", "cid", t.c.String())
 			return nil
 		}
 
 		if s.cfg.includeMessages {
 			// enqueue block messages
 			s.enqueueIfNew(walkTask{
-				c:        b.Messages,
-				taskType: messageTask,
+				c:                b.Messages,
+				taskType:         messageTask,
+				topLevelTaskType: messageTask,
+				topLevelTaskCid:  t.c,
 			})
 		}
 		if s.cfg.includeReceipts {
 			// enqueue block receipts
 			s.enqueueIfNew(walkTask{
-				c:        b.ParentMessageReceipts,
-				taskType: receiptTask,
+				c:                b.ParentMessageReceipts,
+				taskType:         receiptTask,
+				topLevelTaskType: receiptTask,
+				topLevelTaskCid:  t.c,
 			})
 		}
 		if s.cfg.includeState {
 			s.enqueueIfNew(walkTask{
-				c:        b.ParentStateRoot,
-				taskType: stateTask,
+				c:                b.ParentStateRoot,
+				taskType:         stateTask,
+				topLevelTaskType: stateTask,
+				topLevelTaskCid:  t.c,
 			})
 		}
 
@@ -497,8 +508,10 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 		}
 
 		s.enqueueIfNew(walkTask{
-			c:        c,
-			taskType: dagTask,
+			c:                c,
+			taskType:         dagTask,
+			topLevelTaskType: t.topLevelTaskType,
+			topLevelTaskCid:  t.topLevelTaskCid,
 		})
 	})
 }
