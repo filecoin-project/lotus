@@ -106,7 +106,9 @@ type keepUncommented func(string) bool
 
 func DefaultFullNodeCommentFilter() keepUncommented {
 	return func(s string) bool {
-		return strings.Contains(s, "EnableSplitstore")
+		enableSplitstoreRx := regexp.MustCompile("^[\t\n\f\r ]*EnableSplitstore =")
+		match := enableSplitstoreRx.FindString(s)
+		return match != ""
 	}
 }
 
