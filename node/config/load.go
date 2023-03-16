@@ -28,7 +28,7 @@ func FromFile(path string, def interface{}, opts ...LoadCfgOpt) (interface{}, er
 
 	// check for loadability
 	file, err := os.Open(path)
-	defer file.Close() //nolint:errcheck // The file is RO
+	defer file.Close() //nolint:errcheck,staticcheck // The file is RO
 	switch {
 	case os.IsNotExist(err):
 		if loadOpts.canFallbackOnDefault != nil {
@@ -70,12 +70,6 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 	return cfg, nil
 }
 
-// function from raw config string to loadability
-type loadabilityCheck struct {
-	configOk       func(string) error
-	configNotFound func() error
-}
-
 type cfgLoadOpts struct {
 	canFallbackOnDefault func() error
 	validate             func(string) error
@@ -109,23 +103,6 @@ func ValidateSplitstoreSet(cfgRaw string) error {
 	return nil
 }
 
-func DefaultFullNodeLoadabilityCheck() loadabilityCheck {
-	configOk := func(cfgRaw string) error {
-		explicitSplitstoreRx := regexp.MustCompile("\n[\t\n\f\r ]*EnableSplitstore =")
-		if match := explicitSplitstoreRx.FindString(cfgRaw); match == "" {
-			return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
-		}
-		return nil
-	}
-	configNotFound := func() error {
-		return xerrors.Errorf("FullNode config not found and fallback to default disallowed while we transition to splitstore discard default.  Use `lotus config default` to set this repo up with a default config.  Be sure to set `EnableSplitstore` to `false` if you are running a full archive node")
-	}
-	return loadabilityCheck{
-		configOk:       configOk,
-		configNotFound: configNotFound,
-	}
-}
-
 type cfgUpdateOpts struct {
 	keepUncommented func(string) bool
 }
@@ -154,7 +131,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, opts ...UpdateCfgOpt
 	var updateOpts cfgUpdateOpts
 	for _, opt := range opts {
 		if err := opt(&updateOpts); err != nil {
-			return nil, xerrors.Errorf("failed to apply update cfg option to ConfigUpdate's config: %w")
+			return nil, xerrors.Errorf("failed to apply update cfg option to ConfigUpdate's config: %w", err)
 		}
 	}
 	var nodeStr, defStr string
