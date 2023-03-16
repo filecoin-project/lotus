@@ -193,7 +193,7 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 		return nil, nil, cid.Undef, xerrors.Errorf("error looking up execution tipset: %w", err)
 	}
 
-	// check that it is indeed the parent of the inclusion tipset
+	// check that the parent of the execution index is indeed the inclusion tipset
 	parent := xts.Parents()
 	parentCid, err := parent.Cid()
 	if err != nil {
