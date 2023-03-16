@@ -550,7 +550,10 @@ func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
 		opts = append(opts, config.SetCanFallbackOnDefault(config.NoDefaultForSplitstoreTransition))
 		opts = append(opts, config.SetValidate(config.ValidateSplitstoreSet))
 	}
-	return config.FromFile(fsr.configPath, fsr.repoType.Config(), opts...)
+	opts = append(opts, config.SetDefault(func() (interface{}, error) {
+		return fsr.repoType.Config(), nil
+	}))
+	return config.FromFile(fsr.configPath, opts...)
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {

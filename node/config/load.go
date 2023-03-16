@@ -18,17 +18,26 @@ import (
 
 // FromFile loads config from a specified file overriding defaults specified in
 // the def parameter. If file does not exist or is empty defaults are assumed.
-func FromFile(path string, def interface{}, opts ...LoadCfgOpt) (interface{}, error) {
+func FromFile(path string, opts ...LoadCfgOpt) (interface{}, error) {
 	var loadOpts cfgLoadOpts
+	var err error
 	for _, opt := range opts {
-		if err := opt(&loadOpts); err != nil {
+		if err = opt(&loadOpts); err != nil {
 			return nil, xerrors.Errorf("failed to apply load cfg option: %w", err)
 		}
 	}
-
+	var def interface{}
+	if loadOpts.defaultCfg != nil {
+		def, err = loadOpts.defaultCfg()
+		if err != nil {
+			return nil, xerrors.Errorf("no config found")
+		}
+	}
 	// check for loadability
 	file, err := os.Open(path)
-	defer file.Close() //nolint:errcheck,staticcheck // The file is RO
+	if err != nil {
+		return nil, err
+	}
 	switch {
 	case os.IsNotExist(err):
 		if loadOpts.canFallbackOnDefault != nil {
@@ -40,18 +49,16 @@ func FromFile(path string, def interface{}, opts ...LoadCfgOpt) (interface{}, er
 	case err != nil:
 		return nil, err
 	}
-
-	var buf bytes.Buffer
-	tee := io.TeeReader(file, &buf)
-	cfgBs, err := ioutil.ReadAll(tee)
+	defer file.Close() //nolint:errcheck,staticcheck // The file is RO
+	cfgBs, err := ioutil.ReadAll(file)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to read config for loadability checks %w", err)
+		return nil, xerrors.Errorf("failed to read config for validation checks %w", err)
 	}
-	s := string(cfgBs)
-	if err := loadOpts.validate(s); err != nil {
-		return nil, xerrors.Errorf("config failed loadability check: %w", err)
+	buf := bytes.NewBuffer(cfgBs)
+	if err := loadOpts.validate(buf.String()); err != nil {
+		return nil, xerrors.Errorf("config failed validation: %w", err)
 	}
-	return FromReader(&buf, def)
+	return FromReader(buf, def)
 }
 
 // FromReader loads config from a reader instance.
@@ -71,11 +78,19 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 }
 
 type cfgLoadOpts struct {
+	defaultCfg           func() (interface{}, error)
 	canFallbackOnDefault func() error
 	validate             func(string) error
 }
 
 type LoadCfgOpt func(opts *cfgLoadOpts) error
+
+func SetDefault(f func() (interface{}, error)) LoadCfgOpt {
+	return func(opts *cfgLoadOpts) error {
+		opts.defaultCfg = f
+		return nil
+	}
+}
 
 func SetCanFallbackOnDefault(f func() error) LoadCfgOpt {
 	return func(opts *cfgLoadOpts) error {
@@ -96,14 +111,15 @@ func NoDefaultForSplitstoreTransition() error {
 }
 
 func ValidateSplitstoreSet(cfgRaw string) error {
-	explicitSplitstoreRx := regexp.MustCompile("\n[\t\n\f\r ]*EnableSplitstore =")
-	if match := explicitSplitstoreRx.FindString(cfgRaw); match == "" {
+	explicitSplitstoreRx := regexp.MustCompile(`(?m)^\s*EnableSplitstore\s*=`)
+	if !explicitSplitstoreRx.MatchString(cfgRaw) {
 		return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
 	}
 	return nil
 }
 
 type cfgUpdateOpts struct {
+	comment         bool
 	keepUncommented func(string) bool
 }
 
@@ -119,15 +135,25 @@ func KeepUncommented(f func(string) bool) UpdateCfgOpt {
 	}
 }
 
+func Commented(commented bool) UpdateCfgOpt {
+	return func(opts *cfgUpdateOpts) error {
+		opts.comment = commented
+		return nil
+	}
+}
+
+func DefaultKeepUncommented() UpdateCfgOpt {
+	return KeepUncommented(MatchEnableSplitstoreField)
+}
+
 // Match the EnableSplitstore field
 func MatchEnableSplitstoreField(s string) bool {
-	enableSplitstoreRx := regexp.MustCompile("^[\t\n\f\r ]*EnableSplitstore =")
-	match := enableSplitstoreRx.FindString(s)
-	return match != ""
+	enableSplitstoreRx := regexp.MustCompile(`(?m)^\s*EnableSplitstore\s*=`)
+	return enableSplitstoreRx.MatchString(s)
 }
 
 // ConfigUpdate takes in a config and a default config and optionally comments out default values
-func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, opts ...UpdateCfgOpt) ([]byte, error) {
+func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, error) {
 	var updateOpts cfgUpdateOpts
 	for _, opt := range opts {
 		if err := opt(&updateOpts); err != nil {
@@ -155,7 +181,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, opts ...UpdateCfgOpt
 		nodeStr = buf.String()
 	}
 
-	if comment {
+	if updateOpts.comment {
 		// create a map of default lines, so we can comment those out later
 		defLines := strings.Split(defStr, "\n")
 		defaults := map[string]struct{}{}
@@ -248,5 +274,5 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool, opts ...UpdateCfgOpt
 }
 
 func ConfigComment(t interface{}) ([]byte, error) {
-	return ConfigUpdate(t, nil, true, KeepUncommented(MatchEnableSplitstoreField))
+	return ConfigUpdate(t, nil, Commented(true), DefaultKeepUncommented())
 }
