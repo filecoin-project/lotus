@@ -55,8 +55,10 @@ func FromFile(path string, opts ...LoadCfgOpt) (interface{}, error) {
 		return nil, xerrors.Errorf("failed to read config for validation checks %w", err)
 	}
 	buf := bytes.NewBuffer(cfgBs)
-	if err := loadOpts.validate(buf.String()); err != nil {
-		return nil, xerrors.Errorf("config failed validation: %w", err)
+	if loadOpts.validate != nil {
+		if err := loadOpts.validate(buf.String()); err != nil {
+			return nil, xerrors.Errorf("config failed validation: %w", err)
+		}
 	}
 	return FromReader(buf, def)
 }
