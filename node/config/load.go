@@ -82,12 +82,12 @@ func DefaultFullNodeLoadabilityCheck() loadabilityCheck {
 	configOk := func(cfgRaw string) error {
 		explicitSplitstoreRx := regexp.MustCompile("\n[\t\n\f\r ]*EnableSplitstore =")
 		if match := explicitSplitstoreRx.FindString(cfgRaw); match == "" {
-			return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false to keep chain management unchanged from March 2023 set it to true if you want to discard old state by default")
+			return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
 		}
 		return nil
 	}
 	configNotFound := func() error {
-		return xerrors.Errorf("FullNode config not found and fallback to default disallowed.  Set up config and explicitly set EnableSplitstore.  Set it to false to keep chain management unchanged from March 2023 set it to true if you want to discard old state by default ")
+		return xerrors.Errorf("FullNode config not found and fallback to default disallowed while we transition to splitstore discard default.  Use `lotus config default` to set this repo up with a default config.  Be sure to set `EnableSplitstore` to `false` if you are running a full archive node")
 	}
 	return loadabilityCheck{
 		configOk:       configOk,
