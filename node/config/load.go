@@ -80,9 +80,9 @@ type loadabilityCheck struct {
 
 func DefaultFullNodeLoadabilityCheck() loadabilityCheck {
 	configOk := func(cfgRaw string) error {
-		poisonStr := "#EnableSplitstore =" // splitstore must be set explicitly
-		if strings.Contains(cfgRaw, poisonStr) {
-			return xerrors.Errorf("Config contains disallowed string %s, refusing to load. Please explicitly set EnableSplitstore. Set it to false to keep chain management unchanged from March 2023 set it to true if you want to discard old state by default", poisonStr)
+		explicitSplitstoreRx := regexp.MustCompile("\n[\t\n\f\r ]*EnableSplitstore =")
+		if match := explicitSplitstoreRx.FindString(cfgRaw); match == "" {
+			return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false to keep chain management unchanged from March 2023 set it to true if you want to discard old state by default")
 		}
 		return nil
 	}
