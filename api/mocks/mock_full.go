@@ -1296,6 +1296,21 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByHash(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionByHash", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionByHash), arg0, arg1)
 }
 
+// EthGetTransactionByHashLimited mocks base method.
+func (m *MockFullNode) EthGetTransactionByHashLimited(arg0 context.Context, arg1 *ethtypes.EthHash, arg2 abi.ChainEpoch) (*ethtypes.EthTx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetTransactionByHashLimited", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*ethtypes.EthTx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetTransactionByHashLimited indicates an expected call of EthGetTransactionByHashLimited.
+func (mr *MockFullNodeMockRecorder) EthGetTransactionByHashLimited(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionByHashLimited", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionByHashLimited), arg0, arg1, arg2)
+}
+
 // EthGetTransactionCount mocks base method.
 func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 string) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
@@ -1339,6 +1354,21 @@ func (m *MockFullNode) EthGetTransactionReceipt(arg0 context.Context, arg1 ethty
 func (mr *MockFullNodeMockRecorder) EthGetTransactionReceipt(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionReceipt", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionReceipt), arg0, arg1)
+}
+
+// EthGetTransactionReceiptLimited mocks base method.
+func (m *MockFullNode) EthGetTransactionReceiptLimited(arg0 context.Context, arg1 ethtypes.EthHash, arg2 abi.ChainEpoch) (*api.EthTxReceipt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthGetTransactionReceiptLimited", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*api.EthTxReceipt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthGetTransactionReceiptLimited indicates an expected call of EthGetTransactionReceiptLimited.
+func (mr *MockFullNodeMockRecorder) EthGetTransactionReceiptLimited(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthGetTransactionReceiptLimited", reflect.TypeOf((*MockFullNode)(nil).EthGetTransactionReceiptLimited), arg0, arg1, arg2)
 }
 
 // EthMaxPriorityFeePerGas mocks base method.

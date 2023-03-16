@@ -145,11 +145,21 @@ func (gw *Node) EthGetBlockByNumber(ctx context.Context, blkNum string, fullTxIn
 }
 
 func (gw *Node) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
+	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
+}
+
+func (gw *Node) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
+	if limit == api.LookbackNoLimit {
+		limit = gw.stateWaitLookbackLimit
+	}
+	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
+		limit = gw.stateWaitLookbackLimit
+	}
 
-	return gw.target.EthGetTransactionByHash(ctx, txHash)
+	return gw.target.EthGetTransactionByHashLimited(ctx, txHash, limit)
 }
 
 func (gw *Node) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error) {
@@ -181,11 +191,21 @@ func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthA
 }
 
 func (gw *Node) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
+	return gw.EthGetTransactionReceiptLimited(ctx, txHash, api.LookbackNoLimit)
+}
+
+func (gw *Node) EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
+	if limit == api.LookbackNoLimit {
+		limit = gw.stateWaitLookbackLimit
+	}
+	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
+		limit = gw.stateWaitLookbackLimit
+	}
 
-	return gw.target.EthGetTransactionReceipt(ctx, txHash)
+	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, limit)
 }
 
 func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {
