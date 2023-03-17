@@ -983,7 +983,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 				}
 				atomic.AddInt64(szWalk, sz)
 
-				sz, err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot)
+				sz, err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk)
 				if err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
