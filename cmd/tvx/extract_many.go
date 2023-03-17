@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/brossetti1/lotus/chain/consensus"
 )
 
 var extractManyFlags struct {
@@ -70,7 +70,7 @@ var extractManyCmd = &cli.Command{
 func runExtractMany(c *cli.Context) error {
 	// LOTUS_DISABLE_VM_BUF disables what's called "VM state tree buffering",
 	// which stashes write operations in a BufferedBlockstore
-	// (https://github.com/filecoin-project/lotus/blob/b7a4dbb07fd8332b4492313a617e3458f8003b2a/lib/bufbstore/buf_bstore.go#L21)
+	// (https://github.com/brossetti1/lotus/blob/b7a4dbb07fd8332b4492313a617e3458f8003b2a/lib/bufbstore/buf_bstore.go#L21)
 	// such that they're not written until the VM is actually flushed.
 	//
 	// For some reason, the standard behaviour was not working for me (raulk),

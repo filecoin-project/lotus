@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
 )
 
 func TestRequestQueue(t *testing.T) {

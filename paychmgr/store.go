@@ -17,7 +17,7 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")

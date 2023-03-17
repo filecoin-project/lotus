@@ -16,8 +16,8 @@ Here are some examples of bugs we would consider to be security vulnerabilities:
 * If you can craft a message that causes a persistent fork in the network.
 * If you can cause the total amount of Filecoin in the network to no longer be 2 billion.
 
-This is not an exhaustive list, but should provide some idea of what we consider as a security vulnerability, . 
+This is not an exhaustive list, but should provide some idea of what we consider as a security vulnerability, .
 
 ## Reporting a non security bug
 
-For non-security bugs, please simply file a GitHub [issue](https://github.com/filecoin-project/lotus/issues/new?template=bug_report.md). 
+For non-security bugs, please simply file a GitHub [issue](https://github.com/brossetti1/lotus/issues/new?template=bug_report.md).

@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 // TestEthBlockHashesCorrect_MultiBlockTipset validates that blocks retrieved through
@@ -20,7 +20,7 @@ import (
 //
 // Specifically, it checks the system behaves correctly with multiblock tipsets.
 //
-// Catches regressions around https://github.com/filecoin-project/lotus/issues/10061.
+// Catches regressions around https://github.com/brossetti1/lotus/issues/10061.
 func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// miner is connected to the first node, and we want to observe the chain
 	// from the second node.

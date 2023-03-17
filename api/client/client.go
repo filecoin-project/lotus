@@ -9,10 +9,10 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/lib/rpcenc"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/api/v0api"
+	"github.com/brossetti1/lotus/api/v1api"
+	"github.com/brossetti1/lotus/lib/rpcenc"
 )
 
 // NewCommonRPCV0 creates a new http jsonrpc client.

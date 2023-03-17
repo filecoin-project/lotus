@@ -12,9 +12,9 @@ import (
 
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/conformance"
+	"github.com/brossetti1/lotus/chain/types"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/conformance"
 )
 
 func doExtractTipset(opts extractOpts) error {
@@ -153,7 +153,7 @@ func extractTipsets(ctx context.Context, tss ...*types.TipSet) (*schema.TestVect
 			ID: fmt.Sprintf("@%d..@%d", base.Height(), last.Height()),
 			Gen: []schema.GenerationData{
 				{Source: fmt.Sprintf("network:%s", ntwkName)},
-				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
+				{Source: "github.com/brossetti1/lotus", Version: version.String()}},
 			// will be completed by extra tipset stamps.
 		},
 		Selector: schema.Selector{

@@ -21,10 +21,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/beacon"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("drand")

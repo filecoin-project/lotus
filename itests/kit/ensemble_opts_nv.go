@@ -4,8 +4,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/brossetti1/lotus/chain/consensus/filcns"
+	"github.com/brossetti1/lotus/chain/stmgr"
 )
 
 func UpgradeSchedule(upgrades ...stmgr.Upgrade) EnsembleOpt {

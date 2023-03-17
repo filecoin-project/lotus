@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 type LoggedWallet struct {

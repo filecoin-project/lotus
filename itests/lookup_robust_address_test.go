@@ -9,8 +9,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 func TestStateLookupRobustAddress(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/brossetti1/lotus/chain/gen"
 )
 
 func TestChainCheckpoint(t *testing.T) {

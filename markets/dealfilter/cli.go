@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 func CliStorageDealFilter(cmd string) dtypes.StorageDealFilter {

@@ -14,13 +14,13 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
-	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/api"
+	apitypes "github.com/brossetti1/lotus/api/types"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/actors/builtin/miner"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/lib/sigs"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 func (gw *Node) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {

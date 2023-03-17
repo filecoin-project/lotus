@@ -3,7 +3,7 @@ package config
 import (
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE

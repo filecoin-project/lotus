@@ -11,8 +11,8 @@ import (
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/actors/builtin"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 type ActorLookup func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)

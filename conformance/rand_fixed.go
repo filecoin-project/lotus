@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/brossetti1/lotus/chain/vm"
 )
 
 type fixedRand struct{}

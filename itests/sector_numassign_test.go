@@ -11,8 +11,8 @@ import (
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/lib/strle"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/lib/strle"
 )
 
 func TestAssignBasic(t *testing.T) {

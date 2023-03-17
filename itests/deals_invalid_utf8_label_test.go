@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 // The following function will generate and print out the hex encoding of PublishStorageDealsParams with a dealLabel with invalid utf8 encoding.

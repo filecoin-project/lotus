@@ -4,7 +4,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 
-	"github.com/filecoin-project/lotus/metrics"
+	"github.com/brossetti1/lotus/metrics"
 )
 
 var Timer = metrics.Timer

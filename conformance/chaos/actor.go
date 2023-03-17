@@ -11,7 +11,7 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/brossetti1/lotus/chain/actors/builtin"
 )
 
 //go:generate go run ./gen

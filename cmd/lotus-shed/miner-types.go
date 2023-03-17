@@ -17,13 +17,13 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/chain/actors/builtin/miner"
+	"github.com/brossetti1/lotus/chain/actors/builtin/power"
+	"github.com/brossetti1/lotus/chain/consensus/filcns"
+	"github.com/brossetti1/lotus/chain/state"
+	"github.com/brossetti1/lotus/chain/store"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var minerTypesCmd = &cli.Command{

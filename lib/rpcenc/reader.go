@@ -22,8 +22,8 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/lib/httpreader"
-	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
+	"github.com/brossetti1/lotus/lib/httpreader"
+	"github.com/brossetti1/lotus/storage/pipeline/lib/nullreader"
 )
 
 var log = logging.Logger("rpcenc")

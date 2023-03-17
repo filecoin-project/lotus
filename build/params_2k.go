@@ -13,7 +13,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/brossetti1/lotus/chain/actors/policy"
 )
 
 const BootstrappersFile = ""

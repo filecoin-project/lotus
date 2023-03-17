@@ -20,8 +20,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/storage/sealer/ffiwrapper"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("sbmock")

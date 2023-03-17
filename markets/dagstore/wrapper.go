@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-statemachine/fsm"
 
-	"github.com/filecoin-project/lotus/node/config"
+	"github.com/brossetti1/lotus/node/config"
 )
 
 const (

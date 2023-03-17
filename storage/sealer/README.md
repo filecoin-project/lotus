@@ -10,7 +10,7 @@ The sector-storage project provides a implementation-nonspecific reference imple
 
 ## Disclaimer
 
-Please report your issues with regards to sector-storage at the [lotus issue tracker](https://github.com/filecoin-project/lotus/issues)
+Please report your issues with regards to sector-storage at the [lotus issue tracker](https://github.com/brossetti1/lotus/issues)
 
 ## Architecture
 
@@ -35,7 +35,7 @@ The Local store implements SectorProvider for paths mounted in the local
 filesystem. Paths can be shared between nodes, and support shared filesystems
 such as NFS.
 
-stores.Local implements all native filesystem-related operations 
+stores.Local implements all native filesystem-related operations
 
 ### `paths.Remote`
 

@@ -6,7 +6,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/brossetti1/lotus/lib/lotuslog"
 )
 
 func QuietMiningLogs() {

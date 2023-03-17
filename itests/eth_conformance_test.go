@@ -22,11 +22,11 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/chain/wallet/key"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 // TODO generate this using reflection. It's the same as the EthAPI except every return value is a json.RawMessage

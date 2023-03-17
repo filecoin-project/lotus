@@ -18,9 +18,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/repo"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/node/config"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var splitstoreCmd = &cli.Command{

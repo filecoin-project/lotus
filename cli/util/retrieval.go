@@ -13,7 +13,7 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/brossetti1/lotus/api"
 )
 
 func ApiAddrToUrl(apiAddr string) (*url.URL, error) {

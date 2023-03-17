@@ -11,7 +11,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 // FaultTracker TODO: Track things more actively

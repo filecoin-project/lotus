@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 // Core network constants

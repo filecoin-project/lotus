@@ -22,14 +22,14 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
-	"github.com/filecoin-project/lotus/api"
-	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/blockstore/splitstore"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/api"
+	lapi "github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/blockstore/splitstore"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/builtin/power"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 // Startup a node with hotstore and discard coldstore.  Compact once and return

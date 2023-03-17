@@ -12,9 +12,9 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/actors"
 )
 
 func LoadBundleFromFile(ctx context.Context, bs blockstore.Blockstore, path string) (cid.Cid, error) {

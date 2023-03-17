@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 
-	"github.com/filecoin-project/lotus/api"
-	lbstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/brossetti1/lotus/api"
+	lbstore "github.com/brossetti1/lotus/blockstore"
 )
 
 // ProxyBlockstoreAccessor is an accessor that returns a fixed blockstore.

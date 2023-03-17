@@ -12,7 +12,7 @@ import (
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 func TestDealPadding(t *testing.T) {

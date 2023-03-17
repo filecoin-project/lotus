@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/lotus/lib/backupds"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/lib/backupds"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 type BackupAPI interface {

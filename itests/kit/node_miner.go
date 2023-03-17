@@ -22,12 +22,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/miner"
-	sealing "github.com/filecoin-project/lotus/storage/pipeline"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/wallet/key"
+	"github.com/brossetti1/lotus/miner"
+	sealing "github.com/brossetti1/lotus/storage/pipeline"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 type MinerSubsystem int
@@ -225,7 +225,7 @@ func (tm *TestMiner) SectorsListNonGenesis(ctx context.Context) ([]abi.SectorNum
 	return l[tm.PresealSectors:], nil
 }
 
-// comes from https://github.com/filecoin-project/lotus/blob/8ba4355cabd25e5f65261aaa561ff676321ffbd8/storage/sealer/manager.go#L1226
+// comes from https://github.com/brossetti1/lotus/blob/8ba4355cabd25e5f65261aaa561ff676321ffbd8/storage/sealer/manager.go#L1226
 // todo: have this defined in one place
 type SchedInfo struct {
 	CallToWork   struct{}

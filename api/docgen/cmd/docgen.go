@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/filecoin-project/lotus/api/docgen"
+	"github.com/brossetti1/lotus/api/docgen"
 )
 
 func main() {

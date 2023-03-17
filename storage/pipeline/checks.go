@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/actors/policy"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting

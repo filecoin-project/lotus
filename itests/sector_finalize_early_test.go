@@ -9,9 +9,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/node/config"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 func TestDealsWithFinalizeEarly(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/brossetti1/lotus/api/v0api"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/vm"
 )
 
 type RecordingRand struct {
@@ -19,7 +19,7 @@ type RecordingRand struct {
 	api      v0api.FullNode
 
 	// once guards the loading of the head tipset.
-	// can be removed when https://github.com/filecoin-project/lotus/issues/4223
+	// can be removed when https://github.com/brossetti1/lotus/issues/4223
 	// is fixed.
 	once     sync.Once
 	head     types.TipSetKey

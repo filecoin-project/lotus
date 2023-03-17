@@ -15,9 +15,9 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
-	"github.com/filecoin-project/lotus/node"
+	"github.com/brossetti1/lotus/api/client"
+	"github.com/brossetti1/lotus/cmd/lotus-worker/sealworker"
+	"github.com/brossetti1/lotus/node"
 )
 
 type Closer func()

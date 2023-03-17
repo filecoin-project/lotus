@@ -271,7 +271,7 @@ jobs:
 
   build-darwin-amd64:
     description: build darwin lotus binary
-    working_directory: ~/go/src/github.com/filecoin-project/lotus
+    working_directory: ~/go/src/github.com/brossetti1/lotus
     macos:
       xcode: "13.4.1"
     steps:
@@ -294,7 +294,7 @@ jobs:
 
   build-darwin-arm64:
     description: self-hosted m1 runner
-    working_directory: ~/go/src/github.com/filecoin-project/lotus
+    working_directory: ~/go/src/github.com/brossetti1/lotus
     machine: true
     resource_class: filecoin-project/self-hosted-m1
     steps:

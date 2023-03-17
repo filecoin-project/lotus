@@ -5,8 +5,8 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation"
-	"github.com/filecoin-project/lotus/lib/ulimit"
+	"github.com/brossetti1/lotus/cmd/lotus-sim/simulation"
+	"github.com/brossetti1/lotus/lib/ulimit"
 )
 
 func open(cctx *cli.Context) (*simulation.Node, error) {

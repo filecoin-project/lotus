@@ -12,11 +12,11 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/actors/builtin/paych"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/lib/sigs"
 )
 
 type mockManagerAPI struct {

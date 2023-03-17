@@ -11,10 +11,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
-	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
+	sealing "github.com/brossetti1/lotus/storage/pipeline"
 )
 
 func TestAbortUpgradeAvailable(t *testing.T) {

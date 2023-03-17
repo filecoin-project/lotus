@@ -8,7 +8,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	blocks "github.com/ipfs/go-libipfs/blocks"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
+	bstore "github.com/brossetti1/lotus/blockstore"
 )
 
 type exposedSplitStore struct {

@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
-	lcli "github.com/filecoin-project/lotus/cli"
+	lcli "github.com/brossetti1/lotus/cli"
 )
 
 var frozenMinersCmd = &cli.Command{

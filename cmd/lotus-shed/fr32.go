@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/storage/sealer/fr32"
+	"github.com/brossetti1/lotus/storage/sealer/fr32"
 )
 
 var fr32Cmd = &cli.Command{

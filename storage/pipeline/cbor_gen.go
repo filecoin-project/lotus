@@ -14,8 +14,8 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 
-	api "github.com/filecoin-project/lotus/api"
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	api "github.com/brossetti1/lotus/api"
+	storiface "github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 var _ = xerrors.Errorf

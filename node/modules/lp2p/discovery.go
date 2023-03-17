@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/brossetti1/lotus/node/modules/helpers"
 )
 
 const discoveryConnTimeout = time.Second * 30

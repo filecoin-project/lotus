@@ -8,8 +8,8 @@ import (
 	hraft "github.com/hashicorp/raft"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/node/config"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 // Configuration defaults

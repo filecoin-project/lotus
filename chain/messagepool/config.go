@@ -8,8 +8,8 @@ import (
 
 	"github.com/ipfs/go-datastore"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 var (

@@ -17,10 +17,10 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/aerrors"
+	"github.com/brossetti1/lotus/chain/actors/builtin"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 type MethodMeta struct {

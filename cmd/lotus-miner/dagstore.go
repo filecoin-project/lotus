@@ -9,9 +9,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/api"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/brossetti1/lotus/api"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/lib/tablewriter"
 )
 
 var dagstoreCmd = &cli.Command{

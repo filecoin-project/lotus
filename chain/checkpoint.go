@@ -5,7 +5,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {

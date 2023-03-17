@@ -11,7 +11,7 @@ import (
 	libp2pquic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"go.uber.org/fx"
 	"github.com/ipfs/go-ipfs/repo"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/brossetti1/lotus/node/modules/helpers"
 )
 
 func AutoNATService(quic bool) func(repo repo.Repo, mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) error {

@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 var dummyCid cid.Cid

@@ -18,6 +18,6 @@ Before you mark the PR ready for review, please make sure that:
   - `area`, e.g. api, chain, state, market, mempool, multisig, networking, paych, proving, sealing, wallet, deps
 - [ ] New features have usage guidelines and / or documentation updates in
   - [ ] [Lotus Documentation](https://lotus.filecoin.io)
-  - [ ] [Discussion Tutorials](https://github.com/filecoin-project/lotus/discussions/categories/tutorials)
+  - [ ] [Discussion Tutorials](https://github.com/brossetti1/lotus/discussions/categories/tutorials)
 - [ ] Tests exist for new functionality or change in behavior
 - [ ] CI is green

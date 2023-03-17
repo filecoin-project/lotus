@@ -20,9 +20,9 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/backupds"
-	"github.com/filecoin-project/lotus/node/repo"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/lib/backupds"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var datastoreCmd = &cli.Command{

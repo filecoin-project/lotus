@@ -5,8 +5,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 func TestMultiWallet(t *testing.T) {

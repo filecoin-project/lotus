@@ -10,8 +10,8 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/lotus/api/v0api"
-	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/brossetti1/lotus/api/v0api"
+	lcli "github.com/brossetti1/lotus/cli"
 )
 
 // FullAPI is a JSON-RPC client targeting a full node. It's initialized in a
@@ -92,7 +92,7 @@ func main() {
 func initialize(c *cli.Context) error {
 	// LOTUS_DISABLE_VM_BUF disables what's called "VM state tree buffering",
 	// which stashes write operations in a BufferedBlockstore
-	// (https://github.com/filecoin-project/lotus/blob/b7a4dbb07fd8332b4492313a617e3458f8003b2a/lib/bufbstore/buf_bstore.go#L21)
+	// (https://github.com/brossetti1/lotus/blob/b7a4dbb07fd8332b4492313a617e3458f8003b2a/lib/bufbstore/buf_bstore.go#L21)
 	// such that they're not written until the VM is actually flushed.
 	//
 	// For some reason, the standard behaviour was not working for me (raulk),

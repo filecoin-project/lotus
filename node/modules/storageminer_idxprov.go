@@ -14,9 +14,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/node/config"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 type IdxProv struct {

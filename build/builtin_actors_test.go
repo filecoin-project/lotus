@@ -8,8 +8,8 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/manifest"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/actors"
 )
 
 // Test that the embedded metadata is correct.

@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
 )
 
 var ErrModuleDisabled = errors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")

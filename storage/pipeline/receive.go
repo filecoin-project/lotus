@@ -16,8 +16,8 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statemachine"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 func (m *Sealing) Receive(ctx context.Context, meta api.RemoteSectorMeta) error {

@@ -27,20 +27,20 @@ import (
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/market"
-	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/markets"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
-	"github.com/filecoin-project/lotus/markets/storageadapter"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/impl/full"
-	payapi "github.com/filecoin-project/lotus/node/impl/paych"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
-	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/market"
+	"github.com/brossetti1/lotus/journal"
+	"github.com/brossetti1/lotus/markets"
+	marketevents "github.com/brossetti1/lotus/markets/loggers"
+	"github.com/brossetti1/lotus/markets/retrievaladapter"
+	"github.com/brossetti1/lotus/markets/storageadapter"
+	"github.com/brossetti1/lotus/node/config"
+	"github.com/brossetti1/lotus/node/impl/full"
+	payapi "github.com/brossetti1/lotus/node/impl/paych"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/node/modules/helpers"
+	"github.com/brossetti1/lotus/node/repo"
+	"github.com/brossetti1/lotus/node/repo/imports"
 )
 
 func HandleMigrateClientFunds(lc fx.Lifecycle, mctx helpers.MetricsCtx, ds dtypes.MetadataDS, wallet full.WalletAPI, fundMgr *market.FundManager) {
@@ -108,7 +108,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.Grap
 	// data-transfer push / pull channel restart configuration:
 	dtRestartConfig := dtimpl.ChannelRestartConfig(channelmonitor.Config{
 		// Disable Accept and Complete timeouts until this issue is resolved:
-		// https://github.com/filecoin-project/lotus/issues/6343#
+		// https://github.com/brossetti1/lotus/issues/6343#
 		// Wait for the other side to respond to an Open channel message
 		AcceptTimeout: 0,
 		// Wait for the other side to send a Complete message once all

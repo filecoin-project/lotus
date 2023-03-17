@@ -15,7 +15,7 @@ import (
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 // Ideally, we'd use extern/sealer/mock. Unfortunately, those mocks are a bit _too_ accurate

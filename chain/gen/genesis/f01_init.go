@@ -16,11 +16,11 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/genesis"
+	bstore "github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/actors"
+	init_ "github.com/brossetti1/lotus/chain/actors/builtin/init"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/genesis"
 )
 
 func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, initialActors []genesis.Actor, rootVerifier genesis.Actor, remainder genesis.Actor, av actorstypes.Version) (int64, *types.Actor, map[address.Address]address.Address, error) {

@@ -5,8 +5,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/storage/paths"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 type readonlyProvider struct {

@@ -10,9 +10,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/paychmgr"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/paychmgr"
 )
 
 type PaychAPI struct {

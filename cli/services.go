@@ -16,12 +16,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/consensus"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/consensus"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
-//go:generate go run github.com/golang/mock/mockgen -destination=servicesmock_test.go -package=cli -self_package github.com/filecoin-project/lotus/cli . ServicesAPI
+//go:generate go run github.com/golang/mock/mockgen -destination=servicesmock_test.go -package=cli -self_package github.com/brossetti1/lotus/cli . ServicesAPI
 
 type ServicesAPI interface {
 	FullNodeAPI() api.FullNode

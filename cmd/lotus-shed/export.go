@@ -30,11 +30,11 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/store"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/store"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/cmd/lotus-shed/shedgen"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var exportChainCmd = &cli.Command{

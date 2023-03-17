@@ -17,15 +17,15 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/gen"
-	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/gen"
+	genesis2 "github.com/brossetti1/lotus/chain/gen/genesis"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/vm"
+	"github.com/brossetti1/lotus/genesis"
+	"github.com/brossetti1/lotus/journal"
+	"github.com/brossetti1/lotus/node/modules"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 var glog = logging.Logger("genesis")

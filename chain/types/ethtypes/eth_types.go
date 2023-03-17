@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/must"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/lib/must"
 )
 
 var ErrInvalidAddress = errors.New("invalid Filecoin Eth address")

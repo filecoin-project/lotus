@@ -8,9 +8,9 @@ import (
 	init4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/init"
 	paych4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/paych"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/actors"
+	init_ "github.com/brossetti1/lotus/chain/actors/builtin/init"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 type message4 struct{ from address.Address }

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/config"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/node/config"
 )
 
 func basicTest(t *testing.T, repo Repo) {

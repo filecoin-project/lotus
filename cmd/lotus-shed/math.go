@@ -12,7 +12,7 @@ import (
 
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 var mathCmd = &cli.Command{

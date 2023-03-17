@@ -10,10 +10,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/wallet/key"
+	"github.com/brossetti1/lotus/lib/sigs"
+	_ "github.com/brossetti1/lotus/lib/sigs/bls"
 )
 
 func TestRoundtrip(t *testing.T) {

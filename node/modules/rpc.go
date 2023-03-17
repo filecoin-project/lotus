@@ -8,10 +8,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
-	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types"
+	consensus "github.com/brossetti1/lotus/lib/consensus/raft"
+	"github.com/brossetti1/lotus/node/impl/full"
 )
 
 type RPCHandler struct {

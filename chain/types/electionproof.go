@@ -5,7 +5,7 @@ import (
 
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/brossetti1/lotus/build"
 )
 
 type ElectionProof struct {

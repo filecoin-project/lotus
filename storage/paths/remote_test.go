@@ -22,11 +22,11 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/paths/mocks"
-	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/node/repo"
+	"github.com/brossetti1/lotus/storage/paths"
+	"github.com/brossetti1/lotus/storage/paths/mocks"
+	"github.com/brossetti1/lotus/storage/sealer/partialfile"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 const metaFile = "sectorstore.json"
