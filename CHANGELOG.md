@@ -463,20 +463,19 @@ This is a HIGHLY RECOMMENDED patch release for node operators/API service provid
 # v1.20.4 / 2023-03-17
 
 This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade. 
-The primary change is to update the FFI to allow for FVM parallelism of 4 by default, and make this user configurable
+The primary change is to update the FFI to allow for FVM parallelism of 4 by default, and make this user-configurable.
 through the `LOTUS_FVM_CONCURRENCY` env var. 
 
-Users with higher memory specs can experiment with setting `LOTUS_FVM_CONCURRENCY` to higher values, up to 48, to allow
-for more concurrent FVM execution.
+Users with higher memory specs can experiment with setting `LOTUS_FVM_CONCURRENCY` to higher values, up to 48, to allow for more concurrent FVM execution.
 
 ## Bug fixes
 
-- Splitstore: Don't enforce walking receipt tree during compaction
-- fix: build: drop drand incentinet servers
+- Splitstore: Don't enforce walking receipt tree during compaction #10505
+- fix: build: drop drand incentinet servers #10506 
 
 ## Improvement
 
-- chore: update ffi to increase execution parallelism
+- chore: update ffi to increase execution parallelism #10503 
 
 # v1.20.3 / 2023-03-09
 
