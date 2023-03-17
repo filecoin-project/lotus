@@ -12,8 +12,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 const metaFile = "sectorstore.json"

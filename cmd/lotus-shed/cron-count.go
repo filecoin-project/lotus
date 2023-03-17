@@ -8,8 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/brossetti1/lotus/build"
+	lcli "github.com/brossetti1/lotus/cli"
 )
 
 var cronWcCmd = &cli.Command{

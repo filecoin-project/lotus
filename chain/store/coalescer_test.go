@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/mock"
 )
 
 func TestHeadChangeCoalescer(t *testing.T) {

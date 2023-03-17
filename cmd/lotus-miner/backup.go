@@ -5,8 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/node/repo"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var backupCmd = lcli.BackupCmd(FlagMinerRepo, repo.StorageMiner, func(cctx *cli.Context) (lcli.BackupAPI, jsonrpc.ClientCloser, error) {

@@ -9,10 +9,10 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/brossetti1/lotus/chain/store"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/node/modules/helpers"
 )
 
 func ErrorGenesis() Genesis {

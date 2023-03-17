@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 // TestFEVMEvents does a basic events smoke test.

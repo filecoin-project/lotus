@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 type MultiaddrSlice []ma.Multiaddr

@@ -7,7 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/brossetti1/lotus/build"
 )
 
 var log = logging.Logger("lotus-shed")

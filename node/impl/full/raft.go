@@ -7,8 +7,8 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/messagesigner"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/messagesigner"
 )
 
 type RaftAPI struct {

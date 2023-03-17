@@ -14,9 +14,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/chain/actors/builtin"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
 )
 
 var sendCmd = &cli.Command{

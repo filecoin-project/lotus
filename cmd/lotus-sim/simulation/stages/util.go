@@ -8,11 +8,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
+	"github.com/brossetti1/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/chain/actors/builtin/miner"
+	"github.com/brossetti1/lotus/chain/actors/builtin/power"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/cmd/lotus-sim/simulation/blockbuilder"
 )
 
 func loadMiner(store adt.Store, st types.StateTree, addr address.Address) (miner.State, error) {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 func TestFirstDealEnablesMining(t *testing.T) {

@@ -15,7 +15,7 @@ import (
 	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/brossetti1/lotus/blockstore"
 )
 
 // TODO: move this to go-ipfs-blockstore.

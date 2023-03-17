@@ -8,9 +8,9 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
 )
 
 func TestWindowPostNoMinerStorage(t *testing.T) {

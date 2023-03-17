@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 //                       MODIFYING THE API INTERFACE

@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/brossetti1/lotus/build"
 )
 
 func TestPrintGroupInfo(t *testing.T) {

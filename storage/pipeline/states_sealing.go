@@ -22,12 +22,12 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statemachine"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/actors/policy"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/storage/pipeline/lib/nullreader"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 var DealSectorPriority = 1024

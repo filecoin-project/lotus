@@ -10,10 +10,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
-	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types"
+	ledgerwallet "github.com/brossetti1/lotus/chain/wallet/ledger"
+	"github.com/brossetti1/lotus/chain/wallet/remotewallet"
 )
 
 type MultiWallet struct {

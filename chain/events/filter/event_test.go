@@ -17,9 +17,9 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 func TestEventFilterCollectEvents(t *testing.T) {

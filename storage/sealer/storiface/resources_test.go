@@ -8,7 +8,7 @@ import (
 
 	stabi "github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
 )
 
 func TestListResourceVars(t *testing.T) {

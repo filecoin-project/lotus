@@ -18,9 +18,9 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/api"
-	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/api"
+	apitypes "github.com/brossetti1/lotus/api/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 func TestWalletNew(t *testing.T) {

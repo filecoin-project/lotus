@@ -12,10 +12,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/chain/store"
+	"github.com/brossetti1/lotus/chain/types"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var diffCmd = &cli.Command{

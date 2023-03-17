@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	crypto1 "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/brossetti1/lotus/lib/sigs"
 )
 
 type delegatedSigner struct{}

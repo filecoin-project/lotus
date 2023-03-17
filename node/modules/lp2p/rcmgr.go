@@ -21,8 +21,8 @@ import (
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/metrics"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var rcmgrMetricsOnce sync.Once

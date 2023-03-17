@@ -10,10 +10,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/chain/actors/builtin/miner"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 type apiWrapper struct {

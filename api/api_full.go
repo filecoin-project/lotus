@@ -27,14 +27,14 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
-	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo/imports"
+	apitypes "github.com/brossetti1/lotus/api/types"
+	"github.com/brossetti1/lotus/chain/actors/builtin"
+	lminer "github.com/brossetti1/lotus/chain/actors/builtin/miner"
+	"github.com/brossetti1/lotus/chain/actors/builtin/power"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/node/repo/imports"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_full.go -package=mocks . FullNode

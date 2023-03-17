@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {

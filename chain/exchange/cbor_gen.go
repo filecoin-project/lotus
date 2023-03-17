@@ -12,7 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
-	types "github.com/filecoin-project/lotus/chain/types"
+	types "github.com/brossetti1/lotus/chain/types"
 )
 
 var _ = xerrors.Errorf

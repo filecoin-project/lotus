@@ -36,7 +36,7 @@ Assemble a `FullTipSet` populated with the single block received earlier.
 
 `V`: Beacon entries are ordered by their round number.
 
-`V:` Tipset `Parents` CIDs match the fetched parent tipset through block sync. (This check is not enforced correctly at the moment, see [issue](https://github.com/filecoin-project/lotus/issues/1918).)
+`V:` Tipset `Parents` CIDs match the fetched parent tipset through block sync. (This check is not enforced correctly at the moment, see [issue](https://github.com/brossetti1/lotus/issues/1918).)
 
 ## `(*Syncer).ValidateBlock()`
 
@@ -104,7 +104,7 @@ domain separation tag.
 ### Winning PoSt proof
 
 Draw randomness for current epoch with `WinningPoSt` domain separation tag.
-Get list of sectors challanged in this epoch for this miner, based on the randomness drawn. 
+Get list of sectors challanged in this epoch for this miner, based on the randomness drawn.
 
 `V`: Use filecoin proofs system to verify that miner prooved access to sealed versions of these sectors.
 

@@ -13,8 +13,8 @@ import (
 	paych3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/paych"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/adt"
 )
 
 var _ State = (*state3)(nil)

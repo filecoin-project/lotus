@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/brossetti1/lotus/api/v1api"
 )
 
 var log = logging.Logger("idxprov")

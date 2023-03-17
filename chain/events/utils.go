@@ -5,8 +5,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/stmgr"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 func (me *messageEvents) CheckMsg(smsg types.ChainMsg, hnd MsgHandler) CheckFunc {

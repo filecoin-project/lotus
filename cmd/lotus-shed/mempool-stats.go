@@ -18,10 +18,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/builtin"
 
-	lapi "github.com/filecoin-project/lotus/api"
-	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
+	lapi "github.com/brossetti1/lotus/api"
+	lbuiltin "github.com/brossetti1/lotus/chain/actors/builtin"
+	"github.com/brossetti1/lotus/chain/types"
+	lcli "github.com/brossetti1/lotus/cli"
 )
 
 var (

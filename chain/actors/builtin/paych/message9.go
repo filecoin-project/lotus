@@ -11,9 +11,9 @@ import (
 	init9 "github.com/filecoin-project/go-state-types/builtin/v9/init"
 	paych9 "github.com/filecoin-project/go-state-types/builtin/v9/paych"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/actors"
+	init_ "github.com/brossetti1/lotus/chain/actors/builtin/init"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 type message9 struct{ from address.Address }

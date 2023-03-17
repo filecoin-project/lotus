@@ -23,7 +23,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/stores"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/brossetti1/lotus/build"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)

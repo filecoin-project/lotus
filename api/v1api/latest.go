@@ -1,7 +1,7 @@
 package v1api
 
 import (
-	"github.com/filecoin-project/lotus/api"
+	"github.com/brossetti1/lotus/api"
 )
 
 type FullNode = api.FullNode

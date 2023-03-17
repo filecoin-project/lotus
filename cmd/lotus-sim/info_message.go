@@ -8,10 +8,10 @@ import (
 	"github.com/koalacxr/quantile"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation"
-	"github.com/filecoin-project/lotus/lib/stati"
+	"github.com/brossetti1/lotus/chain/stmgr"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/cmd/lotus-sim/simulation"
+	"github.com/brossetti1/lotus/lib/stati"
 )
 
 var infoMessageSizeSimCommand = &cli.Command{

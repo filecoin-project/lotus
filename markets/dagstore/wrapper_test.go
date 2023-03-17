@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
 
-	"github.com/filecoin-project/lotus/node/config"
+	"github.com/brossetti1/lotus/node/config"
 )
 
 // TestWrapperAcquireRecovery verifies that if acquire shard returns a "not found"

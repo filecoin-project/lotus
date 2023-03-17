@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 type TipSetFilter struct {

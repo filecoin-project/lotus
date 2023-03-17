@@ -15,9 +15,9 @@ import (
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 var _ State = (*state0)(nil)

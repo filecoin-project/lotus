@@ -13,10 +13,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 func TestPathDetachRedeclare(t *testing.T) {

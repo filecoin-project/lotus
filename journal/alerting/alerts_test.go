@@ -8,8 +8,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/journal/mockjournal"
+	"github.com/brossetti1/lotus/journal"
+	"github.com/brossetti1/lotus/journal/mockjournal"
 )
 
 func TestAlerting(t *testing.T) {

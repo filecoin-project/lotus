@@ -18,15 +18,15 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/messagesigner"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
-	consensus "github.com/filecoin-project/lotus/lib/consensus/raft"
-	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/impl"
-	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/messagesigner"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
+	consensus "github.com/brossetti1/lotus/lib/consensus/raft"
+	"github.com/brossetti1/lotus/node"
+	"github.com/brossetti1/lotus/node/config"
+	"github.com/brossetti1/lotus/node/impl"
+	"github.com/brossetti1/lotus/node/modules"
 )
 
 func generatePrivKey() (*kit.Libp2p, error) {
@@ -488,7 +488,7 @@ func TestChainStoreSync(t *testing.T) {
 }
 
 func TestGoRPCAuth(t *testing.T) {
-	// TODO Fix Raft, then enable this test. https://github.com/filecoin-project/lotus/issues/9888
+	// TODO Fix Raft, then enable this test. https://github.com/brossetti1/lotus/issues/9888
 	t.SkipNow()
 
 	blockTime := 1 * time.Second

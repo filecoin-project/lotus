@@ -14,4 +14,4 @@ go_files | xargs -I '{}' sed -i.ifixbak -e '/import (/ {
 find . -type f -name \*.go.ifixbak | xargs rm
 
 go_files | xargs -I '{}' goimports -w -local "github.com/filecoin-project" '{}'
-go_files | xargs -I '{}' goimports -w -local "github.com/filecoin-project/lotus" '{}'
+go_files | xargs -I '{}' goimports -w -local "github.com/brossetti1/lotus" '{}'

@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/itests/kit"
+	lapi "github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 func TestOfflineDealFlow(t *testing.T) {

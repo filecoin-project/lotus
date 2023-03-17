@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://circleci.com/gh/filecoin-project/lotus"><img src="https://circleci.com/gh/filecoin-project/lotus.svg?style=svg"></a>
   <a href="https://codecov.io/gh/filecoin-project/lotus"><img src="https://codecov.io/gh/filecoin-project/lotus/branch/master/graph/badge.svg"></a>
-  <a href="https://goreportcard.com/report/github.com/filecoin-project/lotus"><img src="https://goreportcard.com/badge/github.com/filecoin-project/lotus" /></a>  
+  <a href="https://goreportcard.com/report/github.com/brossetti1/lotus"><img src="https://goreportcard.com/badge/github.com/brossetti1/lotus" /></a>
   <a href=""><img src="https://img.shields.io/badge/golang-%3E%3D1.18.8-blue.svg" /></a>
   <br>
 </p>
@@ -18,8 +18,8 @@ Lotus is an implementation of the Filecoin Distributed Storage Network. For more
 
 ## Building & Documentation
 
-> Note: The default `master` branch is the dev branch, please use with caution. For the latest stable version, checkout the most recent [`Latest release`](https://github.com/filecoin-project/lotus/releases).
- 
+> Note: The default `master` branch is the dev branch, please use with caution. For the latest stable version, checkout the most recent [`Latest release`](https://github.com/brossetti1/lotus/releases).
+
 For complete instructions on how to build, install and setup lotus, please visit [https://lotus.filecoin.io](https://lotus.filecoin.io/lotus/install/prerequisites/#supported-platforms). Basic build instructions can be found further down in this readme.
 
 ## Reporting a Vulnerability
@@ -38,7 +38,7 @@ These repos are independent and reusable modules, but are tightly integrated int
 Lotus is a universally open project and welcomes contributions of all kinds: code, docs, and more. However, before making a contribution, we ask you to heed these recommendations:
 
 1. If the proposal entails a protocol change, please first submit a [Filecoin Improvement Proposal](https://github.com/filecoin-project/FIPs).
-2. If the change is complex and requires prior discussion, [open an issue](github.com/filecoin-project/lotus/issues) or a [discussion](https://github.com/filecoin-project/lotus/discussions) to request feedback before you start working on a pull request. This is to avoid disappointment and sunk costs, in case the change is not actually needed or accepted.
+2. If the change is complex and requires prior discussion, [open an issue](github.com/brossetti1/lotus/issues) or a [discussion](https://github.com/brossetti1/lotus/discussions) to request feedback before you start working on a pull request. This is to avoid disappointment and sunk costs, in case the change is not actually needed or accepted.
 3. Please refrain from submitting PRs to adapt existing code to subjective preferences. The changeset should contain functional or technical improvements/enhancements, bug fixes, new features, or some other clear material contribution. Simple stylistic changes are likely to be rejected in order to reduce code churn.
 
 When implementing a change:
@@ -93,13 +93,13 @@ Once all the dependencies are installed, you can build and install the Lotus sui
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/filecoin-project/lotus.git
+   git clone https://github.com/brossetti1/lotus.git
    cd lotus/
    ```
-   
-Note: The default branch `master` is the dev branch where the latest new features, bug fixes and improvement are in. However, if you want to run lotus on Filecoin mainnet and want to run a production-ready lotus, get the latest release[ here](https://github.com/filecoin-project/lotus/releases).
 
-2. To join mainnet, checkout the [latest release](https://github.com/filecoin-project/lotus/releases).
+Note: The default branch `master` is the dev branch where the latest new features, bug fixes and improvement are in. However, if you want to run lotus on Filecoin mainnet and want to run a production-ready lotus, get the latest release[ here](https://github.com/brossetti1/lotus/releases).
+
+2. To join mainnet, checkout the [latest release](https://github.com/brossetti1/lotus/releases).
 
    If you are changing networks from a previous Lotus installation or there has been a network reset, read the [Switch networks guide](https://lotus.filecoin.io/lotus/manage/switch-networks/) before proceeding.
 
@@ -135,4 +135,4 @@ Note: The default branch `master` is the dev branch where the latest new feature
 
 ## License
 
-Dual-licensed under [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE)
+Dual-licensed under [MIT](https://github.com/brossetti1/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/brossetti1/lotus/blob/master/LICENSE-APACHE)

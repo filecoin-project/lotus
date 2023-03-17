@@ -16,8 +16,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	cstore "github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
+	cstore "github.com/brossetti1/lotus/chain/store"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 func isIndexedValue(b uint8) bool {
@@ -198,7 +198,7 @@ func (f *EventFilter) matchKeys(ees []types.EventEntry) bool {
 		return true
 	}
 	// TODO: optimize this naive algorithm
-	// tracked in https://github.com/filecoin-project/lotus/issues/9987
+	// tracked in https://github.com/brossetti1/lotus/issues/9987
 
 	// Note keys names may be repeated so we may have multiple opportunities to match
 

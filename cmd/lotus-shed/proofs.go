@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
-	lcli "github.com/filecoin-project/lotus/cli"
+	lcli "github.com/brossetti1/lotus/cli"
 )
 
 var proofsCmd = &cli.Command{

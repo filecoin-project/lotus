@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	account0 "github.com/filecoin-project/specs-actors/actors/builtin/account"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/adt"
 )
 
 var _ State = (*state0)(nil)

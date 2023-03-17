@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
-	lcli "github.com/filecoin-project/lotus/cli"
+	lcli "github.com/brossetti1/lotus/cli"
 )
 
 var indexProvCmd = &cli.Command{

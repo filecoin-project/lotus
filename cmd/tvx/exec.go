@@ -18,10 +18,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/conformance"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/state"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/conformance"
 )
 
 var execFlags struct {

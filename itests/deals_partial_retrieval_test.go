@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 // use the mainnet carfile as text fixture: it will always be here
@@ -124,7 +124,7 @@ func TestPartialRetrieval(t *testing.T) {
 				// UGH if I do not sleep here, I get things like:
 				/*
 					retrieval failed: Retrieve failed: there is an active retrieval deal with peer 12D3KooWK9fB9a3HZ4PQLVmEQ6pweMMn5CAyKtumB71CPTnuBDi6 for payload CID bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2 (retrieval deal ID 1631259332180384709, state DealStatusFinalizingBlockstore) - existing deal must be cancelled before starting a new retrieval deal:
-						github.com/filecoin-project/lotus/node/impl/client.(*API).ClientRetrieve
+						github.com/brossetti1/lotus/node/impl/client.(*API).ClientRetrieve
 							/home/circleci/project/node/impl/client/client.go:774
 				*/
 				time.Sleep(time.Second)

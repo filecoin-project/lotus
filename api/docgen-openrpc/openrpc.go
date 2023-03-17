@@ -11,8 +11,8 @@ import (
 	"github.com/ipfs/go-cid"
 	meta_schema "github.com/open-rpc/meta-schema"
 
-	"github.com/filecoin-project/lotus/api/docgen"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/brossetti1/lotus/api/docgen"
+	"github.com/brossetti1/lotus/build"
 )
 
 // schemaDictEntry represents a type association passed to the jsonschema reflector.

@@ -7,11 +7,11 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
-	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
-	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/wallet"
+	_ "github.com/brossetti1/lotus/lib/sigs/bls"
+	_ "github.com/brossetti1/lotus/lib/sigs/delegated"
+	_ "github.com/brossetti1/lotus/lib/sigs/secp"
 )
 
 func main() {

@@ -14,10 +14,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/mock"
 )
 
 func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {

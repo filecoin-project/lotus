@@ -12,7 +12,7 @@ PLEDGE_COUNT="${1:-20}"
 BRANCH="interopnet"
 BASEDIR=$(mktemp -d -t "lotus-interopnet.XXXX")
 
-git clone --branch "$BRANCH" https://github.com/filecoin-project/lotus.git "${BASEDIR}/build"
+git clone --branch "$BRANCH" https://github.com/brossetti1/lotus.git "${BASEDIR}/build"
 
 mkdir -p "${BASEDIR}/scripts"
 mkdir -p "${BASEDIR}/bin"

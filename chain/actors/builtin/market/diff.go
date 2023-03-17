@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/chain/actors/adt"
 )
 
 func DiffDealProposals(pre, cur DealProposals) (*DealProposalChanges, error) {

@@ -7,10 +7,10 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/storage/sealer/fsutil"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 // BlockstoreDomain represents the domain of a blockstore.

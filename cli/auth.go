@@ -8,8 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var AuthCmd = &cli.Command{

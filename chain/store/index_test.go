@@ -12,11 +12,11 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/consensus/filcns"
+	"github.com/brossetti1/lotus/chain/gen"
+	"github.com/brossetti1/lotus/chain/store"
+	"github.com/brossetti1/lotus/chain/types/mock"
 )
 
 func TestIndexSeeks(t *testing.T) {

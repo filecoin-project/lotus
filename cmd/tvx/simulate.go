@@ -16,9 +16,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/conformance"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/conformance"
 )
 
 var simulateFlags struct {
@@ -172,7 +172,7 @@ func runSimulateCmd(_ *cli.Context) error {
 		Meta: &schema.Metadata{
 			ID: fmt.Sprintf("simulated-%s", msg.Cid()),
 			Gen: []schema.GenerationData{
-				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
+				{Source: "github.com/brossetti1/lotus", Version: version.String()}},
 		},
 		Selector: schema.Selector{
 			schema.SelectorMinProtocolVersion: codename,

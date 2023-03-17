@@ -20,9 +20,9 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/adt"
 )
 
 //go:embed actors/*.tar.zst

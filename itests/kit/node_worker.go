@@ -14,8 +14,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 // TestWorker represents a worker enrolled in an Ensemble.

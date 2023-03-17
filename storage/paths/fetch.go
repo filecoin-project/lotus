@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/storage/sealer/tarutil"
+	"github.com/brossetti1/lotus/storage/sealer/tarutil"
 )
 
 func fetch(ctx context.Context, url, outname string, header http.Header) (rerr error) {

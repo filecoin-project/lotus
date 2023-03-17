@@ -4,7 +4,7 @@ import (
 	"os"
 	"strconv"
 
-	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	badgerbs "github.com/brossetti1/lotus/blockstore/badger"
 )
 
 // BadgerBlockstoreOptions returns the badger options to apply for the provided

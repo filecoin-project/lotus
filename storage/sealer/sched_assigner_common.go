@@ -8,8 +8,8 @@ import (
 
 	"go.opencensus.io/stats"
 
-	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/metrics"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 type WindowSelector func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int

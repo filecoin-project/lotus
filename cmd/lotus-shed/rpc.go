@@ -17,8 +17,8 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/node/repo"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var rpcCmd = &cli.Command{

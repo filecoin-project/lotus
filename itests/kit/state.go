@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 // AssertActorType verifies that the supplied address is an actor of the

@@ -12,7 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
-	sealtasks "github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	sealtasks "github.com/brossetti1/lotus/storage/sealer/sealtasks"
 )
 
 var _ = xerrors.Errorf

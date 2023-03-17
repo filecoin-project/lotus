@@ -12,10 +12,10 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 
-	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	apitypes "github.com/brossetti1/lotus/api/types"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 //                       MODIFYING THE API INTERFACE

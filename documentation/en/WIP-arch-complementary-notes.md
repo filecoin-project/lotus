@@ -48,7 +48,7 @@ The term *block* has different meanings depending on the context, many times bot
 
 In contrast, in the higher Filecoin (application) layer, a block is roughly (FIXME: link to spec definition, if we have any) a set of zero or more messages grouped together by a single miner which is itself grouped with other blocks (from other miners) in the same round to form a tipset. The Filecoin blockchain is a series of "chained" tipsets, each referencing its parent by its header's *CID*, that is, its header as seen as a single IPFS block, this is where both layers interact.
 
-Using now the full Go package qualifiers to avoid any ambiguity, the Filecoin block, `github.com/filecoin-project/lotus/chain/types.FullBlock`, is defined as,
+Using now the full Go package qualifiers to avoid any ambiguity, the Filecoin block, `github.com/brossetti1/lotus/chain/types.FullBlock`, is defined as,
 
 ```Go
 package types
@@ -119,7 +119,7 @@ cat  ~/.lotus/api && echo
 # /ip4/127.0.0.1/tcp/1234/http
 
 # With `lotus daemon` running in another terminal.
-nc -v -z 127.0.0.1 1234 
+nc -v -z 127.0.0.1 1234
 
 # Start daemon and turn off the logs to not clutter the command line.
 bash -c "lotus daemon &" &&
@@ -131,7 +131,7 @@ nc -v -z 127.0.0.1 1234
 
 killall lotus
 # FIXME: We need a lotus stop command:
-#  https://github.com/filecoin-project/lotus/issues/1827
+#  https://github.com/brossetti1/lotus/issues/1827
 ```
 
 FIXME: Link to more in-depth documentation of the CLI architecture, maybe some IPFS documentation (since they share some common logic).

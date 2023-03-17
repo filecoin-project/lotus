@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"github.com/filecoin-project/lotus/genesis"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/wallet/key"
+	"github.com/brossetti1/lotus/genesis"
 )
 
 func CommDR(in []byte) (out [32]byte) {

@@ -12,10 +12,10 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-	"github.com/filecoin-project/lotus/chain/types"
+	bstore "github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/builtin/verifreg"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 var RootVerifierID address.Address

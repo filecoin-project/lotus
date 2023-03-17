@@ -19,16 +19,16 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/gen"
-	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/node/modules/testing"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/gen"
+	genesis2 "github.com/brossetti1/lotus/chain/gen/genesis"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/vm"
+	"github.com/brossetti1/lotus/genesis"
+	"github.com/brossetti1/lotus/journal"
+	"github.com/brossetti1/lotus/node/modules/testing"
+	"github.com/brossetti1/lotus/storage/sealer/ffiwrapper"
 )
 
 var genesisCmd = &cli.Command{

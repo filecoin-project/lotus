@@ -9,7 +9,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
 
-	lapi "github.com/filecoin-project/lotus/api"
+	lapi "github.com/brossetti1/lotus/api"
 )
 
 var healthlog = logging.Logger("healthcheck")

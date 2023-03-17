@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 func TestMaxStagingDeals(t *testing.T) {

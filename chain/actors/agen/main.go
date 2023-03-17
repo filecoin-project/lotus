@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	lotusactors "github.com/filecoin-project/lotus/chain/actors"
+	lotusactors "github.com/brossetti1/lotus/chain/actors"
 )
 
 var actors = map[string][]int{

@@ -30,12 +30,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/lib/nullreader"
-	spaths "github.com/filecoin-project/lotus/storage/paths"
-	nr "github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
-	"github.com/filecoin-project/lotus/storage/sealer/fr32"
-	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/lib/nullreader"
+	spaths "github.com/brossetti1/lotus/storage/paths"
+	nr "github.com/brossetti1/lotus/storage/pipeline/lib/nullreader"
+	"github.com/brossetti1/lotus/storage/sealer/fr32"
+	"github.com/brossetti1/lotus/storage/sealer/partialfile"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 var _ storiface.Storage = &Sealer{}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/brossetti1/lotus/api"
 )
 
 func TestHeadBuffer(t *testing.T) {

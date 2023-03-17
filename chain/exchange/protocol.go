@@ -7,9 +7,9 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/store"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 var log = logging.Logger("chainxchg")

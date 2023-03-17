@@ -11,7 +11,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	dag "github.com/ipfs/go-merkledag"
 
-	path "github.com/filecoin-project/lotus/lib/oldpath"
+	path "github.com/brossetti1/lotus/lib/oldpath"
 )
 
 var log = logging.Logger("pathresolv")

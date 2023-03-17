@@ -10,7 +10,7 @@ import (
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/brossetti1/lotus/api"
 )
 
 func (a *NetAPI) NetStat(ctx context.Context, scope string) (result api.NetStat, err error) {

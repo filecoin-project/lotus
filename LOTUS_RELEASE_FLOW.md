@@ -69,7 +69,7 @@ Users should generally aim to always upgrade to a new even minor version release
 
 ### Feature Releases
 
-All releases under an odd minor version number indicate **feature releases**. These could include releases such as 1.3.0, 1.3.1, 1.5.2, etc. 
+All releases under an odd minor version number indicate **feature releases**. These could include releases such as 1.3.0, 1.3.1, 1.5.2, etc.
 
 Feature releases include new development and bug fixes. They are not mandatory, but still highly recommended, **as they may contain critical security fixes**. Note that some of these releases may be very small patch releases that include critical hotfixes.  There is no way to distinguish between a bug fix release and a feature release on the "feature" version. Both cases will use the "patch" version number.
 
@@ -91,7 +91,7 @@ We aim to ship a new feature release of the Lotus software from our development 
 
 ## Release Cycle
 
-A mandatory release process should take about 3-6 weeks, depending on the amount and the overall complexity of new features being introduced to the network protocol. It may also be shorter if there is a network incident that requires an emergency upgrade.  A feature release process should take about 2-3 weeks. 
+A mandatory release process should take about 3-6 weeks, depending on the amount and the overall complexity of new features being introduced to the network protocol. It may also be shorter if there is a network incident that requires an emergency upgrade.  A feature release process should take about 2-3 weeks.
 
 The start time of the mandatory release process is subject to the network upgrade timeline. We will start a new feature release process every 3 weeks on Tuesdays, regardless of when the previous release landed unless it's still ongoing.
 
@@ -116,7 +116,7 @@ Patch releases in odd minor releases (1.3.0, 1.5.0, etc.) like 1.3.1, 1.5.2 and 
 
 ### Performing a Release
 
-At the beginning of each release cycle, we will generate our "Release tracking issue", which is populated with the content at [https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md) 
+At the beginning of each release cycle, we will generate our "Release tracking issue", which is populated with the content at [https://github.com/brossetti1/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md](https://github.com/brossetti1/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
 
 This template will be used to track major goals we have, a planned shipping date, and a complete release checklist tied to a specific release.
 
@@ -138,5 +138,5 @@ Golang tightly couples source code with versioning (major versions beyond v1 lea
 
 ## Related Items
 
-1. [Release Issue template](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
-2. [Lotus Release Flow Discussion](https://github.com/filecoin-project/lotus/discussions/7053): Leave a comment if you have any questions or feedbacks with regard to the lotus release flow.
+1. [Release Issue template](https://github.com/brossetti1/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
+2. [Lotus Release Flow Discussion](https://github.com/brossetti1/lotus/discussions/7053): Leave a comment if you have any questions or feedbacks with regard to the lotus release flow.

@@ -7,9 +7,9 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/lib/sigs"
 )
 
 // AuthenticateMessage authenticates the message by verifying that the supplied

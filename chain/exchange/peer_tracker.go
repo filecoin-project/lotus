@@ -12,8 +12,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/lib/peermgr"
 )
 
 type peerStats struct {

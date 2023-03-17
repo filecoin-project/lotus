@@ -18,8 +18,8 @@ import (
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
-	"github.com/filecoin-project/lotus/lib/addrutil"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/lib/addrutil"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 var raftLogger = log.Logger("raft-cluster")

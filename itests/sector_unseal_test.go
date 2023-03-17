@@ -11,10 +11,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/node/config"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 func TestUnsealPiece(t *testing.T) {

@@ -13,8 +13,8 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 var log = logging.Logger("p2pnode")

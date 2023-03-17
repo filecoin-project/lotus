@@ -11,11 +11,11 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/rand"
-	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/brossetti1/lotus/chain/actors/policy"
+	"github.com/brossetti1/lotus/chain/consensus/filcns"
+	"github.com/brossetti1/lotus/chain/gen"
+	"github.com/brossetti1/lotus/chain/rand"
+	"github.com/brossetti1/lotus/chain/stmgr"
 )
 
 func init() {

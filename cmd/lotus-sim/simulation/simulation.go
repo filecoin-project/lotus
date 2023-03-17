@@ -15,13 +15,13 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/consensus"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
-	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/stages"
+	"github.com/brossetti1/lotus/chain/consensus"
+	"github.com/brossetti1/lotus/chain/consensus/filcns"
+	"github.com/brossetti1/lotus/chain/stmgr"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/vm"
+	"github.com/brossetti1/lotus/cmd/lotus-sim/simulation/mock"
+	"github.com/brossetti1/lotus/cmd/lotus-sim/simulation/stages"
 )
 
 var log = logging.Logger("simulation")

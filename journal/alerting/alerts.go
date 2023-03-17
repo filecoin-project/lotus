@@ -8,7 +8,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/lotus/journal"
+	"github.com/brossetti1/lotus/journal"
 )
 
 var log = logging.Logger("alerting")

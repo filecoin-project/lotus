@@ -16,11 +16,11 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/actors/policy"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 func TestWorkerKeyChange(t *testing.T) {

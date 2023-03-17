@@ -3,7 +3,7 @@ package kit
 import (
 	"golang.org/x/crypto/sha3"
 
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
 )
 
 func EthTopicHash(sig string) ethtypes.EthHash {

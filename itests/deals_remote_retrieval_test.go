@@ -19,9 +19,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
-	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/brossetti1/lotus/api"
+	bstore "github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/itests/kit"
 )
 
 func TestNetStoreRetrieval(t *testing.T) {

@@ -3,7 +3,7 @@ package build
 import (
 	"sort"
 
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/brossetti1/lotus/node/modules/dtypes"
 )
 
 type DrandEnum int

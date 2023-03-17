@@ -1,4 +1,4 @@
-module github.com/filecoin-project/lotus
+module github.com/brossetti1/lotus
 
 go 1.18
 

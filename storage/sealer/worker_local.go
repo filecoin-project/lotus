@@ -22,10 +22,10 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
 
-	"github.com/filecoin-project/lotus/storage/paths"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/storage/paths"
+	"github.com/brossetti1/lotus/storage/sealer/ffiwrapper"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 var pathTypes = []storiface.SectorFileType{storiface.FTUnsealed, storiface.FTSealed, storiface.FTCache, storiface.FTUpdate, storiface.FTUpdateCache}

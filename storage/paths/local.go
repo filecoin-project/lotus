@@ -17,9 +17,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/lib/result"
-	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/lib/result"
+	"github.com/brossetti1/lotus/storage/sealer/fsutil"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 type LocalStorage interface {

@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/node/impl/full"
 )
 
 func TestEthFilterAPIDisabledViaConfig(t *testing.T) {

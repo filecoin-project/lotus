@@ -8,8 +8,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
 )
 
 func TestEthLogFromEvent(t *testing.T) {

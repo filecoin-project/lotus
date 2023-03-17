@@ -11,6 +11,6 @@ User documentation (including documentation for miners) has been moved to https:
 
 ## Documentation Website
 
-https://lotus.filecoin.io source is in [lotus-docs repository](https://github.com/filecoin-project/lotus-docs), which contains Lotus as a git submodule.
+https://lotus.filecoin.io source is in [lotus-docs repository](https://github.com/brossetti1/lotus-docs), which contains Lotus as a git submodule.
 
 To update the site, the lotus-docs repository should be updated with the desired version for the lotus git submodule. Once pushed to master, it will be auto-deployed.

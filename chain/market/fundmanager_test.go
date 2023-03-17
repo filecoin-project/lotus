@@ -18,10 +18,10 @@ import (
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/actors/builtin/market"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/chain/wallet"
 )
 
 // TestFundManagerBasic verifies that the basic fund manager operations work

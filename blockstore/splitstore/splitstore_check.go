@@ -11,8 +11,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/types"
+	bstore "github.com/brossetti1/lotus/blockstore"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 // performs an asynchronous health-check on the splitstore; results are appended to

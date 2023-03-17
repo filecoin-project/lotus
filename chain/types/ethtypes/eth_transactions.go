@@ -17,8 +17,8 @@ import (
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	typescrypto "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/types"
 )
 
 const Eip1559TxType = 2

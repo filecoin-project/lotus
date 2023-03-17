@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/lotus/lib/lazy"
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/lib/lazy"
+	"github.com/brossetti1/lotus/storage/sealer/sealtasks"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 // schedWorkerCache caches scheduling-related calls to workers

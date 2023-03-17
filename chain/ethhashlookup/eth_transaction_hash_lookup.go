@@ -9,7 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
+	"github.com/brossetti1/lotus/chain/types/ethtypes"
 )
 
 var ErrNotFound = errors.New("not found")

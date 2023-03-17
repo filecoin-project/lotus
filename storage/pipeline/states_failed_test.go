@@ -18,11 +18,11 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
-	api2 "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/types"
-	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
-	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
+	api2 "github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/chain/actors/builtin/market"
+	"github.com/brossetti1/lotus/chain/types"
+	pipeline "github.com/brossetti1/lotus/storage/pipeline"
+	"github.com/brossetti1/lotus/storage/pipeline/mocks"
 )
 
 func TestStateRecoverDealIDs(t *testing.T) {
@@ -74,7 +74,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 	sctx.EXPECT().Send(pipeline.SectorRemove{}).Return(nil)
 
 	// TODO sctx should satisfy an interface so it can be useable for mocking.  This will fail because we are passing in an empty context now to get this to build.
-	// https://github.com/filecoin-project/lotus/issues/7867
+	// https://github.com/brossetti1/lotus/issues/7867
 	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, pipeline.SectorInfo{
 		Pieces: []api2.SectorPiece{
 			{

@@ -19,12 +19,12 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/build"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/types"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/lib/tablewriter"
 )
 
 var actorCmd = &cli.Command{

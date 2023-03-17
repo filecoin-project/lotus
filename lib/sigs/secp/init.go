@@ -9,7 +9,7 @@ import (
 	crypto "github.com/filecoin-project/go-crypto"
 	crypto2 "github.com/filecoin-project/go-state-types/crypto"
 
-	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/brossetti1/lotus/lib/sigs"
 )
 
 type secpSigner struct{}

@@ -1,6 +1,6 @@
 package api
 
-import apitypes "github.com/filecoin-project/lotus/api/types"
+import apitypes "github.com/brossetti1/lotus/api/types"
 
 func CreateEthRPCAliases(as apitypes.Aliaser) {
 	// TODO: maybe use reflect to automatically register all the eth aliases

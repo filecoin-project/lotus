@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/brossetti1/lotus/api"
+	"github.com/brossetti1/lotus/itests/kit"
+	"github.com/brossetti1/lotus/node/repo"
 )
 
 func TestMinerAllInfo(t *testing.T) {

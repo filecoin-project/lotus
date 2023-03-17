@@ -7,11 +7,11 @@ body:
     label: Checklist
     description: Please check off the following boxes before continuing to file a bug report!
     options:
-      - label: This is **not** a security-related bug/issue. If it is, please follow please follow the [security policy](https://github.com/filecoin-project/lotus/security/policy).
+      - label: This is **not** a security-related bug/issue. If it is, please follow please follow the [security policy](https://github.com/brossetti1/lotus/security/policy).
         required: true
-      - label: I **have** searched on the [issue tracker](https://github.com/filecoin-project/lotus/issues) and the [lotus forum](https://github.com/filecoin-project/lotus/discussions), and there is no existing related issue or discussion.
+      - label: I **have** searched on the [issue tracker](https://github.com/brossetti1/lotus/issues) and the [lotus forum](https://github.com/brossetti1/lotus/discussions), and there is no existing related issue or discussion.
         required: true
-      - label: I am running the [`Latest release`](https://github.com/filecoin-project/lotus/releases), the most recent RC(release canadiate) for the upcoming release or the dev branch(master), or have an issue updating to any of these.
+      - label: I am running the [`Latest release`](https://github.com/brossetti1/lotus/releases), the most recent RC(release canadiate) for the upcoming release or the dev branch(master), or have an issue updating to any of these.
         required: true
       - label: I did not make any code changes to lotus.
         required: false
@@ -41,7 +41,7 @@ body:
     render: text
     description: Enter the output of `lotus version` and `lotus-miner version` if applicable.
     placeholder: |
-      e.g. 
+      e.g.
       Daemon:  1.19.0+mainnet+git.64059ca87+api1.5.0
       Local: lotus-miner version 1.19.0+mainnet+git.64059ca87
   validations:

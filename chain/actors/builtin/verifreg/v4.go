@@ -15,8 +15,8 @@ import (
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/adt"
 )
 
 var _ State = (*state4)(nil)

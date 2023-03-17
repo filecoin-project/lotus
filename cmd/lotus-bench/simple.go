@@ -21,10 +21,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	prf "github.com/filecoin-project/specs-actors/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/brossetti1/lotus/build"
+	lcli "github.com/brossetti1/lotus/cli"
+	"github.com/brossetti1/lotus/storage/sealer/ffiwrapper"
+	"github.com/brossetti1/lotus/storage/sealer/storiface"
 )
 
 var simpleCmd = &cli.Command{

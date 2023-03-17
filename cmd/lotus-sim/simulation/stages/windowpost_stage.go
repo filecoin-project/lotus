@@ -13,14 +13,14 @@ import (
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
-	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
+	"github.com/brossetti1/lotus/chain/actors"
+	"github.com/brossetti1/lotus/chain/actors/aerrors"
+	"github.com/brossetti1/lotus/chain/actors/builtin/miner"
+	"github.com/brossetti1/lotus/chain/actors/builtin/power"
+	"github.com/brossetti1/lotus/chain/actors/policy"
+	"github.com/brossetti1/lotus/chain/types"
+	"github.com/brossetti1/lotus/cmd/lotus-sim/simulation/blockbuilder"
+	"github.com/brossetti1/lotus/cmd/lotus-sim/simulation/mock"
 )
 
 type WindowPoStStage struct {
