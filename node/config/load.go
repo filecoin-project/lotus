@@ -35,9 +35,6 @@ func FromFile(path string, opts ...LoadCfgOpt) (interface{}, error) {
 	}
 	// check for loadability
 	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
 	switch {
 	case os.IsNotExist(err):
 		if loadOpts.canFallbackOnDefault != nil {
@@ -112,9 +109,14 @@ func NoDefaultForSplitstoreTransition() error {
 	return xerrors.Errorf("FullNode config not found and fallback to default disallowed while we transition to splitstore discard default.  Use `lotus config default` to set this repo up with a default config.  Be sure to set `EnableSplitstore` to `false` if you are running a full archive node")
 }
 
+// Match the EnableSplitstore field
+func MatchEnableSplitstoreField(s string) bool {
+	enableSplitstoreRx := regexp.MustCompile(`(?m)^\s*EnableSplitstore\s*=`)
+	return enableSplitstoreRx.MatchString(s)
+}
+
 func ValidateSplitstoreSet(cfgRaw string) error {
-	explicitSplitstoreRx := regexp.MustCompile(`(?m)^\s*EnableSplitstore\s*=`)
-	if !explicitSplitstoreRx.MatchString(cfgRaw) {
+	if !MatchEnableSplitstoreField(cfgRaw) {
 		return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
 	}
 	return nil
@@ -146,12 +148,6 @@ func Commented(commented bool) UpdateCfgOpt {
 
 func DefaultKeepUncommented() UpdateCfgOpt {
 	return KeepUncommented(MatchEnableSplitstoreField)
-}
-
-// Match the EnableSplitstore field
-func MatchEnableSplitstoreField(s string) bool {
-	enableSplitstoreRx := regexp.MustCompile(`(?m)^\s*EnableSplitstore\s*=`)
-	return enableSplitstoreRx.MatchString(s)
 }
 
 // ConfigUpdate takes in a config and a default config and optionally comments out default values
@@ -247,7 +243,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, err
 
 			// filter lines from options
 			optsFilter := updateOpts.keepUncommented != nil && updateOpts.keepUncommented(line)
-			// if there is the same line in the default config, comment it out it output
+			// if there is the same line in the default config, comment it out in output
 			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 && !optsFilter {
 				line = pad + "#" + line[len(pad):]
 			}
