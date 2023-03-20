@@ -185,9 +185,15 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 	for {
 		// If we've reached the genesis block, or we've reached the limit of
 		// how far back to look
-		if cur.Height() == 0 || !noLimit && cur.Height() <= limitHeight {
+		if cur.Height() == 0 {
 			// it ain't here!
 			return nil, nil, cid.Undef, nil
+		}
+
+		if !noLimit && cur.Height() <= limitHeight {
+			// Explicitly report that the message was not found within the lookback, instead of silently pretending
+			// the message does not exist / could not be found at all.
+			return nil, nil, cid.Undef, xerrors.Errorf("message not found within lookback range (limit: %d epochs)", limit)
 		}
 
 		select {
