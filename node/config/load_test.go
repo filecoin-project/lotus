@@ -111,7 +111,7 @@ func TestKeepEnableSplitstoreUncommented(t *testing.T) {
 func TestValidateConfigSetsEnableSplitstore(t *testing.T) {
 	cfgCommentedOutEnableSS, err := ConfigUpdate(DefaultFullNode(), DefaultFullNode(), Commented(true))
 	assert.NoError(t, err)
-	// this comments out EnableSplitstore
+	// assert that this config comments out EnableSplitstore
 	assert.False(t, MatchEnableSplitstoreField(string(cfgCommentedOutEnableSS)))
 
 	// write config with commented out EnableSplitstore to file
