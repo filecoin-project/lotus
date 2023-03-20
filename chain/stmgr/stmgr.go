@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -37,6 +38,8 @@ import (
 
 const LookbackNoLimit = api.LookbackNoLimit
 const ReceiptAmtBitwidth = 3
+
+const execTraceCacheSize = 16
 
 var log = logging.Logger("statemgr")
 
@@ -136,12 +139,21 @@ type StateManager struct {
 	tsExec        Executor
 	tsExecMonitor ExecMonitor
 	beacon        beacon.Schedule
+
+	// We keep a small cache for calls to ExecutionTrace which helps improve
+	// performance for node operators like exchanges and block explorers
+	execTraceCache *lru.ARCCache[*types.TipSet, tipSetCacheEntry]
 }
 
 // Caches a single state tree
 type treeCache struct {
 	root cid.Cid
 	tree *state.StateTree
+}
+
+type tipSetCacheEntry struct {
+	cid        cid.Cid
+	invocTrace []*api.InvocResult
 }
 
 func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule, metadataDs dstore.Batching) (*StateManager, error) {
@@ -183,6 +195,11 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		}
 	}
 
+	execTraceCache, err := lru.NewARC[*types.TipSet, tipSetCacheEntry](execTraceCacheSize)
+	if err != nil {
+		return nil, err
+	}
+
 	return &StateManager{
 		networkVersions:   networkVersions,
 		latestVersion:     lastVersion,
@@ -198,7 +215,8 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 			root: cid.Undef,
 			tree: nil,
 		},
-		compWait: make(map[string]chan struct{}),
+		compWait:       make(map[string]chan struct{}),
+		execTraceCache: execTraceCache,
 	}, nil
 }
 
