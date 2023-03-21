@@ -3,12 +3,14 @@ package store
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
@@ -170,7 +172,7 @@ type walkTask struct {
 	c                cid.Cid
 	taskType         walkSchedTaskType
 	topLevelTaskType walkSchedTaskType
-	topLevelTaskCid  cid.Cid
+	blockCid         cid.Cid
 	epoch            abi.ChainEpoch
 }
 
@@ -323,7 +325,7 @@ func newWalkScheduler(ctx context.Context, store bstore.Blockstore, cfg walkSche
 			c:                b.Cid(),
 			taskType:         blockTask,
 			topLevelTaskType: blockTask,
-			topLevelTaskCid:  b.Cid(),
+			blockCid:         b.Cid(),
 			epoch:            cfg.head.Height(),
 		}:
 		}
@@ -422,8 +424,17 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 	}
 
 	blk, err := s.store.Get(s.ctx, t.c)
+	if errors.Is(err, format.ErrNotFound{}) && t.topLevelTaskType == receiptTask {
+		log.Warnw("ignoring not-found block in Receipts",
+			"block", t.blockCid,
+			"epoch", t.epoch,
+			"cid", t.c)
+		return nil
+	}
 	if err != nil {
-		return xerrors.Errorf("writing object to car. Task: %s. Top-Level: %s (%s). Epoch: %d. bs.Get: %w", t.taskType, t.topLevelTaskType, t.topLevelTaskCid, t.epoch, err)
+		return xerrors.Errorf(
+			"blockstore.Get(%s). Task: %s. Block: %s (%s). Epoch: %d. Err: %w",
+			t.c, t.taskType, t.topLevelTaskType, t.blockCid, t.epoch, err)
 	}
 
 	s.results <- taskResult{
@@ -447,7 +458,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 					c:                b.Parents[i],
 					taskType:         dagTask,
 					topLevelTaskType: blockTask,
-					topLevelTaskCid:  t.c,
+					blockCid:         b.Parents[i],
 					epoch:            0,
 				})
 			}
@@ -455,7 +466,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 				c:                b.ParentStateRoot,
 				taskType:         stateTask,
 				topLevelTaskType: stateTask,
-				topLevelTaskCid:  t.c,
+				blockCid:         t.c,
 				epoch:            0,
 			})
 
@@ -467,7 +478,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 				c:                b.Parents[i],
 				taskType:         blockTask,
 				topLevelTaskType: blockTask,
-				topLevelTaskCid:  t.c,
+				blockCid:         b.Parents[i],
 				epoch:            b.Height,
 			})
 		}
@@ -482,7 +493,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 				c:                b.Messages,
 				taskType:         messageTask,
 				topLevelTaskType: messageTask,
-				topLevelTaskCid:  t.c,
+				blockCid:         t.c,
 				epoch:            b.Height,
 			})
 		}
@@ -492,7 +503,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 				c:                b.ParentMessageReceipts,
 				taskType:         receiptTask,
 				topLevelTaskType: receiptTask,
-				topLevelTaskCid:  t.c,
+				blockCid:         t.c,
 				epoch:            b.Height,
 			})
 		}
@@ -501,7 +512,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 				c:                b.ParentStateRoot,
 				taskType:         stateTask,
 				topLevelTaskType: stateTask,
-				topLevelTaskCid:  t.c,
+				blockCid:         t.c,
 				epoch:            b.Height,
 			})
 		}
@@ -519,7 +530,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 			c:                c,
 			taskType:         dagTask,
 			topLevelTaskType: t.topLevelTaskType,
-			topLevelTaskCid:  t.topLevelTaskCid,
+			blockCid:         t.blockCid,
 			epoch:            t.epoch,
 		})
 	})
