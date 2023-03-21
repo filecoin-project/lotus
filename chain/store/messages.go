@@ -106,6 +106,10 @@ type BlockMessages struct {
 func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) ([]BlockMessages, error) {
 	// returned BlockMessages match block order in tipset
 
+	if entry, ok := cs.tsMsgCace.Get(ts); ok {
+		return entry, nil
+	}
+
 	applied := make(map[address.Address]uint64)
 
 	cst := cbor.NewCborStore(cs.stateBlockstore)
@@ -177,6 +181,8 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 
 		out = append(out, bm)
 	}
+
+	cs.tsMsgCace.Add(ts, out)
 
 	return out, nil
 }
