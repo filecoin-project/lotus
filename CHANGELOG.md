@@ -28,6 +28,12 @@ The SplitStore also has two new commands:
 - `lotus chain prune hot` will run an online (badger vlog) garbage collection on the hotstore.
 - `lotus chain prune hot-moving` will run an moving garbage collection the hotstore
 
+**RPC API improvements**
+
+This feature release includes all the RPC API improvements made in the Lotus v1.20.x patch releases. It includes an updated FFI that sets the FVM parallelism to 4 by default.
+
+Node operators with higher memory specs can experiment with setting LOTUS_FVM_CONCURRENCY to higher values, up to 48, to allow for more concurrent FVM execution.
+
 **Experimental scheduler assigners**
 
 In this release there are four new expirmental scheduler assigners:
