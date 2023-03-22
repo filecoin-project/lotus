@@ -819,6 +819,12 @@ workflows:
           suite: itest-mpool_push_with_uuid
           target: "./itests/mpool_push_with_uuid_test.go"
       - test:
+          name: test-itest-msgindex
+          requires:
+            - build
+          suite: itest-msgindex
+          target: "./itests/msgindex_test.go"
+      - test:
           name: test-itest-multisig
           requires:
             - build

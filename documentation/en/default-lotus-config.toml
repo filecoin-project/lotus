@@ -390,3 +390,11 @@
     #DatabasePath = ""
 
 
+[Index]
+  # EnableMsgIndex enables indexing of messages on chain.
+  #
+  # type: bool
+  # env var: LOTUS_INDEX_ENABLEMSGINDEX
+  #EnableMsgIndex = false
+
+
