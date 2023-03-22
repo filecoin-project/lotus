@@ -11,6 +11,7 @@ Before upgrading to this feature release read carefully through these bullet poi
 - Starting from this release, the SplitStore feature is automatically activated on new nodes. However, for existing Lotus users, you need to explicitly configure SplitStore by uncommenting the `EnableSplitstore` option in your `config.toml` file. To enable SplitStore, set `EnableSplitstore=true`, and to disable it, set `EnableSplitstore=false`. **It's important to note that your Lotus node will not start unless this configuration is properly set. Set it to false if you are running a full archival node!**
 - This feature release requires a **minimum Go version of v1.19.7 or higher to successfully build Lotus**. Additionally, Go version v1.20 and higher is now also supported.
 - **Storage Providers:** The proofs libraries now have CUDA enabled by default, which requires you to install (CUDA)[https://lotus.filecoin.io/tutorials/lotus-miner/cuda/] if you haven't already done so. If you prefer to use OpenCL on your GPUs instead, you can use the `FFI_USE_OPENCL=1` flag when building from source. On the other hand, if you want to disable GPUs altogether, you can use the `FFI_NO_GPU=1` environment variable when building from source.
+- **Exchanges:** Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the by the FVM. **Please make sure to read the `Execution trace format change` section carefully, as these are interface breaking changes**
 
 ## Highlights
 
@@ -217,54 +218,6 @@ The `lotus-Miner sector list` is now running in parallel - which should speed up
 - feat: ci: make ci more efficient ([filecoin-project/lotus#9910](https://github.com/filecoin-project/lotus/pull/9910))
 - feat: scripts: go.mod dep diff script ([filecoin-project/lotus#9711](https://github.com/filecoin-project/lotus/pull/9711))
 
-## Contributors
-
-| Contributor | Commits | Lines ± | Files Changed |
-|-------------|---------|---------|---------------|
-| Hannah Howard | 2 | +2909/-6026 | 84 |
-| Łukasz Magiera | 42 | +2967/-1848 | 95 |
-| Steven Allen | 20 | +1703/-1345 | 88 |
-| Alfonso de la Rocha | 17 | +823/-1808 | 86 |
-| Peter Rabbitson | 9 | +1957/-219 | 34 |
-| Geoff Stuart | 12 | +818/-848 | 29 |
-| hannahhoward | 5 | +507/-718 | 36 |
-| Hector Sanjuan | 6 | +443/-726 | 35 |
-| Kevin Li | 1 | +1124/-14 | 22 |
-| zenground0 | 30 | +791/-269 | 88 |
-| frrist | 1 | +992/-16 | 13 |
-| Travis Person | 4 | +837/-53 | 24 |
-| Phi | 20 | +622/-254 | 34 |
-| Ian Davis | 7 | +35/-729 | 20 |
-| Aayush | 10 | +378/-177 | 40 |
-| Raúl Kripalani | 15 | +207/-138 | 19 |
-| Arsenii Petrovich | 7 | +248/-94 | 30 |
-| ZenGround0 | 5 | +238/-39 | 15 |
-| Neel Virdy | 1 | +109/-107 | 58 |
-| ychiao | 1 | +135/-39 | 3 |
-| Jorropo | 2 | +87/-82 | 67 |
-| Marten Seemann | 8 | +69/-64 | 17 |
-| Rod Vagg | 1 | +55/-16 | 3 |
-| Masih H. Derkani | 3 | +39/-27 | 12 |
-| raulk | 2 | +30/-29 | 5 |
-| dependabot[bot] | 4 | +37/-17 | 8 |
-| beck | 2 | +38/-2 | 2 |
-| Jennifer Wang | 4 | +20/-19 | 19 |
-| Richard Guan | 3 | +28/-8 | 5 |
-| omahs | 7 | +14/-14 | 7 |
-| dirkmc | 2 | +19/-7 | 6 |
-| David Choi | 2 | +16/-5 | 2 |
-| Mike Greenberg | 1 | +18/-1 | 1 |
-| Adin Schmahmann | 1 | +19/-0 | 2 |
-| Phi-rjan | 5 | +12/-4 | 5 |
-| Dirk McCormick | 2 | +6/-6 | 3 |
-| Aayush Rajasekaran | 2 | +9/-3 | 2 |
-| Jiaying Wang | 5 | +6/-4 | 5 |
-| Anjor Kanekar | 1 | +5/-5 | 1 |
-| vyzo | 1 | +3/-3 | 2 |
-| 0x5459 | 1 | +1/-1 | 1 |
-
-# UNRELEASED
-
 ## Execution Trace Format Changes
 
 Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the FVM. Specifically:
@@ -416,6 +369,52 @@ New <code>ExecutionTrace</code>:
 ```
 
 </details>
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Hannah Howard | 2 | +2909/-6026 | 84 |
+| Łukasz Magiera | 42 | +2967/-1848 | 95 |
+| Steven Allen | 20 | +1703/-1345 | 88 |
+| Alfonso de la Rocha | 17 | +823/-1808 | 86 |
+| Peter Rabbitson | 9 | +1957/-219 | 34 |
+| Geoff Stuart | 12 | +818/-848 | 29 |
+| hannahhoward | 5 | +507/-718 | 36 |
+| Hector Sanjuan | 6 | +443/-726 | 35 |
+| Kevin Li | 1 | +1124/-14 | 22 |
+| zenground0 | 30 | +791/-269 | 88 |
+| frrist | 1 | +992/-16 | 13 |
+| Travis Person | 4 | +837/-53 | 24 |
+| Phi | 20 | +622/-254 | 34 |
+| Ian Davis | 7 | +35/-729 | 20 |
+| Aayush | 10 | +378/-177 | 40 |
+| Raúl Kripalani | 15 | +207/-138 | 19 |
+| Arsenii Petrovich | 7 | +248/-94 | 30 |
+| ZenGround0 | 5 | +238/-39 | 15 |
+| Neel Virdy | 1 | +109/-107 | 58 |
+| ychiao | 1 | +135/-39 | 3 |
+| Jorropo | 2 | +87/-82 | 67 |
+| Marten Seemann | 8 | +69/-64 | 17 |
+| Rod Vagg | 1 | +55/-16 | 3 |
+| Masih H. Derkani | 3 | +39/-27 | 12 |
+| raulk | 2 | +30/-29 | 5 |
+| dependabot[bot] | 4 | +37/-17 | 8 |
+| beck | 2 | +38/-2 | 2 |
+| Jennifer Wang | 4 | +20/-19 | 19 |
+| Richard Guan | 3 | +28/-8 | 5 |
+| omahs | 7 | +14/-14 | 7 |
+| dirkmc | 2 | +19/-7 | 6 |
+| David Choi | 2 | +16/-5 | 2 |
+| Mike Greenberg | 1 | +18/-1 | 1 |
+| Adin Schmahmann | 1 | +19/-0 | 2 |
+| Phi-rjan | 5 | +12/-4 | 5 |
+| Dirk McCormick | 2 | +6/-6 | 3 |
+| Aayush Rajasekaran | 2 | +9/-3 | 2 |
+| Jiaying Wang | 5 | +6/-4 | 5 |
+| Anjor Kanekar | 1 | +5/-5 | 1 |
+| vyzo | 1 | +3/-3 | 2 |
+| 0x5459 | 1 | +1/-1 | 1 |
 
 # v1.20.3 / 2023-03-09
 
