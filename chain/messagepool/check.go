@@ -32,14 +32,15 @@ func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*api.MessageP
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
 func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]api.MessageCheckStatus, error) {
 	var msgs []*types.Message
-	mp.lk.Lock()
-	mset, ok := mp.pending[from]
+	msetIface, ok := mp.pending.Load(from)
 	if ok {
-		for _, sm := range mset.msgs {
-			msgs = append(msgs, &sm.Message)
+		mset, ok := msetIface.(*msgSet)
+		if ok {
+			for _, sm := range mset.msgs {
+				msgs = append(msgs, &sm.Message)
+			}
 		}
 	}
-	mp.lk.Unlock()
 
 	if len(msgs) == 0 {
 		return nil, nil
@@ -58,17 +59,19 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 	msgMap := make(map[address.Address]map[uint64]*types.Message)
 	count := 0
 
-	mp.lk.Lock()
 	for _, m := range replace {
 		mmap, ok := msgMap[m.From]
 		if !ok {
 			mmap = make(map[uint64]*types.Message)
 			msgMap[m.From] = mmap
-			mset, ok := mp.pending[m.From]
+			msetIface, ok := mp.pending.Load(m.From)
 			if ok {
-				count += len(mset.msgs)
-				for _, sm := range mset.msgs {
-					mmap[sm.Message.Nonce] = &sm.Message
+				mset, ok := msetIface.(*msgSet)
+				if ok {
+					count += len(mset.msgs)
+					for _, sm := range mset.msgs {
+						mmap[sm.Message.Nonce] = &sm.Message
+					}
 				}
 			} else {
 				count++
@@ -76,7 +79,6 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 		}
 		mmap[m.Nonce] = m
 	}
-	mp.lk.Unlock()
 
 	msgs := make([]*types.Message, 0, count)
 	start := 0
@@ -143,23 +145,20 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 
 		st, ok := state[m.From]
 		if !ok {
-			mp.lk.Lock()
-			mset, ok := mp.pending[m.From]
-			if ok && !interned {
+			msetIface, ok_load := mp.pending.Load(m.From)
+			mset, ok_iface := msetIface.(*msgSet)
+			if ok_load && ok_iface && !interned {
 				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
 				for _, m := range mset.msgs {
 					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
 				}
 				state[m.From] = st
-				mp.lk.Unlock()
 
 				check.OK = true
 				check.Hint = map[string]interface{}{
 					"nonce": st.nextNonce,
 				}
 			} else {
-				mp.lk.Unlock()
-
 				stateNonce, err := mp.getStateNonce(ctx, m.From, curTs)
 				if err != nil {
 					check.OK = false

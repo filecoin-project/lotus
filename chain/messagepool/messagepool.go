@@ -135,7 +135,7 @@ type MessagePool struct {
 	localAddrs map[address.Address]struct{}
 
 	// do NOT access this map directly, use getPendingMset, setPendingMset, deletePendingMset, forEachPending, and clearPending respectively
-	pending map[address.Address]*msgSet
+	pending sync.Map //threadsafe map[address.Address]*msgSet
 
 	keyCache map[address.Address]address.Address
 
@@ -389,7 +389,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 		repubTk:        build.Clock.Ticker(RepublishInterval),
 		repubTrigger:   make(chan struct{}, 1),
 		localAddrs:     make(map[address.Address]struct{}),
-		pending:        make(map[address.Address]*msgSet),
+		pending:        sync.Map{},
 		keyCache:       make(map[address.Address]address.Address),
 		minGasPrice:    types.NewInt(0),
 		getNtwkVersion: us.GetNtwkVersion,
@@ -447,6 +447,8 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	return mp, nil
 }
 
+// TryForEachPendingMessage calls the provided function for each pending message in the pool, if possible.
+// Returns an error if the lock cannot be acquired or any f call fails
 func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
 	// while holding the mpool lock
@@ -455,21 +457,25 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 	}
 	defer mp.lk.Unlock()
 
-	for _, mset := range mp.pending {
-		for _, m := range mset.msgs {
-			err := f(m.Cid())
-			if err != nil {
-				return err
-			}
-
-			err = f(m.Message.Cid())
-			if err != nil {
-				return err
+	var err error
+	mp.pending.Range(func(k, value interface{}) bool {
+		mset, ok := value.(*msgSet)
+		if ok {
+			for _, m := range mset.msgs {
+				err = f(m.Cid())
+				if err != nil {
+					return false
+				}
+				err = f(m.Message.Cid())
+				if err != nil {
+					return false
+				}
 			}
 		}
-	}
+		return true
+	})
 
-	return nil
+	return err
 }
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
@@ -497,10 +503,15 @@ func (mp *MessagePool) getPendingMset(ctx context.Context, addr address.Address)
 	if err != nil {
 		return nil, false, err
 	}
-
-	ms, f := mp.pending[ra]
-
-	return ms, f, nil
+	msetIface, ok := mp.pending.Load(ra)
+	if !ok {
+		return nil, false, nil
+	}
+	mset, ok := msetIface.(*msgSet)
+	if !ok {
+		return nil, false, fmt.Errorf("unexpected value type for key %v", ra)
+	}
+	return mset, true, nil
 }
 
 func (mp *MessagePool) setPendingMset(ctx context.Context, addr address.Address, ms *msgSet) error {
@@ -509,16 +520,21 @@ func (mp *MessagePool) setPendingMset(ctx context.Context, addr address.Address,
 		return err
 	}
 
-	mp.pending[ra] = ms
+	mp.pending.Store(ra, ms)
 
 	return nil
 }
 
 // This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
 func (mp *MessagePool) forEachPending(f func(address.Address, *msgSet)) {
-	for la, ms := range mp.pending {
-		f(la, ms)
-	}
+	mp.pending.Range(func(key, value interface{}) bool {
+		addr, ok_addr := key.(address.Address)
+		mset, ok_mset := value.(*msgSet)
+		if ok_addr && ok_mset {
+			f(addr, mset)
+		}
+		return true // continue iteration
+	})
 }
 
 func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Address) error {
@@ -527,14 +543,14 @@ func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Addre
 		return err
 	}
 
-	delete(mp.pending, ra)
+	mp.pending.Delete(ra)
 
 	return nil
 }
 
 // This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
 func (mp *MessagePool) clearPending() {
-	mp.pending = make(map[address.Address]*msgSet)
+	mp.pending = sync.Map{}
 }
 
 func (mp *MessagePool) isLocal(ctx context.Context, addr address.Address) (bool, error) {
