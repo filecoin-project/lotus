@@ -137,7 +137,7 @@ type MessagePool struct {
 	// do NOT access this map directly, use getPendingMset, setPendingMset, deletePendingMset, forEachPending, and clearPending respectively
 	pending sync.Map //threadsafe map[address.Address]*msgSet
 
-	keyCache map[address.Address]address.Address
+	keyCache sync.Map // map[address.Address]address.Address
 
 	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
@@ -390,7 +390,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 		repubTrigger:   make(chan struct{}, 1),
 		localAddrs:     make(map[address.Address]struct{}),
 		pending:        sync.Map{},
-		keyCache:       make(map[address.Address]address.Address),
+		keyCache:       sync.Map{},
 		minGasPrice:    types.NewInt(0),
 		getNtwkVersion: us.GetNtwkVersion,
 		pruneTrigger:   make(chan struct{}, 1),
@@ -480,9 +480,12 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
 	// check the cache
-	a, f := mp.keyCache[addr]
-	if f {
-		return a, nil
+	aIface, ok := mp.keyCache.Load(addr)
+	if ok {
+		a, ok := aIface.(address.Address)
+		if ok {
+			return a, nil
+		}
 	}
 
 	// resolve the address
@@ -492,8 +495,8 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 	}
 
 	// place both entries in the cache (may both be key addresses, which is fine)
-	mp.keyCache[addr] = ka
-	mp.keyCache[ka] = ka
+	mp.keyCache.Store(addr, ka)
+	mp.keyCache.Store(ka, ka)
 
 	return ka, nil
 }
