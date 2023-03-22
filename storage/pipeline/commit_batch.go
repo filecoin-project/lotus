@@ -388,6 +388,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 }
 
 func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
+
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
@@ -414,10 +415,18 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 
 	var res []sealiface.CommitBatchRes
 
+	sectorsProcessed := 0
+
 	for sn, info := range b.todo {
 		r := sealiface.CommitBatchRes{
 			Sectors:       []abi.SectorNumber{sn},
 			FailedSectors: map[abi.SectorNumber]string{},
+		}
+
+		if cfg.MaxSectorProveCommitsSubmittedPerEpoch > 0 &&
+			uint64(sectorsProcessed) >= cfg.MaxSectorProveCommitsSubmittedPerEpoch {
+			time.Sleep(builtin.EpochDurationSeconds * time.Second)
+			sectorsProcessed = 0
 		}
 
 		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, ts.Key())
@@ -429,6 +438,8 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 		}
 
 		res = append(res, r)
+
+		sectorsProcessed += 1
 	}
 
 	return res, nil

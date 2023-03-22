@@ -204,7 +204,7 @@ func CheckTotalFIL(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) 
 func MakeMsgGasCost(msg *types.Message, ret *vm.ApplyRet) api.MsgGasCost {
 	return api.MsgGasCost{
 		Message:            msg.Cid(),
-		GasUsed:            big.NewInt(ret.GasUsed),
+		GasUsed:            uint64(ret.GasUsed),
 		BaseFeeBurn:        ret.GasCosts.BaseFeeBurn,
 		OverEstimationBurn: ret.GasCosts.OverEstimationBurn,
 		MinerPenalty:       ret.GasCosts.MinerPenalty,

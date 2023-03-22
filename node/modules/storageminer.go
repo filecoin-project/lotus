@@ -1014,9 +1014,10 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AggregateAboveBaseFee:      types.FIL(cfg.AggregateAboveBaseFee),
 				BatchPreCommitAboveBaseFee: types.FIL(cfg.BatchPreCommitAboveBaseFee),
 
-				TerminateBatchMax:  cfg.TerminateBatchMax,
-				TerminateBatchMin:  cfg.TerminateBatchMin,
-				TerminateBatchWait: config.Duration(cfg.TerminateBatchWait),
+				TerminateBatchMax:                      cfg.TerminateBatchMax,
+				TerminateBatchMin:                      cfg.TerminateBatchMin,
+				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
+				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
 			}
 			c.SetSealingConfig(newCfg)
 		})

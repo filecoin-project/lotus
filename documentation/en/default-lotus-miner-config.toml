@@ -669,6 +669,9 @@
   # env var: LOTUS_SEALING_TERMINATEBATCHWAIT
   #TerminateBatchWait = "5m0s"
 
+  # env var: LOTUS_SEALING_MAXSECTORPROVECOMMITSSUBMITTEDPEREPOCH
+  #MaxSectorProveCommitsSubmittedPerEpoch = 0
+
 
 [Storage]
   # type: int

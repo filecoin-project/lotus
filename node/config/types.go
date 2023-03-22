@@ -426,6 +426,13 @@ type SealingConfig struct {
 	TerminateBatchMin  uint64
 	TerminateBatchWait Duration
 
+	// When submitting several sector prove commits message simultaneously, this option allows you to
+	// stagger the number of prove commits submitted per epoch
+	// This is done because gas estimates for ProveCommits are non deterministic and increasing as a large
+	// number of sectors get committed within the same epoch resulting in occasionally failed msgs.
+	// Submitting a smaller number of prove commits per epoch would reduce the possibility of failed msgs
+	MaxSectorProveCommitsSubmittedPerEpoch uint64
+
 	// Keep this many sectors in sealing pipeline, start CC if needed
 	// todo TargetSealingSectors uint64
 
