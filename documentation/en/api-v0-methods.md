@@ -4856,7 +4856,7 @@ Response:
     "Message": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "GasUsed": "0",
+    "GasUsed": 42,
     "BaseFeeBurn": "0",
     "OverEstimationBurn": "0",
     "MinerPenalty": "0",
@@ -5086,7 +5086,7 @@ Response:
         "Message": {
           "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
         },
-        "GasUsed": "0",
+        "GasUsed": 42,
         "BaseFeeBurn": "0",
         "OverEstimationBurn": "0",
         "MinerPenalty": "0",
@@ -6472,7 +6472,7 @@ Response:
     "Message": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "GasUsed": "0",
+    "GasUsed": 42,
     "BaseFeeBurn": "0",
     "OverEstimationBurn": "0",
     "MinerPenalty": "0",

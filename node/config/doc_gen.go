@@ -1262,6 +1262,16 @@ submitting proofs to the chain individually`,
 
 			Comment: ``,
 		},
+		{
+			Name: "MaxSectorProveCommitsSubmittedPerEpoch",
+			Type: "uint64",
+
+			Comment: `When submitting several sector prove commits message simultaneously, this option allows you to
+stagger the number of prove commits submitted per epoch
+This is done because gas estimates for ProveCommits are non deterministic and increasing as a large
+number of sectors get committed within the same epoch resulting in occasionally failed msgs.
+Submitting a smaller number of prove commits per epoch would reduce the possibility of failed msgs`,
+		},
 	},
 	"Splitstore": []DocField{
 		{
