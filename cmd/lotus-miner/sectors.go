@@ -1160,8 +1160,9 @@ var sectorsExtendCmd = &cli.Command{
 				}
 
 				sectorsInDecl := int(sectorsWithoutClaimsCount) + len(sectorsWithClaims)
+				scount += sectorsInDecl
 
-				if scount+sectorsInDecl > addrSectors || len(p.Extensions) >= declMax {
+				if scount > addrSectors || len(p.Extensions) >= declMax {
 					params = append(params, p)
 					p = miner.ExtendSectorExpiration2Params{}
 					scount = sectorsInDecl
