@@ -1203,11 +1203,6 @@ func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, 
 }
 
 func (mp *MessagePool) PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
-
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
 	return mp.pendingFor(ctx, a), mp.curTs
 }
 
