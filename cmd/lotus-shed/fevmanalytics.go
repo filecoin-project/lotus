@@ -5,6 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
+	evm2 "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"golang.org/x/net/context"
+
 	"github.com/filecoin-project/go-state-types/big"
 
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
@@ -181,7 +186,10 @@ var FevmActorsCmd = &cli.Command{
 			return err
 		}
 
+		ctx := context.TODO()
 		cst := cbor.NewCborStore(bs)
+		store := adt.WrapStore(ctx, cst)
+
 		st, err := state.LoadStateTree(cst, sroot)
 		if err != nil {
 			return err
@@ -192,6 +200,7 @@ var FevmActorsCmd = &cli.Command{
 		EvmCount := 0
 		EthAccountCount := 0
 		PlaceholderCount := 0
+		ea := []cid.Cid{}
 
 		err = st.ForEach(func(addr address.Address, act *types.Actor) error {
 			if count%200000 == 0 {
@@ -201,6 +210,12 @@ var FevmActorsCmd = &cli.Command{
 
 			if builtin.IsEvmActor(act.Code) {
 				EvmCount++
+				e, err := evm2.Load(store, act)
+				if err != nil {
+					return xerrors.Errorf("fail to load evm actor: %w", err)
+				}
+				bcid, err := e.GetBytecodeCID()
+				ea = append(ea, bcid)
 			}
 
 			if builtin.IsEthAccountActor(act.Code) {
@@ -214,9 +229,23 @@ var FevmActorsCmd = &cli.Command{
 			return nil
 		})
 
-		fmt.Println("# of Eth contracts: ", EvmCount)
+		uniquesa := unique(ea)
+		fmt.Println("# of EVM contracts: ", EvmCount)
+		fmt.Println("# of unqiue EVM contracts: ", len(uniquesa))
 		fmt.Println("b# of Eth accounts: ", EthAccountCount)
 		fmt.Println("# of placeholder: ", PlaceholderCount)
 		return nil
 	},
+}
+
+func unique(intSlice []cid.Cid) []cid.Cid {
+	keys := make(map[cid.Cid]bool)
+	list := []cid.Cid{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
