@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	cid "github.com/ipfs/go-cid"
@@ -17,6 +18,15 @@ var (
 	StatApplied uint64
 )
 
+type ExecutionLane int
+
+const (
+	// ExecutionLaneDefault signifies a default, non prioritized execution lane.
+	ExecutionLaneDefault ExecutionLane = iota
+	// ExecutionLanePriority signifies a prioritized execution lane with reserved resources.
+	ExecutionLanePriority
+)
+
 type Interface interface {
 	// Applies the given message onto the VM's current state, returning the result of the execution
 	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error)
@@ -27,13 +37,24 @@ type Interface interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 }
 
+// Executor is the general vm execution interface, which is prioritized according to execution langes.
+// User must call Done when it is done with this executor to release resource holds by the execution
+// environment
+type Executor interface {
+	Interface
+
+	// Done must be called when done with the executor to release resource holds.
+	// It is an error to invoke Interface methods after Done has been called.
+	Done()
+}
+
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
 // An envvar that allows the user to specify debug actors bundles to be used by the FVM
 // alongside regular execution. This is basically only to be used to print out specific logging information.
 // Message failures, unexpected terminations,gas costs, etc. should all be ignored.
 var useFvmDebug = os.Getenv("LOTUS_FVM_DEVELOPER_DEBUG") == "1"
 
-func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
+func newVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
 		if useFvmDebug {
 			return NewDualExecutionFVM(ctx, opts)
@@ -42,4 +63,22 @@ func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	}
 
 	return NewLegacyVM(ctx, opts)
+}
+
+func NewVM(ctx context.Context, opts *VMOpts) (Executor, error) {
+	switch opts.ExecutionLane {
+	case ExecutionLaneDefault, ExecutionLanePriority:
+	default:
+		return nil, fmt.Errorf("invalid execution lane: %d", opts.ExecutionLane)
+	}
+
+	token := execution.getToken(opts.ExecutionLane)
+
+	vmi, err := newVM(ctx, opts)
+	if err != nil {
+		token.Done()
+		return nil, err
+	}
+
+	return newVMExecutor(vmi, token), nil
 }
