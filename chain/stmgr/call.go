@@ -169,6 +169,8 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
+	defer vmi.Done()
+
 	for i, m := range priorMsgs {
 		_, err = vmi.ApplyMessage(ctx, m)
 		if err != nil {
@@ -201,6 +203,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 		vmopt.BaseFee = big.Zero()
 		vmopt.StateBase = stateCid
 
+		vmi.Done()
 		vmi, err = sm.newVM(ctx, vmopt)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to set up estimation vm: %w", err)
