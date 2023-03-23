@@ -240,7 +240,7 @@ var replayOfflineCmd = &cli.Command{
 		}
 
 		tw := tabwriter.NewWriter(os.Stdout, 8, 2, 2, ' ', tabwriter.AlignRight)
-		res, err := sm.CallWithGas(ctx, msg, []types.ChainMsg{}, executionTs)
+		res, err := sm.CallWithGas(ctx, msg, []types.ChainMsg{}, executionTs, true)
 		if err != nil {
 			return err
 		}
