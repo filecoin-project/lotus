@@ -108,7 +108,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 	if err != nil {
 		return cid.Undef, fmt.Errorf("creating vm: %w", err)
 	}
-	defer genesisVm.Done()
+	defer func() { genesisVm.Done() }()
 
 	if len(miners) == 0 {
 		return cid.Undef, xerrors.New("no genesis miners")
