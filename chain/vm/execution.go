@@ -146,19 +146,21 @@ func init() {
 	concurrency := os.Getenv("LOTUS_FVM_CONCURRENCY")
 	if concurrency == "" {
 		available = DefaultAvailableExecutionLanes
-	}
-	available, err = strconv.Atoi(concurrency)
-	if err != nil {
-		panic(err)
+	} else {
+		available, err = strconv.Atoi(concurrency)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	reserved := os.Getenv("LOTUS_FVM_CONCURRENCY_RESERVED")
 	if reserved == "" {
 		priority = DefaultPriorityExecutionLanes
-	}
-	priority, err = strconv.Atoi(reserved)
-	if err != nil {
-		panic(err)
+	} else {
+		priority, err = strconv.Atoi(reserved)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	mx := &sync.Mutex{}
