@@ -43,6 +43,9 @@ const (
 // TargetAPI defines the API methods that the Node depends on
 // (to make it easy to mock for tests)
 type TargetAPI interface {
+	GasEstimateGasPremium(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error)
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)
+	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (api.MinerSectors, error)
 	Version(context.Context) (api.APIVersion, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]api.Message, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)

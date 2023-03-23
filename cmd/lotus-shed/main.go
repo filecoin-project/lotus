@@ -26,6 +26,7 @@ func main() {
 		base32Cmd,
 		base16Cmd,
 		bitFieldCmd,
+		chainwatchCmd,
 		cronWcCmd,
 		frozenMinersCmd,
 		dealLabelCmd,

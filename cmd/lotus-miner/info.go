@@ -325,14 +325,12 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v1api.Full
 		}
 	}
 
-	{
-		fmt.Println()
+	fmt.Println()
 
-		ws, err := nodeApi.WorkerStats(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting worker stats: %w", err)
-		}
-
+	ws, err := nodeApi.WorkerStats(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: getting worker stats: %s\n", err)
+	} else {
 		workersByType := map[string]int{
 			sealtasks.WorkerSealing:     0,
 			sealtasks.WorkerWindowPoSt:  0,
