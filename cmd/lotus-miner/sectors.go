@@ -1231,7 +1231,7 @@ var sectorsExtendCmd = &cli.Command{
 			smsg, err := fullApi.MpoolPushMessage(ctx, &types.Message{
 				From:   mi.Worker,
 				To:     maddr,
-				Method: builtin.MethodsMiner.ExtendSectorExpiration,
+				Method: builtin.MethodsMiner.ExtendSectorExpiration2,
 				Value:  big.Zero(),
 				Params: sp,
 			}, spec)
