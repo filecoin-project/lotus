@@ -169,7 +169,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
-	defer vmi.Done()
+	defer func() { vmi.Done() }()
 
 	for i, m := range priorMsgs {
 		_, err = vmi.ApplyMessage(ctx, m)
