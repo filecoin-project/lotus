@@ -46,7 +46,13 @@ var chainwatchDotCmd = &cli.Command{
 		}
 
 		minH, err := strconv.ParseInt(cctx.Args().Get(0), 10, 32)
+		if err != nil {
+			return err
+		}
 		tosee, err := strconv.ParseInt(cctx.Args().Get(1), 10, 32)
+		if err != nil {
+			return err
+		}
 		maxH := minH + tosee
 
 		res, err := st.db.Query(`select block, parent, b.miner, b.height, p.height from block_parents
@@ -127,7 +133,7 @@ var chainwatchRunCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer st.close()
+		defer st.close() // nolint:errcheck
 
 		cwRunSyncer(ctx, api, st)
 		go cwSubBlocks(ctx, api, st)
@@ -327,7 +333,7 @@ func (st *cwStorage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer stmt.Close() // nolint:errcheck
 	for _, bh := range bhs {
 		if _, err := stmt.Exec(bh.Cid().String(),
 			bh.ParentWeight.String(),
@@ -345,7 +351,7 @@ func (st *cwStorage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool)
 	if err != nil {
 		return err
 	}
-	defer stmt2.Close()
+	defer stmt2.Close() // nolint:errcheck
 	for _, bh := range bhs {
 		for _, parent := range bh.Parents {
 			if _, err := stmt2.Exec(bh.Cid().String(), parent.String()); err != nil {
@@ -359,7 +365,7 @@ func (st *cwStorage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool)
 		if err != nil {
 			return err
 		}
-		defer stmt.Close()
+		defer stmt.Close() // nolint:errcheck
 		now := time.Now().Unix()
 
 		for _, bh := range bhs {
