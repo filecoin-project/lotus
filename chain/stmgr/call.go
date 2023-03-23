@@ -53,7 +53,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 // CallWithGas calculates the state for a given tipset, and then applies the given message on top of that state.
 func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, priorMsgs []types.ChainMsg, ts *types.TipSet, applyTsMessages bool) (*api.InvocResult, error) {
-	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, false)
+	return sm.callInternal(ctx, msg, priorMsgs, ts, cid.Undef, sm.GetNetworkVersion, true, applyTsMessages)
 }
 
 // CallAtStateAndVersion allows you to specify a message to execute on the given stateCid and network version.
