@@ -297,8 +297,10 @@ type FullNode interface {
 	MpoolGetNonce(context.Context, address.Address) (uint64, error) //perm:read
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)           //perm:read
 
-	// MpoolClear clears pending messages from the mpool
-	MpoolClear(context.Context, bool) error //perm:write
+	// MpoolClear clears pending messages from the mpool.
+	// If clearLocal is true, ALL messages will be cleared.
+	// If clearLocal is false, local messages will be protected, all others will be cleared.
+	MpoolClear(ctx context.Context, clearLocal bool) error //perm:write
 
 	// MpoolGetConfig returns (a copy of) the current mpool config
 	MpoolGetConfig(context.Context) (*types.MpoolConfig, error) //perm:read
