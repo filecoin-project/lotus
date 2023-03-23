@@ -128,7 +128,7 @@ type StateManager struct {
 	compWait            map[string]chan struct{}
 	stlk                sync.Mutex
 	genesisMsigLk       sync.Mutex
-	newVM               func(context.Context, *vm.VMOpts) (vm.Interface, error)
+	newVM               func(context.Context, *vm.VMOpts) (vm.Executor, error)
 	Syscalls            vm.SyscallBuilder
 	preIgnitionVesting  []msig0.State
 	postIgnitionVesting []msig0.State
@@ -459,12 +459,12 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (vm.Interface, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (vm.Executor, error)) {
 	sm.newVM = nvm
 }
 
-func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (vm.Interface, error) {
-	return func(ctx context.Context, opts *vm.VMOpts) (vm.Interface, error) {
+func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (vm.Executor, error) {
+	return func(ctx context.Context, opts *vm.VMOpts) (vm.Executor, error) {
 		return sm.newVM(ctx, opts)
 	}
 }

@@ -56,6 +56,12 @@ const testForkHeight = 40
 type testActor struct {
 }
 
+type mockExecutor struct {
+	vm.Interface
+}
+
+func (*mockExecutor) Done() {}
+
 // must use existing actor that an account is allowed to exec.
 func (testActor) Code() cid.Cid  { return builtin0.PaymentChannelActorCodeID }
 func (testActor) State() cbor.Er { return new(testActorState) }
@@ -178,13 +184,13 @@ func TestForkHeightTriggers(t *testing.T) {
 	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
 	inv.Register(actorstypes.Version0, nil, registry)
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Executor, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
 		nvm.SetInvoker(inv)
-		return nvm, nil
+		return &mockExecutor{nvm}, nil
 	})
 
 	cg.SetStateManager(sm)
@@ -296,13 +302,13 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
 	inv.Register(actorstypes.Version0, nil, registry)
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Executor, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
 		nvm.SetInvoker(inv)
-		return nvm, nil
+		return &mockExecutor{nvm}, nil
 	})
 
 	cg.SetStateManager(sm)
@@ -518,13 +524,13 @@ func TestForkPreMigration(t *testing.T) {
 	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
 	inv.Register(actorstypes.Version0, nil, registry)
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Executor, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
 		nvm.SetInvoker(inv)
-		return nvm, nil
+		return &mockExecutor{nvm}, nil
 	})
 
 	cg.SetStateManager(sm)
@@ -592,11 +598,11 @@ func TestDisablePreMigration(t *testing.T) {
 	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
 	inv.Register(actorstypes.Version0, nil, registry)
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Executor, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		require.NoError(t, err)
 		nvm.SetInvoker(inv)
-		return nvm, nil
+		return &mockExecutor{nvm}, nil
 	})
 
 	cg.SetStateManager(sm)
@@ -647,11 +653,11 @@ func TestMigrtionCache(t *testing.T) {
 	registry := builtin.MakeRegistryLegacy([]rtt.VMActor{testActor{}})
 	inv.Register(actorstypes.Version0, nil, registry)
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Executor, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		require.NoError(t, err)
 		nvm.SetInvoker(inv)
-		return nvm, nil
+		return &mockExecutor{nvm}, nil
 	})
 
 	cg.SetStateManager(sm)
@@ -691,11 +697,11 @@ func TestMigrtionCache(t *testing.T) {
 			index.DummyMsgIndex,
 		)
 		require.NoError(t, err)
-		sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+		sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Executor, error) {
 			nvm, err := vm.NewLegacyVM(ctx, vmopt)
 			require.NoError(t, err)
 			nvm.SetInvoker(inv)
-			return nvm, nil
+			return &mockExecutor{nvm}, nil
 		})
 
 		ctx := context.Background()
