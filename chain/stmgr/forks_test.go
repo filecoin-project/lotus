@@ -340,7 +340,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		currentHeight := ts.TipSet.TipSet().Height()
 
 		// CallWithGas calls on top of the given tipset.
-		ret, err := sm.CallWithGas(ctx, m, nil, ts.TipSet.TipSet())
+		ret, err := sm.CallWithGas(ctx, m, nil, ts.TipSet.TipSet(), true)
 		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
 			// If I had a fork, or I _will_ have a fork, it should fail.
 			require.Equal(t, ErrExpensiveFork, err)
@@ -361,7 +361,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		// Calls without a tipset should walk back to the last non-fork tipset.
 		// We _verify_ that the migration wasn't run multiple times at the end of the
 		// test.
-		ret, err = sm.CallWithGas(ctx, m, nil, nil)
+		ret, err = sm.CallWithGas(ctx, m, nil, nil, true)
 		require.NoError(t, err)
 		require.True(t, ret.MsgRct.ExitCode.IsSuccess())
 
