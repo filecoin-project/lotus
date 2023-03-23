@@ -73,9 +73,11 @@ func (e *vmExecutor) Done() {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
-	e.token.Done()
-	e.token = nil
-	e.done = true
+	if !e.done {
+		e.token.Done()
+		e.token = nil
+		e.done = true
+	}
 }
 
 type executionToken struct {
