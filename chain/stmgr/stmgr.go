@@ -130,8 +130,7 @@ type StateManager struct {
 	postIgnitionVesting []msig0.State
 	postCalicoVesting   []msig0.State
 
-	genesisPledge      abi.TokenAmount
-	genesisMarketFunds abi.TokenAmount
+	genesisPledge abi.TokenAmount
 
 	tsExec        Executor
 	tsExecMonitor ExecMonitor
