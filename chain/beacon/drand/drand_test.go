@@ -3,6 +3,7 @@
 package drand
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -20,11 +21,11 @@ func TestPrintGroupInfo(t *testing.T) {
 	c, err := hclient.New(server, nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {
-		FetchChainInfo(groupHash []byte) (*dchain.Info, error)
+		FetchChainInfo(ctx context.Context, groupHash []byte) (*dchain.Info, error)
 	})
-	chain, err := cg.FetchChainInfo(nil)
+	chain, err := cg.FetchChainInfo(context.Background(), nil)
 	assert.NoError(t, err)
-	err = chain.ToJSON(os.Stdout)
+	err = chain.ToJSON(os.Stdout, nil)
 	assert.NoError(t, err)
 }
 

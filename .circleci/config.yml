@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.18.8
+      - image: cimg/go:1.19.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.18.8
+      - image: cimg/go:1.19.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -818,6 +818,12 @@ workflows:
             - build
           suite: itest-mpool_push_with_uuid
           target: "./itests/mpool_push_with_uuid_test.go"
+      - test:
+          name: test-itest-msgindex
+          requires:
+            - build
+          suite: itest-msgindex
+          target: "./itests/msgindex_test.go"
       - test:
           name: test-itest-multisig
           requires:

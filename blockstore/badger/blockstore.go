@@ -601,6 +601,18 @@ func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) erro
 	})
 }
 
+func (b *Blockstore) Flush(context.Context) error {
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	b.lockDB()
+	defer b.unlockDB()
+
+	return b.db.Sync()
+}
+
 // Has implements Blockstore.Has.
 func (b *Blockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	if err := b.access(); err != nil {

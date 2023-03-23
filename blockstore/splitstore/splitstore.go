@@ -476,6 +476,23 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	}
 }
 
+func (s *SplitStore) Flush(ctx context.Context) error {
+	s.txnLk.RLock()
+	defer s.txnLk.RUnlock()
+
+	if err := s.cold.Flush(ctx); err != nil {
+		return err
+	}
+	if err := s.hot.Flush(ctx); err != nil {
+		return err
+	}
+	if err := s.ds.Sync(ctx, dstore.Key{}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	if isIdentiyCid(blk.Cid()) {
 		return nil

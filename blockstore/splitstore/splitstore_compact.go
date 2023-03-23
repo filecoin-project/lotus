@@ -452,7 +452,7 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) 
 		},
 		func(c cid.Cid) error {
 			if s.txnMissing != nil {
-				log.Warnf("missing object reference %s in %s", c, root)
+				log.Debugf("missing object reference %s in %s", c, root)
 				s.txnRefsMx.Lock()
 				s.txnMissing[c] = struct{}{}
 				s.txnRefsMx.Unlock()
@@ -983,7 +983,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 				}
 				atomic.AddInt64(szWalk, sz)
 
-				sz, err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot)
+				sz, err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk)
 				if err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}

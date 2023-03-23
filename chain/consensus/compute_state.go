@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"sync/atomic"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -113,6 +114,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return sm.VMConstructor()(ctx, vmopt)
 	}
 
+	var cronGas int64
+
 	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
 		cronMsg := &types.Message{
 			To:         cron.Address,
@@ -129,6 +132,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		if err != nil {
 			return xerrors.Errorf("running cron: %w", err)
 		}
+
+		cronGas += ret.GasUsed
 
 		if em != nil {
 			if err := em.MessageApplied(ctx, ts, cronMsg.Cid(), cronMsg, ret, true); err != nil {
@@ -181,7 +186,9 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
-	partDone()
+	vmEarly := partDone()
+	earlyCronGas := cronGas
+	cronGas = 0
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
 
 	vmi, err := makeVm(pstate, epoch, ts.MinTimestamp())
@@ -196,6 +203,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		processedMsgs = make(map[cid.Cid]struct{})
 	)
 
+	var msgGas int64
+
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -209,6 +218,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			if err != nil {
 				return cid.Undef, cid.Undef, err
 			}
+
+			msgGas += r.GasUsed
 
 			receipts = append(receipts, &r.MessageReceipt)
 			gasReward = big.Add(gasReward, r.GasCosts.MinerTip)
@@ -239,14 +250,14 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
-	partDone()
+	vmMsg := partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyCron)
 
 	if err := runCron(vmi, epoch); err != nil {
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
-	partDone()
+	vmCron := partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyFlush)
 
 	rectarr := blockadt.MakeEmptyArray(sm.ChainStore().ActorStore(ctx))
@@ -281,6 +292,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
 	}
+
+	vmFlush := partDone()
+	partDone = func() time.Duration { return time.Duration(0) }
+
+	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
 
 	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
 		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))))

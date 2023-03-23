@@ -191,7 +191,7 @@
 [Chainstore]
   # type: bool
   # env var: LOTUS_CHAINSTORE_ENABLESPLITSTORE
-  #EnableSplitstore = true
+  EnableSplitstore = true
 
   [Chainstore.Splitstore]
     # ColdStoreType specifies the type of the coldstore.
@@ -388,5 +388,13 @@
     # type: string
     # env var: LOTUS_FEVM_EVENTS_DATABASEPATH
     #DatabasePath = ""
+
+
+[Index]
+  # EnableMsgIndex enables indexing of messages on chain.
+  #
+  # type: bool
+  # env var: LOTUS_INDEX_ENABLEMSGINDEX
+  #EnableMsgIndex = false
 
 

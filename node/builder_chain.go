@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
@@ -275,6 +276,10 @@ func ConfigFullNode(c interface{}) Option {
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
 			),
 		),
+
+		// enable message index for full node when configured by the user, otherwise use dummy.
+		If(cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.MsgIndex)),
+		If(!cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.DummyMsgIndex)),
 	)
 }
 

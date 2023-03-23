@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	client "github.com/influxdata/influxdb1-client/v2"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/stats"
@@ -41,11 +41,11 @@ type ChainPointCollector struct {
 	ctx              context.Context
 	api              LotusApi
 	store            adt.Store
-	actorDigestCache *lru.TwoQueueCache
+	actorDigestCache *lru.TwoQueueCache[address.Address, string]
 }
 
 func NewChainPointCollector(ctx context.Context, store adt.Store, api LotusApi) (*ChainPointCollector, error) {
-	actorDigestCache, err := lru.New2Q(2 << 15)
+	actorDigestCache, err := lru.New2Q[address.Address, string](2 << 15)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func NewChainPointCollector(ctx context.Context, store adt.Store, api LotusApi) 
 
 func (c *ChainPointCollector) actorDigest(ctx context.Context, addr address.Address, tipset *types.TipSet) (string, error) {
 	if code, ok := c.actorDigestCache.Get(addr); ok {
-		return code.(string), nil
+		return code, nil
 	}
 
 	actor, err := c.api.StateGetActor(ctx, addr, tipset.Key())
