@@ -58,9 +58,9 @@ type Config struct {
 	AggregateAboveBaseFee      abi.TokenAmount
 	BatchPreCommitAboveBaseFee abi.TokenAmount
 
+	MaxSectorProveCommitsSubmittedPerEpoch uint64
+
 	TerminateBatchMax  uint64
 	TerminateBatchMin  uint64
 	TerminateBatchWait time.Duration
-
-	MaxSectorProveCommitsSubmittedPerEpoch uint64
 }

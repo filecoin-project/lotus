@@ -425,7 +425,17 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 
 		if cfg.MaxSectorProveCommitsSubmittedPerEpoch > 0 &&
 			uint64(sectorsProcessed) >= cfg.MaxSectorProveCommitsSubmittedPerEpoch {
-			time.Sleep(builtin.EpochDurationSeconds * time.Second)
+
+			tmp := ts
+			for tmp.Height() <= ts.Height() {
+				tmp, err = b.api.ChainHead(b.mctx)
+				if err != nil {
+					log.Errorf("getting chain head: %+v", err)
+					return nil, err
+				}
+				time.Sleep(3 * time.Second)
+			}
+
 			sectorsProcessed = 0
 		}
 
@@ -439,7 +449,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 
 		res = append(res, r)
 
-		sectorsProcessed += 1
+		sectorsProcessed++
 	}
 
 	return res, nil
