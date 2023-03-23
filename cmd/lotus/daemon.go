@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"runtime/pprof"
 	"strings"
 
@@ -556,6 +557,12 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	if err := cst.ForceHeadSilent(ctx, ts); err != nil {
 		return err
 	}
+
+	log.Info("populating message index...")
+	if err := index.PopulateAfterSnapshot(ctx, path.Join(lr.Path(), "sqlite"), cst); err != nil {
+		return err
+	}
+	log.Info("populating message index done")
 
 	return nil
 }
