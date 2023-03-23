@@ -250,6 +250,8 @@ type VMOpts struct {
 	Tracing        bool
 	// ReturnEvents decodes and returns emitted events.
 	ReturnEvents bool
+	// ExecutionLane specifies the execution priority of the created vm
+	ExecutionLane ExecutionLane
 }
 
 func NewLegacyVM(ctx context.Context, opts *VMOpts) (*LegacyVM, error) {
