@@ -169,6 +169,68 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 	return msgIndex, nil
 }
 
+func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore) error {
+	err := os.MkdirAll(basePath, 0755)
+	if err != nil {
+		return xerrors.Errorf("error creating msgindex base directory: %w", err)
+	}
+
+	dbPath := path.Join(basePath, dbName)
+	if _, err := os.Stat(dbPath); err == nil {
+		return xerrors.Errorf("msgindex already exists at %s", dbPath)
+	}
+
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return xerrors.Errorf("error opening msgindex database: %w", err)
+	}
+	defer db.Close()
+
+	if err := prepareDB(db); err != nil {
+		return xerrors.Errorf("error creating msgindex database: %w", err)
+	}
+
+	insertStmt, err := db.Prepare(dbqInsertMessage)
+	if err != nil {
+		return xerrors.Errorf("prepare insertMsgStmt: %w", err)
+	}
+	defer insertStmt.Close()
+
+	curTs := cs.GetHeaviestTipSet()
+	startHeight := curTs.Height()
+	for curTs != nil {
+		tscid, err := curTs.Key().Cid()
+		if err != nil {
+			return xerrors.Errorf("error computing tipset cid: %w", err)
+		}
+
+		tskey := tscid.String()
+		epoch := int64(curTs.Height())
+
+		//log.Infof("epoch %d-%d, populating msgindex with tipset %s", curTs.Height(), startHeight-curTs.Height(), tskey)
+
+		msgs, err := cs.MessagesForTipset(lctx, curTs)
+		if err != nil {
+			log.Infof("stopping import after %d tipsets", startHeight-curTs.Height())
+			break
+		}
+
+		for _, msg := range msgs {
+			key := msg.Cid().String()
+			if _, err := insertStmt.Exec(key, tskey, epoch); err != nil {
+				return xerrors.Errorf("error inserting message: %w", err)
+			}
+		}
+
+		curTs, err = cs.GetTipSetFromKey(lctx, curTs.Parents())
+		if err != nil {
+			return xerrors.Errorf("error walking chain: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // init utilities
 func prepareDB(db *sql.DB) error {
 	for _, stmt := range dbDefs {
