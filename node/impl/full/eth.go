@@ -890,7 +890,7 @@ func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk ty
 
 	// Try calling until we find a height with no migration.
 	for {
-		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts)
+		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, true)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
@@ -962,7 +962,7 @@ func gasSearch(
 	canSucceed := func(limit int64) (bool, error) {
 		msg.GasLimit = limit
 
-		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts, false)
 		if err != nil {
 			return false, xerrors.Errorf("CallWithGas failed: %w", err)
 		}

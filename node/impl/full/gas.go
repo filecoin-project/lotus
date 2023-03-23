@@ -279,7 +279,7 @@ func gasEstimateCallWithGas(
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts, false)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
