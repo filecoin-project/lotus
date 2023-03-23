@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"sync"
@@ -959,10 +960,15 @@ func gasSearch(
 	high := msg.GasLimit
 	low := msg.GasLimit
 
+	applyTsMessages := true
+	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTsMessages = false
+	}
+
 	canSucceed := func(limit int64) (bool, error) {
 		msg.GasLimit = limit
 
-		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts, false)
+		res, err := smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
 		if err != nil {
 			return false, xerrors.Errorf("CallWithGas failed: %w", err)
 		}
