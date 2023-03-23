@@ -47,7 +47,7 @@ var (
 
 var DefaultTipSetCacheSize = 8192
 var DefaultMsgMetaCacheSize = 2048
-var DefaultTipSetMessageCacheSize = 8192
+var DefaultTipSetMessageCacheSize = 1024
 
 var ErrNotifeeDone = errors.New("notifee is done and should be removed")
 
@@ -68,10 +68,10 @@ func init() {
 		DefaultMsgMetaCacheSize = mmcs
 	}
 
-	if s := os.Getenv("LOTUS_CHAIN_TIPSET_MESSAGE"); s != "" {
+	if s := os.Getenv("LOTUS_CHAIN_TIPSET_MESSAGE_CACHE"); s != "" {
 		tsmcs, err := strconv.Atoi(s)
 		if err != nil {
-			log.Errorf("failed to parse 'LOTUS_CHAIN_TIPSET_MESSAGE' env var: %s", err)
+			log.Errorf("failed to parse 'LOTUS_CHAIN_TIPSET_MESSAGE_CACHE' env var: %s", err)
 		}
 		DefaultTipSetMessageCacheSize = tsmcs
 	}
@@ -129,9 +129,9 @@ type ChainStore struct {
 	reorgCh        chan<- reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	mmCache   *lru.ARCCache[cid.Cid, mmCids]
-	tsCache   *lru.ARCCache[types.TipSetKey, *types.TipSet]
-	tsMsgCace *lru.ARCCache[*types.TipSet, []BlockMessages]
+	mmCache    *lru.ARCCache[cid.Cid, mmCids]
+	tsCache    *lru.ARCCache[types.TipSetKey, *types.TipSet]
+	tsMsgCache *lru.ARCCache[types.TipSetKey, []BlockMessages]
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -145,7 +145,7 @@ type ChainStore struct {
 func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC[cid.Cid, mmCids](DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC[types.TipSetKey, *types.TipSet](DefaultTipSetCacheSize)
-	tsmc, _ := lru.NewARC[*types.TipSet, []BlockMessages](DefaultTipSetMessageCacheSize)
+	tsmc, _ := lru.NewARC[types.TipSetKey, []BlockMessages](DefaultTipSetMessageCacheSize)
 	if j == nil {
 		j = journal.NilJournal()
 	}
@@ -164,7 +164,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
 		mmCache:              c,
 		tsCache:              tsc,
-		tsMsgCace:            tsmc,
+		tsMsgCache:           tsmc,
 		cancelFn:             cancel,
 		journal:              j,
 	}

@@ -105,8 +105,8 @@ type BlockMessages struct {
 
 func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) ([]BlockMessages, error) {
 	// returned BlockMessages match block order in tipset
-
-	if entry, ok := cs.tsMsgCace.Get(ts); ok {
+	tsKey := ts.Key()
+	if entry, ok := cs.tsMsgCache.Get(tsKey); ok {
 		return entry, nil
 	}
 
@@ -182,7 +182,7 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 		out = append(out, bm)
 	}
 
-	cs.tsMsgCace.Add(ts, out)
+	cs.tsMsgCache.Add(tsKey, out)
 
 	return out, nil
 }
