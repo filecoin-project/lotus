@@ -262,24 +262,26 @@ func gasEstimateCallWithGas(
 	currTs *types.TipSet,
 ) (*api.InvocResult, []types.ChainMsg, *types.TipSet, error) {
 	msg := *msgIn
-	fromA, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
-	if err != nil {
-		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting key address: %w", err)
-	}
+	//fromA, err := smgr.ResolveToDeterministicAddress(ctx, msgIn.From, currTs)
+	//if err != nil {
+	//	return nil, []types.ChainMsg{}, nil, xerrors.Errorf("getting key address: %w", err)
+	//}
 
-	pending, ts := mpool.PendingFor(ctx, fromA)
-	priorMsgs := make([]types.ChainMsg, 0, len(pending))
-	for _, m := range pending {
-		if m.Message.Nonce == msg.Nonce {
-			break
-		}
-		priorMsgs = append(priorMsgs, m)
-	}
+	//pending, ts := mpool.PendingFor(ctx, fromA)
+	//priorMsgs := make([]types.ChainMsg, 0, len(pending))
+	//for _, m := range pending {
+	//	if m.Message.Nonce == msg.Nonce {
+	//		break
+	//	}
+	//	priorMsgs = append(priorMsgs, m)
+	//}
 
 	// Try calling until we find a height with no migration.
+	ts := currTs
 	var res *api.InvocResult
+	var err error
 	for {
-		res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err = smgr.CallWithGas(ctx, &msg, nil, ts)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
@@ -292,7 +294,7 @@ func gasEstimateCallWithGas(
 		return nil, []types.ChainMsg{}, nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
 
-	return res, priorMsgs, ts, nil
+	return res, nil, ts, nil
 }
 
 func gasEstimateGasLimit(
@@ -375,14 +377,14 @@ func gasEstimateGasLimit(
 	// Special case for PaymentChannel collect, which is deleting actor
 	// We ignore errors in this special case since they CAN occur,
 	// and we just want to detect existing payment channel actors
-	st, err := smgr.ParentState(ts)
-	if err == nil {
-		act, err := st.GetActor(msg.To)
-		if err == nil && lbuiltin.IsPaymentChannelActor(act.Code) && msgIn.Method == builtin.MethodsPaych.Collect {
-			// add the refunded gas for DestroyActor back into the gas used
-			ret += 76e3
-		}
-	}
+	//st, err := smgr.ParentState(ts)
+	//if err == nil {
+	//	act, err := st.GetActor(msg.To)
+	//	if err == nil && lbuiltin.IsPaymentChannelActor(act.Code) && msgIn.Method == builtin.MethodsPaych.Collect {
+	//		// add the refunded gas for DestroyActor back into the gas used
+	//		ret += 76e3
+	//	}
+	//}
 
 	return ret, nil
 }
