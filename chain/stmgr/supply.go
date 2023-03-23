@@ -61,7 +61,8 @@ func (sm *StateManager) setupGenesisVestingSchedule(ctx context.Context) error {
 		return xerrors.Errorf("setting up genesis pledge: %w", err)
 	}
 
-	sm.genesisMarketFunds = gmf
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
 	sm.genesisPledge = gp
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
@@ -128,6 +129,8 @@ func (sm *StateManager) setupPostIgnitionVesting(ctx context.Context) error {
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
 	sm.postIgnitionVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
@@ -178,6 +181,9 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(9_805_053))
 
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
+
 	sm.postCalicoVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
@@ -198,21 +204,20 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
 	vf := big.Zero()
 
-	sm.genesisMsigLk.Lock()
-	defer sm.genesisMsigLk.Unlock()
-
 	// TODO: combine all this?
 	if sm.preIgnitionVesting == nil || sm.genesisPledge.IsZero() || sm.genesisMarketFunds.IsZero() {
 		err := sm.setupGenesisVestingSchedule(ctx)
 		if err != nil {
 			return vf, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
 		}
+
 	}
 	if sm.postIgnitionVesting == nil {
 		err := sm.setupPostIgnitionVesting(ctx)
 		if err != nil {
 			return vf, xerrors.Errorf("failed to setup post-ignition vesting schedule: %w", err)
 		}
+
 	}
 	if sm.postCalicoVesting == nil {
 		err := sm.setupPostCalicoVesting(ctx)

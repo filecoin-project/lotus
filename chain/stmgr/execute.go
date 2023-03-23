@@ -35,7 +35,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 	cached, ok := sm.stCache[ck]
 	if ok {
 		sm.stlk.Unlock()
-		span.AddAttributes(trace.BoolAttribute("cache", true))
+		span.AddAttributes(trace.BoolAttributre("cache", true))
 		return cached[0], cached[1], nil
 	}
 	ch := make(chan struct{})
