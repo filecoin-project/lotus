@@ -51,17 +51,11 @@ func (sm *StateManager) setupGenesisVestingSchedule(ctx context.Context) error {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
 
-	gmf, err := getFilMarketLocked(ctx, sTree)
-	if err != nil {
-		return xerrors.Errorf("setting up genesis market funds: %w", err)
-	}
-
 	gp, err := getFilPowerLocked(ctx, sTree)
 	if err != nil {
 		return xerrors.Errorf("setting up genesis pledge: %w", err)
 	}
 
-	sm.genesisMarketFunds = gmf
 	sm.genesisPledge = gp
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
@@ -202,7 +196,7 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch)
 	defer sm.genesisMsigLk.Unlock()
 
 	// TODO: combine all this?
-	if sm.preIgnitionVesting == nil || sm.genesisPledge.IsZero() || sm.genesisMarketFunds.IsZero() {
+	if sm.preIgnitionVesting == nil || sm.genesisPledge.IsZero() {
 		err := sm.setupGenesisVestingSchedule(ctx)
 		if err != nil {
 			return vf, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
@@ -246,8 +240,6 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch)
 	if height <= build.UpgradeAssemblyHeight {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
 		vf = big.Add(vf, sm.genesisPledge)
-		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-		vf = big.Add(vf, sm.genesisMarketFunds)
 	}
 
 	return vf, nil
