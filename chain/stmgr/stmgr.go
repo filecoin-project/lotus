@@ -144,7 +144,8 @@ type StateManager struct {
 
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
-	execTraceCache *lru.ARCCache[*types.TipSet, tipSetCacheEntry]
+	execTraceCache     *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	execTraceCacheLock sync.Mutex
 }
 
 // Caches a single state tree
@@ -154,8 +155,8 @@ type treeCache struct {
 }
 
 type tipSetCacheEntry struct {
-	cid        cid.Cid
-	invocTrace []*api.InvocResult
+	postStateRoot cid.Cid
+	invocTrace    []*api.InvocResult
 }
 
 func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule, metadataDs dstore.Batching, msgIndex index.MsgIndex) (*StateManager, error) {
@@ -197,7 +198,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		}
 	}
 
-	execTraceCache, err := lru.NewARC[*types.TipSet, tipSetCacheEntry](execTraceCacheSize)
+	execTraceCache, err := lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
 	if err != nil {
 		return nil, err
 	}
