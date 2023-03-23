@@ -165,6 +165,15 @@ func init() {
 		}
 	}
 
+	// some sanity checks
+	if available < 2 {
+		panic("insufficient execution concurrency")
+	}
+
+	if priority > available-1 {
+		panic("insufficient default execution concurrency")
+	}
+
 	mx := &sync.Mutex{}
 	cond := sync.NewCond(mx)
 
