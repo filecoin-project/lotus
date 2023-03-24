@@ -176,8 +176,12 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 	}
 
 	dbPath := path.Join(basePath, dbName)
+
+	// if a database already exists, we try to delete it and create a new one
 	if _, err := os.Stat(dbPath); err == nil {
-		return xerrors.Errorf("msgindex already exists at %s", dbPath)
+		if err = os.Remove(dbPath); err != nil {
+			return xerrors.Errorf("msgindex already exists at %s and can't be deleted", dbPath)
+		}
 	}
 
 	db, err := sql.Open("sqlite3", dbPath)
