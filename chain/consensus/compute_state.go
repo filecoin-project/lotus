@@ -196,6 +196,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	cronGas = 0
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
 
+	// TODO reorg the code to minimize the execution critical section
 	vmi, err := makeVm(pstate, epoch, ts.MinTimestamp())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)

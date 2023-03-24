@@ -125,7 +125,7 @@ var (
 	VMSends                             = stats.Int64("vm/sends", "Counter for sends processed by the VM", stats.UnitDimensionless)
 	VMApplied                           = stats.Int64("vm/applied", "Counter for messages (including internal messages) processed by the VM", stats.UnitDimensionless)
 	VMExecutionWaiting                  = stats.Int64("vm/execution_waiting", "Counter for VM executions waiting to be assigned to a lane", stats.UnitDimensionless)
-	VMExecutionActive                   = stats.Int64("vm/execution_default", "Counter for active VM executions", stats.UnitDimensionless)
+	VMExecutionRunning                  = stats.Int64("vm/execution_running", "Counter for running VM executions", stats.UnitDimensionless)
 
 	// miner
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
@@ -373,8 +373,8 @@ var (
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{ExecutionLane},
 	}
-	VMExecutionActiveView = &view.View{
-		Measure:     VMExecutionActive,
+	VMExecutionRunningView = &view.View{
+		Measure:     VMExecutionRunning,
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{ExecutionLane},
 	}
