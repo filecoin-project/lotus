@@ -108,6 +108,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 	if err != nil {
 		return cid.Undef, fmt.Errorf("creating vm: %w", err)
 	}
+	// Note: genesisVm is mutated, so this has to happen in a deferred func; go horror show.
 	defer func() { genesisVm.Done() }()
 
 	if len(miners) == 0 {

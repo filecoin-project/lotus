@@ -37,7 +37,7 @@ type Interface interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 }
 
-// Executor is the general vm execution interface, which is prioritized according to execution langes.
+// Executor is the general vm execution interface, which is prioritized according to execution lanes.
 // User must call Done when it is done with this executor to release resource holds by the execution
 // environment
 type Executor interface {

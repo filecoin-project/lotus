@@ -17,8 +17,14 @@ import (
 )
 
 const (
+	// DefaultAvailableExecutionLanes is the number of available execution lanes; it is the bound of
+	// concurrent active executions.
+	// This is the default value in filecoin-ffi
 	DefaultAvailableExecutionLanes = 4
-	DefaultPriorityExecutionLanes  = 2
+	// DefaultPriorityExecutionLanes is the number of reserved execution lanes for priority computations.
+	// This is purely userspace, but we believe it is a reasonable default, even with more available
+	// lanes.
+	DefaultPriorityExecutionLanes = 2
 )
 
 var ErrExecutorDone = errors.New("executor has been released")
@@ -118,7 +124,7 @@ func (e *executionEnv) getToken(lane ExecutionLane) *executionToken {
 
 		e.available--
 
-		metricsUp(metrics.VMExecutionActive, lane)
+		metricsUp(metrics.VMExecutionRunning, lane)
 		return &executionToken{lane: lane, reserved: 0}
 
 	case ExecutionLanePriority:
@@ -134,7 +140,7 @@ func (e *executionEnv) getToken(lane ExecutionLane) *executionToken {
 			reserving = 1
 		}
 
-		metricsUp(metrics.VMExecutionActive, lane)
+		metricsUp(metrics.VMExecutionRunning, lane)
 		return &executionToken{lane: lane, reserved: reserving}
 
 	default:
@@ -152,7 +158,7 @@ func (e *executionEnv) putToken(token *executionToken) {
 
 	e.cond.Broadcast()
 
-	metricsDown(metrics.VMExecutionActive, token.lane)
+	metricsDown(metrics.VMExecutionRunning, token.lane)
 }
 
 func metricsUp(metric *stats.Int64Measure, lane ExecutionLane) {
