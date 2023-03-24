@@ -190,9 +190,20 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 		return xerrors.Errorf("error creating msgindex database: %w", err)
 	}
 
-	insertStmt, err := db.Prepare(dbqInsertMessage)
+	tx, err := db.Begin()
 	if err != nil {
-		return xerrors.Errorf("prepare insertMsgStmt: %w", err)
+		return xerrors.Errorf("error when starting transaction: %w", err)
+	}
+
+	rollback := func() {
+		if err := tx.Rollback(); err != nil {
+			log.Errorf("error in rollback: %s", err)
+		}
+	}
+
+	insertStmt, err := tx.Prepare(dbqInsertMessage)
+	if err != nil {
+		return xerrors.Errorf("error preparing insertMsgStmt: %w", err)
 	}
 	defer insertStmt.Close()
 
@@ -201,13 +212,12 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 	for curTs != nil {
 		tscid, err := curTs.Key().Cid()
 		if err != nil {
+			rollback()
 			return xerrors.Errorf("error computing tipset cid: %w", err)
 		}
 
 		tskey := tscid.String()
 		epoch := int64(curTs.Height())
-
-		//log.Infof("epoch %d-%d, populating msgindex with tipset %s", curTs.Height(), startHeight-curTs.Height(), tskey)
 
 		msgs, err := cs.MessagesForTipset(lctx, curTs)
 		if err != nil {
@@ -218,14 +228,21 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 		for _, msg := range msgs {
 			key := msg.Cid().String()
 			if _, err := insertStmt.Exec(key, tskey, epoch); err != nil {
+				rollback()
 				return xerrors.Errorf("error inserting message: %w", err)
 			}
 		}
 
 		curTs, err = cs.GetTipSetFromKey(lctx, curTs.Parents())
 		if err != nil {
+			rollback()
 			return xerrors.Errorf("error walking chain: %w", err)
 		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return xerrors.Errorf("error commiting transaction: %w", err)
 	}
 
 	return nil
