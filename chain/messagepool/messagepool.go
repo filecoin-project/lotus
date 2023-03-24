@@ -551,9 +551,8 @@ func (mp *MessagePool) forEachPending(f func(address.Address, *msgSet)) {
 		mset, ok_mset := value.(*msgSet)
 
 		if ok_addr && ok_mset {
-			mset.lock.Lock()
+			//f must set mset lock if it uses mset
 			f(addr, mset)
-			mset.lock.Unlock()
 		}
 		return true // continue iteration
 	})
@@ -1215,6 +1214,7 @@ func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, 
 	out := make([]*types.SignedMessage, 0)
 
 	mp.forEachPending(func(a address.Address, mset *msgSet) {
+		//toSlice acquires mset lock
 		out = append(out, mset.toSlice()...)
 	})
 
