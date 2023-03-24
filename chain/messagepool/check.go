@@ -36,9 +36,11 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 	if ok {
 		mset, ok := msetIface.(*msgSet)
 		if ok {
+			mset.lock.RLock()
 			for _, sm := range mset.msgs {
 				msgs = append(msgs, &sm.Message)
 			}
+			mset.lock.RUnlock()
 		}
 	}
 
@@ -68,10 +70,12 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 			if ok {
 				mset, ok := msetIface.(*msgSet)
 				if ok {
+					mset.lock.RLock()
 					count += len(mset.msgs)
 					for _, sm := range mset.msgs {
 						mmap[sm.Message.Nonce] = &sm.Message
 					}
+					mset.lock.RUnlock()
 				}
 			} else {
 				count++
@@ -148,10 +152,12 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 			msetIface, ok_load := mp.pending.Load(m.From)
 			mset, ok_iface := msetIface.(*msgSet)
 			if ok_load && ok_iface && !interned {
+				mset.lock.Lock()
 				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
 				for _, m := range mset.msgs {
 					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
 				}
+				mset.lock.RUnlock()
 				state[m.From] = st
 
 				check.OK = true

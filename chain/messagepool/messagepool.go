@@ -184,6 +184,7 @@ type msgSet struct {
 	msgs          map[uint64]*types.SignedMessage
 	nextNonce     uint64
 	requiredFunds *stdbig.Int
+	lock          sync.RWMutex
 }
 
 func newMsgSet(nonce uint64) *msgSet {
@@ -191,6 +192,7 @@ func newMsgSet(nonce uint64) *msgSet {
 		msgs:          make(map[uint64]*types.SignedMessage),
 		nextNonce:     nonce,
 		requiredFunds: stdbig.NewInt(0),
+		lock:          sync.RWMutex{},
 	}
 }
 
@@ -232,6 +234,9 @@ func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.M
 }
 
 func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted bool) (bool, error) {
+	ms.lock.Lock()
+	defer ms.lock.Unlock()
+
 	nextNonce := ms.nextNonce
 	nonceGap := false
 
@@ -308,6 +313,9 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 }
 
 func (ms *msgSet) rm(nonce uint64, applied bool) {
+	ms.lock.Lock()
+	defer ms.lock.Unlock()
+
 	m, has := ms.msgs[nonce]
 	if !has {
 		if applied && nonce >= ms.nextNonce {
@@ -343,6 +351,9 @@ func (ms *msgSet) rm(nonce uint64, applied bool) {
 }
 
 func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
+	ms.lock.RLock()
+	defer ms.lock.RUnlock()
+
 	requiredFunds := new(stdbig.Int).Set(ms.requiredFunds)
 
 	m, has := ms.msgs[nonce]
@@ -355,6 +366,9 @@ func (ms *msgSet) getRequiredFunds(nonce uint64) types.BigInt {
 }
 
 func (ms *msgSet) toSlice() []*types.SignedMessage {
+	ms.lock.RLock()
+	defer ms.lock.RUnlock()
+
 	set := make([]*types.SignedMessage, 0, len(ms.msgs))
 
 	for _, m := range ms.msgs {
@@ -461,6 +475,7 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 	mp.pending.Range(func(k, value interface{}) bool {
 		mset, ok := value.(*msgSet)
 		if ok {
+			mset.lock.RLock()
 			for _, m := range mset.msgs {
 				err = f(m.Cid())
 				if err != nil {
@@ -471,6 +486,7 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 					return false
 				}
 			}
+			mset.lock.RUnlock()
 		}
 		return true
 	})
@@ -533,8 +549,11 @@ func (mp *MessagePool) forEachPending(f func(address.Address, *msgSet)) {
 	mp.pending.Range(func(key, value interface{}) bool {
 		addr, ok_addr := key.(address.Address)
 		mset, ok_mset := value.(*msgSet)
+
 		if ok_addr && ok_mset {
+			mset.lock.Lock()
 			f(addr, mset)
+			mset.lock.Unlock()
 		}
 		return true // continue iteration
 	})
