@@ -128,10 +128,38 @@ func (sm *StateManager) ExecutionTraceWithMonitor(ctx context.Context, ts *types
 }
 
 func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
+	tsKey := ts.Key()
+
+	{
+		// check if we have the trace for this tipset in the cache
+		sm.execTraceCacheLock.Lock()
+		defer sm.execTraceCacheLock.Unlock()
+		if entry, ok := sm.execTraceCache.Get(tsKey); ok {
+			// we have to make a deep copy since caller can modify the invocTrace
+			return entry.postStateRoot, makeDeepCopy(entry.invocTrace), nil
+		}
+	}
+
 	var invocTrace []*api.InvocResult
 	st, err := sm.ExecutionTraceWithMonitor(ctx, ts, &InvocationTracer{trace: &invocTrace})
 	if err != nil {
 		return cid.Undef, nil, err
 	}
+
+	sm.execTraceCache.Add(tsKey, tipSetCacheEntry{st, makeDeepCopy(invocTrace)})
+
 	return st, invocTrace, nil
+}
+
+func makeDeepCopy(invocTrace []*api.InvocResult) []*api.InvocResult {
+	c := make([]*api.InvocResult, len(invocTrace))
+	for i, ir := range invocTrace {
+		if ir == nil {
+			continue
+		}
+		tmp := *ir
+		c[i] = &tmp
+	}
+
+	return c
 }
