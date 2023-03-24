@@ -7,9 +7,13 @@ import (
 	"strconv"
 	"sync"
 
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 const (
@@ -81,6 +85,7 @@ func (e *vmExecutor) Done() {
 }
 
 type executionToken struct {
+	lane     ExecutionLane
 	reserved int
 }
 
@@ -99,6 +104,9 @@ type executionEnv struct {
 }
 
 func (e *executionEnv) getToken(lane ExecutionLane) *executionToken {
+	metricsUp(metrics.VMExecutionWaiting, lane)
+	defer metricsDown(metrics.VMExecutionWaiting, lane)
+
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
@@ -109,7 +117,9 @@ func (e *executionEnv) getToken(lane ExecutionLane) *executionToken {
 		}
 
 		e.available--
-		return &executionToken{reserved: 0}
+
+		metricsUp(metrics.VMExecutionActive, lane)
+		return &executionToken{lane: lane, reserved: 0}
 
 	case ExecutionLanePriority:
 		for e.available == 0 {
@@ -123,7 +133,9 @@ func (e *executionEnv) getToken(lane ExecutionLane) *executionToken {
 			e.reserved--
 			reserving = 1
 		}
-		return &executionToken{reserved: reserving}
+
+		metricsUp(metrics.VMExecutionActive, lane)
+		return &executionToken{lane: lane, reserved: reserving}
 
 	default:
 		// already checked at interface boundary in NewVM, so this is appropriate
@@ -139,6 +151,29 @@ func (e *executionEnv) putToken(token *executionToken) {
 	e.reserved += token.reserved
 
 	e.cond.Broadcast()
+
+	metricsDown(metrics.VMExecutionActive, token.lane)
+}
+
+func metricsUp(metric *stats.Int64Measure, lane ExecutionLane) {
+	metricsAdjust(metric, lane, 1)
+}
+
+func metricsDown(metric *stats.Int64Measure, lane ExecutionLane) {
+	metricsAdjust(metric, lane, -1)
+}
+
+func metricsAdjust(metric *stats.Int64Measure, lane ExecutionLane, delta int) {
+	laneName := "default"
+	if lane > ExecutionLaneDefault {
+		laneName = "priority"
+	}
+
+	ctx, _ := tag.New(
+		context.Background(),
+		tag.Upsert(metrics.ExecutionLane, laneName),
+	)
+	stats.Record(ctx, metric.M(int64(delta)))
 }
 
 func init() {

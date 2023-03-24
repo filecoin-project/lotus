@@ -58,6 +58,9 @@ var (
 	ProtocolID, _ = tag.NewKey("proto")
 	Direction, _  = tag.NewKey("direction")
 	UseFD, _      = tag.NewKey("use_fd")
+
+	// vm execution
+	ExecutionLane, _ = tag.NewKey("lane")
 )
 
 // Measures
@@ -121,6 +124,8 @@ var (
 	VMApplyFlush                        = stats.Float64("vm/applyblocks_flush", "Time spent flushing vm state", stats.UnitMilliseconds)
 	VMSends                             = stats.Int64("vm/sends", "Counter for sends processed by the VM", stats.UnitDimensionless)
 	VMApplied                           = stats.Int64("vm/applied", "Counter for messages (including internal messages) processed by the VM", stats.UnitDimensionless)
+	VMExecutionWaiting                  = stats.Int64("vm/execution_waiting", "Counter for VM executions waiting to be assigned to a lane", stats.UnitDimensionless)
+	VMExecutionActive                   = stats.Int64("vm/execution_default", "Counter for active VM executions", stats.UnitDimensionless)
 
 	// miner
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
@@ -362,6 +367,16 @@ var (
 	VMAppliedView = &view.View{
 		Measure:     VMApplied,
 		Aggregation: view.LastValue(),
+	}
+	VMExecutionWaitingView = &view.View{
+		Measure:     VMExecutionWaiting,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{ExecutionLane},
+	}
+	VMExecutionActiveView = &view.View{
+		Measure:     VMExecutionActive,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{ExecutionLane},
 	}
 
 	// miner
