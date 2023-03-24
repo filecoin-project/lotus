@@ -476,6 +476,7 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 		mset, ok := value.(*msgSet)
 		if ok {
 			mset.lock.RLock()
+			defer mset.lock.RUnlock()
 			for _, m := range mset.msgs {
 				err = f(m.Cid())
 				if err != nil {
@@ -486,7 +487,6 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 					return false
 				}
 			}
-			mset.lock.RUnlock()
 		}
 		return true
 	})
