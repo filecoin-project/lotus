@@ -955,7 +955,7 @@ type MsgLookup struct {
 
 type MsgGasCost struct {
 	Message            cid.Cid // Can be different than requested, in case it was replaced, but only gas values changed
-	GasUsed            uint64
+	GasUsed            abi.TokenAmount
 	BaseFeeBurn        abi.TokenAmount
 	OverEstimationBurn abi.TokenAmount
 	MinerPenalty       abi.TokenAmount

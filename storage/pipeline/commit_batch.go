@@ -437,6 +437,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 			}
 
 			sectorsProcessed = 0
+			ts = tmp
 		}
 
 		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, ts.Key())
