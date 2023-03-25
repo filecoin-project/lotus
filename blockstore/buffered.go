@@ -4,9 +4,9 @@ import (
 	"context"
 	"os"
 
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	block "github.com/ipfs/go-libipfs/blocks"
 )
 
 // buflog is a logger for the buffered blockstore. It is subscoped from the

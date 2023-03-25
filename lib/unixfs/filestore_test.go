@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-libipfs/files"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	carv2 "github.com/ipld/go-car/v2"

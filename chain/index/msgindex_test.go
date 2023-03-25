@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-libipfs/blocks"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
