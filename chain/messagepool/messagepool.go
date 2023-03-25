@@ -118,7 +118,7 @@ func init() {
 }
 
 type MessagePool struct {
-	lk sync.Mutex
+	lk sync.RWMutex
 
 	ds dtypes.MetadataDS
 
@@ -139,7 +139,7 @@ type MessagePool struct {
 
 	keyCache map[address.Address]address.Address
 
-	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
+	curTsLk sync.RWMutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
 
 	cfgLk sync.RWMutex
@@ -1001,19 +1001,19 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 }
 
 func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
 
 	return mp.getNonceLocked(ctx, addr, mp.curTs)
 }
 
 // GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
 func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
 	return mp.api.GetActorAfter(addr, mp.curTs)
 }
 
@@ -1164,11 +1164,11 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 }
 
 func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *types.TipSet) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
 
 	return mp.allPending(ctx)
 }
@@ -1184,11 +1184,11 @@ func (mp *MessagePool) allPending(ctx context.Context) ([]*types.SignedMessage, 
 }
 
 func (mp *MessagePool) PendingFor(ctx context.Context, a address.Address) ([]*types.SignedMessage, *types.TipSet) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
 	return mp.pendingFor(ctx, a), mp.curTs
 }
 
@@ -1237,9 +1237,9 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 	maybeRepub := func(cid cid.Cid) {
 		if !repubTrigger {
-			mp.lk.Lock()
+			mp.lk.RLock()
 			_, republished := mp.republished[cid]
-			mp.lk.Unlock()
+			mp.lk.RUnlock()
 			if republished {
 				repubTrigger = true
 			}
@@ -1310,9 +1310,9 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	}
 
 	if len(revert) > 0 && futureDebug {
-		mp.lk.Lock()
+		mp.lk.RLock()
 		msgs, ts := mp.allPending(ctx)
-		mp.lk.Unlock()
+		mp.lk.RUnlock()
 
 		buckets := map[address.Address]*statBucket{}
 
