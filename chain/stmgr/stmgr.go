@@ -144,7 +144,9 @@ type StateManager struct {
 
 	// We keep a small cache for calls to ExecutionTrace which helps improve
 	// performance for node operators like exchanges and block explorers
-	execTraceCache     *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	// We need a lock while making the copy as to prevent other callers
+	// overwrite the cache while making the copy
 	execTraceCacheLock sync.Mutex
 }
 
