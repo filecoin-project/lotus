@@ -188,7 +188,11 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 	if err != nil {
 		return xerrors.Errorf("error opening msgindex database: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Errorf("error closing msgindex database: %s", err)
+		}
+	}()
 
 	if err := prepareDB(db); err != nil {
 		return xerrors.Errorf("error creating msgindex database: %w", err)
@@ -207,9 +211,13 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 
 	insertStmt, err := tx.Prepare(dbqInsertMessage)
 	if err != nil {
-		return xerrors.Errorf("error preparing insertMsgStmt: %w", err)
+		return xerrors.Errorf("error preparing insertStmt: %w", err)
 	}
-	defer insertStmt.Close()
+	defer func() {
+		if err := insertStmt.Close(); err != nil {
+			log.Errorf("error closing insert statement: %s", err)
+		}
+	}()
 
 	curTs := cs.GetHeaviestTipSet()
 	startHeight := curTs.Height()
@@ -246,7 +254,7 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 
 	err = tx.Commit()
 	if err != nil {
-		return xerrors.Errorf("error commiting transaction: %w", err)
+		return xerrors.Errorf("error committing transaction: %w", err)
 	}
 
 	return nil
