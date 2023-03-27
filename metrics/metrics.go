@@ -370,12 +370,12 @@ var (
 	}
 	VMExecutionWaitingView = &view.View{
 		Measure:     VMExecutionWaiting,
-		Aggregation: view.LastValue(),
+		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{ExecutionLane},
 	}
 	VMExecutionRunningView = &view.View{
 		Measure:     VMExecutionRunning,
-		Aggregation: view.LastValue(),
+		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{ExecutionLane},
 	}
 
