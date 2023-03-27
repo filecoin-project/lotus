@@ -658,6 +658,10 @@ It will not send any messages to the chain.`,
 		for _, i := range res {
 			var postParam SubmitWindowedPoStParams
 			postParam.Deadline = i.Deadline
+
+			// Initialize the postParam.Partitions slice with the same length as i.Partitions
+			postParam.Partitions = make([]PoStPartition, len(i.Partitions))
+
 			for id, part := range i.Partitions {
 				postParam.Partitions[id].Index = part.Index
 				count, err := part.Skipped.Count()
