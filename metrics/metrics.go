@@ -742,6 +742,8 @@ var ChainNodeViews = append([]*view.View{
 	VMApplyFlushView,
 	VMSendsView,
 	VMAppliedView,
+	VMExecutionWaitingView,
+	VMExecutionRunningView,
 }, DefaultViews...)
 
 var MinerNodeViews = append([]*view.View{
