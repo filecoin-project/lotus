@@ -4,6 +4,8 @@
 package build
 
 import (
+	"time"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -87,3 +89,7 @@ const BootstrapPeerThreshold = 2
 const Eip155ChainId = 3141592
 
 var WhitelistedBlock = cid.Undef
+
+// CBDeliveryDelay is the delay before deliver in the synchronous consistent broadcast.
+// This determines the wait time for the detection of potential equivocations.
+const CBDeliveryDelay = 2 * time.Second
