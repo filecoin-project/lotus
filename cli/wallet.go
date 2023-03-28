@@ -3,9 +3,11 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/api"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -93,88 +95,106 @@ var walletList = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		ctx := ReqContext(cctx)
 
-		afmt := NewAppFmt(cctx.App)
-
-		addrs, err := api.WalletList(ctx)
-		if err != nil {
-			return err
-		}
-
-		// Assume an error means no default key is set
-		def, _ := api.WalletDefaultAddress(ctx)
-
-		tw := tablewriter.New(
-			tablewriter.Col("Address"),
-			tablewriter.Col("ID"),
-			tablewriter.Col("Balance"),
-			tablewriter.Col("Market(Avail)"),
-			tablewriter.Col("Market(Locked)"),
-			tablewriter.Col("Nonce"),
-			tablewriter.Col("Default"),
-			tablewriter.NewLineCol("Error"))
-
-		for _, addr := range addrs {
-			if cctx.Bool("addr-only") {
-				afmt.Println(addr.String())
-			} else {
-				a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
-				if err != nil {
-					if !strings.Contains(err.Error(), "actor not found") {
-						tw.Write(map[string]interface{}{
-							"Address": addr,
-							"Error":   err,
-						})
-						continue
-					}
-
-					a = &types.Actor{
-						Balance: big.Zero(),
-					}
-				}
-
-				row := map[string]interface{}{
-					"Address": addr,
-					"Balance": types.FIL(a.Balance),
-					"Nonce":   a.Nonce,
-				}
-				if addr == def {
-					row["Default"] = "X"
-				}
-
-				if cctx.Bool("id") {
-					id, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
-					if err != nil {
-						row["ID"] = "n/a"
-					} else {
-						row["ID"] = id
-					}
-				}
-
-				if cctx.Bool("market") {
-					mbal, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
-					if err == nil {
-						row["Market(Avail)"] = types.FIL(types.BigSub(mbal.Escrow, mbal.Locked))
-						row["Market(Locked)"] = types.FIL(mbal.Locked)
-					}
-				}
-
-				tw.Write(row)
-			}
-		}
-
-		if !cctx.Bool("addr-only") {
-			return tw.Flush(os.Stdout)
-		}
-
-		return nil
+		return WalletList(cctx, api, api)
 	},
+}
+
+type BasicWallet interface {
+	WalletNew(context.Context, types.KeyType) (address.Address, error)
+	WalletList(context.Context) ([]address.Address, error)
+
+	WalletExport(context.Context, address.Address) (*types.KeyInfo, error)
+	WalletImport(context.Context, *types.KeyInfo) (address.Address, error)
+	WalletDelete(context.Context, address.Address) error
+}
+
+func WalletList(cctx *cli.Context, wallet BasicWallet, api api.Gateway) error {
+	ctx := ReqContext(cctx)
+	afmt := NewAppFmt(cctx.App)
+
+	addrs, err := wallet.WalletList(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Assume an error means no default key is set
+	var def address.Address
+	if dw, ok := wallet.(interface {
+		WalletDefaultAddress(context.Context) (address.Address, error)
+	}); ok {
+		def, _ = dw.WalletDefaultAddress(ctx)
+	}
+
+	tw := tablewriter.New(
+		tablewriter.Col("Address"),
+		tablewriter.Col("ID"),
+		tablewriter.Col("Balance"),
+		tablewriter.Col("Market(Avail)"),
+		tablewriter.Col("Market(Locked)"),
+		tablewriter.Col("Nonce"),
+		tablewriter.Col("Default"),
+		tablewriter.NewLineCol("Error"))
+
+	for _, addr := range addrs {
+		if cctx.Bool("addr-only") {
+			afmt.Println(addr.String())
+		} else {
+			a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
+			if err != nil {
+				if !strings.Contains(err.Error(), "actor not found") {
+					tw.Write(map[string]interface{}{
+						"Address": addr,
+						"Error":   err,
+					})
+					continue
+				}
+
+				a = &types.Actor{
+					Balance: big.Zero(),
+				}
+			}
+
+			row := map[string]interface{}{
+				"Address": addr,
+				"Balance": types.FIL(a.Balance),
+				"Nonce":   a.Nonce,
+			}
+			if addr == def {
+				row["Default"] = "X"
+			}
+
+			if cctx.Bool("id") {
+				id, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
+				if err != nil {
+					row["ID"] = "n/a"
+				} else {
+					row["ID"] = id
+				}
+			}
+
+			if cctx.Bool("market") {
+				mbal, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+				if err == nil {
+					row["Market(Avail)"] = types.FIL(types.BigSub(mbal.Escrow, mbal.Locked))
+					row["Market(Locked)"] = types.FIL(mbal.Locked)
+				}
+			}
+
+			tw.Write(row)
+		}
+	}
+
+	if !cctx.Bool("addr-only") {
+		return tw.Flush(os.Stdout)
+	}
+
+	return nil
 }
 
 var walletBalance = &cli.Command{
