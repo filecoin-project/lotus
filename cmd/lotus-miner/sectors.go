@@ -1160,8 +1160,9 @@ var sectorsExtendCmd = &cli.Command{
 				}
 
 				sectorsInDecl := int(sectorsWithoutClaimsCount) + len(sectorsWithClaims)
+				scount += sectorsInDecl
 
-				if scount+sectorsInDecl > addrSectors || len(p.Extensions) >= declMax {
+				if scount > addrSectors || len(p.Extensions) >= declMax {
 					params = append(params, p)
 					p = miner.ExtendSectorExpiration2Params{}
 					scount = sectorsInDecl
@@ -1230,7 +1231,7 @@ var sectorsExtendCmd = &cli.Command{
 			smsg, err := fullApi.MpoolPushMessage(ctx, &types.Message{
 				From:   mi.Worker,
 				To:     maddr,
-				Method: builtin.MethodsMiner.ExtendSectorExpiration,
+				Method: builtin.MethodsMiner.ExtendSectorExpiration2,
 				Value:  big.Zero(),
 				Params: sp,
 			}, spec)
