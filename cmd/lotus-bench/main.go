@@ -468,7 +468,7 @@ var sealBenchCmd = &cli.Command{
 		}
 
 		bo.EnvVar = make(map[string]string)
-		for _, envKey := range []string{"BELLMAN_NO_GPU", "FIL_PROOFS_MAXIMIZE_CACHING", "FIL_PROOFS_USE_GPU_COLUMN_BUILDER",
+		for _, envKey := range []string{"BELLMAN_NO_GPU", "FIL_PROOFS_USE_GPU_COLUMN_BUILDER",
 			"FIL_PROOFS_USE_GPU_TREE_BUILDER", "FIL_PROOFS_USE_MULTICORE_SDR", "BELLMAN_CUSTOM_GPU"} {
 			envValue, found := os.LookupEnv(envKey)
 			if found {

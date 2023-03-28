@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 )
 
 // NewMemorySync returns a thread-safe in-memory blockstore.
@@ -19,6 +19,8 @@ type SyncBlockstore struct {
 	mu sync.RWMutex
 	bs MemBlockstore // specifically use a memStore to save indirection overhead.
 }
+
+func (*SyncBlockstore) Flush(context.Context) error { return nil }
 
 func (m *SyncBlockstore) DeleteBlock(ctx context.Context, k cid.Cid) error {
 	m.mu.Lock()

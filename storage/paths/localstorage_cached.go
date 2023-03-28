@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -17,13 +17,13 @@ type cachedLocalStorage struct {
 	base LocalStorage
 
 	statLk  sync.Mutex
-	stats   *lru.Cache // path -> statEntry
-	pathDUs *lru.Cache // path -> *diskUsageEntry
+	stats   *lru.Cache[string, statEntry]
+	pathDUs *lru.Cache[string, *diskUsageEntry]
 }
 
 func newCachedLocalStorage(ls LocalStorage) *cachedLocalStorage {
-	statCache, _ := lru.New(1024)
-	duCache, _ := lru.New(1024)
+	statCache, _ := lru.New[string, statEntry](1024)
+	duCache, _ := lru.New[string, *diskUsageEntry](1024)
 
 	return &cachedLocalStorage{
 		base:    ls,
@@ -60,8 +60,8 @@ func (c *cachedLocalStorage) Stat(path string) (fsutil.FsStat, error) {
 	c.statLk.Lock()
 	defer c.statLk.Unlock()
 
-	if v, ok := c.stats.Get(path); ok && time.Now().Sub(v.(statEntry).time) < StatTimeout {
-		return v.(statEntry).stat, nil
+	if v, ok := c.stats.Get(path); ok && time.Now().Sub(v.time) < StatTimeout {
+		return v.stat, nil
 	}
 
 	// if we don't, get the stat
@@ -83,7 +83,7 @@ func (c *cachedLocalStorage) DiskUsage(path string) (int64, error) {
 	var entry *diskUsageEntry
 
 	if v, ok := c.pathDUs.Get(path); ok {
-		entry = v.(*diskUsageEntry)
+		entry = v
 
 		// if we have recent cached entry, use that
 		if time.Now().Sub(entry.last.time) < StatTimeout {

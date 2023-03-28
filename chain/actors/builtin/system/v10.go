@@ -7,6 +7,7 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	system10 "github.com/filecoin-project/go-state-types/builtin/v10/system"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -54,7 +55,7 @@ func (s *state10) SetBuiltinActors(c cid.Cid) error {
 }
 
 func (s *state10) ActorKey() string {
-	return actors.SystemKey
+	return manifest.SystemKey
 }
 
 func (s *state10) ActorVersion() actorstypes.Version {

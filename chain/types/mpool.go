@@ -10,7 +10,7 @@ type MpoolConfig struct {
 	PriorityAddrs          []address.Address
 	SizeLimitHigh          int
 	SizeLimitLow           int
-	ReplaceByFeeRatio      float64
+	ReplaceByFeeRatio      Percent
 	PruneCooldown          time.Duration
 	GasLimitOverestimation float64
 }

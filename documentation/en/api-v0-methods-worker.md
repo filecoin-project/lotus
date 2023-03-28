@@ -75,10 +75,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   1,
   "sealing",
@@ -93,7 +93,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -108,14 +108,16 @@ Response:
 ```json
 {
   "Hostname": "string value",
-  "IgnoreResources": false,
+  "IgnoreResources": true,
   "Resources": {
-    "MemPhysical": 0,
-    "MemUsed": 0,
-    "MemSwap": 0,
-    "MemSwapUsed": 0,
-    "CPUs": 0,
-    "GPUs": null,
+    "MemPhysical": 42,
+    "MemUsed": 42,
+    "MemSwap": 42,
+    "MemSwapUsed": 42,
+    "CPUs": 42,
+    "GPUs": [
+      "string value"
+    ],
     "Resources": {
       "post/v0/windowproof": {
         "0": {
@@ -1421,11 +1423,11 @@ Response:
 ```json
 [
   {
-    "ID": "",
+    "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
     "Weight": 42,
-    "LocalPath": "",
-    "CanSeal": false,
-    "CanStore": false
+    "LocalPath": "string value",
+    "CanSeal": true,
+    "CanStore": true
   }
 ]
 ```
@@ -1490,10 +1492,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   [
     1024
@@ -1510,7 +1512,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1538,7 +1540,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1555,10 +1557,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   true,
   {
@@ -1578,7 +1580,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1595,10 +1597,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   }
 ]
 ```
@@ -1610,7 +1612,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1624,10 +1626,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   }
 ]
 ```
@@ -1639,7 +1641,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1656,10 +1658,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1674,7 +1676,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1690,9 +1692,11 @@ Inputs:
   1000,
   [
     {
-      "SealProof": 0,
-      "SectorNumber": 0,
-      "SealedCID": null,
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "Challenge": [
         42
       ],
@@ -1708,8 +1712,8 @@ Response:
 ```json
 {
   "PoStProofs": {
-    "PoStProof": 0,
-    "ProofBytes": null
+    "PoStProof": 8,
+    "ProofBytes": "Ynl0ZSBhcnJheQ=="
   },
   "Skipped": [
     {
@@ -1732,9 +1736,11 @@ Inputs:
   1000,
   [
     {
-      "SealProof": 0,
-      "SectorNumber": 0,
-      "SealedCID": null,
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "Challenge": [
         42
       ],
@@ -1749,8 +1755,8 @@ Response:
 ```json
 [
   {
-    "PoStProof": 0,
-    "ProofBytes": null
+    "PoStProof": 8,
+    "ProofBytes": "Ynl0ZSBhcnJheQ=="
   }
 ]
 ```
@@ -1768,10 +1774,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   1
 ]
@@ -1784,7 +1790,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1815,10 +1821,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1839,7 +1845,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1853,10 +1859,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1880,7 +1886,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1897,10 +1903,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   [
     {
@@ -1918,7 +1924,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1935,15 +1941,17 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   [
     {
       "Size": 1032,
-      "PieceCID": null
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     }
   ]
 ]
@@ -1956,7 +1964,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -1973,17 +1981,19 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   "Bw==",
   "Bw==",
   [
     {
       "Size": 1032,
-      "PieceCID": null
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     }
   ],
   {
@@ -2004,7 +2014,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -2018,10 +2028,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   "Bw=="
 ]
@@ -2034,7 +2044,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -2048,16 +2058,18 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   "Bw==",
   [
     {
       "Size": 1032,
-      "PieceCID": null
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     }
   ]
 ]
@@ -2070,7 +2082,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -2084,10 +2096,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   "Bw=="
 ]
@@ -2100,7 +2112,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 
@@ -2251,10 +2263,10 @@ Inputs:
 [
   {
     "ID": {
-      "Miner": 0,
-      "Number": 0
+      "Miner": 1000,
+      "Number": 9
     },
-    "ProofType": 0
+    "ProofType": 8
   },
   1040384,
   1024,
@@ -2272,7 +2284,7 @@ Response:
     "Miner": 1000,
     "Number": 9
   },
-  "ID": "00000000-0000-0000-0000-000000000000"
+  "ID": "07070707-0707-0707-0707-070707070707"
 }
 ```
 

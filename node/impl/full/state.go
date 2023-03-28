@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -507,7 +508,7 @@ func (m *StateModule) StateAccountKey(ctx context.Context, addr address.Address,
 		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return m.StateManager.ResolveToKeyAddress(ctx, addr, ts)
+	return m.StateManager.ResolveToDeterministicAddress(ctx, addr, ts)
 }
 
 func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*api.ActorState, error) {
@@ -615,16 +616,22 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 
 		vmsg := cmsg.VMMessage()
 
-		t, err := stmgr.GetReturnType(ctx, m.StateManager, vmsg.To, vmsg.Method, ts)
-		if err != nil {
+		switch t, err := stmgr.GetReturnType(ctx, m.StateManager, vmsg.To, vmsg.Method, ts); {
+		case errors.Is(err, stmgr.ErrMetadataNotFound):
+			// This is not necessarily an error -- EVM methods (and in the future native actors) may
+			// return just bytes, and in the not so distant future we'll have native wasm actors
+			// that are by definition not in the registry.
+			// So in this case, log a debug message and retun the raw bytes.
+			log.Debugf("failed to get return type: %s", err)
+			returndec = recpt.Return
+		case err != nil:
 			return nil, xerrors.Errorf("failed to get return type: %w", err)
+		default:
+			if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
+				return nil, err
+			}
+			returndec = t
 		}
-
-		if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
-			return nil, err
-		}
-
-		returndec = t
 	}
 
 	return &api.MsgLookup{
@@ -1800,6 +1807,7 @@ func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParam
 			UpgradeOhSnapHeight:      build.UpgradeOhSnapHeight,
 			UpgradeSkyrHeight:        build.UpgradeSkyrHeight,
 			UpgradeSharkHeight:       build.UpgradeSharkHeight,
+			UpgradeHyggeHeight:       build.UpgradeHyggeHeight,
 		},
 	}, nil
 }

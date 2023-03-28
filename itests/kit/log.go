@@ -1,6 +1,9 @@
 package kit
 
 import (
+	"io"
+	"log"
+
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/lib/lotuslog"
@@ -13,9 +16,20 @@ func QuietMiningLogs() {
 	_ = logging.SetLogLevel("chainstore", "ERROR")
 	_ = logging.SetLogLevel("chain", "ERROR")
 	_ = logging.SetLogLevel("sub", "ERROR")
+	_ = logging.SetLogLevel("wdpost", "ERROR")
 	_ = logging.SetLogLevel("storageminer", "ERROR")
 	_ = logging.SetLogLevel("pubsub", "ERROR")
 	_ = logging.SetLogLevel("gen", "ERROR")
 	_ = logging.SetLogLevel("rpc", "ERROR")
 	_ = logging.SetLogLevel("dht/RtRefreshManager", "ERROR")
+}
+
+func QuietAllLogsExcept(names ...string) {
+	log.SetOutput(io.Discard) // suppress LogDatastore messages
+
+	lotuslog.SetupLogLevels()
+	logging.SetAllLoggers(logging.LevelError)
+	for _, name := range names {
+		_ = logging.SetLogLevel(name, "INFO")
+	}
 }

@@ -14,9 +14,9 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/metrics"
@@ -24,12 +24,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -43,6 +41,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
@@ -70,6 +69,7 @@ func init() {
 	}
 
 	ExampleValues[reflect.TypeOf(c)] = c
+	ExampleValues[reflect.TypeOf(&c)] = &c
 
 	c2, err := cid.Decode("bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve")
 	if err != nil {
@@ -152,8 +152,8 @@ func init() {
 	addExample(map[string]int{"name": 42})
 	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{
-		Msg:    ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
-		MsgRct: ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
+		Msg:    ExampleValue("init", reflect.TypeOf(types.MessageTrace{}), nil).(types.MessageTrace),
+		MsgRct: ExampleValue("init", reflect.TypeOf(types.ReturnTrace{}), nil).(types.ReturnTrace),
 	})
 	addExample(map[string]types.Actor{
 		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
@@ -300,7 +300,8 @@ func init() {
 			"title":   "Lotus RPC API",
 			"version": "1.2.1/generated=2020-11-22T08:22:42-06:00",
 		},
-		"methods": []interface{}{}},
+		"methods": []interface{}{},
+	},
 	)
 
 	addExample(api.CheckStatusCode(0))
@@ -337,7 +338,8 @@ func init() {
 			NumConnsInbound:    3,
 			NumConnsOutbound:   4,
 			NumFD:              5,
-		}})
+		},
+	})
 	addExample(api.NetLimit{
 		Memory:          123,
 		StreamsInbound:  1,
@@ -348,6 +350,7 @@ func init() {
 		Conns:           4,
 		FD:              5,
 	})
+
 	addExample(map[string]bitfield.BitField{
 		"": bitfield.NewFromSet([]uint64{5, 6, 7, 10}),
 	})
@@ -367,11 +370,44 @@ func init() {
 			Headers: nil,
 		},
 	})
+
+	ethint := ethtypes.EthUint64(5)
+	addExample(ethint)
+	addExample(&ethint)
+
+	ethaddr, _ := ethtypes.ParseEthAddress("0x5CbEeCF99d3fDB3f25E309Cc264f240bb0664031")
+	addExample(ethaddr)
+	addExample(&ethaddr)
+
+	ethhash, _ := ethtypes.EthHashFromCid(c)
+	addExample(ethhash)
+	addExample(&ethhash)
+
+	ethFeeHistoryReward := [][]ethtypes.EthBigInt{}
+	addExample(&ethFeeHistoryReward)
+
 	addExample(&uuid.UUID{})
+
+	filterid := ethtypes.EthFilterID(ethhash)
+	addExample(filterid)
+	addExample(&filterid)
+
+	subid := ethtypes.EthSubscriptionID(ethhash)
+	addExample(subid)
+	addExample(&subid)
+
+	pstring := func(s string) *string { return &s }
+	addExample(&ethtypes.EthFilterSpec{
+		FromBlock: pstring("2301220"),
+		Address:   []ethtypes.EthAddress{ethaddr},
+	})
+
+	percent := types.Percent(123)
+	addExample(percent)
+	addExample(&percent)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
-
 	switch pkg {
 	case "api": // latest
 		switch name {
@@ -441,7 +477,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			es := exampleStruct(method, t.Elem(), t)
-			//ExampleValues[t] = es
+			ExampleValues[t] = es
 			return es
 		}
 	case reflect.Interface:
@@ -458,8 +494,8 @@ func exampleStruct(method string, t, parent reflect.Type) interface{} {
 		if f.Type == parent {
 			continue
 		}
-		caser := cases.Title(language.English)
-		if caser.String(f.Name) == f.Name {
+
+		if f.IsExported() {
 			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}

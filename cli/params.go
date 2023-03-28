@@ -15,8 +15,8 @@ var FetchParamCmd = &cli.Command{
 	Usage:     "Fetch proving parameters",
 	ArgsUsage: "[sectorSize]",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return xerrors.Errorf("must pass sector size to fetch params for (specify as \"32GiB\", for instance)")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 		sectorSizeInt, err := units.RAMInBytes(cctx.Args().First())
 		if err != nil {

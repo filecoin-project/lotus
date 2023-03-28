@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -117,8 +118,14 @@ func (s *state0) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 
 }
 
+func (s *state0) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v0")
+
+}
+
 func (s *state0) ActorKey() string {
-	return actors.VerifregKey
+	return manifest.VerifregKey
 }
 
 func (s *state0) ActorVersion() actorstypes.Version {

@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	files "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-libipfs/files"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	carv2 "github.com/ipld/go-car/v2"
@@ -25,7 +25,7 @@ import (
 
 // This test uses a full "dense" CARv2, and not a filestore (positional mapping).
 func TestRoundtripUnixFS_Dense(t *testing.T) {
-	//stm: @CLIENT_DATA_IMPORT_002
+	// stm: @CLIENT_DATA_IMPORT_002
 	ctx := context.Background()
 
 	inputPath, inputContents := genInputFile(t)
@@ -74,7 +74,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 }
 
 func TestRoundtripUnixFS_Filestore(t *testing.T) {
-	//stm: @CLIENT_DATA_IMPORT_001
+	// stm: @CLIENT_DATA_IMPORT_001
 	ctx := context.Background()
 
 	inputPath, inputContents := genInputFile(t)

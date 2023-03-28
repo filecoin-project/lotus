@@ -81,7 +81,7 @@ Note: The API refers to these stages as `StageHeaders` and `StagePersistHeaders`
 
 We proceed in the sync process by requesting block headers from the peer,
 moving back from their head, until we reach a tipset that we have in common
-(such a common tipset must exist, thought it may simply be the genesis block).
+(such a common tipset must exist, though it may simply be the genesis block).
 The functionality can be found in `Syncer::collectHeaders()`.
 
 If the common tipset is our head, we treat the sync as a "fast-forward", else we must
@@ -126,7 +126,7 @@ If all validations pass we will now set that head as our heaviest tipset in
 We already have the full state, since we calculated
 it during the sync process.
 
-FIXME (aayush) I don't fuilly understand the next 2 paragraphs, but it seems important. Confirm and polish.
+FIXME (aayush) I don't fully understand the next 2 paragraphs, but it seems important. Confirm and polish.
 Relevant issue in IPFS: https://github.com/ipfs/ipfs-docs/issues/264
 
 It is important to note at this point that similar to the IPFS architecture of addressing by content and not by location/address (FIXME: check and link to IPFS docs) the "actual" chain stored in the node repo is *relative* to which CID we look for. We always have stored a series of Filecoin blocks pointing to other blocks, each a potential chain in itself by following its parent's reference, and its parent's parent, and so on up to the genesis block. (FIXME: We need a diagram here, one of the Filecoin blog entries might have something similar to what we are describing here.) It only depends on *where* (location) do we start to look for. The *only* address/location reference we hold of the chain, a relative reference, is the `heaviest` pointer. This is reflected by the fact that we don't store it in the `Blockstore` by a fixed, *absolute*, CID that reflects its contents, as this will change each time we sync to a new head (FIXME: link to the immutability IPFS doc that I need to write).
@@ -149,7 +149,7 @@ encapsulated in the [`StateTree`](https://github.com/filecoin-project/lotus/blob
 and accessed through the
 [`StateManager`](https://github.com/filecoin-project/lotus/blob/master/chain/stmgr/stmgr.go).
 The state at the chain's head is thus easily tracked and updated in a state root CID.
-(FIXME: Talk about CIDs somewhere,  we might want to explain some of the modify/flush/update-root mechanism here.))
+(FIXME: Talk about CIDs somewhere,  we might want to explain some of the modify/flush/update-root mechanism here.)
 
 ## Calculating a Tipset State
 

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
@@ -145,7 +145,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 		return nil
 	})
 	g.Go(func() error {
-		return db.CollectGarbage(blockstore.WithFullGC(true))
+		return db.CollectGarbage(ctx, blockstore.WithFullGC(true))
 	})
 
 	err = g.Wait()
@@ -230,7 +230,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	checkPath()
 
 	// now do another FullGC to test the double move and following of symlinks
-	if err := db.CollectGarbage(blockstore.WithFullGC(true)); err != nil {
+	if err := db.CollectGarbage(ctx, blockstore.WithFullGC(true)); err != nil {
 		t.Fatal(err)
 	}
 

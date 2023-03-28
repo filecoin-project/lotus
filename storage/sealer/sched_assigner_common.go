@@ -58,7 +58,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 	windows := make([]SchedWindow, windowsLen)
 	for i := range windows {
-		windows[i].Allocated = *NewActiveResources()
+		windows[i].Allocated = *NewActiveResources(newTaskCounter())
 	}
 	acceptableWindows := make([][]int, queueLen) // QueueIndex -> []OpenWindowIndex
 

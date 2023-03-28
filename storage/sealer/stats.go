@@ -43,9 +43,9 @@ func (m *Manager) WorkerStats(ctx context.Context) map[uuid.UUID]storiface.Worke
 			TaskCounts: map[string]int{},
 		}
 
-		for tt, count := range handle.active.taskCounters {
+		handle.active.taskCounters.ForEach(func(tt sealtasks.SealTaskType, count int) {
 			out[uuid.UUID(id)].TaskCounts[tt.String()] = count
-		}
+		})
 
 		handle.lk.Unlock()
 	}

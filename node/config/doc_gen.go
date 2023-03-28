@@ -341,10 +341,85 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
+	"Events": []DocField{
+		{
+			Name: "DisableRealTimeFilterAPI",
+			Type: "bool",
+
+			Comment: `EnableEthRPC enables APIs that
+DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "DisableHistoricFilterAPI",
+			Type: "bool",
+
+			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "FilterTTL",
+			Type: "Duration",
+
+			Comment: `FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+this time become eligible for automatic deletion.`,
+		},
+		{
+			Name: "MaxFilters",
+			Type: "int",
+
+			Comment: `MaxFilters specifies the maximum number of filters that may exist at any one time.`,
+		},
+		{
+			Name: "MaxFilterResults",
+			Type: "int",
+
+			Comment: `MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.`,
+		},
+		{
+			Name: "MaxFilterHeightRange",
+			Type: "uint64",
+
+			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+the entire chain)`,
+		},
+		{
+			Name: "DatabasePath",
+			Type: "string",
+
+			Comment: `DatabasePath is the full path to a sqlite database that will be used to index actor events to
+support the historic filter APIs. If the database does not exist it will be created. The directory containing
+the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+relative to the CWD (current working directory).`,
+		},
+	},
 	"FeeConfig": []DocField{
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
+
+			Comment: ``,
+		},
+	},
+	"FevmConfig": []DocField{
+		{
+			Name: "EnableEthRPC",
+			Type: "bool",
+
+			Comment: `EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
+		},
+		{
+			Name: "EthTxHashMappingLifetimeDays",
+			Type: "int",
+
+			Comment: `EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+Set to 0 to keep all mappings`,
+		},
+		{
+			Name: "Events",
+			Type: "Events",
 
 			Comment: ``,
 		},
@@ -379,6 +454,26 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Type: "UserRaftConfig",
 
 			Comment: ``,
+		},
+		{
+			Name: "Fevm",
+			Type: "FevmConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Index",
+			Type: "IndexConfig",
+
+			Comment: ``,
+		},
+	},
+	"IndexConfig": []DocField{
+		{
+			Name: "EnableMsgIndex",
+			Type: "bool",
+
+			Comment: `EnableMsgIndex enables indexing of messages on chain.`,
 		},
 	},
 	"IndexProviderConfig": []DocField{
@@ -1204,6 +1299,35 @@ the compaction boundary; default is 0.`,
 			Comment: `HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
 A value of 0 disables, while a value 1 will do full GC in every compaction.
 Default is 20 (about once a week).`,
+		},
+		{
+			Name: "HotStoreMaxSpaceTarget",
+			Type: "uint64",
+
+			Comment: `HotStoreMaxSpaceTarget sets a target max disk size for the hotstore. Splitstore GC
+will run moving GC if disk utilization gets within a threshold (150 GB) of the target.
+Splitstore GC will NOT run moving GC if the total size of the move would get
+within 50 GB of the target, and instead will run a more aggressive online GC.
+If both HotStoreFullGCFrequency and HotStoreMaxSpaceTarget are set then splitstore
+GC will trigger moving GC if either configuration condition is met.
+A reasonable minimum is 2x fully GCed hotstore size + 50 G buffer.
+At this minimum size moving GC happens every time, any smaller and moving GC won't
+be able to run. In spring 2023 this minimum is ~550 GB.`,
+		},
+		{
+			Name: "HotStoreMaxSpaceThreshold",
+			Type: "uint64",
+
+			Comment: `When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold`,
+		},
+		{
+			Name: "HotstoreMaxSpaceSafetyBuffer",
+			Type: "uint64",
+
+			Comment: `Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+is set.  Moving GC will not occur when total moving size exceeds
+HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 		},
 	},
 	"StorageMiner": []DocField{

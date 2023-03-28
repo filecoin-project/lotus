@@ -113,7 +113,7 @@ func TestWindowPostDispute(t *testing.T) {
 		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
-		if di.Index == evilSectorLoc.Deadline && di.CurrentEpoch-di.PeriodStart > 1 {
+		if di.Index == evilSectorLoc.Deadline && di.CurrentEpoch-di.Open > 1 {
 			break
 		}
 		build.Clock.Sleep(blocktime)
@@ -217,7 +217,8 @@ func TestWindowPostDispute(t *testing.T) {
 		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
-		if di.Index == evilSectorLoc.Deadline {
+
+		if di.Index == evilSectorLoc.Deadline && di.CurrentEpoch-di.Open > 1 {
 			break
 		}
 		build.Clock.Sleep(blocktime)

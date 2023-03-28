@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a question about Lotus or get support
+    url: https://github.com/filecoin-project/lotus/discussions/new/choose
+    about: Ask a question or request support for using Lotus
+  - name: Filecoin protocol feature or enhancement
+    url: https://github.com/filecoin-project/FIPs/discussions/new/choose
+    about: Write a discussion in the Filecoin Improvement Proposal repo

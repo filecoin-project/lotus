@@ -8,6 +8,7 @@ import (
 
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -28,7 +29,7 @@ func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av actor
 		return nil, err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.MarketKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.MarketKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get market actor code ID for actors version %d", av)
 	}

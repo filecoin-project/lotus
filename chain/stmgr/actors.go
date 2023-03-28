@@ -48,7 +48,7 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 		return address.Undef, xerrors.Errorf("failed to load actor info: %w", err)
 	}
 
-	return vm.ResolveToKeyAddr(state, sm.cs.ActorStore(ctx), info.Worker)
+	return vm.ResolveToDeterministicAddr(state, sm.cs.ActorStore(ctx), info.Worker)
 }
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (power.Claim, power.Claim, bool, error) {
@@ -381,7 +381,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, err
 	}
 
-	worker, err := sm.ResolveToKeyAddress(ctx, info.Worker, ts)
+	worker, err := sm.ResolveToDeterministicAddress(ctx, info.Worker, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("resolving worker address: %w", err)
 	}

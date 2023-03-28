@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	blocks "github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/stretchr/testify/require"
 )
 

@@ -162,7 +162,9 @@ var runCmd = &cli.Command{
 			log.Fatalf("Cannot register the view: %v", err)
 		}
 
-		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
+		subHnd := gateway.NewEthSubHandler()
+
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx, cliutil.FullNodeWithEthSubscribtionHandler(subHnd))
 		if err != nil {
 			return err
 		}
@@ -195,7 +197,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to convert endpoint address to multiaddr: %w", err)
 		}
 
-		gwapi := gateway.NewNode(api, lookbackCap, waitLookback, rateLimit, rateLimitTimeout)
+		gwapi := gateway.NewNode(api, subHnd, lookbackCap, waitLookback, rateLimit, rateLimitTimeout)
 		h, err := gateway.Handler(gwapi, api, perConnRateLimit, connPerMinute, serverOptions...)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")

@@ -7,6 +7,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -17,7 +18,7 @@ var Methods = builtin10.MethodsEVM
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.EvmKey {
+		if name != manifest.EvmKey {
 			return nil, xerrors.Errorf("actor code is not evm: %s", name)
 		}
 
@@ -47,5 +48,10 @@ type State interface {
 	cbor.Marshaler
 
 	Nonce() (uint64, error)
+	IsAlive() (bool, error)
 	GetState() interface{}
+
+	GetBytecode() ([]byte, error)
+	GetBytecodeCID() (cid.Cid, error)
+	GetBytecodeHash() ([32]byte, error)
 }

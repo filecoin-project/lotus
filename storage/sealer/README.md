@@ -21,16 +21,15 @@ Please report your issues with regards to sector-storage at the [lotus issue tra
 Manages is the top-level piece of the storage system gluing all the other pieces
 together. It also implements scheduling logic.
 
-### `package stores`
+### `package paths`
 
 This package implements the sector storage subsystem. Fundamentally the storage
 is divided into `path`s, each path has it's UUID, and stores a set of sector
-'files'. There are currently 3 types of sector files - `unsealed`, `sealed`,
-and `cache`.
+'files'. There are currently 5 types of sector files - `unsealed`, `sealed`, `cache`, `update` and `update-cache`.
 
 Paths can be shared between nodes by sharing the underlying filesystem.
 
-### `stores.Local`
+### `paths.Local`
 
 The Local store implements SectorProvider for paths mounted in the local
 filesystem. Paths can be shared between nodes, and support shared filesystems
@@ -38,12 +37,12 @@ such as NFS.
 
 stores.Local implements all native filesystem-related operations 
 
-### `stores.Remote`
+### `paths.Remote`
 
 The Remote store extends Local store, handles fetching sector files into a local
 store if needed, and handles removing sectors from non-local stores.
 
-### `stores.Index`
+### `paths.Index`
 
 The Index is a singleton holding metadata about storage paths, and a mapping of
 sector files to paths

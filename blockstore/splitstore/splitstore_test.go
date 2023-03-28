@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 
@@ -756,6 +756,8 @@ func (b *mockStore) DeleteMany(_ context.Context, cids []cid.Cid) error {
 	}
 	return nil
 }
+
+func (b *mockStore) Flush(context.Context) error { return nil }
 
 func (b *mockStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return nil, errors.New("not implemented")

@@ -28,7 +28,7 @@ var errProofNotSupported = errors.New("payment channel proof parameter is not su
 
 // stateManagerAPI defines the methods needed from StateManager
 type stateManagerAPI interface {
-	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
 }

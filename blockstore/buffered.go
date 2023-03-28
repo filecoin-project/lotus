@@ -4,9 +4,9 @@ import (
 	"context"
 	"os"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	block "github.com/ipfs/go-libipfs/blocks"
 )
 
 // buflog is a logger for the buffered blockstore. It is subscoped from the
@@ -45,6 +45,8 @@ var (
 	_ Blockstore = (*BufferedBlockstore)(nil)
 	_ Viewer     = (*BufferedBlockstore)(nil)
 )
+
+func (bs *BufferedBlockstore) Flush(ctx context.Context) error { return bs.write.Flush(ctx) }
 
 func (bs *BufferedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)

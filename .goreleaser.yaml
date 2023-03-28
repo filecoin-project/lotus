@@ -65,6 +65,7 @@ archives:
   - id: primary
     format: tar.gz
     wrap_in_directory: true
+    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       # this is a dumb but required hack so it doesn't include the default files
       # https://github.com/goreleaser/goreleaser/issues/602
@@ -105,4 +106,4 @@ checksum:
   disable: true
 
 snapshot:
-  name_template: "{{ .Tag }}"
+  name_template: "{{ .Version }}"

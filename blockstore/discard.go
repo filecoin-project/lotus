@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 )
 
 var _ Blockstore = (*discardstore)(nil)
@@ -36,6 +36,10 @@ func (b *discardstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 
 func (b *discardstore) View(ctx context.Context, cid cid.Cid, f func([]byte) error) error {
 	return b.bs.View(ctx, cid, f)
+}
+
+func (b *discardstore) Flush(ctx context.Context) error {
+	return nil
 }
 
 func (b *discardstore) Put(ctx context.Context, blk blocks.Block) error {

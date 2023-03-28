@@ -259,7 +259,7 @@ func generate(path, pkg, outpkg, outfile string) error {
 						if len(tf) != 2 {
 							continue
 						}
-						if tf[0] != "perm" { // todo: allow more tag types
+						if tf[0] != "perm" && tf[0] != "rpc_method" && tf[0] != "notify" { // todo: allow more tag types
 							continue
 						}
 						info.Methods[mname].Tags[tf[0]] = tf
@@ -302,12 +302,15 @@ type {{.Num}}Struct struct {
 {{range .Include}}
 	{{.}}Struct
 {{end}}
-	Internal struct {
+	Internal {{.Num}}Methods
+}
+
+type {{.Num}}Methods struct {
 {{range .Methods}}
-		{{.Num}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
+	{{.Num}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{$first := true}}{{range .Tags}}{{if $first}}{{$first = false}}{{else}} {{end}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
+
 {{end}}
 	}
-}
 
 type {{.Num}}Stub struct {
 {{range .Include}}

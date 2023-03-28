@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	block "github.com/ipfs/go-libipfs/blocks"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -207,9 +207,7 @@ type mmCids struct {
 }
 
 func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
-	o, ok := cs.mmCache.Get(mmc)
-	if ok {
-		mmcids := o.(*mmCids)
+	if mmcids, ok := cs.mmCache.Get(mmc); ok {
 		return mmcids.bls, mmcids.secpk, nil
 	}
 
@@ -229,12 +227,32 @@ func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.C
 		return nil, nil, xerrors.Errorf("loading secpk message cids for block: %w", err)
 	}
 
-	cs.mmCache.Add(mmc, &mmCids{
+	cs.mmCache.Add(mmc, mmCids{
 		bls:   blscids,
 		secpk: secpkcids,
 	})
 
 	return blscids, secpkcids, nil
+}
+
+func (cs *ChainStore) ReadReceipts(ctx context.Context, root cid.Cid) ([]types.MessageReceipt, error) {
+	a, err := blockadt.AsArray(cs.ActorStore(ctx), root)
+	if err != nil {
+		return nil, err
+	}
+
+	receipts := make([]types.MessageReceipt, 0, a.Length())
+	var rcpt types.MessageReceipt
+	if err := a.ForEach(&rcpt, func(i int64) error {
+		if int64(len(receipts)) != i {
+			return xerrors.Errorf("missing receipt %d", i)
+		}
+		receipts = append(receipts, rcpt)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return receipts, nil
 }
 
 func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
@@ -254,6 +272,20 @@ func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader
 	}
 
 	return blsmsgs, secpkmsgs, nil
+}
+
+func (cs *ChainStore) SecpkMessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.SignedMessage, error) {
+	_, secpkcids, err := cs.ReadMsgMetaCids(ctx, b.Messages)
+	if err != nil {
+		return nil, err
+	}
+
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(ctx, secpkcids)
+	if err != nil {
+		return nil, xerrors.Errorf("loading secpk messages for block: %w", err)
+	}
+
+	return secpkmsgs, nil
 }
 
 func (cs *ChainStore) GetParentReceipt(ctx context.Context, b *types.BlockHeader, i int) (*types.MessageReceipt, error) {

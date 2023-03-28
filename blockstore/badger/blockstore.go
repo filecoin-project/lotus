@@ -13,13 +13,14 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/dgraph-io/badger/v2/pb"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/multiformats/go-base32"
 	"go.uber.org/zap"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
 )
@@ -44,7 +45,8 @@ const (
 	// MemoryMap is equivalent to badger/options.MemoryMap.
 	MemoryMap = options.MemoryMap
 	// LoadToRAM is equivalent to badger/options.LoadToRAM.
-	LoadToRAM = options.LoadToRAM
+	LoadToRAM          = options.LoadToRAM
+	defaultGCThreshold = 0.125
 )
 
 // Options embeds the badger options themselves, and augments them with
@@ -439,7 +441,7 @@ func (b *Blockstore) deleteDB(path string) {
 	}
 }
 
-func (b *Blockstore) onlineGC() error {
+func (b *Blockstore) onlineGC(ctx context.Context, threshold float64) error {
 	b.lockDB()
 	defer b.unlockDB()
 
@@ -448,6 +450,9 @@ func (b *Blockstore) onlineGC() error {
 	if nworkers < 2 {
 		nworkers = 2
 	}
+	if nworkers > 7 { // max out at 1 goroutine per badger level
+		nworkers = 7
+	}
 
 	err := b.db.Flatten(nworkers)
 	if err != nil {
@@ -455,7 +460,12 @@ func (b *Blockstore) onlineGC() error {
 	}
 
 	for err == nil {
-		err = b.db.RunValueLogGC(0.125)
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+		default:
+			err = b.db.RunValueLogGC(threshold)
+		}
 	}
 
 	if err == badger.ErrNoRewrite {
@@ -468,7 +478,7 @@ func (b *Blockstore) onlineGC() error {
 
 // CollectGarbage compacts and runs garbage collection on the value log;
 // implements the BlockstoreGC trait
-func (b *Blockstore) CollectGarbage(opts ...blockstore.BlockstoreGCOption) error {
+func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -485,8 +495,48 @@ func (b *Blockstore) CollectGarbage(opts ...blockstore.BlockstoreGCOption) error
 	if options.FullGC {
 		return b.movingGC()
 	}
+	threshold := options.Threshold
+	if threshold == 0 {
+		threshold = defaultGCThreshold
+	}
+	return b.onlineGC(ctx, threshold)
+}
 
-	return b.onlineGC()
+// GCOnce runs garbage collection on the value log;
+// implements BlockstoreGCOnce trait
+func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	var options blockstore.BlockstoreGCOptions
+	for _, opt := range opts {
+		err := opt(&options)
+		if err != nil {
+			return err
+		}
+	}
+	if options.FullGC {
+		return xerrors.Errorf("FullGC option specified for GCOnce but full GC is non incremental")
+	}
+
+	threshold := options.Threshold
+	if threshold == 0 {
+		threshold = defaultGCThreshold
+	}
+
+	b.lockDB()
+	defer b.unlockDB()
+
+	// Note no compaction needed before single GC as we will hit at most one vlog anyway
+	err := b.db.RunValueLogGC(threshold)
+	if err == badger.ErrNoRewrite {
+		// not really an error in this case, it signals the end of GC
+		return nil
+	}
+
+	return err
 }
 
 // Size returns the aggregate size of the blockstore
@@ -549,6 +599,18 @@ func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) erro
 			return fmt.Errorf("failed to view block from badger blockstore: %w", err)
 		}
 	})
+}
+
+func (b *Blockstore) Flush(context.Context) error {
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	b.lockDB()
+	defer b.unlockDB()
+
+	return b.db.Sync()
 }
 
 // Has implements Blockstore.Has.

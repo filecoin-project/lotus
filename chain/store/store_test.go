@@ -8,14 +8,17 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -124,6 +127,51 @@ func TestChainExportImport(t *testing.T) {
 	}
 }
 
+// Test to check if tipset key cids are being stored on snapshot
+func TestChainImportTipsetKeyCid(t *testing.T) {
+
+	ctx := context.Background()
+	cg, err := gen.NewGenerator()
+	require.NoError(t, err)
+
+	buf := new(bytes.Buffer)
+	var last *types.TipSet
+	var tsKeys []types.TipSetKey
+	for i := 0; i < 10; i++ {
+		ts, err := cg.NextTipSet()
+		require.NoError(t, err)
+		last = ts.TipSet.TipSet()
+		tsKeys = append(tsKeys, last.Key())
+	}
+
+	if err := cg.ChainStore().Export(ctx, last, last.Height(), false, buf); err != nil {
+		t.Fatal(err)
+	}
+
+	nbs := blockstore.NewMemorySync()
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
+	defer cs.Close() //nolint:errcheck
+
+	root, err := cs.Import(ctx, buf)
+	require.NoError(t, err)
+
+	require.Truef(t, root.Equals(last), "imported chain differed from exported chain")
+
+	err = cs.SetHead(ctx, last)
+	require.NoError(t, err)
+
+	for _, tsKey := range tsKeys {
+		_, err := cs.LoadTipSet(ctx, tsKey)
+		require.NoError(t, err)
+
+		tsCid, err := tsKey.Cid()
+		require.NoError(t, err)
+		_, err = cs.ChainLocalBlockstore().Get(ctx, tsCid)
+		require.NoError(t, err)
+
+	}
+}
+
 func TestChainExportImportFull(t *testing.T) {
 	//stm: @CHAIN_GEN_NEXT_TIPSET_001
 	//stm: @CHAIN_STORE_IMPORT_001, @CHAIN_STORE_EXPORT_001, @CHAIN_STORE_SET_HEAD_001
@@ -149,7 +197,8 @@ func TestChainExportImportFull(t *testing.T) {
 	}
 
 	nbs := blockstore.NewMemorySync()
-	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
+	ds := datastore.NewMapDatastore()
+	cs := store.NewChainStore(nbs, nbs, ds, filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
 	root, err := cs.Import(context.TODO(), buf)
@@ -166,7 +215,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal("imported chain differed from exported chain")
 	}
 
-	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), nil, filcns.DefaultUpgradeSchedule(), cg.BeaconSchedule())
+	sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), nil, filcns.DefaultUpgradeSchedule(), cg.BeaconSchedule(), ds, index.DummyMsgIndex)
 	if err != nil {
 		t.Fatal(err)
 	}

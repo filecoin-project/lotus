@@ -55,9 +55,10 @@ var actorCmd = &cli.Command{
 }
 
 var actorSetAddrsCmd = &cli.Command{
-	Name:    "set-addresses",
-	Aliases: []string{"set-addrs"},
-	Usage:   "set addresses that your miner can be publicly dialed on",
+	Name:      "set-addresses",
+	Aliases:   []string{"set-addrs"},
+	Usage:     "set addresses that your miner can be publicly dialed on",
+	ArgsUsage: "<multiaddrs>",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -170,8 +171,9 @@ var actorSetAddrsCmd = &cli.Command{
 }
 
 var actorSetPeeridCmd = &cli.Command{
-	Name:  "set-peer-id",
-	Usage: "set the peer id of your miner",
+	Name:      "set-peer-id",
+	Usage:     "set the peer id of your miner",
+	ArgsUsage: "<peer id>",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "gas-limit",
@@ -193,6 +195,10 @@ var actorSetPeeridCmd = &cli.Command{
 		defer acloser()
 
 		ctx := lcli.ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
 
 		pid, err := peer.Decode(cctx.Args().Get(0))
 		if err != nil {
@@ -433,17 +439,8 @@ var actorControlList = &cli.Command{
 		&cli.BoolFlag{
 			Name: "verbose",
 		},
-		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -729,13 +726,13 @@ var actorSetOwnerCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 2 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
 		if !cctx.Bool("really-do-it") {
 			fmt.Println("Pass --really-do-it to actually execute this action")
 			return nil
-		}
-
-		if cctx.NArg() != 2 {
-			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -1133,7 +1130,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ConfirmUpdateWorkerKey,
+			Method: builtin.MethodsMiner.ConfirmChangeWorkerAddress,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {

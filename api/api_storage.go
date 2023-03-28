@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -152,7 +152,7 @@ type StorageMiner interface {
 	WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) //perm:admin
 	WorkerJobs(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error)  //perm:admin
 
-	//storiface.WorkerReturn
+	// storiface.WorkerReturn
 	ReturnDataCid(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error                                         //perm:admin retry:true
 	ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error                                        //perm:admin retry:true
 	ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storiface.PreCommit1Out, err *storiface.CallError) error                       //perm:admin retry:true
@@ -175,7 +175,7 @@ type StorageMiner interface {
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) //perm:admin
 	SealingAbort(ctx context.Context, call storiface.CallID) error           //perm:admin
-	//SealingSchedRemove removes a request from sealing pipeline
+	// SealingSchedRemove removes a request from sealing pipeline
 	SealingRemoveRequest(ctx context.Context, schedId uuid.UUID) error //perm:admin
 
 	// paths.SectorIndex
@@ -212,9 +212,11 @@ type StorageMiner interface {
 	StorageDetachLocal(ctx context.Context, path string) error                           //perm:admin
 	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin
 
-	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
-	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read
-	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                           //perm:read
+	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error //perm:write
+	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                   //perm:read
+
+	// MarketListRetrievalDeals is deprecated, returns empty list
+	MarketListRetrievalDeals(ctx context.Context) ([]struct{}, error)                                                                                                                    //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                    //perm:read
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                                    //perm:read
 	MarketSetAsk(ctx context.Context, price types.BigInt, verifiedPrice types.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
@@ -322,7 +324,7 @@ type StorageMiner interface {
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef) (map[abi.SectorNumber]string, error) //perm:admin
 
-	ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtin.PoStProof, error) //perm:read
+	ComputeProof(ctx context.Context, ssi []builtinactors.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtinactors.PoStProof, error) //perm:read
 
 	// RecoverFault can be used to declare recoveries manually. It sends messages
 	// to the miner actor with details of recovered sectors and returns the CID of messages. It honors the

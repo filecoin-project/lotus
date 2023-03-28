@@ -21,7 +21,7 @@ func TestNetConn(t *testing.T) {
 
 	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
 
-	//stm: @NETWORK_COMMON_ID_001
+	// stm: @NETWORK_COMMON_ID_001
 	secondNodeID, err := secondNode.ID(ctx)
 	require.NoError(t, err)
 
@@ -31,21 +31,21 @@ func TestNetConn(t *testing.T) {
 		t.Errorf("node should be not connected to peers. %s", err.Error())
 	}
 
-	//stm: @NETWORK_COMMON_ADDRS_LISTEN_001
+	// stm: @NETWORK_COMMON_ADDRS_LISTEN_001
 	addrInfo, err := secondNode.NetAddrsListen(ctx)
 	require.NoError(t, err)
 
-	//stm: @NETWORK_COMMON_CONNECT_001
+	// stm: @NETWORK_COMMON_CONNECT_001
 	err = firstNode.NetConnect(ctx, addrInfo)
 	if err != nil {
 		t.Errorf("nodes failed to connect. %s", err.Error())
 	}
 
-	//stm: @NETWORK_COMMON_PEER_INFO_001
+	// stm: @NETWORK_COMMON_PEER_INFO_001
 	netPeerInfo, err := firstNode.NetPeerInfo(ctx, secondNodeID)
 	require.NoError(t, err)
 
-	//stm: @NETWORK_COMMON_AGENT_VERSION_001
+	// stm: @NETWORK_COMMON_AGENT_VERSION_001
 	agent, err := firstNode.NetAgentVersion(ctx, secondNodeID)
 	require.NoError(t, err)
 
@@ -53,7 +53,7 @@ func TestNetConn(t *testing.T) {
 		t.Errorf("agents not matching. %s", err.Error())
 	}
 
-	//stm: @NETWORK_COMMON_FIND_PEER_001
+	// stm: @NETWORK_COMMON_FIND_PEER_001
 	secondNodePeer, err := firstNode.NetFindPeer(ctx, secondNodeID)
 	require.NoError(t, err)
 
@@ -67,12 +67,12 @@ func TestNetConn(t *testing.T) {
 		t.Errorf("peer does not have connected state")
 	}
 
-	//stm: @NETWORK_COMMON_PEERS_001
+	// stm: @NETWORK_COMMON_PEERS_001
 	addrs, err := firstNode.NetPeers(ctx)
 	require.NoError(t, err)
 	require.NotEqual(t, 0, len(addrs))
 
-	//stm: @NETWORK_COMMON_DISCONNECT_001
+	// stm: @NETWORK_COMMON_DISCONNECT_001
 	err = firstNode.NetDisconnect(ctx, secondNodeID)
 	if err != nil {
 		t.Errorf("nodes failed to disconnect. %s", err.Error())
@@ -84,7 +84,7 @@ func TestNetConn(t *testing.T) {
 		t.Errorf("peer should have disconnected")
 	}
 
-	//stm: @NETWORK_COMMON_PEERS_001
+	// stm: @NETWORK_COMMON_PEERS_001
 	addrs, err = firstNode.NetPeers(ctx)
 	require.NoError(t, err)
 
@@ -120,13 +120,13 @@ func TestNetStat(t *testing.T) {
 		}
 	}
 
-	//stm: @NETWORK_COMMON_STAT_001
+	// stm: @NETWORK_COMMON_STAT_001
 	t.Run("all", withScope(t, "all"))
-	//stm: @NETWORK_COMMON_STAT_002
+	// stm: @NETWORK_COMMON_STAT_002
 	t.Run("system", withScope(t, "system"))
-	//stm: @NETWORK_COMMON_STAT_003
+	// stm: @NETWORK_COMMON_STAT_003
 	t.Run("transient", withScope(t, "transient"))
-	//stm: @NETWORK_COMMON_STAT_004
+	// stm: @NETWORK_COMMON_STAT_004
 	t.Run("peer", withScope(t, fmt.Sprintf("peer:%s", sId)))
 }
 
@@ -145,11 +145,11 @@ func TestNetLimit(t *testing.T) {
 		}
 	}
 
-	//stm: @NETWORK_COMMON_LIMIT_001
+	// stm: @NETWORK_COMMON_LIMIT_001
 	t.Run("system", withScope(t, "system"))
-	//stm: @NETWORK_COMMON_LIMIT_002
+	// stm: @NETWORK_COMMON_LIMIT_002
 	t.Run("transient", withScope(t, "transient"))
-	//stm: @NETWORK_COMMON_LIMIT_003
+	// stm: @NETWORK_COMMON_LIMIT_003
 	t.Run("peer", withScope(t, fmt.Sprintf("peer:%s", sId)))
 }
 
@@ -158,7 +158,7 @@ func TestNetBlockPeer(t *testing.T) {
 
 	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
 
-	//stm: @NETWORK_COMMON_ID_001
+	// stm: @NETWORK_COMMON_ID_001
 	firstAddrInfo, _ := firstNode.NetAddrsListen(ctx)
 	firstNodeID, err := firstNode.ID(ctx)
 	require.NoError(t, err)
@@ -170,11 +170,11 @@ func TestNetBlockPeer(t *testing.T) {
 	require.NoError(t, err, "failed to determine connectedness")
 	require.NotEqual(t, connectedness, network.Connected, "shouldn't already be connected")
 
-	//stm: @NETWORK_COMMON_BLOCK_ADD_001
+	// stm: @NETWORK_COMMON_BLOCK_ADD_001
 	err = firstNode.NetBlockAdd(ctx, api.NetBlockList{Peers: []peer.ID{secondNodeID}})
 	require.NoError(t, err)
 
-	//stm: @NETWORK_COMMON_BLOCK_LIST_001
+	// stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err := firstNode.NetBlockList(ctx)
 	require.NoError(t, err)
 
@@ -182,16 +182,22 @@ func TestNetBlockPeer(t *testing.T) {
 		t.Errorf("blocked peer not in blocked peer list")
 	}
 
-	require.Error(t, secondNode.NetConnect(ctx, firstAddrInfo), "shouldn't be able to connect to second node")
-	connectedness, err = secondNode.NetConnectedness(ctx, firstAddrInfo.ID)
+	err = secondNode.NetConnect(ctx, firstAddrInfo)
+	// With early muxer selection, we'll only learn that the handshake failed
+	// when we do something with the connection, for example when we open a stream.
+	if err == nil {
+		_, err = secondNode.NetPing(context.Background(), firstAddrInfo.ID)
+	}
+	require.Error(t, err, "shouldn't be able to connect to second node")
+	connectedness, err = firstNode.NetConnectedness(ctx, secondNodeID)
 	require.NoError(t, err, "failed to determine connectedness")
 	require.NotEqual(t, connectedness, network.Connected)
 
-	//stm: @NETWORK_COMMON_BLOCK_REMOVE_001
+	// stm: @NETWORK_COMMON_BLOCK_REMOVE_001
 	err = firstNode.NetBlockRemove(ctx, api.NetBlockList{Peers: []peer.ID{secondNodeID}})
 	require.NoError(t, err)
 
-	//stm: @NETWORK_COMMON_BLOCK_LIST_001
+	// stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err = firstNode.NetBlockList(ctx)
 	require.NoError(t, err)
 
@@ -210,7 +216,7 @@ func TestNetBlockIPAddr(t *testing.T) {
 
 	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
 
-	//stm: @NETWORK_COMMON_ADDRS_LISTEN_001
+	// stm: @NETWORK_COMMON_ADDRS_LISTEN_001
 	firstAddrInfo, _ := firstNode.NetAddrsListen(ctx)
 	secondAddrInfo, _ := secondNode.NetAddrsListen(ctx)
 
@@ -229,11 +235,11 @@ func TestNetBlockIPAddr(t *testing.T) {
 	require.NoError(t, err, "failed to determine connectedness")
 	require.NotEqual(t, connectedness, network.Connected, "shouldn't already be connected")
 
-	//stm: @NETWORK_COMMON_BLOCK_ADD_001
+	// stm: @NETWORK_COMMON_BLOCK_ADD_001
 	require.NoError(t, firstNode.NetBlockAdd(ctx, api.NetBlockList{
 		IPAddrs: secondNodeIPs}), "failed to add blocked IPs")
 
-	//stm: @NETWORK_COMMON_BLOCK_LIST_001
+	// stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err := firstNode.NetBlockList(ctx)
 	require.NoError(t, err)
 
@@ -255,11 +261,11 @@ func TestNetBlockIPAddr(t *testing.T) {
 	require.NoError(t, err, "failed to determine connectedness")
 	require.NotEqual(t, connectedness, network.Connected)
 
-	//stm: @NETWORK_COMMON_BLOCK_REMOVE_001
+	// stm: @NETWORK_COMMON_BLOCK_REMOVE_001
 	err = firstNode.NetBlockRemove(ctx, api.NetBlockList{IPAddrs: secondNodeIPs})
 	require.NoError(t, err)
 
-	//stm: @NETWORK_COMMON_BLOCK_LIST_001
+	// stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err = firstNode.NetBlockList(ctx)
 	require.NoError(t, err)
 
@@ -274,7 +280,7 @@ func TestNetBlockIPAddr(t *testing.T) {
 }
 
 func getConnState(ctx context.Context, t *testing.T, node *kit.TestFullNode, peer peer.ID) network.Connectedness {
-	//stm: @NETWORK_COMMON_CONNECTEDNESS_001
+	// stm: @NETWORK_COMMON_CONNECTEDNESS_001
 	connState, err := node.NetConnectedness(ctx, peer)
 	require.NoError(t, err)
 

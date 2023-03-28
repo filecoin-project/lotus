@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 
@@ -307,7 +308,7 @@ func (s *state4) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes
 }
 
 func (s *state4) ActorKey() string {
-	return actors.MarketKey
+	return manifest.MarketKey
 }
 
 func (s *state4) ActorVersion() actorstypes.Version {

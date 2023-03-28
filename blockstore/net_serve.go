@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/binary"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/libp2p/go-msgio"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"

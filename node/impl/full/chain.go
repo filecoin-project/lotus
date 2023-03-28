@@ -5,17 +5,22 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"math"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	mh "github.com/multiformats/go-multihash"
@@ -24,6 +29,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	amt4 "github.com/filecoin-project/go-amt-ipld/v4"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -36,6 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/oldpath"
 	"github.com/filecoin-project/lotus/lib/oldpath/oldresolver"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var log = logging.Logger("fullnode")
@@ -87,6 +94,8 @@ type ChainAPI struct {
 
 	// BaseBlockstore is the underlying blockstore
 	BaseBlockstore dtypes.BaseBlockstore
+
+	Repo repo.LockedRepo
 }
 
 func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
@@ -184,25 +193,14 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 		return nil, nil
 	}
 
-	// TODO: need to get the number of messages better than this
-	pts, err := a.Chain.LoadTipSet(ctx, types.NewTipSetKey(b.Parents...))
+	receipts, err := a.Chain.ReadReceipts(ctx, b.ParentMessageReceipts)
 	if err != nil {
 		return nil, err
 	}
 
-	cm, err := a.Chain.MessagesForTipset(ctx, pts)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []*types.MessageReceipt
-	for i := 0; i < len(cm); i++ {
-		r, err := a.Chain.GetParentReceipt(ctx, b, i)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, r)
+	out := make([]*types.MessageReceipt, len(receipts))
+	for i := range receipts {
+		out[i] = &receipts[i]
 	}
 
 	return out, nil
@@ -587,6 +585,54 @@ func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.M
 	return cm.VMMessage(), nil
 }
 
+func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg api.ChainExportConfig) error {
+	headTs, err := a.Chain.GetTipSetFromKey(ctx, head)
+	if err != nil {
+		return xerrors.Errorf("loading tipset %s: %w", head, err)
+	}
+	tailTs, err := a.Chain.GetTipSetFromKey(ctx, tail)
+	if err != nil {
+		return xerrors.Errorf("loading tipset %s: %w", tail, err)
+	}
+	if headTs.Height() < tailTs.Height() {
+		return xerrors.Errorf("Height of head-tipset (%d) must be greater or equal to the height of the tail-tipset (%d)", headTs.Height(), tailTs.Height())
+	}
+
+	fileName := filepath.Join(a.Repo.Path(), fmt.Sprintf("snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix()))
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+
+	log.Infow("Exporting chain range", "path", fileName)
+	// buffer writes to the chain export file.
+	bw := bufio.NewWriterSize(f, cfg.WriteBufferSize)
+
+	defer func() {
+		if err := bw.Flush(); err != nil {
+			log.Errorw("failed to flush buffer", "error", err)
+		}
+		if err := f.Close(); err != nil {
+			log.Errorw("failed to close file", "error", err)
+		}
+	}()
+
+	if err := a.Chain.ExportRange(ctx,
+		bw,
+		headTs, tailTs,
+		cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots,
+		cfg.NumWorkers,
+	); err != nil {
+		return fmt.Errorf("exporting chain range: %w", err)
+	}
+
+	return nil
+}
+
 func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -654,6 +700,33 @@ func (a *ChainAPI) ChainBlockstoreInfo(ctx context.Context) (map[string]interfac
 	return info.Info(), nil
 }
 
+// ChainGetEvents returns the events under an event AMT root CID.
+//
+// TODO (raulk) make copies of this logic elsewhere use this (e.g. itests, CLI, events filter).
+func (a *ChainAPI) ChainGetEvents(ctx context.Context, root cid.Cid) ([]types.Event, error) {
+	store := cbor.NewCborStore(a.ExposedBlockstore)
+	evtArr, err := amt4.LoadAMT(ctx, store, root, amt4.UseTreeBitWidth(types.EventAMTBitwidth))
+	if err != nil {
+		return nil, xerrors.Errorf("load events amt: %w", err)
+	}
+
+	ret := make([]types.Event, 0, evtArr.Len())
+	var evt types.Event
+	err = evtArr.ForEach(ctx, func(u uint64, deferred *cbg.Deferred) error {
+		if u > math.MaxInt {
+			return xerrors.Errorf("too many events")
+		}
+		if err := evt.UnmarshalCBOR(bytes.NewReader(deferred.Raw)); err != nil {
+			return err
+		}
+
+		ret = append(ret, evt)
+		return nil
+	})
+
+	return ret, err
+}
+
 func (a *ChainAPI) ChainPrune(ctx context.Context, opts api.PruneOpts) error {
 	pruner, ok := a.BaseBlockstore.(interface {
 		PruneChain(opts api.PruneOpts) error
@@ -663,4 +736,15 @@ func (a *ChainAPI) ChainPrune(ctx context.Context, opts api.PruneOpts) error {
 	}
 
 	return pruner.PruneChain(opts)
+}
+
+func (a *ChainAPI) ChainHotGC(ctx context.Context, opts api.HotGCOpts) error {
+	pruner, ok := a.BaseBlockstore.(interface {
+		GCHotStore(api.HotGCOpts) error
+	})
+	if !ok {
+		return xerrors.Errorf("base blockstore does not support hot GC (%T)", a.BaseBlockstore)
+	}
+
+	return pruner.GCHotStore(opts)
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 )
@@ -75,6 +75,10 @@ func (es *exposedSplitStore) GetSize(ctx context.Context, c cid.Cid) (int, error
 		return es.s.cold.GetSize(ctx, c)
 	}
 	return size, err
+}
+
+func (es *exposedSplitStore) Flush(ctx context.Context) error {
+	return es.s.Flush(ctx)
 }
 
 func (es *exposedSplitStore) Put(ctx context.Context, blk blocks.Block) error {

@@ -1,18 +1,22 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
 var sendCmd = &cli.Command{
@@ -23,6 +27,10 @@ var sendCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "optionally specify the account to send funds from",
+		},
+		&cli.StringFlag{
+			Name:  "from-eth-addr",
+			Usage: "optionally specify the eth addr to send funds from",
 		},
 		&cli.StringFlag{
 			Name:  "gas-premium",
@@ -98,6 +106,65 @@ var sendCmd = &cli.Command{
 			}
 
 			params.From = addr
+		} else if from := cctx.String("from-eth-addr"); from != "" {
+			eaddr, err := ethtypes.ParseEthAddress(from)
+			if err != nil {
+				return err
+			}
+			faddr, err := eaddr.ToFilecoinAddress()
+			if err != nil {
+				fmt.Println("error on conversion to faddr")
+				return err
+			}
+			fmt.Println("f4 addr: ", faddr)
+			params.From = faddr
+		}
+
+		if cctx.IsSet("params-hex") {
+			decparams, err := hex.DecodeString(cctx.String("params-hex"))
+			if err != nil {
+				return fmt.Errorf("failed to decode hex params: %w", err)
+			}
+			params.Params = decparams
+		}
+
+		if ethtypes.IsEthAddress(params.From) {
+			// Method numbers don't make sense from eth accounts.
+			if cctx.IsSet("method") {
+				return xerrors.Errorf("messages from f410f addresses may not specify a method number")
+			}
+
+			// Now, figure out the correct method number from the recipient.
+			if params.To == builtintypes.EthereumAddressManagerActorAddr {
+				params.Method = builtintypes.MethodsEAM.CreateExternal
+			} else {
+				params.Method = builtintypes.MethodsEVM.InvokeContract
+			}
+
+			if cctx.IsSet("params-json") {
+				return xerrors.Errorf("may not call with json parameters from an eth account")
+			}
+
+			// And format the parameters, if present.
+			if len(params.Params) > 0 {
+				var buf bytes.Buffer
+				if err := cbg.WriteByteArray(&buf, params.Params); err != nil {
+					return xerrors.Errorf("failed to marshal EVM parameters")
+				}
+				params.Params = buf.Bytes()
+			}
+
+			// We can only send to an f410f or f0 address.
+			if !(params.To.Protocol() == address.ID || params.To.Protocol() == address.Delegated) {
+				api := srv.FullNodeAPI()
+				// Resolve id addr if possible.
+				params.To, err = api.StateLookupID(ctx, params.To, types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("addresses starting with f410f can only send to other addresses starting with f410f, or id addresses. could not find id address for %s", params.To.String())
+				}
+			}
+		} else {
+			params.Method = abi.MethodNum(cctx.Uint64("method"))
 		}
 
 		if cctx.IsSet("gas-premium") {
@@ -121,22 +188,13 @@ var sendCmd = &cli.Command{
 			params.GasLimit = &limit
 		}
 
-		params.Method = abi.MethodNum(cctx.Uint64("method"))
-
 		if cctx.IsSet("params-json") {
-			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
-			if err != nil {
-				return fmt.Errorf("failed to decode json params: %w", err)
-			}
-			params.Params = decparams
-		}
-		if cctx.IsSet("params-hex") {
 			if params.Params != nil {
 				return fmt.Errorf("can only specify one of 'params-json' and 'params-hex'")
 			}
-			decparams, err := hex.DecodeString(cctx.String("params-hex"))
+			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
 			if err != nil {
-				return fmt.Errorf("failed to decode hex params: %w", err)
+				return fmt.Errorf("failed to decode json params: %w", err)
 			}
 			params.Params = decparams
 		}

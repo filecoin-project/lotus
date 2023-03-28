@@ -20,10 +20,13 @@ func main() {
 
 	local := []*cli.Command{
 		addressCmd,
+		statActorCmd,
+		statObjCmd,
 		base64Cmd,
 		base32Cmd,
 		base16Cmd,
 		bitFieldCmd,
+		chainwatchCmd,
 		cronWcCmd,
 		frozenMinersCmd,
 		dealLabelCmd,
@@ -49,9 +52,9 @@ func main() {
 		minerCmd,
 		mpoolStatsCmd,
 		exportChainCmd,
+		ethCmd,
 		exportCarCmd,
 		consensusCmd,
-		storageStatsCmd,
 		syncCmd,
 		stateTreePruneCmd,
 		datastoreCmd,
@@ -81,6 +84,7 @@ func main() {
 		invariantsCmd,
 		gasTraceCmd,
 		replayOfflineCmd,
+		msgindexCmd,
 	}
 
 	app := &cli.App{

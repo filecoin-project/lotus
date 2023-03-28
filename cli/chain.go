@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,7 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -56,6 +57,7 @@ var ChainCmd = &cli.Command{
 		ChainGetCmd,
 		ChainBisectCmd,
 		ChainExportCmd,
+		ChainExportRangeCmd,
 		SlashConsensusFault,
 		ChainGasPriceCmd,
 		ChainInspectUsage,
@@ -112,8 +114,8 @@ var ChainGetBlock = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass cid of block to print")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		bcid, err := cid.Decode(cctx.Args().First())
@@ -149,7 +151,7 @@ var ChainGetBlock = &cli.Command{
 		recpts, err := api.ChainGetParentReceipts(ctx, bcid)
 		if err != nil {
 			log.Warn(err)
-			//return xerrors.Errorf("failed to get receipts: %w", err)
+			// return xerrors.Errorf("failed to get receipts: %w", err)
 		}
 
 		cblock := struct {
@@ -198,6 +200,10 @@ var ChainReadObjCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {
 			return fmt.Errorf("failed to parse cid input: %s", err)
@@ -232,6 +238,10 @@ var ChainDeleteObjCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {
@@ -276,6 +286,10 @@ var ChainStatObjCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
 		obj, err := cid.Decode(cctx.Args().First())
 		if err != nil {
 			return fmt.Errorf("failed to parse cid input: %s", err)
@@ -308,8 +322,8 @@ var ChainGetMsgCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass a cid of a message to get")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -373,6 +387,10 @@ var ChainSetHeadCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		var ts *types.TipSet
 
@@ -493,7 +511,7 @@ var ChainInspectUsage = &cli.Command{
 				return err
 			}
 
-			mm := filcns.NewActorRegistry().Methods[code][m.Message.Method] // TODO: use remote map
+			mm := consensus.NewActorRegistry().Methods[code][m.Message.Method] // TODO: use remote map
 
 			byMethod[mm.Name] += m.Message.GasLimit
 			byMethodC[mm.Name]++
@@ -733,6 +751,10 @@ var ChainGetCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
 
 		p := path.Clean(cctx.Args().First())
 		if strings.HasPrefix(p, "/pstate") {
@@ -1071,8 +1093,8 @@ var ChainExportCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify filename to export chain to")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		rsrs := abi.ChainEpoch(cctx.Int64("recent-stateroots"))
@@ -1121,6 +1143,109 @@ var ChainExportCmd = &cli.Command{
 			return xerrors.Errorf("incomplete export (remote connection lost?)")
 		}
 
+		return nil
+	},
+}
+
+var ChainExportRangeCmd = &cli.Command{
+	Name:      "export-range",
+	Usage:     "export chain to a car file",
+	ArgsUsage: "",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "head",
+			Usage: "specify tipset to start the export from (higher epoch)",
+			Value: "@head",
+		},
+		&cli.StringFlag{
+			Name:  "tail",
+			Usage: "specify tipset to end the export at (lower epoch)",
+			Value: "@tail",
+		},
+		&cli.BoolFlag{
+			Name:  "messages",
+			Usage: "specify if messages should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "receipts",
+			Usage: "specify if receipts should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "stateroots",
+			Usage: "specify if stateroots should be include",
+			Value: false,
+		},
+		&cli.IntFlag{
+			Name:  "workers",
+			Usage: "specify the number of workers",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "write-buffer",
+			Usage: "specify write buffer size",
+			Value: 1 << 20,
+		},
+		&cli.BoolFlag{
+			Name:   "internal",
+			Usage:  "write the file locally to disk",
+			Value:  true,
+			Hidden: true, // currently, non-internal export is not implemented.
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		var head, tail *types.TipSet
+		headstr := cctx.String("head")
+		if headstr == "@head" {
+			head, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			head, err = ParseTipSetRef(ctx, api, headstr)
+			if err != nil {
+				return fmt.Errorf("parsing head: %w", err)
+			}
+		}
+		tailstr := cctx.String("tail")
+		if tailstr == "@tail" {
+			tail, err = api.ChainGetGenesis(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			tail, err = ParseTipSetRef(ctx, api, tailstr)
+			if err != nil {
+				return fmt.Errorf("parsing tail: %w", err)
+			}
+		}
+
+		if head.Height() < tail.Height() {
+			return errors.New("Height of --head tipset must be greater or equal to the height of the --tail tipset")
+		}
+
+		if !cctx.Bool("internal") {
+			return errors.New("Non-internal exports are not implemented")
+		}
+
+		err = api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), lapi.ChainExportConfig{
+			WriteBufferSize:   cctx.Int("write-buffer"),
+			NumWorkers:        cctx.Int("workers"),
+			IncludeMessages:   cctx.Bool("messages"),
+			IncludeReceipts:   cctx.Bool("receipts"),
+			IncludeStateRoots: cctx.Bool("stateroots"),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	},
 }
@@ -1466,7 +1591,64 @@ func createExportFile(app *cli.App, path string) (io.WriteCloser, error) {
 
 var ChainPruneCmd = &cli.Command{
 	Name:  "prune",
-	Usage: "prune the stored chain state and perform garbage collection",
+	Usage: "splitstore gc",
+	Subcommands: []*cli.Command{
+		chainPruneColdCmd,
+		chainPruneHotGCCmd,
+		chainPruneHotMovingGCCmd,
+	},
+}
+
+var chainPruneHotGCCmd = &cli.Command{
+	Name:  "hot",
+	Usage: "run online (badger vlog) garbage collection on hotstore",
+	Flags: []cli.Flag{
+		&cli.Float64Flag{Name: "threshold", Value: 0.01, Usage: "Threshold of vlog garbage for gc"},
+		&cli.BoolFlag{Name: "periodic", Value: false, Usage: "Run periodic gc over multiple vlogs. Otherwise run gc once"},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		opts := lapi.HotGCOpts{}
+		opts.Periodic = cctx.Bool("periodic")
+		opts.Threshold = cctx.Float64("threshold")
+
+		gcStart := time.Now()
+		err = api.ChainHotGC(ctx, opts)
+		gcTime := time.Since(gcStart)
+		fmt.Printf("Online GC took %v (periodic <%t> threshold <%f>)", gcTime, opts.Periodic, opts.Threshold)
+		return err
+	},
+}
+
+var chainPruneHotMovingGCCmd = &cli.Command{
+	Name:  "hot-moving",
+	Usage: "run moving gc on hotstore",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		opts := lapi.HotGCOpts{}
+		opts.Moving = true
+
+		gcStart := time.Now()
+		err = api.ChainHotGC(ctx, opts)
+		gcTime := time.Since(gcStart)
+		fmt.Printf("Moving GC took %v", gcTime)
+		return err
+	},
+}
+
+var chainPruneColdCmd = &cli.Command{
+	Name:  "compact-cold",
+	Usage: "force splitstore compaction on cold store state and run gc",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "online-gc",

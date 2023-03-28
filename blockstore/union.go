@@ -3,9 +3,9 @@ package blockstore
 import (
 	"context"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 )
 
 type unionBlockstore []Blockstore
@@ -53,6 +53,15 @@ func (m unionBlockstore) GetSize(ctx context.Context, cid cid.Cid) (size int, er
 		}
 	}
 	return size, err
+}
+
+func (m unionBlockstore) Flush(ctx context.Context) (err error) {
+	for _, bs := range m {
+		if err = bs.Flush(ctx); err != nil {
+			break
+		}
+	}
+	return err
 }
 
 func (m unionBlockstore) Put(ctx context.Context, block blocks.Block) (err error) {

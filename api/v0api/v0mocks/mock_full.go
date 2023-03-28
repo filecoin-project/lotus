@@ -11,8 +11,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	metrics "github.com/libp2p/go-libp2p/core/metrics"
 	network0 "github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
@@ -20,7 +20,7 @@ import (
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"

@@ -10,6 +10,7 @@ import (
 	builtin10 "github.com/filecoin-project/go-state-types/builtin"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -30,7 +31,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.VerifregKey {
+		if name != manifest.VerifregKey {
 			return nil, xerrors.Errorf("actor code is not verifreg: %s", name)
 		}
 
@@ -130,6 +131,7 @@ type State interface {
 	GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error)
 	GetClaim(providerIdAddr address.Address, claimId ClaimId) (*Claim, bool, error)
 	GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error)
+	GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error)
 	GetState() interface{}
 }
 

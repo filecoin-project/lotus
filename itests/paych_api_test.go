@@ -38,7 +38,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	ctx := context.Background()
-	blockTime := 5 * time.Millisecond
+	blockTime := 10 * time.Millisecond
 
 	var (
 		paymentCreator  kit.TestFullNode
@@ -54,6 +54,15 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		InterconnectAll()
 	bms := ens.BeginMiningMustPost(blockTime)
 	bm := bms[0]
+
+	waitRecvInSync := func() {
+		// paymentCreator is the block miner, in some cases paymentReceiver may fall behind, so we wait for it to catch up
+
+		head, err := paymentReceiver.ChainHead(ctx)
+		require.NoError(t, err)
+
+		paymentReceiver.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()))
+	}
 
 	// send some funds to register the receiver
 	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
@@ -73,6 +82,8 @@ func TestPaymentChannelsAPI(t *testing.T) {
 
 	channel, err := paymentCreator.PaychGetWaitReady(ctx, channelInfo.WaitSentinel)
 	require.NoError(t, err)
+
+	waitRecvInSync()
 
 	// allocate three lanes
 	var lanes []uint64
@@ -109,6 +120,8 @@ func TestPaymentChannelsAPI(t *testing.T) {
 
 	res := waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second*10, "settle")
 	require.EqualValues(t, 0, res.Receipt.ExitCode, "Unable to settle payment channel")
+
+	waitRecvInSync()
 
 	creatorStore := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(paymentCreator)))
 

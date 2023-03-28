@@ -13,6 +13,7 @@ import (
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -117,8 +118,14 @@ func (s *state8) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 
 }
 
+func (s *state8) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v8")
+
+}
+
 func (s *state8) ActorKey() string {
-	return actors.VerifregKey
+	return manifest.VerifregKey
 }
 
 func (s *state8) ActorVersion() actorstypes.Version {

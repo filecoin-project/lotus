@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
@@ -566,7 +567,7 @@ func (s *state5) GetState() interface{} {
 }
 
 func (s *state5) ActorKey() string {
-	return actors.MinerKey
+	return manifest.MinerKey
 }
 
 func (s *state5) ActorVersion() actorstypes.Version {

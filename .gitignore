@@ -1,6 +1,3 @@
-/AppDir
-/appimage-builder-cache
-*.AppImage
 /lotus
 /lotus-miner
 /lotus-worker
@@ -50,3 +47,8 @@ build/builtin-actors/v*
 build/builtin-actors/*.car
 
 dist/
+
+
+# The following files are checked into git and result
+# in dirty git state if removed from the docker context
+!extern/filecoin-ffi/rust/filecoin.pc

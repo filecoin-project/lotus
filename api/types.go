@@ -8,13 +8,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -110,16 +112,12 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 		IsSender:   channelState.Sender() == hostID,
 		Message:    channelState.Message(),
 	}
-	stringer, ok := channelState.Voucher().(fmt.Stringer)
-	if ok {
-		channel.Voucher = stringer.String()
+	voucher := channelState.Voucher()
+	voucherJSON, err := ipld.Encode(voucher.Voucher, dagjson.Encode)
+	if err != nil {
+		channel.Voucher = fmt.Errorf("Voucher Serialization: %w", err).Error()
 	} else {
-		voucherJSON, err := json.Marshal(channelState.Voucher())
-		if err != nil {
-			channel.Voucher = fmt.Errorf("Voucher Serialization: %w", err).Error()
-		} else {
-			channel.Voucher = string(voucherJSON)
-		}
+		channel.Voucher = string(voucherJSON)
 	}
 	if channel.IsSender {
 		channel.IsInitiator = !channelState.IsPull()
@@ -338,6 +336,7 @@ type ForkUpgradeParams struct {
 	UpgradeOhSnapHeight        abi.ChainEpoch
 	UpgradeSkyrHeight          abi.ChainEpoch
 	UpgradeSharkHeight         abi.ChainEpoch
+	UpgradeHyggeHeight         abi.ChainEpoch
 }
 
 type NonceMapType map[address.Address]uint64
@@ -396,4 +395,13 @@ func (m *MsgUuidMapType) UnmarshalJSON(b []byte) error {
 		(*m)[u] = msg
 	}
 	return nil
+}
+
+// ChainExportConfig holds configuration for chain ranged exports.
+type ChainExportConfig struct {
+	WriteBufferSize   int
+	NumWorkers        int
+	IncludeMessages   bool
+	IncludeReceipts   bool
+	IncludeStateRoots bool
 }

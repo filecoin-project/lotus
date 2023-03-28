@@ -143,15 +143,31 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		if err != nil {
 			return false, xerrors.Errorf("API error getting head: %w", err)
 		}
+
+		var dealSafeSealEpoch abi.ChainEpoch
 		for _, piece := range sector.Pieces {
 			if piece.DealInfo == nil {
 				continue
 			}
-			dealSafeSealEpoch := piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
-			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-ts.Height()) * blockTime)
-			if dealSafeSealTime.Before(sealTime) {
-				sealTime = dealSafeSealTime
+
+			dealSafeSealEpoch = piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
+
+			alloc, _ := m.Api.StateGetAllocationForPendingDeal(ctx.Context(), piece.DealInfo.DealID, types.EmptyTSK)
+			// alloc is nil if this is not a verified deal in nv17 or later
+			if alloc == nil {
+				continue
 			}
+
+			if alloc.Expiration-cfg.StartEpochSealingBuffer < dealSafeSealEpoch {
+				dealSafeSealEpoch = alloc.Expiration - cfg.StartEpochSealingBuffer
+				log.Debugw("checking safe seal epoch", "dealSafeSealEpoch", dealSafeSealEpoch)
+			}
+		}
+
+		dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-ts.Height()) * blockTime)
+		if dealSafeSealTime.Before(sealTime) {
+			log.Debugw("deal safe time is before seal time", "dealSafeSealTime", dealSafeSealTime, "sealTime", sealTime)
+			sealTime = dealSafeSealTime
 		}
 
 		if now.After(sealTime) {

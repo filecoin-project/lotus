@@ -18,12 +18,17 @@ type Blockstore interface {
 	blockstore.Blockstore
 	blockstore.Viewer
 	BatchDeleter
+	Flusher
 }
 
 // BasicBlockstore is an alias to the original IPFS Blockstore.
 type BasicBlockstore = blockstore.Blockstore
 
 type Viewer = blockstore.Viewer
+
+type Flusher interface {
+	Flush(context.Context) error
+}
 
 type BatchDeleter interface {
 	DeleteMany(ctx context.Context, cids []cid.Cid) error
@@ -36,7 +41,12 @@ type BlockstoreIterator interface {
 
 // BlockstoreGC is a trait for blockstores that support online garbage collection
 type BlockstoreGC interface {
-	CollectGarbage(options ...BlockstoreGCOption) error
+	CollectGarbage(ctx context.Context, options ...BlockstoreGCOption) error
+}
+
+// BlockstoreGCOnce is a trait for a blockstore that supports incremental online garbage collection
+type BlockstoreGCOnce interface {
+	GCOnce(ctx context.Context, options ...BlockstoreGCOption) error
 }
 
 // BlockstoreGCOption is a functional interface for controlling blockstore GC options
@@ -45,11 +55,20 @@ type BlockstoreGCOption = func(*BlockstoreGCOptions) error
 // BlockstoreGCOptions is a struct with GC options
 type BlockstoreGCOptions struct {
 	FullGC bool
+	// fraction of garbage in badger vlog before its worth processing in online GC
+	Threshold float64
 }
 
 func WithFullGC(fullgc bool) BlockstoreGCOption {
 	return func(opts *BlockstoreGCOptions) error {
 		opts.FullGC = fullgc
+		return nil
+	}
+}
+
+func WithThreshold(threshold float64) BlockstoreGCOption {
+	return func(opts *BlockstoreGCOptions) error {
+		opts.Threshold = threshold
 		return nil
 	}
 }
@@ -91,6 +110,13 @@ type adaptedBlockstore struct {
 }
 
 var _ Blockstore = (*adaptedBlockstore)(nil)
+
+func (a *adaptedBlockstore) Flush(ctx context.Context) error {
+	if flusher, canFlush := a.Blockstore.(Flusher); canFlush {
+		return flusher.Flush(ctx)
+	}
+	return nil
+}
 
 func (a *adaptedBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
 	blk, err := a.Get(ctx, cid)

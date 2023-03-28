@@ -8,9 +8,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/libp2p/go-msgio"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -409,6 +409,8 @@ func (n *NetworkStore) HashOnRead(enabled bool) {
 	// todo
 	return
 }
+
+func (*NetworkStore) Flush(context.Context) error { return nil }
 
 func (n *NetworkStore) Stop(ctx context.Context) error {
 	close(n.closing)

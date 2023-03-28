@@ -184,25 +184,25 @@ var runCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:    "precommit1",
-			Usage:   "enable precommit1 (32G sectors: 1 core, 128GiB Memory)",
+			Usage:   "enable precommit1",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_PRECOMMIT1"},
 		},
 		&cli.BoolFlag{
 			Name:    "unseal",
-			Usage:   "enable unsealing (32G sectors: 1 core, 128GiB Memory)",
+			Usage:   "enable unsealing",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_UNSEAL"},
 		},
 		&cli.BoolFlag{
 			Name:    "precommit2",
-			Usage:   "enable precommit2 (32G sectors: all cores, 96GiB Memory)",
+			Usage:   "enable precommit2",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_PRECOMMIT2"},
 		},
 		&cli.BoolFlag{
 			Name:    "commit",
-			Usage:   "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
+			Usage:   "enable commit",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_COMMIT"},
 		},
@@ -257,7 +257,7 @@ var runCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:    "post-parallel-reads",
 			Usage:   "maximum number of parallel challenge reads (0 = no limit)",
-			Value:   128,
+			Value:   32,
 			EnvVars: []string{"LOTUS_WORKER_POST_PARALLEL_READS"},
 		},
 		&cli.DurationFlag{

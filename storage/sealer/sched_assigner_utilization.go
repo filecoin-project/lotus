@@ -74,6 +74,7 @@ func LowestUtilizationWS(sh *Scheduler, queueLen int, acceptableWindows [][]int,
 		}
 
 		log.Debugw("SCHED ASSIGNED",
+			"assigner", "util",
 			"sqi", sqi,
 			"sector", task.Sector.ID.Number,
 			"task", task.TaskType,

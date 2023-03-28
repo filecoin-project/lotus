@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/system"
 )
 
 const (
@@ -37,6 +38,7 @@ const (
 	fsDatastore     = "datastore"
 	fsLock          = "repo.lock"
 	fsKeystore      = "keystore"
+	fsSqlite        = "sqlite"
 )
 
 func NewRepoTypeFromString(t string) RepoType {
@@ -411,6 +413,10 @@ type fsLockedRepo struct {
 	ssErr  error
 	ssOnce sync.Once
 
+	sqlPath string
+	sqlErr  error
+	sqlOnce sync.Once
+
 	storageLk sync.Mutex
 	configLk  sync.Mutex
 }
@@ -474,19 +480,8 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 			return
 		}
 
-		//
-		// Tri-state environment variable LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC
-		// - unset == the default (currently fsync enabled)
-		// - set with a false-y value == fsync enabled no matter what a future default is
-		// - set with any other value == fsync is disabled ignored defaults (recommended for day-to-day use)
-		//
-		if nosyncBs, nosyncBsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC"); nosyncBsSet {
-			nosyncBs = strings.ToLower(nosyncBs)
-			if nosyncBs == "" || nosyncBs == "0" || nosyncBs == "false" || nosyncBs == "no" {
-				opts.SyncWrites = true
-			} else {
-				opts.SyncWrites = false
-			}
+		if system.BadgerFsyncDisable {
+			opts.SyncWrites = false
 		}
 
 		bs, err := badgerbs.Open(opts)
@@ -515,6 +510,21 @@ func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
 	return fsr.ssPath, fsr.ssErr
 }
 
+func (fsr *fsLockedRepo) SqlitePath() (string, error) {
+	fsr.sqlOnce.Do(func() {
+		path := fsr.join(fsSqlite)
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.sqlErr = err
+			return
+		}
+
+		fsr.sqlPath = path
+	})
+
+	return fsr.sqlPath, fsr.sqlErr
+}
+
 // join joins path elements with fsr.path
 func (fsr *fsLockedRepo) join(paths ...string) string {
 	return filepath.Join(append([]string{fsr.path}, paths...)...)
@@ -535,7 +545,15 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
-	return config.FromFile(fsr.configPath, fsr.repoType.Config())
+	var opts []config.LoadCfgOpt
+	if fsr.repoType == FullNode {
+		opts = append(opts, config.SetCanFallbackOnDefault(config.NoDefaultForSplitstoreTransition))
+		opts = append(opts, config.SetValidate(config.ValidateSplitstoreSet))
+	}
+	opts = append(opts, config.SetDefault(func() (interface{}, error) {
+		return fsr.repoType.Config(), nil
+	}))
+	return config.FromFile(fsr.configPath, opts...)
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {

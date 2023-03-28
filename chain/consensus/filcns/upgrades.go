@@ -18,8 +18,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	nv18 "github.com/filecoin-project/go-state-types/builtin/v10/migration"
 	nv17 "github.com/filecoin-project/go-state-types/builtin/v9/migration"
 	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
 	gstStore "github.com/filecoin-project/go-state-types/store"
@@ -232,8 +234,18 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			StopWithin:      5,
 		}},
 		Expensive: true,
+	}, {
+		Height:    build.UpgradeHyggeHeight,
+		Network:   network.Version18,
+		Migration: UpgradeActorsV10,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV10,
+			StartWithin:     60,
+			DontStartWithin: 10,
+			StopWithin:      5,
+		}},
+		Expensive: true,
 	},
-	// TODO v10 upgrade
 	}
 
 	for _, u := range updates {
@@ -505,12 +517,11 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ st
 			MessageReceipt: *stmgr.MakeFakeRct(),
 			ActorErr:       nil,
 			ExecutionTrace: types.ExecutionTrace{
-				Msg:        fakeMsg,
-				MsgRct:     stmgr.MakeFakeRct(),
-				Error:      "",
-				Duration:   0,
-				GasCharges: nil,
-				Subcalls:   subcalls,
+				Msg: types.MessageTrace{
+					To:   fakeMsg.To,
+					From: fakeMsg.From,
+				},
+				Subcalls: subcalls,
 			},
 			Duration: 0,
 			GasCosts: nil,
@@ -683,12 +694,11 @@ func splitGenesisMultisig0(ctx context.Context, em stmgr.ExecMonitor, addr addre
 			MessageReceipt: *stmgr.MakeFakeRct(),
 			ActorErr:       nil,
 			ExecutionTrace: types.ExecutionTrace{
-				Msg:        fakeMsg,
-				MsgRct:     stmgr.MakeFakeRct(),
-				Error:      "",
-				Duration:   0,
-				GasCharges: nil,
-				Subcalls:   subcalls,
+				Msg: types.MessageTrace{
+					From: fakeMsg.From,
+					To:   fakeMsg.To,
+				},
+				Subcalls: subcalls,
 			},
 			Duration: 0,
 			GasCosts: nil,
@@ -1580,11 +1590,110 @@ func upgradeActorsV9Common(
 
 func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
 
-	// TODO migration
-	// - the init actor state to include the (empty) installed actors field
-	// - state tree migration to v5
-	return cid.Undef, fmt.Errorf("IMPLEMENTME: v10 migration")
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := upgradeActorsV10Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v10 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func PreUpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := MigrationMaxWorkerCount
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5,
+	}
+
+	_, err = upgradeActorsV10Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
+	return err
+}
+
+func upgradeActorsV10Common(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config migration.Config,
+) (cid.Cid, error) {
+	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
+	store := store.ActorStore(ctx, buf)
+
+	// ensure that the manifest is loaded in the blockstore
+	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), actorstypes.Version10); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
+
+	// Load the state root.
+	var stateRoot types.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != types.StateTreeVersion4 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 4 for actors v9 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	manifest, ok := actors.GetManifest(actorstypes.Version10)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v9 upgrade")
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv18.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+		migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v10: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &types.StateRoot{
+		Version: types.StateTreeVersion5,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+		}
+	}
+
+	return newRoot, nil
 }
 
 // Example upgrade function if upgrade requires only code changes
@@ -1651,10 +1760,10 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		return cid.Undef, xerrors.Errorf("error loading new manifest data: %w", err)
 	}
 
-	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys(oldAv)) {
+	if len(oldManifestData.Entries) != len(manifest.GetBuiltinActorsKeys(oldAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete old manifest with %d code CIDs", len(oldManifestData.Entries))
 	}
-	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys(newAv)) {
+	if len(newManifestData.Entries) != len(manifest.GetBuiltinActorsKeys(newAv)) {
 		return cid.Undef, xerrors.Errorf("incomplete new manifest with %d code CIDs", len(newManifestData.Entries))
 	}
 

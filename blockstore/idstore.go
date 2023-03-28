@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 )
@@ -178,4 +178,8 @@ func (b *idstore) Close() error {
 		return c.Close()
 	}
 	return nil
+}
+
+func (b *idstore) Flush(ctx context.Context) error {
+	return b.bs.Flush(ctx)
 }

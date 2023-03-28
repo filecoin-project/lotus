@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"sync/atomic"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"golang.org/x/xerrors"
 )
 
@@ -101,7 +101,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 	defer s.txnLk.RUnlock()
 
 	count := 0
-	err := s.walkObjectIncomplete(c, newTmpVisitor(),
+	_, err := s.walkObjectIncomplete(c, newTmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk

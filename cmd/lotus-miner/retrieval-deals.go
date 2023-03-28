@@ -3,13 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"sort"
 	"text/tabwriter"
 
 	"github.com/docker/go-units"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -21,7 +19,6 @@ var retrievalDealsCmd = &cli.Command{
 	Usage: "Manage retrieval deals and related configuration",
 	Subcommands: []*cli.Command{
 		retrievalDealSelectionCmd,
-		retrievalDealsListCmd,
 		retrievalSetAskCmd,
 		retrievalGetAskCmd,
 	},
@@ -121,48 +118,6 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		}
 
 		return nil
-	},
-}
-
-var retrievalDealsListCmd = &cli.Command{
-	Name:  "list",
-	Usage: "List all active retrieval deals for this miner",
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetMarketsAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		deals, err := api.MarketListRetrievalDeals(lcli.DaemonContext(cctx))
-		if err != nil {
-			return err
-		}
-
-		sort.Slice(deals, func(i, j int) bool {
-			return deals[i].ID < deals[j].ID
-		})
-
-		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-
-		_, _ = fmt.Fprintf(w, "Receiver\tDealID\tPayload\tState\tPricePerByte\tBytesSent\tMessage\n")
-
-		for _, deal := range deals {
-			payloadCid := deal.PayloadCID.String()
-
-			_, _ = fmt.Fprintf(w,
-				"%s\t%d\t%s\t%s\t%s\t%d\t%s\n",
-				deal.Receiver.String(),
-				deal.ID,
-				"..."+payloadCid[len(payloadCid)-8:],
-				retrievalmarket.DealStatuses[deal.Status],
-				deal.PricePerByte.String(),
-				deal.TotalSent,
-				deal.Message,
-			)
-		}
-
-		return w.Flush()
 	},
 }
 

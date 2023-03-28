@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.19.1-dev
+   1.21.0-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -31,6 +31,7 @@ COMMANDS:
      log           Manage logging
      wait-api      Wait for lotus api to come online
      fetch-params  Fetch proving parameters
+     evm           Commands related to the Filecoin EVM runtime
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
@@ -38,6 +39,7 @@ COMMANDS:
      status  Check node status
 
 GLOBAL OPTIONS:
+   --color        use color in display output (default: depends on output being a TTY)
    --force-send   if true, will ignore pre-send checks (default: false)
    --help, -h     show help (default: false)
    --interactive  setting to false will disable interactive functionality of commands (default: false)
@@ -180,15 +182,16 @@ CATEGORY:
    BASIC
 
 OPTIONS:
-   --force              Deprecated: use global 'force-send' (default: false)
-   --from value         optionally specify the account to send funds from
-   --gas-feecap value   specify gas fee cap to use in AttoFIL (default: "0")
-   --gas-limit value    specify gas limit (default: 0)
-   --gas-premium value  specify gas price to use in AttoFIL (default: "0")
-   --method value       specify method to invoke (default: 0)
-   --nonce value        specify the nonce to use (default: 0)
-   --params-hex value   specify invocation parameters in hex
-   --params-json value  specify invocation parameters in json
+   --force                Deprecated: use global 'force-send' (default: false)
+   --from value           optionally specify the account to send funds from
+   --from-eth-addr value  optionally specify the eth addr to send funds from
+   --gas-feecap value     specify gas fee cap to use in AttoFIL (default: "0")
+   --gas-limit value      specify gas limit (default: 0)
+   --gas-premium value    specify gas price to use in AttoFIL (default: "0")
+   --method value         specify method to invoke (default: 0)
+   --nonce value          specify the nonce to use (default: 0)
+   --params-hex value     specify invocation parameters in hex
+   --params-json value    specify invocation parameters in json
    
 ```
 
@@ -685,7 +688,6 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed retrievals (default: false)
    --show-failed  show failed/failing deals (default: true)
    --verbose, -v  print verbose deal details (default: false)
@@ -756,7 +758,6 @@ CATEGORY:
    STORAGE
 
 OPTIONS:
-   --color        use color in display output (default: depends on output being a TTY)
    --show-failed  show failed/failing deals (default: false)
    --verbose, -v  print verbose deal details (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
@@ -889,7 +890,6 @@ CATEGORY:
    UTIL
 
 OPTIONS:
-   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed data transfers (default: false)
    --show-failed  show failed/cancelled transfers (default: false)
    --verbose, -v  print verbose transfer details (default: false)
@@ -903,7 +903,7 @@ NAME:
    lotus client restart-transfer - Force restart a stalled data transfer
 
 USAGE:
-   lotus client restart-transfer [command options] [arguments...]
+   lotus client restart-transfer [command options] [transferID]
 
 CATEGORY:
    UTIL
@@ -920,7 +920,7 @@ NAME:
    lotus client cancel-transfer - Force cancel a data transfer
 
 USAGE:
-   lotus client cancel-transfer [command options] [arguments...]
+   lotus client cancel-transfer [command options] [transferID]
 
 CATEGORY:
    UTIL
@@ -1210,7 +1210,9 @@ COMMANDS:
      check-notary-datacap           check a notary's remaining bytes
      sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
      list-allocations               List allocations made by client
+     list-claims                    List claims made by provider
      remove-expired-allocations     remove expired allocations (if no allocations are specified all eligible allocations are removed)
+     remove-expired-claims          remove expired claims (if no claims are specified all eligible claims are removed)
      help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1309,6 +1311,19 @@ OPTIONS:
    
 ```
 
+### lotus filplus list-claims
+```
+NAME:
+   lotus filplus list-claims - List claims made by provider
+
+USAGE:
+   lotus filplus list-claims [command options] providerAddress
+
+OPTIONS:
+   --expired  list only expired claims (default: false)
+   
+```
+
 ### lotus filplus remove-expired-allocations
 ```
 NAME:
@@ -1316,6 +1331,19 @@ NAME:
 
 USAGE:
    lotus filplus remove-expired-allocations [command options] clientAddress Optional[...allocationId]
+
+OPTIONS:
+   --from value  optionally specify the account to send the message from
+   
+```
+
+### lotus filplus remove-expired-claims
+```
+NAME:
+   lotus filplus remove-expired-claims - remove expired claims (if no claims are specified all eligible claims are removed)
+
+USAGE:
+   lotus filplus remove-expired-claims [command options] providerAddress Optional[...claimId]
 
 OPTIONS:
    --from value  optionally specify the account to send the message from
@@ -2003,7 +2031,7 @@ NAME:
    lotus state market balance - Get the market balance (locked and escrowed) for a given account
 
 USAGE:
-   lotus state market balance [command options] [arguments...]
+   lotus state market balance [command options] [address]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2082,13 +2110,14 @@ COMMANDS:
      get                               Get chain DAG node by path
      bisect                            bisect chain for an event
      export                            export chain to a car file
+     export-range                      export chain to a car file
      slash-consensus                   Report consensus fault
      gas-price                         Estimate gas prices
      inspect-usage                     Inspect block space usage of a given tipset
      decode                            decode various types
      encode                            encode various types
      disputer                          interact with the window post disputer
-     prune                             prune the stored chain state and perform garbage collection
+     prune                             splitstore gc
      help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2263,6 +2292,25 @@ OPTIONS:
    
 ```
 
+### lotus chain export-range
+```
+NAME:
+   lotus chain export-range - export chain to a car file
+
+USAGE:
+   lotus chain export-range [command options] [arguments...]
+
+OPTIONS:
+   --head value          specify tipset to start the export from (higher epoch) (default: "@head")
+   --messages            specify if messages should be include (default: false)
+   --receipts            specify if receipts should be include (default: false)
+   --stateroots          specify if stateroots should be include (default: false)
+   --tail value          specify tipset to end the export at (lower epoch) (default: "@tail")
+   --workers value       specify the number of workers (default: 1)
+   --write-buffer value  specify write buffer size (default: 1048576)
+   
+```
+
 ### lotus chain slash-consensus
 ```
 NAME:
@@ -2417,15 +2465,61 @@ OPTIONS:
 ### lotus chain prune
 ```
 NAME:
-   lotus chain prune - prune the stored chain state and perform garbage collection
+   lotus chain prune - splitstore gc
 
 USAGE:
-   lotus chain prune [command options] [arguments...]
+   lotus chain prune command [command options] [arguments...]
+
+COMMANDS:
+     compact-cold  force splitstore compaction on cold store state and run gc
+     hot           run online (badger vlog) garbage collection on hotstore
+     hot-moving    run moving gc on hotstore
+     help, h       Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus chain prune compact-cold
+```
+NAME:
+   lotus chain prune compact-cold - force splitstore compaction on cold store state and run gc
+
+USAGE:
+   lotus chain prune compact-cold [command options] [arguments...]
 
 OPTIONS:
    --moving-gc        use moving gc for garbage collecting the coldstore (default: false)
    --online-gc        use online gc for garbage collecting the coldstore (default: false)
    --retention value  specify state retention policy (default: -1)
+   
+```
+
+#### lotus chain prune hot
+```
+NAME:
+   lotus chain prune hot - run online (badger vlog) garbage collection on hotstore
+
+USAGE:
+   lotus chain prune hot [command options] [arguments...]
+
+OPTIONS:
+   --periodic         Run periodic gc over multiple vlogs. Otherwise run gc once (default: false)
+   --threshold value  Threshold of vlog garbage for gc (default: 0.01)
+   
+```
+
+#### lotus chain prune hot-moving
+```
+NAME:
+   lotus chain prune hot-moving - run moving gc on hotstore
+
+USAGE:
+   lotus chain prune hot-moving [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2536,6 +2630,108 @@ CATEGORY:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+## lotus evm
+```
+NAME:
+   lotus evm - Commands related to the Filecoin EVM runtime
+
+USAGE:
+   lotus evm command [command options] [arguments...]
+
+COMMANDS:
+     deploy            Deploy an EVM smart contract and return its address
+     invoke            Invoke an EVM smart contract using the specified CALLDATA
+     stat              Print eth/filecoin addrs and code cid
+     call              Simulate an eth contract call
+     contract-address  Generate contract address from smart contract code
+     bytecode          Write the bytecode of a smart contract to a file
+     help, h           Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus evm deploy
+```
+NAME:
+   lotus evm deploy - Deploy an EVM smart contract and return its address
+
+USAGE:
+   lotus evm deploy [command options] contract
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the creation message
+   --hex         use when input contract is in hex (default: false)
+   
+```
+
+### lotus evm invoke
+```
+NAME:
+   lotus evm invoke - Invoke an EVM smart contract using the specified CALLDATA
+
+USAGE:
+   lotus evm invoke [command options] address calldata
+
+OPTIONS:
+   --from value   optionally specify the account to use for sending the exec message
+   --value value  optionally specify the value to be sent with the invokation message (default: 0)
+   
+```
+
+### lotus evm stat
+```
+NAME:
+   lotus evm stat - Print eth/filecoin addrs and code cid
+
+USAGE:
+   lotus evm stat [command options] address
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus evm call
+```
+NAME:
+   lotus evm call - Simulate an eth contract call
+
+USAGE:
+   lotus evm call [command options] [from] [to] [params]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus evm contract-address
+```
+NAME:
+   lotus evm contract-address - Generate contract address from smart contract code
+
+USAGE:
+   lotus evm contract-address [command options] [senderEthAddr] [salt] [contractHexPath]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus evm bytecode
+```
+NAME:
+   lotus evm bytecode - Write the bytecode of a smart contract to a file
+
+USAGE:
+   lotus evm bytecode [command options] [contract-address] [file-name]
+
+OPTIONS:
+   --bin  write the bytecode as raw binary and don't hex-encode (default: false)
    
 ```
 

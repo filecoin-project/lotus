@@ -307,5 +307,5 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	tid, err := address.IDFromAddress(ta)
 	require.NoError(t, err)
 
-	require.Equal(t, uint64(1001), tid)
+	require.Equal(t, uint64(1002), tid) // ETH0 is 1001
 }

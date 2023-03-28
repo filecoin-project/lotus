@@ -196,8 +196,23 @@ func (ts *TipSet) MinTicket() *Ticket {
 }
 
 func (ts *TipSet) MinTimestamp() uint64 {
-	minTs := ts.Blocks()[0].Timestamp
-	for _, bh := range ts.Blocks()[1:] {
+	if ts == nil {
+		return 0
+	}
+
+	blks := ts.Blocks()
+
+	// TODO::FVM @vyzo @magik Null rounds shouldn't ever be represented as
+	//  tipsets with no blocks; Null-round generally means that the tipset at
+	//  that epoch doesn't exist - and the next tipset that does exist links
+	//  straight to first epoch with blocks (@raulk agrees -- this is odd)
+	if len(blks) == 0 {
+		// null rounds make things crash -- it is threaded in every fvm instantiation
+		return 0
+	}
+
+	minTs := blks[0].Timestamp
+	for _, bh := range blks[1:] {
 		if bh.Timestamp < minTs {
 			minTs = bh.Timestamp
 		}
@@ -217,6 +232,10 @@ func (ts *TipSet) MinTicketBlock() *BlockHeader {
 	}
 
 	return min
+}
+
+func (ts *TipSet) ParentMessageReceipts() cid.Cid {
+	return ts.blks[0].ParentMessageReceipts
 }
 
 func (ts *TipSet) ParentState() cid.Cid {

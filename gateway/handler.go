@@ -25,14 +25,20 @@ type perConnLimiterKeyType string
 
 const perConnLimiterKey perConnLimiterKeyType = "limiter"
 
+type filterTrackerKeyType string
+
+const statefulCallTrackerKey filterTrackerKeyType = "statefulCallTracker"
+
 // Handler returns a gateway http.Handler, to be mounted as-is on the server.
 func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
 	m := mux.NewRouter()
 
 	serveRpc := func(path string, hnd interface{}) {
-		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithServerErrors(lapi.RPCErrors))...)
+		rpcServer := jsonrpc.NewServer(append(opts, jsonrpc.WithReverseClient[lapi.EthSubscriberMethods]("Filecoin"), jsonrpc.WithServerErrors(lapi.RPCErrors))...)
 		rpcServer.Register("Filecoin", hnd)
 		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
+
+		lapi.CreateEthRPCAliases(rpcServer)
 
 		m.Handle(path, rpcServer)
 	}
@@ -81,8 +87,12 @@ type RateLimiterHandler struct {
 }
 
 func (h RateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r2 := r.WithContext(context.WithValue(r.Context(), perConnLimiterKey, h.limiter))
-	h.handler.ServeHTTP(w, r2)
+	r = r.WithContext(context.WithValue(r.Context(), perConnLimiterKey, h.limiter))
+
+	// also add a filter tracker to the context
+	r = r.WithContext(context.WithValue(r.Context(), statefulCallTrackerKey, newStatefulCallTracker()))
+
+	h.handler.ServeHTTP(w, r)
 }
 
 // this blocks new connections if there have already been too many.

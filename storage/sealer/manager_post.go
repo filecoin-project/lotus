@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
@@ -82,7 +83,12 @@ func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 		// if builtin PoSt isn't disabled, and there are no workers, compute the PoSt locally
 
 		log.Info("GenerateWindowPoSt run at lotus-miner")
-		return m.localProver.GenerateWindowPoSt(ctx, minerID, sectorInfo, randomness)
+		p, s, err := m.localProver.GenerateWindowPoSt(ctx, minerID, sectorInfo, randomness)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("local prover: %w", err)
+		}
+
+		return p, s, nil
 	}
 
 	return m.generateWindowPoSt(ctx, minerID, sectorInfo, randomness)
@@ -190,7 +196,7 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 				skipped = append(skipped, sk...)
 
 				if err != nil {
-					retErr = multierr.Append(retErr, xerrors.Errorf("partitionCount:%d err:%+v", partIdx, err))
+					retErr = multierr.Append(retErr, xerrors.Errorf("partitionIndex:%d err:%+v", partIdx, err))
 				}
 				flk.Unlock()
 			}
@@ -217,18 +223,20 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 func (m *Manager) generatePartitionWindowPost(ctx context.Context, spt abi.RegisteredSealProof, ppt abi.RegisteredPoStProof, minerID abi.ActorID, partIndex int, sc []storiface.PostSectorChallenge, randomness abi.PoStRandomness) (proof.PoStProof, []abi.SectorID, error) {
 	log.Infow("generateWindowPost", "index", partIndex)
 
+	start := time.Now()
+
 	var result storiface.WindowPoStResult
 	err := m.windowPoStSched.Schedule(ctx, true, spt, func(ctx context.Context, w Worker) error {
 		out, err := w.GenerateWindowPoSt(ctx, ppt, minerID, sc, partIndex, randomness)
 		if err != nil {
-			return err
+			return xerrors.Errorf("post worker: %w", err)
 		}
 
 		result = out
 		return nil
 	})
 
-	log.Warnf("generateWindowPost partition:%d, get skip count:%d", partIndex, len(result.Skipped))
+	log.Warnw("generateWindowPost done", "index", partIndex, "skipped", len(result.Skipped), "took", time.Since(start).String(), "err", err)
 
 	return result.PoStProofs, result.Skipped, err
 }

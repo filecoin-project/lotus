@@ -4,18 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -23,25 +16,24 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/rand"
-	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -66,6 +58,39 @@ type FilecoinEC struct {
 // Blocks that are more than MaxHeightDrift epochs above
 // the theoretical max height based on systime are quickly rejected
 const MaxHeightDrift = 5
+
+var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonitor,
+	epoch abi.ChainEpoch, ts *types.TipSet, params *reward.AwardBlockRewardParams) error {
+	ser, err := actors.SerializeParams(params)
+	if err != nil {
+		return xerrors.Errorf("failed to serialize award params: %w", err)
+	}
+	rwMsg := &types.Message{
+		From:       builtin.SystemActorAddr,
+		To:         reward.Address,
+		Nonce:      uint64(epoch),
+		Value:      types.NewInt(0),
+		GasFeeCap:  types.NewInt(0),
+		GasPremium: types.NewInt(0),
+		GasLimit:   1 << 30,
+		Method:     reward.Methods.AwardBlockReward,
+		Params:     ser,
+	}
+	ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
+	if actErr != nil {
+		return xerrors.Errorf("failed to apply reward message: %w", actErr)
+	}
+	if em != nil {
+		if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
+			return xerrors.Errorf("callback failed on reward message: %w", err)
+		}
+	}
+
+	if ret.ExitCode != 0 {
+		return xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
+	}
+	return nil
+}
 
 func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier storiface.Verifier, genesis chain.Genesis) consensus.Consensus {
 	if build.InsecurePoStValidation {
@@ -125,17 +150,6 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, build.Clock.Now().Unix())
 	}
 
-	msgsCheck := async.Err(func() error {
-		if b.Cid() == build.WhitelistedBlock {
-			return nil
-		}
-
-		if err := filec.checkBlockMessages(ctx, b, baseTs); err != nil {
-			return xerrors.Errorf("block had invalid messages: %w", err)
-		}
-		return nil
-	})
-
 	minerCheck := async.Err(func() error {
 		if err := filec.minerIsValid(ctx, h.Miner, baseTs); err != nil {
 			return xerrors.Errorf("minerIsValid failed: %w", err)
@@ -143,17 +157,6 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return nil
 	})
 
-	baseFeeCheck := async.Err(func() error {
-		baseFee, err := filec.store.ComputeBaseFee(ctx, baseTs)
-		if err != nil {
-			return xerrors.Errorf("computing base fee: %w", err)
-		}
-		if types.BigCmp(baseFee, b.Header.ParentBaseFee) != 0 {
-			return xerrors.Errorf("base fee doesn't match: %s (header) != %s (computed)",
-				b.Header.ParentBaseFee, baseFee)
-		}
-		return nil
-	})
 	pweight, err := filec.store.Weight(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("getting parent weight: %w", err)
@@ -163,34 +166,6 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("parrent weight different: %s (header) != %s (computed)",
 			b.Header.ParentWeight, pweight)
 	}
-
-	stateRootCheck := async.Err(func() error {
-		stateroot, precp, err := filec.sm.TipSetState(ctx, baseTs)
-		if err != nil {
-			return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
-		}
-
-		if stateroot != h.ParentStateRoot {
-			msgs, err := filec.store.MessagesForTipset(ctx, baseTs)
-			if err != nil {
-				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
-			} else {
-				log.Warn("Messages for tipset with mismatching state:")
-				for i, m := range msgs {
-					mm := m.VMMessage()
-					log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
-				}
-			}
-
-			return xerrors.Errorf("parent state root did not match computed state (%s != %s)", h.ParentStateRoot, stateroot)
-		}
-
-		if precp != h.ParentMessageReceipts {
-			return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
-		}
-
-		return nil
-	})
 
 	// Stuff that needs worker address
 	waddr, err := stmgr.GetMinerWorkerRaw(ctx, filec.sm, lbst, h.Miner)
@@ -253,10 +228,11 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 	})
 
 	blockSigCheck := async.Err(func() error {
-		if err := sigs.CheckBlockSignature(ctx, h, waddr); err != nil {
+		if err := verifyBlockSignature(ctx, h, waddr); err != nil {
 			return xerrors.Errorf("check block signature failed: %w", err)
 		}
 		return nil
+
 	})
 
 	beaconValuesCheck := async.Err(func() error {
@@ -305,44 +281,17 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return nil
 	})
 
-	await := []async.ErrorFuture{
+	commonChecks := consensus.CommonBlkChecks(ctx, filec.sm, filec.store, b, baseTs)
+	await := append([]async.ErrorFuture{
 		minerCheck,
 		tktsCheck,
 		blockSigCheck,
 		beaconValuesCheck,
 		wproofCheck,
 		winnerCheck,
-		msgsCheck,
-		baseFeeCheck,
-		stateRootCheck,
-	}
+	}, commonChecks...)
 
-	var merr error
-	for _, fut := range await {
-		if err := fut.AwaitContext(ctx); err != nil {
-			merr = multierror.Append(merr, err)
-		}
-	}
-	if merr != nil {
-		mulErr := merr.(*multierror.Error)
-		mulErr.ErrorFormat = func(es []error) string {
-			if len(es) == 1 {
-				return fmt.Sprintf("1 error occurred:\n\t* %+v\n\n", es[0])
-			}
-
-			points := make([]string, len(es))
-			for i, err := range es {
-				points[i] = fmt.Sprintf("* %+v", err)
-			}
-
-			return fmt.Sprintf(
-				"%d errors occurred:\n\t%s\n\n",
-				len(es), strings.Join(points, "\n\t"))
-		}
-		return mulErr
-	}
-
-	return nil
+	return consensus.RunAsyncChecks(ctx, await)
 }
 
 func blockSanityChecks(h *types.BlockHeader) error {
@@ -433,178 +382,6 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 	return nil
 }
 
-// TODO: We should extract this somewhere else and make the message pool and miner use the same logic
-func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
-	{
-		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
-		var pubks [][]byte
-
-		for _, m := range b.BlsMessages {
-			sigCids = append(sigCids, m.Cid())
-
-			pubk, err := filec.sm.GetBlsPublicKey(ctx, m.From, baseTs)
-			if err != nil {
-				return xerrors.Errorf("failed to load bls public to validate block: %w", err)
-			}
-
-			pubks = append(pubks, pubk)
-		}
-
-		if err := consensus.VerifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
-			return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
-		}
-	}
-
-	nonces := make(map[address.Address]uint64)
-
-	stateroot, _, err := filec.sm.TipSetState(ctx, baseTs)
-	if err != nil {
-		return xerrors.Errorf("failed to compute tipsettate for %s: %w", baseTs.Key(), err)
-	}
-
-	st, err := state.LoadStateTree(filec.store.ActorStore(ctx), stateroot)
-	if err != nil {
-		return xerrors.Errorf("failed to load base state tree: %w", err)
-	}
-
-	nv := filec.sm.GetNetworkVersion(ctx, b.Header.Height)
-	pl := vm.PricelistByEpoch(b.Header.Height)
-	var sumGasLimit int64
-	checkMsg := func(msg types.ChainMsg) error {
-		m := msg.VMMessage()
-
-		// Phase 1: syntactic validation, as defined in the spec
-		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total(), nv); err != nil {
-			return xerrors.Errorf("msg %s invalid for block inclusion: %w", m.Cid(), err)
-		}
-
-		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
-		// So below is overflow safe
-		sumGasLimit += m.GasLimit
-		if sumGasLimit > build.BlockGasLimit {
-			return xerrors.Errorf("block gas limit exceeded")
-		}
-
-		// Phase 2: (Partial) semantic validation:
-		// the sender exists and is an account actor, and the nonces make sense
-		var sender address.Address
-		if nv >= network.Version13 {
-			sender, err = st.LookupID(m.From)
-			if err != nil {
-				return xerrors.Errorf("failed to lookup sender %s: %w", m.From, err)
-			}
-		} else {
-			sender = m.From
-		}
-
-		if _, ok := nonces[sender]; !ok {
-			// `GetActor` does not validate that this is an account actor.
-			act, err := st.GetActor(sender)
-			if err != nil {
-				return xerrors.Errorf("failed to get actor: %w", err)
-			}
-
-			if !builtin.IsAccountActor(act.Code) {
-				return xerrors.New("Sender must be an account actor")
-			}
-			nonces[sender] = act.Nonce
-		}
-
-		if nonces[sender] != m.Nonce {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[sender], m.Nonce)
-		}
-		nonces[sender]++
-
-		return nil
-	}
-
-	// Validate message arrays in a temporary blockstore.
-	tmpbs := bstore.NewMemory()
-	tmpstore := blockadt.WrapStore(ctx, cbor.NewCborStore(tmpbs))
-
-	bmArr := blockadt.MakeEmptyArray(tmpstore)
-	for i, m := range b.BlsMessages {
-		if err := checkMsg(m); err != nil {
-			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
-		}
-
-		c, err := store.PutMessage(ctx, tmpbs, m)
-		if err != nil {
-			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
-		}
-
-		k := cbg.CborCid(c)
-		if err := bmArr.Set(uint64(i), &k); err != nil {
-			return xerrors.Errorf("failed to put bls message at index %d: %w", i, err)
-		}
-	}
-
-	smArr := blockadt.MakeEmptyArray(tmpstore)
-	for i, m := range b.SecpkMessages {
-		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version14 {
-			if m.Signature.Type != crypto.SigTypeSecp256k1 {
-				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
-			}
-		}
-
-		if err := checkMsg(m); err != nil {
-			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
-		}
-
-		// `From` being an account actor is only validated inside the `vm.ResolveToKeyAddr` call
-		// in `StateManager.ResolveToKeyAddress` here (and not in `checkMsg`).
-		kaddr, err := filec.sm.ResolveToKeyAddress(ctx, m.Message.From, baseTs)
-		if err != nil {
-			return xerrors.Errorf("failed to resolve key addr: %w", err)
-		}
-
-		if err := sigs.Verify(&m.Signature, kaddr, m.Message.Cid().Bytes()); err != nil {
-			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
-		}
-
-		c, err := store.PutMessage(ctx, tmpbs, m)
-		if err != nil {
-			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
-		}
-		k := cbg.CborCid(c)
-		if err := smArr.Set(uint64(i), &k); err != nil {
-			return xerrors.Errorf("failed to put secpk message at index %d: %w", i, err)
-		}
-	}
-
-	bmroot, err := bmArr.Root()
-	if err != nil {
-		return xerrors.Errorf("failed to root bls msgs: %w", err)
-
-	}
-
-	smroot, err := smArr.Root()
-	if err != nil {
-		return xerrors.Errorf("failed to root secp msgs: %w", err)
-	}
-
-	mrcid, err := tmpstore.Put(ctx, &types.MsgMeta{
-		BlsMessages:   bmroot,
-		SecpkMessages: smroot,
-	})
-	if err != nil {
-		return xerrors.Errorf("failed to put msg meta: %w", err)
-	}
-
-	if b.Header.Messages != mrcid {
-		return fmt.Errorf("messages didnt match message root in header")
-	}
-
-	// Finally, flush.
-	err = vm.Copy(ctx, tmpbs, filec.store.ChainBlockstore(), mrcid)
-	if err != nil {
-		return xerrors.Errorf("failed to flush:%w", err)
-	}
-
-	return nil
-}
-
 func (filec *FilecoinEC) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
 	if filec.genesis == nil {
 		return false
@@ -660,140 +437,7 @@ func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []
 var ErrSoftFailure = errors.New("soft validation failure")
 var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
 
-func (filec *FilecoinEC) ValidateBlockPubsub(ctx context.Context, self bool, msg *pubsub.Message) (pubsub.ValidationResult, string) {
-	if self {
-		return filec.validateLocalBlock(ctx, msg)
-	}
-
-	// track validation time
-	begin := build.Clock.Now()
-	defer func() {
-		log.Debugf("block validation time: %s", build.Clock.Since(begin))
-	}()
-
-	stats.Record(ctx, metrics.BlockReceived.M(1))
-
-	recordFailureFlagPeer := func(what string) {
-		// bv.Validate will flag the peer in that case
-		panic(what)
-	}
-
-	blk, what, err := filec.decodeAndCheckBlock(msg)
-	if err != nil {
-		log.Error("got invalid block over pubsub: ", err)
-		recordFailureFlagPeer(what)
-		return pubsub.ValidationReject, what
-	}
-
-	// validate the block meta: the Message CID in the header must match the included messages
-	err = filec.validateMsgMeta(ctx, blk)
-	if err != nil {
-		log.Warnf("error validating message metadata: %s", err)
-		recordFailureFlagPeer("invalid_block_meta")
-		return pubsub.ValidationReject, "invalid_block_meta"
-	}
-
-	reject, err := filec.validateBlockHeader(ctx, blk.Header)
-	if err != nil {
-		if reject == "" {
-			log.Warn("ignoring block msg: ", err)
-			return pubsub.ValidationIgnore, reject
-		}
-		recordFailureFlagPeer(reject)
-		return pubsub.ValidationReject, reject
-	}
-
-	// all good, accept the block
-	msg.ValidatorData = blk
-	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
-	return pubsub.ValidationAccept, ""
-}
-
-func (filec *FilecoinEC) validateLocalBlock(ctx context.Context, msg *pubsub.Message) (pubsub.ValidationResult, string) {
-	stats.Record(ctx, metrics.BlockPublished.M(1))
-
-	if size := msg.Size(); size > 1<<20-1<<15 {
-		log.Errorf("ignoring oversize block (%dB)", size)
-		return pubsub.ValidationIgnore, "oversize_block"
-	}
-
-	blk, what, err := filec.decodeAndCheckBlock(msg)
-	if err != nil {
-		log.Errorf("got invalid local block: %s", err)
-		return pubsub.ValidationIgnore, what
-	}
-
-	msg.ValidatorData = blk
-	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
-	return pubsub.ValidationAccept, ""
-}
-
-func (filec *FilecoinEC) decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
-	blk, err := types.DecodeBlockMsg(msg.GetData())
-	if err != nil {
-		return nil, "invalid", xerrors.Errorf("error decoding block: %w", err)
-	}
-
-	if count := len(blk.BlsMessages) + len(blk.SecpkMessages); count > build.BlockMessageLimit {
-		return nil, "too_many_messages", fmt.Errorf("block contains too many messages (%d)", count)
-	}
-
-	// make sure we have a signature
-	if blk.Header.BlockSig == nil {
-		return nil, "missing_signature", fmt.Errorf("block without a signature")
-	}
-
-	return blk, "", nil
-}
-
-func (filec *FilecoinEC) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
-	// TODO there has to be a simpler way to do this without the blockstore dance
-	// block headers use adt0
-	store := blockadt.WrapStore(ctx, cbor.NewCborStore(bstore.NewMemory()))
-	bmArr := blockadt.MakeEmptyArray(store)
-	smArr := blockadt.MakeEmptyArray(store)
-
-	for i, m := range msg.BlsMessages {
-		c := cbg.CborCid(m)
-		if err := bmArr.Set(uint64(i), &c); err != nil {
-			return err
-		}
-	}
-
-	for i, m := range msg.SecpkMessages {
-		c := cbg.CborCid(m)
-		if err := smArr.Set(uint64(i), &c); err != nil {
-			return err
-		}
-	}
-
-	bmroot, err := bmArr.Root()
-	if err != nil {
-		return err
-	}
-
-	smroot, err := smArr.Root()
-	if err != nil {
-		return err
-	}
-
-	mrcid, err := store.Put(store.Context(), &types.MsgMeta{
-		BlsMessages:   bmroot,
-		SecpkMessages: smroot,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if msg.Header.Messages != mrcid {
-		return fmt.Errorf("messages didn't match root cid in header")
-	}
-
-	return nil
-}
-
-func (filec *FilecoinEC) validateBlockHeader(ctx context.Context, b *types.BlockHeader) (rejectReason string, err error) {
+func (filec *FilecoinEC) ValidateBlockHeader(ctx context.Context, b *types.BlockHeader) (rejectReason string, err error) {
 
 	// we want to ensure that it is a block from a known miner; we reject blocks from unknown miners
 	// to prevent spam attacks.
@@ -866,6 +510,29 @@ func (filec *FilecoinEC) isChainNearSynced() bool {
 	timestamp := ts.MinTimestamp()
 	timestampTime := time.Unix(int64(timestamp), 0)
 	return build.Clock.Since(timestampTime) < 6*time.Hour
+}
+
+func verifyBlockSignature(ctx context.Context, h *types.BlockHeader,
+	addr address.Address) error {
+	return sigs.CheckBlockSignature(ctx, h, addr)
+}
+
+func signBlock(ctx context.Context, w api.Wallet,
+	addr address.Address, next *types.BlockHeader) error {
+
+	nosigbytes, err := next.SigningBytes()
+	if err != nil {
+		return xerrors.Errorf("failed to get signing bytes for block: %w", err)
+	}
+
+	sig, err := w.WalletSign(ctx, addr, nosigbytes, api.MsgMeta{
+		Type: api.MTBlock,
+	})
+	if err != nil {
+		return xerrors.Errorf("failed to sign new block: %w", err)
+	}
+	next.BlockSig = sig
+	return nil
 }
 
 var _ consensus.Consensus = &FilecoinEC{}

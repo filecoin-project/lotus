@@ -51,17 +51,13 @@ func (sm *StateManager) setupGenesisVestingSchedule(ctx context.Context) error {
 		return xerrors.Errorf("loading state tree: %w", err)
 	}
 
-	gmf, err := getFilMarketLocked(ctx, sTree)
-	if err != nil {
-		return xerrors.Errorf("setting up genesis market funds: %w", err)
-	}
-
 	gp, err := getFilPowerLocked(ctx, sTree)
 	if err != nil {
 		return xerrors.Errorf("setting up genesis pledge: %w", err)
 	}
 
-	sm.genesisMarketFunds = gmf
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
 	sm.genesisPledge = gp
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
@@ -128,6 +124,8 @@ func (sm *StateManager) setupPostIgnitionVesting(ctx context.Context) error {
 	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
 	sm.postIgnitionVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
@@ -178,6 +176,9 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(9_805_053))
 
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
+
 	sm.postCalicoVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
@@ -198,21 +199,20 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
 	vf := big.Zero()
 
-	sm.genesisMsigLk.Lock()
-	defer sm.genesisMsigLk.Unlock()
-
 	// TODO: combine all this?
-	if sm.preIgnitionVesting == nil || sm.genesisPledge.IsZero() || sm.genesisMarketFunds.IsZero() {
+	if sm.preIgnitionVesting == nil || sm.genesisPledge.IsZero() {
 		err := sm.setupGenesisVestingSchedule(ctx)
 		if err != nil {
 			return vf, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
 		}
+
 	}
 	if sm.postIgnitionVesting == nil {
 		err := sm.setupPostIgnitionVesting(ctx)
 		if err != nil {
 			return vf, xerrors.Errorf("failed to setup post-ignition vesting schedule: %w", err)
 		}
+
 	}
 	if sm.postCalicoVesting == nil {
 		err := sm.setupPostCalicoVesting(ctx)
@@ -246,8 +246,6 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch)
 	if height <= build.UpgradeAssemblyHeight {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
 		vf = big.Add(vf, sm.genesisPledge)
-		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
-		vf = big.Add(vf, sm.genesisMarketFunds)
 	}
 
 	return vf, nil
@@ -403,7 +401,8 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			a == builtin.CronActorAddr ||
 			a == builtin.BurntFundsActorAddr ||
 			a == builtin.SaftAddress ||
-			a == builtin.ReserveAddress:
+			a == builtin.ReserveAddress ||
+			a == builtin.EthereumAddressManagerActorAddr:
 
 			unCirc = big.Add(unCirc, actor.Balance)
 
@@ -421,7 +420,12 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 			circ = big.Add(circ, big.Sub(actor.Balance, lb))
 			unCirc = big.Add(unCirc, lb)
 
-		case builtin.IsAccountActor(actor.Code) || builtin.IsPaymentChannelActor(actor.Code):
+		case builtin.IsAccountActor(actor.Code) ||
+			builtin.IsPaymentChannelActor(actor.Code) ||
+			builtin.IsEthAccountActor(actor.Code) ||
+			builtin.IsEvmActor(actor.Code) ||
+			builtin.IsPlaceholderActor(actor.Code):
+
 			circ = big.Add(circ, actor.Balance)
 
 		case builtin.IsStorageMinerActor(actor.Code):

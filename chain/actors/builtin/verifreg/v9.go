@@ -13,6 +13,7 @@ import (
 	builtin9 "github.com/filecoin-project/go-state-types/builtin"
 	adt9 "github.com/filecoin-project/go-state-types/builtin/v9/util/adt"
 	verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -132,8 +133,26 @@ func (s *state9) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 
 }
 
+func (s *state9) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+
+	v9Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[abi.SectorNumber][]ClaimId)
+	for k, v := range v9Map {
+		claims, ok := retMap[v.Sector]
+		if !ok {
+			retMap[v.Sector] = []ClaimId{ClaimId(k)}
+		} else {
+			retMap[v.Sector] = append(claims, ClaimId(k))
+		}
+	}
+
+	return retMap, err
+
+}
+
 func (s *state9) ActorKey() string {
-	return actors.VerifregKey
+	return manifest.VerifregKey
 }
 
 func (s *state9) ActorVersion() actorstypes.Version {

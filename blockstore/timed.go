@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/raulk/clock"
 	"go.uber.org/multierr"
 )
@@ -91,6 +91,16 @@ func (t *TimedCacheBlockstore) rotate() {
 	t.mu.Lock()
 	t.inactive, t.active = t.active, newBs
 	t.mu.Unlock()
+}
+
+func (t *TimedCacheBlockstore) Flush(ctx context.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if err := t.active.Flush(ctx); err != nil {
+		return err
+	}
+	return t.inactive.Flush(ctx)
 }
 
 func (t *TimedCacheBlockstore) Put(ctx context.Context, b blocks.Block) error {

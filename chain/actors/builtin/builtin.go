@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/proof"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -25,6 +26,7 @@ import (
 var SystemActorAddr = builtin.SystemActorAddr
 var BurntFundsActorAddr = builtin.BurntFundsActorAddr
 var CronActorAddr = builtin.CronActorAddr
+var EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
 var SaftAddress = makeAddress("t0122")
 var ReserveAddress = makeAddress("t090")
 var RootVerifierAddress = makeAddress("t080")
@@ -165,7 +167,7 @@ func IsAccountActor(c cid.Cid) bool {
 func IsStorageMinerActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == actors.MinerKey
+		return name == manifest.MinerKey
 	}
 
 	if c == builtin0.StorageMinerActorCodeID {
@@ -202,7 +204,7 @@ func IsStorageMinerActor(c cid.Cid) bool {
 func IsMultisigActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
 	if ok {
-		return name == actors.MultisigKey
+		return name == manifest.MultisigKey
 	}
 
 	if c == builtin0.MultisigActorCodeID {
@@ -268,6 +270,33 @@ func IsPaymentChannelActor(c cid.Cid) bool {
 
 	if c == builtin7.PaymentChannelActorCodeID {
 		return true
+	}
+
+	return false
+}
+
+func IsPlaceholderActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.PlaceholderKey
+	}
+
+	return false
+}
+
+func IsEvmActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EvmKey
+	}
+
+	return false
+}
+
+func IsEthAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+	if ok {
+		return name == manifest.EthAccountKey
 	}
 
 	return false
