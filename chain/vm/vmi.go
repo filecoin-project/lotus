@@ -54,7 +54,7 @@ type Executor interface {
 // Message failures, unexpected terminations,gas costs, etc. should all be ignored.
 var useFvmDebug = os.Getenv("LOTUS_FVM_DEVELOPER_DEBUG") == "1"
 
-func newVM(ctx context.Context, opts *VMOpts) (Interface, error) {
+func makeVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
 		if useFvmDebug {
 			return NewDualExecutionFVM(ctx, opts)
@@ -74,7 +74,7 @@ func NewVM(ctx context.Context, opts *VMOpts) (Executor, error) {
 
 	token := execution.getToken(opts.ExecutionLane)
 
-	vmi, err := newVM(ctx, opts)
+	vmi, err := makeVM(ctx, opts)
 	if err != nil {
 		token.Done()
 		return nil, err
