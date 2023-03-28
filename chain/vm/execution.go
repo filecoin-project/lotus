@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/ipfs/go-cid"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
-
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
