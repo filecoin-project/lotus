@@ -264,7 +264,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
-	vmCron := partDone()
+	vmDoCron := partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyFlush)
 
 	rectarr := blockadt.MakeEmptyArray(sm.ChainStore().ActorStore(ctx))
@@ -303,7 +303,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	vmFlush := partDone()
 	partDone = func() time.Duration { return time.Duration(0) }
 
-	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
+	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmDoCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
 
 	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
 		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))))
