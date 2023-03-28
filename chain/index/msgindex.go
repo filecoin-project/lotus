@@ -211,13 +211,9 @@ func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore)
 
 	insertStmt, err := tx.Prepare(dbqInsertMessage)
 	if err != nil {
+		rollback()
 		return xerrors.Errorf("error preparing insertStmt: %w", err)
 	}
-	defer func() {
-		if err := insertStmt.Close(); err != nil {
-			log.Errorf("error closing insert statement: %s", err)
-		}
-	}()
 
 	curTs := cs.GetHeaviestTipSet()
 	startHeight := curTs.Height()
