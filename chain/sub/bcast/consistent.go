@@ -126,6 +126,9 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) {
 
 		if !cidExists(bInfo.blks, blkCid) {
 			bcastDict.store(key, &blksInfo{bInfo.ctx, bInfo.cancel, append(bInfo.blks, blkCid)})
+			// By calling bInfo.eqErr() inside this log we cancel the context for all blocks waiting for
+			// the epoch-ticket combination making them to fail and not be sent to the syncer, as
+			// a potential equivocation is detected.
 			log.Errorf("equivocation detected for height %d: %s", blk.Header.Height, bInfo.eqErr())
 			return
 		}
