@@ -32,33 +32,27 @@ type blksInfo struct {
 }
 
 type bcastDict struct {
-	// thread-safe map impl for the dictionary
-	// sync.Map accepts `any` as keys and values.
-	// To make it type safe and only support the right
-	// types we use this auxiliary type.
-	m *sync.Map
+	m map[string]*blksInfo
 }
 
 func (bd *bcastDict) load(key []byte) (*blksInfo, bool) {
-	v, ok := bd.m.Load(string(key))
+	v, ok := bd.m[string(key)]
 	if !ok {
 		return nil, ok
 	}
-	return v.(*blksInfo), ok
-}
-
-func (bd *bcastDict) store(key []byte, d *blksInfo) {
-	bd.m.Store(string(key), d)
+	return v, ok
 }
 
 func (bd *bcastDict) blkLen(key []byte) int {
-	v, ok := bd.m.Load(string(key))
-	if !ok {
-		return 0
-	}
-	return len(v.(*blksInfo).blks)
+	return len(bd.m[string(key)].blks)
 }
 
+func (bd *bcastDict) store(key []byte, d *blksInfo) {
+	bd.m[string(key)] = d
+}
+
+// ConsistentBCast tracks recent information about the
+// blocks and tickets received at different epochs
 type ConsistentBCast struct {
 	lk    sync.RWMutex
 	delay time.Duration
@@ -66,7 +60,7 @@ type ConsistentBCast struct {
 }
 
 func newBcastDict() *bcastDict {
-	return &bcastDict{new(sync.Map)}
+	return &bcastDict{m: make(map[string]*blksInfo)}
 }
 
 func BCastKey(bh *types.BlockHeader) []byte {
@@ -113,12 +107,13 @@ func (cb *ConsistentBCast) Len() int {
 // certain epoch to be propagated to a large amount of miners in the network.
 func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) {
 	cb.lk.Lock()
+	defer cb.lk.Unlock()
 	bcastDict, ok := cb.m[blk.Header.Height]
 	if !ok {
 		bcastDict = newBcastDict()
 		cb.m[blk.Header.Height] = bcastDict
 	}
-	cb.lk.Unlock()
+
 	key := BCastKey(blk.Header)
 	blkCid := blk.Cid()
 
@@ -147,12 +142,13 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) {
 func (cb *ConsistentBCast) WaitForDelivery(bh *types.BlockHeader) error {
 	cb.lk.RLock()
 	bcastDict := cb.m[bh.Height]
-	cb.lk.RUnlock()
 	key := BCastKey(bh)
 	bInfo, ok := bcastDict.load(key)
+	cb.lk.RUnlock()
 	if !ok {
 		return xerrors.Errorf("something went wrong, unknown block with Epoch + VRFProof (cid=%s) in consistent broadcast storage", key)
 	}
+
 	// Wait for the timeout
 	<-bInfo.ctx.Done()
 	if bcastDict.blkLen(key) > 1 {
