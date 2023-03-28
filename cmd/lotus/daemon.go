@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"runtime/pprof"
 	"strings"
 
@@ -47,6 +48,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
@@ -556,6 +558,24 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	log.Infof("accepting %s as new head", ts.Cids())
 	if err := cst.ForceHeadSilent(ctx, ts); err != nil {
 		return err
+	}
+
+	// populate the message index if user has EnableMsgIndex enabled
+	//
+	c, err := lr.Config()
+	if err != nil {
+		return err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+	if cfg.Index.EnableMsgIndex {
+		log.Info("populating message index...")
+		if err := index.PopulateAfterSnapshot(ctx, path.Join(lr.Path(), "sqlite"), cst); err != nil {
+			return err
+		}
+		log.Info("populating message index done")
 	}
 
 	return nil

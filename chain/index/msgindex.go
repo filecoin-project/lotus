@@ -169,6 +169,93 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 	return msgIndex, nil
 }
 
+func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore) error {
+	err := os.MkdirAll(basePath, 0755)
+	if err != nil {
+		return xerrors.Errorf("error creating msgindex base directory: %w", err)
+	}
+
+	dbPath := path.Join(basePath, dbName)
+
+	// if a database already exists, we try to delete it and create a new one
+	if _, err := os.Stat(dbPath); err == nil {
+		if err = os.Remove(dbPath); err != nil {
+			return xerrors.Errorf("msgindex already exists at %s and can't be deleted", dbPath)
+		}
+	}
+
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return xerrors.Errorf("error opening msgindex database: %w", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Errorf("error closing msgindex database: %s", err)
+		}
+	}()
+
+	if err := prepareDB(db); err != nil {
+		return xerrors.Errorf("error creating msgindex database: %w", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return xerrors.Errorf("error when starting transaction: %w", err)
+	}
+
+	rollback := func() {
+		if err := tx.Rollback(); err != nil {
+			log.Errorf("error in rollback: %s", err)
+		}
+	}
+
+	insertStmt, err := tx.Prepare(dbqInsertMessage)
+	if err != nil {
+		rollback()
+		return xerrors.Errorf("error preparing insertStmt: %w", err)
+	}
+
+	curTs := cs.GetHeaviestTipSet()
+	startHeight := curTs.Height()
+	for curTs != nil {
+		tscid, err := curTs.Key().Cid()
+		if err != nil {
+			rollback()
+			return xerrors.Errorf("error computing tipset cid: %w", err)
+		}
+
+		tskey := tscid.String()
+		epoch := int64(curTs.Height())
+
+		msgs, err := cs.MessagesForTipset(lctx, curTs)
+		if err != nil {
+			log.Infof("stopping import after %d tipsets", startHeight-curTs.Height())
+			break
+		}
+
+		for _, msg := range msgs {
+			key := msg.Cid().String()
+			if _, err := insertStmt.Exec(key, tskey, epoch); err != nil {
+				rollback()
+				return xerrors.Errorf("error inserting message: %w", err)
+			}
+		}
+
+		curTs, err = cs.GetTipSetFromKey(lctx, curTs.Parents())
+		if err != nil {
+			rollback()
+			return xerrors.Errorf("error walking chain: %w", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return xerrors.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
+}
+
 // init utilities
 func prepareDB(db *sql.DB) error {
 	for _, stmt := range dbDefs {
