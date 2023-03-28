@@ -425,7 +425,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 
 	blk, err := s.store.Get(s.ctx, t.c)
 	if errors.Is(err, format.ErrNotFound{}) && t.topLevelTaskType == receiptTask {
-		log.Warnw("ignoring not-found block in Receipts",
+		log.Debugw("ignoring not-found block in Receipts",
 			"block", t.blockCid,
 			"epoch", t.epoch,
 			"cid", t.c)
