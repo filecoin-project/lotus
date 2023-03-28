@@ -137,7 +137,7 @@ type MessagePool struct {
 	// do NOT access this map directly, use getPendingMset, setPendingMset, deletePendingMset, forEachPending, and clearPending respectively
 	pending map[address.Address]*msgSet
 
-	keyCache map[address.Address]address.Address
+	keyCache *lru.Cache[address.Address, address.Address]
 
 	curTsLk sync.RWMutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
@@ -372,6 +372,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q[string, struct{}](build.VerifSigCacheSize)
 	noncecache, _ := lru.New[nonceCacheKey, uint64](256)
+	keycache, _ := lru.New[address.Address, address.Address](1_000_000)
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
@@ -390,7 +391,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 		repubTrigger:   make(chan struct{}, 1),
 		localAddrs:     make(map[address.Address]struct{}),
 		pending:        make(map[address.Address]*msgSet),
-		keyCache:       make(map[address.Address]address.Address),
+		keyCache:       keycache,
 		minGasPrice:    types.NewInt(0),
 		getNtwkVersion: us.GetNtwkVersion,
 		pruneTrigger:   make(chan struct{}, 1),
@@ -474,8 +475,8 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
 	// check the cache
-	a, f := mp.keyCache[addr]
-	if f {
+	a, ok := mp.keyCache.Get(addr)
+	if ok {
 		return a, nil
 	}
 
@@ -486,8 +487,8 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 	}
 
 	// place both entries in the cache (may both be key addresses, which is fine)
-	mp.keyCache[addr] = ka
-	mp.keyCache[ka] = ka
+	mp.keyCache.Add(addr, ka)
+	mp.keyCache.Add(ka, ka)
 
 	return ka, nil
 }
