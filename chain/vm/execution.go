@@ -210,7 +210,7 @@ func init() {
 		panic("insufficient execution concurrency")
 	}
 
-	if priority > available-1 {
+	if available <= priority {
 		panic("insufficient default execution concurrency")
 	}
 
