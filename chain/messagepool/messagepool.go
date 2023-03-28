@@ -763,28 +763,26 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		<-mp.addSema
 	}()
 
-	//Ensure block calculation is cached without holding the write lock
 	mp.curTsLk.RLock()
 	tmpCurTs := mp.curTs
 	mp.curTsLk.RUnlock()
+
+	//ensures computations are cached without holding lack
 	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
 	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 
-	cacheSecondTime := true
-	//if the newly acquired Ts is not the one we just cached, let go of the lock, cache it and open the lock again and repeat....
-	for cacheSecondTime {
-		mp.curTsLk.Lock()
-		writeCurTs := mp.curTs
-
-		if writeCurTs == tmpCurTs {
-			break // we have this cached we can skip
-		}
+	mp.curTsLk.Lock()
+	if tmpCurTs == mp.curTs {
+		//with the lock enabled, mp.curTs is the same Ts as we just had, so we know that our computations are cached
+	} else {
+		//curTs has been updated so we want to cache the new one:
+		tmpCurTs = mp.curTs
+		//we want to release the lock, cache the computations then grab it again
 		mp.curTsLk.Unlock()
-		tmpCurTs = writeCurTs
 		_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
 		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
-		cacheSecondTime = false
-
+		mp.curTsLk.Lock()
+		//now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
 	}
 
 	defer mp.curTsLk.Unlock()
