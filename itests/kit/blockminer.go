@@ -245,7 +245,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			case ctx.Err() != nil: // context fired.
 				return
 			default: // log error
-				bm.t.Error(err)
+				bm.t.Logf("MINEBLOCKS-post loop error: %+v", err)
+				return
 			}
 		}
 	}()
@@ -291,7 +292,8 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 			case ctx.Err() != nil: // context fired.
 				return
 			default: // log error
-				bm.t.Error(err)
+				bm.t.Logf("MINEBLOCKS loop error: %+v", err)
+				return
 			}
 		}
 	}()
