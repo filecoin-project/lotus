@@ -24,14 +24,15 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	ts := mp.curTs
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
+	mp.curTsLk.RUnlock()
 	if err != nil {
-		mp.curTsLk.RUnlock()
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
-	mp.lk.RLock()
+	mp.curTsLk.Lock()
+	mp.lk.Lock()
 	mp.republished = nil // clear this to avoid races triggering an early republish
 	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
 		mset, ok, err := mp.getPendingMset(ctx, actor)
@@ -54,8 +55,8 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		pending[actor] = pend
 	})
 
-	mp.lk.RUnlock()
-	mp.curTsLk.RUnlock()
+	mp.lk.Unlock()
+	mp.curTsLk.Unlock()
 
 	if len(pending) == 0 {
 		return nil
