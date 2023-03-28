@@ -763,7 +763,28 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		<-mp.addSema
 	}()
 
-	mp.curTsLk.Lock()
+	//Ensure block calculation is cached without holding the write lock
+	mp.curTsLk.RLock()
+	tmpCurTs := mp.curTs
+	mp.curTsLk.RUnlock()
+	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
+	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
+
+	//if the newly acquired Ts is not the one we just cached, let go of the lock, cache it and open the lock again and repeat....
+	for {
+		mp.curTsLk.Lock()
+		writeCurTs := mp.curTs
+
+		if writeCurTs == tmpCurTs {
+			break // we have this cached we can skip
+		}
+		mp.curTsLk.Unlock()
+		tmpCurTs = writeCurTs
+		_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
+		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
+
+	}
+
 	defer mp.curTsLk.Unlock()
 
 	_, err = mp.addTs(ctx, m, mp.curTs, false, false)
@@ -852,13 +873,13 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 		return false, xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
 	senderAct, err := mp.api.GetActorAfter(m.Message.From, curTs)
 	if err != nil {
 		return false, xerrors.Errorf("failed to get sender actor: %w", err)
 	}
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
 
 	// This message can only be included in the _next_ epoch and beyond, hence the +1.
 	epoch := curTs.Height() + 1
