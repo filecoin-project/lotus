@@ -770,8 +770,9 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
 	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 
+	cacheSecondTime := true
 	//if the newly acquired Ts is not the one we just cached, let go of the lock, cache it and open the lock again and repeat....
-	for {
+	for cacheSecondTime {
 		mp.curTsLk.Lock()
 		writeCurTs := mp.curTs
 
@@ -782,6 +783,7 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		tmpCurTs = writeCurTs
 		_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
 		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
+		cacheSecondTime = false
 
 	}
 
