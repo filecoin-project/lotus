@@ -19,10 +19,16 @@ var log = logging.Logger("sub-cb")
 const (
 	// GcSanityCheck determines the number of epochs in the past
 	// that will be garbage collected from the current epoch.
-	GcSanityCheck = 5
+	GcSanityCheck = 100
 	// GcLookback determines the number of epochs kept in the consistent
 	// broadcast cache.
-	GcLookback = 1000
+	GcLookback = 5
+	// GcDeepCheck determines the number of epochs in the past that we
+	// we try cleaning in the deep garbage collection round.
+	GcDeepCheck = 2880 // (24h*60m*60s)/30s per block
+	// GcDeepInterval determines after the number of epochs for which
+	// we are going to start a deeper garbage collection round.
+	GcDeepInterval = 1000
 )
 
 type blksInfo struct {
@@ -54,9 +60,10 @@ func (bd *bcastDict) store(key []byte, d *blksInfo) {
 // ConsistentBCast tracks recent information about the
 // blocks and tickets received at different epochs
 type ConsistentBCast struct {
-	lk    sync.RWMutex
-	delay time.Duration
-	m     map[abi.ChainEpoch]*bcastDict
+	lk         sync.RWMutex
+	delay      time.Duration
+	m          map[abi.ChainEpoch]*bcastDict
+	lastDeepGc abi.ChainEpoch
 }
 
 func newBcastDict() *bcastDict {
@@ -160,17 +167,29 @@ func (cb *ConsistentBCast) WaitForDelivery(bh *types.BlockHeader) error {
 	return nil
 }
 
+// GarbageCollect cleans the consistent broadcast cache periodically.
+//
+// A light garbage collection is triggered before every block delivery
+// while a deeper one is triggered once every GcDeepCheck to ensure
+// that nothing was left behind.
 func (cb *ConsistentBCast) GarbageCollect(currEpoch abi.ChainEpoch) {
 	cb.lk.Lock()
 	defer cb.lk.Unlock()
 
-	// keep currEpoch-2 and delete a few more in the past
+	// perform a deeper sanity check every now and then
+	gcRange := GcSanityCheck
+	if cb.lastDeepGc+GcDeepInterval > currEpoch {
+		gcRange = GcDeepCheck
+		cb.lastDeepGc = currEpoch
+	}
+
+	// keep currEpoch-gcRange and delete a few more in the past
 	// as a sanity-check
 	// Garbage collection is triggered before block delivery,
 	// and we use the sanity-check in case there were a few rounds
 	// without delivery, and the garbage collection wasn't triggered
 	// for a few epochs.
-	for i := 0; i < GcSanityCheck; i++ {
+	for i := 0; i < gcRange; i++ {
 		if currEpoch > GcLookback {
 			delete(cb.m, currEpoch-abi.ChainEpoch(GcLookback+i))
 		}
