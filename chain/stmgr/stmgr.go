@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -38,6 +39,8 @@ import (
 
 const LookbackNoLimit = api.LookbackNoLimit
 const ReceiptAmtBitwidth = 3
+
+const execTraceCacheSize = 16
 
 var log = logging.Logger("statemgr")
 
@@ -138,12 +141,24 @@ type StateManager struct {
 	beacon        beacon.Schedule
 
 	msgIndex index.MsgIndex
+
+	// We keep a small cache for calls to ExecutionTrace which helps improve
+	// performance for node operators like exchanges and block explorers
+	execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	// We need a lock while making the copy as to prevent other callers
+	// overwrite the cache while making the copy
+	execTraceCacheLock sync.Mutex
 }
 
 // Caches a single state tree
 type treeCache struct {
 	root cid.Cid
 	tree *state.StateTree
+}
+
+type tipSetCacheEntry struct {
+	postStateRoot cid.Cid
+	invocTrace    []*api.InvocResult
 }
 
 func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule, metadataDs dstore.Batching, msgIndex index.MsgIndex) (*StateManager, error) {
@@ -185,6 +200,11 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		}
 	}
 
+	execTraceCache, err := lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
+	if err != nil {
+		return nil, err
+	}
+
 	return &StateManager{
 		networkVersions:   networkVersions,
 		latestVersion:     lastVersion,
@@ -200,8 +220,9 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 			root: cid.Undef,
 			tree: nil,
 		},
-		compWait: make(map[string]chan struct{}),
-		msgIndex: msgIndex,
+		compWait:       make(map[string]chan struct{}),
+		msgIndex:       msgIndex,
+		execTraceCache: execTraceCache,
 	}, nil
 }
 
