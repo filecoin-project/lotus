@@ -878,9 +878,6 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 		return false, xerrors.Errorf("failed to get sender actor: %w", err)
 	}
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
 	// This message can only be included in the _next_ epoch and beyond, hence the +1.
 	epoch := curTs.Height() + 1
 	nv := mp.api.StateNetworkVersion(ctx, epoch)
@@ -889,6 +886,9 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	if !consensus.IsValidForSending(nv, senderAct) {
 		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}
+
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
 
 	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTs, local)
 	if err != nil {
