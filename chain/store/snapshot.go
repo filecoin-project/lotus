@@ -3,12 +3,14 @@ package store
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
@@ -167,8 +169,11 @@ func (t walkSchedTaskType) String() string {
 }
 
 type walkTask struct {
-	c        cid.Cid
-	taskType walkSchedTaskType
+	c                cid.Cid
+	taskType         walkSchedTaskType
+	topLevelTaskType walkSchedTaskType
+	blockCid         cid.Cid
+	epoch            abi.ChainEpoch
 }
 
 // an ever growing FIFO
@@ -317,8 +322,11 @@ func newWalkScheduler(ctx context.Context, store bstore.Blockstore, cfg walkSche
 			cancel() // kill workers
 			return nil, ctx.Err()
 		case s.workerTasks.in <- walkTask{
-			c:        b.Cid(),
-			taskType: blockTask,
+			c:                b.Cid(),
+			taskType:         blockTask,
+			topLevelTaskType: blockTask,
+			blockCid:         b.Cid(),
+			epoch:            cfg.head.Height(),
 		}:
 		}
 	}
@@ -416,8 +424,17 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 	}
 
 	blk, err := s.store.Get(s.ctx, t.c)
+	if errors.Is(err, format.ErrNotFound{}) && t.topLevelTaskType == receiptTask {
+		log.Debugw("ignoring not-found block in Receipts",
+			"block", t.blockCid,
+			"epoch", t.epoch,
+			"cid", t.c)
+		return nil
+	}
 	if err != nil {
-		return xerrors.Errorf("writing object to car, bs.Get: %w", err)
+		return xerrors.Errorf(
+			"blockstore.Get(%s). Task: %s. Block: %s (%s). Epoch: %d. Err: %w",
+			t.c, t.taskType, t.topLevelTaskType, t.blockCid, t.epoch, err)
 	}
 
 	s.results <- taskResult{
@@ -427,13 +444,8 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 
 	// extract relevant dags to walk from the block
 	if t.taskType == blockTask {
-		blk := t.c
-		data, err := s.store.Get(s.ctx, blk)
-		if err != nil {
-			return err
-		}
 		var b types.BlockHeader
-		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
+		if err := b.UnmarshalCBOR(bytes.NewBuffer(blk.RawData())); err != nil {
 			return xerrors.Errorf("unmarshalling block header (cid=%s): %w", blk, err)
 		}
 		if b.Height%1_000 == 0 {
@@ -443,13 +455,19 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 			log.Info("exporting genesis block")
 			for i := range b.Parents {
 				s.enqueueIfNew(walkTask{
-					c:        b.Parents[i],
-					taskType: dagTask,
+					c:                b.Parents[i],
+					taskType:         dagTask,
+					topLevelTaskType: blockTask,
+					blockCid:         b.Parents[i],
+					epoch:            0,
 				})
 			}
 			s.enqueueIfNew(walkTask{
-				c:        b.ParentStateRoot,
-				taskType: stateTask,
+				c:                b.ParentStateRoot,
+				taskType:         stateTask,
+				topLevelTaskType: stateTask,
+				blockCid:         t.c,
+				epoch:            0,
 			})
 
 			return s.sendFinish(workerN)
@@ -457,33 +475,45 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 		// enqueue block parents
 		for i := range b.Parents {
 			s.enqueueIfNew(walkTask{
-				c:        b.Parents[i],
-				taskType: blockTask,
+				c:                b.Parents[i],
+				taskType:         blockTask,
+				topLevelTaskType: blockTask,
+				blockCid:         b.Parents[i],
+				epoch:            b.Height,
 			})
 		}
 		if s.cfg.tail.Height() >= b.Height {
-			log.Debugw("tail reached: only blocks will be exported from now until genesis", "cid", blk.String())
+			log.Debugw("tail reached: only blocks will be exported from now until genesis", "cid", t.c.String())
 			return nil
 		}
 
 		if s.cfg.includeMessages {
 			// enqueue block messages
 			s.enqueueIfNew(walkTask{
-				c:        b.Messages,
-				taskType: messageTask,
+				c:                b.Messages,
+				taskType:         messageTask,
+				topLevelTaskType: messageTask,
+				blockCid:         t.c,
+				epoch:            b.Height,
 			})
 		}
 		if s.cfg.includeReceipts {
 			// enqueue block receipts
 			s.enqueueIfNew(walkTask{
-				c:        b.ParentMessageReceipts,
-				taskType: receiptTask,
+				c:                b.ParentMessageReceipts,
+				taskType:         receiptTask,
+				topLevelTaskType: receiptTask,
+				blockCid:         t.c,
+				epoch:            b.Height,
 			})
 		}
 		if s.cfg.includeState {
 			s.enqueueIfNew(walkTask{
-				c:        b.ParentStateRoot,
-				taskType: stateTask,
+				c:                b.ParentStateRoot,
+				taskType:         stateTask,
+				topLevelTaskType: stateTask,
+				blockCid:         t.c,
+				epoch:            b.Height,
 			})
 		}
 
@@ -497,8 +527,11 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 		}
 
 		s.enqueueIfNew(walkTask{
-			c:        c,
-			taskType: dagTask,
+			c:                c,
+			taskType:         dagTask,
+			topLevelTaskType: t.topLevelTaskType,
+			blockCid:         t.blockCid,
+			epoch:            t.epoch,
 		})
 	})
 }
