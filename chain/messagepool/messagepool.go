@@ -768,7 +768,7 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	tmpCurTs := mp.curTs
 	mp.curTsLk.RUnlock()
 
-	//ensures computations are cached without holding lack
+	//ensures computations are cached without holding lock
 	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
 	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 
