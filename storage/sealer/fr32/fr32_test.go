@@ -3,7 +3,6 @@ package fr32_test
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
@@ -19,7 +18,7 @@ import (
 
 func padFFI(buf []byte) []byte {
 	rf, w, _ := commpffi.ToReadableFile(bytes.NewReader(buf), int64(len(buf)))
-	tf, _ := ioutil.TempFile("/tmp/", "scrb-")
+	tf, _ := os.CreateTemp("/tmp/", "scrb-")
 
 	_, _, _, err := ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg32GiBV1, rf, abi.UnpaddedPieceSize(len(buf)), tf, nil)
 	if err != nil {
@@ -33,7 +32,7 @@ func padFFI(buf []byte) []byte {
 		panic(err)
 	}
 
-	padded, err := ioutil.ReadAll(tf)
+	padded, err := io.ReadAll(tf)
 	if err != nil {
 		panic(err)
 	}

@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -246,7 +245,7 @@ var initCmd = &cli.Command{
 					return xerrors.Errorf("marshaling storage config: %w", err)
 				}
 
-				if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+				if err := os.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
@@ -292,7 +291,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 		return xerrors.Errorf("expanding preseal dir: %w", err)
 	}
 
-	b, err := ioutil.ReadFile(metadata)
+	b, err := os.ReadFile(metadata)
 	if err != nil {
 		return xerrors.Errorf("reading preseal metadata: %w", err)
 	}

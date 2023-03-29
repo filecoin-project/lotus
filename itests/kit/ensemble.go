@@ -6,9 +6,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -234,7 +234,7 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 	peerId, err := peer.IDFromPrivateKey(privkey)
 	require.NoError(n.t, err)
 
-	tdir, err := ioutil.TempDir("", "preseal-memgen")
+	tdir, err := os.MkdirTemp("", "preseal-memgen")
 	require.NoError(n.t, err)
 
 	minerCnt := len(n.inactive.miners) + len(n.active.miners)

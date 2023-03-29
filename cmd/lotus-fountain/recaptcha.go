@@ -6,7 +6,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -63,7 +63,7 @@ func VerifyToken(token, remoteIP string) (Response, error) {
 		return resp, err
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	_ = r.Body.Close() // close immediately after reading finished
 	if err != nil {
 		return resp, err

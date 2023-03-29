@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -103,7 +102,7 @@ func (lmem *lockedMemRepo) Path() string {
 		return lmem.mem.tempDir
 	}
 
-	t, err := ioutil.TempDir(os.TempDir(), "lotus-memrepo-temp-")
+	t, err := os.MkdirTemp(os.TempDir(), "lotus-memrepo-temp-")
 	if err != nil {
 		panic(err) // only used in tests, probably fine
 	}
@@ -142,7 +141,7 @@ func (lmem *lockedMemRepo) initSectorStore(t string) {
 		panic(err)
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(t, "sectorstore.json"), b, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(t, "sectorstore.json"), b, 0644); err != nil {
 		panic(err)
 	}
 }

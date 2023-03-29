@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -168,7 +168,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 
 	maddr1 := genesis2.MinerAddress(0)
 
-	m1temp, err := ioutil.TempDir("", "preseal")
+	m1temp, err := os.MkdirTemp("", "preseal")
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 
 	maddr2 := genesis2.MinerAddress(1)
 
-	m2temp, err := ioutil.TempDir("", "preseal")
+	m2temp, err := os.MkdirTemp("", "preseal")
 	if err != nil {
 		return nil, err
 	}

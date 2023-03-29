@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -65,7 +64,7 @@ func ClientExportStream(apiAddr string, apiAuth http.Header, eref api.ExportRef,
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		em, err := ioutil.ReadAll(resp.Body)
+		em, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, xerrors.Errorf("reading error body: %w", err)
 		}
