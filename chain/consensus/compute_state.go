@@ -93,7 +93,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	}()
 
 	ctx = blockstore.WithHotView(ctx)
-	makeVm := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Executor, error) {
+	makeVm := func(base cid.Cid, e abi.ChainEpoch, timestamp uint64) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
@@ -117,7 +117,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 	var cronGas int64
 
-	runCron := func(vmCron vm.Executor, epoch abi.ChainEpoch) error {
+	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
 		cronMsg := &types.Message{
 			To:         cron.Address,
 			From:       builtin.SystemActorAddr,
@@ -170,17 +170,13 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 
 			// run cron for null rounds if any
 			if err = runCron(vmCron, i); err != nil {
-				vmCron.Done()
 				return cid.Undef, cid.Undef, xerrors.Errorf("running cron: %w", err)
 			}
 
 			pstate, err = vmCron.Flush(ctx)
 			if err != nil {
-				vmCron.Done()
 				return cid.Undef, cid.Undef, xerrors.Errorf("flushing cron vm: %w", err)
 			}
-
-			vmCron.Done()
 		}
 
 		// handle state forks
@@ -201,7 +197,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
 	}
-	defer vmi.Done()
 
 	var (
 		receipts      []*types.MessageReceipt

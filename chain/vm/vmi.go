@@ -37,17 +37,6 @@ type Interface interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 }
 
-// Executor is the general vm execution interface, which is prioritized according to execution lanes.
-// User must call Done when it is done with this executor to release resource holds by the execution
-// environment
-type Executor interface {
-	Interface
-
-	// Done must be called when done with the executor to release resource holds.
-	// It is an error to invoke Interface methods after Done has been called.
-	Done()
-}
-
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
 // An envvar that allows the user to specify debug actors bundles to be used by the FVM
 // alongside regular execution. This is basically only to be used to print out specific logging information.
@@ -65,20 +54,17 @@ func makeVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	return NewLegacyVM(ctx, opts)
 }
 
-func NewVM(ctx context.Context, opts *VMOpts) (Executor, error) {
+func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	switch opts.ExecutionLane {
 	case ExecutionLaneDefault, ExecutionLanePriority:
 	default:
 		return nil, fmt.Errorf("invalid execution lane: %d", opts.ExecutionLane)
 	}
 
-	token := execution.getToken(opts.ExecutionLane)
-
 	vmi, err := makeVM(ctx, opts)
 	if err != nil {
-		token.Done()
 		return nil, err
 	}
 
-	return newVMExecutor(vmi, token), nil
+	return newVMExecutor(vmi, opts.ExecutionLane), nil
 }

@@ -496,7 +496,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create VM: %w", err)
 	}
-	defer vm.Done()
 
 	for mi, m := range template.Miners {
 		for si, s := range m.Sectors {
