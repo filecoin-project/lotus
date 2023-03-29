@@ -3,7 +3,6 @@ package config
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -50,7 +49,7 @@ func TestParitalConfig(t *testing.T) {
 	}
 
 	{
-		f, err := ioutil.TempFile("", "config-*.toml")
+		f, err := os.CreateTemp("", "config-*.toml")
 		fname := f.Name()
 
 		assert.NoError(err, "tmp file shold not error")
@@ -115,7 +114,7 @@ func TestValidateConfigSetsEnableSplitstore(t *testing.T) {
 	assert.False(t, MatchEnableSplitstoreField(string(cfgCommentedOutEnableSS)))
 
 	// write config with commented out EnableSplitstore to file
-	f, err := ioutil.TempFile("", "config.toml")
+	f, err := os.CreateTemp("", "config.toml")
 	fname := f.Name()
 	assert.NoError(t, err)
 	defer func() {
@@ -132,7 +131,7 @@ func TestValidateConfigSetsEnableSplitstore(t *testing.T) {
 
 // Loading without a config file and a default fails if the default fallback is disabled
 func TestFailToFallbackToDefault(t *testing.T) {
-	dir, err := ioutil.TempDir("", "dirWithNoFiles")
+	dir, err := os.MkdirTemp("", "dirWithNoFiles")
 	assert.NoError(t, err)
 	defer assert.NoError(t, os.RemoveAll(dir))
 	nonExistantFileName := dir + "/notarealfile"

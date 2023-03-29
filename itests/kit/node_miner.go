@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -204,7 +203,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*st
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(filepath.Join(p, metaFile), b, 0644)
+	err = os.WriteFile(filepath.Join(p, metaFile), b, 0644)
 	require.NoError(t, err)
 
 	err = tm.StorageAddLocal(ctx, p)

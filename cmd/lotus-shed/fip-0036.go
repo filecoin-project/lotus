@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"sort"
 	"strconv"
 
@@ -537,7 +537,7 @@ var finalResultCmd = &cli.Command{
 // Returns voted sorted by votes from earliest to latest
 func getVotesMap(file string) ([]Vote, error) {
 	var votes []Vote
-	vb, err := ioutil.ReadFile(file)
+	vb, err := os.ReadFile(file)
 	if err != nil {
 		return nil, xerrors.Errorf("read vote: %w", err)
 	}

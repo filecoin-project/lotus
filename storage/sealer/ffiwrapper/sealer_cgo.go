@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"math/bits"
 	"os"
 	"path/filepath"
@@ -1095,7 +1094,7 @@ func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.Secto
 	}
 	defer done()
 
-	files, err := ioutil.ReadDir(paths.Cache)
+	files, err := os.ReadDir(paths.Cache)
 	if err != nil {
 		return err
 	}

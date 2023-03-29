@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/http"
 	_ "net/http/pprof"
@@ -159,7 +158,7 @@ var importBenchCmd = &cli.Command{
 		if rdir := cctx.String("repodir"); rdir != "" {
 			tdir = rdir
 		} else {
-			tmp, err := ioutil.TempDir("", "lotus-import-bench")
+			tmp, err := os.MkdirTemp("", "lotus-import-bench")
 			if err != nil {
 				return err
 			}

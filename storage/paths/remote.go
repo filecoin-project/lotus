@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/bits"
 	"net/http"
 	"net/url"
@@ -412,7 +411,7 @@ func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, er
 	case 404:
 		return fsutil.FsStat{}, errPathNotFound
 	case 500:
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fsutil.FsStat{}, xerrors.Errorf("fsstat: got http 500, then failed to read the error: %w", err)
 		}
@@ -768,7 +767,7 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 					log.Debugw("reading vanilla proof from remote not-found response", "url", url, "store", info.ID)
 					continue
 				}
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
 				}
@@ -780,7 +779,7 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body)))
 			}
 
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				if err := resp.Body.Close(); err != nil {
 					log.Error("response close: ", err)

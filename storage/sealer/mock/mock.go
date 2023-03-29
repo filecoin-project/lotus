@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"sync"
 
@@ -461,7 +460,7 @@ func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storiface.SectorRef,
 		io.Seeker
 		io.ReaderAt
 	}{
-		ReadCloser: ioutil.NopCloser(br),
+		ReadCloser: io.NopCloser(br),
 		Seeker:     br,
 		ReaderAt:   br,
 	}, false, nil

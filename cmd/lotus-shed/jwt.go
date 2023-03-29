@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -81,7 +80,7 @@ var jwtTokenCmd = &cli.Command{
 		defer inputFile.Close() //nolint:errcheck
 		input := bufio.NewReader(inputFile)
 
-		encoded, err := ioutil.ReadAll(input)
+		encoded, err := io.ReadAll(input)
 		if err != nil {
 			return err
 		}
@@ -123,7 +122,7 @@ var jwtTokenCmd = &cli.Command{
 			return err
 		}
 
-		return ioutil.WriteFile(cctx.String("output"), token, 0600)
+		return os.WriteFile(cctx.String("output"), token, 0600)
 	},
 }
 
@@ -142,7 +141,7 @@ var jwtNewCmd = &cli.Command{
 
 		keyName := cctx.Args().First()
 
-		sk, err := ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
+		sk, err := io.ReadAll(io.LimitReader(rand.Reader, 32))
 		if err != nil {
 			return err
 		}
@@ -184,6 +183,6 @@ var jwtNewCmd = &cli.Command{
 		}
 
 		filenameToken := fmt.Sprintf("jwt-%s.token", keyName)
-		return ioutil.WriteFile(filenameToken, token, 0600)
+		return os.WriteFile(filenameToken, token, 0600)
 	},
 }

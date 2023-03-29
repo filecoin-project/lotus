@@ -3,7 +3,7 @@ package blockstore
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 
 	"github.com/ipfs/go-cid"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -103,7 +103,7 @@ func (i *IPFSBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, er
 		return nil, xerrors.Errorf("getting ipfs block: %w", err)
 	}
 
-	data, err := ioutil.ReadAll(rd)
+	data, err := io.ReadAll(rd)
 	if err != nil {
 		return nil, err
 	}
