@@ -57,10 +57,15 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	var backFm cid.Cid
 	backSearchWait := make(chan struct{})
 	go func() {
-		fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
-		if err != nil {
-			log.Warnf("failed to look back through chain for message: %v", err)
-			return
+		fts, r, foundMsg, err := sm.searchForIndexedMsg(ctx, mcid, msg)
+
+		found := (err == nil && r != nil && foundMsg.Defined())
+		if !found {
+			fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
+			if err != nil {
+				log.Warnf("failed to look back through chain for message: %v", err)
+				return
+			}
 		}
 
 		backTs = fts
