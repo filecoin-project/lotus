@@ -106,6 +106,8 @@ The `lotus-Miner sector list` is now running in parallel - which should speed up
    - Fixes the issue with sector extensions.
 - fix: proving: Initialize slice with with same length as partition (#10574) ([filecoin-project/lotus#10574])(https://github.com/filecoin-project/lotus/pull/10574)
    - Fixes an issue where `lotus-miner proving compute window-post` paniced when trying to make skipped sectors human readable.
+- feat: stmgr: speed up calculation of genesis circ supply (#10553) ([filecoin-project/lotus#10553])(https://github.com/filecoin-project/lotus/pull/10553)
+- perf: eth: gas estimate set applyTsMessages false (#10546) ([filecoin-project/lotus#10456](https://github.com/filecoin-project/lotus/pull/10546))
 - feat: config: Force existing users to opt into new defaults (#10488) ([filecoin-project/lotus#10488](https://github.com/filecoin-project/lotus/pull/10488))
    - Force existing users to opt into the new SplitStore defaults.
 - fix: splitstore: Demote now common logs (#10516) ([filecoin-project/lotus#10516](https://github.com/filecoin-project/lotus/pull/10516))
