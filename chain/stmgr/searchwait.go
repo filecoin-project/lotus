@@ -216,7 +216,10 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 	}
 
 	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, xts, mcid, m.VMMessage(), false)
-	return xts, r, foundMsg, xerrors.Errorf("error in tipstExecutedMessage: %w", err)
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("error in tipstExecutedMessage: %w", err)
+	}
+	return xts, r, foundMsg, nil
 }
 
 // searchBackForMsg searches up to limit tipsets backwards from the given
