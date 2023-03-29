@@ -59,7 +59,11 @@ var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 
 var UpgradeSharkHeight = abi.ChainEpoch(-20)
 
-var UpgradeHyggeHeight = abi.ChainEpoch(30)
+var UpgradeHyggeHeight = abi.ChainEpoch(-21)
+
+var UpgradeLightningHeight = 30
+
+var UpgradeThunderHeight = 1000
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -114,6 +118,8 @@ func init() {
 	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
 	UpgradeSharkHeight = getUpgradeHeight("LOTUS_SHARK_HEIGHT", UpgradeSharkHeight)
 	UpgradeHyggeHeight = getUpgradeHeight("LOTUS_HYGGE_HEIGHT", UpgradeHyggeHeight)
+	UpgradeLightningHeight = getUpgradeHeight("LOTUS_LIGHTNING_HEIGHT", UpgradeLightningHeight)
+	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 
 	BuildType |= Build2k
 

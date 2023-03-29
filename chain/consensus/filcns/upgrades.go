@@ -245,6 +245,14 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			StopWithin:      5,
 		}},
 		Expensive: true,
+	}, {
+		Height:    build.UpgradeLightningHeight,
+		Network:   network.Version19,
+		Migration: nil,
+	}, {
+		Height:    build.UpgradeThunderHeight,
+		Network:   network.Version20,
+		Migration: nil,
 	},
 	}
 
