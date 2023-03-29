@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/bits"
 	"os"
 	"path/filepath"
@@ -167,7 +166,7 @@ over time
 				return xerrors.Errorf("marshaling storage config: %w", err)
 			}
 
-			if err := ioutil.WriteFile(filepath.Join(p, metaFile), b, 0644); err != nil {
+			if err := os.WriteFile(filepath.Join(p, metaFile), b, 0644); err != nil {
 				return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(p, metaFile), err)
 			}
 		}

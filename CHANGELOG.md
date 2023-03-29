@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# v1.21.0-rc1 / 2023-03-21
+# v1.21.0-rc2 / 2023-03-29
 
 This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
@@ -11,7 +11,10 @@ Before upgrading to this feature release read carefully through these bullet poi
 - Starting from this release, the SplitStore feature is automatically activated on new nodes. However, for existing Lotus users, you need to explicitly configure SplitStore by uncommenting the `EnableSplitstore` option in your `config.toml` file. To enable SplitStore, set `EnableSplitstore=true`, and to disable it, set `EnableSplitstore=false`. **It's important to note that your Lotus node will not start unless this configuration is properly set. Set it to false if you are running a full archival node!**
 - This feature release requires a **minimum Go version of v1.19.7 or higher to successfully build Lotus**. Additionally, Go version v1.20 and higher is now also supported.
 - **Storage Providers:** The proofs libraries now have CUDA enabled by default, which requires you to install (CUDA)[https://lotus.filecoin.io/tutorials/lotus-miner/cuda/] if you haven't already done so. If you prefer to use OpenCL on your GPUs instead, you can use the `FFI_USE_OPENCL=1` flag when building from source. On the other hand, if you want to disable GPUs altogether, you can use the `FFI_NO_GPU=1` environment variable when building from source.
-- **Exchanges:** Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the by the FVM. **Please make sure to read the `Execution trace format change` section carefully, as these are interface breaking changes**
+- **Storage Providers:** The `lotus-miner sectors extend` command has been refactored to the functionality of `lotus-miner sectors renew`. The issue where extions did not work has been fixed in this release candidate.
+- **Exchanges/Node operators/RPC-providers::** Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the by the FVM. **Please make sure to read the `Execution trace format change` section carefully, as these are interface breaking changes**
+- **Syncing issues:** If you have been struggling with syncing issues in normal operations you can try to adjust the amount of threads used for more concurrent FMV execution through via the `LOTUS_FVM_CONCURRENCY` enviroment variable. It is set to 4 threads by default. Recommended formula for concurrency == YOUR_RAM/4 , but max is 128. If you are a Storage Provider and are pushing many messages within a short period of time, exporting `LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS=1` will also help with keeping in sync.
+- **Catching up from a Snapshot:** Users have noticed that catching up sync from a snapshot is taking a lot longer these day. This is largely related to the built-in market actor consuming a lot of computational demand for block validation. A FIP for a short-term mitigation for this is currently in Last Call and will be included network version 19 upgrade if accepted. You [can read the FIP here.](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md)
 
 ## Highlights
 
@@ -26,8 +29,10 @@ SplitStore also has some new configuration settings that you can set in your con
 
 The SplitStore also has two new commands:
 
-- `lotus chain prune hot` will run an online (badger vlog) garbage collection on the hotstore.
-- `lotus chain prune hot-moving` will run an moving garbage collection the hotstore
+- `lotus chain prune hot` is a much less resource-intensive GC and is best suited for situations where you don't have the spare disk space for a full GC.
+- `lotus chain prune hot-moving` will run a full moving garbage collection of the hotstore. This commands create a new hotstore before deleting the old one so you need working room in the hotstore directory. The current size of a fully GC'd hotstore is around 295 GiB so you need to make sure you have at least that available.
+
+You can read more about the new SplitStore commands in [the documentation](https://lotus.filecoin.io/lotus/configure/splitstore/#manual-chain-store-garbage-collection).
 
 **RPC API improvements**
 
@@ -98,6 +103,12 @@ The `lotus-Miner sector list` is now running in parallel - which should speed up
 
 ## Improvements
 
+- backport: fix: miner: correctly count sector extensions (10555) ([filecoin-project/lotus#10555](https://github.com/filecoin-project/lotus/pull/10555))
+   - Fixes the issue with sector extensions.
+- fix: proving: Initialize slice with with same length as partition (#10574) ([filecoin-project/lotus#10574])(https://github.com/filecoin-project/lotus/pull/10574)
+   - Fixes an issue where `lotus-miner proving compute window-post` paniced when trying to make skipped sectors human readable.
+- feat: stmgr: speed up calculation of genesis circ supply (#10553) ([filecoin-project/lotus#10553])(https://github.com/filecoin-project/lotus/pull/10553)
+- perf: eth: gas estimate set applyTsMessages false (#10546) ([filecoin-project/lotus#10456](https://github.com/filecoin-project/lotus/pull/10546))
 - feat: config: Force existing users to opt into new defaults (#10488) ([filecoin-project/lotus#10488](https://github.com/filecoin-project/lotus/pull/10488))
    - Force existing users to opt into the new SplitStore defaults.
 - fix: splitstore: Demote now common logs (#10516) ([filecoin-project/lotus#10516](https://github.com/filecoin-project/lotus/pull/10516))
@@ -171,6 +182,9 @@ The `lotus-Miner sector list` is now running in parallel - which should speed up
 - github.com/filecoin-project/go-fil-markets (v1.25.2 -> v1.27.0-rc1):
 - github.com/filecoin-project/go-jsonrpc (v0.2.1 -> v0.2.3):
 - github.com/filecoin-project/go-statemachine (v1.0.2 -> v1.0.3):
+- github.com/ipfs/go-cid (v0.3.2 -> v0.4.0):
+- github.com/ipfs/go-libipfs (v0.5.0 -> v0.7.0):
+- github.com/ipfs/go-path (v0.3.0 -> v0.3.1):
 - deps: update go-libp2p-pubsub to v0.9.3 ([filecoin-project/lotus#10483](https://github.com/filecoin-project/lotus/pull/10483))
 - deps: Update go-jsonrpc to v0.2.2 ([filecoin-project/lotus#10395](https://github.com/filecoin-project/lotus/pull/10395))
 - Update to go-data-transfer v2 and libp2p, still wip ([filecoin-project/lotus#10382](https://github.com/filecoin-project/lotus/pull/10382))
@@ -178,6 +192,7 @@ The `lotus-Miner sector list` is now running in parallel - which should speed up
 - chore: node: migrate go-bitswap to go-libipfs/bitswap ([filecoin-project/lotus#10138](https://github.com/filecoin-project/lotus/pull/10138))
 - chore: all: bump go-libipfs to replace go-block-format ([filecoin-project/lotus#10126](https://github.com/filecoin-project/lotus/pull/10126))
 - chore: market: Upgrade to index-provider 0.10.0 ([filecoin-project/lotus#9981](https://github.com/filecoin-project/lotus/pull/9981))
+- chore: all: bump go-libipfs ([filecoin-project/lotus#10563](https://github.com/filecoin-project/lotus/pull/10563))
 
 ## Others
 - Update service_developer_bug_report.yml ([filecoin-project/lotus#10321](https://github.com/filecoin-project/lotus/pull/10321))
@@ -207,6 +222,7 @@ The `lotus-Miner sector list` is now running in parallel - which should speed up
 - chore: update ffi to increase execution parallelism (#10480) ([filecoin-project/lotus#10480](https://github.com/filecoin-project/lotus/pull/10480))
 - chore: update the FFI for release (#10435) ([filecoin-project/lotus#10444](https://github.com/filecoin-project/lotus/pull/10444))
 - build: bump version to v1.21.0-dev ([filecoin-project/lotus#10249](https://github.com/filecoin-project/lotus/pull/10249))
+- build: docker: Update GO-version (#10591) ([filecoin-project/lotus#10249](https://github.com/filecoin-project/lotus/pull/10591))
 - chore: merge release/v1.20.0 into master ([filecoin-project/lotus#10184](https://github.com/filecoin-project/lotus/pull/10184))
 - docs: API Gateway: patch documentation note about make gen command ([filecoin-project/lotus#10422](https://github.com/filecoin-project/lotus/pull/10422))
 - chore: docs: fix docs typos ([filecoin-project/lotus#10155](https://github.com/filecoin-project/lotus/pull/10155))

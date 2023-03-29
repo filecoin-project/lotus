@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
@@ -47,7 +46,7 @@ func FromFile(path string, opts ...LoadCfgOpt) (interface{}, error) {
 		return nil, err
 	}
 	defer file.Close() //nolint:errcheck,staticcheck // The file is RO
-	cfgBs, err := ioutil.ReadAll(file)
+	cfgBs, err := io.ReadAll(file)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to read config for validation checks %w", err)
 	}

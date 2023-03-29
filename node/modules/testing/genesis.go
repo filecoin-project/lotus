@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/ipfs/go-blockservice"
@@ -60,7 +59,7 @@ func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore
 				return nil, err
 			}
 
-			fdata, err := ioutil.ReadFile(genesisTemplate)
+			fdata, err := os.ReadFile(genesisTemplate)
 			if err != nil {
 				return nil, xerrors.Errorf("reading preseals json: %w", err)
 			}

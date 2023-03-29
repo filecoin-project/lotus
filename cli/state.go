@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
@@ -1090,7 +1089,7 @@ var StateComputeStateCmd = &cli.Command{
 
 		var stout *lapi.ComputeStateOutput
 		if csofile := cctx.String("compute-state-output"); csofile != "" {
-			data, err := ioutil.ReadFile(csofile)
+			data, err := os.ReadFile(csofile)
 			if err != nil {
 				return err
 			}

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -67,7 +66,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 	// ensure contents of the initial input file and the output file are identical.
 	fo, err := os.Open(tmpOutput)
 	require.NoError(t, err)
-	bz2, err := ioutil.ReadAll(fo)
+	bz2, err := io.ReadAll(fo)
 	require.NoError(t, err)
 	require.NoError(t, fo.Close())
 	require.Equal(t, inputContents, bz2)
@@ -107,7 +106,7 @@ func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	// ensure contents of the initial input file and the output file are identical.
 	fo, err := os.Open(tmpOutput)
 	require.NoError(t, err)
-	bz2, err := ioutil.ReadAll(fo)
+	bz2, err := io.ReadAll(fo)
 	require.NoError(t, err)
 	require.NoError(t, fo.Close())
 	require.Equal(t, inputContents, bz2)
