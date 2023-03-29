@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -329,7 +328,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	}
 	defer f.Close() //nolint: errcheck // Read only op
 
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to read %q: %w", p, err)
 	}
@@ -354,7 +353,7 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 	}
 	defer f.Close() //nolint: errcheck // Read only op
 
-	tb, err := ioutil.ReadAll(f)
+	tb, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -582,7 +581,7 @@ func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	}
 
 	// write buffer of TOML bytes to config file
-	err = ioutil.WriteFile(fsr.configPath, buf.Bytes(), 0644)
+	err = os.WriteFile(fsr.configPath, buf.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
@@ -635,14 +634,14 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
+	return os.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
 }
 
 func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPIToken), token, 0600)
+	return os.WriteFile(fsr.join(fsAPIToken), token, 0600)
 }
 
 func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
@@ -711,7 +710,7 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	}
 	defer file.Close() //nolint: errcheck // read only op
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return types.KeyInfo{}, xerrors.Errorf("reading key '%s': %w", name, err)
 	}
@@ -760,7 +759,7 @@ func (fsr *fsLockedRepo) put(rawName string, info types.KeyInfo, retries int) er
 		return xerrors.Errorf("encoding key '%s': %w", name, err)
 	}
 
-	err = ioutil.WriteFile(keyPath, keyData, 0600)
+	err = os.WriteFile(keyPath, keyData, 0600)
 	if err != nil {
 		return xerrors.Errorf("writing key '%s': %w", name, err)
 	}

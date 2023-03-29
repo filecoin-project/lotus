@@ -3,7 +3,6 @@ package kit
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -67,7 +66,7 @@ func (tm *TestWorker) AddStorage(ctx context.Context, t *testing.T, conf func(*s
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(filepath.Join(p, metaFile), b, 0644)
+	err = os.WriteFile(filepath.Join(p, metaFile), b, 0644)
 	require.NoError(t, err)
 
 	err = tm.StorageAddLocal(ctx, p)

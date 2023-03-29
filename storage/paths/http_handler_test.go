@@ -2,7 +2,7 @@ package paths_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -378,7 +378,7 @@ func TestRemoteGetSector(t *testing.T) {
 
 			if !tc.isDir {
 				// create file
-				tempFile, err := ioutil.TempFile("", "TestRemoteGetSector-")
+				tempFile, err := os.CreateTemp("", "TestRemoteGetSector-")
 				require.NoError(t, err)
 
 				defer func() {
@@ -390,7 +390,7 @@ func TestRemoteGetSector(t *testing.T) {
 				path = tempFile.Name()
 			} else {
 				// create dir with a file
-				tempFile2, err := ioutil.TempFile("", "TestRemoteGetSector-")
+				tempFile2, err := os.CreateTemp("", "TestRemoteGetSector-")
 				require.NoError(t, err)
 				defer func() {
 					_ = os.Remove(tempFile2.Name())
@@ -435,7 +435,7 @@ func TestRemoteGetSector(t *testing.T) {
 				_ = resp.Body.Close()
 			}()
 
-			bz, err := ioutil.ReadAll(resp.Body)
+			bz, err := io.ReadAll(resp.Body)
 			require.NoError(t, err)
 
 			// assert expected status code

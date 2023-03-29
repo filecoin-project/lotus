@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/ipfs/go-blockservice"
@@ -68,7 +67,7 @@ func CreateFilestore(ctx context.Context, srcPath string, dstPath string) (cid.C
 		return cid.Undef, xerrors.Errorf("failed to create reader path file: %w", err)
 	}
 
-	f, err := ioutil.TempFile("", "")
+	f, err := os.CreateTemp("", "")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create temp file: %w", err)
 	}

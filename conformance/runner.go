@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
@@ -328,7 +327,7 @@ func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.
 // writeStateToTempCAR writes the provided roots to a temporary CAR that'll be
 // cleaned up via t.Cleanup(). It returns the full path of the temp file.
 func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, error) {
-	tmp, err := ioutil.TempFile("", "lotus-tests-*.car")
+	tmp, err := os.CreateTemp("", "lotus-tests-*.car")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file to dump CAR for diffing: %w", err)
 	}

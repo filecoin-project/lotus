@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -196,7 +195,7 @@ func validateDMUnixFile(r io.Reader) error {
 }
 
 func testDMExportAsCar(ctx context.Context, client *kit.TestFullNode, expDirective api.ExportRef, tempDir string) error {
-	out, err := ioutil.TempFile(tempDir, "exp-test")
+	out, err := os.CreateTemp(tempDir, "exp-test")
 	if err != nil {
 		return err
 	}
@@ -214,7 +213,7 @@ func testDMExportAsCar(ctx context.Context, client *kit.TestFullNode, expDirecti
 	return validateDMCar(out)
 }
 func tesV0RetrievalAsCar(ctx context.Context, client *kit.TestFullNode, retOrder api0.RetrievalOrder, tempDir string) error {
-	out, err := ioutil.TempFile(tempDir, "exp-test")
+	out, err := os.CreateTemp(tempDir, "exp-test")
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,7 @@ package sealer
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -346,7 +346,7 @@ func (p *pieceProviderTestHarness) readPiece(t *testing.T, offset storiface.Unpa
 	defer func() { _ = rd.Close() }()
 
 	// Make sure the input matches the output
-	readData, err := ioutil.ReadAll(rd)
+	readData, err := io.ReadAll(rd)
 	require.NoError(t, err)
 	require.Equal(t, expectedBytes, readData)
 }

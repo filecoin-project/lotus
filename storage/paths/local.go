@@ -3,7 +3,6 @@ package paths
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"math/bits"
 	"math/rand"
 	"os"
@@ -151,7 +150,7 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 	st.localLk.Lock()
 	defer st.localLk.Unlock()
 
-	mb, err := ioutil.ReadFile(filepath.Join(p, MetaFile))
+	mb, err := os.ReadFile(filepath.Join(p, MetaFile))
 	if err != nil {
 		return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
 	}
@@ -247,7 +246,7 @@ func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMiss
 	defer st.localLk.Unlock()
 
 	for id, p := range st.paths {
-		mb, err := ioutil.ReadFile(filepath.Join(p.local, MetaFile))
+		mb, err := os.ReadFile(filepath.Join(p.local, MetaFile))
 		if err != nil {
 			return xerrors.Errorf("reading storage metadata for %s: %w", p.local, err)
 		}

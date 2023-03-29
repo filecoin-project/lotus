@@ -3,7 +3,6 @@ package paths
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -63,7 +62,7 @@ func (t *TestingLocalStorage) init(subpath string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(metaFile, mb, 0644); err != nil {
+	if err := os.WriteFile(metaFile, mb, 0644); err != nil {
 		return err
 	}
 
