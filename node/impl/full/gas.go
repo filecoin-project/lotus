@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"math/rand"
+	"os"
 	"sort"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -276,10 +277,15 @@ func gasEstimateCallWithGas(
 		priorMsgs = append(priorMsgs, m)
 	}
 
+	applyTsMessages := true
+	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
+		applyTsMessages = false
+	}
+
 	// Try calling until we find a height with no migration.
 	var res *api.InvocResult
 	for {
-		res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts)
+		res, err = smgr.CallWithGas(ctx, &msg, priorMsgs, ts, applyTsMessages)
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
