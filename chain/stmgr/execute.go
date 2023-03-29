@@ -131,15 +131,17 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 	tsKey := ts.Key()
 
 	// check if we have the trace for this tipset in the cache
-	sm.execTraceCacheLock.Lock()
-	if entry, ok := sm.execTraceCache.Get(tsKey); ok {
-		// we have to make a deep copy since caller can modify the invocTrace
-		// and we don't want that to change what we store in cache
-		invocTraceCopy := makeDeepCopy(entry.invocTrace)
+	if defaultExecTraceCacheSize > 0 {
+		sm.execTraceCacheLock.Lock()
+		if entry, ok := sm.execTraceCache.Get(tsKey); ok {
+			// we have to make a deep copy since caller can modify the invocTrace
+			// and we don't want that to change what we store in cache
+			invocTraceCopy := makeDeepCopy(entry.invocTrace)
+			sm.execTraceCacheLock.Unlock()
+			return entry.postStateRoot, invocTraceCopy, nil
+		}
 		sm.execTraceCacheLock.Unlock()
-		return entry.postStateRoot, invocTraceCopy, nil
 	}
-	sm.execTraceCacheLock.Unlock()
 
 	var invocTrace []*api.InvocResult
 	st, err := sm.ExecutionTraceWithMonitor(ctx, ts, &InvocationTracer{trace: &invocTrace})
@@ -147,11 +149,13 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 		return cid.Undef, nil, err
 	}
 
-	invocTraceCopy := makeDeepCopy(invocTrace)
+	if defaultExecTraceCacheSize > 0 {
+		invocTraceCopy := makeDeepCopy(invocTrace)
 
-	sm.execTraceCacheLock.Lock()
-	sm.execTraceCache.Add(tsKey, tipSetCacheEntry{st, invocTraceCopy})
-	sm.execTraceCacheLock.Unlock()
+		sm.execTraceCacheLock.Lock()
+		sm.execTraceCache.Add(tsKey, tipSetCacheEntry{st, invocTraceCopy})
+		sm.execTraceCacheLock.Unlock()
+	}
 
 	return st, invocTrace, nil
 }
