@@ -33,60 +33,32 @@ var execution *executionEnv
 
 // implementation of vm executor with simple sanity check preventing use after free.
 type vmExecutor struct {
-	lk    sync.RWMutex
-	vmi   Interface
-	token *executionToken
-	done  bool
+	vmi  Interface
+	lane ExecutionLane
 }
 
-var _ Executor = (*vmExecutor)(nil)
+var _ Interface = (*vmExecutor)(nil)
 
-func newVMExecutor(vmi Interface, token *executionToken) Executor {
-	return &vmExecutor{vmi: vmi, token: token}
+func newVMExecutor(vmi Interface, lane ExecutionLane) Interface {
+	return &vmExecutor{vmi: vmi, lane: lane}
 }
 
 func (e *vmExecutor) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
-	e.lk.RLock()
-	defer e.lk.RUnlock()
-
-	if e.done {
-		return nil, ErrExecutorDone
-	}
+	token := execution.getToken(e.lane)
+	defer token.Done()
 
 	return e.vmi.ApplyMessage(ctx, cmsg)
 }
 
 func (e *vmExecutor) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
-	e.lk.RLock()
-	defer e.lk.RUnlock()
-
-	if e.done {
-		return nil, ErrExecutorDone
-	}
+	token := execution.getToken(e.lane)
+	defer token.Done()
 
 	return e.vmi.ApplyImplicitMessage(ctx, msg)
 }
 
 func (e *vmExecutor) Flush(ctx context.Context) (cid.Cid, error) {
-	e.lk.RLock()
-	defer e.lk.RUnlock()
-
-	if e.done {
-		return cid.Undef, ErrExecutorDone
-	}
-
 	return e.vmi.Flush(ctx)
-}
-
-func (e *vmExecutor) Done() {
-	e.lk.Lock()
-	defer e.lk.Unlock()
-
-	if !e.done {
-		e.token.Done()
-		e.token = nil
-		e.done = true
-	}
 }
 
 type executionToken struct {

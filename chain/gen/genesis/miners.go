@@ -88,7 +88,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		return big.Zero(), nil
 	}
 
-	newVM := func(base cid.Cid) (vm.Executor, error) {
+	newVM := func(base cid.Cid) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          0,
@@ -108,8 +108,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 	if err != nil {
 		return cid.Undef, fmt.Errorf("creating vm: %w", err)
 	}
-	// Note: genesisVm is mutated, so this has to happen in a deferred func; go horror show.
-	defer func() { genesisVm.Done() }()
 
 	if len(miners) == 0 {
 		return cid.Undef, xerrors.New("no genesis miners")
@@ -340,7 +338,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
 		}
 
-		genesisVm.Done()
 		genesisVm, err = newVM(nh)
 		if err != nil {
 			return cid.Undef, fmt.Errorf("creating new vm: %w", err)
@@ -413,7 +410,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 					return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
 				}
 
-				genesisVm.Done()
 				genesisVm, err = newVM(nh)
 				if err != nil {
 					return cid.Undef, fmt.Errorf("creating new vm: %w", err)
@@ -521,7 +517,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						return cid.Undef, xerrors.Errorf("flushing state tree: %w", err)
 					}
 
-					genesisVm.Done()
 					genesisVm, err = newVM(nh)
 					if err != nil {
 						return cid.Undef, fmt.Errorf("creating new vm: %w", err)
