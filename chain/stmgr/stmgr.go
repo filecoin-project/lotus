@@ -80,9 +80,9 @@ func init() {
 		letc, err := strconv.Atoi(s)
 		if err != nil {
 			log.Errorf("failed to parse 'LOTUS_EXEC_TRACE_CACHE' env var: %s", err)
+		} else {
+			defaultExecTraceCacheSize = letc
 		}
-
-		defaultExecTraceCacheSize = letc
 	}
 }
 
