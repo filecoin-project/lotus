@@ -141,4 +141,5 @@ var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjygu
 
 // CBDeliveryDelay is the delay before deliver in the synchronous consistent broadcast.
 // This determines the wait time for the detection of potential equivocations.
-const CBDeliveryDelay = 2 * time.Second
+// It is a variable instead of a constant so it can be conveniently configured in tests
+var CBDeliveryDelay = 2 * time.Second
