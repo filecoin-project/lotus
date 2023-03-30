@@ -125,6 +125,8 @@ func (e *executionEnv) putToken(token *executionToken) {
 	e.available++
 	e.reserved += token.reserved
 
+	// Note: Signal is unsound, because a priority token could wake up a non-priority
+	// goroutnie and lead to deadlock. So Broadcast it must be.
 	e.cond.Broadcast()
 
 	metricsDown(metrics.VMExecutionRunning, token.lane)
