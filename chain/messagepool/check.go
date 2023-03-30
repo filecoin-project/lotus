@@ -35,6 +35,7 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 	mp.lk.RLock()
 	mset, ok := mp.pending[from]
 	if ok {
+		msgs = make([]*types.Message, 0, len(mset.msgs))
 		for _, sm := range mset.msgs {
 			msgs = append(msgs, &sm.Message)
 		}
