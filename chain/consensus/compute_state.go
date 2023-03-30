@@ -192,7 +192,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	cronGas = 0
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
 
-	// TODO reorg the code to minimize the execution critical section
 	vmi, err := makeVm(pstate, epoch, ts.MinTimestamp())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
@@ -259,7 +258,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
-	vmDoCron := partDone()
+	vmCron := partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyFlush)
 
 	rectarr := blockadt.MakeEmptyArray(sm.ChainStore().ActorStore(ctx))
@@ -298,7 +297,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	vmFlush := partDone()
 	partDone = func() time.Duration { return time.Duration(0) }
 
-	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmDoCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
+	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
 
 	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
 		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))))
