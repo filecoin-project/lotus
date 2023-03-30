@@ -26,9 +26,7 @@ const (
 	DefaultPriorityExecutionLanes = 2
 )
 
-var ErrExecutorDone = errors.New("executor has been released")
-
-// the execution environment; see below for definition, methods, and initilization
+// the execution environment; see below for definition, methods, and initialization
 var execution *executionEnv
 
 // implementation of vm executor with simple sanity check preventing use after free.
