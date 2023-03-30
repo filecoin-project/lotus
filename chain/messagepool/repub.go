@@ -31,9 +31,16 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
+
+	//TODO do we need curTsLk here?
 	mp.curTsLk.Lock()
 	mp.lk.Lock()
 	mp.republished = nil // clear this to avoid races triggering an early republish
+	mp.lk.Unlock()
+	mp.curTsLk.Unlock()
+
+	//TODO is no curTsLk here acceptable?
+	mp.lk.RLock()
 	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
 		mset, ok, err := mp.getPendingMset(ctx, actor)
 		if err != nil {
@@ -54,9 +61,7 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		}
 		pending[actor] = pend
 	})
-
-	mp.lk.Unlock()
-	mp.curTsLk.Unlock()
+	mp.lk.RUnlock()
 
 	if len(pending) == 0 {
 		return nil
