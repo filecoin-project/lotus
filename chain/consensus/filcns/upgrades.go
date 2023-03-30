@@ -1767,9 +1767,9 @@ func upgradeActorsV11Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actorstypes.Version11)
+	manifest, ok := actors.GetManifest(actorstypes.Version9)
 	if !ok {
-		return cid.Undef, xerrors.Errorf("no manifest CID for v9 upgrade")
+		return cid.Undef, xerrors.Errorf("no manifest CID for v11 upgrade")
 	}
 
 	// Perform the migration
