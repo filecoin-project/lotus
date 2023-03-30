@@ -468,7 +468,7 @@ func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq 
 		case <-ctx.Done():
 			err = ctx.Err()
 		case <-checkTick.C:
-			check()
+			err = check()
 			checkTick.Reset(checkFreq)
 		default:
 			err = b.db.RunValueLogGC(threshold)
