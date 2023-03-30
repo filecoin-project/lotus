@@ -102,7 +102,7 @@ var migrationsCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		bs, err := lkrepo.Blockstore(ctx, repo.HotBlockstore)
 		if err != nil {
 			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
@@ -169,6 +169,7 @@ var migrationsCmd = &cli.Command{
 			}
 
 			preMigrationTime := time.Since(startTime)
+			fmt.Println("completed premigration, took ", preMigrationTime)
 
 			startTime = time.Now()
 
@@ -183,7 +184,7 @@ var migrationsCmd = &cli.Command{
 				return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
 					newCid2)
 			}
-			fmt.Println("completed premigration, took ", preMigrationTime)
+
 			fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
 		}
 
@@ -207,6 +208,8 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 		return filcns.UpgradeActorsV9, filcns.PreUpgradeActorsV9, checkNv17Invariants, nil
 	case network.Version18:
 		return filcns.UpgradeActorsV10, filcns.PreUpgradeActorsV10, checkNv18Invariants, nil
+	case network.Version19:
+		return filcns.UpgradeActorsV11, filcns.PreUpgradeActorsV11, checkNv19Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
 	}
@@ -215,6 +218,11 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, stmgr.ExecMonitor, cid.Cid, abi.ChainEpoch, *types.TipSet) (cid.Cid, error)
 type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
 type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
+
+func checkNv19Invariants(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error {
+	fmt.Printf("noop -- nv19 shed invariant check not wired up yet")
+	return nil
+}
 
 func checkNv18Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 	actorStore := store.ActorStore(ctx, bs)
