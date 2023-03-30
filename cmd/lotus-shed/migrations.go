@@ -104,11 +104,7 @@ var migrationsCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-<<<<<<< Updated upstream
-		bs, err := lkrepo.Blockstore(ctx, repo.HotBlockstore)
-=======
 		path, err := lkrepo.SplitstorePath()
->>>>>>> Stashed changes
 		if err != nil {
 			return err
 		}
