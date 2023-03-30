@@ -242,7 +242,7 @@
     #
     # type: uint64
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_HOTSTOREMAXSPACETARGET
-    #HotStoreMaxSpaceTarget = 0
+    #HotStoreMaxSpaceTarget = 650000000000
 
     # When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
     # exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold
