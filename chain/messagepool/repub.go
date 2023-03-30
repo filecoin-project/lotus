@@ -20,17 +20,18 @@ const repubMsgLimit = 30
 var RepublishBatchDelay = 100 * time.Millisecond
 
 func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
-	mp.curTsLk.Lock()
+	mp.curTsLk.RLock()
 	ts := mp.curTs
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
+	mp.curTsLk.RUnlock()
 	if err != nil {
-		mp.curTsLk.Unlock()
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
+	mp.curTsLk.Lock()
 	mp.lk.Lock()
 	mp.republished = nil // clear this to avoid races triggering an early republish
 	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
