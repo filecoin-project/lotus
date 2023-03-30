@@ -22,9 +22,9 @@ var RepublishBatchDelay = 100 * time.Millisecond
 func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	mp.curTsLk.RLock()
 	ts := mp.curTs
+	mp.curTsLk.RUnlock()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
-	mp.curTsLk.RUnlock()
 	if err != nil {
 		return xerrors.Errorf("computing basefee: %w", err)
 	}
