@@ -367,7 +367,7 @@ func AddrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, e
 		pis = append(pis, pi)
 	}
 
-	return pis, err
+	return pis, nil
 }
 
 var NetId = &cli.Command{
