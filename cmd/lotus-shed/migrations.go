@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -102,16 +104,38 @@ var migrationsCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
+<<<<<<< Updated upstream
 		bs, err := lkrepo.Blockstore(ctx, repo.HotBlockstore)
+=======
+		path, err := lkrepo.SplitstorePath()
+>>>>>>> Stashed changes
 		if err != nil {
-			return fmt.Errorf("failed to open blockstore: %w", err)
+			return err
 		}
 
+		path = filepath.Join(path, "hot.badger")
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return err
+		}
+
+		opts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, path, lkrepo.Readonly())
+		if err != nil {
+			return err
+		}
+
+		bs, err := badgerbs.Open(opts)
+		if err != nil {
+			return err
+		}
+
+		// bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		// if err != nil {
+		// 	return fmt.Errorf("failed to open blockstore: %w", err)
+		// }
+
 		defer func() {
-			if c, ok := bs.(io.Closer); ok {
-				if err := c.Close(); err != nil {
-					log.Warnf("failed to close blockstore: %s", err)
-				}
+			if err := bs.Close(); err != nil {
+				log.Warnf("failed to close blockstore: %s", err)
 			}
 		}()
 
