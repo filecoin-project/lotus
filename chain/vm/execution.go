@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-	"errors"
 	"os"
 	"strconv"
 	"sync"
@@ -154,23 +153,18 @@ func metricsAdjust(metric *stats.Int64Measure, lane ExecutionLane, delta int) {
 }
 
 func init() {
-	var available, priority int
 	var err error
 
-	concurrency := os.Getenv("LOTUS_FVM_CONCURRENCY")
-	if concurrency == "" {
-		available = DefaultAvailableExecutionLanes
-	} else {
+	available := DefaultAvailableExecutionLanes
+	if concurrency := os.Getenv("LOTUS_FVM_CONCURRENCY"); concurrency != "" {
 		available, err = strconv.Atoi(concurrency)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	reserved := os.Getenv("LOTUS_FVM_CONCURRENCY_RESERVED")
-	if reserved == "" {
-		priority = DefaultPriorityExecutionLanes
-	} else {
+	priority := DefaultPriorityExecutionLanes
+	if reserved := os.Getenv("LOTUS_FVM_CONCURRENCY_RESERVED"); reserved != "" {
 		priority, err = strconv.Atoi(reserved)
 		if err != nil {
 			panic(err)
