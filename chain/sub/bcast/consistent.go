@@ -25,7 +25,7 @@ const (
 	GcLookback = 5
 	// GcDeepCheck determines the number of epochs in the past that we
 	// we try cleaning in the deep garbage collection round.
-	GcDeepCheck = 2880 // (24h*60m*60s)/30s per block
+	GcDeepCheck = 2880 // (24h*60m*60s)/30s per epoch
 	// GcDeepInterval determines after the number of epochs for which
 	// we are going to start a deeper garbage collection round.
 	GcDeepInterval = 1000
