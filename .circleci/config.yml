@@ -253,6 +253,63 @@ jobs:
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
 
+  test-race:
+    description: |
+      Run tests with go race detector.
+    working_directory: ~/lotus
+    parameters: &test-params
+      executor:
+        type: executor
+        default: golang
+      go-test-flags:
+        type: string
+        default: "-race -timeout 40m"
+        description: Flags passed to go test.
+      target:
+        type: string
+        default: "./..."
+        description: Import paths of packages to be tested.
+      proofs-log-test:
+        type: string
+        default: "0"
+      get-params:
+        type: boolean
+        default: false
+      suite:
+        type: string
+        default: unit
+        description: Test suite name to report to CircleCI.
+    executor: << parameters.executor >>
+    steps:
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
+      - when:
+          condition: << parameters.get-params >>
+          steps:
+            - download-params
+      - run:
+          name: go test
+          environment:
+            TEST_RUSTPROOFS_LOGS: << parameters.proofs-log-test >>
+            SKIP_CONFORMANCE: "1"
+            LOTUS_SRC_DIR: /home/circleci/project
+          command: |
+            mkdir -p /tmp/test-reports/<< parameters.suite >>
+            mkdir -p /tmp/test-artifacts
+            gotestsum \
+              --format standard-verbose \
+              --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
+              --packages="<< parameters.target >>" \
+              -- << parameters.go-test-flags >>
+          no_output_timeout: 30m
+      - store_test_results:
+          path: /tmp/test-reports
+      - store_artifacts:
+          path: /tmp/test-artifacts/<< parameters.suite >>.json
+
+
   build-linux-amd64:
     executor: golang
     steps:
@@ -1272,3 +1329,9 @@ workflows:
           channel: nightly
           network: debug
           push: true
+      - test-race:
+          name: "Test with race detector"
+          requires:
+            - build
+
+
