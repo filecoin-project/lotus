@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	mutil "github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -104,6 +105,11 @@ var migrationsCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
+		cold, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		if err != nil {
+			return fmt.Errorf("failed to open universal blockstore %w", err)
+		}
+
 		path, err := lkrepo.SplitstorePath()
 		if err != nil {
 			return err
@@ -119,26 +125,28 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		bs, err := badgerbs.Open(opts)
+		hot, err := badgerbs.Open(opts)
 		if err != nil {
 			return err
 		}
-
-		// bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
-		// if err != nil {
-		// 	return fmt.Errorf("failed to open blockstore: %w", err)
-		// }
-
-		defer func() {
-			if err := bs.Close(); err != nil {
-				log.Warnf("failed to close blockstore: %s", err)
-			}
-		}()
 
 		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}
+
+		cfg := &splitstore.Config{}
+		ss, err := splitstore.Open(path, mds, hot, cold, cfg)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := ss.Close(); err != nil {
+				log.Warnf("failed to close blockstore: %s", err)
+
+			}
+		}()
+		bs := ss
 
 		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
