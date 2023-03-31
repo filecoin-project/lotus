@@ -1749,8 +1749,8 @@ func upgradeActorsV11Common(
 	store := store.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	// XXX: using different bundle since we don't actually care about the code cids
-	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), actorstypes.Version9); err != nil {
+	// XXX: using noop bundle since we don't actually care about the code cids, will need to load v11 for real migration
+	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), actorstypes.Version10); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -1767,7 +1767,7 @@ func upgradeActorsV11Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actorstypes.Version9)
+	manifest, ok := actors.GetManifest(actorstypes.Version10)
 	if !ok {
 		return cid.Undef, xerrors.Errorf("no manifest CID for v11 upgrade")
 	}
