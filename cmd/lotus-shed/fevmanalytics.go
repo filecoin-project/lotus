@@ -122,6 +122,9 @@ var FevmBalanceCmd = &cli.Command{
 
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 
 		fmt.Println("balances in Eth contracts: ", balanceEvm)
 		fmt.Println("balances in Eth accounts: ", balanceEthAccount)
@@ -211,6 +214,10 @@ var FevmActorsCmd = &cli.Command{
 					return xerrors.Errorf("fail to load evm actor: %w", err)
 				}
 				bcid, err := e.GetBytecodeCID()
+				if err != nil {
+					return err
+				}
+
 				ea = append(ea, bcid)
 			}
 
@@ -224,6 +231,9 @@ var FevmActorsCmd = &cli.Command{
 
 			return nil
 		})
+		if err != nil {
+			return err
+		}
 
 		uniquesa := unique(ea)
 		fmt.Println("# of EVM contracts: ", EvmCount)
