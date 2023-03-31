@@ -1745,7 +1745,8 @@ func upgradeActorsV11Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config migration.Config,
 ) (cid.Cid, error) {
-	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
+	// XXX: use noop blockstore to measure compute costs while ignoring write costs for now
+	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewDiscardStore(sm.ChainStore().StateBlockstore()))
 	store := store.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
@@ -1790,15 +1791,15 @@ func upgradeActorsV11Common(
 	}
 
 	// Persist the new tree.
+	// XXX: skip flushing
+	// {
+	// 	from := buf
+	// 	to := buf.Read()
 
-	{
-		from := buf
-		to := buf.Read()
-
-		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
-			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
-		}
-	}
+	// 	if err := vm.Copy(ctx, from, to, newRoot); err != nil {
+	// 		return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+	// 	}
+	// }
 
 	return newRoot, nil
 }
