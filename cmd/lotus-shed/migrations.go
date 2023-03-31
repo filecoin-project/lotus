@@ -135,7 +135,10 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		cfg := &splitstore.Config{}
+		cfg := &splitstore.Config{
+			MarkSetType:       "map",
+			DiscardColdBlocks: true,
+		}
 		ss, err := splitstore.Open(path, mds, hot, cold, cfg)
 		if err != nil {
 			return err
