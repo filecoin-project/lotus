@@ -657,6 +657,16 @@
   # env var: LOTUS_SEALING_AGGREGATEABOVEBASEFEE
   #AggregateAboveBaseFee = "0.00000000032 FIL"
 
+  # When submitting several sector prove commit messages simultaneously, this option allows you to
+  # stagger the number of prove commits submitted per epoch
+  # This is done because gas estimates for ProveCommits are non deterministic and increasing as a large
+  # number of sectors get committed within the same epoch resulting in occasionally failed msgs.
+  # Submitting a smaller number of prove commits per epoch would reduce the possibility of failed msgs
+  #
+  # type: uint64
+  # env var: LOTUS_SEALING_MAXSECTORPROVECOMMITSSUBMITTEDPEREPOCH
+  #MaxSectorProveCommitsSubmittedPerEpoch = 0
+
   # type: uint64
   # env var: LOTUS_SEALING_TERMINATEBATCHMAX
   #TerminateBatchMax = 100
