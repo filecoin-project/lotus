@@ -143,4 +143,4 @@ var WhitelistedBlock = cid.Undef
 
 // Reducing the delivery delay for equivocation of
 // consistent broadcast to just half a second.
-var CBDeliveryDelay = 500 * time.Milisecond
+var CBDeliveryDelay = 500 * time.Millisecond
