@@ -114,12 +114,35 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 		return nil, xerrors.Errorf("failed to load state tree at tipset %s: %w", ts, err)
 	}
 
+	useIds := false
 	selectMsg := func(m *types.Message) (bool, error) {
 		var sender address.Address
 		if ts.Height() >= build.UpgradeHyperdriveHeight {
-			sender, err = st.LookupID(m.From)
-			if err != nil {
-				return false, err
+			if useIds {
+				sender, err = st.LookupID(m.From)
+				if err != nil {
+					return false, xerrors.Errorf("failed to resolve sender: %w", err)
+				}
+			} else {
+				if m.From.Protocol() != address.ID {
+					// we haven't been told to use IDs, just use the robust addr
+					sender = m.From
+				} else {
+					// uh-oh, we actually have an ID-sender!
+					useIds = true
+					for robust, nonce := range applied {
+						resolved, err := st.LookupID(robust)
+						if err != nil {
+							return false, xerrors.Errorf("failed to resolve sender: %w", err)
+						}
+						applied[resolved] = nonce
+					}
+
+					sender, err = st.LookupID(m.From)
+					if err != nil {
+						return false, xerrors.Errorf("failed to resolve sender: %w", err)
+					}
+				}
 			}
 		} else {
 			sender = m.From
