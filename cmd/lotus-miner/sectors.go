@@ -1392,6 +1392,12 @@ var sectorsRemoveCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
+		// Check if the sector exists
+		_, err = minerAPI.SectorsStatus(ctx, abi.SectorNumber(id), false)
+		if err != nil {
+			return xerrors.Errorf("sectorID %d has not been created yet: %w", id, err)
+		}
+
 		return minerAPI.SectorRemove(ctx, abi.SectorNumber(id))
 	},
 }
