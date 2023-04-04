@@ -188,7 +188,7 @@ type SplitStore struct {
 	cancel func()
 
 	outOfSync         int32 // for fast checking
-	chainSyncMx       sync.RWMutex
+	chainSyncMx       sync.Mutex
 	chainSyncCond     sync.Cond
 	chainSyncFinished bool // protected by chainSyncMx
 
