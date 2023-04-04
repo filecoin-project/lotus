@@ -917,8 +917,8 @@ func (s *SplitStore) waitForSync() {
 	if atomic.LoadInt32(&s.outOfSync) == 0 {
 		return
 	}
-	s.chainSyncMx.RLock()
-	defer s.chainSyncMx.RUnlock()
+	s.chainSyncMx.Lock()
+	defer s.chainSyncMx.Unlock()
 
 	for !s.chainSyncFinished {
 		s.chainSyncCond.Wait()
