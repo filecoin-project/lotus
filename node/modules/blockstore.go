@@ -31,6 +31,8 @@ func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 		}
 		copt := bstore.DefaultCacheOpts()
 		copt.HasARCCacheSize = 1 << 20
+		copt.HasBloomFilterSize = 0
+		copt.HasBloomFilterHashes = 0
 
 		rbs := bstore.NewBlockstoreNoPrefix(cds)
 

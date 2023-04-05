@@ -486,18 +486,10 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		if err != nil {
 			return xerrors.Errorf("open cassandra store: %w", err)
 		}
-		copt := bstore.DefaultCacheOpts()
-		copt.HasARCCacheSize = 1 << 20
 
 		rbs := bstore.NewBlockstoreNoPrefix(cds)
 
-		// only metadata cache
-		cbs, err := bstore.CachedBlockstore(context.TODO(), rbs, copt)
-		if err != nil {
-			return err
-		}
-
-		bs = blockstore.Adapt(cbs)
+		bs = blockstore.Adapt(rbs)
 	}
 
 	mds, err := lr.Datastore(ctx, "/metadata")

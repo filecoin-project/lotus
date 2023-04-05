@@ -74,7 +74,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 
 	s := cs.StateBlockstore()
 
-	parallelPuts := 5
+	parallelPuts := 50
 	putThrottle := make(chan error, parallelPuts)
 	for i := 0; i < parallelPuts; i++ {
 		putThrottle <- nil

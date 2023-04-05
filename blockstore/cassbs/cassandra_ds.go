@@ -2,6 +2,7 @@ package cassbs
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"github.com/gocql/gocql"
 	"github.com/ipfs/go-datastore"
@@ -15,11 +16,11 @@ type CassandraDatastore struct {
 	session *gocql.Session
 }
 
-var ReplicationFactor = 2
+var ReplicationFactor = 1
 
 func NewCassandraDS(connectString string) (*CassandraDatastore, error) {
 	cluster := gocql.NewCluster(connectString)
-	cluster.Consistency = gocql.LocalQuorum
+	cluster.Consistency = gocql.Quorum
 	session, err := cluster.CreateSession()
 	if err != nil {
 		return nil, fmt.Errorf("creating new Cassandra session: %w", err)
@@ -69,8 +70,12 @@ func setupSchema(session *gocql.Session, replicationFactor int) error {
 	return nil
 }
 
+func toCasKey(key datastore.Key) string {
+	return base64.StdEncoding.EncodeToString(key.Bytes())
+}
+
 func (cds *CassandraDatastore) Put(ctx context.Context, key datastore.Key, value []byte) error {
-	keyStr := key.String()
+	keyStr := toCasKey(key)
 	qry := `UPDATE lotus.chain SET value = ? WHERE key = ?`
 	if err := cds.session.Query(qry, value, keyStr).WithContext(ctx).Exec(); err != nil {
 		return fmt.Errorf("upserting key-value pair: %w", err)
@@ -79,7 +84,7 @@ func (cds *CassandraDatastore) Put(ctx context.Context, key datastore.Key, value
 }
 
 func (cds *CassandraDatastore) Delete(ctx context.Context, key datastore.Key) error {
-	keyStr := key.String()
+	keyStr := toCasKey(key)
 	qry := `DELETE FROM lotus.chain WHERE key = ?`
 	if err := cds.session.Query(qry, keyStr).WithContext(ctx).Exec(); err != nil {
 		return fmt.Errorf("deleting key: %w", err)
@@ -91,7 +96,7 @@ var _ datastore.Write = (*CassandraDatastore)(nil)
 
 func (cds *CassandraDatastore) Get(ctx context.Context, key datastore.Key) ([]byte, error) {
 	var value []byte
-	err := cds.session.Query("SELECT value FROM lotus.chain WHERE key = ?", key.String()).WithContext(ctx).Scan(&value)
+	err := cds.session.Query("SELECT value FROM lotus.chain WHERE key = ?", toCasKey(key)).WithContext(ctx).Scan(&value)
 	if err != nil {
 		if err == gocql.ErrNotFound {
 			return nil, datastore.ErrNotFound
@@ -103,7 +108,7 @@ func (cds *CassandraDatastore) Get(ctx context.Context, key datastore.Key) ([]by
 
 func (cds *CassandraDatastore) Has(ctx context.Context, key datastore.Key) (bool, error) {
 	var count int
-	err := cds.session.Query("SELECT COUNT(*) FROM lotus.chain WHERE key = ?", key.String()).WithContext(ctx).Scan(&count)
+	err := cds.session.Query("SELECT COUNT(*) FROM lotus.chain WHERE key = ?", toCasKey(key)).WithContext(ctx).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -133,7 +138,12 @@ func (cds *CassandraDatastore) Query(ctx context.Context, q query.Query) (query.
 		vs := string(v) // copy
 		v := []byte(vs)
 
-		entry := query.Entry{Key: k, Value: v}
+		k, err := base64.StdEncoding.DecodeString(k)
+		if err != nil {
+			return nil, xerrors.Errorf("decode key: %w", err)
+		}
+
+		entry := query.Entry{Key: string(k), Value: v}
 		entries = append(entries, entry)
 	}
 	sort.Slice(entries, func(i, j int) bool { // todo eww
@@ -176,13 +186,13 @@ type cassandraBatch struct {
 
 func (c *cassandraBatch) Put(ctx context.Context, key datastore.Key, value []byte) error {
 	statement := "UPDATE lotus.chain SET value = ? WHERE key = ?"
-	c.batch.Query(statement, value, key.String())
+	c.batch.Query(statement, value, toCasKey(key))
 	return nil
 }
 
 func (c *cassandraBatch) Delete(ctx context.Context, key datastore.Key) error {
 	statement := "DELETE FROM lotus.chain WHERE key = ?"
-	c.batch.Query(statement, key.String())
+	c.batch.Query(statement, toCasKey(key))
 	return nil
 }
 
