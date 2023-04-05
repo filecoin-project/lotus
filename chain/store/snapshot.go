@@ -60,7 +60,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	})
 }
 
-func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, error) {
+func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipSet, tail *types.BlockHeader, err error) {
 	// TODO: writing only to the state blockstore is incorrect.
 	//  At this time, both the state and chain blockstores are backed by the
 	//  universal store. When we physically segregate the stores, we will need
@@ -69,7 +69,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 
 	br, err := carv2.NewBlockReader(r)
 	if err != nil {
-		return nil, xerrors.Errorf("loadcar failed: %w", err)
+		return nil, nil, xerrors.Errorf("loadcar failed: %w", err)
 	}
 
 	s := cs.StateBlockstore()
@@ -80,27 +80,44 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 		putThrottle <- nil
 	}
 
+	nextTailCid := br.Roots[0]
+	var tailBlock types.BlockHeader
+	tailBlock.Height = abi.ChainEpoch(-1)
+
 	var buf []blocks.Block
 	for {
 		blk, err := br.Next()
 		if err != nil {
+
+			// we're at the end
 			if err == io.EOF {
 				if len(buf) > 0 {
 					if err := s.PutMany(ctx, buf); err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 				}
 
 				break
 			}
-			return nil, err
+			return nil, nil, err
 		}
 
+		// check for header block, looking for genesis
+		if blk.Cid() == nextTailCid && tailBlock.Height != 0 {
+			if err := tailBlock.UnmarshalCBOR(bytes.NewReader(blk.RawData())); err != nil {
+				return nil, nil, xerrors.Errorf("failed to unmarshal tail block: %w", err)
+			}
+			if len(tailBlock.Parents) > 0 {
+				nextTailCid = tailBlock.Parents[0]
+			}
+		}
+
+		// append to batch
 		buf = append(buf, blk)
 
 		if len(buf) > 1000 {
 			if lastErr := <-putThrottle; lastErr != nil { // consume one error to have the right to add one
-				return nil, lastErr
+				return nil, nil, lastErr
 			}
 
 			go func(buf []blocks.Block) {
@@ -113,13 +130,17 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	// check errors
 	for i := 0; i < parallelPuts; i++ {
 		if lastErr := <-putThrottle; lastErr != nil {
-			return nil, lastErr
+			return nil, nil, lastErr
 		}
+	}
+
+	if tailBlock.Height != 0 {
+		return nil, nil, xerrors.Errorf("expected tail block to have height 0 (genesis), got %d: %s", tailBlock.Height, tailBlock.Cid())
 	}
 
 	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(br.Roots...))
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+		return nil, nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
 
 	ts := root
@@ -135,10 +156,10 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	}
 
 	if err := cs.PersistTipsets(ctx, tssToPersist); err != nil {
-		return nil, xerrors.Errorf("failed to persist tipsets: %w", err)
+		return nil, nil, xerrors.Errorf("failed to persist tipsets: %w", err)
 	}
 
-	return root, nil
+	return root, &tailBlock, nil
 }
 
 type walkSchedTaskType int
