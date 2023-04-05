@@ -42,7 +42,7 @@ func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 			return nil, err
 		}
 
-		return blockstore.Adapt(cbs), nil
+		return blockstore.WithCache(blockstore.Adapt(cbs)), nil
 	}
 
 	bs, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.UniversalBlockstore)
