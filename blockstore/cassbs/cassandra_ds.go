@@ -26,6 +26,9 @@ func NewCassandraDS(connectString string) (*CassandraDatastore, error) {
 	cluster := gocql.NewCluster(connectString)
 	cluster.Consistency = gocql.Quorum
 	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 30}
+	cluster.Timeout = 30 * time.Second
+	cluster.ConnectTimeout = 30 * time.Second
+
 	session, err := cluster.CreateSession()
 	if err != nil {
 		return nil, fmt.Errorf("creating new Cassandra session: %w", err)
