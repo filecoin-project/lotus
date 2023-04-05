@@ -7,10 +7,14 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"os"
 	"sort"
+	"time"
 )
+
+var log = logging.Logger("casbs")
 
 type CassandraDatastore struct {
 	session *gocql.Session
@@ -21,6 +25,7 @@ var ReplicationFactor = 1
 func NewCassandraDS(connectString string) (*CassandraDatastore, error) {
 	cluster := gocql.NewCluster(connectString)
 	cluster.Consistency = gocql.Quorum
+	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 30}
 	session, err := cluster.CreateSession()
 	if err != nil {
 		return nil, fmt.Errorf("creating new Cassandra session: %w", err)
@@ -197,7 +202,18 @@ func (c *cassandraBatch) Delete(ctx context.Context, key datastore.Key) error {
 }
 
 func (c *cassandraBatch) Commit(ctx context.Context) error {
-	return c.session.ExecuteBatch(c.batch.WithContext(ctx))
+	var err error
+	for i := 0; i < 30; i++ {
+		err = c.session.ExecuteBatch(c.batch.WithContext(ctx))
+		if err == nil {
+			break
+		}
+
+		log.Warnf("error executing batch: %s", err)
+		time.Sleep(1 * time.Second)
+	}
+
+	return err
 }
 
 func (cds *CassandraDatastore) Batch(ctx context.Context) (datastore.Batch, error) {
