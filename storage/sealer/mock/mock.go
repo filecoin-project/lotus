@@ -350,10 +350,15 @@ func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.Actor
 		}
 	}
 
-	return generateFakePoSt(sectorInfo, abi.RegisteredSealProof.RegisteredWinningPoStProof, randomness), nil
+	ppt, err := sectorInfo[0].SealProof.RegisteredWinningPoStProof()
+	if err != nil {
+		panic(err)
+	}
+
+	return generateFakePoSt(sectorInfo, ppt, randomness), nil
 }
 
-func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, xSectorInfo []prooftypes.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
+func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, ppt abi.RegisteredPoStProof, xSectorInfo []prooftypes.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 
@@ -396,7 +401,7 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 		}
 	}
 
-	return generateFakePoSt(sectorInfo, abi.RegisteredSealProof.RegisteredWindowPoStProof, randomness), skipped, nil
+	return generateFakePoSt(sectorInfo, ppt, randomness), skipped, nil
 }
 
 func generateFakePoStProof(sectorInfo []prooftypes.SectorInfo, randomness abi.PoStRandomness) []byte {
@@ -414,15 +419,10 @@ func generateFakePoStProof(sectorInfo []prooftypes.SectorInfo, randomness abi.Po
 
 }
 
-func generateFakePoSt(sectorInfo []prooftypes.SectorInfo, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error), randomness abi.PoStRandomness) []prooftypes.PoStProof {
-	wp, err := rpt(sectorInfo[0].SealProof)
-	if err != nil {
-		panic(err)
-	}
-
+func generateFakePoSt(sectorInfo []prooftypes.SectorInfo, ppt abi.RegisteredPoStProof, randomness abi.PoStRandomness) []prooftypes.PoStProof {
 	return []prooftypes.PoStProof{
 		{
-			PoStProof:  wp,
+			PoStProof:  ppt,
 			ProofBytes: generateFakePoStProof(sectorInfo, randomness),
 		},
 	}
