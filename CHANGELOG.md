@@ -44,7 +44,7 @@ Node operators with higher memory specs can experiment with setting LOTUS_FVM_CO
 
 In this release there are four new expirmental scheduler assigners:
 
-- The `experiment-spread-qcount` - similar to the spread assigner but also takes nto account task counts which are in running/preparing/queued states.
+- The `experiment-spread-qcount` - similar to the spread assigner but also takes into account task counts which are in running/preparing/queued states.
 - The `experiment-spread-tasks` - similar to the spread assigner, but counts running tasks on a per-task-type basis
 - The `experiment-spread-tasks-qcount` -  similar to the spread assigner, but also takes into account task counts which are in running/preparing/queued states, as well as counting running tasks on a per-task-type basis. Check the results for this assigner on ([storage-only lotus-workers here](https://github.com/filecoin-project/lotus/issues/8566#issuecomment-1446978856)).
 - The `experiment-random` - In each schedule loop the assinger figures a set of all workers which can handle the task and then picks a random one. Check the results for this assigner on ([storage-only lotus-workers here](https://github.com/filecoin-project/lotus/issues/8566#issuecomment-1447064218)).
@@ -57,7 +57,7 @@ We have cleaned up some commands in the `lotus-worker` to make it less confusing
 
 **CLI speedups**
 
-The `lotus-Miner sector list` is now running in parallel - which should speed up the process from anywhere between 2x-10x+. You can tune it additionally with the `check-parallelism` option in the command. The `Lotus-Miner info` command also has a large speed improvement, as calls to the lotus legacy market has been removed.
+The `lotus-miner sector list` is now running in parallel - which should speed up the process from anywhere between 2x-10x+. You can tune it additionally with the `check-parallelism` option in the command. The `Lotus-Miner info` command also has a large speed improvement, as calls to the lotus legacy market has been removed.
 
 ## New features
 - feat: splitstore: limit moving gc threads (#10621) ([filecoin-project/lotus/#10621](https://github.com/filecoin-project/lotus/pull/10621))
