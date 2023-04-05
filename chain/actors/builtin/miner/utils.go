@@ -33,18 +33,18 @@ func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) 
 // new miner actors and new sectors
 func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.RegisteredSealProof, error) {
 	switch {
-	case nv < network.Version7:
+	case nv >= network.Version19:
 		switch ssize {
 		case 2 << 10:
-			return abi.RegisteredSealProof_StackedDrg2KiBV1, nil
+			return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
 		case 8 << 20:
-			return abi.RegisteredSealProof_StackedDrg8MiBV1, nil
+			return abi.RegisteredSealProof_StackedDrg8MiBV1_1, nil
 		case 512 << 20:
-			return abi.RegisteredSealProof_StackedDrg512MiBV1, nil
+			return abi.RegisteredSealProof_StackedDrg512MiBV1_1, nil
 		case 32 << 30:
-			return abi.RegisteredSealProof_StackedDrg32GiBV1, nil
+			return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
 		case 64 << 30:
-			return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
+			return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
 		default:
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
@@ -60,6 +60,21 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.
 			return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
 		case 64 << 30:
 			return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
+		default:
+			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+		}
+	case nv < network.Version7:
+		switch ssize {
+		case 2 << 10:
+			return abi.RegisteredSealProof_StackedDrg2KiBV1, nil
+		case 8 << 20:
+			return abi.RegisteredSealProof_StackedDrg8MiBV1, nil
+		case 512 << 20:
+			return abi.RegisteredSealProof_StackedDrg512MiBV1, nil
+		case 32 << 30:
+			return abi.RegisteredSealProof_StackedDrg32GiBV1, nil
+		case 64 << 30:
+			return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
 		default:
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
