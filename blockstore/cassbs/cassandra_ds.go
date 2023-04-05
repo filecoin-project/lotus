@@ -21,7 +21,7 @@ type CassandraDatastore struct {
 	session *gocql.Session
 }
 
-var ReplicationFactor = 1
+var ReplicationFactor = 2
 
 func NewCassandraDS(connectString string) (*CassandraDatastore, error) {
 	cluster := gocql.NewCluster(connectString)
