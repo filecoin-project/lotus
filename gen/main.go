@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
@@ -37,15 +36,11 @@ func main() {
 		types.StateInfo0{},
 		types.Event{},
 		types.EventEntry{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./chain/vm/cbor_gen.go", "vm",
-		vm.FvmExecutionTrace{},
-		vm.FvmGasCharge{},
+		// Tracing
+		types.GasTrace{},
+		types.MessageTrace{},
+		types.ReturnTrace{},
+		types.ExecutionTrace{},
 	)
 	if err != nil {
 		fmt.Println(err)

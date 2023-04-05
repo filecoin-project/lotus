@@ -347,12 +347,11 @@ func DoTransfer(tree types.StateTree, from, to address.Address, amt abi.TokenAmo
 		// record the transfer in execution traces
 
 		cb(types.ExecutionTrace{
-			Msg:        MakeFakeMsg(from, to, amt, 0),
-			MsgRct:     MakeFakeRct(),
-			Error:      "",
-			Duration:   0,
-			GasCharges: nil,
-			Subcalls:   nil,
+			Msg: types.MessageTrace{
+				From:  from,
+				To:    to,
+				Value: amt,
+			},
 		})
 	}
 
