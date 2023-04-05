@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -191,11 +192,24 @@ var _ datastore.Datastore = (*CassandraDatastore)(nil)
 type cassandraBatch struct {
 	session *gocql.Session
 	batch   *gocql.Batch
+	wg      sync.WaitGroup
 }
 
 func (c *cassandraBatch) Put(ctx context.Context, key datastore.Key, value []byte) error {
 	statement := "UPDATE lotus.chain SET value = ? WHERE key = ?"
 	c.batch.Query(statement, value, toCasKey(key))
+
+	if c.batch.Size() >= 64 {
+		c.wg.Add(1)
+		go func(batch *gocql.Batch) {
+			defer c.wg.Done()
+			err := c.session.ExecuteBatch(batch.WithContext(ctx))
+			if err != nil {
+				log.Warnf("error executing batch: %s", err)
+			}
+		}(c.batch)
+		c.batch = c.session.NewBatch(gocql.UnloggedBatch)
+	}
 	return nil
 }
 
@@ -206,6 +220,12 @@ func (c *cassandraBatch) Delete(ctx context.Context, key datastore.Key) error {
 }
 
 func (c *cassandraBatch) Commit(ctx context.Context) error {
+	c.wg.Wait()
+
+	if c.batch.Size() == 0 {
+		return nil
+	}
+
 	var err error
 	for i := 0; i < 30; i++ {
 		err = c.session.ExecuteBatch(c.batch.WithContext(ctx))

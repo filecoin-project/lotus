@@ -2,7 +2,6 @@ package blockstore
 
 import (
 	"context"
-
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
