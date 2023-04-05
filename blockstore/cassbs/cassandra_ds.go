@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"sort"
+	"time"
+
 	"github.com/gocql/gocql"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-	"os"
-	"sort"
-	"time"
 )
 
 var log = logging.Logger("casbs")

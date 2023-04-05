@@ -9,9 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/blockstore/cassbs"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"io"
 	"net/http"
 	"os"
@@ -20,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -35,6 +33,8 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/cassbs"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"

@@ -3,7 +3,7 @@ package cassbs
 import (
 	"os"
 	"testing"
-	
+
 	dstest "github.com/ipfs/go-datastore/test"
 )
 
