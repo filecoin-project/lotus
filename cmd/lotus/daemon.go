@@ -9,6 +9,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/cassbs"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"io"
 	"net/http"
 	"os"
@@ -476,6 +479,25 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
 		return xerrors.Errorf("failed to open blockstore: %w", err)
+	}
+
+	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
+		cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+		if err != nil {
+			return xerrors.Errorf("open cassandra store: %w", err)
+		}
+		copt := bstore.DefaultCacheOpts()
+		copt.HasARCCacheSize = 1 << 20
+
+		rbs := bstore.NewBlockstoreNoPrefix(cds)
+
+		// only metadata cache
+		cbs, err := bstore.CachedBlockstore(context.TODO(), rbs, copt)
+		if err != nil {
+			return err
+		}
+
+		bs = blockstore.Adapt(cbs)
 	}
 
 	mds, err := lr.Datastore(ctx, "/metadata")

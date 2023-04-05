@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/blockstore/cassbs"
 	"io"
 	"os"
 	"path/filepath"
@@ -23,6 +24,25 @@ import (
 // chain data and state data. It can be backed by a blockstore directly
 // (e.g. Badger), or by a Splitstore.
 func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.UniversalBlockstore, error) {
+	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
+		cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+		if err != nil {
+			return nil, err
+		}
+		copt := bstore.DefaultCacheOpts()
+		copt.HasARCCacheSize = 1 << 20
+
+		rbs := bstore.NewBlockstoreNoPrefix(cds)
+
+		// only metadata cache
+		cbs, err := bstore.CachedBlockstore(mctx, rbs, copt)
+		if err != nil {
+			return nil, err
+		}
+
+		return blockstore.Adapt(cbs), nil
+	}
+
 	bs, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.UniversalBlockstore)
 	if err != nil {
 		return nil, err
