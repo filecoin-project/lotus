@@ -396,6 +396,9 @@ func (b *Blockstore) doCopy(from, to *badger.DB) error {
 	if workers < 2 {
 		workers = 2
 	}
+	if workers > 8 {
+		workers = 8
+	}
 
 	stream := from.NewStream()
 	stream.NumGo = workers
