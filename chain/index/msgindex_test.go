@@ -158,7 +158,7 @@ func verifyIndex(t *testing.T, cs *mockChainStore, msgIndex MsgIndex) {
 		msgs, err := cs.MessagesForTipset(context.Background(), ts)
 		require.NoError(t, err)
 		for _, m := range msgs {
-			minfo, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
+			minfo, _, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
 			require.NoError(t, err)
 			require.Equal(t, tsCid, minfo.TipSet)
 			require.Equal(t, ts.Height(), minfo.Epoch)
@@ -175,7 +175,7 @@ func verifyMissing(t *testing.T, cs *mockChainStore, msgIndex MsgIndex, missing 
 		msgs, err := cs.MessagesForTipset(context.Background(), ts)
 		require.NoError(t, err)
 		for _, m := range msgs {
-			_, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
+			_, _, err := msgIndex.GetMsgInfo(context.Background(), m.Cid())
 			require.Equal(t, ErrNotFound, err)
 		}
 	}

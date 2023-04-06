@@ -30,8 +30,8 @@ var dbDefs = []string{
      tipset_cid VARCHAR(80) NOT NULL,
      epoch INTEGER NOT NULL
    )`,
-	`CREATE INDEX IF NOT EXISTS tipset_cids ON messages (tipset_cid)
-  `,
+	`CREATE INDEX IF NOT EXISTS tipset_cids ON messages (tipset_cid)`,
+	`CREATE INDEX IF NOT EXISTS tipset_epochs ON messages (epoch)`,
 	`CREATE TABLE IF NOT EXISTS _meta (
     	version UINT64 NOT NULL UNIQUE
 	)`,
@@ -44,6 +44,8 @@ const (
 	dbqGetMessageInfo       = "SELECT tipset_cid, epoch FROM messages WHERE cid = ?"
 	dbqInsertMessage        = "INSERT INTO messages VALUES (?, ?, ?)"
 	dbqDeleteTipsetMessages = "DELETE FROM messages WHERE tipset_cid = ?"
+	dbqGetTipsetByEpoch     = "SELECT tipset_cid FROM messages WHERE epoch = ? LIMIT 1"
+
 	// reconciliation
 	dbqCountMessages         = "SELECT COUNT(*) FROM messages"
 	dbqMinEpoch              = "SELECT MIN(epoch) FROM messages"
@@ -75,6 +77,7 @@ type msgIndex struct {
 
 	db               *sql.DB
 	selectMsgStmt    *sql.Stmt
+	selectTipsetStmt *sql.Stmt
 	insertMsgStmt    *sql.Stmt
 	deleteTipSetStmt *sql.Stmt
 
@@ -350,6 +353,12 @@ func (x *msgIndex) prepareStatements() error {
 	}
 	x.selectMsgStmt = stmt
 
+	stmt, err = x.db.Prepare(dbqGetTipsetByEpoch)
+	if err != nil {
+		return xerrors.Errorf("prepare selectTipsetStmt: %w", err)
+	}
+	x.selectTipsetStmt = stmt
+
 	stmt, err = x.db.Prepare(dbqInsertMessage)
 	if err != nil {
 		return xerrors.Errorf("prepare insertMsgStmt: %w", err)
@@ -485,40 +494,56 @@ func (x *msgIndex) doApply(ctx context.Context, tx *sql.Tx, ts *types.TipSet) er
 }
 
 // interface
-func (x *msgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
+func (x *msgIndex) GetMsgInfo(ctx context.Context, mCid cid.Cid) (MsgInfo, cid.Cid, error) {
 	x.closeLk.RLock()
 	defer x.closeLk.RUnlock()
 
 	if x.closed {
-		return MsgInfo{}, ErrClosed
+		return MsgInfo{}, cid.Undef, ErrClosed
 	}
 
-	var (
-		tipset string
-		epoch  int64
-	)
-
-	key := m.String()
-	row := x.selectMsgStmt.QueryRow(key)
-	err := row.Scan(&tipset, &epoch)
-	switch {
-	case err == sql.ErrNoRows:
-		return MsgInfo{}, ErrNotFound
-
-	case err != nil:
-		return MsgInfo{}, xerrors.Errorf("error querying msgindex database: %w", err)
-	}
-
-	tipsetCid, err := cid.Decode(tipset)
+	// fetch message from index (if it exists)
+	//
+	var tipset string
+	var epoch int64
+	err := x.selectMsgStmt.QueryRow(mCid.String()).Scan(&tipset, &epoch)
 	if err != nil {
-		return MsgInfo{}, xerrors.Errorf("error decoding tipset cid: %w", err)
+		if err == sql.ErrNoRows {
+			// mCid not in index, its fine
+			return MsgInfo{}, cid.Undef, ErrNotFound
+		}
+
+		return MsgInfo{}, cid.Undef, xerrors.Errorf("error querying msgindex database: %w", err)
+	}
+	tsCid, err := cid.Decode(tipset)
+	if err != nil {
+		return MsgInfo{}, cid.Undef, xerrors.Errorf("error decoding tipset cid: %w", err)
 	}
 
-	return MsgInfo{
-		Message: m,
-		TipSet:  tipsetCid,
+	msgInfo := MsgInfo{
+		Message: mCid,
+		TipSet:  tsCid,
 		Epoch:   abi.ChainEpoch(epoch),
-	}, nil
+	}
+
+	// fetch execution tipset of message (if it exists)
+	//
+	var xTipset string
+	err = x.selectTipsetStmt.QueryRow(epoch + 1).Scan(&xTipset)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// execution tipset not in index, its fine
+			return msgInfo, cid.Undef, nil
+		}
+
+		return MsgInfo{}, cid.Undef, xerrors.Errorf("error querying for execution tipset: %w", err)
+	}
+	xtsCid, err := cid.Decode(xTipset)
+	if err != nil {
+		return MsgInfo{}, cid.Undef, xerrors.Errorf("error decoding execution tipset cid: %w", err)
+	}
+
+	return msgInfo, xtsCid, nil
 }
 
 func (x *msgIndex) Close() error {
