@@ -7,6 +7,12 @@ import (
 	"testing"
 	"time"
 
+	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
+	"github.com/filecoin-project/lotus/build"
+
+	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
+	adt11 "github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -526,7 +532,7 @@ func TestMigrationNV17(t *testing.T) {
 	require.Nil(t, dc)
 }
 
-func TestMigrationNV19(t *testing.T) {
+func TestMigrationNV18(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	nv18epoch := abi.ChainEpoch(100)
@@ -593,4 +599,168 @@ func TestMigrationNV19(t *testing.T) {
 		}
 		return nil
 	}))
+}
+
+func TestMigrationNV19(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	blockTime := 5 * time.Millisecond
+	nv19epoch := abi.ChainEpoch(100)
+	nv20epoch := nv19epoch + builtin.EpochsInDay
+	testClient, testMiner, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version18,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version19,
+			Height:    nv19epoch,
+			Migration: filcns.UpgradeActorsV11,
+		}, stmgr.Upgrade{
+			Network:   network.Version20,
+			Height:    nv20epoch,
+			Migration: nil,
+		},
+		))
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv19epoch+5))
+
+	bs := blockstore.NewAPIBlockstore(testClient)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	postMigrationTs, err := clientApi.ChainHead(ctx)
+	require.NoError(t, err)
+
+	newStateTree, err := state.LoadStateTree(ctxStore, postMigrationTs.Blocks()[0].ParentStateRoot)
+	require.NoError(t, err)
+
+	require.Equal(t, types.StateTreeVersion5, newStateTree.Version())
+
+	// Now that we have upgraded, we need to check that:
+
+	// - a PoSt is successfully submitted in nv19
+	// - a PoSt is successfully submitted in nv20
+	// - all claims in the Power actor are of v1_1 type
+	// - the miner's info has been updated to the v1_1 type
+
+	// Wait for an nv19 PoSt
+
+	mi, err := testClient.StateMinerInfo(ctx, testMiner.ActorAddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	wact19, err := testClient.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en19 := wact19.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof19:
+	for {
+		//stm: @CHAIN_STATE_GET_ACTOR_001
+		wact, err := testClient.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en19 {
+			break waitForProof19
+		}
+
+		build.Clock.Sleep(blockTime)
+	}
+
+	slm19, err := testClient.StateListMessages(ctx, &api.MessageMatch{To: testMiner.ActorAddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr19, err := testClient.StateSearchMsg(ctx, types.EmptyTSK, slm19[0], -1, false)
+	require.NoError(t, err)
+
+	nv19, err := testClient.StateNetworkVersion(ctx, pmr19.TipSet)
+	require.NoError(t, err)
+	require.Equal(t, network.Version19, nv19)
+
+	require.True(t, pmr19.Receipt.ExitCode.IsSuccess())
+
+	slmsg19, err := testClient.ChainGetMessage(ctx, slm19[0])
+	require.NoError(t, err)
+
+	var params19 miner11.SubmitWindowedPoStParams
+	require.NoError(t, params19.UnmarshalCBOR(bytes.NewBuffer(slmsg19.Params)))
+	require.Equal(t, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1, params19.Proofs[0].PoStProof)
+
+	// Wait for nv20
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv20epoch+5))
+
+	// Wait for an nv20 PoSt
+
+	wact20, err := testClient.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en20 := wact20.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof20:
+	for {
+		//stm: @CHAIN_STATE_GET_ACTOR_001
+		wact, err := testClient.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en20 {
+			break waitForProof20
+		}
+
+		build.Clock.Sleep(blockTime)
+	}
+
+	slm20, err := testClient.StateListMessages(ctx, &api.MessageMatch{To: testMiner.ActorAddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr20, err := testClient.StateSearchMsg(ctx, types.EmptyTSK, slm20[0], -1, false)
+	require.NoError(t, err)
+
+	nv20, err := testClient.StateNetworkVersion(ctx, pmr20.TipSet)
+	require.NoError(t, err)
+	require.Equal(t, network.Version20, nv20)
+
+	require.True(t, pmr20.Receipt.ExitCode.IsSuccess())
+
+	slmsg20, err := testClient.ChainGetMessage(ctx, slm20[0])
+	require.NoError(t, err)
+
+	var params20 miner11.SubmitWindowedPoStParams
+	require.NoError(t, params20.UnmarshalCBOR(bytes.NewBuffer(slmsg20.Params)))
+	require.Equal(t, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1, params20.Proofs[0].PoStProof)
+
+	// check claims in the Power actor
+
+	powerActor, err := newStateTree.GetActor(builtin.StoragePowerActorAddr)
+	require.NoError(t, err)
+
+	var powerSt power11.State
+	require.NoError(t, ctxStore.Get(ctx, powerActor.Head, &powerSt))
+
+	powerClaims, err := adt11.AsMap(ctxStore, powerSt.Claims, builtin.DefaultHamtBitwidth)
+	require.NoError(t, err)
+
+	var claim power11.Claim
+	require.NoError(t, powerClaims.ForEach(&claim, func(key string) error {
+		v1proof, err := claim.WindowPoStProofType.ToV1_1PostProof()
+		require.NoError(t, err)
+
+		require.Equal(t, v1proof, claim.WindowPoStProofType)
+		return nil
+	}))
+
+	// check MinerInfo
+
+	minerInfo, err := testClient.StateMinerInfo(ctx, testMiner.ActorAddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	v1proof, err := minerInfo.WindowPoStProofType.ToV1_1PostProof()
+	require.NoError(t, err)
+
+	require.Equal(t, v1proof, minerInfo.WindowPoStProofType)
+
 }
