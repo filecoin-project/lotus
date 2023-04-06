@@ -32,6 +32,9 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/gomap"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -476,6 +479,15 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
 		return xerrors.Errorf("failed to open blockstore: %w", err)
+	}
+
+	if os.Getenv("LOTUS_GOMAP_STORE") != "" {
+		gmds, err := gomapbs.NewGomapDS(os.Getenv("LOTUS_GOMAP_STORE"))
+		if err != nil {
+			return xerrors.Errorf("open cassandra store: %w", err)
+		}
+
+		bs = blockstore.Adapt(gmds)
 	}
 
 	mds, err := lr.Datastore(ctx, "/metadata")
