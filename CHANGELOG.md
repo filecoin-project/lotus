@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# v1.21.0 / 2023-04-05
+# v1.21.0-rc3 / 2023-04-06
 
 This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
