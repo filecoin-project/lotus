@@ -7,12 +7,6 @@ import (
 	"testing"
 	"time"
 
-	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
-	"github.com/filecoin-project/lotus/build"
-
-	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
-	adt11 "github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -20,6 +14,9 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
+	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
+	adt11 "github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	migration "github.com/filecoin-project/go-state-types/builtin/v9/migration/test"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -31,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	builtin2 "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
