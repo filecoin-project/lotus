@@ -86,10 +86,12 @@ var ChainNode = Options(
 
 	// Consensus: Chain sync
 
-	// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
-	// It will be called implicitly by the Syncer constructor.
-	Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
-	Override(new(*chain.Syncer), modules.NewSyncer),
+	ApplyIf(isNotFollower,
+		// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
+		// It will be called implicitly by the Syncer constructor.
+		Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
+		Override(new(*chain.Syncer), modules.NewSyncer),
+	),
 	Override(new(exchange.Client), exchange.NewClient),
 
 	// Chain networking

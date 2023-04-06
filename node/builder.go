@@ -245,6 +245,14 @@ func isLiteNode(s *Settings) bool {
 	return s.nodeType == repo.FullNode && s.Lite
 }
 
+func isFollower(s *Settings) bool {
+	return s.nodeType == repo.Follower
+}
+
+func isNotFollower(s *Settings) bool {
+	return s.nodeType != repo.Follower
+}
+
 func Base() Option {
 	return Options(
 		func(s *Settings) error { s.Base = true; return nil }, // mark Base as applied

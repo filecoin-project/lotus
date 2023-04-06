@@ -50,6 +50,8 @@ func NewRepoTypeFromString(t string) RepoType {
 		return Worker
 	case "Wallet":
 		return Wallet
+	case "Follower":
+		return Follower
 	default:
 		panic("unknown RepoType")
 	}
@@ -102,6 +104,31 @@ func (fullNode) RepoFlags() []string {
 
 func (fullNode) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
 	return "FULLNODE_API_INFO", nil, nil
+}
+
+var Follower follower
+
+type follower struct {
+}
+
+func (follower) Type() string {
+	return "Follower"
+}
+
+func (follower) Config() interface{} {
+	return config.DefaultFollowerNode()
+}
+
+func (follower) APIFlags() []string {
+	return []string{"api-url"}
+}
+
+func (follower) RepoFlags() []string {
+	return []string{"repo"}
+}
+
+func (follower) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "FOLLOWER_API_INFO", nil, nil
 }
 
 var StorageMiner storageMiner
