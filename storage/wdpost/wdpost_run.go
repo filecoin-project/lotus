@@ -224,6 +224,7 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 	}
 
 	pp := s.proofType
+	// TODO: Drop after nv19 comes and goes
 	if nv >= network.Version19 {
 		pp, err = pp.ToV1_1PostProof()
 		if err != nil {
