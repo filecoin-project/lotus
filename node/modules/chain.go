@@ -184,11 +184,10 @@ func NewSyncerFollower(params SyncerParams) (*chain.Syncer, error) {
 		h      = params.Host
 		b      = params.Beacon
 	)
-	syncer, err := chain.NewSyncer(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, params.Gent, params.Consensus)
+	syncer, err := chain.NewSyncerFollower(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, params.Gent, params.Consensus)
 	if err != nil {
 		return nil, err
 	}
-
 	//don't start syncer
 	return syncer, nil
 }

@@ -178,7 +178,9 @@ var ChainNode = Options(
 		Override(RunChainExchangeKey, modules.RunChainExchange),
 		Override(RunPeerMgrKey, modules.RunPeerMgr),
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
-		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+
+		ApplyIf(isNotFollower,Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks)),
+
 	),
 )
 
