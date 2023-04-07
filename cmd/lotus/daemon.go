@@ -309,7 +309,7 @@ var DaemonCmd = &cli.Command{
 		// If the daemon is started in "lite mode", provide a  Gateway
 		// for RPC calls
 		liteModeDeps := node.Options()
-		if isLite {
+		if isLite || isFollower {
 			gapi, closer, err := lcli.GetGatewayAPI(cctx)
 			if err != nil {
 				return err
