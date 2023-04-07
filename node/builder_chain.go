@@ -85,13 +85,18 @@ var ChainNode = Options(
 	Override(new(dtypes.ChainBlockService), modules.ChainBlockService), // todo: unused
 
 	// Consensus: Chain sync
+	// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
+	// It will be called implicitly by the Syncer constructor.
+	Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
 
 	ApplyIf(isNotFollower,
-		// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
-		// It will be called implicitly by the Syncer constructor.
-		Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
 		Override(new(*chain.Syncer), modules.NewSyncer),
 	),
+
+	ApplyIf(isFollower,
+		Override(new(*chain.Syncer), modules.NewSyncerFollower),
+	),
+
 	Override(new(exchange.Client), exchange.NewClient),
 
 	// Chain networking
@@ -290,6 +295,13 @@ type FullOption = Option
 func Lite(enable bool) FullOption {
 	return func(s *Settings) error {
 		s.Lite = enable
+		return nil
+	}
+}
+
+func Follower(enable bool) FullOption {
+	return func(s *Settings) error {
+		s.Follower = enable
 		return nil
 	}
 }

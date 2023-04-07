@@ -147,9 +147,10 @@ type Settings struct {
 
 	nodeType repo.RepoType
 
-	Base   bool // Base option applied
-	Config bool // Config option applied
-	Lite   bool // Start node in "lite" mode
+	Base     bool // Base option applied
+	Config   bool // Config option applied
+	Lite     bool // Start node in "lite" mode
+	Follower bool // Start node in "follower" mode
 
 	enableLibp2pNode bool
 }
@@ -246,11 +247,11 @@ func isLiteNode(s *Settings) bool {
 }
 
 func isFollower(s *Settings) bool {
-	return s.nodeType == repo.Follower
+	return s.Follower
 }
 
 func isNotFollower(s *Settings) bool {
-	return s.nodeType != repo.Follower
+	return !s.Follower
 }
 
 func Base() Option {
