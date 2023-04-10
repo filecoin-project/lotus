@@ -384,10 +384,13 @@ func gasEstimateGasLimit(
 func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, _ types.TipSetKey) (*types.Message, error) {
 	if msg.GasLimit == 0 {
 		gasLimit, err := m.GasEstimateGasLimit(ctx, msg, types.EmptyTSK)
+		log.Errorf("GasEstimateMessageGas GasLimit: %f", gasLimit)
 		if err != nil {
 			return nil, err
 		}
 		msg.GasLimit = int64(float64(gasLimit) * m.Mpool.GetConfig().GasLimitOverestimation)
+
+		log.Errorf("GasEstimateMessageGas GasLimit: %f, GasLimitWithOverestimation", gasLimit, msg.GasLimit)
 		// Gas overestimation can cause us to exceed the block gas limit, cap it.
 		if msg.GasLimit > build.BlockGasLimit {
 			msg.GasLimit = build.BlockGasLimit

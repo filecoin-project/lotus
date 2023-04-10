@@ -31,6 +31,7 @@ import (
 
 type PreCommitBatcherApi interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
@@ -319,17 +320,13 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo,
 	return mcid, nil
 }
 
-func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKey, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) processPreCommitBatch(cfg sealiface.Config, bf abi.TokenAmount, entries []*preCommitEntry, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
+	log.Errorf("!!!!!!!!!!!!!!!!processPreCommitBatch: %d entries!!!!!!!!!!!!!!!!", len(entries))
 	params := miner.PreCommitSectorBatchParams{}
 	deposit := big.Zero()
 	var res sealiface.PreCommitBatchRes
 
-	for _, p := range b.todo {
-		if len(params.Sectors) >= cfg.MaxPreCommitBatch {
-			log.Infow("precommit batch full")
-			break
-		}
-
+	for _, p := range entries {
 		res.Sectors = append(res.Sectors, p.pci.SectorNumber)
 		params.Sectors = append(params.Sectors, *infoToPreCommitSectorParams(p.pci))
 		deposit = big.Add(deposit, p.deposit)
@@ -368,16 +365,45 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKe
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.PreCommitSectorBatch, needFunds, maxFee, enc.Bytes())
-	if err != nil {
-		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
+	msg, err := simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.PreCommitSectorBatch, deposit, maxFee, enc.Bytes())
+
+	var gasLimit int64
+	if msg != nil {
+		gasLimit = msg.GasLimit
+	}
+	log.Errorf("!!!!!!!!!!!!!!simulate Msg err: %w, gasLimit: %d !!!!!!!!!!!!!!!!!!!!", err, gasLimit)
+	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(entries) == 1) {
+		res.Error = err.Error()
+		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("simulating PreCommitBatch message failed: %w", err)
 	}
 
+	// If we're out of gas, split the batch in half and try again
+	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
+		mid := len(entries) / 2
+		ret0, err := b.processPreCommitBatch(cfg, bf, entries[:mid], nv)
+		ret1, err := b.processPreCommitBatch(cfg, bf, entries[mid:], nv)
+
+		return append(ret0, ret1...), err
+	}
+
+	// If state call succeeds, we can send the message for real
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.PreCommitSectorBatch, deposit, maxFee, enc.Bytes())
+	log.Errorf("!!!!!!!!!!!!!!sendMsg err: %w, mcid: %v!!!!!!!!!!!!!!!!!!!!", err, mcid)
+	if err != nil {
+		res.Error = err.Error()
+		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("pushing message to mpool: %w", err)
+	}
 	res.Msg = &mcid
-
-	log.Infow("Sent PreCommitSectorBatch message", "cid", mcid, "from", from, "sectors", len(b.todo))
-
 	return []sealiface.PreCommitBatchRes{res}, nil
+}
+
+func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKey, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
+	var pcEntries []*preCommitEntry
+	for _, p := range b.todo {
+		pcEntries = append(pcEntries, p)
+	}
+
+	return b.processPreCommitBatch(cfg, bf, pcEntries, nv)
 }
 
 // register PreCommit, wait for batch message, return message CID
