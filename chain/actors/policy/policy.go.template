@@ -223,6 +223,12 @@ func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 	return miner{{.latestVersion}}.MaxSectorExpirationExtension
 }
 
+func GetDefaultSectorExpirationExtension() abi.ChainEpoch {
+    // Keep default at the previous max of 1.5 years rather than the current 3.5 years.
+    // This way extension and pledge defaults do not subvert existing expectations.
+	return miner10.MaxSectorExpirationExtension
+}
+
 func GetMinSectorExpiration() abi.ChainEpoch {
 	return miner{{.latestVersion}}.MinSectorExpiration
 }
