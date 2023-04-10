@@ -407,8 +407,18 @@ var sealBenchCmd = &cli.Command{
 			}
 			verifyWinningPost2 := time.Now()
 
+			ppt, err := sealedSectors[0].SealProof.RegisteredWindowPoStProof()
+			if err != nil {
+				return err
+			}
+
+			ppt, err = ppt.ToV1_1PostProof()
+			if err != nil {
+				return err
+			}
+
 			log.Info("computing window post snark (cold)")
-			wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, extendedSealedSectors, challenge[:])
+			wproof1, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, ppt, extendedSealedSectors, challenge[:])
 			if err != nil {
 				return err
 			}
@@ -416,7 +426,7 @@ var sealBenchCmd = &cli.Command{
 			windowpost1 := time.Now()
 
 			log.Info("computing window post snark (hot)")
-			wproof2, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, extendedSealedSectors, challenge[:])
+			wproof2, _, err := sb.GenerateWindowPoSt(context.TODO(), mid, ppt, extendedSealedSectors, challenge[:])
 			if err != nil {
 				return err
 			}
