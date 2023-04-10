@@ -14,6 +14,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	miner10 "github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
 	adt11 "github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
@@ -634,6 +635,12 @@ func TestMigrationNV19(t *testing.T) {
 	postMigrationTs, err := clientApi.ChainHead(ctx)
 	require.NoError(t, err)
 
+	oldTs, err := testClient.ChainGetTipSetByHeight(ctx, nv19epoch-5, types.EmptyTSK)
+	require.NoError(t, err)
+
+	oldStateTree, err := state.LoadStateTree(ctxStore, oldTs.ParentState())
+	require.NoError(t, err)
+
 	newStateTree, err := state.LoadStateTree(ctxStore, postMigrationTs.Blocks()[0].ParentStateRoot)
 	require.NoError(t, err)
 
@@ -645,6 +652,7 @@ func TestMigrationNV19(t *testing.T) {
 	// - a PoSt is successfully submitted in nv20
 	// - all claims in the Power actor are of v1_1 type
 	// - the miner's info has been updated to the v1_1 type
+	// - sector infos have had their `PowerBaseEpoch` set
 
 	// Wait for an nv19 PoSt
 
@@ -761,4 +769,37 @@ waitForProof20:
 
 	require.Equal(t, v1proof, minerInfo.WindowPoStProofType)
 
+	// check sector infos
+
+	oldMinerActor, err := oldStateTree.GetActor(testMiner.ActorAddr)
+	require.NoError(t, err)
+
+	var oldMinerSt miner10.State
+	require.NoError(t, ctxStore.Get(ctx, oldMinerActor.Head, &oldMinerSt))
+
+	oldSectorsAMT, err := miner10.LoadSectors(ctxStore, oldMinerSt.Sectors)
+	require.NoError(t, err)
+
+	newMinerActor, err := newStateTree.GetActor(testMiner.ActorAddr)
+	require.NoError(t, err)
+
+	var newMinerSt miner11.State
+	require.NoError(t, ctxStore.Get(ctx, newMinerActor.Head, &newMinerSt))
+
+	newSectorsAMT, err := miner11.LoadSectors(ctxStore, newMinerSt.Sectors)
+	require.NoError(t, err)
+
+	var oldSector miner10.SectorOnChainInfo
+	require.NoError(t, oldSectorsAMT.ForEach(&oldSector, func(i int64) error {
+		newSector, ok, err := newSectorsAMT.Get(abi.SectorNumber(i))
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		require.Equal(t, oldSector.Activation, newSector.Activation)
+		require.Equal(t, oldSector.Activation, newSector.PowerBaseEpoch)
+		return nil
+	}))
+
+	// Sanity check that we actually tested...something (default is 2 sectors).
+	require.True(t, oldSectorsAMT.Length() > 0)
 }
