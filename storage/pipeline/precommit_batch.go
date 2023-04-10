@@ -334,11 +334,13 @@ func (b *PreCommitBatcher) processPreCommitBatch(cfg sealiface.Config, bf abi.To
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
+		res.Error = err.Error()
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't serialize PreCommitSectorBatchParams: %w", err)
 	}
 
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
+		res.Error = err.Error()
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
@@ -347,6 +349,7 @@ func (b *PreCommitBatcher) processPreCommitBatch(cfg sealiface.Config, bf abi.To
 	aggFeeRaw, err := policy.AggregatePreCommitNetworkFee(nv, len(params.Sectors), bf)
 	if err != nil {
 		log.Errorf("getting aggregate precommit network fee: %s", err)
+		res.Error = err.Error()
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("getting aggregate precommit network fee: %s", err)
 	}
 
@@ -380,8 +383,8 @@ func (b *PreCommitBatcher) processPreCommitBatch(cfg sealiface.Config, bf abi.To
 	// If we're out of gas, split the batch in half and try again
 	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
 		mid := len(entries) / 2
-		ret0, err := b.processPreCommitBatch(cfg, bf, entries[:mid], nv)
-		ret1, err := b.processPreCommitBatch(cfg, bf, entries[mid:], nv)
+		ret0, _ := b.processPreCommitBatch(cfg, bf, entries[:mid], nv)
+		ret1, _ := b.processPreCommitBatch(cfg, bf, entries[mid:], nv)
 
 		return append(ret0, ret1...), err
 	}
