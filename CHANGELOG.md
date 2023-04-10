@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# v1.21.0 / 2023-04-05
+# v1.21.0-rc3 / 2023-04-10
 
 This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
@@ -60,6 +60,8 @@ We have cleaned up some commands in the `lotus-worker` to make it less confusing
 The `lotus-miner sector list` is now running in parallel - which should speed up the process from anywhere between 2x-10x+. You can tune it additionally with the `check-parallelism` option in the command. The `Lotus-Miner info` command also has a large speed improvement, as calls to the lotus legacy market has been removed.
 
 ## New features
+- feat: splitstore: Pause compaction when out of sync ([filecoin-project/lotus/#10641](https://github.com/filecoin-project/lotus/pull/10641))
+   - Pause the SplitStore compaction if the node is out of sync. Resumes the compation when its back in sync.
 - feat: splitstore: limit moving gc threads (#10621) ([filecoin-project/lotus/#10621](https://github.com/filecoin-project/lotus/pull/10621))
    - Makes moving gc less likely to cause node falling out of sync.
 - feat: splitstore: Update config default value (#10605) ([filecoin-project/lotus/#10605](https://github.com/filecoin-project/lotus/pull/10605))
