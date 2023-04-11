@@ -1693,7 +1693,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 				return err
 			}
 
-			pci.Expiration = policy.GetMaxSectorExpirationExtension() + h.Height()
+			pci.Expiration = policy.GetDefaultSectorExpirationExtension() + h.Height()
 		}
 
 		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)

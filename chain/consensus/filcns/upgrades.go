@@ -1597,29 +1597,6 @@ func upgradeActorsV9Common(
 	return newRoot, nil
 }
 
-func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
-	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
-	// Use all the CPUs except 3.
-	workerCount := MigrationMaxWorkerCount - 3
-	if workerCount <= 0 {
-		workerCount = 1
-	}
-
-	config := migration.Config{
-		MaxWorkers:        uint(workerCount),
-		JobQueueSize:      1000,
-		ResultQueueSize:   100,
-		ProgressLogPeriod: 10 * time.Second,
-	}
-
-	newRoot, err := upgradeActorsV10Common(ctx, sm, cache, root, epoch, ts, config)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v10 state: %w", err)
-	}
-
-	return newRoot, nil
-}
-
 func PreUpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
 	workerCount := MigrationMaxWorkerCount
@@ -1643,6 +1620,29 @@ func PreUpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmg
 	return err
 }
 
+func UpgradeActorsV10(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := MigrationMaxWorkerCount - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := migration.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := upgradeActorsV10Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v10 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
 func upgradeActorsV10Common(
 	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
@@ -1664,7 +1664,7 @@ func upgradeActorsV10Common(
 
 	if stateRoot.Version != types.StateTreeVersion4 {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 4 for actors v10 upgrade, got %d",
+			"expected state root version 4 for actors v9 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
@@ -1753,23 +1753,22 @@ func upgradeActorsV11Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config migration.Config,
 ) (cid.Cid, error) {
-	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
-	store := store.ActorStore(ctx, buf)
-
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
+	adtStore := store.ActorStore(ctx, writeStore)
 	// ensure that the manifest is loaded in the blockstore
-	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), actorstypes.Version11); err != nil {
+	if err := bundle.LoadBundles(ctx, writeStore, actorstypes.Version11); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 	}
 
 	// Load the state root.
 	var stateRoot types.StateRoot
-	if err := store.Get(ctx, root, &stateRoot); err != nil {
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
 	}
 
 	if stateRoot.Version != types.StateTreeVersion5 {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 5 for actors v11 upgrade, got %d",
+			"expected state root version 4 for actors v10 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
@@ -1780,14 +1779,14 @@ func upgradeActorsV11Common(
 	}
 
 	// Perform the migration
-	newHamtRoot, err := nv19.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+	newHamtRoot, err := nv19.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
 		migrationLogger{}, cache)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("upgrading to actors v11: %w", err)
+		return cid.Undef, xerrors.Errorf("upgrading to actors v10: %w", err)
 	}
 
 	// Persist the result.
-	newRoot, err := store.Put(ctx, &types.StateRoot{
+	newRoot, err := adtStore.Put(ctx, &types.StateRoot{
 		Version: types.StateTreeVersion5,
 		Actors:  newHamtRoot,
 		Info:    stateRoot.Info,
@@ -1796,15 +1795,13 @@ func upgradeActorsV11Common(
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
 	}
 
-	// Persist the new tree.
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
 
-	{
-		from := buf
-		to := buf.Read()
-
-		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
-			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
-		}
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
 	}
 
 	return newRoot, nil
