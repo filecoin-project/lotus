@@ -249,7 +249,19 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeLightningHeight,
 		Network:   network.Version19,
-		Migration: nil,
+		Migration: UpgradeActorsV11,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV11,
+			StartWithin:     240,
+			DontStartWithin: 60,
+			StopWithin:      20,
+		}, {
+			PreMigration:    PreUpgradeActorsV11,
+			StartWithin:     15,
+			DontStartWithin: 10,
+			StopWithin:      5,
+		}},
+		Expensive: true,
 	}, {
 		Height:    build.UpgradeThunderHeight,
 		Network:   network.Version20,
