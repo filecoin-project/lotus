@@ -5,6 +5,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -78,13 +79,18 @@ var mpoolClear = &cli.Command{
 			Name:  "local",
 			Usage: "also clear local messages",
 		},
+		&cli.Int64Flag{
+			Name:  "below-basefee",
+			Usage: "only clear messages with a base fee lower than this (aFIL)",
+			Value: 100_000_000, // 100 pFIL
+		},
 		&cli.BoolFlag{
 			Name:  "really-do-it",
 			Usage: "must be specified for the action to take effect",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -99,6 +105,9 @@ var mpoolClear = &cli.Command{
 		local := cctx.Bool("local")
 
 		ctx := lcli.ReqContext(cctx)
-		return api.MpoolClear(ctx, local)
+		return api.MpoolCleanup(ctx, api2.MpoolCleanupOpts{
+			DropLocal:  local,
+			MinBaseFee: types.NewInt(uint64(cctx.Int64("below-basefee"))),
+		})
 	},
 }

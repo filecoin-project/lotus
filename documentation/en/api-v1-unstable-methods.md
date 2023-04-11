@@ -134,6 +134,7 @@
   * [MpoolCheckMessages](#MpoolCheckMessages)
   * [MpoolCheckPendingMessages](#MpoolCheckPendingMessages)
   * [MpoolCheckReplaceMessages](#MpoolCheckReplaceMessages)
+  * [MpoolCleanup](#MpoolCleanup)
   * [MpoolClear](#MpoolClear)
   * [MpoolGetConfig](#MpoolGetConfig)
   * [MpoolGetNonce](#MpoolGetNonce)
@@ -3939,6 +3940,23 @@ Response:
   ]
 ]
 ```
+
+### MpoolCleanup
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "DropLocal": true,
+    "MinBaseFee": "0"
+  }
+]
+```
+
+Response: `{}`
 
 ### MpoolClear
 MpoolClear clears pending messages from the mpool.

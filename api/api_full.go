@@ -302,6 +302,8 @@ type FullNode interface {
 	// If clearLocal is false, local messages will be protected, all others will be cleared.
 	MpoolClear(ctx context.Context, clearLocal bool) error //perm:write
 
+	MpoolCleanup(context.Context, MpoolCleanupOpts) error //perm:write
+
 	// MpoolGetConfig returns (a copy of) the current mpool config
 	MpoolGetConfig(context.Context) (*types.MpoolConfig, error) //perm:read
 	// MpoolSetConfig sets the mpool config to (a copy of) the supplied config
@@ -870,6 +872,15 @@ type FullNode interface {
 
 	RaftState(ctx context.Context) (*RaftStateData, error) //perm:read
 	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
+}
+
+type MpoolCleanupOpts struct {
+	// Include local messages. Local messages are messages sent from addresses
+	// managed by this node.
+	DropLocal bool
+
+	// Min basefee below which to drop messages.
+	MinBaseFee abi.TokenAmount
 }
 
 // reverse interface to the client, called after EthSubscribe

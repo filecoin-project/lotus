@@ -128,7 +128,12 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 }
 
 func (a *MpoolAPI) MpoolClear(ctx context.Context, local bool) error {
-	a.Mpool.Clear(ctx, local)
+	a.Mpool.Cleanup(ctx, api.MpoolCleanupOpts{DropLocal: local})
+	return nil
+}
+
+func (a *MpoolAPI) MpoolCleanup(ctx context.Context, co api.MpoolCleanupOpts) error {
+	a.Mpool.Cleanup(ctx, co)
 	return nil
 }
 

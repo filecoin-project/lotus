@@ -448,6 +448,36 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	return mp, nil
 }
 
+func (ms *msgSet) removeMessagesBelowBaseFee(baseFee types.BigInt) bool {
+	noncesToRemove := make([]uint64, 0)
+
+	// Find nonces of messages below the base fee and mark the first nonce to remove
+	var firstNonceToRemove uint64 = math.MaxUint64
+	for nonce, msg := range ms.msgs {
+		if types.BigCmp(msg.Message.GasFeeCap, baseFee) < 0 {
+			noncesToRemove = append(noncesToRemove, nonce)
+			if nonce > ms.nextNonce && firstNonceToRemove == math.MaxUint64 {
+				firstNonceToRemove = nonce
+			}
+		}
+	}
+
+	// Remove messages with nonces higher than the firstNonceToRemove
+	if firstNonceToRemove != math.MaxUint64 {
+		for nonce := range ms.msgs {
+			if nonce > firstNonceToRemove {
+				noncesToRemove = append(noncesToRemove, nonce)
+			}
+		}
+	}
+
+	for _, nonce := range noncesToRemove {
+		ms.rm(nonce, false)
+	}
+
+	return len(ms.msgs) == 0
+}
+
 func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
 	// while holding the mpool lock
@@ -1596,13 +1626,13 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 	return nil
 }
 
-func (mp *MessagePool) Clear(ctx context.Context, local bool) {
+func (mp *MessagePool) Cleanup(ctx context.Context, co api.MpoolCleanupOpts) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
 	// remove everything if local is true, including removing local messages from
 	// the datastore
-	if local {
+	if co.DropLocal {
 		mp.forEachLocal(ctx, func(ctx context.Context, la address.Address) {
 			mset, ok, err := mp.getPendingMset(ctx, la)
 			if err != nil {
@@ -1612,6 +1642,11 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 
 			if ok {
 				for _, m := range mset.msgs {
+					if types.BigCmp(co.MinBaseFee, big.Zero()) > 0 &&
+						types.BigCmp(m.Message.GasFeeCap, co.MinBaseFee) < 0 {
+						continue
+					}
+
 					err := mp.localMsgs.Delete(ctx, datastore.NewKey(string(m.Cid().Bytes())))
 					if err != nil {
 						log.Warnf("error deleting local message: %s", err)
@@ -1620,26 +1655,32 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 			}
 		})
 
-		mp.clearPending()
 		mp.republished = nil
-
-		return
 	}
 
 	mp.forEachPending(func(a address.Address, ms *msgSet) {
-		isLocal, err := mp.isLocal(ctx, a)
-		if err != nil {
-			log.Warnf("errored while determining isLocal: %w", err)
-			return
+		if !co.DropLocal {
+			isLocal, err := mp.isLocal(ctx, a)
+			if err != nil {
+				log.Warnf("errored while determining isLocal: %w", err)
+				return
+			}
+
+			if isLocal {
+				return
+			}
 		}
 
-		if isLocal {
-			return
+		deleteMset := true
+		if big.Cmp(co.MinBaseFee, big.Zero()) > 0 {
+			deleteMset = ms.removeMessagesBelowBaseFee(co.MinBaseFee)
 		}
 
-		if err = mp.deletePendingMset(ctx, a); err != nil {
-			log.Warnf("errored while deleting mset: %w", err)
-			return
+		if deleteMset {
+			if err := mp.deletePendingMset(ctx, a); err != nil {
+				log.Warnf("errored while deleting mset: %w", err)
+				return
+			}
 		}
 	})
 }

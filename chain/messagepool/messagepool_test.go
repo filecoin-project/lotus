@@ -646,7 +646,7 @@ func TestClearAll(t *testing.T) {
 	}
 
 	// stm: @CHAIN_MEMPOOL_CLEAR_001
-	mp.Clear(context.Background(), true)
+	mp.Cleanup(context.Background(), api.MpoolCleanupOpts{DropLocal: true})
 
 	// stm: @CHAIN_MEMPOOL_PENDING_001
 	pending, _ := mp.Pending(context.TODO())
@@ -704,7 +704,7 @@ func TestClearNonLocal(t *testing.T) {
 	}
 
 	// stm: @CHAIN_MEMPOOL_CLEAR_001
-	mp.Clear(context.Background(), false)
+	mp.Cleanup(context.Background(), api.MpoolCleanupOpts{DropLocal: false})
 
 	// stm: @CHAIN_MEMPOOL_PENDING_001
 	pending, _ := mp.Pending(context.TODO())

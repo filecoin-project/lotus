@@ -354,6 +354,8 @@ type FullNodeMethods struct {
 
 	MpoolCheckReplaceMessages func(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) `perm:"read"`
 
+	MpoolCleanup func(p0 context.Context, p1 MpoolCleanupOpts) error `perm:"write"`
+
 	MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
 
 	MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
@@ -2640,6 +2642,17 @@ func (s *FullNodeStruct) MpoolCheckReplaceMessages(p0 context.Context, p1 []*typ
 
 func (s *FullNodeStub) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
 	return *new([][]MessageCheckStatus), ErrNotSupported
+}
+
+func (s *FullNodeStruct) MpoolCleanup(p0 context.Context, p1 MpoolCleanupOpts) error {
+	if s.Internal.MpoolCleanup == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.MpoolCleanup(p0, p1)
+}
+
+func (s *FullNodeStub) MpoolCleanup(p0 context.Context, p1 MpoolCleanupOpts) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) error {
