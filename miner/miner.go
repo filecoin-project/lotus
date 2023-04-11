@@ -512,11 +512,23 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
+	tTicket := build.Clock.Now()
+	startSelect := build.Clock.Now()
+
+	// get pending messages early,
+	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
+	if err != nil {
+		err = xerrors.Errorf("failed to select messages for block: %w", err)
+		return nil, err
+	}
+
+	endSelect := build.Clock.Now()
+
+	log.Errorf("mpool select took: %s", endSelect.Sub(startSelect))
+
 	if winner == nil {
 		return nil, nil
 	}
-
-	tTicket := build.Clock.Now()
 
 	buf := new(bytes.Buffer)
 	if err := m.address.MarshalCBOR(buf); err != nil {
@@ -546,15 +558,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 
 	tProof := build.Clock.Now()
 
-	// get pending messages early,
-	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
-	if err != nil {
-		err = xerrors.Errorf("failed to select messages for block: %w", err)
-		return nil, err
-	}
-
-	tPending := build.Clock.Now()
-
 	// TODO: winning post proof
 	minedBlock, err = m.createBlock(base, m.address, ticket, winner, bvals, postProof, msgs)
 	if err != nil {
@@ -575,8 +578,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			"tTicket ", tTicket.Sub(tPowercheck),
 			"tSeed ", tSeed.Sub(tTicket),
 			"tProof ", tProof.Sub(tSeed),
-			"tPending ", tPending.Sub(tProof),
-			"tCreateBlock ", tCreateBlock.Sub(tPending))
+			"tPending ", endSelect.Sub(startSelect),
+			"tCreateBlock ", tCreateBlock.Sub(tProof))
 	}
 
 	return minedBlock, nil
