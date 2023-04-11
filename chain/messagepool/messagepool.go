@@ -232,6 +232,14 @@ func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.M
 	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
 
+func (mp *MessagePool) getTotalPendingMessages() int {
+	total := 0
+	for _, mset := range mp.pending {
+		total += len(mset.msgs)
+	}
+	return total
+}
+
 func (ms *msgSet) add(ctx context.Context, m *types.SignedMessage, mp *MessagePool, strict, untrusted bool) (bool, error) {
 	nextNonce := ms.nextNonce
 	nonceGap := false
@@ -304,7 +312,7 @@ func (ms *msgSet) add(ctx context.Context, m *types.SignedMessage, mp *MessagePo
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
 	// ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
-	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
+	stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 
 	return !has, nil
 }
@@ -516,7 +524,7 @@ func (mp *MessagePool) setPendingMset(ctx context.Context, addr address.Address,
 	}
 
 	mp.pending[ra] = ms
-	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
+	stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 
 	return nil
 }
@@ -535,7 +543,7 @@ func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Addre
 	}
 
 	delete(mp.pending, ra)
-	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
+	stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 
 	return nil
 }
@@ -543,7 +551,7 @@ func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Addre
 // This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
 func (mp *MessagePool) clearPending(ctx context.Context) {
 	mp.pending = make(map[address.Address]*msgSet)
-	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
+	stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 }
 
 func (mp *MessagePool) isLocal(ctx context.Context, addr address.Address) (bool, error) {
