@@ -30,11 +30,11 @@ import (
 	"github.com/filecoin-project/go-state-types/manifest"
 	mutil "github.com/filecoin-project/go-state-types/migration"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
