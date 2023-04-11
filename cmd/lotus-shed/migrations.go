@@ -20,6 +20,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
 	v10 "github.com/filecoin-project/go-state-types/builtin/v10"
+	v11 "github.com/filecoin-project/go-state-types/builtin/v11"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
@@ -249,8 +250,36 @@ type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.Migrat
 type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
 type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
 
-func checkNv19Invariants(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error {
-	fmt.Printf("noop -- nv19 shed invariant check not wired up yet")
+func checkNv19Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
+
+	// Load the new state root.
+	var newStateRoot types.StateRoot
+	if err := actorStore.Get(ctx, newStateRootCid, &newStateRoot); err != nil {
+		return xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version10)
+	if err != nil {
+		return err
+	}
+	newActorTree, err := builtin.LoadTree(actorStore, newStateRoot.Actors)
+	if err != nil {
+		return err
+	}
+	messages, err := v11.CheckStateInvariants(newActorTree, epoch, actorCodeCids)
+	if err != nil {
+		return xerrors.Errorf("checking state invariants: %w", err)
+	}
+
+	for _, message := range messages.Messages() {
+		fmt.Println("got the following error: ", message)
+	}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
+
 	return nil
 }
 
