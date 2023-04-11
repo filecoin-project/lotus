@@ -21,6 +21,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/minio/blake2b-simd"
 	"github.com/raulk/clock"
+	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -231,7 +232,7 @@ func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.M
 	msg.GasPremium = big.Min(msg.GasFeeCap, msg.GasPremium) // cap premium at FeeCap
 }
 
-func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted bool) (bool, error) {
+func (ms *msgSet) add(ctx context.Context, m *types.SignedMessage, mp *MessagePool, strict, untrusted bool) (bool, error) {
 	nextNonce := ms.nextNonce
 	nonceGap := false
 
@@ -303,6 +304,7 @@ func (ms *msgSet) add(m *types.SignedMessage, mp *MessagePool, strict, untrusted
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
 	// ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
+	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
 
 	return !has, nil
 }
@@ -514,6 +516,7 @@ func (mp *MessagePool) setPendingMset(ctx context.Context, addr address.Address,
 	}
 
 	mp.pending[ra] = ms
+	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
 
 	return nil
 }
@@ -532,13 +535,15 @@ func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Addre
 	}
 
 	delete(mp.pending, ra)
+	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
 
 	return nil
 }
 
 // This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
-func (mp *MessagePool) clearPending() {
+func (mp *MessagePool) clearPending(ctx context.Context) {
 	mp.pending = make(map[address.Address]*msgSet)
+	stats.Record(ctx, metrics.MessagePending.M(int64(len(mp.pending))))
 }
 
 func (mp *MessagePool) isLocal(ctx context.Context, addr address.Address) (bool, error) {
@@ -990,7 +995,7 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		}
 	}
 
-	incr, err := mset.add(m, mp, strict, untrusted)
+	incr, err := mset.add(ctx, m, mp, strict, untrusted)
 	if err != nil {
 		log.Debug(err)
 		return err
@@ -1620,7 +1625,7 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 			}
 		})
 
-		mp.clearPending()
+		mp.clearPending(ctx)
 		mp.republished = nil
 
 		return
