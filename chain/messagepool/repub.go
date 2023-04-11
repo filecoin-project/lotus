@@ -68,7 +68,7 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		// chains that might become profitable in the next 20 blocks.
 		// We still check the lowerBound condition for individual messages so that we don't send
 		// messages that will be rejected by the mpool spam protector, so this is safe to do.
-		next := mp.createMessageChains(actor, mset, baseFeeLowerBound, ts)
+		next := mp.createMessageChains(context.Background(), actor, mset, baseFeeLowerBound, ts)
 		chains = append(chains, next...)
 	}
 

@@ -120,7 +120,7 @@ func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
 	return nil
 }
 
-func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (tma *testMpoolAPI) GetActorAfter(_ context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	// regression check for load bug
 	if ts == nil {
 		panic("GetActorAfter called with nil tipset")

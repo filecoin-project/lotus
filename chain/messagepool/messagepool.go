@@ -770,7 +770,7 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	mp.curTsLk.RUnlock()
 
 	//ensures computations are cached without holding lock
-	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
+	_, _ = mp.api.GetActorAfter(ctx, m.Message.From, tmpCurTs)
 	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 
 	mp.curTsLk.Lock()
@@ -781,7 +781,7 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		tmpCurTs = mp.curTs
 		//we want to release the lock, cache the computations then grab it again
 		mp.curTsLk.Unlock()
-		_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
+		_, _ = mp.api.GetActorAfter(ctx, m.Message.From, tmpCurTs)
 		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 		mp.curTsLk.Lock()
 		//now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
@@ -875,7 +875,7 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 		return false, xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
-	senderAct, err := mp.api.GetActorAfter(m.Message.From, curTs)
+	senderAct, err := mp.api.GetActorAfter(ctx, m.Message.From, curTs)
 	if err != nil {
 		return false, xerrors.Errorf("failed to get sender actor: %w", err)
 	}
@@ -1034,10 +1034,10 @@ func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ typ
 }
 
 // GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
-func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
+func (mp *MessagePool) GetActor(ctx context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
 	mp.curTsLk.RLock()
 	defer mp.curTsLk.RUnlock()
-	return mp.api.GetActorAfter(addr, mp.curTs)
+	return mp.api.GetActorAfter(ctx, addr, mp.curTs)
 }
 
 func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
@@ -1079,7 +1079,7 @@ func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, 
 		return n, nil
 	}
 
-	act, err := mp.api.GetActorAfter(addr, ts)
+	act, err := mp.api.GetActorAfter(ctx, addr, ts)
 	if err != nil {
 		return 0, err
 	}
@@ -1093,7 +1093,7 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 	done := metrics.Timer(ctx, metrics.MpoolGetBalanceDuration)
 	defer done()
 
-	act, err := mp.api.GetActorAfter(addr, ts)
+	act, err := mp.api.GetActorAfter(ctx, addr, ts)
 	if err != nil {
 		return types.EmptyInt, err
 	}
@@ -1353,7 +1353,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 		for a, bkt := range buckets {
 			// TODO that might not be correct with GatActorAfter but it is only debug code
-			act, err := mp.api.GetActorAfter(a, ts)
+			act, err := mp.api.GetActorAfter(ctx, a, ts)
 			if err != nil {
 				log.Debugf("%s, err: %s\n", a, err)
 				continue

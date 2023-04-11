@@ -116,7 +116,7 @@ func TestMessageChains(t *testing.T) {
 	}
 	baseFee := types.NewInt(0)
 
-	chains := mp.createMessageChains(a1, mset, baseFee, ts)
+	chains := mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -137,7 +137,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 10 {
 		t.Fatal("expected 10 chains")
 	}
@@ -161,7 +161,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 2 {
 		t.Fatal("expected 1 chain")
 	}
@@ -192,7 +192,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 4 {
 		t.Fatal("expected 4 chains")
 	}
@@ -225,7 +225,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -251,7 +251,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -274,7 +274,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatal("expected a single chain")
 	}
@@ -295,7 +295,7 @@ func TestMessageChains(t *testing.T) {
 		mset[uint64(i)] = makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
 	}
 
-	chains = mp.createMessageChains(a1, mset, baseFee, ts)
+	chains = mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 1 {
 		t.Fatalf("expected a single chain: got %d", len(chains))
 	}
@@ -354,7 +354,7 @@ func TestMessageChainSkipping(t *testing.T) {
 		mset[uint64(i)] = m
 	}
 
-	chains := mp.createMessageChains(a1, mset, baseFee, ts)
+	chains := mp.createMessageChains(context.Background(), a1, mset, baseFee, ts)
 	if len(chains) != 4 {
 		t.Fatalf("expected 4 chains, got %d", len(chains))
 	}

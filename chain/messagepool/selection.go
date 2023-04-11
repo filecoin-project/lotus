@@ -239,7 +239,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTs, ts *typ
 	startChains := time.Now()
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
 	if dt := time.Since(startChains); dt > time.Millisecond {
@@ -487,7 +487,7 @@ func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTs, ts *type
 	startChains := time.Now()
 	var chains []*msgChain
 	for actor, mset := range pending {
-		next := mp.createMessageChains(actor, mset, baseFee, ts)
+		next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 		chains = append(chains, next...)
 	}
 	if dt := time.Since(startChains); dt > time.Millisecond {
@@ -615,7 +615,7 @@ func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[a
 			// remove actor from pending set as we are already processed these messages
 			delete(pending, pk)
 			// create chains for the priority actor
-			next := mp.createMessageChains(actor, mset, baseFee, ts)
+			next := mp.createMessageChains(ctx, actor, mset, baseFee, ts)
 			chains = append(chains, next...)
 		}
 	}
@@ -766,7 +766,7 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	return r
 }
 
-func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) []*msgChain {
+func (mp *MessagePool) createMessageChains(ctx context.Context, actor address.Address, mset map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset))
 	for _, m := range mset {
@@ -785,7 +785,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	//   cannot exceed the block limit; drop all messages that exceed the limit
 	// - the total gasReward cannot exceed the actor's balance; drop all messages that exceed
 	//   the balance
-	a, err := mp.api.GetActorAfter(actor, ts)
+	a, err := mp.api.GetActorAfter(ctx, actor, ts)
 	if err != nil {
 		log.Errorf("failed to load actor state, not building chain for %s: %v", actor, err)
 		return nil
