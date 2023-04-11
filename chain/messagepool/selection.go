@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/prof"
 )
 
 var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
@@ -40,6 +41,8 @@ type msgChain struct {
 }
 
 func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
+	defer prof.GetProfileLogger(ctx, "SelectMessages").Done()
+
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -450,7 +453,7 @@ tailLoop:
 func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTs, ts *types.TipSet) (*selectedMessages, error) {
 	start := time.Now()
 
-	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
+	baseFee, err := mp.api.ChainComputeBaseFee(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing basefee: %w", err)
 	}
@@ -695,6 +698,8 @@ tailLoop:
 }
 
 func (mp *MessagePool) getPendingMessages(ctx context.Context, curTs, ts *types.TipSet) (map[address.Address]map[uint64]*types.SignedMessage, error) {
+	defer prof.GetProfileLogger(ctx, "getPendingMessages").Done()
+
 	start := time.Now()
 
 	result := make(map[address.Address]map[uint64]*types.SignedMessage)

@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/lib/prof"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -1403,6 +1404,8 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 }
 
 func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
+	defer prof.GetProfileLogger(ctx, "runHeadChange").Done()
+
 	add := func(m *types.SignedMessage) {
 		s, ok := rmsgs[m.Message.From]
 		if !ok {

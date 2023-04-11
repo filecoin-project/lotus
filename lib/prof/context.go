@@ -33,7 +33,7 @@ func WithProfileContext(ctx context.Context, name string) context.Context {
 	return context.WithValue(ctx, profileLoggerKey, logger)
 }
 
-func UsingProfileLogger(ctx context.Context, what string) ProfileLogger {
+func GetProfileLogger(ctx context.Context, what string) ProfileLogger {
 	if v := ctx.Value(profileLoggerKey); v != nil {
 		return newProfileLogger(v.(*logging.ZapEventLogger), what)
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/prof"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -65,7 +66,7 @@ func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQ
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	return a.Mpool.SelectMessages(ctx, ts, ticketQuality)
+	return a.Mpool.SelectMessages(prof.WithProfileContext(ctx, "MpoolSelect"), ts, ticketQuality)
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {

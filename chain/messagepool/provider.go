@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/prof"
 )
 
 var (
@@ -123,6 +124,8 @@ func (mpp *mpoolProvider) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (
 }
 
 func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	defer prof.GetProfileLogger(ctx, "ChainComputeBaseFee").Done()
+
 	baseFee, err := mpp.sm.ChainStore().ComputeBaseFee(ctx, ts)
 	if err != nil {
 		return types.NewInt(0), xerrors.Errorf("computing base fee at %s: %w", ts, err)
