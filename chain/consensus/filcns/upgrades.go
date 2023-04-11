@@ -1773,7 +1773,7 @@ func upgradeActorsV11Common(
 		)
 	}
 
-	manifest, ok := actors.GetManifest(actorstypes.Version10)
+	manifest, ok := actors.GetManifest(actorstypes.Version11)
 	if !ok {
 		return cid.Undef, xerrors.Errorf("no manifest CID for v11 upgrade")
 	}
