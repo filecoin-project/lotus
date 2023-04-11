@@ -1754,15 +1754,15 @@ func upgradeActorsV11Common(
 	config migration.Config,
 ) (cid.Cid, error) {
 	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
-	store := store.ActorStore(ctx, writeStore)
+	adtStore := store.ActorStore(ctx, writeStore)
 	// ensure that the manifest is loaded in the blockstore
-	if err := bundle.LoadBundles(ctx, sm.ChainStore().StateBlockstore(), actorstypes.Version11); err != nil {
+	if err := bundle.LoadBundles(ctx, writeStore, actorstypes.Version11); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 	}
 
 	// Load the state root.
 	var stateRoot types.StateRoot
-	if err := store.Get(ctx, root, &stateRoot); err != nil {
+	if err := adtStore.Get(ctx, root, &stateRoot); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
 	}
 
@@ -1779,14 +1779,14 @@ func upgradeActorsV11Common(
 	}
 
 	// Perform the migration
-	newHamtRoot, err := nv19.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config,
+	newHamtRoot, err := nv19.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
 		migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v10: %w", err)
 	}
 
 	// Persist the result.
-	newRoot, err := store.Put(ctx, &types.StateRoot{
+	newRoot, err := adtStore.Put(ctx, &types.StateRoot{
 		Version: types.StateTreeVersion5,
 		Actors:  newHamtRoot,
 		Info:    stateRoot.Info,
