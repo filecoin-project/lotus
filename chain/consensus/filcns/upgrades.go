@@ -1778,9 +1778,9 @@ func upgradeActorsV11Common(
 		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
 	}
 
-	if stateRoot.Version != types.StateTreeVersion5 {
+	if stateRoot.Version != types.StateTreeVersion4 {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 4 for actors v10 upgrade, got %d",
+			"expected state root version 4 for actors v11 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
