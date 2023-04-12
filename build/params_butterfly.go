@@ -53,9 +53,9 @@ const UpgradeSkyrHeight = -19
 const UpgradeSharkHeight = -20
 const UpgradeHyggeHeight = -21
 
-const UpgradeLightningHeight = 20
+const UpgradeLightningHeight = 360
 
-const UpgradeThunderHeight = UpgradeLightningHeight + 20
+const UpgradeThunderHeight = UpgradeLightningHeight + 360
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
