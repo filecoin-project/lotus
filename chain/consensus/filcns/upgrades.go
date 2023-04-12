@@ -1778,7 +1778,7 @@ func upgradeActorsV11Common(
 		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
 	}
 
-	if stateRoot.Version != types.StateTreeVersion4 {
+	if stateRoot.Version != types.StateTreeVersion5 {
 		return cid.Undef, xerrors.Errorf(
 			"expected state root version 4 for actors v11 upgrade, got %d",
 			stateRoot.Version,
@@ -1794,7 +1794,7 @@ func upgradeActorsV11Common(
 	newHamtRoot, err := nv19.MigrateStateTree(ctx, adtStore, manifest, stateRoot.Actors, epoch, config,
 		migrationLogger{}, cache)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("upgrading to actors v10: %w", err)
+		return cid.Undef, xerrors.Errorf("upgrading to actors v11: %w", err)
 	}
 
 	// Persist the result.
