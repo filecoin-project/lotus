@@ -1780,7 +1780,7 @@ func upgradeActorsV11Common(
 
 	if stateRoot.Version != types.StateTreeVersion5 {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 4 for actors v11 upgrade, got %d",
+			"expected state root version 5 for actors v11 upgrade, got %d",
 			stateRoot.Version,
 		)
 	}
