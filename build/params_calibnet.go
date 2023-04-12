@@ -76,8 +76,8 @@ const UpgradeHyggeHeight = 322354
 // 2023-04-18T16:30:00Z
 const UpgradeLightningHeight = 483634
 
-// 2023-04-18T20:30:00Z
-const UpgradeThunderHeight = UpgradeLightningHeight + 480
+// 2023-04-20T16:30:00Z
+const UpgradeThunderHeight = UpgradeLightningHeight + 5760
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
