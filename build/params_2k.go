@@ -23,7 +23,7 @@ var NetworkBundle = "devnet"
 var BundleOverrides map[actorstypes.Version]string
 var ActorDebugging = true
 
-const GenesisNetworkVersion = network.Version17
+const GenesisNetworkVersion = network.Version18
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
