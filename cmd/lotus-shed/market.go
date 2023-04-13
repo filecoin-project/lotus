@@ -105,6 +105,7 @@ var marketCronStateCmd = &cli.Command{
 			return err
 		}
 		for e := range dealOpsRecord {
+			e := e
 			err := dealOpsMultiMap.ForEach(abi.ChainEpoch(e), func(id abi.DealID) error {
 				dealOpsRecord[e] = append(dealOpsRecord[e], id)
 				return nil

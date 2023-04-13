@@ -127,7 +127,13 @@ var sectorInfoCmd = &cli.Command{
 			return err
 		}
 		out := cbg.Deferred{}
-		sectorsAMT.Get(sn, &out)
+		found, err := sectorsAMT.Get(sn, &out)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return xerrors.Errorf("sector number %d not found", sn)
+		}
 		fmt.Printf("%x\n", out.Raw)
 		return nil
 	},
