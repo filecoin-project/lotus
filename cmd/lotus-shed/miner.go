@@ -110,11 +110,11 @@ var sectorInfoCmd = &cli.Command{
 		}
 		st, ok := a.State.(map[string]interface{})
 		if !ok {
-			xerrors.Errorf("failed to cast state map to expected form")
+			return xerrors.Errorf("failed to cast state map to expected form")
 		}
 		sectorsRaw, ok := st["Sectors"].(map[string]interface{})
 		if !ok {
-			xerrors.Errorf("failed to read sectors root from state")
+			return xerrors.Errorf("failed to read sectors root from state")
 		}
 		// string is of the form "/:bafy.." so [2:] to drop the path
 		sectorsRoot, err := cid.Parse(sectorsRaw["/"])

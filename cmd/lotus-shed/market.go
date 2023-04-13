@@ -71,11 +71,11 @@ var marketCronStateCmd = &cli.Command{
 		}
 		st, ok := a.State.(map[string]interface{})
 		if !ok {
-			xerrors.Errorf("failed to cast state map to expected form")
+			return xerrors.Errorf("failed to cast state map to expected form")
 		}
 		dealOpsRaw, ok := st["DealOpsByEpoch"].(map[string]interface{})
 		if !ok {
-			xerrors.Errorf("failed to read sectors root from state")
+			return xerrors.Errorf("failed to read sectors root from state")
 		}
 		// string is of the form "/:bafy.." so [2:] to drop the path
 		dealOpsRoot, err := cid.Parse(dealOpsRaw["/"])
