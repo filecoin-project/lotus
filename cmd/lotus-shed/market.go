@@ -114,6 +114,9 @@ var marketCronStateCmd = &cli.Command{
 			}
 		}
 		jsonStr, err := json.Marshal(dealOpsRecord)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("%s\n", jsonStr)
 		return nil
 	},
