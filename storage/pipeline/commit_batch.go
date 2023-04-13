@@ -392,17 +392,19 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config, sectors []abi.SectorN
 	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 
 	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
+		log.Errorf("simulating CommitBatch message failed: %s", err)
 		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
 
 	// If we're out of gas, split the batch in half and try again
 	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
+		log.Warnf("CommitAggregate message ran out of gas, splitting batch in half and trying again (sectors: %d)", len(sectors))
 		mid := len(sectors) / 2
 		ret0, _ := b.processBatch(cfg, sectors[:mid])
 		ret1, _ := b.processBatch(cfg, sectors[mid:])
 
-		return append(ret0, ret1...), err
+		return append(ret0, ret1...), nil
 	}
 
 	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
