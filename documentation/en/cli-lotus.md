@@ -7,7 +7,11 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
+<<<<<<< HEAD
    1.21.0-rc3
+=======
+   1.22.0-rc3
+>>>>>>> 6e231e720 (v1.22.0-rc3)
 
 COMMANDS:
    daemon   Start a lotus daemon process

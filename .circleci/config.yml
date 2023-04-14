@@ -796,9 +796,10 @@ workflows:
           target: "./itests/mempool_test.go"
       - test:
           name: test-itest-migration
+          requires:
+            - build
           suite: itest-migration
           target: "./itests/migration_test.go"
-      
       - test:
           name: test-itest-mpool_msg_uuid
           requires:

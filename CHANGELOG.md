@@ -1,7 +1,5 @@
 # Lotus changelog
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 # v1.21.0-rc3 / 2023-04-10
 
 This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
@@ -244,6 +242,32 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 - feat: ci: make ci more efficient ([filecoin-project/lotus#9910](https://github.com/filecoin-project/lotus/pull/9910))
 - feat: scripts: go.mod dep diff script ([filecoin-project/lotus#9711](https://github.com/filecoin-project/lotus/pull/9711))
 =======
+# v1.22.0-rc1 / 2023-04-13
+
+
+This is the third release candidate for the upcoming MANDATORY 1.22.0 release of Lotus. This release will deliver the nv19 Lighting and nv20 Thunder network upgrade.
+
+Note that this release candidate sets the calibration upgrade epoch, and does NOT set the epoch at which mainnet will upgrade; that detail will be finalized in the 1.22.0 release.
+
+The Lighting and Thunder upgrade introduces the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0-rc.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0-rc1)):
+
+- [FIP 0060](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md) - Thirty day market deal maintenance interval
+- [FIP 0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0061.md) - WindowPoSt grindability fix
+- [FIP 0062](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0062.md) - Fallback method handler for multisig actor
+- [FIP 0052](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md) - Deals and sectors can be created and extended in 3.5 year intervals (+2 years from current params)
+- [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) - internal refactor of sector info fields fixing several outstanding bugs
+
+## Lighting and Thunder
+
+As you may have noticed, that we are doing a two-stage incremental network upgrades in this release. This essentially means that there will be two network versions rolled out together -- nv19 and nv20.
+The two stage roll out is required for FIP-0061 - which introduces a new proof that reduces the grindability of windowPoSt and furthur secures the network. At the first upgrade, the new proof type will start to be accepted by the protocol, while the second upgrade (nv20) marks the spot when the old proof type will no longer be accepted. This allows for a smooth rollover period during which both proof types are accepted. Lotus will start generating the new proof types immediately after the nv19 upgrade.
+This is something we've safely done before. The second upgrade is something of a "ghost" upgrade -- no migration runs, and no code changes, except that clients will start reporting the new network version of nv20 to the FVM.
+
+## Calibration nv19 Lighting and nv20 Thunder Upgrade
+
+This release candidate sets the calibration-net nv19 Lighting upgrade at epoch 489394, 2023-04-20T16:30:00Z and nv20 Thunder upgrade will be triggered automatically 11520 epoch later. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
+(located at `build/actors/v10.tar.zst`) upon/post migration, manifest CID `bafy2bzaced25ta3j6ygs34roprilbtb3f6mxifyfnm7z7ndquaruxzdq3y7lo`.
+
 # UNRELEASED
 >>>>>>> f6add2f72 (feat: vm: switch to the new exec trace format (#10372))
 
@@ -399,7 +423,6 @@ New <code>ExecutionTrace</code>:
 
 </details>
 
-<<<<<<< HEAD
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
@@ -465,8 +488,6 @@ This is a HIGHLY RECOMMENDED patch release for node operators/API service provid
 - feat: mempool: Reduce minimum replace fee from 1.25x to 1.1x #10416
 - We recommend storage providers to update your nodes to this patch, that will help improve developers who use Ethereum tooling's experience.
 =======
-=======
->>>>>>> f6add2f72 (feat: vm: switch to the new exec trace format (#10372))
 # v1.20.4 / 2023-03-17
 
 This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade. 
@@ -487,7 +508,6 @@ Users with higher memory specs can experiment with setting `LOTUS_FVM_CONCURRENC
 # v1.20.3 / 2023-03-09
 
 A 🐈 stepped on the ⌨️ and made a mistake while resolving conflicts 😨. This releases only includes #10439 to fix that mistake. v1.20.2 is retracted - Please skip v1.20.2 and only update to v1.20.3!!!
->>>>>>> d374b1cee (chore: release lotus v1.20.4)
 
 # v1.20.2 / 2023-03-09
 
