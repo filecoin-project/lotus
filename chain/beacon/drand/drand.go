@@ -8,7 +8,7 @@ import (
 	dchain "github.com/drand/drand/chain"
 	dclient "github.com/drand/drand/client"
 	hclient "github.com/drand/drand/client/http"
-	"github.com/drand/drand/common/scheme"
+	"github.com/drand/drand/crypto"
 	dlog "github.com/drand/drand/log"
 	gclient "github.com/drand/drand/lp2p/client"
 	"github.com/drand/kyber"
@@ -71,6 +71,10 @@ type DrandHTTPClient interface {
 
 type logger struct {
 	*zap.SugaredLogger
+}
+
+func (l *logger) AddCallerSkip(i int) dlog.Logger {
+	return &logger{l.SugaredLogger.Desugar().WithOptions(zap.AddCallerSkip(i)).Sugar()}
 }
 
 func (l *logger) With(args ...interface{}) dlog.Logger {
@@ -199,7 +203,13 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		Round:       curr.Round,
 		Signature:   curr.Data,
 	}
-	err := dchain.NewVerifier(scheme.GetSchemeFromEnv()).VerifyBeacon(*b, db.pubkey)
+
+	scheme, err := crypto.GetSchemeFromEnv()
+	if err != nil {
+		return err
+	}
+
+	err = scheme.VerifyBeacon(b, db.pubkey)
 	if err == nil {
 		db.cacheValue(curr)
 	}
