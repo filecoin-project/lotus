@@ -24,7 +24,7 @@ This is something we've safely done before. The second upgrade is something of a
 ## Calibration nv19 Lighting and nv20 Thunder Upgrade
 
 This release candidate sets the calibration-net nv19 Lighting upgrade at epoch 489394, 2023-04-20T16:30:00Z and nv20 Thunder upgrade will be triggered automatically 11520 epoch later. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
-(located at `build/actors/v10.tar.zst`) upon/post migration, manifest CID `bafy2bzaced25ta3j6ygs34roprilbtb3f6mxifyfnm7z7ndquaruxzdq3y7lo`.
+(located at `build/actors/v11.tar.zst`) upon/post migration, manifest CID `bafy2bzacedyne7vbddp2inj64ubztcvkmfkdnahwo353sltkqtsyzckioneuu`.
 
 # UNRELEASED
 
