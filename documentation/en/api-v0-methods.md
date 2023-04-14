@@ -3709,8 +3709,7 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Reachability": 1,
-  "PublicAddr": "string value"
+  "Reachability": 1
 }
 ```
 

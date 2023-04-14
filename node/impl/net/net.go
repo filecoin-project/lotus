@@ -143,19 +143,7 @@ func (a *NetAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error
 		}, nil
 	}
 
-	var maddr string
-	if autonat.Status() == network.ReachabilityPublic {
-		pa, err := autonat.PublicAddr()
-		if err != nil {
-			return api.NatInfo{}, err
-		}
-		maddr = pa.String()
-	}
-
-	return api.NatInfo{
-		Reachability: autonat.Status(),
-		PublicAddr:   maddr,
-	}, nil
+	return api.NatInfo{Reachability: autonat.Status()}, nil
 }
 
 func (a *NetAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
