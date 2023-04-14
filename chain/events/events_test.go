@@ -174,12 +174,15 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 		},
 	})
 
+	require.NoError(t, err)
+
+	fcs.mu.Lock()
+	defer fcs.mu.Unlock()
+
 	if fcs.tipsets == nil {
 		fcs.tipsets = map[types.TipSetKey]*types.TipSet{}
 	}
 	fcs.tipsets[ts.Key()] = ts
-
-	require.NoError(t, err)
 
 	return ts
 }
