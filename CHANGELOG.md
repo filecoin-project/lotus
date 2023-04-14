@@ -1,5 +1,31 @@
 # Lotus changelog
 
+# v1.22.0-rc1 / 2023-04-13
+
+
+This is the third release candidate for the upcoming MANDATORY 1.22.0 release of Lotus. This release will deliver the nv19 Lighting and nv20 Thunder network upgrade.
+
+Note that this release candidate sets the calibration upgrade epoch, and does NOT set the epoch at which mainnet will upgrade; that detail will be finalized in the 1.22.0 release.
+
+The Lighting and Thunder upgrade introduces the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0-rc.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0-rc1)):
+
+- [FIP 0060](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md) - Thirty day market deal maintenance interval
+- [FIP 0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0061.md) - WindowPoSt grindability fix
+- [FIP 0062](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0062.md) - Fallback method handler for multisig actor
+- [FIP 0052](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md) - Deals and sectors can be created and extended in 3.5 year intervals (+2 years from current params)
+- [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) - internal refactor of sector info fields fixing several outstanding bugs
+
+## Lighting and Thunder
+
+As you may have noticed, that we are doing a two-stage incremental network upgrades in this release. This essentially means that there will be two network versions rolled out together -- nv19 and nv20.
+The two stage roll out is required for FIP-0061 - which introduces a new proof that reduces the grindability of windowPoSt and furthur secures the network. At the first upgrade, the new proof type will start to be accepted by the protocol, while the second upgrade (nv20) marks the spot when the old proof type will no longer be accepted. This allows for a smooth rollover period during which both proof types are accepted. Lotus will start generating the new proof types immediately after the nv19 upgrade.
+This is something we've safely done before. The second upgrade is something of a "ghost" upgrade -- no migration runs, and no code changes, except that clients will start reporting the new network version of nv20 to the FVM.
+
+## Calibration nv19 Lighting and nv20 Thunder Upgrade
+
+This release candidate sets the calibration-net nv19 Lighting upgrade at epoch 489394, 2023-04-20T16:30:00Z and nv20 Thunder upgrade will be triggered automatically 11520 epoch later. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
+(located at `build/actors/v10.tar.zst`) upon/post migration, manifest CID `bafy2bzaced25ta3j6ygs34roprilbtb3f6mxifyfnm7z7ndquaruxzdq3y7lo`.
+
 # UNRELEASED
 
 ## Execution Trace Format Changes
