@@ -98,7 +98,7 @@ func (r *ResumableReader) Read(p []byte) (n int, err error) {
 		n, err = r.reader.Read(p)
 		r.position += int64(n)
 
-		if err == io.EOF {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			if r.position == r.contentLength {
 				r.reader.Close()
 				return n, err
