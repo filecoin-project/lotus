@@ -74,7 +74,7 @@ const UpgradeSharkHeight = 16800 // 6 days after genesis
 const UpgradeHyggeHeight = 322354
 
 // 2023-04-20T14:00:00Z
-const UpgradeLightningHeight = 489154
+const UpgradeLightningHeight = 489094
 
 // 2023-04-21T16:00:00Z
 const UpgradeThunderHeight = UpgradeLightningHeight + 3120
