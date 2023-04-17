@@ -535,7 +535,7 @@
   #
   # type: Duration
   # env var: LOTUS_SEALING_COMMITTEDCAPACITYSECTORLIFETIME
-  #CommittedCapacitySectorLifetime = "12960h0m0s"
+  #CommittedCapacitySectorLifetime = "30672h0m0s"
 
   # Period of time that a newly created sector will wait for more deals to be packed in to before it starts to seal.
   # Sectors which are fully filled will start sealing immediately

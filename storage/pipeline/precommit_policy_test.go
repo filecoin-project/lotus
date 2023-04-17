@@ -68,7 +68,7 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 	require.NoError(t, err)
 
 	// as set when there are no deal pieces
-	expected := h + policy.GetDefaultSectorExpirationExtension() - pBuffer
+	expected := h + policy.GetMaxSectorExpirationExtension() - pBuffer
 	assert.Equal(t, int(expected), int(exp))
 }
 
