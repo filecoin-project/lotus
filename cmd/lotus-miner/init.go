@@ -714,7 +714,11 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, ssize abi.Secto
 	}
 
 	// Note: the correct thing to do would be to call SealProofTypeFromSectorSize if actors version is v3 or later, but this still works
-	spt, err := miner.WindowPoStProofTypeFromSectorSize(ssize)
+	nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get network version: %w", err)
+	}
+	spt, err := miner.WindowPoStProofTypeFromSectorSize(ssize, nv)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting post proof type: %w", err)
 	}
