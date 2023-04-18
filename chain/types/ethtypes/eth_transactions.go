@@ -44,14 +44,6 @@ type EthTx struct {
 	S                    EthBigInt   `json:"s"`
 }
 
-func (tx *EthTx) Reward(blkBaseFee big.Int) EthBigInt {
-	availablePriorityFee := big.Sub(big.Int(tx.MaxFeePerGas), blkBaseFee)
-	if big.Cmp(big.Int(tx.MaxPriorityFeePerGas), availablePriorityFee) <= 0 {
-		return tx.MaxPriorityFeePerGas
-	}
-	return EthBigInt(availablePriorityFee)
-}
-
 type EthTxArgs struct {
 	ChainID              int         `json:"chainId"`
 	Nonce                int         `json:"nonce"`

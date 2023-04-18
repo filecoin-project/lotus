@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 
 	"github.com/filecoin-project/lotus/api"
@@ -15,6 +16,10 @@ import (
 var ErrModuleDisabled = errors.New("module disabled, enable with Fevm.EnableEthRPC / LOTUS_FEVM_ENABLEETHRPC")
 
 type EthModuleDummy struct{}
+
+func (e *EthModuleDummy) EthAddressToFilecoinAddress(ctx context.Context, ethAddress ethtypes.EthAddress) (address.Address, error) {
+	return address.Undef, ErrModuleDisabled
+}
 
 func (e *EthModuleDummy) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error) {
 	return nil, ErrModuleDisabled

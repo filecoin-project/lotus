@@ -265,6 +265,20 @@ func TestFEVMDelegateCall(t *testing.T) {
 	expectedResultActor, err := hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
 	require.NoError(t, err)
 	require.Equal(t, result, expectedResultActor)
+
+	// The implementation's storage should not have been updated.
+	actorAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(actorAddr)
+	require.NoError(t, err)
+	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(make([]byte, 32)), value)
+
+	// The storage actor's storage _should_ have been updated
+	storageAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(storageAddr)
+	require.NoError(t, err)
+	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, "latest")
+	require.NoError(t, err)
+	require.Equal(t, ethtypes.EthBytes(expectedResult), value)
 }
 
 // TestFEVMDelegateCallRevert makes a delegatecall action and then calls revert.
@@ -867,4 +881,133 @@ func TestFEVMGetBlockDifficulty(t *testing.T) {
 	ret, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getDifficulty()", []byte{})
 	require.NoError(t, err)
 	require.Equal(t, len(ret), 32)
+}
+
+func TestFEVMTestCorrectChainID(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	//run test
+	_, _, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "testChainID()", []byte{})
+	require.NoError(t, err)
+}
+
+func TestFEVMGetChainPropertiesBlockTimestamp(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	// block number check
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getTimestamp()", []byte{})
+	require.NoError(t, err)
+
+	timestampFromSolidity, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
+
+	require.Equal(t, ethBlock.Timestamp, ethtypes.EthUint64(timestampFromSolidity))
+}
+
+func TestFEVMGetChainPropertiesBlockNumber(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	// block number check
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBlockNumber()", []byte{})
+	require.NoError(t, err)
+
+	blockHeightFromSolidity, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
+
+	require.Equal(t, ethBlock.Number, ethtypes.EthUint64(blockHeightFromSolidity))
+}
+
+func TestFEVMGetChainPropertiesBlockHash(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	//block hash check
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBlockhashPrevious()", []byte{})
+	expectedBlockHash := hex.EncodeToString(ret)
+	require.NoError(t, err)
+
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
+	//in solidity we get the parent block hash because the current block hash doesnt exist at that execution context yet
+	//so we compare the parent hash here in the test
+	require.Equal(t, "0x"+expectedBlockHash, ethBlock.ParentHash.String())
+}
+
+func TestFEVMGetChainPropertiesBaseFee(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	//install contract
+	filenameActor := "contracts/Blocktest.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameActor)
+
+	ret, wait, err := client.EVM().InvokeContractByFuncName(ctx, fromAddr, contractAddr, "getBasefee()", []byte{})
+	require.NoError(t, err)
+	baseFeeRet, err := decodeOutputToUint64(ret)
+	require.NoError(t, err)
+
+	ethBlock := client.EVM().GetEthBlockFromWait(ctx, wait)
+
+	require.Equal(t, ethBlock.BaseFeePerGas, ethtypes.EthBigInt(big.NewInt(int64(baseFeeRet))))
+}
+
+func TestFEVMErrorParsing(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	e := client.EVM()
+
+	_, contractAddr := e.DeployContractFromFilename(ctx, "contracts/Errors.hex")
+	contractAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(contractAddr)
+	require.NoError(t, err)
+	customError := ethtypes.EthBytes(kit.CalcFuncSignature("CustomError()")).String()
+	for sig, expected := range map[string]string{
+		"failRevertEmpty()":  "none",
+		"failRevertReason()": "Error(my reason)",
+		"failAssert()":       "Assert()",
+		"failDivZero()":      "DivideByZero()",
+		"failCustom()":       customError,
+	} {
+		sig := sig
+		expected := fmt.Sprintf("exit 33, revert reason: %s, vm error", expected)
+		t.Run(sig, func(t *testing.T) {
+			entryPoint := kit.CalcFuncSignature(sig)
+			t.Run("EthCall", func(t *testing.T) {
+				_, err := e.EthCall(ctx, ethtypes.EthCall{
+					To:   &contractAddrEth,
+					Data: entryPoint,
+				}, "latest")
+				require.ErrorContains(t, err, expected)
+			})
+			t.Run("EthEstimateGas", func(t *testing.T) {
+				_, err := e.EthEstimateGas(ctx, ethtypes.EthCall{
+					To:   &contractAddrEth,
+					Data: entryPoint,
+				})
+				require.ErrorContains(t, err, expected)
+			})
+		})
+	}
 }

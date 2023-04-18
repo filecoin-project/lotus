@@ -28,12 +28,10 @@ import (
 
 var minerTypesCmd = &cli.Command{
 	Name:  "miner-types",
-	Usage: "Scrape state to report on how many miners of each WindowPoStProofType exist",
-	Flags: []cli.Flag{
+	Usage: "Scrape state to report on how many miners of each WindowPoStProofType exist", Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

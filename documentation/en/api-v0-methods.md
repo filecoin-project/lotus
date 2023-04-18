@@ -2879,7 +2879,7 @@ Response:
   ],
   "SizeLimitHigh": 123,
   "SizeLimitLow": 123,
-  "ReplaceByFeeRatio": 12.3,
+  "ReplaceByFeeRatio": 1.23,
   "PruneCooldown": 60000000000,
   "GasLimitOverestimation": 12.3
 }
@@ -3167,7 +3167,7 @@ Inputs:
     ],
     "SizeLimitHigh": 123,
     "SizeLimitLow": 123,
-    "ReplaceByFeeRatio": 12.3,
+    "ReplaceByFeeRatio": 1.23,
     "PruneCooldown": 60000000000,
     "GasLimitOverestimation": 12.3
   }
@@ -4727,7 +4727,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  21
 ]
 ```
 
@@ -4742,7 +4742,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  21
 ]
 ```
 
@@ -6458,7 +6458,7 @@ Inputs:
 ]
 ```
 
-Response: `20`
+Response: `21`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

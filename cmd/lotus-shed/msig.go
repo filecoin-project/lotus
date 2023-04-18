@@ -43,9 +43,8 @@ var multisigGetAllCmd = &cli.Command{
 	ArgsUsage: "[state root]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

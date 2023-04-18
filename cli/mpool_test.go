@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -298,6 +299,7 @@ func TestReplace(t *testing.T) {
 			mockApi.EXPECT().ChainGetMessage(ctx, sm.Cid()).Return(&sm.Message, nil),
 			mockApi.EXPECT().ChainHead(ctx).Return(nil, nil),
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
+			mockApi.EXPECT().MpoolGetConfig(ctx).Return(messagepool.DefaultConfig(), nil),
 			// use gomock.any to match the message in expected api calls
 			// since the replace function modifies the message between calls, it would be pointless to try to match the exact argument
 			mockApi.EXPECT().GasEstimateMessageGas(ctx, gomock.Any(), &mss, types.EmptyTSK).Return(&sm.Message, nil),
@@ -342,6 +344,7 @@ func TestReplace(t *testing.T) {
 		gomock.InOrder(
 			mockApi.EXPECT().ChainHead(ctx).Return(nil, nil),
 			mockApi.EXPECT().MpoolPending(ctx, types.EmptyTSK).Return([]*types.SignedMessage{sm}, nil),
+			mockApi.EXPECT().MpoolGetConfig(ctx).Return(messagepool.DefaultConfig(), nil),
 			// use gomock.any to match the message in expected api calls
 			// since the replace function modifies the message between calls, it would be pointless to try to match the exact argument
 			mockApi.EXPECT().GasEstimateMessageGas(ctx, gomock.Any(), &mss, types.EmptyTSK).Return(&sm.Message, nil),
@@ -538,7 +541,7 @@ func TestConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		mpoolCfg := &types.MpoolConfig{PriorityAddrs: []address.Address{senderAddr}, SizeLimitHigh: 1234567, SizeLimitLow: 6, ReplaceByFeeRatio: 0.25}
+		mpoolCfg := &types.MpoolConfig{PriorityAddrs: []address.Address{senderAddr}, SizeLimitHigh: 1234567, SizeLimitLow: 6, ReplaceByFeeRatio: types.Percent(25)}
 		gomock.InOrder(
 			mockApi.EXPECT().MpoolGetConfig(ctx).Return(mpoolCfg, nil),
 		)
@@ -566,7 +569,7 @@ func TestConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		mpoolCfg := &types.MpoolConfig{PriorityAddrs: []address.Address{senderAddr}, SizeLimitHigh: 234567, SizeLimitLow: 3, ReplaceByFeeRatio: 0.33}
+		mpoolCfg := &types.MpoolConfig{PriorityAddrs: []address.Address{senderAddr}, SizeLimitHigh: 234567, SizeLimitLow: 3, ReplaceByFeeRatio: types.Percent(33)}
 		gomock.InOrder(
 			mockApi.EXPECT().MpoolSetConfig(ctx, mpoolCfg).Return(nil),
 		)

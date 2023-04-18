@@ -86,9 +86,8 @@ var stateTreePruneCmd = &cli.Command{
 	Description: "Deletes old state root data from local chainstore",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.Int64Flag{
 			Name:  "keep-from-lookback",

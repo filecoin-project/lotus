@@ -41,6 +41,10 @@ func (s *state10) Nonce() (uint64, error) {
 	return s.State.Nonce, nil
 }
 
+func (s *state10) IsAlive() (bool, error) {
+	return s.State.Tombstone == nil, nil
+}
+
 func (s *state10) GetState() interface{} {
 	return &s.State
 }

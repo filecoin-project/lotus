@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipld/go-car"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/stretchr/testify/require"

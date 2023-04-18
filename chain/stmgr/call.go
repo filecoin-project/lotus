@@ -31,6 +31,10 @@ var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at e
 // tipset's parent. In the presence of null blocks, the height at which the message is invoked may
 // be less than the specified tipset.
 func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
+	// Copy the message as we modify it below.
+	msgCopy := *msg
+	msg = &msgCopy
+
 	if msg.GasLimit == 0 {
 		msg.GasLimit = build.BlockGasLimit
 	}

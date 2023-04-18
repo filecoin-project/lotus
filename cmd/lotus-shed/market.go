@@ -124,9 +124,8 @@ var marketExportDatastoreCmd = &cli.Command{
 	Description: "export markets datastore key/values to a file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Usage: "path to the repo",
 		},
 		&cli.StringFlag{
 			Name:  "backup-dir",
@@ -242,9 +241,8 @@ var marketImportDatastoreCmd = &cli.Command{
 	Description: "import markets datastore key/values from a backup file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Usage: "path to the repo",
 		},
 		&cli.StringFlag{
 			Name:     "backup-path",

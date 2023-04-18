@@ -1,5 +1,101 @@
 # Lotus changelog
 
+# v1.20.2 / 2023-03-09
+
+This is a HIGHLY RECOMMENDED patch release for node operators/API service providers that run ETH RPC service and an optional release for Storage Providers.
+
+## Bug fixes
+- fix: EthAPI: use StateCompute for feeHistory; apply minimum gas premium #10413
+- fix: eth API: return correct txIdx around null blocks #10419
+- fix: Eth API: make block parameter parsing sounder. #10427
+
+## Improvement
+- feat: Lotus Gateway: Add missing methods - master #10420
+- feat: mempool: Reduce minimum replace fee from 1.25x to 1.1x #10416
+ - We recommend storage providers to update your nodes to this patch, that will help improve developers who use Ethereum tooling's experience.
+
+# v1.20.1 / 2023-03-06
+
+This an optional patch releases for node operators/API service providers that run ETH RPC service.
+
+## Bug fixes
+- fix: EthAPI: Correctly get parent hash #10389
+- fix: EthAPI: Make newEthBlockFromFilecoinTipSet faster and correct #10380
+- fix: state: short-circuit genesis state computation
+
+# 1.20.0 / 2023-02-28
+
+This is a MANDATORY release of Lotus that delivers the [Hygge network upgrade](https://github.com/filecoin-project/community/discussions/74?sort=top#discussioncomment-4313888), introducing Filecoin network version 18. The centerpiece of the upgrade is the introduction of the [Filecoin Virtual Machine (FVM)’s Milestone 2.1](https://fvm.filecoin.io/), which will allow for EVM-compatible contracts to be deployed on the Filecoin network. This upgrade delivers user-programmablity to the Filecoin network for the first time!
+
+The Filecoin mainnet is scheduled to upgrade to nv18 at epoch 2683348, on March 14th at 2023-03-14T15:14:00Z. All node operators, including storage providers, must upgrade to this release before that time. Storage providers must update their daemons, miners, market and worker(s)/boost.
+At the upgrade, a short migration will run that converts code actors v9 code CIDs to v10 CIDs, and installs the new Ethereum Address Manager singleton (see below). This is expected to be a lightweight migration that causes no service disruption.
+
+The Hygge upgrade introduces the following Filecoin Improvement Proposals (FIPs), delivered in FVM3 (see FVM [v3.0.0](https://github.com/filecoin-project/ref-fvm/pull/1683)) and builtin-actors v10 (see actors [v10.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0)):
+
+- [FIP-0048](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0048.md): f4 Address Class
+- [FIP-0049](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md): Actor events
+- [FIP-0050](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0050.md): API between user-programmed actors and built-in actors
+- [FIP-0054](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0054.md): Filecoin EVM runtime (FEVM)
+- [FIP-0055](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0055.md): Supporting Ethereum Accounts, Addresses, and Transactions
+- [FIP-0057](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0057.md): Update gas charging schedule and system limits for FEVM
+
+## Filecoin Ethereum Virtual Machine (FEVM)
+
+The Filecoin Ethereum Virtual Machine (FEVM) is built on top of the WASM-based execution environment introduced in the Skyr v16 upgrade. The chief feature introduced is the ability for anyone participating in the Filecoin network to deploy their own EVM-compatible contracts onto the blockchain, and invoke them as appropriate.
+
+## New Built-in Actors
+
+The FEVM is principally delivered through the introduction of **the new [EVM actor](https://github.com/filecoin-project/builtin-actors/tree/master/actors/evm)**. This actor “represents” smart contracts on the Filecoin network, and includes an interpreter that implements all EVM opcodes as their Filecoin equivalents, and translates state I/O operations to be compatible with Filecoin’s IPLD-based data model. For more on the EVM actors, please see [FIP-0054](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0054.md).
+
+The creation of EVM actors is managed by **the new** [Ethereum Address Manager actor (EAM)](https://github.com/filecoin-project/builtin-actors/tree/master/actors/eam), a singleton that is invoked in order to deploy EVM actors. In order to make usage of the FEVM as seamless as possible for users familiar with the Ethereum ecosystem, this upgrades also introduces **a dedicated actor to serve as “[Ethereum Accounts](https://github.com/filecoin-project/builtin-actors/tree/master/actors/ethaccount)”**. This actor exists to allow for secp keys to be used in the Ethereum addressing scheme. **The last new built-in actor introduced is [the Placeholder actor](https://github.com/filecoin-project/builtin-actors/tree/master/actors/placeholder)**, a thin “shell” of an actor that can transform into either EVM or EthAccount actors. For more on the EAM, EthAccount, and Placeholder actors, please see [FIP-0055](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0055.md).
+
+### v10 Built-in actor bundles
+
+Bundles for all networks (mainnet, calibnet, etc.) are included in the lotus source tree (`build/actors/`) and embedded on build, for v10 actors you can find it [here](https://github.com/filecoin-project/lotus/blob/master/build/actors/v10.tar.zst). 
+Reminder: Lotus verifies that the bundle CIDs are the right ones upon build & upgrade against the values in `build/builtin_actors_gen.go`, according to the network you are building. You may also check the bundle manifest CID matches the bundle gen-ed values by running `lotus state actor-cids --network-version 18`.
+
+The manifest CID & full list of actor code CIDs for nv18 using [actor v10](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0) is:
+
+    "_manifest":        "bafy2bzacecsuyf7mmvrhkx2evng5gnz5canlnz2fdlzu2lvcgptiq2pzuovos"
+    "account":          "bafk2bzaceampw4romta75hyz5p4cqriypmpbgnkxncgxgqn6zptv5lsp2w2bo"
+    "cron":             "bafk2bzacedcbtsifegiu432m5tysjzkxkmoczxscb6hqpmrr6img7xzdbbs2g"
+    "datacap":          "bafk2bzacealj5uk7wixhvk7l5tnredtelralwnceafqq34nb2lbylhtuyo64u"
+    "eam":             "bafk2bzacedrpm5gbleh4xkyo2jvs7p5g6f34soa6dpv7ashcdgy676snsum6g"
+    "ethaccount":   "bafk2bzaceaqoc5zakbhjxn3jljc4lxnthllzunhdor7sxhwgmskvc6drqc3fa"
+    "evm":                "bafk2bzaceahmzdxhqsm7cu2mexusjp6frm7r4kdesvti3etv5evfqboos2j4g"
+    "init":                "bafk2bzaced2f5rhir3hbpqbz5ght7ohv2kgj42g5ykxrypuo2opxsup3ykwl6"
+    "multisig":         "bafk2bzaceduf3hayh63jnl4z2knxv7cnrdenoubni22fxersc4octlwpxpmy4"
+    "paymentchannel":   "bafk2bzaceartlg4mrbwgzcwric6mtvyawpbgx2xclo2vj27nna57nxynf3pgc"
+    "placeholder": "bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro"
+    "reward":           "bafk2bzacebnhtaejfjtzymyfmbdrfmo7vgj3zsof6zlucbmkhrvcuotw5dxpq"
+    "storagemarket":    "bafk2bzaceclejwjtpu2dhw3qbx6ow7b4pmhwa7ocrbbiqwp36sq5yeg6jz2bc"
+    "storageminer":     "bafk2bzaced4h7noksockro7glnssz2jnmo2rpzd7dvnmfs4p24zx3h6gtx47s"
+    "storagepower":     "bafk2bzacec4ay4crzo73ypmh7o3fjendhbqrxake46bprabw67fvwjz5q6ixq"
+    "system":           "bafk2bzacedakk5nofebyup4m7nvx6djksfwhnxzrfuq4oyemhpl4lllaikr64"
+    "verifiedregistry": "bafk2bzacedfel6edzqpe5oujno7fog4i526go4dtcs6vwrdtbpy2xq6htvcg6"
+
+## Node Operators
+
+FVM has been running in lotus since v1.16.0 and up, and the new FEVM does not increase any node hardware spec requirement.
+
+With FEVM on Filecoin, we aim to provide full compatibility with the existing EVM ecosystem and its tooling out of the box. 
+Consequently, lotus now provides a full set of [Ethereum-styled APIs](https://github.com/filecoin-project/lotus/blob/release/v1.20.0/node/impl/full/eth.go) for developers and token holders to interact with the Filecoin network as well.
+For full documentation on this new tooling, please see the [Lotus docs website](https://lotus.filecoin.io/lotus/configure/ethereum-rpc/).
+
+**Enabling Ethereum JSON RPC API**
+
+Note that Ethereum APIs are only supported in the lotus v1 API, meaning that any node operator who wants to enable Eth API services must be using the v1 API, instead of the v0 API. To enable Eth RPC, simply set `EnableEthRPC` to `true` in your node config.toml file; or set env var `LOTUS_FEVM_ENABLEETHRPC` to `1` before starting your lotus node.
+
+**Eth tx hash and Filecoin message CID**
+
+Most of the Eth APIs take Eth accounts and tx has as an input, and they start with `0x` , and that is what Ethereum tooling support. However, in Filecoin, we have Filecoin account formats where things start with `f` (`f410` specifically for eth accounts on Filecoin) and the messages are in the format of CIDs. To enable a smooth developer experience, Lotus internally converts between Ethereum address and Filecoin account address as needed. In addition, lotus also keeps a Eth tx hash <> Filecoin message CID map and stores them in a SQLite database as node sees a FEVM messages. The database is initiated and the maps are populated  automatically in `~/<lotus_repo>/sqlite/txhash.db` for any node that as Eth RPC enabled. Node operators can configure how many historical mappings they wanna store by configuring `EthTxHashMappingLifetimeDays` .
+
+**Events**
+
+[FIP-0049 introduces actor events](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0049.md) that can be emitted and externally observable during message execution. An `events.db` is created automatically under `~/<lotus_repo>/sqlite` to store these events if the node has Eth RPC enabled. Node operators can configure the events support base on their needs by configuration `Events` configurations.
+
+Note: All three features are new, and we welcome user feedback, please create an issue if you have any enhancements that you’d like to see!
+
 # 1.19.0 / 2022-12-07
 
 This is an optional feature release of Lotus. This feature release includes the SplitStore beta, the experimental Lotus node cluster feature, as well as numerous enhancments and bugfixes.

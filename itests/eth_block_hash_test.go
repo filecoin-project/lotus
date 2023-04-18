@@ -3,6 +3,7 @@ package itests
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,13 +49,14 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// let the chain run a little bit longer to minimise the chance of reorgs
 	n2.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()+50))
 
-	head, err = n2.ChainHead(context.Background())
-	require.NoError(t, err)
-
 	for i := 1; i <= int(head.Height()); i++ {
 		hex := fmt.Sprintf("0x%x", i)
 
 		ethBlockA, err := n2.EthGetBlockByNumber(ctx, hex, true)
+		// Cannot use static ErrFullRound error for comparison since it gets reserialized as a JSON RPC error.
+		if err != nil && strings.Contains(err.Error(), "null round") {
+			continue
+		}
 		require.NoError(t, err)
 
 		ethBlockB, err := n2.EthGetBlockByHash(ctx, ethBlockA.Hash, true)

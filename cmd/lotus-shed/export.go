@@ -15,11 +15,11 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/pb"
 	"github.com/dustin/go-humanize"
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
 	"github.com/multiformats/go-base32"
@@ -42,9 +42,8 @@ var exportChainCmd = &cli.Command{
 	Description: "Export chain from repo (requires node to be offline)",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.StringFlag{
 			Name:  "tipset",
@@ -147,9 +146,8 @@ var exportRawCmd = &cli.Command{
 	Description: "Export raw blocks from repo (requires node to be offline)",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.StringFlag{
 			Name:  "car-size",

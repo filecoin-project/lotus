@@ -58,6 +58,12 @@ var fip36PollCmd = &cli.Command{
 	Name:      "fip36poll",
 	Usage:     "Process the FIP0036 FilPoll result",
 	ArgsUsage: "[state root, votes]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Value: "~/.lotus",
+		},
+	},
 	Subcommands: []*cli.Command{
 		finalResultCmd,
 	},
@@ -69,9 +75,8 @@ var finalResultCmd = &cli.Command{
 	ArgsUsage: "[state root] [height] [votes json]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 

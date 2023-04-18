@@ -14,9 +14,9 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/metrics"
@@ -401,6 +401,10 @@ func init() {
 		FromBlock: pstring("2301220"),
 		Address:   []ethtypes.EthAddress{ethaddr},
 	})
+
+	percent := types.Percent(123)
+	addExample(percent)
+	addExample(&percent)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

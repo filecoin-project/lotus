@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v2/y"
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"
 	"github.com/urfave/cli/v2"

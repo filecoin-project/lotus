@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	block "github.com/ipfs/go-libipfs/blocks"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -235,6 +235,26 @@ func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.C
 	})
 
 	return blscids, secpkcids, nil
+}
+
+func (cs *ChainStore) ReadReceipts(ctx context.Context, root cid.Cid) ([]types.MessageReceipt, error) {
+	a, err := blockadt.AsArray(cs.ActorStore(ctx), root)
+	if err != nil {
+		return nil, err
+	}
+
+	receipts := make([]types.MessageReceipt, 0, a.Length())
+	var rcpt types.MessageReceipt
+	if err := a.ForEach(&rcpt, func(i int64) error {
+		if int64(len(receipts)) != i {
+			return xerrors.Errorf("missing receipt %d", i)
+		}
+		receipts = append(receipts, rcpt)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return receipts, nil
 }
 
 func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {

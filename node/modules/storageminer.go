@@ -18,6 +18,7 @@ import (
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
+	provider "github.com/ipni/index-provider"
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
@@ -42,7 +43,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statestore"
-	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"

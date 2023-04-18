@@ -619,6 +619,11 @@ workflows:
           target: "./itests/eth_account_abstraction_test.go"
       
       - test:
+          name: test-itest-eth_api
+          suite: itest-eth_api
+          target: "./itests/eth_api_test.go"
+      
+      - test:
           name: test-itest-eth_balance
           suite: itest-eth_balance
           target: "./itests/eth_balance_test.go"
@@ -732,6 +737,11 @@ workflows:
           name: test-itest-migration_nv20
           suite: itest-migration_nv20
           target: "./itests/migration_nv20_test.go"
+      
+      - test:
+          name: test-itest-migration_nv21
+          suite: itest-migration_nv21
+          target: "./itests/migration_nv21_test.go"
       
       - test:
           name: test-itest-mpool_msg_uuid

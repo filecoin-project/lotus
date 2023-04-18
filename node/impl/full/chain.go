@@ -11,12 +11,12 @@ import (
 	"strings"
 	"sync"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	mh "github.com/multiformats/go-multihash"
@@ -186,25 +186,14 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 		return nil, nil
 	}
 
-	// TODO: need to get the number of messages better than this
-	pts, err := a.Chain.LoadTipSet(ctx, types.NewTipSetKey(b.Parents...))
+	receipts, err := a.Chain.ReadReceipts(ctx, b.ParentMessageReceipts)
 	if err != nil {
 		return nil, err
 	}
 
-	cm, err := a.Chain.MessagesForTipset(ctx, pts)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []*types.MessageReceipt
-	for i := 0; i < len(cm); i++ {
-		r, err := a.Chain.GetParentReceipt(ctx, b, i)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, r)
+	out := make([]*types.MessageReceipt, len(receipts))
+	for i := range receipts {
+		out[i] = &receipts[i]
 	}
 
 	return out, nil

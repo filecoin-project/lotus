@@ -461,7 +461,12 @@ var MpoolReplaceCmd = &cli.Command{
 		msg := found.Message
 
 		if cctx.Bool("auto") {
-			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
+			cfg, err := api.MpoolGetConfig(ctx)
+			if err != nil {
+				return xerrors.Errorf("failed to lookup the message pool config: %w", err)
+			}
+
+			defaultRBF := messagepool.ComputeRBF(msg.GasPremium, cfg.ReplaceByFeeRatio)
 
 			var mss *lapi.MessageSendSpec
 			if cctx.IsSet("fee-limit") {
@@ -482,7 +487,7 @@ var MpoolReplaceCmd = &cli.Command{
 				return xerrors.Errorf("failed to estimate gas values: %w", err)
 			}
 
-			msg.GasPremium = big.Max(retm.GasPremium, minRBF)
+			msg.GasPremium = big.Max(retm.GasPremium, defaultRBF)
 			msg.GasFeeCap = big.Max(retm.GasFeeCap, msg.GasPremium)
 
 			mff := func() (abi.TokenAmount, error) {

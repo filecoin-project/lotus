@@ -12,11 +12,11 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	block "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"

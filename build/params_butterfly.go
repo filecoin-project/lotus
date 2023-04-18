@@ -57,6 +57,8 @@ var UpgradeHyperspaceNV19Height = abi.ChainEpoch(100)
 
 var UpgradeHyperspaceNV20Height = abi.ChainEpoch(120)
 
+var UpgradeHyperspaceNV21Height = abi.ChainEpoch(150)
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

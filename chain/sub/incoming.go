@@ -8,9 +8,9 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/connmgr"

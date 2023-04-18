@@ -26,12 +26,10 @@ import (
 
 var minerPeeridCmd = &cli.Command{
 	Name:  "miner-peerid",
-	Usage: "Scrape state to find a miner based on peerid",
-	Flags: []cli.Flag{
+	Usage: "Scrape state to find a miner based on peerid", Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

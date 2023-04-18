@@ -327,10 +327,15 @@ func gasEstimateGasLimit(
 
 	transitionalMulti := 1.0
 	// Overestimate gas around the upgrade
-	if ts.Height() <= build.UpgradeSkyrHeight && (build.UpgradeSkyrHeight-ts.Height() <= 20) {
-		transitionalMulti = 2.0
-
+	if ts.Height() <= build.UpgradeHyggeHeight && (build.UpgradeHyggeHeight-ts.Height() <= 20) {
 		func() {
+
+			// Bare transfers get about 3x more expensive: https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0057.md#product-considerations
+			if msgIn.Method == builtin.MethodSend {
+				transitionalMulti = 3.0
+				return
+			}
+
 			st, err := smgr.ParentState(ts)
 			if err != nil {
 				return
@@ -342,26 +347,27 @@ func gasEstimateGasLimit(
 
 			if lbuiltin.IsStorageMinerActor(act.Code) {
 				switch msgIn.Method {
-				case 5:
-					transitionalMulti = 3.954
+				case 3:
+					transitionalMulti = 1.92
+				case 4:
+					transitionalMulti = 1.72
 				case 6:
-					transitionalMulti = 4.095
+					transitionalMulti = 1.06
 				case 7:
-					// skip, stay at 2.0
-					// transitionalMulti = 1.289
-				case 11:
-					transitionalMulti = 17.8758
+					transitionalMulti = 1.2
 				case 16:
-					transitionalMulti = 2.1704
-				case 25:
-					transitionalMulti = 3.1177
+					transitionalMulti = 1.19
+				case 18:
+					transitionalMulti = 1.73
+				case 23:
+					transitionalMulti = 1.73
 				case 26:
-					transitionalMulti = 2.3322
+					transitionalMulti = 1.15
+				case 27:
+					transitionalMulti = 1.18
 				default:
 				}
 			}
-
-			// skip storage market, 80th percentie for everything ~1.9, leave it at 2.0
 		}()
 	}
 	ret = (ret * int64(transitionalMulti*1024)) >> 10

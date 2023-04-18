@@ -68,6 +68,7 @@
   * [CreateBackup](#CreateBackup)
 * [Eth](#Eth)
   * [EthAccounts](#EthAccounts)
+  * [EthAddressToFilecoinAddress](#EthAddressToFilecoinAddress)
   * [EthBlockNumber](#EthBlockNumber)
   * [EthCall](#EthCall)
   * [EthChainId](#EthChainId)
@@ -100,6 +101,8 @@
   * [EthSubscribe](#EthSubscribe)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
+* [Filecoin](#Filecoin)
+  * [FilecoinAddressToEthAddress](#FilecoinAddressToEthAddress)
 * [Gas](#Gas)
   * [GasEstimateFeeCap](#GasEstimateFeeCap)
   * [GasEstimateGasLimit](#GasEstimateGasLimit)
@@ -2262,6 +2265,21 @@ Response:
 ]
 ```
 
+### EthAddressToFilecoinAddress
+EthAddressToFilecoinAddress converts an EthAddress into an f410 Filecoin Address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"
+]
+```
+
+Response: `"f01234"`
+
 ### EthBlockNumber
 EthBlockNumber returns the height of the latest (heaviest) TipSet
 
@@ -2927,6 +2945,24 @@ Inputs:
 ```
 
 Response: `true`
+
+## Filecoin
+
+
+### FilecoinAddressToEthAddress
+FilecoinAddressToEthAddress converts an f410 or f0 Filecoin Address to an EthAddress
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `"0x5cbeecf99d3fdb3f25e309cc264f240bb0664031"`
 
 ## Gas
 
@@ -3780,7 +3816,7 @@ Response:
   ],
   "SizeLimitHigh": 123,
   "SizeLimitLow": 123,
-  "ReplaceByFeeRatio": 12.3,
+  "ReplaceByFeeRatio": 1.23,
   "PruneCooldown": 60000000000,
   "GasLimitOverestimation": 12.3
 }
@@ -4068,7 +4104,7 @@ Inputs:
     ],
     "SizeLimitHigh": 123,
     "SizeLimitLow": 123,
-    "ReplaceByFeeRatio": 12.3,
+    "ReplaceByFeeRatio": 1.23,
     "PruneCooldown": 60000000000,
     "GasLimitOverestimation": 12.3
   }
@@ -5961,7 +5997,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  21
 ]
 ```
 
@@ -5976,7 +6012,7 @@ Perms: read
 Inputs:
 ```json
 [
-  20
+  21
 ]
 ```
 
@@ -7775,7 +7811,7 @@ Inputs:
 ]
 ```
 
-Response: `20`
+Response: `21`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

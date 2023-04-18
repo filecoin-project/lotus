@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -244,6 +244,8 @@ type FullNodeMethods struct {
 
 	EthAccounts func(p0 context.Context) ([]ethtypes.EthAddress, error) `perm:"read"`
 
+	EthAddressToFilecoinAddress func(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) `perm:"read"`
+
 	EthBlockNumber func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
 	EthCall func(p0 context.Context, p1 ethtypes.EthCall, p2 string) (ethtypes.EthBytes, error) `perm:"read"`
@@ -307,6 +309,8 @@ type FullNodeMethods struct {
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"write"`
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"write"`
+
+	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
 	GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -684,10 +688,6 @@ type GatewayMethods struct {
 
 	EthGetStorageAt func(p0 context.Context, p1 ethtypes.EthAddress, p2 ethtypes.EthBytes, p3 string) (ethtypes.EthBytes, error) ``
 
-	EthGetTransactionByBlockHashAndIndex func(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) ``
-
-	EthGetTransactionByBlockNumberAndIndex func(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) ``
-
 	EthGetTransactionByHash func(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) ``
 
 	EthGetTransactionCount func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthUint64, error) ``
@@ -716,6 +716,8 @@ type GatewayMethods struct {
 
 	GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
+	MpoolGetNonce func(p0 context.Context, p1 address.Address) (uint64, error) ``
+
 	MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
 
 	MsigGetAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) ``
@@ -732,7 +734,11 @@ type GatewayMethods struct {
 
 	StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
 
+	StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) ``
+
 	StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) ``
+
+	StateDecodeParams func(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) ``
 
 	StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) ``
 
@@ -750,9 +756,11 @@ type GatewayMethods struct {
 
 	StateMinerProvingDeadline func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) ``
 
+	StateNetworkName func(p0 context.Context) (dtypes.NetworkName, error) ``
+
 	StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) ``
 
-	StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) `perm:"read"`
+	StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) ``
 
 	StateSearchMsg func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
 
@@ -2007,6 +2015,17 @@ func (s *FullNodeStub) EthAccounts(p0 context.Context) ([]ethtypes.EthAddress, e
 	return *new([]ethtypes.EthAddress), ErrNotSupported
 }
 
+func (s *FullNodeStruct) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
+	if s.Internal.EthAddressToFilecoinAddress == nil {
+		return *new(address.Address), ErrNotSupported
+	}
+	return s.Internal.EthAddressToFilecoinAddress(p0, p1)
+}
+
+func (s *FullNodeStub) EthAddressToFilecoinAddress(p0 context.Context, p1 ethtypes.EthAddress) (address.Address, error) {
+	return *new(address.Address), ErrNotSupported
+}
+
 func (s *FullNodeStruct) EthBlockNumber(p0 context.Context) (ethtypes.EthUint64, error) {
 	if s.Internal.EthBlockNumber == nil {
 		return *new(ethtypes.EthUint64), ErrNotSupported
@@ -2357,6 +2376,17 @@ func (s *FullNodeStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubsc
 
 func (s *FullNodeStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	if s.Internal.FilecoinAddressToEthAddress == nil {
+		return *new(ethtypes.EthAddress), ErrNotSupported
+	}
+	return s.Internal.FilecoinAddressToEthAddress(p0, p1)
+}
+
+func (s *FullNodeStub) FilecoinAddressToEthAddress(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) {
+	return *new(ethtypes.EthAddress), ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
@@ -4361,28 +4391,6 @@ func (s *GatewayStub) EthGetStorageAt(p0 context.Context, p1 ethtypes.EthAddress
 	return *new(ethtypes.EthBytes), ErrNotSupported
 }
 
-func (s *GatewayStruct) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	if s.Internal.EthGetTransactionByBlockHashAndIndex == nil {
-		return *new(ethtypes.EthTx), ErrNotSupported
-	}
-	return s.Internal.EthGetTransactionByBlockHashAndIndex(p0, p1, p2)
-}
-
-func (s *GatewayStub) EthGetTransactionByBlockHashAndIndex(p0 context.Context, p1 ethtypes.EthHash, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return *new(ethtypes.EthTx), ErrNotSupported
-}
-
-func (s *GatewayStruct) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	if s.Internal.EthGetTransactionByBlockNumberAndIndex == nil {
-		return *new(ethtypes.EthTx), ErrNotSupported
-	}
-	return s.Internal.EthGetTransactionByBlockNumberAndIndex(p0, p1, p2)
-}
-
-func (s *GatewayStub) EthGetTransactionByBlockNumberAndIndex(p0 context.Context, p1 ethtypes.EthUint64, p2 ethtypes.EthUint64) (ethtypes.EthTx, error) {
-	return *new(ethtypes.EthTx), ErrNotSupported
-}
-
 func (s *GatewayStruct) EthGetTransactionByHash(p0 context.Context, p1 *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	if s.Internal.EthGetTransactionByHash == nil {
 		return nil, ErrNotSupported
@@ -4537,6 +4545,17 @@ func (s *GatewayStub) GasEstimateMessageGas(p0 context.Context, p1 *types.Messag
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) MpoolGetNonce(p0 context.Context, p1 address.Address) (uint64, error) {
+	if s.Internal.MpoolGetNonce == nil {
+		return 0, ErrNotSupported
+	}
+	return s.Internal.MpoolGetNonce(p0, p1)
+}
+
+func (s *GatewayStub) MpoolGetNonce(p0 context.Context, p1 address.Address) (uint64, error) {
+	return 0, ErrNotSupported
+}
+
 func (s *GatewayStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
 	if s.Internal.MpoolPush == nil {
 		return *new(cid.Cid), ErrNotSupported
@@ -4625,6 +4644,17 @@ func (s *GatewayStub) StateAccountKey(p0 context.Context, p1 address.Address, p2
 	return *new(address.Address), ErrNotSupported
 }
 
+func (s *GatewayStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
+	if s.Internal.StateCall == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateCall(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *GatewayStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {
 	if s.Internal.StateDealProviderCollateralBounds == nil {
 		return *new(DealCollateralBounds), ErrNotSupported
@@ -4634,6 +4664,17 @@ func (s *GatewayStruct) StateDealProviderCollateralBounds(p0 context.Context, p1
 
 func (s *GatewayStub) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {
 	return *new(DealCollateralBounds), ErrNotSupported
+}
+
+func (s *GatewayStruct) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) {
+	if s.Internal.StateDecodeParams == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateDecodeParams(p0, p1, p2, p3, p4)
+}
+
+func (s *GatewayStub) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
@@ -4722,6 +4763,17 @@ func (s *GatewayStruct) StateMinerProvingDeadline(p0 context.Context, p1 address
 
 func (s *GatewayStub) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
+	if s.Internal.StateNetworkName == nil {
+		return *new(dtypes.NetworkName), ErrNotSupported
+	}
+	return s.Internal.StateNetworkName(p0)
+}
+
+func (s *GatewayStub) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
+	return *new(dtypes.NetworkName), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {

@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/fatih/color"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -15,6 +14,7 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipfs/go-merkledag"
 	"golang.org/x/xerrors"
 

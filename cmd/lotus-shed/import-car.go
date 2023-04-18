@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -19,13 +19,6 @@ import (
 var importCarCmd = &cli.Command{
 	Name:        "import-car",
 	Description: "Import a car file into node chain blockstore",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
@@ -103,13 +96,6 @@ var importCarCmd = &cli.Command{
 var importObjectCmd = &cli.Command{
 	Name:  "import-obj",
 	Usage: "import a raw ipld object into your datastore",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {

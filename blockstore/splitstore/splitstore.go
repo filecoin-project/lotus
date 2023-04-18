@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	ipld "github.com/ipfs/go-ipld-format"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"go.uber.org/multierr"

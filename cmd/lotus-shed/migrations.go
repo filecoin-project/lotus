@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
+	v10 "github.com/filecoin-project/go-state-types/builtin/v10"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
@@ -54,9 +55,8 @@ var migrationsCmd = &cli.Command{
 	ArgsUsage:   "[new network version, block to look back from]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "repo",
-			Value:   "~/.lotus",
-			EnvVars: []string{"LOTUS_PATH"},
+			Name:  "repo",
+			Value: "~/.lotus",
 		},
 		&cli.BoolFlag{
 			Name: "skip-pre-migration",
@@ -152,7 +152,7 @@ var migrationsCmd = &cli.Command{
 		if !cctx.IsSet("skip-pre-migration") {
 			cache := mutil.NewMemMigrationCache()
 
-			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
+			ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-60, migrationTs, false)
 			if err != nil {
 				return err
 			}
@@ -164,21 +164,7 @@ var migrationsCmd = &cli.Command{
 				return err
 			}
 
-			preMigration1Time := time.Since(startTime)
-
-			ts2, err := cs.GetTipsetByHeight(ctx, blk.Height-15, migrationTs, false)
-			if err != nil {
-				return err
-			}
-
-			startTime = time.Now()
-
-			err = preUpgradeActorsFunc(ctx, sm, cache, ts2.ParentState(), ts2.Height()-1, ts2)
-			if err != nil {
-				return err
-			}
-
-			preMigration2Time := time.Since(startTime)
+			preMigrationTime := time.Since(startTime)
 
 			startTime = time.Now()
 
@@ -193,8 +179,7 @@ var migrationsCmd = &cli.Command{
 				return xerrors.Errorf("got different results with and without the cache: %s, %s", newCid1,
 					newCid2)
 			}
-			fmt.Println("completed premigration 1, took ", preMigration1Time)
-			fmt.Println("completed premigration 2, took ", preMigration2Time)
+			fmt.Println("completed premigration, took ", preMigrationTime)
 			fmt.Println("completed round actual (with cache), took ", cachedMigrationTime)
 		}
 
@@ -217,7 +202,7 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 	case network.Version17:
 		return filcns.UpgradeActorsV9, filcns.PreUpgradeActorsV9, checkNv17Invariants, nil
 	case network.Version18:
-		return filcns.UpgradeActorsV10, filcns.PreUpgradeActorsV10, nil, nil
+		return filcns.UpgradeActorsV10, filcns.PreUpgradeActorsV10, checkNv18Invariants, nil
 	default:
 		return nil, nil, nil, xerrors.Errorf("migration not implemented for nv%d", nv)
 	}
@@ -226,6 +211,40 @@ func getMigrationFuncsForNetwork(nv network.Version) (UpgradeActorsFunc, PreUpgr
 type UpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, stmgr.ExecMonitor, cid.Cid, abi.ChainEpoch, *types.TipSet) (cid.Cid, error)
 type PreUpgradeActorsFunc = func(context.Context, *stmgr.StateManager, stmgr.MigrationCache, cid.Cid, abi.ChainEpoch, *types.TipSet) error
 type CheckInvariantsFunc = func(context.Context, cid.Cid, cid.Cid, blockstore.Blockstore, abi.ChainEpoch) error
+
+func checkNv18Invariants(ctx context.Context, oldStateRootCid cid.Cid, newStateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
+	actorStore := store.ActorStore(ctx, bs)
+	startTime := time.Now()
+
+	// Load the new state root.
+	var newStateRoot types.StateRoot
+	if err := actorStore.Get(ctx, newStateRootCid, &newStateRoot); err != nil {
+		return xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	actorCodeCids, err := actors.GetActorCodeIDs(actorstypes.Version10)
+	if err != nil {
+		return err
+	}
+	newActorTree, err := builtin.LoadTree(actorStore, newStateRoot.Actors)
+	if err != nil {
+		return err
+	}
+	messages, err := v10.CheckStateInvariants(newActorTree, epoch, actorCodeCids)
+	if err != nil {
+		return xerrors.Errorf("checking state invariants: %w", err)
+	}
+
+	for _, message := range messages.Messages() {
+		fmt.Println("got the following error: ", message)
+	}
+
+	fmt.Println("completed invariant checks, took ", time.Since(startTime))
+
+	return nil
+}
+
+/// NV17 and earlier stuff
 
 func checkNv17Invariants(ctx context.Context, v8StateRootCid cid.Cid, v9StateRootCid cid.Cid, bs blockstore.Blockstore, epoch abi.ChainEpoch) error {
 	actorStore := store.ActorStore(ctx, bs)

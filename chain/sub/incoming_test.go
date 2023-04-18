@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-libipfs/blocks"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
