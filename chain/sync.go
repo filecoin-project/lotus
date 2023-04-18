@@ -208,7 +208,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 		return false
 	}
 
-	if syncer.consensus.IsEpochBeyondCurrMax(fts.TipSet().Height()) {
+	if !syncer.consensus.IsEpochInConsensusRange(fts.TipSet().Height()) {
 		log.Errorf("Received block with impossibly large height %d", fts.TipSet().Height())
 		return false
 	}
