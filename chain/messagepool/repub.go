@@ -32,14 +32,10 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
 
-	//TODO do we need curTsLk here?
-	mp.curTsLk.Lock()
 	mp.lk.Lock()
 	mp.republished = nil // clear this to avoid races triggering an early republish
 	mp.lk.Unlock()
-	mp.curTsLk.Unlock()
 
-	//TODO is no curTsLk here acceptable?
 	mp.lk.RLock()
 	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
 		mset, ok, err := mp.getPendingMset(ctx, actor)
@@ -182,8 +178,8 @@ loop:
 		republished[m.Cid()] = struct{}{}
 	}
 
-	mp.lk.Lock()
 	// update the republished set so that we can trigger early republish from head changes
+	mp.lk.Lock()
 	mp.republished = republished
 	mp.lk.Unlock()
 
