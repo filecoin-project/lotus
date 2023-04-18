@@ -77,7 +77,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 
 	for i := ts.Height(); i < height; i++ {
 		// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
-		base, err = sm.HandleStateForks(ctx, base, i, &InvocationTracer{trace: &trace}, ts)
+		base, err = sm.HandleStateForks(ctx, base, i, &InvocationTracer{Trace: &trace}, ts)
 		if err != nil {
 			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
 		}
