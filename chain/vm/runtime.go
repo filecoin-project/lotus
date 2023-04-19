@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	gruntime "runtime"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -570,18 +571,35 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
 	if EnableDetailedTracing {
+		var callers [10]uintptr
+
+		cout := gruntime.Callers(2+skip, callers[:])
+
 		now := build.Clock.Now()
 		if rt.lastGasCharge != nil {
 			rt.lastGasCharge.TimeTaken = now.Sub(rt.lastGasChargeTime)
 		}
 
 		gasTrace := types.GasTrace{
-			Name: gas.Name,
+			Name:  gas.Name,
+			Extra: gas.Extra,
 
 			TotalGas:   toUse,
 			ComputeGas: gas.ComputeGas,
 			StorageGas: gas.StorageGas,
+
+			VirtualComputeGas: gas.VirtualCompute,
+			VirtualStorageGas: gas.VirtualStorage,
+
+			Callers: callers[:cout],
 		}
+		if gasTrace.VirtualStorageGas == 0 {
+			gasTrace.VirtualStorageGas = gasTrace.StorageGas
+		}
+		if gasTrace.VirtualComputeGas == 0 {
+			gasTrace.VirtualComputeGas = gasTrace.ComputeGas
+		}
+		gasTrace.TotalVirtualGas = gasTrace.VirtualComputeGas + gasTrace.VirtualStorageGas
 
 		rt.executionTrace.GasCharges = append(rt.executionTrace.GasCharges, &gasTrace)
 		rt.lastGasChargeTime = now
