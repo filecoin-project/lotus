@@ -3,6 +3,7 @@ package bundle
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 
@@ -53,6 +54,7 @@ func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...acto
 			// All manifests are registered on start, so this must succeed.
 			return xerrors.Errorf("unknown actor version v%d", av)
 		}
+		fmt.Printf("manifest cid: %s\n", manifestCid)
 
 		if haveManifest, err := bs.Has(ctx, manifestCid); err != nil {
 			return xerrors.Errorf("blockstore error when loading manifest %s: %w", manifestCid, err)

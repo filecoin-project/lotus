@@ -18,7 +18,15 @@ import (
 
 func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
 	randomness[31] &= 0x3f
-	privsectors, skipped, done, err := sb.pubExtendedSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredSealProof.RegisteredWinningPoStProof) // TODO: FAULTS?
+	if len(sectorInfo) == 0 {
+		return nil, xerrors.Errorf("must provide sectors for winning post")
+	}
+	ppt, err := sectorInfo[0].SealProof.RegisteredWinningPoStProof()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to convert to winning post proof: %w", err)
+	}
+
+	privsectors, skipped, done, err := sb.pubExtendedSectorToPriv(ctx, minerID, sectorInfo, nil, ppt) // TODO: FAULTS?
 	if err != nil {
 		return nil, err
 	}
@@ -30,9 +38,9 @@ func (sb *Sealer) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	return ffi.GenerateWinningPoSt(minerID, privsectors, randomness)
 }
 
-func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
+func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, postProofType abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
 	randomness[31] &= 0x3f
-	privsectors, skipped, done, err := sb.pubExtendedSectorToPriv(ctx, minerID, sectorInfo, nil, abi.RegisteredSealProof.RegisteredWindowPoStProof)
+	privsectors, skipped, done, err := sb.pubExtendedSectorToPriv(ctx, minerID, sectorInfo, nil, postProofType)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("gathering sector info: %w", err)
 	}
@@ -55,7 +63,7 @@ func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	return proof, faultyIDs, err
 }
 
-func (sb *Sealer) pubExtendedSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
+func (sb *Sealer) pubExtendedSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, faults []abi.SectorNumber, postProofType abi.RegisteredPoStProof) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
 	fmap := map[abi.SectorNumber]struct{}{}
 	for _, fault := range faults {
 		fmap[fault] = struct{}{}
@@ -104,12 +112,6 @@ func (sb *Sealer) pubExtendedSectorToPriv(ctx context.Context, mid abi.ActorID, 
 			doneFuncs = append(doneFuncs, d)
 			cache = paths.Cache
 			sealed = paths.Sealed
-		}
-
-		postProofType, err := rpt(s.SealProof)
-		if err != nil {
-			done()
-			return ffi.SortedPrivateSectorInfo{}, nil, nil, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
 		}
 
 		ffiInfo := proof.SectorInfo{

@@ -795,17 +795,11 @@ workflows:
           suite: itest-mempool
           target: "./itests/mempool_test.go"
       - test:
-          name: test-itest-migration_nv17
+          name: test-itest-migration
           requires:
             - build
-          suite: itest-migration_nv17
-          target: "./itests/migration_nv17_test.go"
-      - test:
-          name: test-itest-migration_nv18
-          requires:
-            - build
-          suite: itest-migration_nv18
-          target: "./itests/migration_nv18_test.go"
+          suite: itest-migration
+          target: "./itests/migration_test.go"
       - test:
           name: test-itest-mpool_msg_uuid
           requires:
