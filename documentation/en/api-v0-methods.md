@@ -4866,49 +4866,95 @@ Response:
   },
   "ExecutionTrace": {
     "Msg": {
-      "From": "f01234",
+      "Version": 42,
       "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
       "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "ReturnCodec": 42
+      "GasUsed": 9,
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
+    "Error": "string value",
+    "Duration": 60000000000,
     "GasCharges": [
       {
         "Name": "string value",
+        "loc": [
+          {
+            "File": "string value",
+            "Line": 123,
+            "Function": "string value"
+          }
+        ],
         "tg": 9,
         "cg": 9,
         "sg": 9,
-        "tt": 60000000000
+        "vtg": 9,
+        "vcg": 9,
+        "vsg": 9,
+        "tt": 60000000000,
+        "ex": {}
       }
     ],
     "Subcalls": [
       {
         "Msg": {
-          "From": "f01234",
+          "Version": 42,
           "To": "f01234",
+          "From": "f01234",
+          "Nonce": 42,
           "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "ReturnCodec": 42
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
+        "Error": "string value",
+        "Duration": 60000000000,
         "GasCharges": [
           {
             "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
             "tg": 9,
             "cg": 9,
             "sg": 9,
-            "tt": 60000000000
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
           }
         ],
         "Subcalls": null
@@ -5096,49 +5142,95 @@ Response:
       },
       "ExecutionTrace": {
         "Msg": {
-          "From": "f01234",
+          "Version": 42,
           "To": "f01234",
+          "From": "f01234",
+          "Nonce": 42,
           "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "ReturnCodec": 42
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
+        "Error": "string value",
+        "Duration": 60000000000,
         "GasCharges": [
           {
             "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
             "tg": 9,
             "cg": 9,
             "sg": 9,
-            "tt": 60000000000
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
           }
         ],
         "Subcalls": [
           {
             "Msg": {
-              "From": "f01234",
+              "Version": 42,
               "To": "f01234",
+              "From": "f01234",
+              "Nonce": 42,
               "Value": "0",
+              "GasLimit": 9,
+              "GasFeeCap": "0",
+              "GasPremium": "0",
               "Method": 1,
               "Params": "Ynl0ZSBhcnJheQ==",
-              "ParamsCodec": 42
+              "CID": {
+                "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+              }
             },
             "MsgRct": {
               "ExitCode": 0,
               "Return": "Ynl0ZSBhcnJheQ==",
-              "ReturnCodec": 42
+              "GasUsed": 9,
+              "EventsRoot": {
+                "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+              }
             },
+            "Error": "string value",
+            "Duration": 60000000000,
             "GasCharges": [
               {
                 "Name": "string value",
+                "loc": [
+                  {
+                    "File": "string value",
+                    "Line": 123,
+                    "Function": "string value"
+                  }
+                ],
                 "tg": 9,
                 "cg": 9,
                 "sg": 9,
-                "tt": 60000000000
+                "vtg": 9,
+                "vcg": 9,
+                "vsg": 9,
+                "tt": 60000000000,
+                "ex": {}
               }
             ],
             "Subcalls": null
@@ -6484,49 +6576,95 @@ Response:
   },
   "ExecutionTrace": {
     "Msg": {
-      "From": "f01234",
+      "Version": 42,
       "To": "f01234",
+      "From": "f01234",
+      "Nonce": 42,
       "Value": "0",
+      "GasLimit": 9,
+      "GasFeeCap": "0",
+      "GasPremium": "0",
       "Method": 1,
       "Params": "Ynl0ZSBhcnJheQ==",
-      "ParamsCodec": 42
+      "CID": {
+        "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+      }
     },
     "MsgRct": {
       "ExitCode": 0,
       "Return": "Ynl0ZSBhcnJheQ==",
-      "ReturnCodec": 42
+      "GasUsed": 9,
+      "EventsRoot": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
+    "Error": "string value",
+    "Duration": 60000000000,
     "GasCharges": [
       {
         "Name": "string value",
+        "loc": [
+          {
+            "File": "string value",
+            "Line": 123,
+            "Function": "string value"
+          }
+        ],
         "tg": 9,
         "cg": 9,
         "sg": 9,
-        "tt": 60000000000
+        "vtg": 9,
+        "vcg": 9,
+        "vsg": 9,
+        "tt": 60000000000,
+        "ex": {}
       }
     ],
     "Subcalls": [
       {
         "Msg": {
-          "From": "f01234",
+          "Version": 42,
           "To": "f01234",
+          "From": "f01234",
+          "Nonce": 42,
           "Value": "0",
+          "GasLimit": 9,
+          "GasFeeCap": "0",
+          "GasPremium": "0",
           "Method": 1,
           "Params": "Ynl0ZSBhcnJheQ==",
-          "ParamsCodec": 42
+          "CID": {
+            "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+          }
         },
         "MsgRct": {
           "ExitCode": 0,
           "Return": "Ynl0ZSBhcnJheQ==",
-          "ReturnCodec": 42
+          "GasUsed": 9,
+          "EventsRoot": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          }
         },
+        "Error": "string value",
+        "Duration": 60000000000,
         "GasCharges": [
           {
             "Name": "string value",
+            "loc": [
+              {
+                "File": "string value",
+                "Line": 123,
+                "Function": "string value"
+              }
+            ],
             "tg": 9,
             "cg": 9,
             "sg": 9,
-            "tt": 60000000000
+            "vtg": 9,
+            "vcg": 9,
+            "vsg": 9,
+            "tt": 60000000000,
+            "ex": {}
           }
         ],
         "Subcalls": null

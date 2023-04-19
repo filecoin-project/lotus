@@ -466,11 +466,14 @@ var importBenchCmd = &cli.Command{
 				Duration: time.Since(start),
 			}
 			if enc != nil {
+				stripCallers(tse.Trace)
+
 				if err := enc.Encode(tse); err != nil {
 					return xerrors.Errorf("failed to write out tipsetexec: %w", err)
 				}
 			}
 			if inverseChain[i-1].ParentState() != st {
+				stripCallers(tse.Trace)
 				lastTrace := tse.Trace
 				d, err := json.MarshalIndent(lastTrace, "", "  ")
 				if err != nil {
@@ -489,6 +492,21 @@ var importBenchCmd = &cli.Command{
 	},
 }
 
+func walkExecutionTrace(et *types.ExecutionTrace) {
+	for _, gc := range et.GasCharges {
+		gc.Callers = nil
+	}
+	for _, sub := range et.Subcalls {
+		walkExecutionTrace(&sub) //nolint:scopelint,gosec
+	}
+}
+
+func stripCallers(trace []*api.InvocResult) {
+	for _, t := range trace {
+		walkExecutionTrace(&t.ExecutionTrace)
+	}
+}
+
 type Invocation struct {
 	TipSet types.TipSetKey
 	Invoc  *api.InvocResult
@@ -496,24 +514,28 @@ type Invocation struct {
 
 const GasPerNs = 10
 
-func countGasCosts(et *types.ExecutionTrace) int64 {
-	var cgas int64
+func countGasCosts(et *types.ExecutionTrace) (int64, int64) {
+	var cgas, vgas int64
 
 	for _, gc := range et.GasCharges {
 		cgas += gc.ComputeGas
+		vgas += gc.VirtualComputeGas
 	}
 
 	for _, sub := range et.Subcalls {
-		c := countGasCosts(&sub) //nolint
+		c, v := countGasCosts(&sub) //nolint
 		cgas += c
+		vgas += v
 	}
 
-	return cgas
+	return cgas, vgas
 }
 
 type stats struct {
 	timeTaken meanVar
 	gasRatio  meanVar
+
+	extraCovar *covar
 }
 
 type covar struct {
@@ -658,8 +680,32 @@ func (v1 *meanVar) Combine(v2 *meanVar) {
 	v1.m2 = m2
 }
 
+func getExtras(ex interface{}) (*string, *float64) {
+	if t, ok := ex.(string); ok {
+		return &t, nil
+	}
+	if size, ok := ex.(float64); ok {
+		return nil, &size
+	}
+	if exMap, ok := ex.(map[string]interface{}); ok {
+		t, tok := exMap["type"].(string)
+		size, sok := exMap["size"].(float64)
+		if tok && sok {
+			return &t, &size
+		}
+		if tok {
+			return &t, nil
+		}
+		if sok {
+			return nil, &size
+		}
+		return nil, nil
+	}
+	return nil, nil
+}
+
 func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
-	for _, gc := range et.GasCharges {
+	for i, gc := range et.GasCharges {
 		name := gc.Name
 		if name == "OnIpldGetEnd" {
 			continue
@@ -670,18 +716,45 @@ func tallyGasCharges(charges map[string]*stats, et types.ExecutionTrace) {
 			// discard initial very long OnVerifyPost
 			continue
 		}
+		eType, eSize := getExtras(gc.Extra)
+
+		if name == "OnIpldGet" {
+			next := &types.GasTrace{}
+			if i+1 < len(et.GasCharges) {
+				next = et.GasCharges[i+1]
+			}
+			if next.Name != "OnIpldGetEnd" {
+				log.Warn("OnIpldGet without OnIpldGetEnd")
+			} else {
+				_, size := getExtras(next.Extra)
+				eSize = size
+			}
+		}
+		if eType != nil {
+			name += "-" + *eType
+		}
 		compGas := gc.ComputeGas
+		if compGas == 0 {
+			compGas = gc.VirtualComputeGas
+		}
+		if compGas == 0 {
+			compGas = 1
+		}
 		s := charges[name]
 		if s == nil {
 			s = new(stats)
 			charges[name] = s
 		}
 
+		if eSize != nil {
+			if s.extraCovar == nil {
+				s.extraCovar = &covar{}
+			}
+			s.extraCovar.AddPoint(*eSize, tt)
+		}
+
 		s.timeTaken.AddPoint(tt)
 
-		if compGas == 0 {
-			compGas = 1
-		}
 		ratio := tt / float64(compGas) * GasPerNs
 		s.gasRatio.AddPoint(ratio)
 	}
@@ -807,6 +880,13 @@ var importAnalyzeCmd = &cli.Command{
 				}
 				s.timeTaken.Combine(&v.timeTaken)
 				s.gasRatio.Combine(&v.gasRatio)
+
+				if v.extraCovar != nil {
+					if s.extraCovar == nil {
+						s.extraCovar = &covar{}
+					}
+					s.extraCovar.Combine(v.extraCovar)
+				}
 			}
 			totalTime += res.totalTime
 		}
@@ -822,6 +902,13 @@ var importAnalyzeCmd = &cli.Command{
 			s := charges[k]
 			fmt.Printf("%s: incr by %.4f~%.4f; tt %.4f~%.4f\n", k, s.gasRatio.Mean(), s.gasRatio.Stddev(),
 				s.timeTaken.Mean(), s.timeTaken.Stddev())
+			if s.extraCovar != nil {
+				fmt.Printf("\t correll: %.2f, tt = %.2f * extra + %.2f\n", s.extraCovar.Correl(),
+					s.extraCovar.A(), s.extraCovar.B())
+				fmt.Printf("\t covar: %.2f, extra: %.2f~%.2f, tt2: %.2f~%.2f, count %.0f\n",
+					s.extraCovar.Covariance(), s.extraCovar.meanX, s.extraCovar.StddevX(),
+					s.extraCovar.meanY, s.extraCovar.StddevY(), s.extraCovar.n)
+			}
 		}
 
 		sort.Slice(invocs, func(i, j int) bool {

@@ -38,7 +38,6 @@ import (
 )
 
 const MaxCallDepth = 4096
-const CborCodec = 0x51
 
 var (
 	log            = logging.Logger("vm")
@@ -126,10 +125,6 @@ func (bs *gasChargingBlocks) Put(ctx context.Context, blk block.Block) error {
 }
 
 func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runtime) *Runtime {
-	paramsCodec := uint64(0)
-	if len(msg.Params) > 0 {
-		paramsCodec = CborCodec
-	}
 	rt := &Runtime{
 		ctx:         ctx,
 		vm:          vm,
@@ -145,14 +140,7 @@ func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent 
 		pricelist:        PricelistByEpoch(vm.blockHeight),
 		allowInternal:    true,
 		callerValidated:  false,
-		executionTrace: types.ExecutionTrace{Msg: types.MessageTrace{
-			From:        msg.From,
-			To:          msg.To,
-			Value:       msg.Value,
-			Method:      msg.Method,
-			Params:      msg.Params,
-			ParamsCodec: paramsCodec,
-		}},
+		executionTrace:   types.ExecutionTrace{Msg: msg},
 	}
 
 	if parent != nil {
@@ -381,14 +369,15 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 		return nil, nil
 	}()
 
-	retCodec := uint64(0)
-	if len(ret) > 0 {
-		retCodec = CborCodec
+	mr := types.MessageReceipt{
+		ExitCode: aerrors.RetCode(err),
+		Return:   ret,
+		GasUsed:  rt.gasUsed,
 	}
-	rt.executionTrace.MsgRct = types.ReturnTrace{
-		ExitCode:    aerrors.RetCode(err),
-		Return:      ret,
-		ReturnCodec: retCodec,
+	rt.executionTrace.MsgRct = &mr
+	rt.executionTrace.Duration = time.Since(start)
+	if err != nil {
+		rt.executionTrace.Error = err.Error()
 	}
 
 	return ret, err, rt
