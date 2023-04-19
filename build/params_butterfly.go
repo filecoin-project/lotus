@@ -53,7 +53,7 @@ const UpgradeSkyrHeight = -19
 const UpgradeSharkHeight = -20
 const UpgradeHyggeHeight = -21
 
-const UpgradeLightningHeight = 360
+const UpgradeLightningHeight = 50
 
 const UpgradeThunderHeight = UpgradeLightningHeight + 360
 

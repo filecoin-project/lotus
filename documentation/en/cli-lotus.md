@@ -8,10 +8,14 @@ USAGE:
 
 VERSION:
 <<<<<<< HEAD
+<<<<<<< HEAD
    1.21.0-rc3
 =======
    1.22.0-rc3
 >>>>>>> 6e231e720 (v1.22.0-rc3)
+=======
+   1.22.0-rc4
+>>>>>>> ff2258ff7 (Feat/expedite nv19 (#10681))
 
 COMMANDS:
    daemon   Start a lotus daemon process

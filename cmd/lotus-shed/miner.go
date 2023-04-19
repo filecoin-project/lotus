@@ -310,7 +310,11 @@ var minerCreateCmd = &cli.Command{
 		}
 
 		// Note: the correct thing to do would be to call SealProofTypeFromSectorSize if actors version is v3 or later, but this still works
-		spt, err := miner.WindowPoStProofTypeFromSectorSize(abi.SectorSize(ssize))
+		nv, err := wapi.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to get network version: %w", err)
+		}
+		spt, err := miner.WindowPoStProofTypeFromSectorSize(abi.SectorSize(ssize), nv)
 		if err != nil {
 			return xerrors.Errorf("getting post proof type: %w", err)
 		}
