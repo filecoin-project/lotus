@@ -156,22 +156,34 @@ func TestPrecommitBatcher(t *testing.T) {
 	}
 
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
-	expectSend := func(expect []abi.SectorNumber) action {
+	expectSend := func(expect []abi.SectorNumber, gasOverLimit bool) action {
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
+			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
+			if gasOverLimit {
+				s.EXPECT().GasEstimateMessageGas(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &api.ErrOutOfGas{})
+			} else {
+				s.EXPECT().GasEstimateMessageGas(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.Message{GasLimit: 100000}, nil)
+			}
+
+			if !gasOverLimit {
+				s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
+					b := i.(*types.Message)
+					var params miner6.PreCommitSectorBatchParams
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
+					for s, number := range expect {
+						require.Equal(t, number, params.Sectors[s].SectorNumber)
+					}
+					return true
+				}), gomock.Any()).Return(dummySmsg, nil)
+			}
+			return nil
+		}
+	}
+
+	expectInitialCalls := func() action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, big.NewInt(10001), 1), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
-
-			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
-			s.EXPECT().GasEstimateMessageGas(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.Message{GasLimit: 100000}, nil)
-			s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
-				b := i.(*types.Message)
-				var params miner6.PreCommitSectorBatchParams
-				require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
-				for s, number := range expect {
-					require.Equal(t, number, params.Sectors[s].SectorNumber)
-				}
-				return true
-			}), gomock.Any()).Return(dummySmsg, nil)
 			return nil
 		}
 	}
@@ -199,7 +211,8 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	flush := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
-			_ = expectSend(expect)(t, s, pcb)
+			_ = expectInitialCalls()(t, s, pcb)
+			_ = expectSend(expect, false)(t, s, pcb)
 
 			r, err := pcb.Flush(ctx)
 			require.NoError(t, err)
@@ -241,7 +254,17 @@ func TestPrecommitBatcher(t *testing.T) {
 		},
 		"addMax": {
 			actions: []action{
-				expectSend(getSectors(maxBatch)),
+				expectInitialCalls(),
+				expectSend(getSectors(maxBatch), false),
+				addSectors(getSectors(maxBatch), true),
+			},
+		},
+		"addMax-gasAboveLimit": {
+			actions: []action{
+				expectInitialCalls(),
+				expectSend(getSectors(maxBatch), true),
+				expectSend(getSectors(maxBatch)[:maxBatch/2], false),
+				expectSend(getSectors(maxBatch)[maxBatch/2:], false),
 				addSectors(getSectors(maxBatch), true),
 			},
 		},

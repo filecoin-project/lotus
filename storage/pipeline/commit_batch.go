@@ -290,11 +290,6 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config, sectors []abi.SectorN
 	collateral := big.Zero()
 
 	for _, sector := range sectors {
-		if len(infos) >= cfg.MaxCommitBatch {
-			log.Infow("commit batch full")
-			break
-		}
-
 		res.Sectors = append(res.Sectors, sector)
 
 		sc, err := b.getSectorCollateral(sector, ts.Key())
