@@ -4,6 +4,8 @@
 
 This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
+Note: this release includes all the changes from v1.22.0 that supports the upcoming nv19 upgrade, scheduled on Apr 27th. You can find more details about the upgrade [here](https://github.com/filecoin-project/lotus/discussions/10686)
+
 ## ☢️ Upgrade Warnings ☢️
 
 Before upgrading to this feature release read carefully through these bullet points:
