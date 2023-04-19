@@ -65,6 +65,20 @@ func (wr WorkerResources) ResourceSpec(spt abi.RegisteredSealProof, tt sealtasks
 	return res
 }
 
+// PrepResourceSpec is like ResourceSpec, but meant for use limiting parallel preparing
+// tasks.
+func (wr WorkerResources) PrepResourceSpec(spt abi.RegisteredSealProof, tt, prepTT sealtasks.TaskType) Resources {
+	res := wr.ResourceSpec(spt, tt)
+
+	if prepTT != tt && prepTT != sealtasks.TTNoop {
+		prepRes := wr.ResourceSpec(spt, prepTT)
+		res.MaxConcurrent = prepRes.MaxConcurrent
+	}
+
+	// otherwise, use the default resource table
+	return res
+}
+
 type WorkerStats struct {
 	Info    WorkerInfo
 	Tasks   []sealtasks.TaskType

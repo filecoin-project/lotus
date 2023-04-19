@@ -7,14 +7,19 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.18.8
+      - image: cimg/go:1.19.7
+    resource_class: medium+
+  golang-2xl:
+    docker:
+      # Must match GO_VERSION_MIN in project root
+      - image: cimg/go:1.19.7
     resource_class: 2xlarge
   ubuntu:
     docker:
       - image: ubuntu:20.04
 
 commands:
-  prepare:
+  build-platform-specific:
     parameters:
       linux:
         default: true
@@ -31,22 +36,13 @@ commands:
     steps:
       - checkout
       - git_fetch_all_tags
+      - run: git submodule sync
+      - run: git submodule update --init
       - when:
           condition: <<parameters.linux>>
           steps:
-            - run:
-                name: Check Go Version
-                command: |
-                  v=`go version | { read _ _ v _; echo ${v#go}; }`
-                  if [[ $v != `cat GO_VERSION_MIN` ]]; then
-                    echo "GO_VERSION_MIN file does not match the go version being used."
-                    echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
-                    exit 1
-                  fi
-            - run: sudo apt-get update
-            - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
-            - run: sudo apt-get install python-is-python3
-
+            - install-ubuntu-deps
+            - check-go-version
       - when:
           condition: <<parameters.darwin>>
           steps:
@@ -67,8 +63,7 @@ commands:
                 name: Install Rust
                 command: |
                   curl https://sh.rustup.rs -sSf | sh -s -- -y
-      - run: git submodule sync
-      - run: git submodule update --init
+      - run: make deps lotus
   download-params:
     steps:
       - restore_cache:
@@ -77,7 +72,7 @@ commands:
             - 'v26-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params 2048
+      - run: ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
           key: 'v26-2k-lotus-params'
@@ -99,12 +94,43 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
+  install-ubuntu-deps:
+    steps:
+      - run: sudo apt-get update
+      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+  check-go-version:
+    steps:
+      - run: |
+          v=`go version | { read _ _ v _; echo ${v#go}; }`
+          if [[ $v != `cat GO_VERSION_MIN` ]]; then
+            echo "GO_VERSION_MIN file does not match the go version being used."
+            echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
+            exit 1
+          fi
 
 jobs:
+  build:
+    executor: golang
+    working_directory: ~/lotus
+    steps:
+      - checkout
+      - git_fetch_all_tags
+      - run: git submodule sync
+      - run: git submodule update --init
+      - install-ubuntu-deps
+      - check-go-version
+      - run: make deps lotus
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - "lotus"
   mod-tidy-check:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run: go mod tidy -v
       - run:
           name: Check git diff
@@ -115,13 +141,14 @@ jobs:
   test:
     description: |
       Run tests with gotestsum.
+    working_directory: ~/lotus
     parameters: &test-params
       executor:
         type: executor
         default: golang
       go-test-flags:
         type: string
-        default: "-timeout 30m"
+        default: "-timeout 20m"
         description: Flags passed to go test.
       target:
         type: string
@@ -130,21 +157,22 @@ jobs:
       proofs-log-test:
         type: string
         default: "0"
+      get-params:
+        type: boolean
+        default: false
       suite:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
-      gotestsum-format:
-        type: string
-        default: standard-verbose
-        description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
     executor: << parameters.executor >>
     steps:
-      - prepare
-      - run:
-          command: make deps lotus
-          no_output_timeout: 30m
-      - download-params
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
+      - when:
+          condition: << parameters.get-params >>
+          steps:
+            - download-params
       - run:
           name: go test
           environment:
@@ -155,12 +183,11 @@ jobs:
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
             gotestsum \
-              --format << parameters.gotestsum-format >> \
+              --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
               --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
-              -- \
-              << parameters.go-test-flags >> \
-              << parameters.target >>
+              --packages="<< parameters.target >>" \
+              -- << parameters.go-test-flags >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
@@ -168,6 +195,7 @@ jobs:
           path: /tmp/test-artifacts/<< parameters.suite >>.json
 
   test-conformance:
+    working_directory: ~/lotus
     description: |
       Run tests using a corpus of interoperable test vectors for Filecoin
       implementations to test their correctness and compliance with the Filecoin
@@ -183,10 +211,9 @@ jobs:
           submodule is used.
     executor: << parameters.executor >>
     steps:
-      - prepare
-      - run:
-          command: make deps lotus
-          no_output_timeout: 30m
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - download-params
       - when:
           condition:
@@ -229,7 +256,7 @@ jobs:
   build-linux-amd64:
     executor: golang
     steps:
-      - prepare
+      - build-platform-specific
       - run: make lotus lotus-miner lotus-worker
       - run:
           name: check tag and version output match
@@ -248,7 +275,7 @@ jobs:
     macos:
       xcode: "13.4.1"
     steps:
-      - prepare:
+      - build-platform-specific:
           linux: false
           darwin: true
           darwin-architecture: amd64
@@ -272,7 +299,7 @@ jobs:
     resource_class: filecoin-project/self-hosted-m1
     steps:
       - run: echo 'export PATH=/opt/homebrew/bin:"$PATH"' >> "$BASH_ENV"
-      - prepare:
+      - build-platform-specific:
           linux: false
           darwin: true
           darwin-architecture: arm64
@@ -330,16 +357,18 @@ jobs:
 
   gofmt:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
       - run:
           command: "! go fmt ./... 2>&1 | read"
 
   gen-check:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
-      - run: make deps
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
       - run: make gen
@@ -349,32 +378,29 @@ jobs:
 
   docs-check:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
       - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
       - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
-      - run: make deps
       - run: make docsgen
       - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
       - run: zcat build/openrpc/worker.json.gz | jq > ../post-openrpc-worker
       - run: diff ../pre-openrpc-full ../post-openrpc-full && diff ../pre-openrpc-miner ../post-openrpc-miner && diff ../pre-openrpc-worker ../post-openrpc-worker && git --no-pager diff && git --no-pager diff --quiet
 
-  lint: &lint
+  lint-all:
     description: |
       Run golangci-lint.
+    working_directory: ~/lotus
     parameters:
       executor:
         type: executor
         default: golang
-      concurrency:
-        type: string
-        default: '2'
-        description: |
-          Concurrency used to run linters. Defaults to 2 because NumCPU is not
-          aware of container CPU limits.
       args:
         type: string
         default: ''
@@ -382,17 +408,14 @@ jobs:
           Arguments to pass to golangci-lint
     executor: << parameters.executor >>
     steps:
-      - prepare
-      - run:
-          command: make deps
-          no_output_timeout: 30m
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run:
           name: Lint
           command: |
-            golangci-lint run -v --timeout 2m \
-              --concurrency << parameters.concurrency >> << parameters.args >>
-  lint-all:
-    <<: *lint
+            golangci-lint run -v --timeout 10m \
+              --concurrency 4 << parameters.args >>
 
   build-docker:
     description: >
@@ -494,432 +517,539 @@ jobs:
                       extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
 
 workflows:
-  version: 2.1
   ci:
     jobs:
+      - build
       - lint-all:
-          concurrency: "16"   # expend all docker 2xlarge CPUs.
-      - mod-tidy-check
-      - gofmt
-      - gen-check
-      - docs-check
+          requires:
+            - build
+      - mod-tidy-check:
+          requires:
+            - build
+      - gofmt:
+          requires:
+            - build
+      - gen-check:
+          requires:
+            - build
+      - docs-check:
+          requires:
+            - build
       - test:
           name: test-itest-api
+          requires:
+            - build
           suite: itest-api
           target: "./itests/api_test.go"
-      
       - test:
           name: test-itest-batch_deal
+          requires:
+            - build
           suite: itest-batch_deal
           target: "./itests/batch_deal_test.go"
-      
       - test:
           name: test-itest-ccupgrade
+          requires:
+            - build
           suite: itest-ccupgrade
           target: "./itests/ccupgrade_test.go"
-      
       - test:
           name: test-itest-cli
+          requires:
+            - build
           suite: itest-cli
           target: "./itests/cli_test.go"
-      
       - test:
           name: test-itest-deadlines
+          requires:
+            - build
           suite: itest-deadlines
           target: "./itests/deadlines_test.go"
-      
       - test:
           name: test-itest-deals_512mb
+          requires:
+            - build
           suite: itest-deals_512mb
           target: "./itests/deals_512mb_test.go"
-      
       - test:
           name: test-itest-deals_anycid
+          requires:
+            - build
           suite: itest-deals_anycid
           target: "./itests/deals_anycid_test.go"
-      
       - test:
           name: test-itest-deals_concurrent
+          requires:
+            - build
           suite: itest-deals_concurrent
           target: "./itests/deals_concurrent_test.go"
-      
+          executor: golang-2xl
       - test:
           name: test-itest-deals_invalid_utf8_label
+          requires:
+            - build
           suite: itest-deals_invalid_utf8_label
           target: "./itests/deals_invalid_utf8_label_test.go"
-      
       - test:
           name: test-itest-deals_max_staging_deals
+          requires:
+            - build
           suite: itest-deals_max_staging_deals
           target: "./itests/deals_max_staging_deals_test.go"
-      
       - test:
           name: test-itest-deals_offline
+          requires:
+            - build
           suite: itest-deals_offline
           target: "./itests/deals_offline_test.go"
-      
       - test:
           name: test-itest-deals_padding
+          requires:
+            - build
           suite: itest-deals_padding
           target: "./itests/deals_padding_test.go"
-      
       - test:
           name: test-itest-deals_partial_retrieval_dm-level
+          requires:
+            - build
           suite: itest-deals_partial_retrieval_dm-level
           target: "./itests/deals_partial_retrieval_dm-level_test.go"
-      
       - test:
           name: test-itest-deals_partial_retrieval
+          requires:
+            - build
           suite: itest-deals_partial_retrieval
           target: "./itests/deals_partial_retrieval_test.go"
-      
       - test:
           name: test-itest-deals_power
+          requires:
+            - build
           suite: itest-deals_power
           target: "./itests/deals_power_test.go"
-      
       - test:
           name: test-itest-deals_pricing
+          requires:
+            - build
           suite: itest-deals_pricing
           target: "./itests/deals_pricing_test.go"
-      
       - test:
           name: test-itest-deals_publish
+          requires:
+            - build
           suite: itest-deals_publish
           target: "./itests/deals_publish_test.go"
-      
       - test:
           name: test-itest-deals_remote_retrieval
+          requires:
+            - build
           suite: itest-deals_remote_retrieval
           target: "./itests/deals_remote_retrieval_test.go"
-      
       - test:
           name: test-itest-deals_retry_deal_no_funds
+          requires:
+            - build
           suite: itest-deals_retry_deal_no_funds
           target: "./itests/deals_retry_deal_no_funds_test.go"
-      
       - test:
           name: test-itest-deals
+          requires:
+            - build
           suite: itest-deals
           target: "./itests/deals_test.go"
-      
       - test:
           name: test-itest-decode_params
+          requires:
+            - build
           suite: itest-decode_params
           target: "./itests/decode_params_test.go"
-      
       - test:
           name: test-itest-dup_mpool_messages
+          requires:
+            - build
           suite: itest-dup_mpool_messages
           target: "./itests/dup_mpool_messages_test.go"
-      
       - test:
           name: test-itest-eth_account_abstraction
+          requires:
+            - build
           suite: itest-eth_account_abstraction
           target: "./itests/eth_account_abstraction_test.go"
-      
       - test:
           name: test-itest-eth_api
+          requires:
+            - build
           suite: itest-eth_api
           target: "./itests/eth_api_test.go"
-      
       - test:
           name: test-itest-eth_balance
+          requires:
+            - build
           suite: itest-eth_balance
           target: "./itests/eth_balance_test.go"
-      
       - test:
           name: test-itest-eth_block_hash
+          requires:
+            - build
           suite: itest-eth_block_hash
           target: "./itests/eth_block_hash_test.go"
-      
       - test:
           name: test-itest-eth_bytecode
+          requires:
+            - build
           suite: itest-eth_bytecode
           target: "./itests/eth_bytecode_test.go"
-      
       - test:
           name: test-itest-eth_config
+          requires:
+            - build
           suite: itest-eth_config
           target: "./itests/eth_config_test.go"
-      
       - test:
           name: test-itest-eth_conformance
+          requires:
+            - build
           suite: itest-eth_conformance
           target: "./itests/eth_conformance_test.go"
-      
       - test:
           name: test-itest-eth_deploy
+          requires:
+            - build
           suite: itest-eth_deploy
           target: "./itests/eth_deploy_test.go"
-      
       - test:
           name: test-itest-eth_fee_history
+          requires:
+            - build
           suite: itest-eth_fee_history
           target: "./itests/eth_fee_history_test.go"
-      
       - test:
           name: test-itest-eth_filter
+          requires:
+            - build
           suite: itest-eth_filter
           target: "./itests/eth_filter_test.go"
-      
       - test:
           name: test-itest-eth_hash_lookup
+          requires:
+            - build
           suite: itest-eth_hash_lookup
           target: "./itests/eth_hash_lookup_test.go"
-      
       - test:
           name: test-itest-eth_transactions
+          requires:
+            - build
           suite: itest-eth_transactions
           target: "./itests/eth_transactions_test.go"
-      
       - test:
           name: test-itest-fevm_address
+          requires:
+            - build
           suite: itest-fevm_address
           target: "./itests/fevm_address_test.go"
-      
       - test:
           name: test-itest-fevm_events
+          requires:
+            - build
           suite: itest-fevm_events
           target: "./itests/fevm_events_test.go"
-      
       - test:
           name: test-itest-fevm
+          requires:
+            - build
           suite: itest-fevm
           target: "./itests/fevm_test.go"
-      
       - test:
           name: test-itest-gas_estimation
+          requires:
+            - build
           suite: itest-gas_estimation
           target: "./itests/gas_estimation_test.go"
-      
       - test:
           name: test-itest-gateway
+          requires:
+            - build
           suite: itest-gateway
           target: "./itests/gateway_test.go"
-      
       - test:
           name: test-itest-get_messages_in_ts
+          requires:
+            - build
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
-      
       - test:
           name: test-itest-lite_migration
+          requires:
+            - build
           suite: itest-lite_migration
           target: "./itests/lite_migration_test.go"
-      
       - test:
           name: test-itest-lookup_robust_address
+          requires:
+            - build
           suite: itest-lookup_robust_address
           target: "./itests/lookup_robust_address_test.go"
-      
       - test:
           name: test-itest-mempool
+          requires:
+            - build
           suite: itest-mempool
           target: "./itests/mempool_test.go"
-      
       - test:
           name: test-itest-migration
+          requires:
+            - build
           suite: itest-migration
           target: "./itests/migration_test.go"
-      
       - test:
           name: test-itest-mpool_msg_uuid
+          requires:
+            - build
           suite: itest-mpool_msg_uuid
           target: "./itests/mpool_msg_uuid_test.go"
-      
       - test:
           name: test-itest-mpool_push_with_uuid
+          requires:
+            - build
           suite: itest-mpool_push_with_uuid
           target: "./itests/mpool_push_with_uuid_test.go"
-      
       - test:
           name: test-itest-multisig
+          requires:
+            - build
           suite: itest-multisig
           target: "./itests/multisig_test.go"
-      
       - test:
           name: test-itest-net
+          requires:
+            - build
           suite: itest-net
           target: "./itests/net_test.go"
-      
       - test:
           name: test-itest-nonce
+          requires:
+            - build
           suite: itest-nonce
           target: "./itests/nonce_test.go"
-      
       - test:
           name: test-itest-path_detach_redeclare
+          requires:
+            - build
           suite: itest-path_detach_redeclare
           target: "./itests/path_detach_redeclare_test.go"
-      
       - test:
           name: test-itest-path_type_filters
+          requires:
+            - build
           suite: itest-path_type_filters
           target: "./itests/path_type_filters_test.go"
-      
       - test:
           name: test-itest-paych_api
+          requires:
+            - build
           suite: itest-paych_api
           target: "./itests/paych_api_test.go"
-      
       - test:
           name: test-itest-paych_cli
+          requires:
+            - build
           suite: itest-paych_cli
           target: "./itests/paych_cli_test.go"
-      
       - test:
           name: test-itest-pending_deal_allocation
+          requires:
+            - build
           suite: itest-pending_deal_allocation
           target: "./itests/pending_deal_allocation_test.go"
-      
       - test:
           name: test-itest-raft_messagesigner
+          requires:
+            - build
           suite: itest-raft_messagesigner
           target: "./itests/raft_messagesigner_test.go"
-      
       - test:
           name: test-itest-remove_verifreg_datacap
+          requires:
+            - build
           suite: itest-remove_verifreg_datacap
           target: "./itests/remove_verifreg_datacap_test.go"
-      
       - test:
           name: test-itest-sdr_upgrade
+          requires:
+            - build
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"
-      
       - test:
           name: test-itest-sector_finalize_early
+          requires:
+            - build
           suite: itest-sector_finalize_early
           target: "./itests/sector_finalize_early_test.go"
-      
       - test:
           name: test-itest-sector_import_full
+          requires:
+            - build
           suite: itest-sector_import_full
           target: "./itests/sector_import_full_test.go"
-      
       - test:
           name: test-itest-sector_import_simple
+          requires:
+            - build
           suite: itest-sector_import_simple
           target: "./itests/sector_import_simple_test.go"
-      
       - test:
           name: test-itest-sector_make_cc_avail
+          requires:
+            - build
           suite: itest-sector_make_cc_avail
           target: "./itests/sector_make_cc_avail_test.go"
-      
       - test:
           name: test-itest-sector_miner_collateral
+          requires:
+            - build
           suite: itest-sector_miner_collateral
           target: "./itests/sector_miner_collateral_test.go"
-      
       - test:
           name: test-itest-sector_numassign
+          requires:
+            - build
           suite: itest-sector_numassign
           target: "./itests/sector_numassign_test.go"
-      
       - test:
           name: test-itest-sector_pledge
+          requires:
+            - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
-      
       - test:
           name: test-itest-sector_prefer_no_upgrade
+          requires:
+            - build
           suite: itest-sector_prefer_no_upgrade
           target: "./itests/sector_prefer_no_upgrade_test.go"
-      
       - test:
           name: test-itest-sector_revert_available
+          requires:
+            - build
           suite: itest-sector_revert_available
           target: "./itests/sector_revert_available_test.go"
-      
       - test:
           name: test-itest-sector_terminate
+          requires:
+            - build
           suite: itest-sector_terminate
           target: "./itests/sector_terminate_test.go"
-      
       - test:
           name: test-itest-sector_unseal
+          requires:
+            - build
           suite: itest-sector_unseal
           target: "./itests/sector_unseal_test.go"
-      
       - test:
           name: test-itest-self_sent_txn
+          requires:
+            - build
           suite: itest-self_sent_txn
           target: "./itests/self_sent_txn_test.go"
-      
       - test:
           name: test-itest-splitstore
+          requires:
+            - build
           suite: itest-splitstore
           target: "./itests/splitstore_test.go"
-      
       - test:
           name: test-itest-tape
+          requires:
+            - build
           suite: itest-tape
           target: "./itests/tape_test.go"
-      
       - test:
           name: test-itest-verifreg
+          requires:
+            - build
           suite: itest-verifreg
           target: "./itests/verifreg_test.go"
-      
       - test:
           name: test-itest-wdpost_config
+          requires:
+            - build
           suite: itest-wdpost_config
           target: "./itests/wdpost_config_test.go"
-      
       - test:
           name: test-itest-wdpost_dispute
+          requires:
+            - build
           suite: itest-wdpost_dispute
           target: "./itests/wdpost_dispute_test.go"
-      
       - test:
           name: test-itest-wdpost_no_miner_storage
+          requires:
+            - build
           suite: itest-wdpost_no_miner_storage
           target: "./itests/wdpost_no_miner_storage_test.go"
-      
       - test:
           name: test-itest-wdpost
+          requires:
+            - build
           suite: itest-wdpost
           target: "./itests/wdpost_test.go"
-      
       - test:
           name: test-itest-wdpost_worker_config
+          requires:
+            - build
           suite: itest-wdpost_worker_config
           target: "./itests/wdpost_worker_config_test.go"
-      
+          executor: golang-2xl
       - test:
           name: test-itest-worker
+          requires:
+            - build
           suite: itest-worker
           target: "./itests/worker_test.go"
-      
+          executor: golang-2xl
       - test:
           name: test-itest-worker_upgrade
+          requires:
+            - build
           suite: itest-worker_upgrade
           target: "./itests/worker_upgrade_test.go"
-      
       - test:
           name: test-unit-cli
+          requires:
+            - build
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
+          get-params: true
       - test:
           name: test-unit-node
+          requires:
+            - build
           suite: utest-unit-node
           target: "./node/..."
+          
       - test:
           name: test-unit-rest
+          requires:
+            - build
           suite: utest-unit-rest
           target: "./api/... ./blockstore/... ./build/... ./chain/... ./cli/... ./cmd/... ./conformance/... ./extern/... ./gateway/... ./journal/... ./lib/... ./markets/... ./node/... ./paychmgr/... ./storage/... ./tools/..."
+          executor: golang-2xl
       - test:
           name: test-unit-storage
+          requires:
+            - build
           suite: utest-unit-storage
           target: "./storage/... ./extern/..."
+          
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
+          requires:
+            - build
           suite: multicore-sdr-check
           target: "./storage/sealer/ffiwrapper"
           proofs-log-test: "1"
       - test-conformance:
+          requires:
+            - build
           suite: conformance
           target: "./conformance"
 

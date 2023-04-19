@@ -38,7 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -486,7 +486,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Epoch:          0,
 		Rand:           &fakeRand{},
 		Bstore:         cs.StateBlockstore(),
-		Actors:         filcns.NewActorRegistry(),
+		Actors:         consensus.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
 		NetworkVersion: nv,

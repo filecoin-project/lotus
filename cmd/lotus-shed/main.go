@@ -20,6 +20,8 @@ func main() {
 
 	local := []*cli.Command{
 		addressCmd,
+		statActorCmd,
+		statObjCmd,
 		base64Cmd,
 		base32Cmd,
 		base16Cmd,

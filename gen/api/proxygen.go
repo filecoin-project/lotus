@@ -307,7 +307,8 @@ type {{.Num}}Struct struct {
 
 type {{.Num}}Methods struct {
 {{range .Methods}}
-		{{.Num}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{range .Tags}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
+	{{.Num}} func({{.NamedParams}}) ({{.Results}}) `+"`"+`{{$first := true}}{{range .Tags}}{{if $first}}{{$first = false}}{{else}} {{end}}{{index . 0}}:"{{index . 1}}"{{end}}`+"`"+`
+
 {{end}}
 	}
 

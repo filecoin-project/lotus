@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -318,7 +317,7 @@ func decodeToByte(cctx *cli.Context, i int) ([]byte, error) {
 		if i > 0 {
 			return nil, xerrors.Errorf("need more than %d args", i)
 		}
-		r, err := ioutil.ReadAll(os.Stdin)
+		r, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return nil, err
 		}

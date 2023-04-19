@@ -91,8 +91,12 @@ func (a *NetAPI) NetPeerInfo(_ context.Context, p peer.ID) (*api.ExtendedPeerInf
 
 	protocols, err := a.Host.Peerstore().GetProtocols(p)
 	if err == nil {
-		sort.Strings(protocols)
-		info.Protocols = protocols
+		protocolStrings := make([]string, 0, len(protocols))
+		for _, protocol := range protocols {
+			protocolStrings = append(protocolStrings, string(protocol))
+		}
+		sort.Strings(protocolStrings)
+		info.Protocols = protocolStrings
 	}
 
 	if cm := a.Host.ConnManager().GetTagInfo(p); cm != nil {

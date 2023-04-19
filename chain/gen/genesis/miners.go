@@ -42,7 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -96,7 +96,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			Epoch:          0,
 			Rand:           &fakeRand{},
 			Bstore:         cs.StateBlockstore(),
-			Actors:         filcns.NewActorRegistry(),
+			Actors:         consensus.NewActorRegistry(),
 			Syscalls:       mkFakedSigSyscalls(sys),
 			CircSupplyCalc: csc,
 			NetworkVersion: nv,

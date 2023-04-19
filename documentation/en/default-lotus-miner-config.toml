@@ -352,7 +352,7 @@
   #
   # type: int
   # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
-  #ParallelCheckLimit = 128
+  #ParallelCheckLimit = 32
 
   # Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
   # 

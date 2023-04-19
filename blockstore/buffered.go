@@ -46,6 +46,8 @@ var (
 	_ Viewer     = (*BufferedBlockstore)(nil)
 )
 
+func (bs *BufferedBlockstore) Flush(ctx context.Context) error { return bs.write.Flush(ctx) }
+
 func (bs *BufferedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	a, err := bs.read.AllKeysChan(ctx)
 	if err != nil {

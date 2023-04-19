@@ -1,8 +1,9 @@
-package filcns
+package consensus
 
 import (
 	"context"
 	"sync/atomic"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -56,10 +56,12 @@ func NewActorRegistry() *vm.ActorRegistry {
 	return inv
 }
 
-type TipSetExecutor struct{}
+type TipSetExecutor struct {
+	reward RewardFunc
+}
 
-func NewTipSetExecutor() *TipSetExecutor {
-	return &TipSetExecutor{}
+func NewTipSetExecutor(r RewardFunc) *TipSetExecutor {
+	return &TipSetExecutor{reward: r}
 }
 
 func (t *TipSetExecutor) NewActorRegistry() *vm.ActorRegistry {
@@ -113,6 +115,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		return sm.VMConstructor()(ctx, vmopt)
 	}
 
+	var cronGas int64
+
 	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
 		cronMsg := &types.Message{
 			To:         cron.Address,
@@ -129,6 +133,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		if err != nil {
 			return xerrors.Errorf("running cron: %w", err)
 		}
+
+		cronGas += ret.GasUsed
 
 		if em != nil {
 			if err := em.MessageApplied(ctx, ts, cronMsg.Cid(), cronMsg, ret, true); err != nil {
@@ -181,7 +187,9 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		}
 	}
 
-	partDone()
+	vmEarly := partDone()
+	earlyCronGas := cronGas
+	cronGas = 0
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
 
 	vmi, err := makeVm(pstate, epoch, ts.MinTimestamp())
@@ -196,6 +204,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		processedMsgs = make(map[cid.Cid]struct{})
 	)
 
+	var msgGas int64
+
 	for _, b := range bms {
 		penalty := types.NewInt(0)
 		gasReward := big.Zero()
@@ -209,6 +219,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			if err != nil {
 				return cid.Undef, cid.Undef, err
 			}
+
+			msgGas += r.GasUsed
 
 			receipts = append(receipts, &r.MessageReceipt)
 			gasReward = big.Add(gasReward, r.GasCosts.MinerTip)
@@ -227,50 +239,26 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			processedMsgs[m.Cid()] = struct{}{}
 		}
 
-		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
+		params := &reward.AwardBlockRewardParams{
 			Miner:     b.Miner,
 			Penalty:   penalty,
 			GasReward: gasReward,
 			WinCount:  b.WinCount,
-		})
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
 		}
-
-		rwMsg := &types.Message{
-			From:       builtin.SystemActorAddr,
-			To:         reward.Address,
-			Nonce:      uint64(epoch),
-			Value:      types.NewInt(0),
-			GasFeeCap:  types.NewInt(0),
-			GasPremium: types.NewInt(0),
-			GasLimit:   1 << 30,
-			Method:     reward.Methods.AwardBlockReward,
-			Params:     params,
-		}
-		ret, actErr := vmi.ApplyImplicitMessage(ctx, rwMsg)
-		if actErr != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, actErr)
-		}
-		if em != nil {
-			if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on reward message: %w", err)
-			}
-		}
-
-		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
+		rErr := t.reward(ctx, vmi, em, epoch, ts, params)
+		if rErr != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("error applying reward: %w", rErr)
 		}
 	}
 
-	partDone()
+	vmMsg := partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyCron)
 
 	if err := runCron(vmi, epoch); err != nil {
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
-	partDone()
+	vmCron := partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyFlush)
 
 	rectarr := blockadt.MakeEmptyArray(sm.ChainStore().ActorStore(ctx))
@@ -305,6 +293,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("vm flush failed: %w", err)
 	}
+
+	vmFlush := partDone()
+	partDone = func() time.Duration { return time.Duration(0) }
+
+	log.Infow("ApplyBlocks stats", "early", vmEarly, "earlyCronGas", earlyCronGas, "vmMsg", vmMsg, "msgGas", msgGas, "vmCron", vmCron, "cronGas", cronGas, "vmFlush", vmFlush, "epoch", epoch, "tsk", ts.Key())
 
 	stats.Record(ctx, metrics.VMSends.M(int64(atomic.LoadUint64(&vm.StatSends))),
 		metrics.VMApplied.M(int64(atomic.LoadUint64(&vm.StatApplied))))

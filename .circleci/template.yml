@@ -7,14 +7,19 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.18.8
+      - image: cimg/go:1.19.7
+    resource_class: medium+
+  golang-2xl:
+    docker:
+      # Must match GO_VERSION_MIN in project root
+      - image: cimg/go:1.19.7
     resource_class: 2xlarge
   ubuntu:
     docker:
       - image: ubuntu:20.04
 
 commands:
-  prepare:
+  build-platform-specific:
     parameters:
       linux:
         default: true
@@ -31,22 +36,13 @@ commands:
     steps:
       - checkout
       - git_fetch_all_tags
+      - run: git submodule sync
+      - run: git submodule update --init
       - when:
           condition: <<parameters.linux>>
           steps:
-            - run:
-                name: Check Go Version
-                command: |
-                  v=`go version | { read _ _ v _; echo ${v#go}; }`
-                  if [["[[ $v != `cat GO_VERSION_MIN` ]]"]]; then
-                    echo "GO_VERSION_MIN file does not match the go version being used."
-                    echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
-                    exit 1
-                  fi
-            - run: sudo apt-get update
-            - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
-            - run: sudo apt-get install python-is-python3
-
+            - install-ubuntu-deps
+            - check-go-version
       - when:
           condition: <<parameters.darwin>>
           steps:
@@ -67,8 +63,7 @@ commands:
                 name: Install Rust
                 command: |
                   curl https://sh.rustup.rs -sSf | sh -s -- -y
-      - run: git submodule sync
-      - run: git submodule update --init
+      - run: make deps lotus
   download-params:
     steps:
       - restore_cache:
@@ -77,7 +72,7 @@ commands:
             - 'v26-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params 2048
+      - run: ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
           key: 'v26-2k-lotus-params'
@@ -99,12 +94,43 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
+  install-ubuntu-deps:
+    steps:
+      - run: sudo apt-get update
+      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+  check-go-version:
+    steps:
+      - run: |
+          v=`go version | { read _ _ v _; echo ${v#go}; }`
+          if [["[[ $v != `cat GO_VERSION_MIN` ]]"]]; then
+            echo "GO_VERSION_MIN file does not match the go version being used."
+            echo "Please update image to cimg/go:`cat GO_VERSION_MIN` or update GO_VERSION_MIN to $v."
+            exit 1
+          fi
 
 jobs:
+  build:
+    executor: golang
+    working_directory: ~/lotus
+    steps:
+      - checkout
+      - git_fetch_all_tags
+      - run: git submodule sync
+      - run: git submodule update --init
+      - install-ubuntu-deps
+      - check-go-version
+      - run: make deps lotus
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - "lotus"
   mod-tidy-check:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run: go mod tidy -v
       - run:
           name: Check git diff
@@ -115,13 +141,14 @@ jobs:
   test:
     description: |
       Run tests with gotestsum.
+    working_directory: ~/lotus
     parameters: &test-params
       executor:
         type: executor
         default: golang
       go-test-flags:
         type: string
-        default: "-timeout 30m"
+        default: "-timeout 20m"
         description: Flags passed to go test.
       target:
         type: string
@@ -130,21 +157,22 @@ jobs:
       proofs-log-test:
         type: string
         default: "0"
+      get-params:
+        type: boolean
+        default: false
       suite:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
-      gotestsum-format:
-        type: string
-        default: standard-verbose
-        description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
     executor: << parameters.executor >>
     steps:
-      - prepare
-      - run:
-          command: make deps lotus
-          no_output_timeout: 30m
-      - download-params
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
+      - when:
+          condition: << parameters.get-params >>
+          steps:
+            - download-params
       - run:
           name: go test
           environment:
@@ -155,12 +183,11 @@ jobs:
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
             gotestsum \
-              --format << parameters.gotestsum-format >> \
+              --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
               --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
-              -- \
-              << parameters.go-test-flags >> \
-              << parameters.target >>
+              --packages="<< parameters.target >>" \
+              -- << parameters.go-test-flags >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
@@ -168,6 +195,7 @@ jobs:
           path: /tmp/test-artifacts/<< parameters.suite >>.json
 
   test-conformance:
+    working_directory: ~/lotus
     description: |
       Run tests using a corpus of interoperable test vectors for Filecoin
       implementations to test their correctness and compliance with the Filecoin
@@ -183,10 +211,9 @@ jobs:
           submodule is used.
     executor: << parameters.executor >>
     steps:
-      - prepare
-      - run:
-          command: make deps lotus
-          no_output_timeout: 30m
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - download-params
       - when:
           condition:
@@ -229,7 +256,7 @@ jobs:
   build-linux-amd64:
     executor: golang
     steps:
-      - prepare
+      - build-platform-specific
       - run: make lotus lotus-miner lotus-worker
       - run:
           name: check tag and version output match
@@ -248,7 +275,7 @@ jobs:
     macos:
       xcode: "13.4.1"
     steps:
-      - prepare:
+      - build-platform-specific:
           linux: false
           darwin: true
           darwin-architecture: amd64
@@ -272,7 +299,7 @@ jobs:
     resource_class: filecoin-project/self-hosted-m1
     steps:
       - run: echo 'export PATH=/opt/homebrew/bin:"$PATH"' >> "$BASH_ENV"
-      - prepare:
+      - build-platform-specific:
           linux: false
           darwin: true
           darwin-architecture: arm64
@@ -330,16 +357,18 @@ jobs:
 
   gofmt:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
       - run:
           command: "! go fmt ./... 2>&1 | read"
 
   gen-check:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
-      - run: make deps
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
       - run: make gen
@@ -349,32 +378,29 @@ jobs:
 
   docs-check:
     executor: golang
+    working_directory: ~/lotus
     steps:
-      - prepare
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run: go install golang.org/x/tools/cmd/goimports
       - run: zcat build/openrpc/full.json.gz | jq > ../pre-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../pre-openrpc-miner
       - run: zcat build/openrpc/worker.json.gz | jq > ../pre-openrpc-worker
-      - run: make deps
       - run: make docsgen
       - run: zcat build/openrpc/full.json.gz | jq > ../post-openrpc-full
       - run: zcat build/openrpc/miner.json.gz | jq > ../post-openrpc-miner
       - run: zcat build/openrpc/worker.json.gz | jq > ../post-openrpc-worker
       - run: diff ../pre-openrpc-full ../post-openrpc-full && diff ../pre-openrpc-miner ../post-openrpc-miner && diff ../pre-openrpc-worker ../post-openrpc-worker && git --no-pager diff && git --no-pager diff --quiet
 
-  lint: &lint
+  lint-all:
     description: |
       Run golangci-lint.
+    working_directory: ~/lotus
     parameters:
       executor:
         type: executor
         default: golang
-      concurrency:
-        type: string
-        default: '2'
-        description: |
-          Concurrency used to run linters. Defaults to 2 because NumCPU is not
-          aware of container CPU limits.
       args:
         type: string
         default: ''
@@ -382,17 +408,14 @@ jobs:
           Arguments to pass to golangci-lint
     executor: << parameters.executor >>
     steps:
-      - prepare
-      - run:
-          command: make deps
-          no_output_timeout: 30m
+      - install-ubuntu-deps
+      - attach_workspace:
+          at: ~/
       - run:
           name: Lint
           command: |
-            golangci-lint run -v --timeout 2m \
-              --concurrency << parameters.concurrency >> << parameters.args >>
-  lint-all:
-    <<: *lint
+            golangci-lint run -v --timeout 10m \
+              --concurrency 4 << parameters.args >>
 
   build-docker:
     description: >
@@ -494,37 +517,58 @@ jobs:
                       extra_build_args: --target <<parameters.image>> --build-arg GOFLAGS=-tags=<<parameters.network>>
 
 workflows:
-  version: 2.1
   ci:
     jobs:
+      - build
       - lint-all:
-          concurrency: "16"   # expend all docker 2xlarge CPUs.
-      - mod-tidy-check
-      - gofmt
-      - gen-check
-      - docs-check
+          requires:
+            - build
+      - mod-tidy-check:
+          requires:
+            - build
+      - gofmt:
+          requires:
+            - build
+      - gen-check:
+          requires:
+            - build
+      - docs-check:
+          requires:
+            - build
 
       [[- range $file := .ItestFiles -]]
       [[ with $name := $file | stripSuffix ]]
       - test:
           name: test-itest-[[ $name ]]
+          requires:
+            - build
           suite: itest-[[ $name ]]
           target: "./itests/[[ $file ]]"
-      [[ end ]]
-      [[- end -]]
+          [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
+          executor: golang-2xl
+          [[- end]]
+      [[- end ]][[- end]]
 
-      [[range $suite, $pkgs := .UnitSuites]]
+      [[- range $suite, $pkgs := .UnitSuites]]
       - test:
           name: test-[[ $suite ]]
+          requires:
+            - build
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
+          [[if eq $suite "unit-cli"]]get-params: true[[end]]
+          [[- if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
       [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
+          requires:
+            - build
           suite: multicore-sdr-check
           target: "./storage/sealer/ffiwrapper"
           proofs-log-test: "1"
       - test-conformance:
+          requires:
+            - build
           suite: conformance
           target: "./conformance"
 

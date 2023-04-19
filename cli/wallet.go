@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -251,8 +250,8 @@ var walletSetDefault = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address to set as default")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -279,8 +278,8 @@ var walletExport = &cli.Command{
 
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify key to export")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -337,7 +336,7 @@ var walletImport = &cli.Command{
 			inpdata = indata
 
 		} else {
-			fdata, err := ioutil.ReadFile(cctx.Args().First())
+			fdata, err := os.ReadFile(cctx.Args().First())
 			if err != nil {
 				return err
 			}
@@ -414,8 +413,8 @@ var walletSign = &cli.Command{
 
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() || cctx.NArg() != 2 {
-			return fmt.Errorf("must specify signing address and message to sign")
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -457,8 +456,8 @@ var walletVerify = &cli.Command{
 
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() || cctx.NArg() != 3 {
-			return fmt.Errorf("must specify signing address, message, and signature to verify")
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -509,8 +508,8 @@ var walletDelete = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() || cctx.NArg() != 1 {
-			return fmt.Errorf("must specify address to delete")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -701,8 +700,8 @@ var walletMarketAdd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		// Get amount param
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass amount to add")
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
 		}
 		f, err := types.ParseFIL(cctx.Args().First())
 		if err != nil {

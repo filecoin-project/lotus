@@ -775,9 +775,10 @@ func SinceInMilliseconds(startTime time.Time) float64 {
 
 // Timer is a function stopwatch, calling it starts the timer,
 // calling the returned function will record the duration.
-func Timer(ctx context.Context, m *stats.Float64Measure) func() {
+func Timer(ctx context.Context, m *stats.Float64Measure) func() time.Duration {
 	start := time.Now()
-	return func() {
+	return func() time.Duration {
 		stats.Record(ctx, m.M(SinceInMilliseconds(start)))
+		return time.Since(start)
 	}
 }

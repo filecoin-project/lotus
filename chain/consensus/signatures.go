@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"golang.org/x/xerrors"

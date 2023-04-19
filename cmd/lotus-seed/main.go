@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/docker/go-units"
@@ -114,7 +113,7 @@ var preSealCmd = &cli.Command{
 		var k *types.KeyInfo
 		if c.String("key") != "" {
 			k = new(types.KeyInfo)
-			kh, err := ioutil.ReadFile(c.String("key"))
+			kh, err := os.ReadFile(c.String("key"))
 			if err != nil {
 				return err
 			}

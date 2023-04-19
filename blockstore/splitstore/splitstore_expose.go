@@ -77,6 +77,10 @@ func (es *exposedSplitStore) GetSize(ctx context.Context, c cid.Cid) (int, error
 	return size, err
 }
 
+func (es *exposedSplitStore) Flush(ctx context.Context) error {
+	return es.s.Flush(ctx)
+}
+
 func (es *exposedSplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	return es.s.Put(ctx, blk)
 }

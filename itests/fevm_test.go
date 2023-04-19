@@ -858,6 +858,39 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 	require.Len(t, receipt.Logs, 1)
 }
 
+// This test ensures that we can deploy new contracts from a solidity call to `transfer` without
+// exceeding the 10M gas limit.
+func TestFEVMTestDeployOnTransfer(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	fromAddr := client.DefaultKey.Address
+	t.Log("from - ", fromAddr)
+
+	//create contract A
+	filenameStorage := "contracts/ValueSender.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
+
+	//send to some random address.
+	params := [32]byte{}
+	params[30] = 0xff
+	randomAddr, err := ethtypes.CastEthAddress(params[12:])
+	value := big.NewInt(100)
+	entryPoint := kit.CalcFuncSignature("sendEthToB(address)")
+	require.NoError(t, err)
+	ret, err := client.EVM().InvokeSolidityWithValue(ctx, fromAddr, contractAddr, entryPoint, params[:], value)
+	require.NoError(t, err)
+	require.True(t, ret.Receipt.ExitCode.IsSuccess())
+
+	balance, err := client.EVM().EthGetBalance(ctx, randomAddr, "latest")
+	require.NoError(t, err)
+	require.Equal(t, value.Int, balance.Int)
+
+	filAddr, err := randomAddr.ToFilecoinAddress()
+	require.NoError(t, err)
+	client.AssertActorType(ctx, filAddr, manifest.PlaceholderKey)
+}
+
 func TestFEVMProxyUpgradeable(t *testing.T) {
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()

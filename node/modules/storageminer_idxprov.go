@@ -5,14 +5,14 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	provider "github.com/ipni/index-provider"
+	"github.com/ipni/index-provider/engine"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	provider "github.com/filecoin-project/index-provider"
-	"github.com/filecoin-project/index-provider/engine"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/config"
@@ -41,10 +41,15 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		}
 
 		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/index-provider"))
+		addrs := marketHost.Addrs()
+		addrsString := make([]string, 0, len(addrs))
+		for _, addr := range addrs {
+			addrsString = append(addrsString, addr.String())
+		}
 		var opts = []engine.Option{
 			engine.WithDatastore(ipds),
 			engine.WithHost(marketHost),
-			engine.WithRetrievalAddrs(marketHost.Addrs()...),
+			engine.WithRetrievalAddrs(addrsString...),
 			engine.WithEntriesCacheCapacity(cfg.EntriesCacheCapacity),
 			engine.WithChainedEntries(cfg.EntriesChunkSize),
 			engine.WithTopicName(topicName),

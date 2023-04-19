@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -16,7 +16,7 @@ import (
 	dssync "github.com/ipfs/go-datastore/sync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	files "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-libipfs/files"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
@@ -32,7 +32,7 @@ import (
 var testdata embed.FS
 
 func TestImportLocal(t *testing.T) {
-	//stm: @CLIENT_STORAGE_DEALS_IMPORT_LOCAL_001, @CLIENT_RETRIEVAL_FIND_001
+	// stm: @CLIENT_STORAGE_DEALS_IMPORT_LOCAL_001, @CLIENT_RETRIEVAL_FIND_001
 	ds := dssync.MutexWrap(datastore.NewMapDatastore())
 	dir := t.TempDir()
 	im := imports.NewManager(ds, dir)
@@ -46,7 +46,7 @@ func TestImportLocal(t *testing.T) {
 	b, err := testdata.ReadFile("testdata/payload.txt")
 	require.NoError(t, err)
 
-	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
+	// stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	root, err := a.ClientImportLocal(ctx, bytes.NewReader(b))
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
@@ -59,7 +59,7 @@ func TestImportLocal(t *testing.T) {
 	require.Equal(t, root, *it.Root)
 	require.True(t, strings.HasPrefix(it.CARPath, dir))
 
-	//stm: @CLIENT_DATA_HAS_LOCAL_001
+	// stm: @CLIENT_DATA_HAS_LOCAL_001
 	local, err := a.ClientHasLocal(ctx, root)
 	require.NoError(t, err)
 	require.True(t, local)
@@ -77,7 +77,7 @@ func TestImportLocal(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	outBytes, err := ioutil.ReadFile(out1)
+	outBytes, err := os.ReadFile(out1)
 	require.NoError(t, err)
 	require.Equal(t, b, outBytes)
 
@@ -128,7 +128,7 @@ func TestImportLocal(t *testing.T) {
 	err = files.WriteTo(file, exportedPath)
 	require.NoError(t, err)
 
-	exportedBytes, err := ioutil.ReadFile(exportedPath)
+	exportedBytes, err := os.ReadFile(exportedPath)
 	require.NoError(t, err)
 
 	// compare original file to recreated unixfs file.

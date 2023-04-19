@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -33,6 +32,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -243,7 +243,7 @@ var DaemonCmd = &cli.Command{
 
 		var genBytes []byte
 		if cctx.String("genesis") != "" {
-			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))
+			genBytes, err = os.ReadFile(cctx.String("genesis"))
 			if err != nil {
 				return xerrors.Errorf("reading genesis: %w", err)
 			}
@@ -399,7 +399,7 @@ func importKey(ctx context.Context, api lapi.FullNode, f string) error {
 		return err
 	}
 
-	hexdata, err := ioutil.ReadFile(f)
+	hexdata, err := os.ReadFile(f)
 	if err != nil {
 		return err
 	}
@@ -539,7 +539,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	// TODO: We need to supply the actual beacon after v14
-	stm, err := stmgr.NewStateManager(cst, filcns.NewTipSetExecutor(), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil)
+	stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds)
 	if err != nil {
 		return err
 	}

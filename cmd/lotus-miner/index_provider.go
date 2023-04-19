@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
@@ -23,18 +22,7 @@ var indexProvAnnounceCmd = &cli.Command{
 	Name:      "announce",
 	ArgsUsage: "<deal proposal cid>",
 	Usage:     "Announce a deal to indexers so they can download its index",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
 		}
@@ -60,18 +48,7 @@ var indexProvAnnounceCmd = &cli.Command{
 var indexProvAnnounceAllCmd = &cli.Command{
 	Name:  "announce-all",
 	Usage: "Announce all active deals to indexers so they can download the indices",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err

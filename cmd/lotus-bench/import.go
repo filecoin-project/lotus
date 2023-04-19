@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/http"
 	_ "net/http/pprof"
@@ -34,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -157,7 +157,7 @@ var importBenchCmd = &cli.Command{
 		if rdir := cctx.String("repodir"); rdir != "" {
 			tdir = rdir
 		} else {
-			tmp, err := ioutil.TempDir("", "lotus-import-bench")
+			tmp, err := os.MkdirTemp("", "lotus-import-bench")
 			if err != nil {
 				return err
 			}
@@ -228,7 +228,7 @@ var importBenchCmd = &cli.Command{
 		defer cs.Close() //nolint:errcheck
 
 		// TODO: We need to supply the actual beacon after v14
-		stm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), vm.Syscalls(verifier), filcns.DefaultUpgradeSchedule(), nil)
+		stm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(verifier), filcns.DefaultUpgradeSchedule(), nil, metadataDs)
 		if err != nil {
 			return err
 		}

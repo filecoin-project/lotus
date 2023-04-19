@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -33,8 +33,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -160,7 +159,7 @@ type MessagePool struct {
 	// pruneCooldown is a channel used to allow a cooldown time between prunes
 	pruneCooldown chan struct{}
 
-	blsSigCache *lru.TwoQueueCache
+	blsSigCache *lru.TwoQueueCache[cid.Cid, crypto.Signature]
 
 	changes *lps.PubSub
 
@@ -168,9 +167,9 @@ type MessagePool struct {
 
 	netName dtypes.NetworkName
 
-	sigValCache *lru.TwoQueueCache
+	sigValCache *lru.TwoQueueCache[string, struct{}]
 
-	nonceCache *lru.Cache
+	nonceCache *lru.Cache[nonceCacheKey, uint64]
 
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
@@ -370,9 +369,9 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 }
 
 func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
-	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
-	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
-	noncecache, _ := lru.New(256)
+	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](build.BlsSignatureCacheSize)
+	verifcache, _ := lru.New2Q[string, struct{}](build.VerifSigCacheSize)
+	noncecache, _ := lru.New[nonceCacheKey, uint64](256)
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
@@ -798,7 +797,7 @@ func (mp *MessagePool) VerifyMsgSig(m *types.SignedMessage) error {
 		return nil
 	}
 
-	if err := chain.AuthenticateMessage(m, m.Message.From); err != nil {
+	if err := consensus.AuthenticateMessage(m, m.Message.From); err != nil {
 		return xerrors.Errorf("failed to validate signature: %w", err)
 	}
 
@@ -866,7 +865,7 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 	nv := mp.api.StateNetworkVersion(ctx, epoch)
 
 	// TODO: I'm not thrilled about depending on filcns here, but I prefer this to duplicating logic
-	if !filcns.IsValidForSending(nv, senderAct) {
+	if !consensus.IsValidForSending(nv, senderAct) {
 		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}
 
@@ -1054,7 +1053,7 @@ func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, 
 
 	n, ok := mp.nonceCache.Get(nk)
 	if ok {
-		return n.(uint64), nil
+		return n, nil
 	}
 
 	act, err := mp.api.GetActorAfter(addr, ts)
@@ -1474,13 +1473,8 @@ func (mp *MessagePool) MessagesForBlocks(ctx context.Context, blks []*types.Bloc
 }
 
 func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
-	val, ok := mp.blsSigCache.Get(msg.Cid())
+	sig, ok := mp.blsSigCache.Get(msg.Cid())
 	if !ok {
-		return nil
-	}
-	sig, ok := val.(crypto.Signature)
-	if !ok {
-		log.Errorf("value in signature cache was not a signature (got %T)", val)
 		return nil
 	}
 

@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/rand"
@@ -166,7 +167,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 
 	maddr1 := genesis2.MinerAddress(0)
 
-	m1temp, err := ioutil.TempDir("", "preseal")
+	m1temp, err := os.MkdirTemp("", "preseal")
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +179,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 
 	maddr2 := genesis2.MinerAddress(1)
 
-	m2temp, err := ioutil.TempDir("", "preseal")
+	m2temp, err := os.MkdirTemp("", "preseal")
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +256,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 	//return nil, xerrors.Errorf("creating drand beacon: %w", err)
 	//}
 
-	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), sys, us, beac)
+	sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), sys, us, beac, ds)
 	if err != nil {
 		return nil, xerrors.Errorf("initing stmgr: %w", err)
 	}

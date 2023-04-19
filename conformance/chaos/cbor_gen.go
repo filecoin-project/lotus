@@ -223,7 +223,7 @@ func (t *CallerValidationArgs) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative oveflow")
+				return fmt.Errorf("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:
@@ -712,7 +712,7 @@ func (t *SendReturn) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative oveflow")
+				return fmt.Errorf("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:
@@ -812,7 +812,7 @@ func (t *MutateStateArgs) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative oveflow")
+				return fmt.Errorf("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:
@@ -907,7 +907,7 @@ func (t *AbortWithArgs) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative oveflow")
+				return fmt.Errorf("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:
@@ -1064,7 +1064,7 @@ func (t *InspectRuntimeReturn) UnmarshalCBOR(r io.Reader) (err error) {
 		case cbg.MajNegativeInt:
 			extraI = int64(extra)
 			if extraI < 0 {
-				return fmt.Errorf("int64 negative oveflow")
+				return fmt.Errorf("int64 negative overflow")
 			}
 			extraI = -1 - extraI
 		default:

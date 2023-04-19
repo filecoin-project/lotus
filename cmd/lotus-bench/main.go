@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"math/rand"
 	"os"
@@ -197,7 +196,7 @@ var sealBenchCmd = &cli.Command{
 				return xerrors.Errorf("creating sectorbuilder dir: %w", err)
 			}
 
-			tsdir, err := ioutil.TempDir(sdir, "bench")
+			tsdir, err := os.MkdirTemp(sdir, "bench")
 			if err != nil {
 				return err
 			}
@@ -287,7 +286,7 @@ var sealBenchCmd = &cli.Command{
 			// sectorbuilder directory... we need a better way to handle
 			// this in other cases
 
-			fdata, err := ioutil.ReadFile(filepath.Join(sbdir, "pre-seal-"+maddr.String()+".json"))
+			fdata, err := os.ReadFile(filepath.Join(sbdir, "pre-seal-"+maddr.String()+".json"))
 			if err != nil {
 				return err
 			}
@@ -647,7 +646,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 							return err
 						}
 
-						if err := ioutil.WriteFile(saveC2inp, b, 0664); err != nil {
+						if err := os.WriteFile(saveC2inp, b, 0664); err != nil {
 							log.Warnf("%+v", err)
 						}
 					}
@@ -761,7 +760,7 @@ var proveCmd = &cli.Command{
 			return xerrors.Errorf("Usage: lotus-bench prove [input.json]")
 		}
 
-		inb, err := ioutil.ReadFile(c.Args().First())
+		inb, err := os.ReadFile(c.Args().First())
 		if err != nil {
 			return xerrors.Errorf("reading input file: %w", err)
 		}

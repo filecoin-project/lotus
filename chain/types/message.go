@@ -207,12 +207,29 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 		return xerrors.Errorf("'GasLimit' field cannot be greater than a block's gas limit (%d > %d)", m.GasLimit, build.BlockGasLimit)
 	}
 
+	if m.GasLimit <= 0 {
+		return xerrors.Errorf("'GasLimit' field %d must be positive", m.GasLimit)
+	}
+
 	// since prices might vary with time, this is technically semantic validation
 	if m.GasLimit < minGas {
 		return xerrors.Errorf("'GasLimit' field cannot be less than the cost of storing a message on chain %d < %d", m.GasLimit, minGas)
 	}
 
 	return nil
+}
+
+// EffectiveGasPremium returns the effective gas premium claimable by the miner
+// given the supplied base fee.
+//
+// Filecoin clamps the gas premium at GasFeeCap - BaseFee, if lower than the
+// specified premium.
+func (m *Message) EffectiveGasPremium(baseFee abi.TokenAmount) abi.TokenAmount {
+	available := big.Sub(m.GasFeeCap, baseFee)
+	if big.Cmp(m.GasPremium, available) <= 0 {
+		return m.GasPremium
+	}
+	return available
 }
 
 const TestGasLimit = 100e6

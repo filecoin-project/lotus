@@ -366,7 +366,7 @@ func TestWindowPostWorkerManualPoSt(t *testing.T) {
 
 	sectors := 2 * 48 * 2
 
-	client, miner, _, ens := kit.EnsembleWorker(t,
+	client, miner, _, _ := kit.EnsembleWorker(t,
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
@@ -378,16 +378,7 @@ func TestWindowPostWorkerManualPoSt(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)[0]
-
 	di = di.NextNotElapsed()
-
-	t.Log("Running one proving period")
-	waitUntil := di.Open + di.WPoStChallengeWindow*2 - 2
-	client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
-
-	t.Log("Waiting for post message")
-	bm.Stop()
 
 	tryDl := func(dl uint64) {
 		p, err := miner.ComputeWindowPoSt(ctx, dl, types.EmptyTSK)
@@ -398,10 +389,48 @@ func TestWindowPostWorkerManualPoSt(t *testing.T) {
 	tryDl(0)
 	tryDl(40)
 	tryDl(di.Index + 4)
+}
 
-	lastPending, err := client.MpoolPending(ctx, types.EmptyTSK)
+func TestWindowPostWorkerDisconnected(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = logging.SetLogLevel("storageminer", "INFO")
+
+	sectors := 2 * 48 * 2
+
+	_, miner, badWorker, ens := kit.EnsembleWorker(t,
+		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
+		kit.LatestActorsAt(-1),
+		kit.ThroughRPC(),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}))
+
+	var goodWorker kit.TestWorker
+	ens.Worker(miner, &goodWorker, kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}), kit.ThroughRPC()).Start()
+
+	// wait for all workers
+	require.Eventually(t, func() bool {
+		w, err := miner.WorkerStats(ctx)
+		require.NoError(t, err)
+		return len(w) == 3 // 2 post + 1 miner-builtin
+	}, 10*time.Second, 100*time.Millisecond)
+
+	tryDl := func(dl uint64) {
+		p, err := miner.ComputeWindowPoSt(ctx, dl, types.EmptyTSK)
+		require.NoError(t, err)
+		require.Len(t, p, 1)
+		require.Equal(t, dl, p[0].Deadline)
+	}
+	tryDl(0) // this will run on the not-yet-bad badWorker
+
+	err := badWorker.Stop(ctx)
 	require.NoError(t, err)
-	require.Len(t, lastPending, 0)
+
+	tryDl(10) // will fail on the badWorker, then should retry on the goodWorker
+
+	time.Sleep(15 * time.Second)
+
+	tryDl(40) // after HeartbeatInterval, the badWorker should be marked as disabled
 }
 
 func TestSchedulerRemoveRequest(t *testing.T) {

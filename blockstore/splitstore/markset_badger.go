@@ -11,6 +11,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/system"
 )
 
 type BadgerMarkSetEnv struct {
@@ -349,7 +351,7 @@ func (s *BadgerMarkSet) write(seqno int) (err error) {
 	persist := s.persist
 	s.mx.RUnlock()
 
-	if persist {
+	if persist && !system.BadgerFsyncDisable { // WARNING: disabling sync makes recovery from crash during critical section unsound
 		return s.db.Sync()
 	}
 

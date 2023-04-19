@@ -7,7 +7,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -759,7 +758,7 @@ func (r *refunder) EnsureMinerMinimums(ctx context.Context, tipset *types.TipSet
 		return nil, err
 	}
 
-	w := ioutil.Discard
+	w := io.Discard
 	if len(output) != 0 {
 		f, err := os.Create(output)
 		if err != nil {
@@ -1299,7 +1298,7 @@ func loadChainEpoch(fn string) (abi.ChainEpoch, error) {
 		err = f.Close()
 	}()
 
-	raw, err := ioutil.ReadAll(f)
+	raw, err := io.ReadAll(f)
 	if err != nil {
 		return 0, err
 	}

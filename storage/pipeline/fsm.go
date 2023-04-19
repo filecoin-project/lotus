@@ -6,8 +6,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"reflect"
 	"time"
 
@@ -19,9 +21,15 @@ import (
 	"github.com/filecoin-project/lotus/api"
 )
 
+var errSectorRemoved = errors.New("sector removed")
+
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
 	next, processed, err := m.plan(events, user.(*SectorInfo))
 	if err != nil || next == nil {
+		if err == errSectorRemoved && os.Getenv("LOTUS_KEEP_REMOVED_FSM_ACTIVE") != "1" {
+			return nil, processed, statemachine.ErrTerminated
+		}
+
 		l := Log{
 			Timestamp: uint64(time.Now().Unix()),
 			Message:   fmt.Sprintf("state machine error: %s", err),
@@ -601,7 +609,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case Removing:
 		return m.handleRemoving, processed, nil
 	case Removed:
-		return nil, processed, nil
+		return nil, processed, errSectorRemoved
 
 	case RemoveFailed:
 		return m.handleRemoveFailed, processed, nil
@@ -615,13 +623,14 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	// Fatal errors
 	case UndefinedSectorState:
 		log.Error("sector update with undefined state!")
+		return nil, processed, xerrors.Errorf("sector update with undefined state")
 	case FailedUnrecoverable:
 		log.Errorf("sector %d failed unrecoverably", state.SectorNumber)
+		return nil, processed, xerrors.Errorf("sector %d failed unrecoverably", state.SectorNumber)
 	default:
 		log.Errorf("unexpected sector update state: %s", state.State)
+		return nil, processed, xerrors.Errorf("unexpected sector update state: %s", state.State)
 	}
-
-	return nil, processed, nil
 }
 
 func (m *Sealing) onUpdateSector(ctx context.Context, state *SectorInfo) error {
