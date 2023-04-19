@@ -1,5 +1,15 @@
 # Lotus changelog
 
+# v1.22.0-rc4 / 2023-04-17
+
+This is the fourth release candidate for MANDATORY 1.22.0 release of lotus.
+
+Diff from previous RCs:
+- REVERT [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) 
+- REVERT [FIP 0052](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
+
+Activation bug fix is reverted to reduce upgrade risk in order to expedite the upgrade. This is in hopes of helping improve recent chain quality degregadation along with other long syncing time related issues.  FIP 0052 requires the activation bug fix to maintain security invariants and so must also be reverted.
+
 # v1.22.0-rc1 / 2023-04-13
 
 
