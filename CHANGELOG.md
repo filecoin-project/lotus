@@ -1,8 +1,10 @@
 # Lotus changelog
 
-# v1.21.0-rc3 / 2023-04-10
+# v1.23.0-rc1 / 2023-04-19
 
 This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+
+Note: this release includes all the changes from v1.22.0 that supports the upcoming nv19 upgrade, scheduled on Apr 27th. You can find more details about the upgrade [here](https://github.com/filecoin-project/lotus/discussions/10686)
 
 ## ☢️ Upgrade Warnings ☢️
 
@@ -17,6 +19,158 @@ Before upgrading to this feature release read carefully through these bullet poi
 - **Catching up from a Snapshot:** Users have noticed that catching up sync from a snapshot is taking a lot longer these day. This is largely related to the built-in market actor consuming a lot of computational demand for block validation. A FIP for a short-term mitigation for this is currently in Last Call and will be included network version 19 upgrade if accepted. You [can read the FIP here.](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md)
 
 ## Highlights
+
+### Execution Trace Format Changes
+
+Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the FVM. Specifically:
+
+- The `Msg` field no longer matches the Filecoin message format as many of the message fields didn't make sense in on-chain sub-calls. Instead, it now has the fields `To`, `From`, `Value`, `Method`, `Params`, and `ParamsCodec` where `ParamsCodec` is a new field indicating the IPLD codec of the parameters.
+    - Importantly, the `Msg.CID` field has been removed. This field is still present in top-level invocation results, just not inside the execution trace itself.
+- The `MsgRct` field no longer includes a `GasUsed` field and now has a `ReturnCodec` field to indicating the IPLD codec of the return value.
+- The `Error` and `Duration` fields have been removed as these are not set by the FVM. The top-level message "invocation result" retains the `Error` and `Duration` fields, they've only been removed from the trace itself.
+- Gas Charges no longer include "virtual" gas fields (those starting with `v...`) or source location information (`loc`) as neither field is set by the FVM.
+
+A note on "codecs": FVM parameters and return values are IPLD blocks where the "codec" specifies the data encoding. The codec will generally be one of:
+
+- `0x51`, `0x71` - CBOR or DagCBOR. You should generally treat these as equivalent.
+- `0x55` - Raw bytes.
+- `0x00` - Nothing. If the codec is `0x00`, the parameter and/or return value should be empty and should be treated as "void" (not specified).
+
+<details>
+<summary>
+Old <code>ExecutionTrace</code>:
+</summary>
+
+```json
+{
+  "Msg": {
+    "Version": 0,
+    "To": "f01234",
+    "From": "f04321",
+    "Nonce": 1,
+    "Value": "0",
+    "GasLimit": 0,
+    "GasFeeCap": "1234",
+    "GasPremium": "1234",
+    "Method": 42,
+    "Params": "<base64-data-or-null>",
+    "CID": {
+        "/": "bafyxyz....."
+    },
+  },
+  "MsgRct": {
+    "ExitCode": 0,
+    "Return": "<base64-data-or-null>",
+    "GasUsed": 12345,
+  },
+  "Error": "",
+  "Duration": 568191845,
+  "GasCharges": [
+    {
+      "Name": "OnMethodInvocation",
+      "loc": null,
+      "tg": 23856,
+      "cg": 23856,
+      "sg": 0,
+      "vtg": 0,
+      "vcg": 0,
+      "vsg": 0,
+      "tt": 0
+    },
+    {
+      "Name": "wasm_exec",
+      "loc": null,
+      "tg": 1764,
+      "cg": 1764,
+      "sg": 0,
+      "vtg": 0,
+      "vcg": 0,
+      "vsg": 0,
+      "tt": 0
+    },
+    {
+      "Name": "OnSyscall",
+      "loc": null,
+      "tg": 14000,
+      "cg": 14000,
+      "sg": 0,
+      "vtg": 0,
+      "vcg": 0,
+      "vsg": 0,
+      "tt": 0
+    },
+  ],
+  "Subcalls": [
+    {
+      "Msg": { },
+      "MsgRct": { },
+      "Error": "",
+      "Duration": 1235,
+      "GasCharges": [],
+      "Subcalls": [],
+    },
+  ]
+}
+```
+</details>
+
+<details>
+<summary>
+New <code>ExecutionTrace</code>:
+</summary>
+
+```json
+{
+  "Msg": {
+    "To": "f01234",
+    "From": "f04321",
+    "Value": "0",
+    "Method": 42,
+    "Params": "<base64-data-or-null>",
+    "ParamsCodec": 81
+  },
+  "MsgRct": {
+    "ExitCode": 0,
+    "Return": "<base64-data-or-null>",
+    "ReturnCodec": 81
+  },
+  "GasCharges": [
+    {
+      "Name": "OnMethodInvocation",
+      "loc": null,
+      "tg": 23856,
+      "cg": 23856,
+      "tt": 0
+    },
+    {
+      "Name": "wasm_exec",
+      "loc": null,
+      "tg": 1764,
+      "cg": 1764,
+      "sg": 0,
+      "tt": 0
+    },
+    {
+      "Name": "OnSyscall",
+      "loc": null,
+      "tg": 14000,
+      "cg": 14000,
+      "sg": 0,
+      "tt": 0
+    },
+  ],
+  "Subcalls": [
+    {
+      "Msg": { },
+      "MsgRct": { },
+      "GasCharges": [],
+      "Subcalls": [],
+    },
+  ]
+}
+```
+
+</details>
 
 **SplitStore**
 
@@ -242,158 +396,6 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 - feat: ci: make ci more efficient ([filecoin-project/lotus#9910](https://github.com/filecoin-project/lotus/pull/9910))
 - feat: scripts: go.mod dep diff script ([filecoin-project/lotus#9711](https://github.com/filecoin-project/lotus/pull/9711))
 
-## Execution Trace Format Changes
-
-Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the FVM. Specifically:
-
-- The `Msg` field no longer matches the Filecoin message format as many of the message fields didn't make sense in on-chain sub-calls. Instead, it now has the fields `To`, `From`, `Value`, `Method`, `Params`, and `ParamsCodec` where `ParamsCodec` is a new field indicating the IPLD codec of the parameters.
-    - Importantly, the `Msg.CID` field has been removed. This field is still present in top-level invocation results, just not inside the execution trace itself.
-- The `MsgRct` field no longer includes a `GasUsed` field and now has a `ReturnCodec` field to indicating the IPLD codec of the return value.
-- The `Error` and `Duration` fields have been removed as these are not set by the FVM. The top-level message "invocation result" retains the `Error` and `Duration` fields, they've only been removed from the trace itself.
-- Gas Charges no longer include "virtual" gas fields (those starting with `v...`) or source location information (`loc`) as neither field is set by the FVM.
-
-A note on "codecs": FVM parameters and return values are IPLD blocks where the "codec" specifies the data encoding. The codec will generally be one of:
-
-- `0x51`, `0x71` - CBOR or DagCBOR. You should generally treat these as equivalent.
-- `0x55` - Raw bytes.
-- `0x00` - Nothing. If the codec is `0x00`, the parameter and/or return value should be empty and should be treated as "void" (not specified).
-
-<details>
-<summary>
-Old <code>ExecutionTrace</code>:
-</summary>
-
-```json
-{
-  "Msg": {
-    "Version": 0,
-    "To": "f01234",
-    "From": "f04321",
-    "Nonce": 1,
-    "Value": "0",
-    "GasLimit": 0,
-    "GasFeeCap": "1234",
-    "GasPremium": "1234",
-    "Method": 42,
-    "Params": "<base64-data-or-null>",
-    "CID": {
-        "/": "bafyxyz....."
-    },
-  },
-  "MsgRct": {
-    "ExitCode": 0,
-    "Return": "<base64-data-or-null>",
-    "GasUsed": 12345,
-  },
-  "Error": "",
-  "Duration": 568191845,
-  "GasCharges": [
-    {
-      "Name": "OnMethodInvocation",
-      "loc": null,
-      "tg": 23856,
-      "cg": 23856,
-      "sg": 0,
-      "vtg": 0,
-      "vcg": 0,
-      "vsg": 0,
-      "tt": 0
-    },
-    {
-      "Name": "wasm_exec",
-      "loc": null,
-      "tg": 1764,
-      "cg": 1764,
-      "sg": 0,
-      "vtg": 0,
-      "vcg": 0,
-      "vsg": 0,
-      "tt": 0
-    },
-    {
-      "Name": "OnSyscall",
-      "loc": null,
-      "tg": 14000,
-      "cg": 14000,
-      "sg": 0,
-      "vtg": 0,
-      "vcg": 0,
-      "vsg": 0,
-      "tt": 0
-    },
-  ],
-  "Subcalls": [
-    {
-      "Msg": { },
-      "MsgRct": { },
-      "Error": "",
-      "Duration": 1235,
-      "GasCharges": [],
-      "Subcalls": [],
-    },
-  ]
-}
-```
-</details>
-
-<details>
-<summary>
-New <code>ExecutionTrace</code>:
-</summary>
-
-```json
-{
-  "Msg": {
-    "To": "f01234",
-    "From": "f04321",
-    "Value": "0",
-    "Method": 42,
-    "Params": "<base64-data-or-null>",
-    "ParamsCodec": 81
-  },
-  "MsgRct": {
-    "ExitCode": 0,
-    "Return": "<base64-data-or-null>",
-    "ReturnCodec": 81
-  },
-  "GasCharges": [
-    {
-      "Name": "OnMethodInvocation",
-      "loc": null,
-      "tg": 23856,
-      "cg": 23856,
-      "tt": 0
-    },
-    {
-      "Name": "wasm_exec",
-      "loc": null,
-      "tg": 1764,
-      "cg": 1764,
-      "sg": 0,
-      "tt": 0
-    },
-    {
-      "Name": "OnSyscall",
-      "loc": null,
-      "tg": 14000,
-      "cg": 14000,
-      "sg": 0,
-      "tt": 0
-    },
-  ],
-  "Subcalls": [
-    {
-      "Msg": { },
-      "MsgRct": { },
-      "GasCharges": [],
-      "Subcalls": [],
-    },
-  ]
-}
-```
-
-</details>
-
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
@@ -440,6 +442,59 @@ New <code>ExecutionTrace</code>:
 | vyzo | 1 | +3/-3 | 2 |
 | 0x5459 | 1 | +1/-1 | 1 |
 
+# v1.22.0-rc4 / 2023-04-17
+
+This is the fourth release candidate for MANDATORY 1.22.0 release of lotus.
+
+Diff from previous RCs:
+- REVERT [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) 
+- REVERT [FIP 0052](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
+
+Activation bug fix is reverted to reduce upgrade risk in order to expedite the upgrade. This is in hopes of helping improve recent chain quality degregadation along with other long syncing time related issues.  FIP 0052 requires the activation bug fix to maintain security invariants and so must also be reverted.
+
+# v1.22.0-rc1 / 2023-04-13
+
+
+This is the third release candidate for the upcoming MANDATORY 1.22.0 release of Lotus. This release will deliver the nv19 Lighting and nv20 Thunder network upgrade.
+
+Note that this release candidate sets the calibration upgrade epoch, and does NOT set the epoch at which mainnet will upgrade; that detail will be finalized in the 1.22.0 release.
+
+The Lighting and Thunder upgrade introduces the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0-rc.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0-rc1)):
+
+- [FIP 0060](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md) - Thirty day market deal maintenance interval
+- [FIP 0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0061.md) - WindowPoSt grindability fix
+- [FIP 0062](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0062.md) - Fallback method handler for multisig actor
+- [FIP 0052](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md) - Deals and sectors can be created and extended in 3.5 year intervals (+2 years from current params)
+- [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) - internal refactor of sector info fields fixing several outstanding bugs
+
+## Lighting and Thunder
+
+As you may have noticed, that we are doing a two-stage incremental network upgrades in this release. This essentially means that there will be two network versions rolled out together -- nv19 and nv20.
+The two stage roll out is required for FIP-0061 - which introduces a new proof that reduces the grindability of windowPoSt and furthur secures the network. At the first upgrade, the new proof type will start to be accepted by the protocol, while the second upgrade (nv20) marks the spot when the old proof type will no longer be accepted. This allows for a smooth rollover period during which both proof types are accepted. Lotus will start generating the new proof types immediately after the nv19 upgrade.
+This is something we've safely done before. The second upgrade is something of a "ghost" upgrade -- no migration runs, and no code changes, except that clients will start reporting the new network version of nv20 to the FVM.
+
+## Calibration nv19 Lighting and nv20 Thunder Upgrade
+
+This release candidate sets the calibration-net nv19 Lighting upgrade at epoch 489394, 2023-04-20T16:30:00Z and nv20 Thunder upgrade will be triggered automatically 11520 epoch later. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
+(located at `build/actors/v11.tar.zst`) upon/post migration, manifest CID `bafy2bzacedyne7vbddp2inj64ubztcvkmfkdnahwo353sltkqtsyzckioneuu`.
+
+# v1.20.4 / 2023-03-17
+
+This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade. 
+The primary change is to update the FFI to allow for FVM parallelism of 4 by default, and make this user-configurable.
+through the `LOTUS_FVM_CONCURRENCY` env var. 
+
+Users with higher memory specs can experiment with setting `LOTUS_FVM_CONCURRENCY` to higher values, up to 48, to allow for more concurrent FVM execution.
+
+## Bug fixes
+
+- Splitstore: Don't enforce walking receipt tree during compaction #10505
+- fix: build: drop drand incentinet servers #10506 
+
+## Improvement
+
+- chore: update ffi to increase execution parallelism #10503 
+
 # v1.20.3 / 2023-03-09
 
 A 🐈 stepped on the ⌨️ and made a mistake while resolving conflicts 😨. This releases only includes #10439 to fix that mistake. v1.20.2 is retracted - Please skip v1.20.2 and **only** update to v1.20.3!!!
@@ -460,6 +515,8 @@ This is a HIGHLY RECOMMENDED patch release for node operators/API service provid
 - We recommend storage providers to update your nodes to this patch, that will help improve developers who use Ethereum tooling's experience.
 
 # v1.20.2 / 2023-03-09
+
+DO NOT USE: Use 1.20.3 instead!
 
 This is a HIGHLY RECOMMENDED patch release for node operators/API service providers that run ETH RPC service and an optional release for Storage Providers.
 
