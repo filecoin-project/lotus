@@ -169,13 +169,13 @@ type MessagePool struct {
 
 	sigValCache *lru.TwoQueueCache[string, struct{}]
 
-	nonceCache *lru.Cache[nonceCacheKey, uint64]
+	stateNonceCache *lru.Cache[stateNonceCacheKey, uint64]
 
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
 }
 
-type nonceCacheKey struct {
+type stateNonceCacheKey struct {
 	tsk  types.TipSetKey
 	addr address.Address
 }
@@ -371,7 +371,7 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q[string, struct{}](build.VerifSigCacheSize)
-	noncecache, _ := lru.New[nonceCacheKey, uint64](256)
+	stateNonceCache, _ := lru.New[stateNonceCacheKey, uint64](256)
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
@@ -383,26 +383,26 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	}
 
 	mp := &MessagePool{
-		ds:             ds,
-		addSema:        make(chan struct{}, 1),
-		closer:         make(chan struct{}),
-		repubTk:        build.Clock.Ticker(RepublishInterval),
-		repubTrigger:   make(chan struct{}, 1),
-		localAddrs:     make(map[address.Address]struct{}),
-		pending:        make(map[address.Address]*msgSet),
-		keyCache:       make(map[address.Address]address.Address),
-		minGasPrice:    types.NewInt(0),
-		getNtwkVersion: us.GetNtwkVersion,
-		pruneTrigger:   make(chan struct{}, 1),
-		pruneCooldown:  make(chan struct{}, 1),
-		blsSigCache:    cache,
-		sigValCache:    verifcache,
-		nonceCache:     noncecache,
-		changes:        lps.New(50),
-		localMsgs:      namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
-		api:            api,
-		netName:        netName,
-		cfg:            cfg,
+		ds:              ds,
+		addSema:         make(chan struct{}, 1),
+		closer:          make(chan struct{}),
+		repubTk:         build.Clock.Ticker(RepublishInterval),
+		repubTrigger:    make(chan struct{}, 1),
+		localAddrs:      make(map[address.Address]struct{}),
+		pending:         make(map[address.Address]*msgSet),
+		keyCache:        make(map[address.Address]address.Address),
+		minGasPrice:     types.NewInt(0),
+		getNtwkVersion:  us.GetNtwkVersion,
+		pruneTrigger:    make(chan struct{}, 1),
+		pruneCooldown:   make(chan struct{}, 1),
+		blsSigCache:     cache,
+		sigValCache:     verifcache,
+		stateNonceCache: stateNonceCache,
+		changes:         lps.New(50),
+		localMsgs:       namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:             api,
+		netName:         netName,
+		cfg:             cfg,
 		evtTypes: [...]journal.EventType{
 			evtTypeMpoolAdd:    j.RegisterEventType("mpool", "add"),
 			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),
@@ -1046,24 +1046,52 @@ func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, 
 	done := metrics.Timer(ctx, metrics.MpoolGetNonceDuration)
 	defer done()
 
-	nk := nonceCacheKey{
+	nk := stateNonceCacheKey{
 		tsk:  ts.Key(),
 		addr: addr,
 	}
 
-	n, ok := mp.nonceCache.Get(nk)
+	n, ok := mp.stateNonceCache.Get(nk)
 	if ok {
 		return n, nil
 	}
 
-	act, err := mp.api.GetActorAfter(addr, ts)
+	raddr, err := mp.resolveToKey(ctx, addr)
 	if err != nil {
 		return 0, err
 	}
 
-	mp.nonceCache.Add(nk, act.Nonce)
+	// get the nonce from the actor before ts
+	actor, err := mp.api.GetActorBefore(addr, ts)
+	if err != nil {
+		return 0, err
+	}
+	nextNonce := actor.Nonce
 
-	return act.Nonce, nil
+	// loop over all messages sent by 'addr' and find the highest nonce
+	messages, err := mp.api.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return 0, err
+	}
+	for _, message := range messages {
+		msg := message.VMMessage()
+
+		maddr, err := mp.resolveToKey(ctx, msg.From)
+		if err != nil {
+			log.Warnf("failed to resolve message from address: %s", err)
+			continue
+		}
+
+		if maddr == raddr {
+			if n := msg.Nonce + 1; n > nextNonce {
+				nextNonce = n
+			}
+		}
+	}
+
+	mp.stateNonceCache.Add(nk, nextNonce)
+
+	return nextNonce, nil
 }
 
 func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (types.BigInt, error) {
