@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
