@@ -374,7 +374,7 @@ func (b *PreCommitBatcher) processPreCommitBatch(cfg sealiface.Config, bf abi.To
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("simulating PreCommitBatch message failed: %w", err)
 	}
 
-	// If we're out of gas, split the batch in half and try again
+	// If we're out of gas, split the batch in half and evaluate again
 	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
 		log.Warnf("PreCommitBatch out of gas, splitting batch in half and trying again")
 		mid := len(entries) / 2

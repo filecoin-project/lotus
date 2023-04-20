@@ -392,7 +392,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config, sectors []abi.SectorN
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
 
-	// If we're out of gas, split the batch in half and try again
+	// If we're out of gas, split the batch in half and evaluate again
 	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
 		log.Warnf("CommitAggregate message ran out of gas, splitting batch in half and trying again (sectors: %d)", len(sectors))
 		mid := len(sectors) / 2
