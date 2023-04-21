@@ -87,7 +87,13 @@ const UpgradeSkyrHeight = 1960320
 const UpgradeSharkHeight = 2383680
 
 // 2023-03-14T15:14:00Z
-var UpgradeHyggeHeight = abi.ChainEpoch(2683348)
+const UpgradeHyggeHeight = 2683348
+
+// 2023-04-27T13:00:00Z
+var UpgradeLightningHeight = abi.ChainEpoch(2809800)
+
+// 2023-05-18T13:00:00Z
+var UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -102,8 +108,12 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_HYGGE") == "1" {
-		UpgradeHyggeHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_LIGHTNING") == "1" {
+		UpgradeLightningHeight = math.MaxInt64
+	}
+
+	if os.Getenv("LOTUS_DISABLE_THUNDER") == "1" {
+		UpgradeThunderHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

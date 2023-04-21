@@ -6879,7 +6879,9 @@ Response:
     "UpgradeOhSnapHeight": 10101,
     "UpgradeSkyrHeight": 10101,
     "UpgradeSharkHeight": 10101,
-    "UpgradeHyggeHeight": 10101
+    "UpgradeHyggeHeight": 10101,
+    "UpgradeLightningHeight": 10101,
+    "UpgradeThunderHeight": 10101
   }
 }
 ```

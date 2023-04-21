@@ -73,6 +73,12 @@ const UpgradeSharkHeight = 16800 // 6 days after genesis
 // 2023-02-21T16:30:00Z
 const UpgradeHyggeHeight = 322354
 
+// 2023-04-20T14:00:00Z
+const UpgradeLightningHeight = 489094
+
+// 2023-04-21T16:00:00Z
+const UpgradeThunderHeight = UpgradeLightningHeight + 3120
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,

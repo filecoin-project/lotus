@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
-	builtin10 "github.com/filecoin-project/go-state-types/builtin"
+	builtin11 "github.com/filecoin-project/go-state-types/builtin"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -25,8 +25,8 @@ import (
 )
 
 var (
-	Address = builtin10.VerifiedRegistryActorAddr
-	Methods = builtin10.MethodsVerifiedRegistry
+	Address = builtin11.VerifiedRegistryActorAddr
+	Methods = builtin11.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -45,6 +45,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version10:
 			return load10(store, act.Head)
+
+		case actorstypes.Version11:
+			return load11(store, act.Head)
 
 		}
 	}
@@ -110,6 +113,9 @@ func MakeState(store adt.Store, av actorstypes.Version, rootKeyAddress address.A
 	case actorstypes.Version10:
 		return make10(store, rootKeyAddress)
 
+	case actorstypes.Version11:
+		return make11(store, rootKeyAddress)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -146,6 +152,7 @@ func AllCodes() []cid.Cid {
 		(&state8{}).Code(),
 		(&state9{}).Code(),
 		(&state10{}).Code(),
+		(&state11{}).Code(),
 	}
 }
 

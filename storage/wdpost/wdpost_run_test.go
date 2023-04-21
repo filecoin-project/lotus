@@ -125,10 +125,10 @@ func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proofty
 	panic("implement me")
 }
 
-func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []prooftypes.ExtendedSectorInfo, pr abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
+func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, ppt abi.RegisteredPoStProof, sis []prooftypes.ExtendedSectorInfo, pr abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
 	return []prooftypes.PoStProof{
 		{
-			PoStProof:  abi.RegisteredPoStProof_StackedDrgWindow2KiBV1,
+			PoStProof:  ppt,
 			ProofBytes: []byte("post-proof"),
 		},
 	}, nil, nil

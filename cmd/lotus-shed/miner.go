@@ -3,16 +3,21 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -20,11 +25,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -42,6 +49,93 @@ var minerCmd = &cli.Command{
 		minerFaultsCmd,
 		sendInvalidWindowPoStCmd,
 		generateAndSendConsensusFaultCmd,
+		sectorInfoCmd,
+	},
+}
+
+var _ ipldcbor.IpldBlockstore = new(ReadOnlyAPIBlockstore)
+
+type ReadOnlyAPIBlockstore struct {
+	v0api.FullNode
+}
+
+func (b *ReadOnlyAPIBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
+	bs, err := b.ChainReadObj(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	return block.NewBlock(bs), nil
+}
+
+func (b *ReadOnlyAPIBlockstore) Put(context.Context, block.Block) error {
+	return xerrors.Errorf("cannot put block, the backing blockstore is readonly")
+}
+
+var sectorInfoCmd = &cli.Command{
+	Name:      "sectorinfo",
+	Usage:     "Display cbor of sector info at <minerAddress> <sectorNumber>",
+	ArgsUsage: "[minerAddress] [sector number]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to call method on (pass comma separated array of cids)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 2 {
+			return fmt.Errorf("must pass miner address and sector number")
+		}
+		ctx := lcli.ReqContext(cctx)
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		maddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		sn, err := strconv.ParseUint(cctx.Args().Slice()[1], 10, 64)
+		if err != nil {
+			return err
+		}
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+		a, err := api.StateReadState(ctx, maddr, ts.Key())
+		if err != nil {
+			return err
+		}
+		st, ok := a.State.(map[string]interface{})
+		if !ok {
+			return xerrors.Errorf("failed to cast state map to expected form")
+		}
+		sectorsRaw, ok := st["Sectors"].(map[string]interface{})
+		if !ok {
+			return xerrors.Errorf("failed to read sectors root from state")
+		}
+		// string is of the form "/:bafy.." so [2:] to drop the path
+		sectorsRoot, err := cid.Parse(sectorsRaw["/"])
+		if err != nil {
+			return err
+		}
+		bs := ReadOnlyAPIBlockstore{api}
+		sectorsAMT, err := adt.AsArray(adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs)), sectorsRoot, miner8.SectorsAmtBitwidth)
+		if err != nil {
+			return err
+		}
+		out := cbg.Deferred{}
+		found, err := sectorsAMT.Get(sn, &out)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return xerrors.Errorf("sector number %d not found", sn)
+		}
+		fmt.Printf("%x\n", out.Raw)
+		return nil
 	},
 }
 
@@ -216,7 +310,11 @@ var minerCreateCmd = &cli.Command{
 		}
 
 		// Note: the correct thing to do would be to call SealProofTypeFromSectorSize if actors version is v3 or later, but this still works
-		spt, err := miner.WindowPoStProofTypeFromSectorSize(abi.SectorSize(ssize))
+		nv, err := wapi.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to get network version: %w", err)
+		}
+		spt, err := miner.WindowPoStProofTypeFromSectorSize(abi.SectorSize(ssize), nv)
 		if err != nil {
 			return xerrors.Errorf("getting post proof type: %w", err)
 		}

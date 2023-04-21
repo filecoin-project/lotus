@@ -190,7 +190,18 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 		}
 	}
 
-	proofs, skp, err := sealer.GenerateWindowPoSt(context.TODO(), seals[0].ref.ID.Miner, xsis, randomness)
+	ppt, err := xsis[0].SealProof.RegisteredWindowPoStProof()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	ppt, err = ppt.ToV1_1PostProof()
+	if err != nil {
+
+		t.Fatalf("%+v", err)
+	}
+
+	proofs, skp, err := sealer.GenerateWindowPoSt(context.TODO(), seals[0].ref.ID.Miner, ppt, xsis, randomness)
 	if len(skipped) > 0 {
 		require.Error(t, err)
 		require.EqualValues(t, skipped, skp)
