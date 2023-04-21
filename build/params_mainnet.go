@@ -89,11 +89,11 @@ const UpgradeSharkHeight = 2383680
 // 2023-03-14T15:14:00Z
 const UpgradeHyggeHeight = 2683348
 
-// ??????????
-var UpgradeLightningHeight = abi.ChainEpoch(9999999999)
+// 2023-04-27T13:00:00Z
+var UpgradeLightningHeight = abi.ChainEpoch(2809800)
 
-// ??????????
-var UpgradeThunderHeight = UpgradeLightningHeight + 1
+// 2023-05-18T13:00:00Z
+var UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

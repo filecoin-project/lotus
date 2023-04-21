@@ -442,41 +442,84 @@ The `lotus-miner sector list` is now running in parallel - which should speed up
 | vyzo | 1 | +3/-3 | 2 |
 | 0x5459 | 1 | +1/-1 | 1 |
 
-# v1.22.0-rc4 / 2023-04-17
+# v1.22.0 / 2023-04-21
 
-This is the fourth release candidate for MANDATORY 1.22.0 release of lotus.
+This is the stable release of Lotus v1.22.0 for the upcoming MANDATORY network upgrade at `2023-04-27T13:00:00Z`, epoch `2809800`. This release delivers the nv19 Lighting and nv20 Thunder network upgrade for mainnet.
 
-Diff from previous RCs:
-- REVERT [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) 
-- REVERT [FIP 0052](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
+Note that you must be on a go version higher then Go 1.18.8, but lower then Go v1.20.0. We would recommend Go 1.19.7.
 
-Activation bug fix is reverted to reduce upgrade risk in order to expedite the upgrade. This is in hopes of helping improve recent chain quality degregadation along with other long syncing time related issues.  FIP 0052 requires the activation bug fix to maintain security invariants and so must also be reverted.
-
-# v1.22.0-rc1 / 2023-04-13
-
-
-This is the third release candidate for the upcoming MANDATORY 1.22.0 release of Lotus. This release will deliver the nv19 Lighting and nv20 Thunder network upgrade.
-
-Note that this release candidate sets the calibration upgrade epoch, and does NOT set the epoch at which mainnet will upgrade; that detail will be finalized in the 1.22.0 release.
-
-The Lighting and Thunder upgrade introduces the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0-rc.1](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0-rc1)):
+The Lighting and Thunder upgrade introduces the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0-rc2)):
 
 - [FIP 0060](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md) - Thirty day market deal maintenance interval
 - [FIP 0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0061.md) - WindowPoSt grindability fix
 - [FIP 0062](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0062.md) - Fallback method handler for multisig actor
-- [FIP 0052](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md) - Deals and sectors can be created and extended in 3.5 year intervals (+2 years from current params)
-- [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) - internal refactor of sector info fields fixing several outstanding bugs
 
-## Lighting and Thunder
+## Expedited nv19 Lightning ⚡️ rollout
 
-As you may have noticed, that we are doing a two-stage incremental network upgrades in this release. This essentially means that there will be two network versions rolled out together -- nv19 and nv20.
-The two stage roll out is required for FIP-0061 - which introduces a new proof that reduces the grindability of windowPoSt and furthur secures the network. At the first upgrade, the new proof type will start to be accepted by the protocol, while the second upgrade (nv20) marks the spot when the old proof type will no longer be accepted. This allows for a smooth rollover period during which both proof types are accepted. Lotus will start generating the new proof types immediately after the nv19 upgrade.
-This is something we've safely done before. The second upgrade is something of a "ghost" upgrade -- no migration runs, and no code changes, except that clients will start reporting the new network version of nv20 to the FVM.
+In light of the recent degraded chain quality on the mainnet [an expedited nv19 upgrade has been proposed and accepted](https://github.com/filecoin-project/core-devs/discussions/123#discussioncomment-5642909) to roll out the market cron mitigation ([FIP0060](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md)) that will improve block validation times, and with that the delay in block production that is causing a decrease in the chain quality currently.
 
-## Calibration nv19 Lighting and nv20 Thunder Upgrade
+With this expedited roll out we want to inform you of some **key changes and important dates:**
 
-This release candidate sets the calibration-net nv19 Lighting upgrade at epoch 489394, 2023-04-20T16:30:00Z and nv20 Thunder upgrade will be triggered automatically 11520 epoch later. The bundle the network will be using is [v10.0.0 actors](https://github.com/filecoin-project/builtin-actors/releases/tag/v10.0.0-rc.1)
-(located at `build/actors/v11.tar.zst`) upon/post migration, manifest CID `bafy2bzacedyne7vbddp2inj64ubztcvkmfkdnahwo353sltkqtsyzckioneuu`.
+- Accelerate the nv19-upgrade on **mainnet** from May 11th to **April 27th**.
+- Derisk nv19 by descoping the sector info migration, activation epoch fixes and drop [[FIP0052 - Extend sector/deal max duration to 3.5 year.](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)
+    - By descoping these changes we can greatly derisk the network upgrade itself by removing a heavy migration that could cause instability for storage providers and node operators during the network upgrade.
+- Increase the rollover period for [[FIP0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md)](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0052.md) from 1 week to 3 weeks on mainnet. The rollover period is the duration between nv19 and nv20 which both old proofs (v1) and the new proofs (v1_1) proofs will be accepted by the network.
+
+The Lighting and Thunder upgrade now implements the following Filecoin Improvement Proposals (FIPs), delivered by builtin-actors v11 (see actors [v11.0.0](https://github.com/filecoin-project/builtin-actors/releases/tag/v11.0.0)):
+
+- [FIP 0060](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md) - Thirty day market deal maintenance interval
+- [FIP 0061](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0061.md) - WindowPoSt grindability fix
+- [FIP 0062](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0062.md) - Fallback method handler for multisig actor
+
+## v11 Builtin Actor Bundles
+
+Make sure that your lotus actor bundle matches the v11 actors manifest by running after upgrading:
+
+```
+lotus state actor-cids --network-version 19
+Network Version: 19
+Actor Version: 11
+Manifest CID: bafy2bzacecnhaiwcrpyjvzl4uv4q3jzoif26okl3m66q3cijp3dfwlcxwztwo
+
+Actor             CID  
+datacap           bafk2bzacebslykoyrb2hm7aacjngqgd5n2wmeii2goadrs5zaya3pvdf6pdnq
+init              bafk2bzaceckwf3w6n2nw6eh77ktmsxqgsvshonvgnyk5q5syyngtetxvasfxg
+reward            bafk2bzacebwjw2vxkobs7r2kwjdqqb42h2kucyuk6flbnyzw4odg5s4mogamo
+cron              bafk2bzacebpewdvvgt6tk2o2u4rcovdgym67tadiis5usemlbejg7k3kt567o
+ethaccount        bafk2bzaceclkmc4yidxc6lgcjpfypbde2eddnevcveo4j5kmh4ek6inqysz2k
+evm               bafk2bzacediwh6etwzwmb5pivtclpdplewdjzphouwqpppce6opisjv2fjqfe
+storagemarket     bafk2bzaceazu2j2zu4p24tr22btnqzkhzjvyjltlvsagaj6w3syevikeb5d7m
+storagepower      bafk2bzaceaxgloxuzg35vu7l7tohdgaq2frsfp4ejmuo7tkoxjp5zqrze6sf4
+system            bafk2bzaced7npe5mt5nh72jxr2igi2sofoa7gedt4w6kueeke7i3xxugqpjfm
+account           bafk2bzacealnlr7st6lkwoh6wxpf2hnrlex5sknaopgmkr2tuhg7vmbfy45so
+placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
+eam               bafk2bzaceaelwt4yfsfvsu3pa3miwalsvy3cfkcjvmt4sqoeopsppnrmj2mf2
+multisig          bafk2bzaceafajceqwg5ybiz7xw6rxammuirkgtuv625gzaehsqfprm4bazjmk
+paymentchannel    bafk2bzaceb4e6cnsnviegmqvsmoxzncruvhra54piq7bwiqfqevle6oob2gvo
+storageminer      bafk2bzacec24okjqrp7c7rj3hbrs5ez5apvwah2ruka6haesgfngf37mhk6us
+verifiedregistry  bafk2bzacedej3dnr62g2je2abmyjg3xqv4otvh6e26du5fcrhvw7zgcaaez3a
+```
+
+## Changelog
+
+
+- feat: build: set Lightning and Thunder upgrade epochs [filecoin-project/lotus#10716](https://github.com/filecoin-project/lotus/pull/10707)
+- fix: PoSt worker: use go-state-types for proof policies [filecoin-project/lotus#10716](https://github.com/filecoin-project/lotus/pull/10716)
+- chore: deps: update to actors v11.0.0 [filecoin-project/lotus#10718](https://github.com/filecoin-project/lotus/pull/10718)
+- chore: deps: update to go-state-types v0.11.1 [filecoin-project/lotus#10720](https://github.com/filecoin-project/lotus/pull/10720)
+- feat: upgrade: expedite nv19 [filecoin-project/lotus#10681](https://github.com/filecoin-project/lotus/pull/10681)
+   - Update changelog build version (commit: [67d419e](https://github.com/filecoin-project/lotus/commit/67d419e1623e6b9f5b871d6157a3096378477c3b))
+   - Update actors v11 (commit: [5df4f75](https://github.com/filecoin-project/lotus/commit/5df4f75dc22318fd304313714d5c4f4cfeed22c9))
+   - Correct epoch to match specified date (commit: [a28fcea](https://github.com/filecoin-project/lotus/commit/a28fceaa559b6c7e1b5df09383af56a5c2f51caa))
+   - Fast butterfly migration to validate migration (commit: [37a0dca](https://github.com/filecoin-project/lotus/commit/37a0dca11ebfadebad3920a337b4f1b2fba08a7b))
+   - Make docsgen (commit: [daba4ff](https://github.com/filecoin-project/lotus/commit/daba4ff5f0e97ab6ed444a34f61499a64b92a220))
+   - Update go-state-types (commit: [244ca0b](https://github.com/filecoin-project/lotus/commit/244ca0b5f32a2af684f3f9586b92861a06bb8833))
+   - Revert FIP0052 (commit: [68ed494](https://github.com/filecoin-project/lotus/commit/68ed494a6e497ac556eb93b28b2536c881dc9a4c))
+   - Modify upgrade schedule and params (commit: [fa0dfdf](https://github.com/filecoin-project/lotus/commit/fa0dfdfd9f89fab8491f3e613909782ab9bb7cee))
+   - Update go-state-types (commit: [19ae05f](https://github.com/filecoin-project/lotus/commit/19ae05f3b3a589e28efe4690c5816dfc1c7866a6))
+
+### Dependencies
+github.com/filecoin-project/go-state-types (v0.11.0-rc1 -> v0.11.1):
 
 # v1.20.4 / 2023-03-17
 
