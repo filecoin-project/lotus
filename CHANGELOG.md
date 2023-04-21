@@ -40,22 +40,22 @@ Actor Version: 11
 Manifest CID: bafy2bzacedhuowetjy2h4cxnijz2l64h4mzpk5m256oywp4evarpono3cjhco
 
 Actor             CID  
-datacap           bafk2bzaced6uhmrh5jjexhw4lco4ipesi2iutl7uupnyspgmnbydyo3amtu4i
-init              bafk2bzaceduyjd35y7o2lhvevtysqf45rp5ot7x5f36q6iond6dyiz6773g5q
-reward            bafk2bzacecp7xo5ev46y64zr5osnn5fxo7itpoqw235tcfv6eo4rymzdemet2
-cron              bafk2bzacebetehhedh55alfn4rcx2mhjhvuiustxlhtxc3drkemnpttws5eqw
-ethaccount        bafk2bzacedrbpvjvyzif2cjxosm4pliyq2m6wzndvrg7r6hzdhixplzvgubbw
-evm               bafk2bzaceabftmhejmvjvpzmbsv4cvaew6v5juj5sqtq7cfijugwsnahnsy5w
-storagemarket     bafk2bzacedjt5mueomasx7dijooxnwxsbtzu2dj2ppp45rtle4kiinkmgzeei
-storagepower      bafk2bzaced2qsypqwore3jrdtaesh4itst2fyeepdsozvtffc2pianzmphdum
-system            bafk2bzacedqvik2n3phnj3cni3h2k5mtvz43nyq7mdmv7k7euejysvajywdug
-account           bafk2bzacebor5mnjnsav34cmm5pcd3dy4wubbv4wtcrvba7depy3sct7ie4sy
+datacap           bafk2bzacealtvh65rzb34fmyzw4m2np2htnio4w3pn4alzqovwxkdbf23dvpo
+init              bafk2bzacea6vw4esh5tg7mprv5jkbx5xcyilcy4vvf64lss32mjyuvv2mh5ng
+reward            bafk2bzaceafuh6idvaqqkj353vs4qdl42tcmvnymewu5zf4rq2nruxdyunses
+cron              bafk2bzaceavmqu2qihgbe3xdaotgypuzvdpiifnm7ll6rolks2u4lac6voosk
+ethaccount        bafk2bzacedhcei2xnr34poxr4xziypm2obqlibke4cs2cjfnr3sz6nf6h7fyy
+evm               bafk2bzacebn5lwxboiikhz67ajwa34v2lc4qevnhpwdnipbmrnutkvrrqkb46
+storagemarket     bafk2bzaceb7bx4honi3byjllpdk6fea32dpu3vqvil3okodybdk5m3erlnwjw
+storagepower      bafk2bzaceabskmmkas6njbowols7t4ib3bipa5abpomk3jtgfwojtzd7mjzfm
+system            bafk2bzacedtuh7cht3fud7fb4avl4g2zbz57lc4ohiaufpaex6dkmdokn5rgo
+account           bafk2bzacecfdqb7p3jakhaa3cqnzpt7hxmhghrbxvafsylqno3febx55fnidw
 placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
-eam               bafk2bzacea6wzcnflfnaxqnwydoghh7ezg5au32ew3bnzljzpiw6fimhlpoiu
-multisig          bafk2bzacebcb72fmbpocetnzgni2wnbrduamlqx6fl3yelrlzu7id6bu5ib5g
-paymentchannel    bafk2bzaceazwhm63kyp47pste5i5acnuhosrgythyagf3kc5clogiqqx6vkzk
-storageminer      bafk2bzacebkjnjp5okqjhjxzft5qkuv36u4tz7inawseiwi2kw4j43xpxvhpm
-verifiedregistry  bafk2bzaceceoo5jlom2zweh7kpye2vkj33wgqnkjshlsw2neemqkfg5g2rmvg
+eam               bafk2bzacedko6hcjmwpuwgma5pb4gr2wgyvregk3nqqjxit7dv4es6vh5cjoc
+multisig          bafk2bzacedq2afnwcfipay5twv5mgzjoio5bbjvyo4yqchdwqcr7wrareyx54
+paymentchannel    bafk2bzacebbsvr7i7mqmaadyjibe5wxnv7bwvvec2wlgknuwda6ep45amnd5w
+storageminer      bafk2bzacebxjhofdr3sb2uhy2ky2vcijh4nhmwkh5xijtbgk6dzkknji2kn7a
+verifiedregistry  bafk2bzaceb37hxeuoo5rgf6ansrdl2ykm5v5zp6kireubn4orcopr67jbxv6k
 ```
 
 ## Changelog
