@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.22.0-rc6 / 2023-04-19
+# v1.22.0 / 2023-04-21
 
-This is the sixth release candidate for MANDATORY 1.22.0 release of lotus.
+This is the MANDATORY 1.22.0 release of lotus.
 
 Diff from previous RCs:
 - REVERT [Activation bug fix](https://github.com/filecoin-project/builtin-actors/issues/914) 
