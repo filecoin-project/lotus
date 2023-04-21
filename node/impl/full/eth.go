@@ -67,6 +67,7 @@ type EthModuleAPI interface {
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
+	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
@@ -133,6 +134,7 @@ type EthModule struct {
 	ChainAPI
 	MpoolAPI
 	StateAPI
+	SyncAPI
 }
 
 var _ EthModuleAPI = (*EthModule)(nil)
@@ -671,6 +673,42 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 
 func (a *EthModule) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
 	return ethtypes.EthUint64(build.Eip155ChainId), nil
+}
+
+func (a *EthModule) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
+	state, err := a.SyncAPI.SyncState(ctx)
+	if err != nil {
+		return ethtypes.EthSyncingResult{}, fmt.Errorf("failed calling SyncState: %w", err)
+	}
+
+	if len(state.ActiveSyncs) == 0 {
+		return ethtypes.EthSyncingResult{}, errors.New("no active syncs, try again")
+	}
+
+	working := -1
+	for i, ss := range state.ActiveSyncs {
+		if ss.Stage == api.StageIdle {
+			continue
+		}
+		working = i
+	}
+	if working == -1 {
+		working = len(state.ActiveSyncs) - 1
+	}
+
+	ss := state.ActiveSyncs[working]
+	if ss.Base == nil || ss.Target == nil {
+		return ethtypes.EthSyncingResult{}, errors.New("missing syncing information, try again")
+	}
+
+	res := ethtypes.EthSyncingResult{
+		DoneSync:      ss.Stage == api.StageSyncComplete,
+		CurrentBlock:  ethtypes.EthUint64(ss.Height),
+		StartingBlock: ethtypes.EthUint64(ss.Base.Height()),
+		HighestBlock:  ethtypes.EthUint64(ss.Target.Height()),
+	}
+
+	return res, nil
 }
 
 func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {

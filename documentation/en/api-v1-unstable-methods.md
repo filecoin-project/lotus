@@ -103,6 +103,7 @@
   * [EthProtocolVersion](#EthProtocolVersion)
   * [EthSendRawTransaction](#EthSendRawTransaction)
   * [EthSubscribe](#EthSubscribe)
+  * [EthSyncing](#EthSyncing)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [Filecoin](#Filecoin)
@@ -3070,6 +3071,15 @@ Inputs:
 ```
 
 Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
+
+### EthSyncing
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `false`
 
 ### EthUninstallFilter
 Uninstalls a filter with given id.
