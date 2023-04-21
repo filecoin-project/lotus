@@ -65,15 +65,9 @@ func ValidateBlockPubsub(ctx context.Context, cns Consensus, self bool, msg *pub
 
 	stats.Record(ctx, metrics.BlockReceived.M(1))
 
-	recordFailureFlagPeer := func(what string) {
-		// bv.Validate will flag the peer in that case
-		panic(what)
-	}
-
 	blk, what, err := decodeAndCheckBlock(msg)
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
-		recordFailureFlagPeer(what)
 		return pubsub.ValidationReject, what
 	}
 
@@ -81,7 +75,6 @@ func ValidateBlockPubsub(ctx context.Context, cns Consensus, self bool, msg *pub
 	err = validateMsgMeta(ctx, blk)
 	if err != nil {
 		log.Warnf("error validating message metadata: %s", err)
-		recordFailureFlagPeer("invalid_block_meta")
 		return pubsub.ValidationReject, "invalid_block_meta"
 	}
 
@@ -91,7 +84,6 @@ func ValidateBlockPubsub(ctx context.Context, cns Consensus, self bool, msg *pub
 			log.Warn("ignoring block msg: ", err)
 			return pubsub.ValidationIgnore, reject
 		}
-		recordFailureFlagPeer(reject)
 		return pubsub.ValidationReject, reject
 	}
 
