@@ -34,7 +34,7 @@ func toKey(key cid.Cid) string {
 func (gmds *GomapDatastore) Put(ctx context.Context, block blocks.Block) error {
 	gmds.lock.Lock()
 	defer gmds.lock.Unlock()
-	gmds.gmap.Add(string(block.Cid().Bytes()), string(block.RawData()))
+	gmds.gmap.Add(toKey(block.Cid()), string(block.RawData()))
 	//todo less copy and return err
 	return nil
 }
