@@ -1056,17 +1056,17 @@ func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, 
 		return n, nil
 	}
 
-	raddr, err := mp.resolveToKey(ctx, addr)
-	if err != nil {
-		return 0, err
-	}
-
 	// get the nonce from the actor before ts
 	actor, err := mp.api.GetActorBefore(addr, ts)
 	if err != nil {
 		return 0, err
 	}
 	nextNonce := actor.Nonce
+
+	raddr, err := mp.resolveToKey(ctx, addr)
+	if err != nil {
+		return 0, err
+	}
 
 	// loop over all messages sent by 'addr' and find the highest nonce
 	messages, err := mp.api.MessagesForTipset(ctx, ts)
