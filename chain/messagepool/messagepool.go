@@ -371,7 +371,7 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q[cid.Cid, crypto.Signature](build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q[string, struct{}](build.VerifSigCacheSize)
-	stateNonceCache, _ := lru.New[stateNonceCacheKey, uint64](256)
+	stateNonceCache, _ := lru.New[stateNonceCacheKey, uint64](32768) // 32k * ~200 bytes = 6MB
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
