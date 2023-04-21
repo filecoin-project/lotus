@@ -1,21 +1,19 @@
 # Lotus changelog
 
-# v1.23.0-rc1 / 2023-04-19
+# v1.23.0 / 2023-04-21
 
-This is an optional but highly recommended feature release of Lotus. It includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
-
-Note: this release includes all the changes from v1.22.0 that supports the upcoming nv19 upgrade, scheduled on Apr 27th. You can find more details about the upgrade [here](https://github.com/filecoin-project/lotus/discussions/10686)
+This is the stable feature release for the upcoming MANDATORY network upgrade at `2023-04-27T13:00:00Z`, epoch `2809800`. This feature release delivers the nv19 Lighting and nv20 Thunder network upgrade for mainnet, and includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 ## ☢️ Upgrade Warnings ☢️
 
-Before upgrading to this feature release read carefully through these bullet points:
+Please read carefully through the **upgrade warnings** section if you are upgrading from a v1.20.X release, or the v1.22.0 release. If you are upgrading from a v1.21.0-rcX these warnings should be familiar to you.
 
 - Starting from this release, the SplitStore feature is automatically activated on new nodes. However, for existing Lotus users, you need to explicitly configure SplitStore by uncommenting the `EnableSplitstore` option in your `config.toml` file. To enable SplitStore, set `EnableSplitstore=true`, and to disable it, set `EnableSplitstore=false`. **It's important to note that your Lotus node will not start unless this configuration is properly set. Set it to false if you are running a full archival node!**
 - This feature release requires a **minimum Go version of v1.19.7 or higher to successfully build Lotus**. Additionally, Go version v1.20 and higher is now also supported.
 - **Storage Providers:** The proofs libraries now have CUDA enabled by default, which requires you to install (CUDA)[https://lotus.filecoin.io/tutorials/lotus-miner/cuda/] if you haven't already done so. If you prefer to use OpenCL on your GPUs instead, you can use the `FFI_USE_OPENCL=1` flag when building from source. On the other hand, if you want to disable GPUs altogether, you can use the `FFI_NO_GPU=1` environment variable when building from source.
 - **Storage Providers:** The `lotus-miner sectors extend` command has been refactored to the functionality of `lotus-miner sectors renew`.
 - **Exchanges/Node operators/RPC-providers::** Execution traces (returned from `lotus state exec-trace`, `lotus state replay`, etc.), has changed to account for changes introduced by the by the FVM. **Please make sure to read the `Execution trace format change` section carefully, as these are interface breaking changes**
-- **Syncing issues:** If you have been struggling with syncing issues in normal operations you can try to adjust the amount of threads used for more concurrent FMV execution through via the `LOTUS_FVM_CONCURRENCY` enviroment variable. It is set to 4 threads by default. Recommended formula for concurrency == YOUR_RAM/4 , but max is 128. If you are a Storage Provider and are pushing many messages within a short period of time, exporting `LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS=1` will also help with keeping in sync.
+- **Syncing issues:** If you have been struggling with syncing issues in normal operations you can try to adjust the amount of threads used for more concurrent FMV execution through via the `LOTUS_FVM_CONCURRENCY` enviroment variable. It is set to 4 threads by default. Recommended formula for concurrency == YOUR_RAM/4 , but max during a network upgrade is 24. If you are a Storage Provider and are pushing many messages within a short period of time, exporting `LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS=1` will also help with keeping in sync.
 - **Catching up from a Snapshot:** Users have noticed that catching up sync from a snapshot is taking a lot longer these day. This is largely related to the built-in market actor consuming a lot of computational demand for block validation. A FIP for a short-term mitigation for this is currently in Last Call and will be included network version 19 upgrade if accepted. You [can read the FIP here.](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0060.md)
 
 ## Highlights
