@@ -37,25 +37,25 @@ Make sure that your lotus actor bundle matches the v11 actors manifest by runnin
 lotus state actor-cids --network-version 19
 Network Version: 19
 Actor Version: 11
-Manifest CID: bafy2bzacedhuowetjy2h4cxnijz2l64h4mzpk5m256oywp4evarpono3cjhco
+Manifest CID: bafy2bzacecnhaiwcrpyjvzl4uv4q3jzoif26okl3m66q3cijp3dfwlcxwztwo
 
 Actor             CID  
-datacap           bafk2bzacealtvh65rzb34fmyzw4m2np2htnio4w3pn4alzqovwxkdbf23dvpo
-init              bafk2bzacea6vw4esh5tg7mprv5jkbx5xcyilcy4vvf64lss32mjyuvv2mh5ng
-reward            bafk2bzaceafuh6idvaqqkj353vs4qdl42tcmvnymewu5zf4rq2nruxdyunses
-cron              bafk2bzaceavmqu2qihgbe3xdaotgypuzvdpiifnm7ll6rolks2u4lac6voosk
-ethaccount        bafk2bzacedhcei2xnr34poxr4xziypm2obqlibke4cs2cjfnr3sz6nf6h7fyy
-evm               bafk2bzacebn5lwxboiikhz67ajwa34v2lc4qevnhpwdnipbmrnutkvrrqkb46
-storagemarket     bafk2bzaceb7bx4honi3byjllpdk6fea32dpu3vqvil3okodybdk5m3erlnwjw
-storagepower      bafk2bzaceabskmmkas6njbowols7t4ib3bipa5abpomk3jtgfwojtzd7mjzfm
-system            bafk2bzacedtuh7cht3fud7fb4avl4g2zbz57lc4ohiaufpaex6dkmdokn5rgo
-account           bafk2bzacecfdqb7p3jakhaa3cqnzpt7hxmhghrbxvafsylqno3febx55fnidw
+datacap           bafk2bzacebslykoyrb2hm7aacjngqgd5n2wmeii2goadrs5zaya3pvdf6pdnq
+init              bafk2bzaceckwf3w6n2nw6eh77ktmsxqgsvshonvgnyk5q5syyngtetxvasfxg
+reward            bafk2bzacebwjw2vxkobs7r2kwjdqqb42h2kucyuk6flbnyzw4odg5s4mogamo
+cron              bafk2bzacebpewdvvgt6tk2o2u4rcovdgym67tadiis5usemlbejg7k3kt567o
+ethaccount        bafk2bzaceclkmc4yidxc6lgcjpfypbde2eddnevcveo4j5kmh4ek6inqysz2k
+evm               bafk2bzacediwh6etwzwmb5pivtclpdplewdjzphouwqpppce6opisjv2fjqfe
+storagemarket     bafk2bzaceazu2j2zu4p24tr22btnqzkhzjvyjltlvsagaj6w3syevikeb5d7m
+storagepower      bafk2bzaceaxgloxuzg35vu7l7tohdgaq2frsfp4ejmuo7tkoxjp5zqrze6sf4
+system            bafk2bzaced7npe5mt5nh72jxr2igi2sofoa7gedt4w6kueeke7i3xxugqpjfm
+account           bafk2bzacealnlr7st6lkwoh6wxpf2hnrlex5sknaopgmkr2tuhg7vmbfy45so
 placeholder       bafk2bzacedfvut2myeleyq67fljcrw4kkmn5pb5dpyozovj7jpoez5irnc3ro
-eam               bafk2bzacedko6hcjmwpuwgma5pb4gr2wgyvregk3nqqjxit7dv4es6vh5cjoc
-multisig          bafk2bzacedq2afnwcfipay5twv5mgzjoio5bbjvyo4yqchdwqcr7wrareyx54
-paymentchannel    bafk2bzacebbsvr7i7mqmaadyjibe5wxnv7bwvvec2wlgknuwda6ep45amnd5w
-storageminer      bafk2bzacebxjhofdr3sb2uhy2ky2vcijh4nhmwkh5xijtbgk6dzkknji2kn7a
-verifiedregistry  bafk2bzaceb37hxeuoo5rgf6ansrdl2ykm5v5zp6kireubn4orcopr67jbxv6k
+eam               bafk2bzaceaelwt4yfsfvsu3pa3miwalsvy3cfkcjvmt4sqoeopsppnrmj2mf2
+multisig          bafk2bzaceafajceqwg5ybiz7xw6rxammuirkgtuv625gzaehsqfprm4bazjmk
+paymentchannel    bafk2bzaceb4e6cnsnviegmqvsmoxzncruvhra54piq7bwiqfqevle6oob2gvo
+storageminer      bafk2bzacec24okjqrp7c7rj3hbrs5ez5apvwah2ruka6haesgfngf37mhk6us
+verifiedregistry  bafk2bzacedej3dnr62g2je2abmyjg3xqv4otvh6e26du5fcrhvw7zgcaaez3a
 ```
 
 ## Changelog
