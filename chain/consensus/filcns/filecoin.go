@@ -382,13 +382,21 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 	return nil
 }
 
-func (filec *FilecoinEC) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
+func (filec *FilecoinEC) IsEpochInConsensusRange(epoch abi.ChainEpoch) bool {
 	if filec.genesis == nil {
+		return true
+	}
+
+	// Don't try to sync anything before finality. Don't propagate such blocks either.
+	//
+	// We use _our_ current head, not the expected head, because the network's head can lag on
+	// catch-up (after a network outage).
+	if epoch < filec.store.GetHeaviestTipSet().Height()-build.Finality {
 		return false
 	}
 
 	now := uint64(build.Clock.Now().Unix())
-	return epoch > (abi.ChainEpoch((now-filec.genesis.MinTimestamp())/build.BlockDelaySecs) + MaxHeightDrift)
+	return epoch <= (abi.ChainEpoch((now-filec.genesis.MinTimestamp())/build.BlockDelaySecs) + MaxHeightDrift)
 }
 
 func (filec *FilecoinEC) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {

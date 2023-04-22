@@ -32,9 +32,10 @@ type Consensus interface {
 	// the block (signature verifications, VRF checks, message validity, etc.)
 	ValidateBlock(ctx context.Context, b *types.FullBlock) (err error)
 
-	// IsEpochBeyondCurrMax is used to configure the fork rules for longest-chain
-	// consensus protocols.
-	IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool
+	// IsEpochInConsensusRange returns true if the epoch is "in range" for consensus. That is:
+	// - It's not before finality.
+	// - It's not too far in the future.
+	IsEpochInConsensusRange(epoch abi.ChainEpoch) bool
 
 	// CreateBlock implements all the logic required to propose and assemble a new Filecoin block.
 	//
@@ -69,6 +70,14 @@ func ValidateBlockPubsub(ctx context.Context, cns Consensus, self bool, msg *pub
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
 		return pubsub.ValidationReject, what
+	}
+
+	if !cns.IsEpochInConsensusRange(blk.Header.Height) {
+		// We ignore these blocks instead of rejecting to avoid breaking the network if
+		// we're recovering from an outage (e.g., where nobody agrees on where "head" is
+		// currently).
+		log.Warnf("received block outside of consensus range (%d)", blk.Header.Height)
+		return pubsub.ValidationIgnore, "invalid_block_height"
 	}
 
 	// validate the block meta: the Message CID in the header must match the included messages
