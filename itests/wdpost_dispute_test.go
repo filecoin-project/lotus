@@ -3,6 +3,7 @@ package itests
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/api"
@@ -22,6 +24,39 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 )
+
+// func TestDisputeFailsOnGoodPost(t *testing.T) {
+// 	kit.Expensive(t)
+
+// 	kit.QuietMiningLogs()
+
+// 	blocktime := 2 * time.Millisecond
+
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
+
+// 	var (
+// 		client     kit.TestFullNode
+// 		chainMiner kit.TestMiner
+// 	)
+
+// 	// First, configure a miner. After sealing, it will post successfully
+// 	//
+// 	// Then we're going to try to dispute it to no avail
+// 	opts := []kit.NodeOpt{kit.WithAllSubsystems()}
+// 	ens := kit.NewEnsemble(t, kit.MockProofs()).
+// 		FullNode(&client, opts...).
+// 		Miner(&chainMiner, &client, opts...).
+// 		Start()
+
+// 	defaultFrom, err := client.WalletDefaultAddress(ctx)
+// 	require.NoError(t, err)
+
+// 	// Mine.
+// 	ens.InterconnectAll().BeginMining(blocktime, &chainMiner)
+// 	chainMiner.PledgeSectors(ctx, 10, 0, nil)
+
+// }
 
 func TestWindowPostDispute(t *testing.T) {
 	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
@@ -248,7 +283,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version20))
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	defaultFrom, err := client.WalletDefaultAddress(ctx)
@@ -312,6 +347,9 @@ waitForProof:
 
 		build.Clock.Sleep(blocktime)
 	}
+	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	fmt.Printf("nv: %v\n", nv)
 
 	// Try to object to the proof. This should fail.
 	{
@@ -332,6 +370,7 @@ waitForProof:
 		}
 		_, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.Error(t, err)
+		fmt.Printf("dispute failure: %s\n", err)
 		require.Contains(t, err.Error(), "failed to dispute valid post")
 		require.Contains(t, err.Error(), "(RetCode=16)")
 	}
