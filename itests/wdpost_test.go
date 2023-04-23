@@ -13,11 +13,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -484,4 +486,40 @@ waitForProof:
 	// Simulate call on inclTs's parents, so that the partition isn't already proven
 	_, err = client.StateCall(ctx, slmsg, inclTs.Parents())
 	require.ErrorContains(t, err, "expected proof of type StackedDRGWindow2KiBV1P1, got StackedDRGWindow2KiBV1")
+
+	for {
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
+		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+		require.NoError(t, err)
+		// wait until the deadline finishes.
+		if di.Index == ((params.Deadline + 1) % di.WPoStPeriodDeadlines) {
+			break
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	// Try to object to the proof. This should fail.
+
+	disputeParams := &miner11.DisputeWindowedPoStParams{
+		Deadline:  params.Deadline,
+		PoStIndex: 0,
+	}
+
+	enc, aerr := actors.SerializeParams(disputeParams)
+	require.NoError(t, aerr)
+
+	disputeMsg := &types.Message{
+		To:     maddr,
+		Method: builtin.MethodsMiner.DisputeWindowedPoSt,
+		Params: enc,
+		Value:  types.NewInt(0),
+		From:   client.DefaultKey.Address,
+	}
+
+	_, err = client.MpoolPushMessage(ctx, disputeMsg, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to dispute valid post")
+	require.Contains(t, err.Error(), "(RetCode=16)")
+
 }
