@@ -472,7 +472,7 @@ func (g *Garbager) createMiner(ctx context.Context) *lapi.MsgLookup {
 	params, err := actors.SerializeParams(&power6.CreateMinerParams{
 		Owner:               owner,
 		Worker:              worker,
-		WindowPoStProofType: abi.RegisteredPoStProof_StackedDrgWindow32GiBV1,
+		WindowPoStProofType: abi.RegisteredPoStProof_StackedDrgWindow32GiBV1_1,
 	})
 	require.NoError(g.t, err)
 
