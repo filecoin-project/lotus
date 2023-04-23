@@ -4727,7 +4727,7 @@ Perms: read
 Inputs:
 ```json
 [
-  18
+  20
 ]
 ```
 
@@ -4742,7 +4742,7 @@ Perms: read
 Inputs:
 ```json
 [
-  18
+  20
 ]
 ```
 
@@ -6368,7 +6368,7 @@ Inputs:
 ]
 ```
 
-Response: `18`
+Response: `20`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

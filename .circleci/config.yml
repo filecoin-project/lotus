@@ -992,6 +992,8 @@ workflows:
             - build
           suite: itest-wdpost
           target: "./itests/wdpost_test.go"
+          get-params: true
+          
       - test:
           name: test-itest-wdpost_worker_config
           requires:
