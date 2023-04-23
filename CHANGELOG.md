@@ -1,6 +1,16 @@
 # Lotus changelog
 
+# v1.22.1 / 2023-04-23
+
+This is a MANDATORY hotfix release that fixes a consensus-critical bug -- the necessary fix is https://github.com/filecoin-project/ref-fvm/pull/1750
+
+You can NOT use 1.22.0 for the nv19 upgrade, you MUST be on 1.22.1 or higher.
+
+The only change is updating the FVM crates used via the FFI: https://github.com/filecoin-project/lotus/pull/10735.
+
 # v1.22.0 / 2023-04-21
+
+EDIT: Do NOT use this release for nv19, you MUST use v1.22.1 or higher.
 
 This is the stable release of Lotus v1.22.0 for the upcoming MANDATORY network upgrade at `2023-04-27T13:00:00Z`, epoch `2809800`. This release delivers the nv19 Lighting and nv20 Thunder network upgrade for mainnet.
 
