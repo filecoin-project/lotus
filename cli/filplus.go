@@ -43,7 +43,9 @@ var filplusCmd = &cli.Command{
 		filplusCheckNotaryCmd,
 		filplusSignRemoveDataCapProposal,
 		filplusListAllocationsCmd,
+		filplusListClaimsCmd,
 		filplusRemoveExpiredAllocationsCmd,
+		filplusRemoveExpiredClaimsCmd,
 	},
 }
 
@@ -310,6 +312,91 @@ var filplusListAllocationsCmd = &cli.Command{
 	},
 }
 
+var filplusListClaimsCmd = &cli.Command{
+	Name:      "list-claims",
+	Usage:     "List claims made by provider",
+	ArgsUsage: "providerAddress",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "expired",
+			Usage: "list only expired claims",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		providerAddr, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		providerIdAddr, err := api.StateLookupID(ctx, providerAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		verifregActor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		verifregState, err := verifreg.Load(store, verifregActor)
+		if err != nil {
+			return err
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		claimsMap, err := verifregState.GetClaims(providerIdAddr)
+		if err != nil {
+			return err
+		}
+
+		tw := tablewriter.New(
+			tablewriter.Col("ID"),
+			tablewriter.Col("Provider"),
+			tablewriter.Col("Client"),
+			tablewriter.Col("Data"),
+			tablewriter.Col("Size"),
+			tablewriter.Col("TermMin"),
+			tablewriter.Col("TermMax"),
+			tablewriter.Col("TermStart"),
+			tablewriter.Col("Sector"),
+		)
+
+		for claimId, claim := range claimsMap {
+			if ts.Height() > claim.TermMax || !cctx.IsSet("expired") {
+				tw.Write(map[string]interface{}{
+					"ID":        claimId,
+					"Provider":  claim.Provider,
+					"Client":    claim.Client,
+					"Data":      claim.Data,
+					"Size":      claim.Size,
+					"TermMin":   claim.TermMin,
+					"TermMax":   claim.TermMax,
+					"TermStart": claim.TermStart,
+					"Sector":    claim.Sector,
+				})
+			}
+		}
+		return tw.Flush(os.Stdout)
+	},
+}
+
 var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 	Name:      "remove-expired-allocations",
 	Usage:     "remove expired allocations (if no allocations are specified all eligible allocations are removed)",
@@ -380,6 +467,99 @@ var filplusRemoveExpiredAllocationsCmd = &cli.Command{
 			To:     verifreg.Address,
 			From:   fromAddr,
 			Method: verifreg.Methods.RemoveExpiredAllocations,
+			Params: params,
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
+
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if mwait.Receipt.ExitCode.IsError() {
+			return fmt.Errorf("failed to remove expired allocations: %d", mwait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var filplusRemoveExpiredClaimsCmd = &cli.Command{
+	Name:      "remove-expired-claims",
+	Usage:     "remove expired claims (if no claims are specified all eligible claims are removed)",
+	ArgsUsage: "providerAddress Optional[...claimId]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to send the message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		args := cctx.Args().Slice()
+
+		providerAddr, err := address.NewFromString(args[0])
+		if err != nil {
+			return err
+		}
+
+		providerIdAddr, err := api.StateLookupID(ctx, providerAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		providerId, err := address.IDFromAddress(providerIdAddr)
+		if err != nil {
+			return err
+		}
+
+		fromAddr := providerIdAddr
+		if from := cctx.String("from"); from != "" {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		claimIDs := make([]verifregtypes9.ClaimId, len(args)-1)
+		for i, claimStr := range args[1:] {
+			id, err := strconv.ParseUint(claimStr, 10, 64)
+			if err != nil {
+				return err
+			}
+			claimIDs[i] = verifregtypes9.ClaimId(id)
+		}
+
+		params, err := actors.SerializeParams(&verifregtypes9.RemoveExpiredClaimsParams{
+			Provider: abi.ActorID(providerId),
+			ClaimIds: claimIDs,
+		})
+		if err != nil {
+			return err
+		}
+
+		msg := &types.Message{
+			To:     verifreg.Address,
+			From:   fromAddr,
+			Method: verifreg.Methods.RemoveExpiredClaims,
 			Params: params,
 		}
 

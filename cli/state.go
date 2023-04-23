@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
@@ -22,7 +21,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -41,7 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -99,8 +97,8 @@ var StateMinerProvingDeadlineCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify miner to get information for")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -142,8 +140,8 @@ var StateMinerInfo = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify miner to get information for")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -252,10 +250,16 @@ func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	return cids, nil
 }
 
+type TipSetResolver interface {
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
+}
+
 // LoadTipSet gets the tipset from the context, or the head from the API.
 //
 // It always gets the head from the API so commands use a consistent tipset even if time pases.
-func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*types.TipSet, error) {
+func LoadTipSet(ctx context.Context, cctx *cli.Context, api TipSetResolver) (*types.TipSet, error) {
 	tss := cctx.String("tipset")
 	if tss == "" {
 		return api.ChainHead(ctx)
@@ -264,7 +268,7 @@ func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*ty
 	return ParseTipSetRef(ctx, api, tss)
 }
 
-func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types.TipSet, error) {
+func ParseTipSetRef(ctx context.Context, api TipSetResolver, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
 		if tss == "@head" {
 			return api.ChainHead(ctx)
@@ -391,8 +395,8 @@ var StateSectorsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify miner to list sectors for")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		maddr, err := address.NewFromString(cctx.Args().First())
@@ -431,8 +435,8 @@ var StateActiveSectorsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify miner to list sectors for")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		maddr, err := address.NewFromString(cctx.Args().First())
@@ -463,8 +467,8 @@ var StateExecTraceCmd = &cli.Command{
 	Usage:     "Get the execution trace of a given message",
 	ArgsUsage: "<messageCid>",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("must pass message cid"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		mcid, err := cid.Decode(cctx.Args().First())
@@ -606,8 +610,8 @@ var StateGetDealSetCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify deal ID")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		dealid, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
@@ -750,8 +754,8 @@ var StateGetActorCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of actor to get")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -804,8 +808,8 @@ var StateLookupIDCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of actor to get")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -848,8 +852,8 @@ var StateSectorSizeCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass miner's address")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -885,8 +889,8 @@ var StateReadStateCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of actor to get")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -1085,7 +1089,7 @@ var StateComputeStateCmd = &cli.Command{
 
 		var stout *lapi.ComputeStateOutput
 		if csofile := cctx.String("compute-state-output"); csofile != "" {
-			data, err := ioutil.ReadFile(csofile)
+			data, err := os.ReadFile(csofile)
 			if err != nil {
 				return err
 			}
@@ -1228,7 +1232,7 @@ var compStateTemplate = `
   <div>State CID: <b>{{.Comp.Root}}</b></div>
   <div>Calls</div>
   {{range .Comp.Trace}}
-   {{template "message" (Call .ExecutionTrace false .Msg.Cid.String)}}
+   {{template "message" (Call .ExecutionTrace false .MsgCid.String)}}
   {{end}}
  </body>
 </html>
@@ -1253,16 +1257,12 @@ var compStateMsg = `
  </a>
  </div>
 
- <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}} FIL), M{{.Msg.Method}}</div>
- {{if not .Subcall}}<div><small>Msg CID: {{.Msg.Cid}}</small></div>{{end}}
+ <div><b>{{.Msg.From}}</b> -&gt; <b>{{.Msg.To}}</b> ({{ToFil .Msg.Value}}), M{{.Msg.Method}}</div>
+ {{if not .Subcall}}<div><small>Msg CID: {{.Hash}}</small></div>{{end}}
  {{if gt (len .Msg.Params) 0}}
   <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
  {{end}}
- {{if PrintTiming}}
-  <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
- {{else}}
   <div><span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
- {{end}}
  {{if gt (len .MsgRct.Return) 0}}
   <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
  {{end}}
@@ -1274,62 +1274,26 @@ var compStateMsg = `
 <details>
 <summary>Gas Trace</summary>
 <table>
- <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th><th>Location</th></tr>
- {{define "virt" -}}
- {{- if . -}}
- <span class="deemp">+({{.}})</span>
- {{- end -}}
- {{- end}}
+ <tr><th>Name</th><th>Total/Compute/Storage</th><th>Time Taken</th></tr>
 
  {{define "gasC" -}}
- <td>{{.TotalGas}}{{template "virt" .TotalVirtualGas }}/{{.ComputeGas}}{{template "virt" .VirtualComputeGas}}/{{.StorageGas}}{{template "virt" .VirtualStorageGas}}</td>
+ <td>{{.TotalGas}}/{{.ComputeGas}}/{{.StorageGas}}</td>
  {{- end}}
 
  {{range .GasCharges}}
- <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
- {{template "gasC" .}}
- <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
-  <td>
-   {{ $fImp := FirstImportant .Location }}
-   {{ if $fImp }}
-   <details>
-    <summary>{{ $fImp }}</summary><hr />
-	{{ $elipOn := false }}
-    {{ range $index, $ele := .Location -}}
-     {{- if $index }}<br />{{end -}}
-     {{- if .Show -}}
-	  {{ if $elipOn }}
-	   {{ $elipOn = false }}
-       </span></label>
-	  {{end}}
-
-      {{- if .Important }}<b>{{end -}}
-      {{- . -}}
-      {{if .Important }}</b>{{end}}
-     {{else}}
-	  {{ if not $elipOn }}
-	    {{ $elipOn = true }}
-        <label class="ellipsis-toggle"><input type="checkbox" /><span class="ellipsis">[…]<br /></span>
-		<span class="ellipsis-content">
-	  {{end}}
-      {{- "" -}}
-      {{- . -}}
-     {{end}}
-    {{end}}
-	{{ if $elipOn }}
-	  {{ $elipOn = false }}
-      </span></label>
-	{{end}}
-   </details>
-  {{end}}
-  </td></tr>
-  {{end}}
-  {{with sumGas .GasCharges}}
-  <tr class="sum"><td><b>Sum</b></td>
-  {{template "gasC" .}}
-  <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
-  <td></td></tr>
-  {{end}}
+  <tr>
+   <td>{{.Name}}</td>
+   {{template "gasC" .}}
+   <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
+  </tr>
+ {{end}}
+ {{with sumGas .GasCharges}}
+  <tr class="sum">
+    <td><b>Sum</b></td>
+    {{template "gasC" .}}
+    <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
+  </tr>
+ {{end}}
 </table>
 </details>
 
@@ -1337,8 +1301,8 @@ var compStateMsg = `
  {{if gt (len .Subcalls) 0}}
   <div>Subcalls:</div>
   {{$hash := .Hash}}
-  {{range .Subcalls}}
-   {{template "message" (Call . true (printf "%s-%s" $hash .Msg.Cid.String))}}
+  {{range $i, $call := .Subcalls}}
+   {{template "message" (Call $call true (printf "%s-%d" $hash $i))}}
   {{end}}
  {{end}}
 </div>`
@@ -1359,20 +1323,9 @@ func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOut
 		"IsVerySlow":  isVerySlow,
 		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
 		"sumGas":      types.SumGas,
-		"CodeStr":     codeStr,
+		"CodeStr":     builtin.ActorNameByCode,
 		"Call":        call,
 		"PrintTiming": func() bool { return printTiming },
-		"FirstImportant": func(locs []types.Loc) *types.Loc {
-			if len(locs) != 0 {
-				for _, l := range locs {
-					if l.Important() {
-						return &l
-					}
-				}
-				return &locs[0]
-			}
-			return nil
-		},
 	}).Parse(compStateTemplate)
 	if err != nil {
 		return err
@@ -1402,16 +1355,8 @@ func call(e types.ExecutionTrace, subcall bool, hash string) callMeta {
 	}
 }
 
-func codeStr(c cid.Cid) string {
-	cmh, err := multihash.Decode(c.Hash())
-	if err != nil {
-		panic(err)
-	}
-	return string(cmh.Digest)
-}
-
 func getMethod(code cid.Cid, method abi.MethodNum) string {
-	return filcns.NewActorRegistry().Methods[code][method].Name // todo: use remote
+	return consensus.NewActorRegistry().Methods[code][method].Name // todo: use remote
 }
 
 func toFil(f types.BigInt) types.FIL {
@@ -1427,7 +1372,7 @@ func isVerySlow(t time.Duration) bool {
 }
 
 func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	p, err := stmgr.GetParamType(filcns.NewActorRegistry(), code, method) // todo use api for correct actor registry
+	p, err := stmgr.GetParamType(consensus.NewActorRegistry(), code, method) // todo use api for correct actor registry
 	if err != nil {
 		return "", err
 	}
@@ -1441,7 +1386,7 @@ func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 }
 
 func JsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
-	methodMeta, found := filcns.NewActorRegistry().Methods[code][method] // TODO: use remote
+	methodMeta, found := consensus.NewActorRegistry().Methods[code][method] // TODO: use remote
 	if !found {
 		return "", fmt.Errorf("method %d not found on actor %s", method, code)
 	}
@@ -1467,8 +1412,8 @@ var StateWaitMsgCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify message cid to wait for")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1504,8 +1449,8 @@ var StateSearchMsgCmd = &cli.Command{
 	Usage:     "Search to see whether a message has appeared on chain",
 	ArgsUsage: "[messageCid]",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify message cid to search for")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -1836,11 +1781,12 @@ var StateMarketCmd = &cli.Command{
 }
 
 var stateMarketBalanceCmd = &cli.Command{
-	Name:  "balance",
-	Usage: "Get the market balance (locked and escrowed) for a given account",
+	Name:      "balance",
+	Usage:     "Get the market balance (locked and escrowed) for a given account",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			return ShowHelp(cctx, fmt.Errorf("must specify address to print market balance for"))
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)

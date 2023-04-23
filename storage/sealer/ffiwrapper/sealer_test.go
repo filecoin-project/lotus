@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -130,7 +129,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si storifa
 		t.Fatal(err)
 	}
 
-	expect, _ := ioutil.ReadAll(data(si.ID.Number, 1016))
+	expect, _ := io.ReadAll(data(si.ID.Number, 1016))
 	if !bytes.Equal(b.Bytes(), expect) {
 		t.Fatal("read wrong bytes")
 	}
@@ -160,7 +159,7 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si storifa
 		t.Fatal(err)
 	}
 
-	expect, _ = ioutil.ReadAll(data(si.ID.Number, 1016))
+	expect, _ = io.ReadAll(data(si.ID.Number, 1016))
 	require.Equal(t, expect, b.Bytes())
 
 	b.Reset()
@@ -251,12 +250,12 @@ func corrupt(t *testing.T, sealer *Sealer, id storiface.SectorRef) {
 }
 
 func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
-	dat, err := ioutil.ReadFile("../../../build/proof-params/parameters.json")
+	dat, err := os.ReadFile("../../../build/proof-params/parameters.json")
 	if err != nil {
 		panic(err)
 	}
 
-	datSrs, err := ioutil.ReadFile("../../../build/proof-params/srs-inner-product.json")
+	datSrs, err := os.ReadFile("../../../build/proof-params/srs-inner-product.json")
 	if err != nil {
 		panic(err)
 	}
@@ -292,7 +291,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 
-	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +362,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 
-	dir, err := ioutil.TempDir("", "sbtest")
+	dir, err := os.MkdirTemp("", "sbtest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +426,7 @@ func TestSealAndVerify3(t *testing.T) {
 
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 
-	dir, err := ioutil.TempDir("", "sbtest")
+	dir, err := os.MkdirTemp("", "sbtest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,7 +504,7 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 
-	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +586,7 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		rf, w, _ := commpffi.ToReadableFile(bytes.NewReader(bytes.Repeat([]byte{0xff, 0}, int(bt/2))), int64(bt))
-		tf, _ := ioutil.TempFile("/tmp/", "scrb-")
+		tf, _ := os.CreateTemp("/tmp/", "scrb-")
 		b.StartTimer()
 
 		ffi.WriteWithAlignment(abi.RegisteredSealProof_StackedDrg2KiBV1, rf, bt, tf, nil) // nolint:errcheck
@@ -746,7 +745,7 @@ func TestGenerateUnsealedCID(t *testing.T) {
 func TestAddPiece512M(t *testing.T) {
 	sz := abi.PaddedPieceSize(512 << 20).Unpadded()
 
-	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -790,7 +789,7 @@ func BenchmarkAddPiece512M(b *testing.B) {
 	sz := abi.PaddedPieceSize(512 << 20).Unpadded()
 	b.SetBytes(int64(sz))
 
-	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -832,7 +831,7 @@ func BenchmarkAddPiece512M(b *testing.B) {
 func TestAddPiece512MPadded(t *testing.T) {
 	sz := abi.PaddedPieceSize(512 << 20).Unpadded()
 
-	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -901,7 +900,7 @@ func TestMulticoreSDR(t *testing.T) {
 
 	getGrothParamFileAndVerifyingKeys(sectorSize)
 
-	dir, err := ioutil.TempDir("", "sbtest")
+	dir, err := os.MkdirTemp("", "sbtest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1006,7 +1005,7 @@ func TestPoStChallengeAssumptions(t *testing.T) {
 func TestDCAPCloses(t *testing.T) {
 	sz := abi.PaddedPieceSize(2 << 10).Unpadded()
 
-	cdir, err := ioutil.TempDir("", "sbtest-c-")
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
 	if err != nil {
 		t.Fatal(err)
 	}

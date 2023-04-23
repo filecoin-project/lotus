@@ -757,6 +757,8 @@ func (b *mockStore) DeleteMany(_ context.Context, cids []cid.Cid) error {
 	return nil
 }
 
+func (b *mockStore) Flush(context.Context) error { return nil }
+
 func (b *mockStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return nil, errors.New("not implemented")
 }

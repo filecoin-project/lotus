@@ -170,6 +170,27 @@ func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[ClaimId]Cla
 {{end}}
 }
 
+func (s *state{{.v}}) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	v{{.v}}Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[abi.SectorNumber][]ClaimId)
+	for k, v := range v{{.v}}Map {
+		claims, ok := retMap[v.Sector]
+		if !ok {
+			retMap[v.Sector] = []ClaimId{ClaimId(k)}
+		} else {
+			retMap[v.Sector] = append(claims, ClaimId(k))
+		}
+	}
+
+	return retMap, err
+
+{{end}}
+}
+
 func (s *state{{.v}}) ActorKey() string {
     return manifest.VerifregKey
 }

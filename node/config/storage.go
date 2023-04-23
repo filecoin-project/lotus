@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"golang.org/x/xerrors"
@@ -43,7 +42,7 @@ func WriteStorageFile(path string, config storiface.StorageConfig) error {
 		return xerrors.Errorf("marshaling storage config: %w", err)
 	}
 
-	if err := ioutil.WriteFile(path, b, 0644); err != nil {
+	if err := os.WriteFile(path, b, 0644); err != nil {
 		return xerrors.Errorf("persisting storage config (%s): %w", path, err)
 	}
 

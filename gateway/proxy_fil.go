@@ -217,9 +217,6 @@ func (gw *Node) MsigGetVested(ctx context.Context, addr address.Address, start t
 	if err := gw.limit(ctx, walletRateLimitTokens); err != nil {
 		return types.BigInt{}, err
 	}
-	if err := gw.checkTipsetKey(ctx, start); err != nil {
-		return types.NewInt(0), err
-	}
 	if err := gw.checkTipsetKey(ctx, end); err != nil {
 		return types.NewInt(0), err
 	}
@@ -490,6 +487,16 @@ func (gw *Node) StateVerifiedClientStatus(ctx context.Context, addr address.Addr
 		return nil, err
 	}
 	return gw.target.StateVerifiedClientStatus(ctx, addr, tsk)
+}
+
+func (gw *Node) StateVerifierStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.StateVerifierStatus(ctx, addr, tsk)
 }
 
 func (gw *Node) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {

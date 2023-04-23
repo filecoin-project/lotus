@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -106,8 +107,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 
 		cs      = store.NewChainStore(bs, bs, ds, filcns.Weight, nil)
-		tse     = filcns.NewTipSetExecutor()
-		sm, err = stmgr.NewStateManager(cs, tse, syscalls, filcns.DefaultUpgradeSchedule(), nil)
+		tse     = consensus.NewTipSetExecutor(filcns.RewardFunc)
+		sm, err = stmgr.NewStateManager(cs, tse, syscalls, filcns.DefaultUpgradeSchedule(), nil, ds)
 	)
 	if err != nil {
 		return nil, err
@@ -123,7 +124,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 
 	defer cs.Close() //nolint:errcheck
 
-	blocks := make([]filcns.FilecoinBlockMessages, 0, len(tipset.Blocks))
+	blocks := make([]consensus.FilecoinBlockMessages, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
 		sb := store.BlockMessages{
 			Miner: b.MinerAddr,
@@ -145,7 +146,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 				sb.BlsMessages = append(sb.BlsMessages, msg)
 			}
 		}
-		blocks = append(blocks, filcns.FilecoinBlockMessages{
+		blocks = append(blocks, consensus.FilecoinBlockMessages{
 			BlockMessages: sb,
 			WinCount:      b.WinCount,
 		})
@@ -265,7 +266,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 			return nil, cid.Undef, err
 		}
 
-		invoker := filcns.NewActorRegistry()
+		invoker := consensus.NewActorRegistry()
 		av, _ := actorstypes.VersionForNetwork(params.NetworkVersion)
 		registry := builtin.MakeRegistryLegacy([]rtt.VMActor{chaos.Actor{}})
 		invoker.Register(av, nil, registry)
@@ -283,7 +284,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 			if err != nil {
 				return nil, cid.Undef, err
 			}
-			invoker := filcns.NewActorRegistry()
+			invoker := consensus.NewActorRegistry()
 			lvm.SetInvoker(invoker)
 			vmi = lvm
 		}

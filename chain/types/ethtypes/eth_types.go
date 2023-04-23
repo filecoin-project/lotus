@@ -295,17 +295,21 @@ func EthAddressFromPubKey(pubk []byte) ([]byte, error) {
 	return ethAddr, nil
 }
 
+var maskedIDPrefix = [20 - 8]byte{0xff}
+
 func IsEthAddress(addr address.Address) bool {
 	if addr.Protocol() != address.Delegated {
 		return false
 	}
 	payload := addr.Payload()
-	namespace, _, err := varint.FromUvarint(payload)
+	namespace, offset, err := varint.FromUvarint(payload)
 	if err != nil {
 		return false
 	}
 
-	return namespace == builtintypes.EthereumAddressManagerActorID
+	payload = payload[offset:]
+
+	return namespace == builtintypes.EthereumAddressManagerActorID && len(payload) == 20 && !bytes.HasPrefix(payload, maskedIDPrefix[:])
 }
 
 func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
@@ -326,9 +330,17 @@ func EthAddressFromFilecoinAddress(addr address.Address) (EthAddress, error) {
 			return EthAddress{}, xerrors.Errorf("invalid delegated address namespace in: %s", addr)
 		}
 		payload = payload[n:]
-		if namespace == builtintypes.EthereumAddressManagerActorID {
-			return CastEthAddress(payload)
+		if namespace != builtintypes.EthereumAddressManagerActorID {
+			return EthAddress{}, ErrInvalidAddress
 		}
+		ethAddr, err := CastEthAddress(payload)
+		if err != nil {
+			return EthAddress{}, err
+		}
+		if ethAddr.IsMaskedID() {
+			return EthAddress{}, xerrors.Errorf("f410f addresses cannot embed masked-ID payloads: %s", ethAddr)
+		}
+		return ethAddr, nil
 	}
 	return EthAddress{}, ErrInvalidAddress
 }
@@ -376,8 +388,7 @@ func (ea *EthAddress) UnmarshalJSON(b []byte) error {
 }
 
 func (ea EthAddress) IsMaskedID() bool {
-	idmask := [12]byte{0xff}
-	return bytes.Equal(ea[:12], idmask[:])
+	return bytes.HasPrefix(ea[:], maskedIDPrefix[:])
 }
 
 func (ea EthAddress) ToFilecoinAddress() (address.Address, error) {

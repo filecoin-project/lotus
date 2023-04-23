@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,7 +45,7 @@ func (t testStorage) DiskUsage(path string) (int64, error) {
 }
 
 func newTestStorage(t *testing.T) *testStorage {
-	tp, err := ioutil.TempDir(os.TempDir(), "sealer-test-")
+	tp, err := os.MkdirTemp(os.TempDir(), "sealer-test-")
 	require.NoError(t, err)
 
 	{
@@ -58,7 +57,7 @@ func newTestStorage(t *testing.T) *testStorage {
 		}, "", "  ")
 		require.NoError(t, err)
 
-		err = ioutil.WriteFile(filepath.Join(tp, "sectorstore.json"), b, 0644)
+		err = os.WriteFile(filepath.Join(tp, "sectorstore.json"), b, 0644)
 		require.NoError(t, err)
 	}
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -166,7 +165,7 @@ func testDMExportAsFile(ctx context.Context, client *kit.TestFullNode, expDirect
 func testV0RetrievalAsFile(ctx context.Context, client *kit.TestFullNode, retOrder api0.RetrievalOrder, tempDir string) error {
 	out := tempDir + string(os.PathSeparator) + "exp-test" + retOrder.Root.String()
 
-	cv0 := &api0.WrapperV1Full{client.FullNode} //nolint:govet
+	cv0 := &api0.WrapperV1Full{FullNode: client.FullNode}
 	err := cv0.ClientRetrieve(ctx, retOrder, &api.FileRef{
 		Path: out,
 	})
@@ -196,7 +195,7 @@ func validateDMUnixFile(r io.Reader) error {
 }
 
 func testDMExportAsCar(ctx context.Context, client *kit.TestFullNode, expDirective api.ExportRef, tempDir string) error {
-	out, err := ioutil.TempFile(tempDir, "exp-test")
+	out, err := os.CreateTemp(tempDir, "exp-test")
 	if err != nil {
 		return err
 	}
@@ -214,13 +213,13 @@ func testDMExportAsCar(ctx context.Context, client *kit.TestFullNode, expDirecti
 	return validateDMCar(out)
 }
 func tesV0RetrievalAsCar(ctx context.Context, client *kit.TestFullNode, retOrder api0.RetrievalOrder, tempDir string) error {
-	out, err := ioutil.TempFile(tempDir, "exp-test")
+	out, err := os.CreateTemp(tempDir, "exp-test")
 	if err != nil {
 		return err
 	}
 	defer out.Close() //nolint:errcheck
 
-	cv0 := &api0.WrapperV1Full{client.FullNode} //nolint:govet
+	cv0 := &api0.WrapperV1Full{FullNode: client.FullNode}
 	err = cv0.ClientRetrieve(ctx, retOrder, &api.FileRef{
 		Path:  out.Name(),
 		IsCAR: true,

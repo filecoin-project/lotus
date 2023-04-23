@@ -104,6 +104,10 @@ func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string
 }
 
 func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte) (*api.MsgLookup, error) {
+	return e.InvokeSolidityWithValue(ctx, sender, target, selector, inputData, big.Zero())
+}
+
+func (e *EVM) InvokeSolidityWithValue(ctx context.Context, sender address.Address, target address.Address, selector []byte, inputData []byte, value big.Int) (*api.MsgLookup, error) {
 	params := append(selector, inputData...)
 	var buffer bytes.Buffer
 	err := cbg.WriteByteArray(&buffer, params)
@@ -115,7 +119,7 @@ func (e *EVM) InvokeSolidity(ctx context.Context, sender address.Address, target
 	msg := &types.Message{
 		To:       target,
 		From:     sender,
-		Value:    big.Zero(),
+		Value:    value,
 		Method:   builtintypes.MethodsEVM.InvokeContract,
 		GasLimit: build.BlockGasLimit, // note: we hardcode block gas limit due to slightly broken gas estimation - https://github.com/filecoin-project/lotus/issues/10041
 		Params:   params,

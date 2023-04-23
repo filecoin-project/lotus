@@ -117,11 +117,8 @@ func TestReward(t *testing.T) {
 		{maxFeePerGas: big.NewInt(50), maxPriorityFeePerGas: big.NewInt(200), answer: big.NewInt(-50)},
 	}
 	for _, tc := range testcases {
-		tx := ethtypes.EthTx{
-			MaxFeePerGas:         ethtypes.EthBigInt(tc.maxFeePerGas),
-			MaxPriorityFeePerGas: ethtypes.EthBigInt(tc.maxPriorityFeePerGas),
-		}
-		reward := tx.Reward(baseFee)
+		msg := &types.Message{GasFeeCap: tc.maxFeePerGas, GasPremium: tc.maxPriorityFeePerGas}
+		reward := msg.EffectiveGasPremium(baseFee)
 		require.Equal(t, 0, reward.Int.Cmp(tc.answer.Int), reward, tc.answer)
 	}
 }
@@ -140,20 +137,20 @@ func TestRewardPercentiles(t *testing.T) {
 		{
 			percentiles: []float64{25, 50, 75, 100},
 			txGasRewards: []gasRewardTuple{
-				{gas: uint64(0), reward: ethtypes.EthBigInt(big.NewInt(300))},
-				{gas: uint64(100), reward: ethtypes.EthBigInt(big.NewInt(200))},
-				{gas: uint64(350), reward: ethtypes.EthBigInt(big.NewInt(100))},
-				{gas: uint64(500), reward: ethtypes.EthBigInt(big.NewInt(600))},
-				{gas: uint64(300), reward: ethtypes.EthBigInt(big.NewInt(700))},
+				{gasUsed: int64(0), premium: big.NewInt(300)},
+				{gasUsed: int64(100), premium: big.NewInt(200)},
+				{gasUsed: int64(350), premium: big.NewInt(100)},
+				{gasUsed: int64(500), premium: big.NewInt(600)},
+				{gasUsed: int64(300), premium: big.NewInt(700)},
 			},
 			answer: []int64{200, 700, 700, 700},
 		},
 	}
 	for _, tc := range testcases {
 		rewards, totalGasUsed := calculateRewardsAndGasUsed(tc.percentiles, tc.txGasRewards)
-		gasUsed := uint64(0)
+		var gasUsed int64
 		for _, tx := range tc.txGasRewards {
-			gasUsed += tx.gas
+			gasUsed += tx.gasUsed
 		}
 		ans := []ethtypes.EthBigInt{}
 		for _, bi := range tc.answer {

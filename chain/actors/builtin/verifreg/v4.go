@@ -119,6 +119,12 @@ func (s *state4) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 
 }
 
+func (s *state4) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+
+	return nil, xerrors.Errorf("unsupported in actors v4")
+
+}
+
 func (s *state4) ActorKey() string {
 	return manifest.VerifregKey
 }

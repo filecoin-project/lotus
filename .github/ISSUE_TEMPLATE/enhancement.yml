@@ -7,13 +7,7 @@ body:
     label: Checklist
     description: Please check off the following boxes before continuing to create an improvement suggestion!
     options:
-      - label: This is **not** a new feature or an enhancement to the Filecoin protocol. If it is,  please open an [FIP issue](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0001.md).
-        required: true
-      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Ffeature&template=feature_request.yml) instead.
-        required: true
-      - label: This is **not** brainstorming ideas. If you have an idea you'd like to discuss, please open a new discussion on [the lotus forum](https://github.com/filecoin-project/lotus/discussions/categories/ideas) and select the category as `Ideas`.
-        required: true
-      - label: I **have** a specific, actionable, and well motivated improvement to propose.
+      - label: I **have** a specific, actionable, and well motivated improvement to an existing lotus feature.
         required: true
 - type: checkboxes
   attributes:
@@ -22,19 +16,11 @@ body:
     options:
       - label: lotus daemon - chain sync
         required: false
-      - label: lotus miner - mining and block production
+      - label: lotus fvm/fevm - Lotus FVM and FEVM interactions
         required: false
       - label: lotus miner/worker - sealing
         required: false
-      - label: lotus miner - proving(WindowPoSt)
-        required: false
-      - label: lotus miner/market - storage deal
-        required: false
-      - label: lotus miner/market - retrieval deal
-        required: false
-      - label: lotus miner/market - data transfer
-        required: false
-      - label: lotus client
+      - label: lotus miner - proving(WindowPoSt/WinningPoSt)
         required: false
       - label: lotus JSON-RPC API
         required: false
@@ -45,9 +31,17 @@ body:
 - type: textarea
   id: request
   attributes:
-    label: Improvement Suggestion
-    description: A clear and concise description of what the motivation or the current problem is and what is the suggested improvement?
-    placeholder: Ex. Currently lotus... However, as a storage provider, I'd like...
+    label: Enhancement Suggestion
+    description: A clear and concise description of the suggested enhancement?
+    placeholder: Ex. Currently lotus... However it would be great if [enhancement] was implemented... With the ability to...
+  validations:
+    required: true
+- type: textarea
+  id: request
+  attributes:
+    label: Use-Case
+    description: How would this enhancement help you?
+    placeholder: Ex. With the [enhancement] node operators would be able to... For Storage Providers it would enable...
   validations:
     required: true
 

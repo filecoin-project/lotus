@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	hraft "github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/ipfs/go-log/v2"
@@ -156,7 +157,7 @@ func (rw *raftWrapper) makeStores() error {
 	snapstore, err := hraft.NewFileSnapshotStoreWithLogger(
 		df,
 		RaftMaxSnapshots,
-		zap.NewStdLog(log.Logger("raft-snapshot").SugaredLogger.Desugar()),
+		hclog.FromStandardLogger(zap.NewStdLog(log.Logger("raft-snapshot").SugaredLogger.Desugar()), hclog.DefaultOptions),
 	)
 	if err != nil {
 		return err

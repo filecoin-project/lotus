@@ -3,11 +3,13 @@ package rpcenc
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
@@ -20,6 +22,9 @@ import (
 
 type ReaderHandler struct {
 	readApi func(ctx context.Context, r io.Reader) ([]byte, error)
+
+	cont   chan struct{}
+	subErr error
 }
 
 func (h *ReaderHandler) ReadAllApi(ctx context.Context, r io.Reader, mustRedir bool) ([]byte, error) {
@@ -29,6 +34,24 @@ func (h *ReaderHandler) ReadAllApi(ctx context.Context, r io.Reader, mustRedir b
 		}
 	}
 	return h.readApi(ctx, r)
+}
+
+func (h *ReaderHandler) ReadAllWaiting(ctx context.Context, r io.Reader, mustRedir bool) ([]byte, error) {
+	if mustRedir {
+		if err := r.(*RpcReader).MustRedirect(); err != nil {
+			return nil, err
+		}
+	}
+
+	h.cont <- struct{}{}
+	<-h.cont
+
+	var m []byte
+	m, h.subErr = h.readApi(ctx, r)
+
+	h.cont <- struct{}{}
+
+	return m, h.subErr
 }
 
 func (h *ReaderHandler) ReadStartAndApi(ctx context.Context, r io.Reader, mustRedir bool) ([]byte, error) {
@@ -54,7 +77,12 @@ func (h *ReaderHandler) CloseReader(ctx context.Context, r io.Reader) error {
 }
 
 func (h *ReaderHandler) ReadAll(ctx context.Context, r io.Reader) ([]byte, error) {
-	return ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, xerrors.Errorf("readall: %w", err)
+	}
+
+	return b, nil
 }
 
 func (h *ReaderHandler) ReadNullLen(ctx context.Context, r io.Reader) (int64, error) {
@@ -193,4 +221,123 @@ func TestReaderRedirect(t *testing.T) {
 
 	err = redirClient.CloseReader(context.TODO(), strings.NewReader("rediracted pooooootato"))
 	require.NoError(t, err)
+}
+
+func TestReaderRedirectDrop(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("test %d", i), testReaderRedirectDrop)
+	}
+}
+
+func testReaderRedirectDrop(t *testing.T) {
+	// lower timeout so that the dangling connection between client and reader is dropped quickly
+	// after the test. Otherwise httptest.Close is blocked.
+	Timeout = 90 * time.Millisecond
+
+	var allClient struct {
+		ReadAll func(ctx context.Context, r io.Reader) ([]byte, error)
+	}
+
+	{
+		allServerHandler := &ReaderHandler{}
+		readerHandler, readerServerOpt := ReaderParamDecoder()
+		rpcServer := jsonrpc.NewServer(readerServerOpt)
+		rpcServer.Register("ReaderHandler", allServerHandler)
+
+		mux := mux.NewRouter()
+		mux.Handle("/rpc/v0", rpcServer)
+		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
+
+		testServ := httptest.NewServer(mux)
+		defer testServ.Close()
+		t.Logf("test server reading: %s", testServ.URL)
+
+		re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
+		closer, err := jsonrpc.NewMergeClient(context.Background(), "ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&allClient}, nil, re)
+		require.NoError(t, err)
+
+		defer closer()
+	}
+
+	var redirClient struct {
+		ReadAllWaiting func(ctx context.Context, r io.Reader, mustRedir bool) ([]byte, error)
+	}
+	contCh := make(chan struct{})
+
+	allServerHandler := &ReaderHandler{readApi: allClient.ReadAll, cont: contCh}
+	readerHandler, readerServerOpt := ReaderParamDecoder()
+	rpcServer := jsonrpc.NewServer(readerServerOpt)
+	rpcServer.Register("ReaderHandler", allServerHandler)
+
+	mux := mux.NewRouter()
+	mux.Handle("/rpc/v0", rpcServer)
+	mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
+
+	testServ := httptest.NewServer(mux)
+	defer testServ.Close()
+	t.Logf("test server redirecting: %s", testServ.URL)
+
+	re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
+	closer, err := jsonrpc.NewMergeClient(context.Background(), "http://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&redirClient}, nil, re)
+	require.NoError(t, err)
+
+	defer closer()
+
+	var done sync.WaitGroup
+
+	// Happy case
+
+	done.Add(1)
+	go func() {
+		defer done.Done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		read, err := redirClient.ReadAllWaiting(ctx, strings.NewReader("rediracted pooooootato"), true)
+		require.NoError(t, err)
+		require.Equal(t, "rediracted pooooootato", string(read), "potatoes weren't equal")
+	}()
+
+	<-contCh             // exec enter ReadAllWaiting
+	contCh <- struct{}{} // stert subcall
+	<-contCh             // wait for subcall to finish
+
+	done.Wait()
+
+	fmt.Println("---------------------")
+
+	// Redir client drops before subcall
+	done.Add(1)
+
+	go func() {
+		defer done.Done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		_, err := redirClient.ReadAllWaiting(ctx, strings.NewReader("rediracted pooooootato"), true)
+		require.ErrorContains(t, err, "sendRequest failed")
+	}()
+
+	// wait for execution to enter ReadAllWaiting
+	<-contCh
+
+	// kill redirecting server connection
+	testServ.CloseClientConnections()
+
+	// ReadAllWaiting should fail
+	done.Wait()
+
+	// resume execution in ReadAllWaiting, calling redicect
+	contCh <- struct{}{}
+
+	// wait for subcall to finish
+	<-contCh
+
+	estr := allServerHandler.subErr.Error()
+
+	require.True(t,
+		strings.Contains(estr, "decoding params for 'ReaderHandler.ReadAll' (param: 0; custom decoder): context canceled") ||
+			strings.Contains(estr, "readall: unexpected EOF"), "unexpected error: %s", estr)
 }

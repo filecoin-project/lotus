@@ -153,14 +153,13 @@ func TestFEVMRecursive2(t *testing.T) {
 	require.Equal(t, 2, len(events))
 }
 
-// TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth. It currently
-// succeeds succeeds up to 237 times.
+// TestFEVMRecursiveDelegatecallCount tests the maximum delegatecall recursion depth.
 func TestFEVMRecursiveDelegatecallCount(t *testing.T) {
 
 	ctx, cancel, client := kit.SetupFEVMTest(t)
 	defer cancel()
 
-	highestSuccessCount := uint64(225)
+	highestSuccessCount := uint64(226)
 
 	filename := "contracts/RecursiveDelegeatecall.hex"
 	recursiveDelegatecallSuccess(ctx, t, client, filename, uint64(1))
@@ -621,7 +620,7 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
 	t.Run("n=251,r=166", testN(251, 166, exitcode.Ok))
 
-	t.Run("n=0,r=253-fails", testN(0, 253, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=0,r=253-fails", testN(0, 254, exitcode.ExitCode(33))) // 33 means transaction reverted
 	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }
 
@@ -856,6 +855,39 @@ func TestFEVMBareTransferTriggersSmartContractLogic(t *testing.T) {
 
 	// The receive() function emits one log, that's how we know we hit it.
 	require.Len(t, receipt.Logs, 1)
+}
+
+// This test ensures that we can deploy new contracts from a solidity call to `transfer` without
+// exceeding the 10M gas limit.
+func TestFEVMTestDeployOnTransfer(t *testing.T) {
+	ctx, cancel, client := kit.SetupFEVMTest(t)
+	defer cancel()
+
+	fromAddr := client.DefaultKey.Address
+	t.Log("from - ", fromAddr)
+
+	//create contract A
+	filenameStorage := "contracts/ValueSender.hex"
+	fromAddr, contractAddr := client.EVM().DeployContractFromFilename(ctx, filenameStorage)
+
+	//send to some random address.
+	params := [32]byte{}
+	params[30] = 0xff
+	randomAddr, err := ethtypes.CastEthAddress(params[12:])
+	value := big.NewInt(100)
+	entryPoint := kit.CalcFuncSignature("sendEthToB(address)")
+	require.NoError(t, err)
+	ret, err := client.EVM().InvokeSolidityWithValue(ctx, fromAddr, contractAddr, entryPoint, params[:], value)
+	require.NoError(t, err)
+	require.True(t, ret.Receipt.ExitCode.IsSuccess())
+
+	balance, err := client.EVM().EthGetBalance(ctx, randomAddr, "latest")
+	require.NoError(t, err)
+	require.Equal(t, value.Int, balance.Int)
+
+	filAddr, err := randomAddr.ToFilecoinAddress()
+	require.NoError(t, err)
+	client.AssertActorType(ctx, filAddr, manifest.PlaceholderKey)
 }
 
 func TestFEVMProxyUpgradeable(t *testing.T) {

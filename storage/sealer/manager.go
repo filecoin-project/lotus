@@ -289,14 +289,20 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.remoteHnd.ServeHTTP(w, r)
 }
 
-func schedNop(context.Context, Worker) error {
-	return nil
+var schedNop = PrepareAction{
+	Action: func(ctx context.Context, w Worker) error {
+		return nil
+	},
+	PrepType: sealtasks.TTNoop,
 }
 
-func (m *Manager) schedFetch(sector storiface.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) func(context.Context, Worker) error {
-	return func(ctx context.Context, worker Worker) error {
-		_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, ft, ptype, am))
-		return err
+func (m *Manager) schedFetch(sector storiface.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) PrepareAction {
+	return PrepareAction{
+		Action: func(ctx context.Context, worker Worker) error {
+			_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, ft, ptype, am))
+			return err
+		},
+		PrepType: sealtasks.TTFetch,
 	}
 }
 
@@ -315,16 +321,19 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 
 	// if the selected worker does NOT have the sealed files for the sector, instruct it to fetch it from a worker that has them and
 	// put it in the sealing scratch space.
-	sealFetch := func(ctx context.Context, worker Worker) error {
-		log.Debugf("copy sealed/cache sector data for sector %d", sector.ID)
-		_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy))
-		_, err2 := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, storiface.AcquireCopy))
+	sealFetch := PrepareAction{
+		Action: func(ctx context.Context, worker Worker) error {
+			log.Debugf("copy sealed/cache sector data for sector %d", sector.ID)
+			_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy))
+			_, err2 := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, storiface.AcquireCopy))
 
-		if err != nil && err2 != nil {
-			return xerrors.Errorf("cannot unseal piece. error fetching sealed data: %w. error fetching replica data: %w", err, err2)
-		}
+			if err != nil && err2 != nil {
+				return xerrors.Errorf("cannot unseal piece. error fetching sealed data: %w. error fetching replica data: %w", err, err2)
+			}
 
-		return nil
+			return nil
+		},
+		PrepType: sealtasks.TTFetch,
 	}
 
 	if unsealed == nil {

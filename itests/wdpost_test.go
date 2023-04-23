@@ -57,9 +57,6 @@ func TestWindowedPost(t *testing.T) {
 
 func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, upgradeHeight abi.ChainEpoch) {
 
-	/// XXX  TEMPORARILY DISABLED UNTIL NV18 MIGRATION IS IMPLEMENTED
-	t.Skip("temporarily disabled as nv18 migration is not yet implemented")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -392,6 +389,9 @@ waitForProof:
 	inclTs, err := client.ChainGetTipSet(ctx, pmr.TipSet)
 	require.NoError(t, err)
 
+	inclTsParents, err := client.ChainGetTipSet(ctx, inclTs.Parents())
+	require.NoError(t, err)
+
 	nv, err := client.StateNetworkVersion(ctx, pmr.TipSet)
 	require.NoError(t, err)
 	require.Equal(t, network.Version19, nv)
@@ -412,8 +412,8 @@ waitForProof:
 
 	slmsg.Params = v1PostParams.Bytes()
 
-	// Simulate call on inclTs's parents, so that the partition isn't already proven
-	call, err := client.StateCall(ctx, slmsg, inclTs.Parents())
+	// Simulate call on inclTsParents's parents, so that the partition isn't already proven
+	call, err := client.StateCall(ctx, slmsg, inclTsParents.Parents())
 	require.NoError(t, err)
 	require.True(t, call.MsgRct.ExitCode.IsSuccess())
 }

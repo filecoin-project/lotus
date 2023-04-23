@@ -26,17 +26,13 @@ const UnixfsLinksPerLevel = 1024
 
 const AllowableClockDriftSecs = uint64(1)
 
-// TODO: nv19: Re-enable when migration is setup
-//// Used by tests and some obscure tooling
-///* inline-gen template
-//
-//const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
-//
-///* inline-gen start */
+// Used by tests and some obscure tooling
+/* inline-gen template
+const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
+/* inline-gen start */
+const TestNetworkVersion = network.Version20
 
-const TestNetworkVersion = network.Version18
-
-///* inline-gen end */
+/* inline-gen end */
 
 // Epochs
 const ForkLengthThreshold = Finality

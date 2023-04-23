@@ -31,7 +31,7 @@ var configDefaultCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		c := config.DefaultStorageMiner()
 
-		cb, err := config.ConfigUpdate(c, nil, !cctx.Bool("no-comment"))
+		cb, err := config.ConfigUpdate(c, nil, config.Commented(!cctx.Bool("no-comment")))
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ var configUpdateCmd = &cli.Command{
 
 		cfgDef := config.DefaultStorageMiner()
 
-		updated, err := config.ConfigUpdate(cfgNode, cfgDef, !cctx.Bool("no-comment"))
+		updated, err := config.ConfigUpdate(cfgNode, cfgDef, config.Commented(!cctx.Bool("no-comment")))
 		if err != nil {
 			return err
 		}

@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -80,7 +79,7 @@ var genesisNewCmd = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, genb, 0644); err != nil {
+		if err := os.WriteFile(genf, genb, 0644); err != nil {
 			return err
 		}
 
@@ -103,7 +102,7 @@ var genesisAddMinerCmd = &cli.Command{
 		}
 
 		var template genesis.Template
-		genb, err := ioutil.ReadFile(genf)
+		genb, err := os.ReadFile(genf)
 		if err != nil {
 			return xerrors.Errorf("read genesis template: %w", err)
 		}
@@ -117,7 +116,7 @@ var genesisAddMinerCmd = &cli.Command{
 			return xerrors.Errorf("expand preseal file path: %w", err)
 		}
 		miners := map[string]genesis.Miner{}
-		minb, err := ioutil.ReadFile(minf)
+		minb, err := os.ReadFile(minf)
 		if err != nil {
 			return xerrors.Errorf("read preseal file: %w", err)
 		}
@@ -156,7 +155,7 @@ var genesisAddMinerCmd = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, genb, 0644); err != nil {
+		if err := os.WriteFile(genf, genb, 0644); err != nil {
 			return err
 		}
 
@@ -196,7 +195,7 @@ var genesisAddMsigsCmd = &cli.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return xerrors.Errorf("read genesis template: %w", err)
 		}
@@ -237,7 +236,7 @@ var genesisAddMsigsCmd = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0644); err != nil {
 			return err
 		}
 		return nil
@@ -339,7 +338,7 @@ var genesisSetVRKCmd = &cli.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return xerrors.Errorf("read genesis template: %w", err)
 		}
@@ -404,7 +403,7 @@ var genesisSetVRKCmd = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0644); err != nil {
 			return err
 		}
 		return nil
@@ -435,7 +434,7 @@ var genesisSetRemainderCmd = &cli.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return xerrors.Errorf("read genesis template: %w", err)
 		}
@@ -500,7 +499,7 @@ var genesisSetRemainderCmd = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0644); err != nil {
 			return err
 		}
 		return nil
@@ -529,7 +528,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return xerrors.Errorf("read genesis template: %w", err)
 		}
@@ -550,7 +549,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0644); err != nil {
 			return err
 		}
 		return nil
@@ -607,7 +606,7 @@ var genesisSetVRKSignersCmd = &cli.Command{
 		}
 
 		var template genesis.Template
-		b, err := ioutil.ReadFile(genf)
+		b, err := os.ReadFile(genf)
 		if err != nil {
 			return xerrors.Errorf("read genesis template: %w", err)
 		}
@@ -662,7 +661,7 @@ var genesisSetVRKSignersCmd = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(genf, b, 0644); err != nil {
+		if err := os.WriteFile(genf, b, 0644); err != nil {
 			return err
 		}
 		return nil

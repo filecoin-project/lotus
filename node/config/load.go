@@ -17,17 +17,46 @@ import (
 
 // FromFile loads config from a specified file overriding defaults specified in
 // the def parameter. If file does not exist or is empty defaults are assumed.
-func FromFile(path string, def interface{}) (interface{}, error) {
+func FromFile(path string, opts ...LoadCfgOpt) (interface{}, error) {
+	var loadOpts cfgLoadOpts
+	var err error
+	for _, opt := range opts {
+		if err = opt(&loadOpts); err != nil {
+			return nil, xerrors.Errorf("failed to apply load cfg option: %w", err)
+		}
+	}
+	var def interface{}
+	if loadOpts.defaultCfg != nil {
+		def, err = loadOpts.defaultCfg()
+		if err != nil {
+			return nil, xerrors.Errorf("no config found")
+		}
+	}
+	// check for loadability
 	file, err := os.Open(path)
 	switch {
 	case os.IsNotExist(err):
+		if loadOpts.canFallbackOnDefault != nil {
+			if err := loadOpts.canFallbackOnDefault(); err != nil {
+				return nil, err
+			}
+		}
 		return def, nil
 	case err != nil:
 		return nil, err
 	}
-
-	defer file.Close() //nolint:errcheck // The file is RO
-	return FromReader(file, def)
+	defer file.Close() //nolint:errcheck,staticcheck // The file is RO
+	cfgBs, err := io.ReadAll(file)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to read config for validation checks %w", err)
+	}
+	buf := bytes.NewBuffer(cfgBs)
+	if loadOpts.validate != nil {
+		if err := loadOpts.validate(buf.String()); err != nil {
+			return nil, xerrors.Errorf("config failed validation: %w", err)
+		}
+	}
+	return FromReader(buf, def)
 }
 
 // FromReader loads config from a reader instance.
@@ -46,7 +75,88 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 	return cfg, nil
 }
 
-func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
+type cfgLoadOpts struct {
+	defaultCfg           func() (interface{}, error)
+	canFallbackOnDefault func() error
+	validate             func(string) error
+}
+
+type LoadCfgOpt func(opts *cfgLoadOpts) error
+
+func SetDefault(f func() (interface{}, error)) LoadCfgOpt {
+	return func(opts *cfgLoadOpts) error {
+		opts.defaultCfg = f
+		return nil
+	}
+}
+
+func SetCanFallbackOnDefault(f func() error) LoadCfgOpt {
+	return func(opts *cfgLoadOpts) error {
+		opts.canFallbackOnDefault = f
+		return nil
+	}
+}
+
+func SetValidate(f func(string) error) LoadCfgOpt {
+	return func(opts *cfgLoadOpts) error {
+		opts.validate = f
+		return nil
+	}
+}
+
+func NoDefaultForSplitstoreTransition() error {
+	return xerrors.Errorf("FullNode config not found and fallback to default disallowed while we transition to splitstore discard default.  Use `lotus config default` to set this repo up with a default config.  Be sure to set `EnableSplitstore` to `false` if you are running a full archive node")
+}
+
+// Match the EnableSplitstore field
+func MatchEnableSplitstoreField(s string) bool {
+	enableSplitstoreRx := regexp.MustCompile(`(?m)^\s*EnableSplitstore\s*=`)
+	return enableSplitstoreRx.MatchString(s)
+}
+
+func ValidateSplitstoreSet(cfgRaw string) error {
+	if !MatchEnableSplitstoreField(cfgRaw) {
+		return xerrors.Errorf("Config does not contain explicit set of EnableSplitstore field, refusing to load. Please explicitly set EnableSplitstore. Set it to false if you are running a full archival node")
+	}
+	return nil
+}
+
+type cfgUpdateOpts struct {
+	comment         bool
+	keepUncommented func(string) bool
+}
+
+// UpdateCfgOpt is a functional option for updating the config
+type UpdateCfgOpt func(opts *cfgUpdateOpts) error
+
+// KeepUncommented sets a function for matching default valeus that should remain uncommented during
+// a config update that comments out default values.
+func KeepUncommented(f func(string) bool) UpdateCfgOpt {
+	return func(opts *cfgUpdateOpts) error {
+		opts.keepUncommented = f
+		return nil
+	}
+}
+
+func Commented(commented bool) UpdateCfgOpt {
+	return func(opts *cfgUpdateOpts) error {
+		opts.comment = commented
+		return nil
+	}
+}
+
+func DefaultKeepUncommented() UpdateCfgOpt {
+	return KeepUncommented(MatchEnableSplitstoreField)
+}
+
+// ConfigUpdate takes in a config and a default config and optionally comments out default values
+func ConfigUpdate(cfgCur, cfgDef interface{}, opts ...UpdateCfgOpt) ([]byte, error) {
+	var updateOpts cfgUpdateOpts
+	for _, opt := range opts {
+		if err := opt(&updateOpts); err != nil {
+			return nil, xerrors.Errorf("failed to apply update cfg option to ConfigUpdate's config: %w", err)
+		}
+	}
 	var nodeStr, defStr string
 	if cfgDef != nil {
 		buf := new(bytes.Buffer)
@@ -68,7 +178,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 		nodeStr = buf.String()
 	}
 
-	if comment {
+	if updateOpts.comment {
 		// create a map of default lines, so we can comment those out later
 		defLines := strings.Split(defStr, "\n")
 		defaults := map[string]struct{}{}
@@ -130,8 +240,10 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 				}
 			}
 
-			// if there is the same line in the default config, comment it out it output
-			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 {
+			// filter lines from options
+			optsFilter := updateOpts.keepUncommented != nil && updateOpts.keepUncommented(line)
+			// if there is the same line in the default config, comment it out in output
+			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 && !optsFilter {
 				line = pad + "#" + line[len(pad):]
 			}
 			outLines = append(outLines, line)
@@ -159,5 +271,5 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 }
 
 func ConfigComment(t interface{}) ([]byte, error) {
-	return ConfigUpdate(t, nil, true)
+	return ConfigUpdate(t, nil, Commented(true), DefaultKeepUncommented())
 }

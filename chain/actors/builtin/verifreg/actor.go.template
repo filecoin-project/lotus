@@ -83,6 +83,7 @@ type State interface {
 	GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error)
 	GetClaim(providerIdAddr address.Address, claimId ClaimId) (*Claim, bool, error)
 	GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error)
+	GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error)
 	GetState() interface{}
 }
 

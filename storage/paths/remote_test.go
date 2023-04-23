@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -48,7 +47,7 @@ func createTestStorage(t *testing.T, p string, seal bool, att ...*paths.Local) s
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	require.NoError(t, err)
 
-	require.NoError(t, ioutil.WriteFile(filepath.Join(p, metaFile), b, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(p, metaFile), b, 0644))
 
 	for _, s := range att {
 		require.NoError(t, s.OpenPath(context.Background(), p))
@@ -130,7 +129,7 @@ func TestMoveShared(t *testing.T) {
 
 	data := make([]byte, 2032)
 	data[1] = 54
-	require.NoError(t, ioutil.WriteFile(sp.Sealed, data, 0666))
+	require.NoError(t, os.WriteFile(sp.Sealed, data, 0666))
 	fmt.Println("write to ", sp.Sealed)
 
 	require.NoError(t, index.StorageDeclareSector(ctx, storiface.ID(sid.Sealed), s1ref.ID, storiface.FTSealed, true))
@@ -145,7 +144,7 @@ func TestMoveShared(t *testing.T) {
 	require.Equal(t, id1, storiface.ID(sid.Sealed))
 	fmt.Println("read from ", sp.Sealed)
 
-	read, err := ioutil.ReadFile(sp.Sealed)
+	read, err := os.ReadFile(sp.Sealed)
 	require.NoError(t, err)
 	require.EqualValues(t, data, read)
 }
@@ -357,7 +356,7 @@ func TestReader(t *testing.T) {
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, nil)
 
-				f, err := ioutil.TempFile("", "TestReader-")
+				f, err := os.CreateTemp("", "TestReader-")
 				require.NoError(t, err)
 				_, err = f.Write(bz)
 				require.NoError(t, err)
@@ -502,7 +501,7 @@ func TestReader(t *testing.T) {
 					require.NoError(t, os.Remove(f.Name()))
 				}
 
-				bz, err := ioutil.ReadAll(rd)
+				bz, err := io.ReadAll(rd)
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedSectorBytes, bz)
 			}

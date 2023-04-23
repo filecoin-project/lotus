@@ -30,22 +30,6 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Sector (abi.SectorID) (struct)
-	if len("Sector") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Sector\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sector"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("Sector")); err != nil {
-		return err
-	}
-
-	if err := t.Sector.MarshalCBOR(cw); err != nil {
-		return err
-	}
-
 	// t.ID (uuid.UUID) (array)
 	if len("ID") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"ID\" was too long")
@@ -67,6 +51,22 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 	}
 
 	if _, err := cw.Write(t.ID[:]); err != nil {
+		return err
+	}
+
+	// t.Sector (abi.SectorID) (struct)
+	if len("Sector") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Sector\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sector"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Sector")); err != nil {
+		return err
+	}
+
+	if err := t.Sector.MarshalCBOR(cw); err != nil {
 		return err
 	}
 	return nil
@@ -110,17 +110,7 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		switch name {
-		// t.Sector (abi.SectorID) (struct)
-		case "Sector":
-
-			{
-
-				if err := t.Sector.UnmarshalCBOR(cr); err != nil {
-					return xerrors.Errorf("unmarshaling t.Sector: %w", err)
-				}
-
-			}
-			// t.ID (uuid.UUID) (array)
+		// t.ID (uuid.UUID) (array)
 		case "ID":
 
 			maj, extra, err = cr.ReadHeader()
@@ -143,6 +133,16 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) (err error) {
 
 			if _, err := io.ReadFull(cr, t.ID[:]); err != nil {
 				return err
+			}
+			// t.Sector (abi.SectorID) (struct)
+		case "Sector":
+
+			{
+
+				if err := t.Sector.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.Sector: %w", err)
+				}
+
 			}
 
 		default:
@@ -294,22 +294,6 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Local (bool) (bool)
-	if len("Local") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Local\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Local"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("Local")); err != nil {
-		return err
-	}
-
-	if err := cbg.WriteBool(w, t.Local); err != nil {
-		return err
-	}
-
 	// t.URL (string) (string)
 	if len("URL") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"URL\" was too long")
@@ -330,6 +314,22 @@ func (t *SectorLocation) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := io.WriteString(w, string(t.URL)); err != nil {
+		return err
+	}
+
+	// t.Local (bool) (bool)
+	if len("Local") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Local\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Local"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Local")); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteBool(w, t.Local); err != nil {
 		return err
 	}
 
@@ -398,7 +398,18 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		switch name {
-		// t.Local (bool) (bool)
+		// t.URL (string) (string)
+		case "URL":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.URL = string(sval)
+			}
+			// t.Local (bool) (bool)
 		case "Local":
 
 			maj, extra, err = cr.ReadHeader()
@@ -415,17 +426,6 @@ func (t *SectorLocation) UnmarshalCBOR(r io.Reader) (err error) {
 				t.Local = true
 			default:
 				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
-			}
-			// t.URL (string) (string)
-		case "URL":
-
-			{
-				sval, err := cbg.ReadString(cr)
-				if err != nil {
-					return err
-				}
-
-				t.URL = string(sval)
 			}
 			// t.Headers ([]storiface.SecDataHttpHeader) (slice)
 		case "Headers":
