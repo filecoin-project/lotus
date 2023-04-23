@@ -2,21 +2,28 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	levelds "github.com/ipfs/go-ds-leveldb"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	market11 "github.com/filecoin-project/go-state-types/builtin/v11/market"
+	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,6 +41,85 @@ var marketCmd = &cli.Command{
 		marketExportDatastoreCmd,
 		marketImportDatastoreCmd,
 		marketDealsTotalStorageCmd,
+		marketCronStateCmd,
+	},
+}
+
+var marketCronStateCmd = &cli.Command{
+	Name:  "cron-state",
+	Usage: "Display summary of all deal operation state scheduled for cron processing",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to call method on (pass comma separated array of cids)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+		a, err := api.StateReadState(ctx, builtin.StorageMarketActorAddr, ts.Key())
+		if err != nil {
+			return err
+		}
+		st, ok := a.State.(map[string]interface{})
+		if !ok {
+			return xerrors.Errorf("failed to cast state map to expected form")
+		}
+		dealOpsRaw, ok := st["DealOpsByEpoch"].(map[string]interface{})
+		if !ok {
+			return xerrors.Errorf("failed to read sectors root from state")
+		}
+		// string is of the form "/:bafy.." so [2:] to drop the path
+		dealOpsRoot, err := cid.Parse(dealOpsRaw["/"])
+		if err != nil {
+			return err
+		}
+		bs := ReadOnlyAPIBlockstore{api}
+		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
+		dealOpsEpochSet, err := adt.AsMap(adtStore, dealOpsRoot, builtin.DefaultHamtBitwidth)
+		if err != nil {
+			return err
+		}
+		dealOpsRecord := make(map[uint64][]abi.DealID)
+		if err := dealOpsEpochSet.ForEach(&cbg.Deferred{}, func(eKey string) error {
+			e, err := abi.ParseUIntKey(eKey)
+			if err != nil {
+				return err
+			}
+			dealOpsRecord[e] = make([]abi.DealID, 0)
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		dealOpsMultiMap, err := market11.AsSetMultimap(adtStore, dealOpsRoot, builtin.DefaultHamtBitwidth, builtin.DefaultHamtBitwidth)
+		if err != nil {
+			return err
+		}
+		for e := range dealOpsRecord {
+			e := e
+			err := dealOpsMultiMap.ForEach(abi.ChainEpoch(e), func(id abi.DealID) error {
+				dealOpsRecord[e] = append(dealOpsRecord[e], id)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		jsonStr, err := json.Marshal(dealOpsRecord)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s\n", jsonStr)
+		return nil
 	},
 }
 
