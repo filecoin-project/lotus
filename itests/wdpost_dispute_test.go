@@ -25,39 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// func TestDisputeFailsOnGoodPost(t *testing.T) {
-// 	kit.Expensive(t)
-
-// 	kit.QuietMiningLogs()
-
-// 	blocktime := 2 * time.Millisecond
-
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
-
-// 	var (
-// 		client     kit.TestFullNode
-// 		chainMiner kit.TestMiner
-// 	)
-
-// 	// First, configure a miner. After sealing, it will post successfully
-// 	//
-// 	// Then we're going to try to dispute it to no avail
-// 	opts := []kit.NodeOpt{kit.WithAllSubsystems()}
-// 	ens := kit.NewEnsemble(t, kit.MockProofs()).
-// 		FullNode(&client, opts...).
-// 		Miner(&chainMiner, &client, opts...).
-// 		Start()
-
-// 	defaultFrom, err := client.WalletDefaultAddress(ctx)
-// 	require.NoError(t, err)
-
-// 	// Mine.
-// 	ens.InterconnectAll().BeginMining(blocktime, &chainMiner)
-// 	chainMiner.PledgeSectors(ctx, 10, 0, nil)
-
-// }
-
 func TestWindowPostDispute(t *testing.T) {
 	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
 	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
