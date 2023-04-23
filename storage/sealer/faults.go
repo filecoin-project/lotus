@@ -97,13 +97,7 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 				return
 			}
 
-			wpp, err := sector.ProofType.RegisteredWindowPoStProof()
-			if err != nil {
-				addBad(sector.ID, fmt.Sprint("can't get proof type"))
-				return
-			}
-
-			ch, err := ffi.GeneratePoStFallbackSectorChallenges(wpp, sector.ID.Miner, postRand, []abi.SectorNumber{
+			ch, err := ffi.GeneratePoStFallbackSectorChallenges(pp, sector.ID.Miner, postRand, []abi.SectorNumber{
 				sector.ID.Number,
 			})
 			if err != nil {
@@ -126,7 +120,7 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 				SealedCID:    commr,
 				Challenge:    ch.Challenges[sector.ID.Number],
 				Update:       update,
-			}, wpp)
+			}, pp)
 			if err != nil {
 				log.Warnw("CheckProvable Sector FAULT: generating vanilla proof", "sector", sector, "err", err)
 				addBad(sector.ID, fmt.Sprintf("generating vanilla proof: %s", err))

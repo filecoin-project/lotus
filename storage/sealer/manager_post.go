@@ -11,7 +11,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v6/actors/builtin"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -78,12 +78,12 @@ func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	return proofs, nil
 }
 
-func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
+func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, postProofType abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
 	if !m.disableBuiltinWindowPoSt && !m.windowPoStSched.CanSched(ctx) {
 		// if builtin PoSt isn't disabled, and there are no workers, compute the PoSt locally
 
 		log.Info("GenerateWindowPoSt run at lotus-miner")
-		p, s, err := m.localProver.GenerateWindowPoSt(ctx, minerID, sectorInfo, randomness)
+		p, s, err := m.localProver.GenerateWindowPoSt(ctx, minerID, postProofType, sectorInfo, randomness)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("local prover: %w", err)
 		}
@@ -91,7 +91,7 @@ func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 		return p, s, nil
 	}
 
-	return m.generateWindowPoSt(ctx, minerID, sectorInfo, randomness)
+	return m.generateWindowPoSt(ctx, minerID, postProofType, sectorInfo, randomness)
 }
 
 func dedupeSectorInfo(sectorInfo []proof.ExtendedSectorInfo) []proof.ExtendedSectorInfo {
@@ -107,7 +107,7 @@ func dedupeSectorInfo(sectorInfo []proof.ExtendedSectorInfo) []proof.ExtendedSec
 	return out
 }
 
-func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
+func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, ppt abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
 	var retErr error = nil
 	randomness[31] &= 0x3f
 
@@ -118,11 +118,6 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	}
 
 	spt := sectorInfo[0].SealProof
-
-	ppt, err := spt.RegisteredWindowPoStProof()
-	if err != nil {
-		return nil, nil, err
-	}
 
 	maxPartitionSize, err := builtin.PoStProofWindowPoStPartitionSectors(ppt) // todo proxy through chain/actors
 	if err != nil {
