@@ -18,6 +18,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
+
+	"os"
 )
 
 var log = logging.Logger("main")
@@ -165,6 +167,10 @@ func main() {
 	}
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner
+	// add by sxx
+	os.Setenv("LOTUS_WDPOST", "true")
+	os.Setenv("LOTUS_WNPOST", "true")
+	// end
 	lcli.RunApp(app)
 }
 

@@ -35,9 +35,20 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"io/ioutil"
+	"strings"
+	"path"
+	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
 var _ storiface.Storage = &Sealer{}
+
+// add by lin
+type CarPath struct {
+	Path []string
+}
+// end
 
 func New(sectors SectorProvider) (*Sealer, error) {
 	sb := &Sealer{
@@ -187,7 +198,278 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 	}, nil
 }
 
+// add by lin
+func (sb *Sealer) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, carFilePath string) (abi.PieceInfo, error) {
+	// add by lin
+	isRealData := true
+	sectortype := os.Getenv("LOTUS_SECTOR_TYPE_SXX")
+	if sectortype == "1" {
+		isRealData = false
+	}
+	if !isRealData {
+		if mypieceInfo, err := sb.myAddPiece(ctx, sector, pieceSize); err == nil {
+			return mypieceInfo, nil
+		} else {
+			log.Warn(err)
+		}
+	}
+	// end
+
+	// TODO: allow tuning those:
+	chunk := abi.PaddedPieceSize(4 << 20)
+	parallel := runtime.NumCPU()
+
+	var offset abi.UnpaddedPieceSize
+	for _, size := range existingPieceSizes {
+		offset += size
+	}
+
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return abi.PieceInfo{}, err
+	}
+
+	maxPieceSize := abi.PaddedPieceSize(ssize)
+
+	if offset.Padded()+pieceSize.Padded() > maxPieceSize {
+		return abi.PieceInfo{}, xerrors.Errorf("can't add %d byte piece to sector %v with %d bytes of existing pieces", pieceSize, sector, offset)
+	}
+
+	var done func()
+	var stagedFile *partialfile.PartialFile
+
+	defer func() {
+		if done != nil {
+			done()
+		}
+
+		if stagedFile != nil {
+			if err := stagedFile.Close(); err != nil {
+				log.Errorf("closing staged file: %+v", err)
+			}
+		}
+	}()
+
+	var stagedPath storiface.SectorPaths
+	if len(existingPieceSizes) == 0 {
+		stagedPath, done, err = sb.sectors.AcquireSector(ctx, sector, 0, storiface.FTUnsealed, storiface.PathSealing)
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("acquire unsealed sector: %w", err)
+		}
+
+		stagedFile, err = partialfile.CreatePartialFile(maxPieceSize, stagedPath.Unsealed)
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("creating unsealed sector file: %w", err)
+		}
+	} else {
+		stagedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed, 0, storiface.PathSealing)
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("acquire unsealed sector: %w", err)
+		}
+
+		stagedFile, err = partialfile.OpenPartialFile(maxPieceSize, stagedPath.Unsealed)
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("opening unsealed sector file: %w", err)
+		}
+	}
+
+	w, err := stagedFile.Writer(storiface.UnpaddedByteIndex(offset).Padded(), pieceSize.Padded())
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
+	}
+
+	pw := fr32.NewPadWriter(w)
+
+	// 从path读取car数据
+	worker_car_json_file := filepath.Join(os.Getenv("LOTUS_WORKER_PATH"), "car_path.json")
+	_, err = os.Stat(worker_car_json_file)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("don't have json file of car path")
+	}
+	byteValue, err := ioutil.ReadFile(worker_car_json_file)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("can't read %+v, err: %+v", worker_car_json_file, err)
+	}
+	var carPathConfig CarPath
+	json.Unmarshal(byteValue, &carPathConfig)
+
+	carFileAbsPath := ""
+	pwd, _ := os.Getwd()
+	for _, baseDir := range carPathConfig.Path {
+		joinList := []string{pwd, baseDir, carFilePath}
+		lastAbs := 0
+		for i := len(joinList) - 1; i >= 0; i-- {
+			if path.IsAbs(joinList[i]) {
+				lastAbs = i
+				break
+			}
+		}
+
+		carFileAbsPath = path.Join(joinList[lastAbs:]...)
+
+		_, err = os.Stat(carFileAbsPath)
+		if err == nil {
+			break
+		}
+	}
+
+	log.Infof("zlin: AddPieceOfSxx file name: %+v", carFileAbsPath)
+	file, err := os.Open(carFileAbsPath)
+	defer file.Close()
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("can't add piece to sector with get car fail: %w", err)
+	}
+	filestat, _ := file.Stat()
+	pieceData, err := shared.NewInflatorReader(file, uint64(filestat.Size()), pieceSize)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("can't add piece to sector with read car fail: %w", err)
+	}
+	// 读取结束
+
+	pr := io.TeeReader(io.LimitReader(pieceData, int64(pieceSize)), pw)
+
+	throttle := make(chan []byte, parallel)
+	piecePromises := make([]func() (abi.PieceInfo, error), 0)
+
+	buf := make([]byte, chunk.Unpadded())
+	for i := 0; i < parallel; i++ {
+		if abi.UnpaddedPieceSize(i)*chunk.Unpadded() >= pieceSize {
+			break // won't use this many buffers
+		}
+		throttle <- make([]byte, chunk.Unpadded())
+	}
+
+	for {
+		var read int
+		for rbuf := buf; len(rbuf) > 0; {
+			n, err := pr.Read(rbuf)
+			if err != nil && err != io.EOF {
+				return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
+			}
+
+			rbuf = rbuf[n:]
+			read += n
+
+			if err == io.EOF {
+				break
+			}
+		}
+		if read == 0 {
+			break
+		}
+
+		done := make(chan struct {
+			cid.Cid
+			error
+		}, 1)
+		pbuf := <-throttle
+		copy(pbuf, buf[:read])
+
+		go func(read int) {
+			defer func() {
+				throttle <- pbuf
+			}()
+
+			c, err := sb.pieceCid(sector.ProofType, pbuf[:read])
+			done <- struct {
+				cid.Cid
+				error
+			}{c, err}
+		}(read)
+
+		piecePromises = append(piecePromises, func() (abi.PieceInfo, error) {
+			select {
+			case e := <-done:
+				if e.error != nil {
+					return abi.PieceInfo{}, e.error
+				}
+
+				return abi.PieceInfo{
+					Size:     abi.UnpaddedPieceSize(len(buf[:read])).Padded(),
+					PieceCID: e.Cid,
+				}, nil
+			case <-ctx.Done():
+				return abi.PieceInfo{}, ctx.Err()
+			}
+		})
+	}
+
+	if err := pw.Close(); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("closing padded writer: %w", err)
+	}
+
+	if err := stagedFile.MarkAllocated(storiface.UnpaddedByteIndex(offset).Padded(), pieceSize.Padded()); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("marking data range as allocated: %w", err)
+	}
+
+	if err := stagedFile.Close(); err != nil {
+		return abi.PieceInfo{}, err
+	}
+	stagedFile = nil
+
+	if len(piecePromises) == 1 {
+		return piecePromises[0]()
+	}
+
+	var payloadRoundedBytes abi.PaddedPieceSize
+	pieceCids := make([]abi.PieceInfo, len(piecePromises))
+	for i, promise := range piecePromises {
+		pinfo, err := promise()
+		if err != nil {
+			return abi.PieceInfo{}, err
+		}
+
+		pieceCids[i] = pinfo
+		payloadRoundedBytes += pinfo.Size
+	}
+
+	pieceCID, err := ffi.GenerateUnsealedCID(sector.ProofType, pieceCids)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
+	}
+
+	// validate that the pieceCID was properly formed
+	if _, err := commcid.CIDToPieceCommitmentV1(pieceCID); err != nil {
+		return abi.PieceInfo{}, err
+	}
+
+	if payloadRoundedBytes < pieceSize.Padded() {
+		paddedCid, err := commpffi.ZeroPadPieceCommitment(pieceCID, payloadRoundedBytes.Unpadded(), pieceSize)
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("failed to pad data: %w", err)
+		}
+
+		pieceCID = paddedCid
+	}
+
+	// add by xiao
+	if !isRealData {
+		sb.createTemplateFile(stagedPath.Unsealed, pieceSize, pieceCID)
+	}
+	//end
+
+	return abi.PieceInfo{
+		Size:     pieceSize.Padded(),
+		PieceCID: pieceCID,
+	}, nil
+}
+// end
+
 func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
+	// add by lin
+	isRealData := true
+	sectortype := os.Getenv("LOTUS_SECTOR_TYPE_SXX")
+	if sectortype == "1" {
+		isRealData = false
+	}
+	if !isRealData {
+		if mypieceInfo, err := sb.myAddPiece(ctx, sector, pieceSize); err == nil {
+			return mypieceInfo, nil
+		} else {
+			log.Warn(err)
+		}
+	}
+	// end
 	origPieceData := pieceData
 	defer func() {
 		closer, ok := origPieceData.(io.Closer)
@@ -380,6 +662,12 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, exis
 
 		pieceCID = paddedCid
 	}
+
+	// add by xiao
+	if !isRealData {
+		sb.createTemplateFile(stagedPath.Unsealed, pieceSize, pieceCID)
+	}
+	//end
 
 	return abi.PieceInfo{
 		Size:     pieceSize.Padded(),
@@ -1279,3 +1567,90 @@ func (sb *Sealer) GenerateWindowPoStWithVanilla(ctx context.Context, proofType a
 		ProofBytes: pp.ProofBytes,
 	}, nil
 }
+
+// add by xiao
+func (sb *Sealer) myAddPiece(ctx context.Context, sector storiface.SectorRef, pieceSize abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
+	var done func()
+	var pieceInfo abi.PieceInfo
+
+	defer func() {
+		if done != nil {
+			done()
+		}
+	}()
+
+	stagedPath, done, err := sb.sectors.AcquireSector(ctx, sector, 0, storiface.FTUnsealed, storiface.PathSealing)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("acquire unsealed sector: %w", err)
+	}
+
+	n := strings.Index(stagedPath.Unsealed, "unsealed")
+	if n == -1 {
+		return abi.PieceInfo{}, xerrors.Errorf("unsealed not exsit")
+	}
+	apTemplatePath := string([]byte(stagedPath.Unsealed)[:n])
+
+	if _, err := os.Stat(apTemplatePath + "piece-info.json"); os.IsNotExist(err) || err != nil { // 判断piece-info.json文件是否存在
+		return abi.PieceInfo{}, xerrors.Errorf("piece-info.json not exsite: %w", err)
+	}
+
+	if _, err := os.Stat(apTemplatePath + "s-template"); os.IsNotExist(err) || err != nil { // 判断s-template文件是否存在
+		return abi.PieceInfo{}, xerrors.Errorf("s-template not exsite: %w", err)
+	}
+
+	configFile, err := os.Open(apTemplatePath + "piece-info.json")
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("open piece-info.json failed: %w", err)
+	}
+	defer configFile.Close()
+
+	jsonParser := json.NewDecoder(configFile)
+	if err := jsonParser.Decode(&pieceInfo); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("decode piece-info.json failed: %w", err)
+	}
+
+	if pieceInfo.Size != pieceSize.Padded() {
+		return abi.PieceInfo{}, xerrors.Errorf("pieceInfo.Size not the same")
+	}
+
+	if err = os.Link(apTemplatePath+"s-template", stagedPath.Unsealed); err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("Sector %d unsealed do not create: %w", err)
+	}
+
+	return pieceInfo, nil
+}
+
+func (sb *Sealer) createTemplateFile(unsealedFile string, pieceSize abi.UnpaddedPieceSize, pieceCID cid.Cid) {
+	n := strings.Index(unsealedFile, "unsealed")
+	if n == -1 {
+		log.Warn("unsealed not exsit")
+	} else {
+		apTemplatePath := string([]byte(unsealedFile)[:n])
+
+		myPieceInfo := &abi.PieceInfo{
+			Size:     pieceSize.Padded(),
+			PieceCID: pieceCID,
+		}
+
+		fd, err := os.Create(apTemplatePath + "piece-info.json")
+		if err != nil {
+			log.Warn("create piece-info.json failed: ", err)
+		}
+		defer fd.Close()
+
+		data, err := json.MarshalIndent(myPieceInfo, "", "      ") //data类型是[]byte
+		if err != nil {
+			log.Warn("marshalIndent myPieceInfo failed: ", err)
+		}
+
+		_, err = fd.Write(data)
+		if err != nil {
+			log.Warn("write piece-info.json failed : ", err)
+		}
+
+		if err = os.Link(unsealedFile, apTemplatePath+"s-template"); err != nil {
+			log.Warn("create s-template hard link failed: ", err)
+		}
+	}
+}
+// end

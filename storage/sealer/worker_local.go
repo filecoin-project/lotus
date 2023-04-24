@@ -189,6 +189,7 @@ type ReturnType string
 const (
 	DataCid               ReturnType = "DataCid"
 	AddPiece              ReturnType = "AddPiece"
+	AddPieceOfSxx         ReturnType = "AddPieceOfSxx"
 	SealPreCommit1        ReturnType = "SealPreCommit1"
 	SealPreCommit2        ReturnType = "SealPreCommit2"
 	SealCommit1           ReturnType = "SealCommit1"
@@ -243,6 +244,7 @@ func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.Wor
 var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, *storiface.CallError) error{
 	DataCid:               rfunc(storiface.WorkerReturn.ReturnDataCid),
 	AddPiece:              rfunc(storiface.WorkerReturn.ReturnAddPiece),
+	AddPieceOfSxx:         rfunc(storiface.WorkerReturn.ReturnAddPiece),
 	SealPreCommit1:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
 	SealPreCommit2:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
 	SealCommit1:           rfunc(storiface.WorkerReturn.ReturnSealCommit1),
@@ -357,6 +359,19 @@ func (l *LocalWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSi
 		return sb.DataCid(ctx, pieceSize, pieceData)
 	})
 }
+
+// add by lin
+func (l *LocalWorker) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, path string) (storiface.CallID, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, sector, AddPieceOfSxx, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		return sb.AddPieceOfSxx(ctx, sector, epcs, sz, path)
+	})
+}
+// end
 
 func (l *LocalWorker) AddPiece(ctx context.Context, sector storiface.SectorRef, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (storiface.CallID, error) {
 	sb, err := l.executor()
@@ -791,6 +806,14 @@ func (l *LocalWorker) memInfo() (memPhysical, memUsed, memSwap, memSwapUsed uint
 }
 
 func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
+	hostname := l.name
+
+	// add by pan
+	workername := os.Getenv("WORKER_NAME")
+	if workername != "" {
+		hostname = workername
+	}
+	// end
 	gpus, err := ffi.GetGPUDevices()
 	if err != nil {
 		log.Errorf("getting gpu devices failed: %+v", err)
@@ -809,7 +832,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	}
 
 	return storiface.WorkerInfo{
-		Hostname:        l.name,
+		Hostname:        hostname,
 		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
 			MemPhysical: memPhysical,

@@ -10,6 +10,8 @@ import (
 
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
 type WindowSelector func(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int
@@ -88,6 +90,20 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 			var havePreferred bool
 
 			for wnd, windowRequest := range sh.OpenWindows {
+
+				// add by pan
+				var skip = false
+
+				if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate || task.TaskType == sealtasks.TTCommit2 {
+					i := sh.findWorker(task)
+					if i > -1 {
+						wnd = i
+					windowRequest = sh.OpenWindows[i]
+						skip = true
+					}
+				}
+				// end
+
 				worker, ok := cachedWorkers.Get(windowRequest.Worker)
 				if !ok {
 					log.Errorf("worker referenced by windowRequest not found (worker: %s)", windowRequest.Worker)
@@ -131,6 +147,12 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 				}
 
 				acceptableWindows[sqi] = append(acceptableWindows[sqi], wnd)
+
+				// add by pan
+				if skip == true {
+					break
+				}
+				// end
 			}
 
 			if len(acceptableWindows[sqi]) == 0 {

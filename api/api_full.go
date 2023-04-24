@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_full.go -package=mocks . FullNode
@@ -358,6 +359,7 @@ type FullNode interface {
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:admin
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
 	ClientStatelessDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:write
+	ClientStatelessDealSxx(ctx context.Context, params *StartDealParams) (*network.Proposal, error) //perm:write
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error) //perm:read
 	// ClientListDeals returns information about the deals made by the local client.
@@ -1154,6 +1156,7 @@ type StartDealParams struct {
 	DealStartEpoch     abi.ChainEpoch
 	FastRetrieval      bool
 	VerifiedDeal       bool
+	Peerid *peer.ID
 }
 
 func (s *StartDealParams) UnmarshalJSON(raw []byte) (err error) {

@@ -197,6 +197,14 @@ func (t *trackedWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPiece
 	})
 }
 
+// add by lin
+func (t *trackedWorker) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, path string) (storiface.CallID, error) {
+	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, sector, sealtasks.TTAddPiece, func() (storiface.CallID, error) {
+		return t.Worker.AddPieceOfSxx(ctx, sector, pieceSizes, newPieceSize, path)
+	})
+}
+// end
+
 func (t *trackedWorker) AddPiece(ctx context.Context, sector storiface.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (storiface.CallID, error) {
 	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, sector, sealtasks.TTAddPiece, func() (storiface.CallID, error) {
 		return t.Worker.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)

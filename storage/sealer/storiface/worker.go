@@ -134,6 +134,7 @@ type WorkerCalls interface {
 	// async
 	DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData Data) (CallID, error)
 	AddPiece(ctx context.Context, sector SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData Data) (CallID, error)
+	AddPieceOfSxx(ctx context.Context, sector SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, path string) (CallID, error)
 	SealPreCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
 	SealPreCommit2(ctx context.Context, sector SectorRef, pc1o PreCommit1Out) (CallID, error)
 	SealCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids SectorCids) (CallID, error)

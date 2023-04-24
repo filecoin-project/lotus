@@ -380,6 +380,10 @@ var dealsImportDataCmd = &cli.Command{
 
 		fpath := cctx.Args().Get(1)
 
+		if os.Getenv("LOTUS_OF_SXX") == "1" {
+			return api.DealsImportDataOfSxx(ctx, propCid, fpath)
+		}
+
 		return api.DealsImportData(ctx, propCid, fpath)
 
 	},

@@ -82,6 +82,10 @@ func (mgr *SectorMgr) DataCid(ctx context.Context, size abi.UnpaddedPieceSize, r
 	panic("todo")
 }
 
+func (mgr *SectorMgr) AddPieceOfSxx(ctx context.Context, sectorID storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, path string) (abi.PieceInfo, error) {
+	return abi.PieceInfo{}, nil
+}
+
 func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
 

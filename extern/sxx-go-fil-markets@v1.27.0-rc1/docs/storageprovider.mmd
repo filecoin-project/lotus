@@ -1,0 +1,118 @@
+stateDiagram-v2
+	state "StorageDealUnknown" as 0
+	state "StorageDealStaged" as 4
+	state "StorageDealSealing" as 5
+	state "StorageDealFinalizing" as 6
+	state "StorageDealActive" as 7
+	state "StorageDealExpired" as 8
+	state "StorageDealSlashed" as 9
+	state "StorageDealRejecting" as 10
+	state "StorageDealFailing" as 11
+	state "StorageDealValidating" as 14
+	state "StorageDealAcceptWait" as 15
+	state "StorageDealTransferring" as 17
+	state "StorageDealWaitingForData" as 18
+	state "StorageDealVerifyData" as 19
+	state "StorageDealReserveProviderFunds" as 20
+	state "StorageDealProviderFunding" as 22
+	state "StorageDealPublish" as 24
+	state "StorageDealPublishing" as 25
+	state "StorageDealError" as 26
+	state "StorageDealProviderTransferAwaitRestart" as 27
+	state "StorageDealAwaitingPreCommit" as 29
+	4 : On entry runs HandoffDeal
+	5 : On entry runs VerifyDealActivated
+	6 : On entry runs CleanupDeal
+	7 : On entry runs WaitForDealCompletion
+	10 : On entry runs RejectDeal
+	11 : On entry runs FailDeal
+	14 : On entry runs ValidateDealProposal
+	15 : On entry runs DecideOnProposal
+	19 : On entry runs VerifyData
+	20 : On entry runs ReserveProviderFunds
+	22 : On entry runs WaitForFunding
+	24 : On entry runs PublishDeal
+	25 : On entry runs WaitForPublish
+	27 : On entry runs WaitForTransferRestart
+	29 : On entry runs VerifyDealPreCommitted
+	[*] --> 0
+	note right of 0
+		The following events are not shown cause they can trigger from any state.
+
+		ProviderEventNodeErrored - transitions state to StorageDealFailing
+		ProviderEventRestart - does not transition state
+		ProviderEventAwaitTransferRestartTimeout - just records
+	end note
+	0 --> 14 : ProviderEventOpen
+	14 --> 10 : ProviderEventDealRejected
+	15 --> 10 : ProviderEventDealRejected
+	19 --> 10 : ProviderEventDealRejected
+	10 --> 11 : ProviderEventRejectionSent
+	14 --> 15 : ProviderEventDealDeciding
+	15 --> 18 : ProviderEventDataRequested
+	17 --> 11 : ProviderEventDataTransferFailed
+	27 --> 11 : ProviderEventDataTransferFailed
+	18 --> 17 : ProviderEventDataTransferInitiated
+	27 --> 17 : ProviderEventDataTransferInitiated
+	18 --> 17 : ProviderEventDataTransferRestarted
+	27 --> 17 : ProviderEventDataTransferRestarted
+	17 --> 11 : ProviderEventDataTransferCancelled
+	18 --> 11 : ProviderEventDataTransferCancelled
+	27 --> 11 : ProviderEventDataTransferCancelled
+	17 --> 19 : ProviderEventDataTransferCompleted
+	27 --> 19 : ProviderEventDataTransferCompleted
+	19 --> 11 : ProviderEventDataVerificationFailed
+	18 --> 20 : ProviderEventVerifiedData
+	19 --> 20 : ProviderEventVerifiedData
+	20 --> 22 : ProviderEventFundingInitiated
+	20 --> 24 : ProviderEventFunded
+	22 --> 24 : ProviderEventFunded
+	24 --> 25 : ProviderEventDealPublishInitiated
+	25 --> 11 : ProviderEventDealPublishError
+	10 --> 11 : ProviderEventSendResponseFailed
+	15 --> 11 : ProviderEventSendResponseFailed
+	25 --> 4 : ProviderEventDealPublished
+	4 --> 11 : ProviderEventFileStoreErrored
+	5 --> 11 : ProviderEventFileStoreErrored
+	7 --> 11 : ProviderEventFileStoreErrored
+	29 --> 11 : ProviderEventFileStoreErrored
+	4 --> 11 : ProviderEventMultistoreErrored
+	4 --> 11 : ProviderEventDealHandoffFailed
+	4 --> 29 : ProviderEventDealHandedOff
+	29 --> 11 : ProviderEventDealPrecommitFailed
+	29 --> 5 : ProviderEventDealPrecommitted
+	5 --> 11 : ProviderEventDealActivationFailed
+	5 --> 6 : ProviderEventDealActivated
+	29 --> 6 : ProviderEventDealActivated
+	6 --> 7 : ProviderEventCleanupFinished
+	7 --> 9 : ProviderEventDealSlashed
+	7 --> 8 : ProviderEventDealExpired
+	7 --> 26 : ProviderEventDealCompletionFailed
+	11 --> 26 : ProviderEventFailed
+	10 --> 26 : ProviderEventRestart
+	14 --> 26 : ProviderEventRestart
+	15 --> 26 : ProviderEventRestart
+	17 --> 27 : ProviderEventRestart
+	27 --> 11 : ProviderEventAwaitTransferRestartTimeout
+	20 --> 11 : ProviderEventTrackFundsFailed
+
+	note left of 4 : The following events only record in this state.<br><br>ProviderEventPieceStoreErrored
+
+
+	note left of 11 : The following events only record in this state.<br><br>ProviderEventFundsReleased
+
+
+	note left of 17 : The following events only record in this state.<br><br>ProviderEventDataTransferRestarted<br>ProviderEventDataTransferStalled
+
+
+	note left of 20 : The following events only record in this state.<br><br>ProviderEventFundsReserved
+
+
+	note left of 25 : The following events only record in this state.<br><br>ProviderEventFundsReleased
+
+
+	note left of 27 : The following events only record in this state.<br><br>ProviderEventDataTransferStalled
+
+	26 --> [*]
+	9 --> [*]
+	8 --> [*]

@@ -87,6 +87,22 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 	}
 }
 
+type SectorAddPieceWait struct{}
+
+func (evt SectorAddPieceWait) apply(si *SectorInfo) {}
+
+type SectorWaitAP struct{}
+
+func (evt SectorWaitAP) apply(*SectorInfo) {}
+
+type SectorWaitPC struct{}
+
+func (evt SectorWaitPC) apply(*SectorInfo) {}
+
+type SectorWaitC struct{}
+
+func (evt SectorWaitC) apply(*SectorInfo) {}
+
 type SectorPieceAdded struct {
 	NewPieces []api.SectorPiece
 }

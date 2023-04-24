@@ -1,0 +1,3 @@
+type StorageDataTransferVoucher struct {
+	Proposal &Any
+} representation tuple

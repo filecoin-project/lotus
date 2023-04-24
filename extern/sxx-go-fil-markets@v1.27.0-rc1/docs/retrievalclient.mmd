@@ -1,0 +1,185 @@
+stateDiagram-v2
+	state "DealStatusNew" as DealStatusNew
+	state "DealStatusWaitForAcceptance" as DealStatusWaitForAcceptance
+	state "DealStatusPaymentChannelCreating" as DealStatusPaymentChannelCreating
+	state "DealStatusPaymentChannelAddingFunds" as DealStatusPaymentChannelAddingFunds
+	state "DealStatusAccepted" as DealStatusAccepted
+	state "DealStatusFailing" as DealStatusFailing
+	state "DealStatusRejected" as DealStatusRejected
+	state "DealStatusFundsNeeded" as DealStatusFundsNeeded
+	state "DealStatusSendFunds" as DealStatusSendFunds
+	state "DealStatusSendFundsLastPayment" as DealStatusSendFundsLastPayment
+	state "DealStatusOngoing" as DealStatusOngoing
+	state "DealStatusFundsNeededLastPayment" as DealStatusFundsNeededLastPayment
+	state "DealStatusCompleted" as DealStatusCompleted
+	state "DealStatusDealNotFound" as DealStatusDealNotFound
+	state "DealStatusErrored" as DealStatusErrored
+	state "DealStatusBlocksComplete" as DealStatusBlocksComplete
+	state "DealStatusFinalizing" as DealStatusFinalizing
+	state "DealStatusCheckComplete" as DealStatusCheckComplete
+	state "DealStatusCheckFunds" as DealStatusCheckFunds
+	state "DealStatusInsufficientFunds" as DealStatusInsufficientFunds
+	state "DealStatusPaymentChannelAllocatingLane" as DealStatusPaymentChannelAllocatingLane
+	state "DealStatusCancelling" as DealStatusCancelling
+	state "DealStatusCancelled" as DealStatusCancelled
+	state "DealStatusRetryLegacy" as DealStatusRetryLegacy
+	state "DealStatusWaitForAcceptanceLegacy" as DealStatusWaitForAcceptanceLegacy
+	state "DealStatusWaitingForLastBlocks" as DealStatusWaitingForLastBlocks
+	state "DealStatusPaymentChannelAddingInitialFunds" as DealStatusPaymentChannelAddingInitialFunds
+	state "DealStatusErroring" as DealStatusErroring
+	state "DealStatusRejecting" as DealStatusRejecting
+	state "DealStatusDealNotFoundCleanup" as DealStatusDealNotFoundCleanup
+	state "DealStatusFinalizingBlockstore" as DealStatusFinalizingBlockstore
+	DealStatusNew : On entry runs ProposeDeal
+	DealStatusPaymentChannelCreating : On entry runs WaitPaymentChannelReady
+	DealStatusPaymentChannelAddingFunds : On entry runs WaitPaymentChannelReady
+	DealStatusAccepted : On entry runs SetupPaymentChannelStart
+	DealStatusFailing : On entry runs CancelDeal
+	DealStatusFundsNeeded : On entry runs ProcessPaymentRequested
+	DealStatusSendFunds : On entry runs SendFunds
+	DealStatusSendFundsLastPayment : On entry runs SendFunds
+	DealStatusOngoing : On entry runs Ongoing
+	DealStatusFundsNeededLastPayment : On entry runs ProcessPaymentRequested
+	DealStatusCheckComplete : On entry runs CheckComplete
+	DealStatusCheckFunds : On entry runs CheckFunds
+	DealStatusPaymentChannelAllocatingLane : On entry runs AllocateLane
+	DealStatusCancelling : On entry runs CancelDeal
+	DealStatusRetryLegacy : On entry runs ProposeDeal
+	DealStatusPaymentChannelAddingInitialFunds : On entry runs WaitPaymentChannelReady
+	DealStatusErroring : On entry runs FailsafeFinalizeBlockstore
+	DealStatusRejecting : On entry runs FailsafeFinalizeBlockstore
+	DealStatusDealNotFoundCleanup : On entry runs FailsafeFinalizeBlockstore
+	DealStatusFinalizingBlockstore : On entry runs FinalizeBlockstore
+	[*] --> DealStatusNew
+	note right of DealStatusNew
+		The following events are not shown cause they can trigger from any state.
+
+		ClientEventWriteDealProposalErrored - transitions state to DealStatusErroring
+		ClientEventUnknownResponseReceived - transitions state to DealStatusFailing
+		ClientEventDataTransferError - transitions state to DealStatusErroring
+		ClientEventWriteDealPaymentErrored - transitions state to DealStatusErroring
+		ClientEventProviderCancelled - transitions state to DealStatusCancelling
+		ClientEventCancel - transitions state to DealStatusCancelling
+	end note
+	DealStatusNew --> DealStatusNew : ClientEventOpen
+	DealStatusNew --> DealStatusWaitForAcceptance : ClientEventDealProposed
+	DealStatusRetryLegacy --> DealStatusWaitForAcceptanceLegacy : ClientEventDealProposed
+	DealStatusWaitForAcceptance --> DealStatusRetryLegacy : ClientEventDealRejected
+	DealStatusWaitForAcceptanceLegacy --> DealStatusRejecting : ClientEventDealRejected
+	DealStatusWaitForAcceptance --> DealStatusDealNotFoundCleanup : ClientEventDealNotFound
+	DealStatusWaitForAcceptanceLegacy --> DealStatusDealNotFoundCleanup : ClientEventDealNotFound
+	DealStatusWaitForAcceptance --> DealStatusAccepted : ClientEventDealAccepted
+	DealStatusWaitForAcceptanceLegacy --> DealStatusAccepted : ClientEventDealAccepted
+	DealStatusPaymentChannelCreating --> DealStatusFailing : ClientEventPaymentChannelErrored
+	DealStatusPaymentChannelAddingFunds --> DealStatusFailing : ClientEventPaymentChannelErrored
+	DealStatusAccepted --> DealStatusFailing : ClientEventPaymentChannelErrored
+	DealStatusAccepted --> DealStatusOngoing : ClientEventPaymentChannelSkip
+	DealStatusAccepted --> DealStatusPaymentChannelCreating : ClientEventPaymentChannelCreateInitiated
+	DealStatusAccepted --> DealStatusPaymentChannelAddingInitialFunds : ClientEventPaymentChannelAddingFunds
+	DealStatusCheckFunds --> DealStatusPaymentChannelAddingFunds : ClientEventPaymentChannelAddingFunds
+	DealStatusPaymentChannelCreating --> DealStatusPaymentChannelAllocatingLane : ClientEventPaymentChannelReady
+	DealStatusPaymentChannelAddingFunds --> DealStatusOngoing : ClientEventPaymentChannelReady
+	DealStatusAccepted --> DealStatusPaymentChannelAllocatingLane : ClientEventPaymentChannelReady
+	DealStatusCheckFunds --> DealStatusOngoing : ClientEventPaymentChannelReady
+	DealStatusPaymentChannelAddingInitialFunds --> DealStatusPaymentChannelAllocatingLane : ClientEventPaymentChannelReady
+	DealStatusPaymentChannelAllocatingLane --> DealStatusFailing : ClientEventAllocateLaneErrored
+	DealStatusPaymentChannelAllocatingLane --> DealStatusOngoing : ClientEventLaneAllocated
+	DealStatusFundsNeeded --> DealStatusFundsNeededLastPayment : ClientEventLastPaymentRequested
+	DealStatusSendFunds --> DealStatusOngoing : ClientEventLastPaymentRequested
+	DealStatusOngoing --> DealStatusFundsNeededLastPayment : ClientEventLastPaymentRequested
+	DealStatusFundsNeededLastPayment --> DealStatusFundsNeededLastPayment : ClientEventLastPaymentRequested
+	DealStatusBlocksComplete --> DealStatusSendFundsLastPayment : ClientEventLastPaymentRequested
+	DealStatusCheckComplete --> DealStatusCheckComplete : ClientEventLastPaymentRequested
+	DealStatusFundsNeeded --> DealStatusFundsNeeded : ClientEventPaymentRequested
+	DealStatusSendFunds --> DealStatusOngoing : ClientEventPaymentRequested
+	DealStatusOngoing --> DealStatusFundsNeeded : ClientEventPaymentRequested
+	DealStatusFundsNeededLastPayment --> DealStatusFundsNeeded : ClientEventPaymentRequested
+	DealStatusBlocksComplete --> DealStatusFundsNeeded : ClientEventPaymentRequested
+	DealStatusCheckComplete --> DealStatusCheckComplete : ClientEventPaymentRequested
+	DealStatusWaitForAcceptance --> DealStatusAccepted : ClientEventUnsealPaymentRequested
+	DealStatusWaitForAcceptanceLegacy --> DealStatusAccepted : ClientEventUnsealPaymentRequested
+	DealStatusFundsNeeded --> DealStatusFundsNeeded : ClientEventAllBlocksReceived
+	DealStatusSendFunds --> DealStatusOngoing : ClientEventAllBlocksReceived
+	DealStatusSendFundsLastPayment --> DealStatusOngoing : ClientEventAllBlocksReceived
+	DealStatusOngoing --> DealStatusBlocksComplete : ClientEventAllBlocksReceived
+	DealStatusFundsNeededLastPayment --> DealStatusSendFundsLastPayment : ClientEventAllBlocksReceived
+	DealStatusBlocksComplete --> DealStatusBlocksComplete : ClientEventAllBlocksReceived
+	DealStatusCheckComplete --> DealStatusFinalizingBlockstore : ClientEventAllBlocksReceived
+	DealStatusWaitingForLastBlocks --> DealStatusFinalizingBlockstore : ClientEventAllBlocksReceived
+	DealStatusFundsNeeded --> DealStatusFundsNeeded : ClientEventBlocksReceived
+	DealStatusSendFunds --> DealStatusOngoing : ClientEventBlocksReceived
+	DealStatusSendFundsLastPayment --> DealStatusOngoing : ClientEventBlocksReceived
+	DealStatusOngoing --> DealStatusOngoing : ClientEventBlocksReceived
+	DealStatusFundsNeededLastPayment --> DealStatusFundsNeededLastPayment : ClientEventBlocksReceived
+	DealStatusCheckComplete --> DealStatusCheckComplete : ClientEventBlocksReceived
+	DealStatusWaitingForLastBlocks --> DealStatusWaitingForLastBlocks : ClientEventBlocksReceived
+	DealStatusFundsNeeded --> DealStatusSendFunds : ClientEventSendFunds
+	DealStatusSendFunds --> DealStatusOngoing : ClientEventSendFunds
+	DealStatusSendFundsLastPayment --> DealStatusOngoing : ClientEventSendFunds
+	DealStatusFundsNeededLastPayment --> DealStatusSendFundsLastPayment : ClientEventSendFunds
+	DealStatusCheckFunds --> DealStatusInsufficientFunds : ClientEventFundsExpended
+	DealStatusSendFunds --> DealStatusFailing : ClientEventBadPaymentRequested
+	DealStatusSendFundsLastPayment --> DealStatusFailing : ClientEventBadPaymentRequested
+	DealStatusSendFunds --> DealStatusFailing : ClientEventCreateVoucherFailed
+	DealStatusSendFundsLastPayment --> DealStatusFailing : ClientEventCreateVoucherFailed
+	DealStatusSendFunds --> DealStatusCheckFunds : ClientEventVoucherShortfall
+	DealStatusSendFundsLastPayment --> DealStatusCheckFunds : ClientEventVoucherShortfall
+	DealStatusSendFunds --> DealStatusOngoing : ClientEventPaymentNotSent
+	DealStatusSendFundsLastPayment --> DealStatusFinalizing : ClientEventPaymentNotSent
+	DealStatusFundsNeeded --> DealStatusOngoing : ClientEventPaymentSent
+	DealStatusSendFunds --> DealStatusOngoing : ClientEventPaymentSent
+	DealStatusSendFundsLastPayment --> DealStatusFinalizing : ClientEventPaymentSent
+	DealStatusFundsNeededLastPayment --> DealStatusOngoing : ClientEventPaymentSent
+	DealStatusBlocksComplete --> DealStatusCheckComplete : ClientEventPaymentSent
+	DealStatusCheckComplete --> DealStatusCheckComplete : ClientEventPaymentSent
+	DealStatusFundsNeeded --> DealStatusCheckComplete : ClientEventComplete
+	DealStatusSendFunds --> DealStatusCheckComplete : ClientEventComplete
+	DealStatusSendFundsLastPayment --> DealStatusCheckComplete : ClientEventComplete
+	DealStatusOngoing --> DealStatusCheckComplete : ClientEventComplete
+	DealStatusFundsNeededLastPayment --> DealStatusCheckComplete : ClientEventComplete
+	DealStatusBlocksComplete --> DealStatusCheckComplete : ClientEventComplete
+	DealStatusFinalizing --> DealStatusFinalizingBlockstore : ClientEventComplete
+	DealStatusCheckComplete --> DealStatusFinalizingBlockstore : ClientEventCompleteVerified
+	DealStatusCheckComplete --> DealStatusErroring : ClientEventEarlyTermination
+	DealStatusCheckComplete --> DealStatusWaitingForLastBlocks : ClientEventWaitForLastBlocks
+	DealStatusErroring --> DealStatusErrored : ClientEventBlockstoreFinalized
+	DealStatusRejecting --> DealStatusRejected : ClientEventBlockstoreFinalized
+	DealStatusDealNotFoundCleanup --> DealStatusDealNotFound : ClientEventBlockstoreFinalized
+	DealStatusFinalizingBlockstore --> DealStatusCompleted : ClientEventBlockstoreFinalized
+	DealStatusFinalizingBlockstore --> DealStatusErrored : ClientEventFinalizeBlockstoreErrored
+	DealStatusFailing --> DealStatusErrored : ClientEventCancelComplete
+	DealStatusCancelling --> DealStatusCancelled : ClientEventCancelComplete
+	DealStatusInsufficientFunds --> DealStatusCheckFunds : ClientEventRecheckFunds
+
+	note left of DealStatusWaitForAcceptance : The following events only record in this state.<br><br>ClientEventLastPaymentRequested<br>ClientEventPaymentRequested<br>ClientEventAllBlocksReceived<br>ClientEventBlocksReceived
+
+
+	note left of DealStatusPaymentChannelCreating : The following events only record in this state.<br><br>ClientEventLastPaymentRequested<br>ClientEventPaymentRequested<br>ClientEventAllBlocksReceived<br>ClientEventBlocksReceived
+
+
+	note left of DealStatusAccepted : The following events only record in this state.<br><br>ClientEventLastPaymentRequested<br>ClientEventPaymentRequested<br>ClientEventAllBlocksReceived<br>ClientEventBlocksReceived
+
+
+	note left of DealStatusFailing : The following events only record in this state.<br><br>ClientEventProviderCancelled
+
+
+	note left of DealStatusOngoing : The following events only record in this state.<br><br>ClientEventPaymentNotSent<br>ClientEventPaymentSent
+
+
+	note left of DealStatusCompleted : The following events only record in this state.<br><br>ClientEventWaitForLastBlocks
+
+
+	note left of DealStatusPaymentChannelAllocatingLane : The following events only record in this state.<br><br>ClientEventLastPaymentRequested<br>ClientEventPaymentRequested<br>ClientEventAllBlocksReceived<br>ClientEventBlocksReceived
+
+
+	note left of DealStatusCancelling : The following events only record in this state.<br><br>ClientEventDealProposed<br>ClientEventProviderCancelled
+
+
+	note left of DealStatusWaitForAcceptanceLegacy : The following events only record in this state.<br><br>ClientEventLastPaymentRequested<br>ClientEventPaymentRequested<br>ClientEventAllBlocksReceived<br>ClientEventBlocksReceived
+
+
+	note left of DealStatusPaymentChannelAddingInitialFunds : The following events only record in this state.<br><br>ClientEventLastPaymentRequested<br>ClientEventPaymentRequested<br>ClientEventAllBlocksReceived<br>ClientEventBlocksReceived
+
+
+	note left of DealStatusFinalizingBlockstore : The following events only record in this state.<br><br>ClientEventWaitForLastBlocks
+

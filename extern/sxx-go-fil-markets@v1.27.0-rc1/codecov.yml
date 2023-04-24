@@ -1,0 +1,10 @@
+coverage:
+  precision: 2
+  round: up
+  range: "50...90"
+  ignore:
+    - "**/*_cbor_gen.go"
+  status:
+    project: off
+    patch: off
+

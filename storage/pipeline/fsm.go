@@ -19,6 +19,9 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
+
+	"path/filepath"
+	"io/ioutil"
 )
 
 var errSectorRemoved = errors.New("sector removed")
@@ -64,26 +67,35 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorReceive{}, ReceiveSector),
 	),
 	Empty: planOne( // deprecated
+		on(SectorAddPieceWait{}, WaitAP),
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
 	),
 	WaitDeals: planOne(
+		on(SectorAddPieceWait{}, WaitAP),
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
 	),
+	WaitAP: planOne(
+	),
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
+		on(SectorWaitPC{}, WaitPC),
 		apply(SectorStartPacking{}),
 		apply(SectorAddPiece{}),
 		on(SectorAddPieceFailed{}, AddPieceFailed),
 	),
 	Packing: planOne(on(SectorPacked{}, GetTicket)),
 	GetTicket: planOne(
-		on(SectorTicket{}, PreCommit1),
+		// on(SectorTicket{}, PreCommit1),
+		on(SectorTicket{}, WaitPC),
 		on(SectorCommitFailed{}, CommitFailed),
+	),
+	WaitPC: planOne(
 	),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
+		on(SectorWaitAP{}, WaitAP),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 		on(SectorDealsExpired{}, DealsExpired),
 		on(SectorInvalidDealIDs{}, RecoverDealIDs),
@@ -91,6 +103,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	PreCommit2: planOne(
 		on(SectorPreCommit2{}, PreCommitting),
+		on(SectorWaitAP{}, WaitAP),
 		on(SectorSealPreCommit2Failed{}, SealPreCommit2Failed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
 	),
@@ -122,8 +135,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryPreCommit{}, PreCommitting),
 	),
 	WaitSeed: planOne(
-		on(SectorSeedReady{}, Committing),
+		// on(SectorSeedReady{}, Committing),
+		on(SectorSeedReady{}, WaitC),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
+	),
+	WaitC: planOne(
 	),
 	Committing: planCommitting,
 	CommitFinalize: planOne(
@@ -490,12 +506,16 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		fallthrough
 	case WaitDeals:
 		return m.handleWaitDeals, processed, nil
+	case WaitAP:
+		return m.handleWaitAP, processed, nil
 	case AddPiece:
 		return m.handleAddPiece, processed, nil
 	case Packing:
 		return m.handlePacking, processed, nil
 	case GetTicket:
 		return m.handleGetTicket, processed, nil
+	case WaitPC:
+		return m.handleWaitPC, processed, nil
 	case PreCommit1:
 		return m.handlePreCommit1, processed, nil
 	case PreCommit2:
@@ -510,6 +530,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handlePreCommitWait, processed, nil
 	case WaitSeed:
 		return m.handleWaitSeed, processed, nil
+	case WaitC:
+		return m.handleWaitC, processed, nil
 	case Committing:
 		return m.handleCommitting, processed, nil
 	case SubmitCommit:
@@ -688,6 +710,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 			e.apply(state)
 			state.State = Committing
 			return uint64(i + 1), nil
+		case SectorWaitC:
+			state.State = WaitC
 		case SectorComputeProofFailed:
 			state.State = ComputeProofFailed
 		case SectorRemoteCommit1Failed, SectorRemoteCommit2Failed:
@@ -725,6 +749,29 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 }
 
 func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {
+	m.startupWait.Wait()
+	return m.sectors.Send(id, SectorForceState{state})
+}
+
+func (m *Sealing) ForceSectorStateOfSxx(ctx context.Context, id abi.SectorNumber, state SectorState, worker string) error {
+	log.Infof("ForceSectorStateOfSxx : sector %+v , state %+v, worker : %+v", id, state, worker)
+	_, err := m.SectorsStatus(ctx, id, false)
+	if err != nil {
+		return xerrors.Errorf("sector %d not found, could not change state", id)
+	}
+	minerpath := os.Getenv("LOTUS_MINER_PATH")
+	sectorspath := filepath.Join(minerpath, "./sectorsworker")
+	if err = os.MkdirAll(sectorspath, 0755); err != nil {
+		if !os.IsExist(err) {
+			return xerrors.Errorf("mkdir sectorsworker path err : %+v", err)
+		}
+	}
+	if state == SectorState("Committing") || state == SectorState("AddPiece") {
+		if err := ioutil.WriteFile(filepath.Join(sectorspath, id.String()), []byte(worker), 0666); err != nil {
+			return xerrors.Errorf("update state err : %+v", err)
+		}
+	}
+
 	m.startupWait.Wait()
 	return m.sectors.Send(id, SectorForceState{state})
 }

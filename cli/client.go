@@ -354,6 +354,10 @@ The minimum value is 518400 (6 months).`,
 			Name:  "provider-collateral",
 			Usage: "specify the requested provider collateral the miner should put up",
 		},
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "the miner peerid",
+		},
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
@@ -487,6 +491,15 @@ The minimum value is 518400 (6 months).`,
 			VerifiedDeal:       isVerified,
 			ProviderCollateral: provCol,
 		}
+
+		if pidstr := cctx.String("peerid"); pidstr != "" {
+			peerid, err := peer.Decode(pidstr)
+			if err != nil {
+				return err
+			}
+			sdParams.Peerid = &peerid
+		}
+		// end
 
 		var proposal *cid.Cid
 		if cctx.Bool("manual-stateless-deal") {

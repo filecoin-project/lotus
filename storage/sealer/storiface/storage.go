@@ -56,6 +56,7 @@ type Sealer interface {
 	NewSector(ctx context.Context, sector SectorRef) error
 	DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData Data) (abi.PieceInfo, error)
 	AddPiece(ctx context.Context, sector SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData Data) (abi.PieceInfo, error)
+	AddPieceOfSxx(ctx context.Context, sector SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, path string) (abi.PieceInfo, error)
 
 	SealPreCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (PreCommit1Out, error)
 	SealPreCommit2(ctx context.Context, sector SectorRef, pc1o PreCommit1Out) (SectorCids, error)

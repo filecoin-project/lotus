@@ -1,0 +1,25 @@
+{
+  "name": "go-fil-markets",
+  "version": "1.0.0",
+  "description": "[![](https://img.shields.io/badge/made%20by-Protocol%20Labs-blue.svg?style=flat-square)](http://ipn.io) [![CircleCI](https://circleci.com/gh/filecoin-project/go-fil-markets.svg?style=svg)](https://circleci.com/gh/filecoin-project/go-fil-markets) [![codecov](https://codecov.io/gh/filecoin-project/go-fil-markets/branch/master/graph/badge.svg)](https://codecov.io/gh/filecoin-project/go-fil-markets)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filecoin-project/go-fil-markets.git"
+  },
+  "author": "",
+  "license": "(Apache-2.0 OR MIT)",
+  "bugs": {
+    "url": "https://github.com/filecoin-project/go-fil-markets/issues"
+  },
+  "homepage": "https://github.com/filecoin-project/go-fil-markets#readme",
+  "dependencies": {
+    "@mermaid-js/mermaid-cli": "^8.5.1-2"
+  }
+}

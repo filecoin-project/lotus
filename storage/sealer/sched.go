@@ -13,6 +13,12 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strconv"
 )
 
 type schedPrioCtxKey int
@@ -474,3 +480,139 @@ func (sh *Scheduler) Close(ctx context.Context) error {
 	}
 	return nil
 }
+
+// add by pan
+func (sh *Scheduler) findWorker(task *WorkerRequest) int {
+	i := -1
+	if task.TaskType == sealtasks.TTPreCommit2 {
+		i = sh.findStorageWorker(task)
+	} else {
+		// if task.TaskType == sealtasks.TTAddPiece {
+		// 	sh.assignWorker(task)
+		// }
+		i = sh.findFileWorker(task)
+	}
+	return i
+}
+
+func (sh *Scheduler) assignWorker(task *WorkerRequest) error {
+	minerpath := os.Getenv("LOTUS_MINER_PATH")
+	sectorspath := filepath.Join(minerpath, "./sectors")
+
+	_, err := os.Stat(sectorspath + "/" + storiface.SectorName(task.Sector.ID))
+	if err == nil {
+		return nil
+	}
+
+	workerpath := filepath.Join(minerpath, "./worker")
+
+	files, err := ioutil.ReadDir(workerpath)
+	if err != nil {
+		return err
+	}
+	tmp := map[int64]string{}
+	for _, file := range files {
+
+		buffer, err := ioutil.ReadFile(workerpath + "/" + file.Name())
+		if err != nil {
+			continue
+		}
+		value := string(buffer)
+
+		key, err := strconv.ParseInt(file.Name(), 10, 64)
+
+		tmp[key] = value
+	}
+
+	var workename string
+	var t int64
+	t = -1
+	for key, value := range tmp {
+		if t == -1 || key < t {
+			workename = value
+			t = key
+		}
+	}
+	if t > -1 {
+		file := fmt.Sprintf("%s/%d", workerpath, t)
+		os.Remove(file)
+		_, err := os.Stat(sectorspath)
+		if err != nil {
+			err = os.Mkdir(sectorspath, 0755)
+		}
+		path := sectorspath + "/" + storiface.SectorName(task.Sector.ID)
+		err = os.WriteFile(path, []byte(workename), 0666)
+	}
+	return nil
+}
+
+func (sh *Scheduler) findStorageWorker(task *WorkerRequest) int {
+	ctx := task.Ctx
+	sel, ok := task.Sel.(*existingSelector)
+	if !ok {
+		return -1
+	}
+	ssize, err := task.Sector.ProofType.SectorSize()
+	if err != nil {
+		return -1
+	}
+	best, err := sel.index.StorageFindSector(ctx, task.Sector.ID, sel.fileType, ssize, false)
+	if err != nil {
+		return -1
+	}
+	if len(best) == 0 {
+		return -1
+	}
+	for wnd1, windowRequest := range sh.OpenWindows {
+		worker, ok := sh.Workers[windowRequest.Worker]
+		if !ok {
+			continue
+		}
+		tasks, err := worker.workerRpc.TaskTypes(ctx)
+		if err != nil {
+			continue
+		}
+		if _, supported := tasks[task.TaskType]; !supported {
+			continue
+		}
+		paths, err := worker.workerRpc.Paths(ctx)
+		if err != nil {
+			continue
+		}
+		for _, path := range paths {
+			for l := 0; l < len(best); l++ {
+				info := best[l]
+				if info.Weight != 0 && path.ID == info.ID {
+					return wnd1
+				}
+			}
+		}
+	}
+	return -1
+}
+
+func (sh *Scheduler) findFileWorker(task *WorkerRequest) int {
+	minerpath := os.Getenv("LOTUS_MINER_PATH")
+	path := filepath.Join(minerpath, "./sectors/", storiface.SectorName(task.Sector.ID))
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return -1
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return -1
+	}
+	workerid := string(data)
+	for wnd1, windowRequest := range sh.OpenWindows {
+		worker, ok := sh.Workers[windowRequest.Worker]
+		if !ok {
+			continue
+		}
+		if workerid == worker.Info.Hostname {
+			return wnd1
+		}
+	}
+
+	return -1
+}
+// end

@@ -23,6 +23,9 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
+
+	"path/filepath"
+	scServer "github.com/moran666666/sector-counter/server"
 )
 
 var runCmd = &cli.Command{
@@ -47,8 +50,62 @@ var runCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
+		// add by sxx
+		&cli.BoolFlag{
+			Name:  "wdpost",
+			Usage: "enable windowPoSt",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "wnpost",
+			Usage: "enable winningPoSt",
+			Value: false,
+		},
+		&cli.StringFlag{
+			Name:  "sctype",
+			Usage: "sector counter type(alloce,get)",
+			Value: "",
+		},
+		&cli.StringFlag{
+			Name:  "sclisten",
+			Usage: "host address and port the sector counter will listen on",
+			Value: "",
+		},
+		// end
 	},
 	Action: func(cctx *cli.Context) error {
+		// add by sxx
+		if cctx.Bool("wdpost") {
+			os.Setenv("LOTUS_WDPOST", "true")
+		} else {
+			os.Unsetenv("LOTUS_WDPOST")
+		}
+
+		if cctx.Bool("wnpost") {
+			os.Setenv("LOTUS_WNPOST", "true")
+		} else {
+			os.Unsetenv("LOTUS_WNPOST")
+		}
+
+		scType := cctx.String("sctype")
+		if scType == "alloce" || scType == "get" {
+			os.Setenv("SC_TYPE", scType)
+
+			scListen := cctx.String("sclisten")
+			if scListen == "" {
+				log.Errorf("sclisten must be set")
+				return nil
+			}
+			os.Setenv("SC_LISTEN", scListen)
+
+			if scType == "alloce" {
+				scFilePath := filepath.Join(cctx.String(FlagMinerRepo), "sectorid")
+				go scServer.Run(scFilePath)
+			}
+		} else {
+			os.Unsetenv("SC_TYPE")
+		}
+		// end
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {

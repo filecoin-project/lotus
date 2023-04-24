@@ -28,6 +28,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
+	"strings"
+	"fmt"
 )
 
 var DealSectorPriority = 1024
@@ -213,6 +216,18 @@ func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) e
 	})
 }
 
+func (m *Sealing) handleWaitAP(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
+func (m *Sealing) handleWaitPC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
+func (m *Sealing) handleWaitC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkPieces(ctx.Context(), m.maddr, sector.SectorNumber, sector.Pieces, m.Api, false); err != nil { // Sanity check state
 		switch err.(type) {
@@ -271,6 +286,9 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 
 	pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.pieceInfos())
 	if err != nil {
+		if strings.Contains(fmt.Sprintf("%s", err), "task aborted") {
+			return ctx.Send(SectorWaitAP{})
+		}
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
 	}
 
@@ -282,6 +300,9 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) error {
 	cids, err := m.sealer.SealPreCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.PreCommit1Out)
 	if err != nil {
+		if strings.Contains(fmt.Sprintf("%s", err), "task aborted") {
+			return ctx.Send(SectorWaitAP{})
+		}
 		return ctx.Send(SectorSealPreCommit2Failed{xerrors.Errorf("seal pre commit(2) failed: %w", err)})
 	}
 
@@ -585,6 +606,9 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		}
 		c2in, err = m.sealer.SealCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.SeedValue, sector.pieceInfos(), cids)
 		if err != nil {
+			if strings.Contains(fmt.Sprintf("%s", err), "task aborted") {
+				return ctx.Send(SectorWaitC{})
+			}
 			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(1): %w", err)})
 		}
 	} else {
@@ -632,6 +656,9 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 		porepProof, err = m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
 		if err != nil {
+			if strings.Contains(fmt.Sprintf("%s", err), "task aborted") {
+				return ctx.Send(SectorWaitC{})
+			}
 			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
 		}
 	} else {

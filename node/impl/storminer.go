@@ -384,6 +384,10 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
+func (sm *StorageMinerAPI) SectorsUpdateOfSxx(ctx context.Context, id abi.SectorNumber, state api.SectorState, worker string) error {
+	return sm.Miner.ForceSectorStateOfSxx(ctx, id, sealing.SectorState(state), worker)
+}
+
 func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
 	return sm.Miner.RemoveSector(ctx, id)
 }
@@ -1212,6 +1216,13 @@ func (sm *StorageMinerAPI) DealsSetExpectedSealDurationFunc(ctx context.Context,
 	return sm.SetExpectedSealDurationFunc(d)
 }
 
+// add by lin
+func (sm *StorageMinerAPI) DealsImportDataOfSxx(ctx context.Context, deal cid.Cid, fname string) error {
+
+	return sm.StorageProvider.ImportDataForDealOfSxx(ctx, deal, fname)
+}
+// end
+
 func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
 	fi, err := os.Open(fname)
 	if err != nil {
@@ -1297,6 +1308,35 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 	}
 
 	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, rg)
+	if err != nil {
+		return nil, err
+	}
+
+	var out = make(map[abi.SectorNumber]string)
+	for sid, err := range bad {
+		out[sid.Number] = err
+	}
+
+	return out, nil
+}
+
+func (sm *StorageMinerAPI) CheckProve(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) {
+	var rg storiface.RGetter
+	if expensive {
+		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+			si, err := sm.Miner.SectorsStatus(ctx, id.Number, false)
+			if err != nil {
+				return cid.Undef, false, err
+			}
+			if si.CommR == nil {
+				return cid.Undef, false, xerrors.Errorf("commr is nil")
+			}
+
+			return *si.CommR, si.ReplicaUpdateMessage != nil, nil
+		}
+	}
+
+	bad, err := sm.StorageMgr.CheckProve(ctx, pp, sectors, update, rg)
 	if err != nil {
 		return nil, err
 	}

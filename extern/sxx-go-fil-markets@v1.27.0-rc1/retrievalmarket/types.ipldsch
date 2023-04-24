@@ -1,0 +1,52 @@
+type Params struct {
+	Selector nullable Any # CborGenCompatibleNode
+	PieceCID nullable &Any
+	PricePerByte Bytes # abi.TokenAmount
+	PaymentInterval Int
+	PaymentIntervalIncrease Int
+	UnsealPrice Bytes # abi.TokenAmount
+}
+
+type DealProposal struct {
+	PayloadCID &Any
+	ID Int # DealID
+	Params Params
+}
+
+type DealResponse struct {
+	Status Int
+	ID Int
+	PaymentOwed Bytes
+	Message String
+}
+
+type DealPayment struct {
+	ID Int # DealID
+	PaymentChannel Bytes # address.Address
+	PaymentVoucher nullable SignedVoucher
+}
+
+type SignedVoucher struct {
+	ChannelAddr Bytes # addr.Address
+	TimeLockMin Int # abi.ChainEpoch
+	TimeLockMax Int # abi.ChainEpoch
+	SecretHash Bytes
+	Extra nullable ModVerifyParams
+	Lane Int
+	Nonce Int
+	Amount Bytes # big.Int
+	MinSettleHeight Int # abi.ChainEpoch
+	Merges [Merge]
+	Signature nullable Bytes # crypto.Signature
+} representation tuple
+
+type ModVerifyParams struct {
+	Actor Bytes # addr.Address
+	Method Int # abi.MethodNum
+	Data Bytes
+} representation tuple
+
+type Merge struct {
+	Lane Int
+	Nonce Int
+} representation tuple
