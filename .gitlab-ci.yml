@@ -1,0 +1,42 @@
+default:
+  image: registry.sxxfuture.net/lib/docker/lotus-builder/debian:230224-002040
+
+stages:
+  - build
+
+.build-snippet:
+  tags: [docker, x86, merak]
+  stage: build
+  variables:
+    GIT_STRATEGY: clone
+    GOPATH: $CI_PROJECT_DIR/.go
+    HTTP_PROXY: $DEFAULT_PROXY
+    HTTPS_PROXY: $DEFAULT_PROXY
+    http_proxy: $DEFAULT_PROXY
+    https_proxy: $DEFAULT_PROXY
+    RUSTFLAGS: ""
+    GOFLAGS: ""
+  cache:
+    - key:
+        files:
+          - go.mod
+          - go.sum
+        prefix: $CI_COMMIT_REF_SLUG
+      paths:
+        - .go/
+    # - key: build-deps-$CI_COMMIT_REF_SLUG
+    #   paths:
+    #     - build/.update-modules
+    #     - build/.filecoin-install
+    #     - extern/serialization-vectors/
+    #     - extern/test-vectors/
+    #     - extern/filecoin-ffi/
+  before_script:
+    # ci cache will create empty dir, which should not exist
+    # - '[ -z "$(ls extern/serialization-vectors)" ] && rm -r extern/serialization-vectors'
+    # - '[ -z "$(ls extern/test-vectors)" ] && rm -r extern/test-vectors'
+    # - '[ -z "$(ls extern/filecoin-ffi)" ] && rm -r extern/filecoin-ffi'
+    - mkdir -p .go
+
+include:
+  - '.gitlab-ci/v20_of_car_filbase.yml'

@@ -1,0 +1,64 @@
+"v20-filbase: build lotus":
+  extends: .build-snippet
+  artifacts:
+    name: "v20-filbase binaries"
+    paths: [lotus, lotus-miner, lotus-worker]
+  script:
+    - make lotus lotus-miner lotus-worker
+  only:
+    refs:
+      - v20_of_car_filbase
+  # when: manual
+
+"v20-filbase: build lotus (intel)":
+  extends: .build-snippet
+  tags: ["docker", "x86", "intel"]
+  artifacts:
+    name: "v20-filbase-intel binaries"
+    paths: [lotus, lotus-miner, lotus-worker]
+  script:
+    - make lotus lotus-miner lotus-worker
+  only:
+    refs:
+      - v20_of_car_filbase
+  when: manual
+
+"v20-filbase: build external binaries":
+  extends: .build-snippet
+  artifacts:
+    name: "v20-filbase external binaries"
+    paths: [lotus-shed, lotus-wallet, lotus-gateway, lotus-stats]
+  script:
+    - make lotus-shed lotus-wallet lotus-gateway lotus-stats
+  only:
+    refs:
+      - v20_of_car_filbase
+  when: manual
+
+"v20-filbase: build lotus (2k)":
+  extends: .build-snippet
+  variables:
+    GOFLAGS: "-tags=2k"
+  artifacts:
+    name: "v20-filbase-2k binaries"
+    paths: [lotus-shed, lotus, lotus-miner, lotus-worker, lotus-seed]
+  script:
+    - make lotus-shed lotus lotus-miner lotus-worker lotus-seed
+  only:
+    refs:
+      - v20_of_car_filbase
+  when: manual
+
+"v20-filbase: build external binaries (2k)":
+  extends: .build-snippet
+  variables:
+    GOFLAGS: "-tags=2k"
+  artifacts:
+    name: "v20-filbase-2k external binaries"
+    paths: [lotus-wallet, lotus-gateway, lotus-stats]
+  script:
+    - make lotus-wallet lotus-gateway lotus-stats
+  only:
+    refs:
+      - v20_of_car_filbase
+  when: manual
