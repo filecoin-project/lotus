@@ -1635,7 +1635,7 @@ func (mp *MessagePool) Cleanup(ctx context.Context, co api.MpoolCleanupOpts) {
 
 			if ok {
 				for _, m := range mset.msgs {
-					if types.BigCmp(co.MinBaseFee, big.Zero()) > 0 &&
+					if !co.MinBaseFee.NilOrZero() &&
 						types.BigCmp(m.Message.GasFeeCap, co.MinBaseFee) >= 0 {
 						continue
 					}
@@ -1665,7 +1665,7 @@ func (mp *MessagePool) Cleanup(ctx context.Context, co api.MpoolCleanupOpts) {
 		}
 
 		deleteMset := true
-		if big.Cmp(co.MinBaseFee, big.Zero()) > 0 {
+		if !co.MinBaseFee.NilOrZero() {
 			deleteMset = ms.removeMessagesBelowBaseFee(co.MinBaseFee)
 		}
 
