@@ -3,6 +3,7 @@ package wdpost
 import (
 	"bytes"
 	"context"
+	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -424,6 +425,14 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 			ppt, err := xsinfos[0].SealProof.RegisteredWindowPoStProofByNetworkVersion(nv)
 			if err != nil {
 				return nil, xerrors.Errorf("failed to get window post type: %w", err)
+			}
+
+			if nv == network.Version19 && os.Getenv("LOTUS_NV19_OLD_PROOFS") == "1" {
+				ppt, err = xsinfos[0].SealProof.RegisteredWindowPoStProof()
+				if err != nil {
+					return nil, xerrors.Errorf("failed to get window post type: %w", err)
+				}
+				log.Warnw("using old V1 PoSt in nv19, this will be disallowed in nv20!")
 			}
 
 			postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), ppt, xsinfos, append(abi.PoStRandomness{}, rand...))
