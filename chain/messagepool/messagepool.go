@@ -449,30 +449,23 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 }
 
 func (ms *msgSet) removeMessagesBelowBaseFee(baseFee types.BigInt) bool {
-	noncesToRemove := make([]uint64, 0)
-
 	// Find nonces of messages below the base fee and mark the first nonce to remove
 	var firstNonceToRemove uint64 = math.MaxUint64
 	for nonce, msg := range ms.msgs {
 		if types.BigCmp(msg.Message.GasFeeCap, baseFee) < 0 {
-			noncesToRemove = append(noncesToRemove, nonce)
-			if nonce > ms.nextNonce && firstNonceToRemove == math.MaxUint64 {
+			if nonce < firstNonceToRemove {
 				firstNonceToRemove = nonce
 			}
 		}
 	}
 
-	// Remove messages with nonces higher than the firstNonceToRemove
+	// Remove messages with nonces higher or equal to firstNonceToRemove
 	if firstNonceToRemove != math.MaxUint64 {
 		for nonce := range ms.msgs {
-			if nonce > firstNonceToRemove {
-				noncesToRemove = append(noncesToRemove, nonce)
+			if nonce >= firstNonceToRemove {
+				ms.rm(nonce, false)
 			}
 		}
-	}
-
-	for _, nonce := range noncesToRemove {
-		ms.rm(nonce, false)
 	}
 
 	return len(ms.msgs) == 0
@@ -1643,7 +1636,7 @@ func (mp *MessagePool) Cleanup(ctx context.Context, co api.MpoolCleanupOpts) {
 			if ok {
 				for _, m := range mset.msgs {
 					if types.BigCmp(co.MinBaseFee, big.Zero()) > 0 &&
-						types.BigCmp(m.Message.GasFeeCap, co.MinBaseFee) < 0 {
+						types.BigCmp(m.Message.GasFeeCap, co.MinBaseFee) >= 0 {
 						continue
 					}
 
