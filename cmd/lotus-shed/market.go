@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 	levelds "github.com/ipfs/go-ds-leveldb"
@@ -65,26 +64,22 @@ var marketCronStateCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		a, err := api.StateReadState(ctx, builtin.StorageMarketActorAddr, ts.Key())
-		if err != nil {
-			return err
-		}
-		st, ok := a.State.(map[string]interface{})
-		if !ok {
-			return xerrors.Errorf("failed to cast state map to expected form")
-		}
-		dealOpsRaw, ok := st["DealOpsByEpoch"].(map[string]interface{})
-		if !ok {
-			return xerrors.Errorf("failed to read sectors root from state")
-		}
-		// string is of the form "/:bafy.." so [2:] to drop the path
-		dealOpsRoot, err := cid.Parse(dealOpsRaw["/"])
-		if err != nil {
-			return err
-		}
+
 		bs := ReadOnlyAPIBlockstore{api}
 		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
-		dealOpsEpochSet, err := adt.AsMap(adtStore, dealOpsRoot, builtin.DefaultHamtBitwidth)
+
+		mAct, err := api.StateGetActor(ctx, builtin.StorageMarketActorAddr, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		var mSt market11.State
+		err = adtStore.Get(ctx, mAct.Head, &mSt)
+		if err != nil {
+			return err
+		}
+
+		dealOpsEpochSet, err := adt.AsMap(adtStore, mSt.DealOpsByEpoch, builtin.DefaultHamtBitwidth)
 		if err != nil {
 			return err
 		}
@@ -100,7 +95,7 @@ var marketCronStateCmd = &cli.Command{
 			return err
 		}
 
-		dealOpsMultiMap, err := market11.AsSetMultimap(adtStore, dealOpsRoot, builtin.DefaultHamtBitwidth, builtin.DefaultHamtBitwidth)
+		dealOpsMultiMap, err := market11.AsSetMultimap(adtStore, mSt.DealOpsByEpoch, builtin.DefaultHamtBitwidth, builtin.DefaultHamtBitwidth)
 		if err != nil {
 			return err
 		}
