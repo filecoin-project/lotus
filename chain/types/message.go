@@ -220,12 +220,17 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 }
 
 // EffectiveGasPremium returns the effective gas premium claimable by the miner
-// given the supplied base fee.
+// given the supplied base fee. This method is not used anywhere except the Eth API.
 //
 // Filecoin clamps the gas premium at GasFeeCap - BaseFee, if lower than the
-// specified premium.
+// specified premium. Returns 0 if GasFeeCap is less than BaseFee.
 func (m *Message) EffectiveGasPremium(baseFee abi.TokenAmount) abi.TokenAmount {
 	available := big.Sub(m.GasFeeCap, baseFee)
+	// It's possible that storage providers may include messages with gasFeeCap less than the baseFee
+	// In such cases, their reward should be viewed as zero
+	if available.LessThan(big.NewInt(0)) {
+		available = big.NewInt(0)
+	}
 	if big.Cmp(m.GasPremium, available) <= 0 {
 		return m.GasPremium
 	}
