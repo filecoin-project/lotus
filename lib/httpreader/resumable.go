@@ -7,8 +7,12 @@ import (
 	"net/http"
 	"strconv"
 
+	logging "github.com/ipfs/go-log/v2"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 )
+
+var log = logging.Logger("httpreader")
 
 type ResumableReader struct {
 	ctx           context.Context
@@ -57,7 +61,9 @@ func NewResumableReader(ctx context.Context, url string) (*ResumableReader, erro
 
 	contentLength, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
 	if err != nil {
-		resp.Body.Close()
+		if err = resp.Body.Close(); err != nil {
+			err = multierr.Append(err, err)
+		}
 		return nil, err
 	}
 
@@ -100,10 +106,14 @@ func (r *ResumableReader) Read(p []byte) (n int, err error) {
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			if r.position == r.contentLength {
-				r.reader.Close()
-				return n, err
+				if err := r.reader.Close(); err != nil {
+					log.Warnf("error closing reader: %+v", err)
+				}
+				return n, io.EOF
 			}
-			r.reader.Close()
+			if err := r.reader.Close(); err != nil {
+				log.Warnf("error closing reader: %+v", err)
+			}
 			r.reader = nil
 		} else {
 			return n, err
