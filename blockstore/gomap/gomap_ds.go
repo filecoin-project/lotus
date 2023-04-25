@@ -82,9 +82,12 @@ func (gmds *GomapDatastore) DeleteBlock(ctx context.Context, cid cid.Cid) error 
 	//todo
 }
 
-func (gmds *GomapDatastore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
-	return 0, nil
-	//todo
+func (gmds *GomapDatastore) GetSize(ctx context.Context, key cid.Cid) (int, error) {
+	val, err := gmds.Get(ctx, key)
+	if err != nil {
+		return 0, err
+	}
+	return int(len(val.RawData())), nil
 }
 
 func (gmds *GomapDatastore) HashOnRead(_ bool) {
