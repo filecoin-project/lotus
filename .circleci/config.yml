@@ -1096,10 +1096,11 @@ workflows:
           requires:
             - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
+            - "Build ( darwin / arm64 )"
           filters:
             branches:
-              only:
-                - /^ci\/.*$/
+              ignore:
+                - /^.*$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1114,6 +1115,7 @@ workflows:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^ci\/.*$/
       - build-docker:
           name: "Docker push (lotus-all-in-one / stable / mainnet)"
           image: lotus-all-in-one
