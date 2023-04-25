@@ -765,7 +765,6 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	}()
 
 	mp.curTsLk.Lock()
-	tmpCurTs := mp.curTs
 	defer mp.curTsLk.Unlock()
 	_, err = mp.addTs(ctx, m, mp.curTs, false, false)
 	return err
