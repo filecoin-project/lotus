@@ -106,7 +106,9 @@ func main() {
 			sealBenchCmd,
 			simpleCmd,
 			importBenchCmd,
+			rpcCmd,
 		},
+		DisableSliceFlagSeparator: true,
 	}
 
 	if err := app.Run(os.Args); err != nil {
