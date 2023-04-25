@@ -1081,6 +1081,7 @@ workflows:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^ci\/.*$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
