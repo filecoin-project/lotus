@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path"
 	"runtime/pprof"
@@ -43,6 +42,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
+	"github.com/filecoin-project/lotus/lib/httpreader"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
@@ -434,18 +434,13 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	var rd io.Reader
 	var l int64
 	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
-		resp, err := http.Get(fname) //nolint:gosec
+		rrd, err := httpreader.NewResumableReader(ctx, fname)
 		if err != nil {
-			return err
-		}
-		defer resp.Body.Close() //nolint:errcheck
-
-		if resp.StatusCode != http.StatusOK {
-			return xerrors.Errorf("fetching chain CAR failed with non-200 response: %d", resp.StatusCode)
+			return xerrors.Errorf("fetching chain CAR failed: setting up resumable reader: %w", err)
 		}
 
-		rd = resp.Body
-		l = resp.ContentLength
+		rd = rrd
+		l = rrd.ContentLength()
 	} else {
 		fname, err = homedir.Expand(fname)
 		if err != nil {
