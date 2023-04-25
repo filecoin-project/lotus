@@ -1187,7 +1187,9 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 
 	ss.SetStage(api.StagePersistHeaders)
 
-	for _, ts := range headers {
+	// Write tipsets from oldest to newest.
+	for i := len(headers) - 1; i >= 0; i++ {
+		ts := headers[i]
 		if err := syncer.store.PersistTipset(ctx, ts); err != nil {
 			err = xerrors.Errorf("failed to persist synced tipset to the chainstore: %w", err)
 			ss.Error(err)
