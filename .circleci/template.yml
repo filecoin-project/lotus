@@ -610,7 +610,6 @@ workflows:
           requires:
             - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
-            - "Build ( darwin / arm64 )"
           filters:
             branches:
               only:
