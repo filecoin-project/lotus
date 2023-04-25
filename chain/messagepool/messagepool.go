@@ -770,7 +770,6 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 
 	//ensures computations are cached without holding lock
 	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
-	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 
 	mp.curTsLk.Lock()
 	if tmpCurTs == mp.curTs {
@@ -781,7 +780,6 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		//we want to release the lock, cache the computations then grab it again
 		mp.curTsLk.Unlock()
 		_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
-		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 		mp.curTsLk.Lock()
 		//now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
 	}
