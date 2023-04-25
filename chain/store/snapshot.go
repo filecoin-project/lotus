@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
@@ -371,6 +371,9 @@ func (s *walkScheduler) enqueueIfNew(task walkTask) {
 		//log.Infow("ignored", "cid", todo.c.String())
 		return
 	}
+
+	// This lets through RAW and CBOR blocks, the only two types that we
+	// end up writing to the exported CAR.
 	if task.c.Prefix().Codec != cid.Raw && task.c.Prefix().Codec != cid.DagCBOR {
 		//log.Infow("ignored", "cid", todo.c.String())
 		return
@@ -442,10 +445,19 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 		b: blk,
 	}
 
+	// We exported the ipld block. If it wasn't a CBOR block, there's nothing
+	// else to do and we can bail out early as it won't have any links
+	// etc.
+	if t.c.Prefix().Codec != cid.DagCBOR || t.c.Prefix().MhType == mh.IDENTITY {
+		return nil
+	}
+
+	rawData := blk.RawData()
+
 	// extract relevant dags to walk from the block
 	if t.taskType == blockTask {
 		var b types.BlockHeader
-		if err := b.UnmarshalCBOR(bytes.NewBuffer(blk.RawData())); err != nil {
+		if err := b.UnmarshalCBOR(bytes.NewBuffer(rawData)); err != nil {
 			return xerrors.Errorf("unmarshalling block header (cid=%s): %w", blk, err)
 		}
 		if b.Height%1_000 == 0 {
@@ -521,11 +533,7 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 	}
 
 	// Not a chain-block: we scan for CIDs in the raw block-data
-	return cbg.ScanForLinks(bytes.NewReader(blk.RawData()), func(c cid.Cid) {
-		if t.c.Prefix().Codec != cid.DagCBOR || t.c.Prefix().MhType == mh.IDENTITY {
-			return
-		}
-
+	err = cbg.ScanForLinks(bytes.NewReader(rawData), func(c cid.Cid) {
 		s.enqueueIfNew(walkTask{
 			c:                c,
 			taskType:         dagTask,
@@ -534,6 +542,13 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 			epoch:            t.epoch,
 		})
 	})
+
+	if err != nil {
+		return xerrors.Errorf(
+			"ScanForLinks(%s). Task: %s. Block: %s (%s). Epoch: %d. Err: %w",
+			t.c, t.taskType, t.topLevelTaskType, t.blockCid, t.epoch, err)
+	}
+	return nil
 }
 
 func (cs *ChainStore) ExportRange(

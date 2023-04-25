@@ -120,6 +120,22 @@ func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
 	return nil
 }
 
+func (tma *testMpoolAPI) GetActorBefore(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	balance, ok := tma.balance[addr]
+	if !ok {
+		balance = types.NewInt(1000e6)
+		tma.balance[addr] = balance
+	}
+
+	nonce := tma.statenonce[addr]
+
+	return &types.Actor{
+		Code:    builtin2.AccountActorCodeID,
+		Nonce:   nonce,
+		Balance: balance,
+	}, nil
+}
+
 func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	// regression check for load bug
 	if ts == nil {

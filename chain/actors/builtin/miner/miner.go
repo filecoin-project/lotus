@@ -45,6 +45,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		case actorstypes.Version10:
 			return load10(store, act.Head)
 
+		case actorstypes.Version11:
+			return load11(store, act.Head)
+
 		}
 	}
 
@@ -108,6 +111,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 	case actors.Version10:
 		return make10(store)
+
+	case actors.Version11:
+		return make11(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -223,15 +229,15 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 	}
 
 	switch proof {
-	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1:
 		return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1, abi.RegisteredPoStProof_StackedDrgWindow8MiBV1_1:
 		return abi.RegisteredSealProof_StackedDrg8MiBV1_1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1, abi.RegisteredPoStProof_StackedDrgWindow512MiBV1_1:
 		return abi.RegisteredSealProof_StackedDrg512MiBV1_1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, abi.RegisteredPoStProof_StackedDrgWindow32GiBV1_1:
 		return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1_1:
 		return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
 	default:
 		return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
@@ -240,15 +246,15 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 
 func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredPoStProof, error) {
 	switch proof {
-	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1:
 		return abi.RegisteredPoStProof_StackedDrgWinning2KiBV1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1, abi.RegisteredPoStProof_StackedDrgWindow8MiBV1_1:
 		return abi.RegisteredPoStProof_StackedDrgWinning8MiBV1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1, abi.RegisteredPoStProof_StackedDrgWindow512MiBV1_1:
 		return abi.RegisteredPoStProof_StackedDrgWinning512MiBV1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, abi.RegisteredPoStProof_StackedDrgWindow32GiBV1_1:
 		return abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, nil
-	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
+	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1_1:
 		return abi.RegisteredPoStProof_StackedDrgWinning64GiBV1, nil
 	default:
 		return -1, xerrors.Errorf("unknown proof type %d", proof)
@@ -314,5 +320,6 @@ func AllCodes() []cid.Cid {
 		(&state8{}).Code(),
 		(&state9{}).Code(),
 		(&state10{}).Code(),
+		(&state11{}).Code(),
 	}
 }

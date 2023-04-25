@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.21.0-dev
+   1.23.1-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -1671,6 +1671,7 @@ COMMANDS:
      batching              manage batch sector operations
      match-pending-pieces  force a refreshed match of pending pieces to open sectors without manually waiting for more deals
      compact-partitions    removes dead sectors from partitions and reduces the number of partitions used if possible
+     unseal                unseal a sector
      help, h               Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2083,6 +2084,19 @@ OPTIONS:
    --deadline value                           the deadline to compact the partitions in (default: 0)
    --partitions value [ --partitions value ]  list of partitions to compact sectors in
    --really-do-it                             Actually send transaction performing the action (default: false)
+   
+```
+
+### lotus-miner sectors unseal
+```
+NAME:
+   lotus-miner sectors unseal - unseal a sector
+
+USAGE:
+   lotus-miner sectors unseal [command options] [sector number]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

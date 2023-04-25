@@ -65,10 +65,15 @@ func (s *SplitStore) gcHotAfterCompaction() {
 }
 
 func (s *SplitStore) gcBlockstore(b bstore.Blockstore, opts []bstore.BlockstoreGCOption) error {
+	if err := s.checkYield(); err != nil {
+		return err
+	}
 	if gc, ok := b.(bstore.BlockstoreGC); ok {
 		log.Info("garbage collecting blockstore")
 		startGC := time.Now()
 
+		opts = append(opts, bstore.WithCheckFreq(90*time.Second))
+		opts = append(opts, bstore.WithCheck(s.checkYield))
 		if err := gc.CollectGarbage(s.ctx, opts...); err != nil {
 			return err
 		}

@@ -33,7 +33,7 @@ func (t *testExec) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID,
 	panic("implement me")
 }
 
-func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (miner []proof.PoStProof, skipped []abi.SectorID, err error) {
+func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, ppt abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (miner []proof.PoStProof, skipped []abi.SectorID, err error) {
 	panic("implement me")
 }
 

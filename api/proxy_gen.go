@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -1084,6 +1084,8 @@ type StorageMinerMethods struct {
 	SectorTerminateFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
 
 	SectorTerminatePending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
+
+	SectorUnseal func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
 	SectorsList func(p0 context.Context) ([]abi.SectorNumber, error) `perm:"read"`
 
@@ -6422,6 +6424,17 @@ func (s *StorageMinerStruct) SectorTerminatePending(p0 context.Context) ([]abi.S
 
 func (s *StorageMinerStub) SectorTerminatePending(p0 context.Context) ([]abi.SectorID, error) {
 	return *new([]abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorUnseal(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorUnseal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorUnseal(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorUnseal(p0 context.Context, p1 abi.SectorNumber) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsList(p0 context.Context) ([]abi.SectorNumber, error) {

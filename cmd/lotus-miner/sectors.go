@@ -67,6 +67,7 @@ var sectorsCmd = &cli.Command{
 		sectorsBatching,
 		sectorsRefreshPieceMatchingCmd,
 		sectorsCompactPartitionsCmd,
+		sectorsUnsealCmd,
 	},
 }
 
@@ -2252,5 +2253,29 @@ var sectorsNumbersFreeCmd = &cli.Command{
 		}
 
 		return minerAPI.SectorNumFree(ctx, cctx.Args().First())
+	},
+}
+
+var sectorsUnsealCmd = &cli.Command{
+	Name:      "unseal",
+	Usage:     "unseal a sector",
+	ArgsUsage: "[sector number]",
+	Action: func(cctx *cli.Context) error {
+		minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		sectorNum, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return minerAPI.SectorUnseal(ctx, abi.SectorNumber(sectorNum))
 	},
 }

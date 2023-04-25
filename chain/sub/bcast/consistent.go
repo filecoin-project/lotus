@@ -151,16 +151,22 @@ func (cb *ConsistentBCast) RcvBlock(ctx context.Context, blk *types.BlockMsg) {
 // be held off for a bit more time.
 func (cb *ConsistentBCast) WaitForDelivery(bh *types.BlockHeader) error {
 	cb.lk.RLock()
-	bcastDict := cb.m[bh.Height]
+	defer cb.lk.RUnlock()
+
+	bcastDict, ok := cb.m[bh.Height]
+	if !ok {
+		return xerrors.Errorf("block at height %d garbage collected before it could be processed", bh.Height)
+	}
 	key := BCastKey(bh)
 	bInfo, ok := bcastDict.load(key)
-	cb.lk.RUnlock()
 	if !ok {
 		return xerrors.Errorf("something went wrong, unknown block with Epoch + VRFProof (cid=%s) in consistent broadcast storage", key)
 	}
 
 	// Wait for the timeout
+	cb.lk.RUnlock()
 	<-bInfo.ctx.Done()
+	cb.lk.RLock()
 	if bcastDict.blkLen(key) > 1 {
 		return xerrors.Errorf("equivocation detected for epoch %d. Two blocks being broadcast with same VRFProof", bh.Height)
 	}
