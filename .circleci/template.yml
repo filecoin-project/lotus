@@ -63,7 +63,7 @@ commands:
                 name: Install Rust
                 command: |
                   curl https://sh.rustup.rs -sSf | sh -s -- -y
-      - run: make deps lotus
+      - run: make deps
   download-params:
     steps:
       - restore_cache:
@@ -304,9 +304,7 @@ jobs:
           darwin: true
           darwin-architecture: arm64
       - run: |
-          export CPATH=$(brew --prefix)/include
-          export LIBRARY_PATH=$(brew --prefix)/lib
-          make lotus lotus-miner lotus-worker
+          export CPATH=$(brew --prefix)/include && export LIBRARY_PATH=$(brew --prefix)/lib && make lotus lotus-miner lotus-worker
       - run: otool -hv lotus
       - run:
           name: check tag and version output match
@@ -583,6 +581,7 @@ workflows:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^ci\/.*$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -592,6 +591,7 @@ workflows:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^ci\/.*$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -601,6 +601,7 @@ workflows:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^ci\/.*$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -612,8 +613,8 @@ workflows:
             - "Build ( darwin / arm64 )"
           filters:
             branches:
-              ignore:
-                - /.*/
+              only:
+                - /^ci\/.*$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
