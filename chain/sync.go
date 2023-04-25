@@ -209,7 +209,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	}
 
 	if !syncer.consensus.IsEpochInConsensusRange(fts.TipSet().Height()) {
-		log.Errorf("Received block with impossibly large height %d", fts.TipSet().Height())
+		log.Infof("received block outside of consensus range at height %d", fts.TipSet().Height())
 		return false
 	}
 
