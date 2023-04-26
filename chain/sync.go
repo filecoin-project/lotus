@@ -534,6 +534,17 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
+	// At this point we have accepted and synced to the new `maybeHead`
+	// (`StageSyncComplete`).
+	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
+		span.AddAttributes(trace.StringAttribute("put_error", err.Error()))
+		span.SetStatus(trace.Status{
+			Code:    13,
+			Message: err.Error(),
+		})
+		return xerrors.Errorf("failed to put synced tipset to chainstore: %w", err)
+	}
+
 	peers := syncer.receiptTracker.GetPeers(maybeHead)
 	if len(peers) > 0 {
 		syncer.connmgr.TagPeer(peers[0], "new-block", 40)
