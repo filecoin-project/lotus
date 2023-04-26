@@ -288,17 +288,49 @@ func (rpc *RPCMethod) startWorker(client *http.Client, qpsTicker *time.Ticker) {
 
 		// send request the endpoint
 		resp, err := client.Do(req)
-		if err == nil {
+		if err != nil {
+			err = fmt.Errorf("HTTP error: %s", err.Error())
+		} else {
 			statusCode = &resp.StatusCode
-			if rpc.printResp {
-				b, err := io.ReadAll(resp.Body)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				fmt.Printf("[%s] %s", rpc.method, string(b))
-			} else {
-				io.Copy(io.Discard, resp.Body) //nolint:errcheck
+
+			// there was not a HTTP error but we need to still check the json response for errrors
+			var data []byte
+			data, err = io.ReadAll(resp.Body)
+			if err != nil {
+				log.Fatalln(err)
 			}
+
+			// we are only interested if it has the error field in the response
+			type respData struct {
+				Error struct {
+					Code    int    `json:"code"`
+					Message string `json:"message"`
+				} `json:"error"`
+			}
+
+			// unmarshal the response into a struct so we can check for errors
+			var d respData
+			err = json.Unmarshal(data, &d)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			// if the response has an error json message then it should be considered an error just like any http error
+			if len(d.Error.Message) > 0 {
+				// truncate the error message if it is too long
+				if len(d.Error.Message) > 1000 {
+					d.Error.Message = d.Error.Message[:1000] + "..."
+				}
+				// remove newlines from the error message so we don't screw up the report
+				d.Error.Message = strings.ReplaceAll(d.Error.Message, "\n", "")
+
+				err = fmt.Errorf("JSON error: code:%d, message:%s", d.Error.Code, d.Error.Message)
+			}
+
+			if rpc.printResp {
+				fmt.Printf("[%s] %s", rpc.method, string(data))
+			}
+
 			resp.Body.Close() //nolint:errcheck
 		}
 
