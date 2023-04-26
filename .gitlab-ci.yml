@@ -1,5 +1,5 @@
 default:
-  image: registry.sxxfuture.net/lib/docker/lotus-builder/debian:230224-002040
+  image: registry.sxxfuture.net/lib/docker/lotus-builder/debian:230426-171644
 
 stages:
   - build
