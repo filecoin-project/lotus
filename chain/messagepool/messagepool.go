@@ -61,7 +61,7 @@ var MaxUntrustedActorPendingMessages = 10
 
 var MaxNonceGap = uint64(4)
 
-const MaxMessageSize = 64 << 10 // 64KiB
+const MaxMessageSize = 1<<20 - 1024 // XXX: 1MiB less 1KiB for overhead.
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
