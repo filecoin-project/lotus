@@ -1193,12 +1193,14 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 	span.AddAttributes(trace.Int64Attribute("syncChainLength", int64(len(headers))))
 
 	if !headers[0].Equals(ts) {
-		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())
+		return xerrors.Errorf("collectChain synced %s, wanted to sync %s", headers[0].Cids(), ts.Cids())
 	}
 
 	ss.SetStage(api.StagePersistHeaders)
 
-	for _, ts := range headers {
+	// Write tipsets from oldest to newest.
+	for i := len(headers) - 1; i >= 0; i-- {
+		ts := headers[i]
 		if err := syncer.store.PersistTipset(ctx, ts); err != nil {
 			err = xerrors.Errorf("failed to persist synced tipset to the chainstore: %w", err)
 			ss.Error(err)
