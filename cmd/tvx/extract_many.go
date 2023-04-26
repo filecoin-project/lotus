@@ -7,18 +7,20 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus"
 )
 
@@ -67,6 +69,8 @@ var extractManyCmd = &cli.Command{
 	},
 }
 
+var actorCodeRegex = regexp.MustCompile(`^fil/(?P<version>\d+)/(?P<name>\w+)$`)
+
 func runExtractMany(c *cli.Context) error {
 	// LOTUS_DISABLE_VM_BUF disables what's called "VM state tree buffering",
 	// which stashes write operations in a BufferedBlockstore
@@ -114,8 +118,6 @@ func runExtractMany(c *cli.Context) error {
 		log.Println(color.GreenString("csv sanity check succeeded; header contains fields: %v", header))
 	}
 
-	codeCidBuilder := cid.V1Builder{Codec: cid.Raw, MhType: multihash.IDENTITY}
-
 	var (
 		generated []string
 		merr      = new(multierror.Error)
@@ -153,9 +155,21 @@ func runExtractMany(c *cli.Context) error {
 			return fmt.Errorf("invalid method number: %s", methodnumstr)
 		}
 
-		codeCid, err := codeCidBuilder.Sum([]byte(actorcode))
-		if err != nil {
-			return fmt.Errorf("failed to compute actor code CID")
+		// Lookup the code CID.
+		var codeCid cid.Cid
+		if matches := actorCodeRegex.FindStringSubmatch(actorcode); len(matches) == 3 {
+			av, err := strconv.Atoi(matches[1])
+			if err != nil {
+				return fmt.Errorf("invalid actor version %q in actor code %q", matches[1], actorcode)
+			}
+			an := matches[2]
+			if k, ok := actors.GetActorCodeID(actorstypes.Version(av), an); ok {
+				codeCid = k
+			} else {
+				return fmt.Errorf("unknown actor code %q", actorcode)
+			}
+		} else {
+			return fmt.Errorf("invalid actor code %q", actorcode)
 		}
 
 		// Lookup the method in actor method table.
