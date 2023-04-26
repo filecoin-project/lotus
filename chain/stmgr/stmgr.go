@@ -403,9 +403,17 @@ func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.
 	}
 
 	// Try to resolve directly.
-	resolved, err := vm.ResolveToDeterministicAddr(stateTree, cst, idAddr)
+	deterministicAddr, err := vm.ResolveToDeterministicAddr(stateTree, cst, idAddr)
 	if err == nil {
-		return resolved, nil
+		// Return immediately if we have a key address.
+		switch deterministicAddr.Protocol() {
+		case address.BLS, address.SECP256K1:
+			return deterministicAddr, nil
+		case address.Delegated:
+		default:
+			// Shouldn't be possible. Log and continue.
+			log.Errorf("unexpected deterministic address %s", deterministicAddr)
+		}
 	}
 
 	// Otherwise, search the init actor for an appropriate f2 address.
@@ -421,7 +429,7 @@ func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.
 	robustAddr := address.Undef
 
 	err = initState.ForEachActor(func(id abi.ActorID, addr address.Address) error {
-		// We look for f2 addresses only.
+		// We look for f2 addresses only
 		if uint64(id) == idAddrDecoded && addr.Protocol() == address.Actor {
 			robustAddr = addr
 			// Hacky way to early return from ForEach
@@ -429,13 +437,18 @@ func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.
 		}
 		return nil
 	})
-	if robustAddr == address.Undef {
-		if err == nil {
-			return address.Undef, xerrors.Errorf("Address %s not found", idAddr.String())
-		}
-		return address.Undef, xerrors.Errorf("finding address: %w", err)
+	// Prefer the robust (f2) addr.
+	if robustAddr != address.Undef {
+		return robustAddr, nil
 	}
-	return robustAddr, nil
+	// Otherwise, return the f4 addr.
+	if deterministicAddr != address.Undef {
+		return deterministicAddr, nil
+	}
+	if err == nil {
+		return address.Undef, xerrors.Errorf("Address %s not found", idAddr.String())
+	}
+	return address.Undef, xerrors.Errorf("finding address: %w", err)
 }
 
 func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {
