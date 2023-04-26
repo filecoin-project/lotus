@@ -402,6 +402,13 @@ func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
 
+	// Try to resolve directly.
+	resolved, err := vm.ResolveToDeterministicAddr(stateTree, cst, idAddr)
+	if err == nil {
+		return resolved, nil
+	}
+
+	// Otherwise, search the init actor for an appropriate f2 address.
 	initActor, err := stateTree.GetActor(_init.Address)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("load init actor: %w", err)
@@ -414,7 +421,8 @@ func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.
 	robustAddr := address.Undef
 
 	err = initState.ForEachActor(func(id abi.ActorID, addr address.Address) error {
-		if uint64(id) == idAddrDecoded {
+		// We look for f2 addresses only.
+		if uint64(id) == idAddrDecoded && addr.Protocol() == address.Actor {
 			robustAddr = addr
 			// Hacky way to early return from ForEach
 			return xerrors.New("robust address found")
