@@ -73,6 +73,7 @@ var migrationsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("REMINDER: If you are running this, you likely want to ALSO run the continuity testing tool!")
 		ctx := context.TODO()
 
 		if cctx.NArg() != 2 {
