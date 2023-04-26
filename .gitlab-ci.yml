@@ -39,4 +39,4 @@ stages:
     - mkdir -p .go
 
 include:
-  - '.gitlab-ci/v20_of_car_filbase.yml'
+  - '.gitlab-ci/v23_of_car_filbase.yml'
