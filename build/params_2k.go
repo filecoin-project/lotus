@@ -6,7 +6,6 @@ package build
 import (
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -146,7 +145,3 @@ const BootstrapPeerThreshold = 1
 const Eip155ChainId = 31415926
 
 var WhitelistedBlock = cid.Undef
-
-// Reducing the delivery delay for equivocation of
-// consistent broadcast to just half a second.
-var CBDeliveryDelay = 500 * time.Millisecond
