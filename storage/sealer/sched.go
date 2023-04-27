@@ -14,11 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
-	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -510,4 +507,5 @@ func (sh *Scheduler) findWorker(task *WorkerRequest) int {
 
 	return -1
 }
+
 // end
