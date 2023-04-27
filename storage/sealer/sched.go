@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type schedPrioCtxKey int
@@ -608,7 +609,7 @@ func (sh *Scheduler) findFileWorker(task *WorkerRequest) int {
 		if !ok {
 			continue
 		}
-		if workerid == worker.Info.Hostname {
+		if strings.TrimSpace(workerid) == worker.Info.Hostname {
 			return wnd1
 		}
 	}
