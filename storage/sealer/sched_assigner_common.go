@@ -98,7 +98,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 					i := sh.findWorker(task)
 					if i > -1 {
 						wnd = i
-					windowRequest = sh.OpenWindows[i]
+						windowRequest = sh.OpenWindows[i]
 						skip = true
 					}
 				}
