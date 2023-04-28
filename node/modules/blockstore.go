@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 // chain data and state data. It can be backed by a blockstore directly
 // (e.g. Badger), or by a Splitstore.
 func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.UniversalBlockstore, error) {
+	fmt.Println("UniversalBlockstore")
 	bs, err := r.Blockstore(helpers.LifecycleCtx(mctx, lc), repo.UniversalBlockstore)
 	if err != nil {
 		return nil, err

@@ -33,7 +33,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/blockstore/gomap"
+	gomapbs "github.com/filecoin-project/lotus/blockstore/gomap"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -165,6 +165,7 @@ var DaemonCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		fmt.Println("MIKEDAEMON")
 		isLite := cctx.Bool("lite")
 
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
@@ -481,7 +482,9 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
+	fmt.Println("Adding GOMAP")
 	if os.Getenv("LOTUS_GOMAP_STORE") != "" {
+		fmt.Println("Adding GOMAP")
 		gmds, err := gomapbs.NewGomapDS(os.Getenv("LOTUS_GOMAP_STORE"))
 		if err != nil {
 			return xerrors.Errorf("open cassandra store: %w", err)

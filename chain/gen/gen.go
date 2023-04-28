@@ -28,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	gomapbs "github.com/filecoin-project/lotus/blockstore/gomap"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -118,6 +119,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 	j := journal.NilJournal()
 	// TODO: we really shouldn't modify a global variable here.
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	fmt.Println("MIKE")
 
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock(repo.StorageMiner)
@@ -133,6 +135,17 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 	bs, err := lr.Blockstore(context.TODO(), repo.UniversalBlockstore)
 	if err != nil {
 		return nil, err
+	}
+
+	fmt.Println("Adding GOMAP")
+	if os.Getenv("LOTUS_GOMAP_STORE") != "" {
+		fmt.Println("Adding GOMAP")
+		gmds, err := gomapbs.NewGomapDS(os.Getenv("LOTUS_GOMAP_STORE"))
+		if err != nil {
+			return nil, xerrors.Errorf("open cassandra store: %w", err)
+		}
+
+		bs = blockstore.Adapt(gmds)
 	}
 
 	defer func() {

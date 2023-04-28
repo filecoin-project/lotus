@@ -22,6 +22,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	gomapbs "github.com/filecoin-project/lotus/blockstore/gomap"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -460,6 +461,7 @@ func (fsr *fsLockedRepo) Close() error {
 
 // Blockstore returns a blockstore for the provided data domain.
 func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
+	fmt.Println("MIKERS")
 	if domain != UniversalBlockstore {
 		return nil, ErrInvalidBlockstoreDomain
 	}
@@ -489,6 +491,16 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 			return
 		}
 		fsr.bs = blockstore.WrapIDStore(bs)
+
+		fmt.Println("Adding GOMAP")
+		if os.Getenv("LOTUS_GOMAP_STORE") != "" {
+			gmds, err := gomapbs.NewGomapDS(os.Getenv("LOTUS_GOMAP_STORE"))
+			if err != nil {
+				fsr.bsErr = err
+				return
+			}
+			fsr.bs = blockstore.Adapt(gmds)
+		}
 	})
 
 	return fsr.bs, fsr.bsErr
