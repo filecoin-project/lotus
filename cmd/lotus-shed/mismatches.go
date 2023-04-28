@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/urfave/cli/v2"
+
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var mismatchesCmd = &cli.Command{
