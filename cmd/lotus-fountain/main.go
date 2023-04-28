@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
@@ -193,14 +195,34 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	to, err := address.NewFromString(r.FormValue("address"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if to == address.Undef {
-		http.Error(w, "empty address", http.StatusBadRequest)
-		return
+	var to address.Address
+
+	addressInput := r.FormValue("address")
+	if strings.HasPrefix(addressInput, "0x") {
+		ethAddress, err := ethtypes.ParseEthAddress(addressInput)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		filecoinAddress, err := ethAddress.ToFilecoinAddress()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		to = filecoinAddress
+	} else {
+		filecoinAddress, err := address.NewFromString(addressInput)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if filecoinAddress == address.Undef {
+			http.Error(w, "empty address", http.StatusBadRequest)
+			return
+		}
+
+		to = filecoinAddress
 	}
 
 	// Limit based on wallet address
