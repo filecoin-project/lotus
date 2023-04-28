@@ -122,8 +122,6 @@ type MessagePool struct {
 
 	ds dtypes.MetadataDS
 
-	addSema chan struct{}
-
 	closer chan struct{}
 
 	repubTk      *clock.Ticker
@@ -385,7 +383,6 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 
 	mp := &MessagePool{
 		ds:              ds,
-		addSema:         make(chan struct{}, 1),
 		closer:          make(chan struct{}),
 		repubTk:         build.Clock.Ticker(RepublishInterval),
 		repubTrigger:    make(chan struct{}, 1),
@@ -689,12 +686,6 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish
 		return cid.Undef, err
 	}
 
-	// serialize push access to reduce lock contention
-	mp.addSema <- struct{}{}
-	defer func() {
-		<-mp.addSema
-	}()
-
 	mp.curTsLk.Lock()
 	ok, err := mp.addTs(ctx, m, mp.curTs, true, false)
 	if err != nil {
@@ -757,12 +748,6 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	if err != nil {
 		return err
 	}
-
-	// serialize push access to reduce lock contention
-	mp.addSema <- struct{}{}
-	defer func() {
-		<-mp.addSema
-	}()
 
 	mp.curTsLk.RLock()
 	tmpCurTs := mp.curTs
@@ -1138,12 +1123,6 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 	if err != nil {
 		return cid.Undef, err
 	}
-
-	// serialize push access to reduce lock contention
-	mp.addSema <- struct{}{}
-	defer func() {
-		<-mp.addSema
-	}()
 
 	mp.curTsLk.Lock()
 	publish, err := mp.addTs(ctx, m, mp.curTs, true, true)
