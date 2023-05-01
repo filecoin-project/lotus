@@ -275,6 +275,11 @@ var runCmd = &cli.Command{
 			Name:  "http-server-timeout",
 			Value: "30s",
 		},
+		&cli.BoolFlag{
+			Name:  "data-cid",
+			Usage: "Run the data-cid task. --add-piece defaults this to true unless overridden",
+			Value: true,
+		},
 	},
 	Before: func(cctx *cli.Context) error {
 		if cctx.IsSet("address") {
@@ -379,8 +384,14 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		ttDataCidDefault := false
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
-			taskTypes = append(taskTypes, sealtasks.TTAddPiece, sealtasks.TTDataCid)
+			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
+			ttDataCidDefault = true
+		}
+		if (cctx.IsSet("data-cid") && cctx.Bool("data-cid")) ||
+			(!cctx.IsSet("data-cid") && ttDataCidDefault) {
+			taskTypes = append(taskTypes, sealtasks.TTDataCid)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("sector-download")) && cctx.Bool("sector-download") {
 			taskTypes = append(taskTypes, sealtasks.TTDownloadSector)
