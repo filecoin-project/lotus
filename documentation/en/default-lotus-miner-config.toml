@@ -665,7 +665,7 @@
   #
   # type: uint64
   # env var: LOTUS_SEALING_MAXSECTORPROVECOMMITSSUBMITTEDPEREPOCH
-  #MaxSectorProveCommitsSubmittedPerEpoch = 0
+  #MaxSectorProveCommitsSubmittedPerEpoch = 20
 
   # type: uint64
   # env var: LOTUS_SEALING_TERMINATEBATCHMAX
