@@ -3950,8 +3950,7 @@ func (mr *MockFullNodeMockRecorder) WalletBalance(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletBalance", reflect.TypeOf((*MockFullNode)(nil).WalletBalance), arg0, arg1)
 }
 
-// wallet-security MockFullNode WalletCustomMethod
-// WalletCustomMethod mocks base method
+// WalletCustomMethod mocks base method.
 func (m *MockFullNode) WalletCustomMethod(arg0 context.Context, arg1 api.WalletMethod, arg2 []interface{}) (interface{}, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "WalletCustomMethod", arg0, arg1, arg2)
@@ -3960,7 +3959,7 @@ func (m *MockFullNode) WalletCustomMethod(arg0 context.Context, arg1 api.WalletM
 	return ret0, ret1
 }
 
-// WalletCustomMethod indicates an expected call of WalletCustomMethod
+// WalletCustomMethod indicates an expected call of WalletCustomMethod.
 func (mr *MockFullNodeMockRecorder) WalletCustomMethod(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletCustomMethod", reflect.TypeOf((*MockFullNode)(nil).WalletCustomMethod), arg0, arg1, arg2)

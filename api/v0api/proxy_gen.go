@@ -395,7 +395,6 @@ type FullNodeMethods struct {
 
 	WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) `perm:"read"`
 
-	// wallet-security FullNodeStructExt WalletCustomMethod
 	WalletCustomMethod func(p0 context.Context, p1 api.WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
 
 	WalletDefaultAddress func(p0 context.Context) (address.Address, error) `perm:"write"`
@@ -421,7 +420,6 @@ type FullNodeMethods struct {
 	WalletValidateAddress func(p0 context.Context, p1 string) (address.Address, error) `perm:"read"`
 
 	WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
-	
 }
 
 type FullNodeStub struct {
@@ -2453,6 +2451,7 @@ func (s *FullNodeStruct) WalletCustomMethod(p0 context.Context, p1 api.WalletMet
 	}
 	return s.Internal.WalletCustomMethod(p0, p1, p2)
 }
+
 func (s *FullNodeStub) WalletCustomMethod(p0 context.Context, p1 api.WalletMethod, p2 []interface{}) (interface{}, error) {
 	return nil, ErrNotSupported
 }
