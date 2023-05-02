@@ -22,6 +22,10 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
+
+	// wallet-security api
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
 var walletCmd = &cli.Command{
@@ -39,6 +43,13 @@ var walletCmd = &cli.Command{
 		walletVerify,
 		walletDelete,
 		walletMarket,
+
+		// wallet-extand mark func cmd
+		WithCategory("custom", walletMarkCmd),
+		// wallet-security func cmd
+		WithCategory("custom", walletPasswdCmd),
+		WithCategory("custom", walletEncrypt),
+		WithCategory("custom", walletDecrypt),
 	},
 }
 
@@ -102,9 +113,48 @@ var walletList = &cli.Command{
 
 		afmt := NewAppFmt(cctx.App)
 
-		addrs, err := api.WalletList(ctx)
-		if err != nil {
-			return err
+		// wallet-security walletlist
+		// addrs, err := api.WalletList(ctx)
+		// if err != nil {
+		// 	return err
+		// }
+		encryptAddrs := make([]lapi.AddrListEncrypt, 0)
+		rest, err := api.WalletCustomMethod(ctx, lapi.WalletListForEnc, []interface{}{})
+		if rest != nil {
+			if err != nil {
+				return err
+			}
+			addrs, _ := json.Marshal(rest)
+			json.Unmarshal(addrs, &encryptAddrs)
+		} else {
+			addrs, err := api.WalletList(ctx)
+			if err != nil {
+				return err
+			}
+			for _, v := range addrs {
+				encryptAddrs = append(encryptAddrs, lapi.AddrListEncrypt{
+					Addr:    v,
+					Encrypt: false,
+				})
+			}
+		}
+
+		// wallet-extand keymark
+		var keyMark map[string]string
+		var keymarkPath string = getWalletMarkRepo(cctx)
+		_, err = os.Stat(keymarkPath)
+		if err == nil {
+			sector, err := ioutil.ReadFile(keymarkPath)
+			if err == nil {
+				err = json.Unmarshal(sector, &keyMark)
+				if err != nil {
+					keyMark = map[string]string{}
+				}
+			} else {
+				keyMark = map[string]string{}
+			}
+		} else {
+			keyMark = map[string]string{}
 		}
 
 		// Assume an error means no default key is set
@@ -118,17 +168,20 @@ var walletList = &cli.Command{
 			tablewriter.Col("Market(Locked)"),
 			tablewriter.Col("Nonce"),
 			tablewriter.Col("Default"),
+			tablewriter.Col("Encrypt"),
+			tablewriter.Col("Mark"),
 			tablewriter.NewLineCol("Error"))
 
-		for _, addr := range addrs {
+		for _, encryptAddr := range encryptAddrs {
 			if cctx.Bool("addr-only") {
-				afmt.Println(addr.String())
+				//afmt.Println(addr.String())
+				afmt.Println(encryptAddr.Addr.String())
 			} else {
-				a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
+				a, err := api.StateGetActor(ctx, encryptAddr.Addr, types.EmptyTSK)
 				if err != nil {
 					if !strings.Contains(err.Error(), "actor not found") {
 						tw.Write(map[string]interface{}{
-							"Address": addr,
+							"Address": encryptAddr.Addr,
 							"Error":   err,
 						})
 						continue
@@ -140,16 +193,26 @@ var walletList = &cli.Command{
 				}
 
 				row := map[string]interface{}{
-					"Address": addr,
+					"Address": encryptAddr.Addr,
 					"Balance": types.FIL(a.Balance),
 					"Nonce":   a.Nonce,
+					"Encrypt": encryptAddr.Encrypt,
 				}
-				if addr == def {
+				if encryptAddr.Addr == def {
 					row["Default"] = "X"
 				}
 
+				// wallet-extand keymark
+				addrmark, exist := keyMark[encryptAddr.Addr.String()]
+				if !exist && addrmark != "" {
+					addrmark = ""
+				}
+				if addrmark != "" {
+					row["Mark"] = addrmark
+				}
+
 				if cctx.Bool("id") {
-					id, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
+					id, err := api.StateLookupID(ctx, encryptAddr.Addr, types.EmptyTSK)
 					if err != nil {
 						row["ID"] = "n/a"
 					} else {
@@ -158,7 +221,7 @@ var walletList = &cli.Command{
 				}
 
 				if cctx.Bool("market") {
-					mbal, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+					mbal, err := api.StateMarketBalance(ctx, encryptAddr.Addr, types.EmptyTSK)
 					if err == nil {
 						row["Market(Avail)"] = types.FIL(types.BigSub(mbal.Escrow, mbal.Locked))
 						row["Market(Locked)"] = types.FIL(mbal.Locked)
@@ -283,14 +346,47 @@ var walletExport = &cli.Command{
 			return fmt.Errorf("must specify key to export")
 		}
 
+		// wallet-security panic
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println("invaild address payload")
+			}
+		}()
+
 		addr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
 			return err
 		}
 
-		ki, err := api.WalletExport(ctx, addr)
-		if err != nil {
-			return err
+		// wallet-security walletexport
+		// ki, err := api.WalletExport(ctx, addr)
+		// if err != nil {
+		// 	return err
+		// }
+		ki := new(types.KeyInfo)
+		rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
+		if rest != nil && (wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) && rest.(bool)) {
+			// passwd := cctx.String("passwd")
+			passwd := wallet.Prompt("Enter your Password:\n")
+			if passwd == "" {
+				return xerrors.Errorf("must enter your passwd")
+			}
+
+			if err := wallet.RegexpPasswd(passwd); err != nil {
+				return err
+			}
+
+			rest, err := api.WalletCustomMethod(ctx, lapi.WalletExportForEnc, []interface{}{addr, passwd})
+			if err != nil {
+				return err
+			}
+			keyinfo, _ := json.Marshal(rest)
+			json.Unmarshal(keyinfo, ki)
+		} else {
+			ki, err = api.WalletExport(ctx, addr)
+			if err != nil {
+				return err
+			}
 		}
 
 		b, err := json.Marshal(ki)
@@ -513,6 +609,13 @@ var walletDelete = &cli.Command{
 			return fmt.Errorf("must specify address to delete")
 		}
 
+		// wallet-security panic
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println("invaild address payload")
+			}
+		}()
+
 		addr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
 			return err
@@ -520,7 +623,32 @@ var walletDelete = &cli.Command{
 
 		fmt.Println("Soft deleting address:", addr)
 		fmt.Println("Hard deletion of the address in `~/.lotus/keystore` is needed for permanent removal")
-		return api.WalletDelete(ctx, addr)
+
+		// wallet-security walletdelete
+		// return api.WalletDelete(ctx, addr)
+		rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
+		if rest != nil && (wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) && rest.(bool)) {
+			// passwd := cctx.String("passwd")
+			passwd := wallet.Prompt("Enter your Password:\n")
+			if passwd == "" {
+				return xerrors.Errorf("Must enter your passwd")
+			}
+
+			if err := wallet.RegexpPasswd(passwd); err != nil {
+				return err
+			}
+
+			_, err = api.WalletCustomMethod(ctx, lapi.WalletDeleteForEnc, []interface{}{addr, passwd})
+			if err != nil {
+				return err
+			}
+		} else {
+			if err := api.WalletDelete(ctx, addr); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	},
 }
 

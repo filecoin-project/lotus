@@ -93,3 +93,9 @@ func WithCategory(cat string, cmd *cli.Command) *cli.Command {
 	cmd.Category = strings.ToUpper(cat)
 	return cmd
 }
+
+// wallet-security GetWalletCmd
+// GetWalletCmd get wallet cmds
+func GetWalletCmd() []*cli.Command {
+	return walletCmd.Subcommands
+}

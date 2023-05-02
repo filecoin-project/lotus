@@ -227,6 +227,12 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.
 	return lw.importKey(ctx, lki)
 }
 
+// wallet-security LedgerWallet WalletCustomMethod
+// WalletCustomMethod dont use this method for LedgerWallet
+func (lw *LedgerWallet) WalletCustomMethod(ctx context.Context, meth api.WalletMethod, args []interface{}) (interface{}, error) {
+	return nil, xerrors.Errorf("LedgerWallet do not support extension operations for the time being")
+}
+
 func (lw *LedgerWallet) Get() api.Wallet {
 	if lw == nil {
 		return nil

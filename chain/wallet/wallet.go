@@ -70,7 +70,13 @@ func (w *LocalWallet) WalletSign(ctx context.Context, addr address.Address, msg 
 		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), types.ErrKeyInfoNotFound)
 	}
 
-	return sigs.Sign(key.ActSigType(ki.Type), ki.PrivateKey, msg)
+	// wallet-security 解密
+	// return sigs.Sign(key.ActSigType(ki.Type), ki.PrivateKey, msg)
+	pk, err := key.UnMakeByte(ki.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return sigs.Sign(key.ActSigType(ki.Type), pk, msg)
 }
 
 func (w *LocalWallet) findKey(addr address.Address) (*key.Key, error) {
@@ -144,6 +150,12 @@ func (w *LocalWallet) WalletExport(ctx context.Context, addr address.Address) (*
 		return nil, xerrors.Errorf("key not found for %s", addr)
 	}
 
+	// wallet-security wallet加密判断
+	pk := k.PrivateKey
+	if pk[0] == 0xff && pk[1] == 0xff && pk[2] == 0xff && pk[3] == 0xff {
+		return nil, xerrors.Errorf("The wallet is encrypted and there is no export permission.")
+	}
+
 	return &k.KeyInfo, nil
 }
 
@@ -155,6 +167,13 @@ func (w *LocalWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (addr
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to make key: %w", err)
 	}
+
+	// wallet-security 加密
+	pk, err := key.MakeByte(k.PrivateKey)
+	if err != nil {
+		return address.Undef, err
+	}
+	k.PrivateKey = pk
 
 	if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
 		return address.Undef, xerrors.Errorf("saving to keystore: %w", err)
@@ -320,6 +339,16 @@ func (w *LocalWallet) deleteDefault() {
 }
 
 func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
+	// wallet-security wallet加密判断
+	key, err := w.findKey(addr)
+	if err != nil {
+		return err
+	}
+	pk := key.PrivateKey
+	if pk[0] == 0xff && pk[1] == 0xff && pk[2] == 0xff && pk[3] == 0xff {
+		return xerrors.Errorf("The wallet is encrypted and there is no delete permission.")
+	}
+
 	if err := w.walletDelete(ctx, addr); err != nil {
 		return xerrors.Errorf("wallet delete: %w", err)
 	}

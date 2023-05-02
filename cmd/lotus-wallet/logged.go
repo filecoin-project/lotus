@@ -87,3 +87,9 @@ func (c *LoggedWallet) WalletDelete(ctx context.Context, addr address.Address) e
 
 	return c.under.WalletDelete(ctx, addr)
 }
+
+// wallet-security LoggedWallet WalletCustomMethod
+func (c *LoggedWallet) WalletCustomMethod(ctx context.Context, meth api.WalletMethod, args []interface{}) (interface{}, error) {
+	log.Infof("LoggedWallet WalletCustomMethod  meth %+v args %+v ", meth, args)
+	return c.under.WalletCustomMethod(ctx, meth, args)
+}

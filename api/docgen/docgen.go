@@ -482,6 +482,11 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 		}
 	case reflect.Interface:
 		return struct{}{}
+	// wallet-security fix docgen build err
+	case reflect.Int64:
+		return 0
+	case reflect.Map:
+		return make(map[string]string)
 	}
 
 	panic(fmt.Sprintf("No example value for type: %s (method '%s')", t, method))
