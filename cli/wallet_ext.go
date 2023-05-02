@@ -189,7 +189,9 @@ var walletEncrypt = &cli.Command{
 					return err
 				}
 				addrs, _ := json.Marshal(rest)
-				json.Unmarshal(addrs, &encryptAddrs)
+				if err := json.Unmarshal(addrs, &encryptAddrs); err != nil {
+					return err
+				}
 			} else {
 				l, err := api.WalletList(ctx)
 				if err != nil {
@@ -511,7 +513,8 @@ func saveWalletMarkFile(cctx *cli.Context, keyMark map[string]string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
+
 	sector, err := json.MarshalIndent(keyMark, "", "\t")
 	if err != nil {
 		return err

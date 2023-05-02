@@ -117,7 +117,7 @@ func CheckPasswd(passwd []byte) error {
 	if err != nil {
 		return xerrors.Errorf("opening file '%s': %w", key.PasswdPath, err)
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
@@ -161,7 +161,7 @@ func GetSetupState(path string) bool {
 		log.Infof("opening file '%s': %w", path, err)
 		return false
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {

@@ -125,7 +125,9 @@ var walletList = &cli.Command{
 				return err
 			}
 			addrs, _ := json.Marshal(rest)
-			json.Unmarshal(addrs, &encryptAddrs)
+			if err := json.Unmarshal(addrs, &encryptAddrs); err != nil {
+				return err
+			}
 		} else {
 			addrs, err := api.WalletList(ctx)
 			if err != nil {
@@ -381,7 +383,9 @@ var walletExport = &cli.Command{
 				return err
 			}
 			keyinfo, _ := json.Marshal(rest)
-			json.Unmarshal(keyinfo, ki)
+			if err := json.Unmarshal(keyinfo, ki); err != nil {
+				return err
+			}
 		} else {
 			ki, err = api.WalletExport(ctx, addr)
 			if err != nil {

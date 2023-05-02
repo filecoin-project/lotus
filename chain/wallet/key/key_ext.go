@@ -11,7 +11,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var AddrPrefix = []byte{0xff, 0xff, 0xff, 0xff} // addrPrefix = "////"
+var AddrPrefix = []byte{0xff, 0xff, 0xff, 0xff, 0xff} // addrPrefix = "/////"
 var WalletPasswd string = ""
 var PasswdPath string = ""
 
