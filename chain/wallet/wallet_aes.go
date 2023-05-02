@@ -175,6 +175,7 @@ func GetSetupState(path string) bool {
 
 	//读取密码
 	saltkey := completionPwd([]byte(walletSaltPwd))
+	/* #nosec G401 */
 	saltm5 := md5.Sum([]byte(saltkey))
 	m5passwd, err := key.AESDecrypt(saltm5[:], data[:64])
 	if err != nil {
