@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	/* #nosec G501 */
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -41,6 +42,7 @@ func SetupPasswd(passwd []byte, path string) error {
 
 	//用户密码加密check消息
 	passwd = completionPwd(passwd)
+	/* #nosec G401 */
 	m5 := md5.Sum(passwd)
 	checkmsg, err := key.AESEncrypt(m5[:], []byte(walletCheckMsg))
 	m5passwd := hex.EncodeToString(m5[:])
@@ -50,6 +52,7 @@ func SetupPasswd(passwd []byte, path string) error {
 
 	//用户密码用盐密加密
 	saltkey := completionPwd([]byte(walletSaltPwd))
+	/* #nosec G401 */
 	saltm5 := md5.Sum([]byte(saltkey))
 	saltm5passwdmsg, err := key.AESEncrypt(saltm5[:], []byte(m5passwd))
 	//saltm5passwd := hex.EncodeToString(saltm5[:])
@@ -126,6 +129,7 @@ func CheckPasswd(passwd []byte) error {
 
 	//读取加密check消息
 	passwd = completionPwd(passwd)
+	/* #nosec G401 */
 	m5 := md5.Sum(passwd)
 	text, err := key.AESDecrypt(m5[:], data[64:])
 	if err != nil {
