@@ -228,7 +228,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
-	if err := syncer.store.PersistTipset(ctx, fts.TipSet()); err != nil {
+	if err := syncer.store.PersistTipsets(ctx, []*types.TipSet{fts.TipSet()}); err != nil {
 		log.Warn("failed to persist incoming block header: ", err)
 		return false
 	}
@@ -1199,13 +1199,10 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 	ss.SetStage(api.StagePersistHeaders)
 
 	// Write tipsets from oldest to newest.
-	for i := len(headers) - 1; i >= 0; i-- {
-		ts := headers[i]
-		if err := syncer.store.PersistTipset(ctx, ts); err != nil {
-			err = xerrors.Errorf("failed to persist synced tipset to the chainstore: %w", err)
-			ss.Error(err)
-			return err
-		}
+	if err := syncer.store.PersistTipsets(ctx, headers); err != nil {
+		err = xerrors.Errorf("failed to persist synced tipset to the chainstore: %w", err)
+		ss.Error(err)
+		return err
 	}
 
 	ss.SetStage(api.StageMessages)

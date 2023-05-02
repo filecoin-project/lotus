@@ -378,7 +378,7 @@ func (cs *ChainStore) SetGenesis(ctx context.Context, b *types.BlockHeader) erro
 }
 
 func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
-	if err := cs.PersistTipset(ctx, ts); err != nil {
+	if err := cs.PersistTipsets(ctx, []*types.TipSet{ts}); err != nil {
 		return xerrors.Errorf("failed to persist tipset: %w", err)
 	}
 
@@ -970,18 +970,25 @@ func (cs *ChainStore) AddToTipSetTracker(ctx context.Context, b *types.BlockHead
 	return nil
 }
 
-func (cs *ChainStore) PersistTipset(ctx context.Context, ts *types.TipSet) error {
-	if err := cs.persistBlockHeaders(ctx, ts.Blocks()...); err != nil {
+func (cs *ChainStore) PersistTipsets(ctx context.Context, tipsets []*types.TipSet) error {
+	toPersist := make([]*types.BlockHeader, 0, len(tipsets)*int(build.BlocksPerEpoch))
+	tsBlks := make([]block.Block, 0, len(tipsets))
+	for _, ts := range tipsets {
+		toPersist = append(toPersist, ts.Blocks()...)
+		tsBlk, err := ts.Key().ToStorageBlock()
+		if err != nil {
+			return xerrors.Errorf("failed to get tipset key block: %w", err)
+		}
+
+		tsBlks = append(tsBlks, tsBlk)
+	}
+
+	if err := cs.persistBlockHeaders(ctx, toPersist...); err != nil {
 		return xerrors.Errorf("failed to persist block headers: %w", err)
 	}
 
-	tsBlk, err := ts.Key().ToStorageBlock()
-	if err != nil {
-		return xerrors.Errorf("failed to get tipset key block: %w", err)
-	}
-
-	if err = cs.chainLocalBlockstore.Put(ctx, tsBlk); err != nil {
-		return xerrors.Errorf("failed to put tipset key block: %w", err)
+	if err := cs.chainLocalBlockstore.PutMany(ctx, tsBlks); err != nil {
+		return xerrors.Errorf("failed to put tipset key blocks: %w", err)
 	}
 
 	return nil
