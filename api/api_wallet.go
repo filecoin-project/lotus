@@ -44,4 +44,7 @@ type Wallet interface {
 	WalletExport(context.Context, address.Address) (*types.KeyInfo, error) //perm:admin
 	WalletImport(context.Context, *types.KeyInfo) (address.Address, error) //perm:admin
 	WalletDelete(context.Context, address.Address) error                   //perm:admin
+
+	// wallet-security WalletExt WalletCustomMethod
+	WalletCustomMethod(context.Context, WalletMethod, []interface{}) (interface{}, error) //perm:admin
 }
