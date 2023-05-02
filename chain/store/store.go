@@ -12,11 +12,11 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	block "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
@@ -639,27 +639,27 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
 	_, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
 	defer span.End()
-
-	if cs.heaviest != nil { // buf
-		if len(cs.reorgCh) > 0 {
-			log.Warnf("Reorg channel running behind, %d reorgs buffered", len(cs.reorgCh))
-		}
-		cs.reorgCh <- reorg{
-			old: cs.heaviest,
-			new: ts,
-		}
-	} else {
-		log.Warnf("no heaviest tipset found, using %s", ts.Cids())
-	}
-
 	span.AddAttributes(trace.BoolAttribute("newHead", true))
 
 	log.Infof("New heaviest tipset! %s (height=%d)", ts.Cids(), ts.Height())
+	prevHeaviest := cs.heaviest
 	cs.heaviest = ts
 
 	if err := cs.writeHead(ctx, ts); err != nil {
 		log.Errorf("failed to write chain head: %s", err)
 		return err
+	}
+
+	if prevHeaviest != nil { // buf
+		if len(cs.reorgCh) > 0 {
+			log.Warnf("Reorg channel running behind, %d reorgs buffered", len(cs.reorgCh))
+		}
+		cs.reorgCh <- reorg{
+			old: prevHeaviest,
+			new: ts,
+		}
+	} else {
+		log.Warnf("no previous heaviest tipset found, using %s", ts.Cids())
 	}
 
 	return nil

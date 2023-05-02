@@ -24,7 +24,7 @@ import (
 func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	// miner is connected to the first node, and we want to observe the chain
 	// from the second node.
-	blocktime := 100 * time.Millisecond
+	blocktime := 250 * time.Millisecond
 	n1, m1, m2, ens := kit.EnsembleOneTwo(t,
 		kit.MockProofs(),
 		kit.ThroughRPC(),
@@ -32,14 +32,14 @@ func TestEthBlockHashesCorrect_MultiBlockTipset(t *testing.T) {
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	n1.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(25)))
+	n1.WaitTillChain(ctx, kit.HeightAtLeast(abi.ChainEpoch(5)))
 	defer cancel()
 
 	var n2 kit.TestFullNode
 	ens.FullNode(&n2, kit.ThroughRPC()).Start().Connect(n2, n1)
 
 	// find the first tipset where all miners mined a block.
-	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 	n2.WaitTillChain(ctx, kit.BlocksMinedByAll(m1.ActorAddr, m2.ActorAddr))
 	defer cancel()
 

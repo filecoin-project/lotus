@@ -254,6 +254,33 @@ func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector storif
 	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, offset, size, randomness, commd)
 }
 
+func (sm *StorageMinerAPI) SectorUnseal(ctx context.Context, sectorNum abi.SectorNumber) error {
+
+	status, err := sm.Miner.SectorsStatus(ctx, sectorNum, false)
+	if err != nil {
+		return err
+	}
+
+	minerAddr, err := sm.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+	minerID, err := address.IDFromAddress(minerAddr)
+	if err != nil {
+		return err
+	}
+
+	sector := storiface.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(minerID),
+			Number: sectorNum,
+		},
+		ProofType: status.SealProof,
+	}
+
+	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
+}
+
 // List all staged sectors
 func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, error) {
 	sectors, err := sm.Miner.ListSectors()

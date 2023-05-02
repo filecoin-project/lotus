@@ -236,6 +236,10 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 			err = r.fetchThrottled(ctx, url, tempDest)
 			if err != nil {
 				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, tempDest, err))
+				// fetching failed, remove temp file
+				if rerr := os.RemoveAll(tempDest); rerr != nil {
+					merr = multierror.Append(merr, xerrors.Errorf("removing temp dest (post-err cleanup): %w", rerr))
+				}
 				continue
 			}
 

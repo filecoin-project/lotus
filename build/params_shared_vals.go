@@ -28,12 +28,9 @@ const AllowableClockDriftSecs = uint64(1)
 
 // Used by tests and some obscure tooling
 /* inline-gen template
-
 const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
-
 /* inline-gen start */
-
-const TestNetworkVersion = network.Version18
+const TestNetworkVersion = network.Version20
 
 /* inline-gen end */
 

@@ -297,12 +297,12 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 	}
 
 	var root cid.Cid
-	if d.vmFlush {
+	if lvm, ok := vmi.(*vm.LegacyVM); ok && !d.vmFlush {
+		root, err = lvm.StateTree().(*state.StateTree).Flush(d.ctx)
+	} else {
 		// flush the VM, committing the state tree changes and forcing a
 		// recursive copy from the temporary blockstore to the real blockstore.
 		root, err = vmi.Flush(d.ctx)
-	} else {
-		root, err = vmi.(*vm.LegacyVM).StateTree().(*state.StateTree).Flush(d.ctx)
 	}
 
 	return ret, root, err

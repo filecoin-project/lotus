@@ -96,6 +96,7 @@ func DefaultFullNode() *FullNode {
 				MarkSetType:   "badger",
 
 				HotStoreFullGCFrequency:      20,
+				HotStoreMaxSpaceTarget:       650_000_000_000,
 				HotStoreMaxSpaceThreshold:    150_000_000_000,
 				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},

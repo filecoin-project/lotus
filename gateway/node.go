@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"go.opencensus.io/stats"
 	"golang.org/x/time/rate"
 

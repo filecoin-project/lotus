@@ -159,6 +159,7 @@
   * [SectorTerminate](#SectorTerminate)
   * [SectorTerminateFlush](#SectorTerminateFlush)
   * [SectorTerminatePending](#SectorTerminatePending)
+  * [SectorUnseal](#SectorUnseal)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
   * [SectorsListInStates](#SectorsListInStates)
@@ -474,7 +475,7 @@ Inputs:
   ],
   "Bw==",
   10101,
-  18
+  20
 ]
 ```
 
@@ -3414,6 +3415,21 @@ Response:
   }
 ]
 ```
+
+### SectorUnseal
+SectorUnseal unseals the provided sector
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  9
+]
+```
+
+Response: `{}`
 
 ## Sectors
 

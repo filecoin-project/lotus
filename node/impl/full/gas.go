@@ -388,6 +388,11 @@ func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Messag
 			return nil, err
 		}
 		msg.GasLimit = int64(float64(gasLimit) * m.Mpool.GetConfig().GasLimitOverestimation)
+
+		// Gas overestimation can cause us to exceed the block gas limit, cap it.
+		if msg.GasLimit > build.BlockGasLimit {
+			msg.GasLimit = build.BlockGasLimit
+		}
 	}
 
 	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {
