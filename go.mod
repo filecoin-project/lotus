@@ -237,10 +237,7 @@ require (
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/iancoleman/orderedmap v0.1.0 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
-<<<<<<< HEAD
 	github.com/ipfs/go-detect-race v0.0.1 // indirect
-=======
->>>>>>> master
 	github.com/ipfs/go-filestore v1.2.0 // indirect
 	github.com/ipfs/go-ipfs-cmds v0.8.2 // indirect
 	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect
