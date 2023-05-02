@@ -278,7 +278,9 @@ var walletDecrypt = &cli.Command{
 					return err
 				}
 				addrs, _ := json.Marshal(rest)
-				json.Unmarshal(addrs, &encryptAddrs)
+				if err := json.Unmarshal(addrs, &encryptAddrs); err != nil {
+					return err
+				}
 			} else {
 				l, err := api.WalletList(ctx)
 				if err != nil {

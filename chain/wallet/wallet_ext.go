@@ -541,9 +541,8 @@ func (w *LocalWallet) WalletIsEncrypt(ctx context.Context, addr address.Address)
 			// wallet-security 解密
 			if bytes.Equal(ki.PrivateKey[:4], key.AddrPrefix) {
 				return true, nil
-			} else {
-				return false, nil
 			}
+			return false, nil
 		}
 	}
 	return false, nil
