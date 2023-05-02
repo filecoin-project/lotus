@@ -2579,6 +2579,7 @@ func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 [
 	return false, ErrNotSupported
 }
 
+// wallet-security FullNodeStruct WalletCustomMethod
 func (s *FullNodeStruct) WalletCustomMethod(p0 context.Context, p1 api.WalletMethod, p2 []interface{}) (interface{}, error) {
 	if s.Internal.WalletCustomMethod == nil {
 		return nil, ErrNotSupported
