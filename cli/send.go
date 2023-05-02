@@ -204,8 +204,9 @@ var sendCmd = &cli.Command{
 		}
 
 		// wallet-security WalletDefaultAddress
+		fullapi := srv.FullNodeAPI()
 		if params.From == address.Undef {
-			defaddr, err := srv.FullNodeAPI().WalletDefaultAddress(ctx)
+			defaddr, err := fullapi.WalletDefaultAddress(ctx)
 			if err != nil {
 				return err
 			}
@@ -213,7 +214,7 @@ var sendCmd = &cli.Command{
 		}
 		// wallet-security send
 		if wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) {
-			rest, _ := srv.FullNodeAPI().WalletCustomMethod(ctx, api.WalletIsEncrypt, []interface{}{params.From})
+			rest, _ := fullapi.WalletCustomMethod(ctx, api.WalletIsEncrypt, []interface{}{params.From})
 			if rest != nil && rest.(bool) {
 				// passwd := cctx.String("passwd")
 				passwd := wallet.Prompt("Enter your Password:\n")
@@ -224,7 +225,7 @@ var sendCmd = &cli.Command{
 					return err
 				}
 
-				rest, _ := srv.FullNodeAPI().WalletCustomMethod(ctx, api.WalletCheckPasswd, []interface{}{passwd})
+				rest, _ := fullapi.WalletCustomMethod(ctx, api.WalletCheckPasswd, []interface{}{passwd})
 				if !rest.(bool) {
 					return fmt.Errorf("check passwd is failed")
 				}
