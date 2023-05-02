@@ -53,7 +53,7 @@ func SetupPasswd(passwd []byte, path string) error {
 	//用户密码用盐密加密
 	saltkey := completionPwd([]byte(walletSaltPwd))
 	/* #nosec G401 */
-	saltm5 := md5.Sum([]byte(saltkey))
+	saltm5 := md5.Sum(saltkey)
 	saltm5passwdmsg, err := key.AESEncrypt(saltm5[:], []byte(m5passwd))
 	//saltm5passwd := hex.EncodeToString(saltm5[:])
 	if err != nil {
@@ -176,7 +176,7 @@ func GetSetupState(path string) bool {
 	//读取密码
 	saltkey := completionPwd([]byte(walletSaltPwd))
 	/* #nosec G401 */
-	saltm5 := md5.Sum([]byte(saltkey))
+	saltm5 := md5.Sum(saltkey)
 	m5passwd, err := key.AESDecrypt(saltm5[:], data[:64])
 	if err != nil {
 		log.Infof("err: %v", err)
