@@ -2,10 +2,11 @@ package blockstore
 
 import (
 	"context"
-	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/ipfs/go-cid"
-	block "github.com/ipfs/go-libipfs/blocks"
 	"sync"
+
+	lru "github.com/hashicorp/golang-lru/v2"
+	block "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
 )
 
 type CachedBlockstore struct {
