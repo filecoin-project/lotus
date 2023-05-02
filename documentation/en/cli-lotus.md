@@ -215,6 +215,11 @@ COMMANDS:
      delete       Soft delete an address from the wallet - hard deletion needed for permanent removal
      market       Interact with market balances
      help, h      Shows a list of commands or help for one command
+   CUSTOM:
+     mark     Manage wallet mark info
+     passwd   Manage wallet passwd info
+     encrypt  encrypt wallet account
+     decrypt  decrypt wallet account
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -398,6 +403,154 @@ USAGE:
 OPTIONS:
    --address value, -a value  Market address to move funds to (account or miner actor address, defaults to --from address)
    --from value, -f value     Specify address to move funds from, otherwise it will use the default wallet address
+   
+```
+
+### lotus wallet mark
+```
+NAME:
+   lotus wallet mark - Manage wallet mark info
+
+USAGE:
+   lotus wallet mark command [command options] [arguments...]
+
+COMMANDS:
+     add      Add/Update wallet mark
+     del      Delete wallet mark
+     clear    Clear wallet mark
+     help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus wallet mark add
+```
+NAME:
+   lotus wallet mark add - Add/Update wallet mark
+
+USAGE:
+   lotus wallet mark add [command options] [address]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus wallet mark del
+```
+NAME:
+   lotus wallet mark del - Delete wallet mark
+
+USAGE:
+   lotus wallet mark del [command options] [address]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus wallet mark clear
+```
+NAME:
+   lotus wallet mark clear - Clear wallet mark
+
+USAGE:
+   lotus wallet mark clear [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus wallet passwd
+```
+NAME:
+   lotus wallet passwd - Manage wallet passwd info
+
+USAGE:
+   lotus wallet passwd command [command options] [arguments...]
+
+COMMANDS:
+     add      Add wallet password
+     reset    Reset wallet password
+     clear    Clear wallet password
+     help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus wallet passwd add
+```
+NAME:
+   lotus wallet passwd add - Add wallet password
+
+USAGE:
+   lotus wallet passwd add [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus wallet passwd reset
+```
+NAME:
+   lotus wallet passwd reset - Reset wallet password
+
+USAGE:
+   lotus wallet passwd reset [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus wallet passwd clear
+```
+NAME:
+   lotus wallet passwd clear - Clear wallet password
+
+USAGE:
+   lotus wallet passwd clear [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus wallet encrypt
+```
+NAME:
+   lotus wallet encrypt - encrypt wallet account
+
+USAGE:
+   lotus wallet encrypt [command options] [address]
+
+CATEGORY:
+   CUSTOM
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus wallet decrypt
+```
+NAME:
+   lotus wallet decrypt - decrypt wallet account
+
+USAGE:
+   lotus wallet decrypt [command options] [address]
+
+CATEGORY:
+   CUSTOM
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 
