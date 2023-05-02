@@ -9,9 +9,10 @@ import (
 	"os"
 	"regexp"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
-	"golang.org/x/xerrors"
 )
 
 var substitutePwd = []byte("****************")

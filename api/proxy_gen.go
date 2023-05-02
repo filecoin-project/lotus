@@ -584,6 +584,9 @@ type FullNodeMethods struct {
 
 	WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) `perm:"read"`
 
+	// wallet-security FullNodeStructExt WalletCustomMethod
+	WalletCustomMethod func(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
+
 	WalletDefaultAddress func(p0 context.Context) (address.Address, error) `perm:"write"`
 
 	WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
@@ -607,9 +610,6 @@ type FullNodeMethods struct {
 	WalletValidateAddress func(p0 context.Context, p1 string) (address.Address, error) `perm:"read"`
 
 	WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
-
-	// wallet-security FullNodeStructExt WalletCustomMethod
-	WalletCustomMethod func(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
 
 	Web3ClientVersion func(p0 context.Context) (string, error) `perm:"read"`
 }
@@ -1140,6 +1140,9 @@ type WalletStruct struct {
 }
 
 type WalletMethods struct {
+	// wallet-security WalletStructExt WalletCustomMethod
+	WalletCustomMethod func(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
+
 	WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
 
 	WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) `perm:"admin"`
@@ -1153,9 +1156,6 @@ type WalletMethods struct {
 	WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
 	WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) `perm:"admin"`
-	
-	// wallet-security WalletStructExt WalletCustomMethod
-	WalletCustomMethod func(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
 }
 
 type WalletStub struct {
@@ -3895,6 +3895,16 @@ func (s *FullNodeStub) WalletBalance(p0 context.Context, p1 address.Address) (ty
 	return *new(types.BigInt), ErrNotSupported
 }
 
+func (s *FullNodeStruct) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
+	if s.Internal.WalletCustomMethod == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.WalletCustomMethod(p0, p1, p2)
+}
+func (s *FullNodeStub) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) WalletDefaultAddress(p0 context.Context) (address.Address, error) {
 	if s.Internal.WalletDefaultAddress == nil {
 		return *new(address.Address), ErrNotSupported
@@ -4025,16 +4035,6 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 
 func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
 	return false, ErrNotSupported
-}
-
-func (s *FullNodeStruct) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
-	if s.Internal.WalletCustomMethod == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.WalletCustomMethod(p0, p1, p2)
-}
-func (s *FullNodeStub) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
-	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) Web3ClientVersion(p0 context.Context) (string, error) {
@@ -6644,6 +6644,17 @@ func (s *StorageMinerStub) WorkerStats(p0 context.Context) (map[uuid.UUID]storif
 	return *new(map[uuid.UUID]storiface.WorkerStats), ErrNotSupported
 }
 
+// wallet-security WalletStruct WalletCustomMethod
+func (s *WalletStruct) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
+	if s.Internal.WalletCustomMethod == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.WalletCustomMethod(p0, p1, p2)
+}
+func (s *WalletStub) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *WalletStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
 	if s.Internal.WalletDelete == nil {
 		return ErrNotSupported
@@ -6718,17 +6729,6 @@ func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []b
 }
 
 func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
-	return nil, ErrNotSupported
-}
-
-// wallet-security WalletStruct WalletCustomMethod
-func (s *WalletStruct) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
-	if s.Internal.WalletCustomMethod == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.WalletCustomMethod(p0, p1, p2)
-}
-func (s *WalletStub) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
 	return nil, ErrNotSupported
 }
 
