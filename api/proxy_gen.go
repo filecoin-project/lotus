@@ -1139,7 +1139,6 @@ type WalletStruct struct {
 }
 
 type WalletMethods struct {
-	// wallet-security WalletStructExt WalletCustomMethod
 	WalletCustomMethod func(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
 
 	WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
