@@ -128,6 +128,9 @@ type FullNodeStruct struct {
 
 	NetStruct
 
+	// wallet-security FullNodeStructExt
+	FullNodeStructExt
+
 	Internal FullNodeMethods
 }
 
@@ -1133,6 +1136,9 @@ type StorageMinerStub struct {
 }
 
 type WalletStruct struct {
+	// wallet-security WalletStructExt
+	WalletStructExt
+
 	Internal WalletMethods
 }
 

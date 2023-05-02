@@ -20,9 +20,16 @@ func GenerateKey(typ types.KeyType) (*Key, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// wallet-security 加密
+	pk1, err := MakeByte(pk)
+	if err != nil {
+		return nil, err
+	}
+
 	ki := types.KeyInfo{
 		Type:       typ,
-		PrivateKey: pk,
+		PrivateKey: pk1, //PrivateKey: pk,
 	}
 	return NewKey(ki)
 }
@@ -39,8 +46,15 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 		KeyInfo: keyinfo,
 	}
 
-	var err error
-	k.PublicKey, err = sigs.ToPublic(ActSigType(k.Type), k.PrivateKey)
+	// wallet-security 解密
+	// var err error
+	// k.PublicKey, err = sigs.ToPublic(ActSigType(k.Type), k.PrivateKey)
+	pk, err := UnMakeByte(k.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	k.PublicKey, err = sigs.ToPublic(ActSigType(k.Type), pk)
+
 	if err != nil {
 		return nil, err
 	}

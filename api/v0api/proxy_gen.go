@@ -39,6 +39,9 @@ type FullNodeStruct struct {
 
 	NetStruct
 
+	// wallet-security struct
+	api.FullNodeStructExt
+
 	Internal FullNodeMethods
 }
 

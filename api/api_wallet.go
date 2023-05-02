@@ -35,6 +35,9 @@ type MsgMeta struct {
 }
 
 type Wallet interface {
+	// wallet-security WalletExt struct
+	WalletExt
+
 	WalletNew(context.Context, types.KeyType) (address.Address, error) //perm:admin
 	WalletHas(context.Context, address.Address) (bool, error)          //perm:admin
 	WalletList(context.Context) ([]address.Address, error)             //perm:admin

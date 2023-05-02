@@ -50,6 +50,9 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+
+	// wallet-security api
+	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
 const (
@@ -234,6 +237,18 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 		freshRepo := err != repo.ErrRepoExists
+
+		// wallet-security keystore/passwd
+		passwdPath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		ok := wallet.GetSetupState(passwdPath + "/keystore/passwd")
+		if !ok {
+			log.Info("Passwd is not setup")
+		} else {
+			log.Info("Passwd is setup")
+		}
 
 		if !isLite {
 			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), build.SrsJSON(), 0); err != nil {
