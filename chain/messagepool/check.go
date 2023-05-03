@@ -35,8 +35,7 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 	mp.lk.RLock()
 	mset, ok, err := mp.getPendingMset(ctx, from)
 	if err != nil {
-		log.Warnf("errored while getting pending mset: %w", err)
-		return nil, err
+		return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 	}
 	if ok {
 		msgs = make([]*types.Message, 0, len(mset.msgs))
