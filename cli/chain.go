@@ -388,10 +388,6 @@ var ChainSetHeadCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.NArg() != 1 {
-			return IncorrectNumArgs(cctx)
-		}
-
 		var ts *types.TipSet
 
 		if cctx.Bool("genesis") {
