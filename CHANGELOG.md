@@ -2,6 +2,7 @@
 
 # v1.23.1 / 2023-05-03
 
+# What's changed
   - Update build version for release/v1.23.1
   - Disable lotus markets by default (#10809) ([filecoin-project/lotus#10809](https://github.com/filecoin-project/lotus/pull/10809))
   - perf: mempool: lower priority optimizations (#10693) ([filecoin-project/lotus#10693](https://github.com/filecoin-project/lotus/pull/10693))
