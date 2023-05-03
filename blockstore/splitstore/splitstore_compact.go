@@ -455,7 +455,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
 func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) {
-	if err := s.checkYield(); err != nil {
+	if err := s.checkClosing(); err != nil {
 		return 0, err
 	}
 
