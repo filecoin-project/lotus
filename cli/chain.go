@@ -388,7 +388,7 @@ var ChainSetHeadCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.NArg() != 1 {
+		if !cctx.Bool("genesis") && !cctx.IsSet("epoch") && cctx.NArg() != 1 {
 			return IncorrectNumArgs(cctx)
 		}
 
