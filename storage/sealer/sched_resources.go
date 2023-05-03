@@ -22,7 +22,7 @@ type ActiveResources struct {
 }
 
 type taskCounter struct {
-	taskCounters map[sealtasks.SealTaskType]map[uuid.UUID]bool
+	taskCounters map[sealtasks.SealTaskType]map[uuid.UUID]int
 
 	// this lock is technically redundant, as ActiveResources is always accessed
 	// with the worker lock, but let's not panic if we ever change that
@@ -31,31 +31,36 @@ type taskCounter struct {
 
 func newTaskCounter() *taskCounter {
 	return &taskCounter{
-		taskCounters: make(map[sealtasks.SealTaskType]map[uuid.UUID]bool),
+		taskCounters: make(map[sealtasks.SealTaskType]map[uuid.UUID]int),
 	}
 }
 
 func (tc *taskCounter) Add(tt sealtasks.SealTaskType, schedID uuid.UUID) {
 	tc.lk.Lock()
 	defer tc.lk.Unlock()
-	tc.getUnlocked(tt)[schedID] = true
+	tc.getUnlocked(tt)[schedID] += 1
 }
 
 func (tc *taskCounter) Free(tt sealtasks.SealTaskType, schedID uuid.UUID) {
 	tc.lk.Lock()
 	defer tc.lk.Unlock()
-	delete(tc.getUnlocked(tt), schedID)
+	m := tc.getUnlocked(tt)
+	if m[schedID] <= 1 {
+		delete(m, schedID)
+	} else {
+		m[schedID] -= 1
+	}
 }
 
-func (tc *taskCounter) getUnlocked(tt sealtasks.SealTaskType) map[uuid.UUID]bool {
+func (tc *taskCounter) getUnlocked(tt sealtasks.SealTaskType) map[uuid.UUID]int {
 	if tc.taskCounters[tt] == nil {
-		tc.taskCounters[tt] = make(map[uuid.UUID]bool)
+		tc.taskCounters[tt] = make(map[uuid.UUID]int)
 	}
 
 	return tc.taskCounters[tt]
 }
 
-func (tc *taskCounter) Get(tt sealtasks.SealTaskType) map[uuid.UUID]bool {
+func (tc *taskCounter) Get(tt sealtasks.SealTaskType) map[uuid.UUID]int {
 	tc.lk.Lock()
 	defer tc.lk.Unlock()
 
@@ -144,7 +149,7 @@ func (a *ActiveResources) Free(schedID uuid.UUID, tt sealtasks.SealTaskType, wr 
 func (a *ActiveResources) CanHandleRequest(schedID uuid.UUID, tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
 	if needRes.MaxConcurrent > 0 {
 		tasks := a.taskCounters.Get(tt)
-		if len(tasks) >= needRes.MaxConcurrent && (schedID == uuid.UUID{} || !tasks[schedID]) {
+		if len(tasks) >= needRes.MaxConcurrent && (schedID == uuid.UUID{} || tasks[schedID] == 0) {
 			log.Debugf("sched: not scheduling on worker %s for %s; at task limit tt=%s, curcount=%d", wid, caller, tt, a.taskCounters.Get(tt))
 			return false
 		}
