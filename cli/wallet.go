@@ -119,14 +119,27 @@ var walletList = &cli.Command{
 		// 	return err
 		// }
 		encryptAddrs := make([]lapi.AddrListEncrypt, 0)
-		rest, err := api.WalletCustomMethod(ctx, lapi.WalletListForEnc, []interface{}{})
-		if rest != nil {
-			if err != nil {
-				return err
-			}
-			addrs, _ := json.Marshal(rest)
-			if err := json.Unmarshal(addrs, &encryptAddrs); err != nil {
-				return err
+		if wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) {
+			rest, err := api.WalletCustomMethod(ctx, lapi.WalletListForEnc, []interface{}{})
+			if rest != nil {
+				if err != nil {
+					return err
+				}
+				addrs, _ := json.Marshal(rest)
+				if err := json.Unmarshal(addrs, &encryptAddrs); err != nil {
+					return err
+				}
+			} else {
+				addrs, err := api.WalletList(ctx)
+				if err != nil {
+					return err
+				}
+				for _, v := range addrs {
+					encryptAddrs = append(encryptAddrs, lapi.AddrListEncrypt{
+						Addr:    v,
+						Encrypt: false,
+					})
+				}
 			}
 		} else {
 			addrs, err := api.WalletList(ctx)
@@ -366,25 +379,33 @@ var walletExport = &cli.Command{
 		// 	return err
 		// }
 		ki := new(types.KeyInfo)
-		rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
-		if rest != nil && (wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) && rest.(bool)) {
-			// passwd := cctx.String("passwd")
-			passwd := wallet.Prompt("Enter your Password:\n")
-			if passwd == "" {
-				return xerrors.Errorf("must enter your passwd")
-			}
 
-			if err := wallet.RegexpPasswd(passwd); err != nil {
-				return err
-			}
+		if wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) {
+			rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
+			if rest != nil && rest.(bool) {
+				// passwd := cctx.String("passwd")
+				passwd := wallet.Prompt("Enter your Password:\n")
+				if passwd == "" {
+					return xerrors.Errorf("must enter your passwd")
+				}
 
-			rest, err := api.WalletCustomMethod(ctx, lapi.WalletExportForEnc, []interface{}{addr, passwd})
-			if err != nil {
-				return err
-			}
-			keyinfo, _ := json.Marshal(rest)
-			if err := json.Unmarshal(keyinfo, ki); err != nil {
-				return err
+				if err := wallet.RegexpPasswd(passwd); err != nil {
+					return err
+				}
+
+				rest, err := api.WalletCustomMethod(ctx, lapi.WalletExportForEnc, []interface{}{addr, passwd})
+				if err != nil {
+					return err
+				}
+				keyinfo, _ := json.Marshal(rest)
+				if err := json.Unmarshal(keyinfo, ki); err != nil {
+					return err
+				}
+			} else {
+				ki, err = api.WalletExport(ctx, addr)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			ki, err = api.WalletExport(ctx, addr)
@@ -630,21 +651,27 @@ var walletDelete = &cli.Command{
 
 		// wallet-security walletdelete
 		// return api.WalletDelete(ctx, addr)
-		rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
-		if rest != nil && (wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) && rest.(bool)) {
-			// passwd := cctx.String("passwd")
-			passwd := wallet.Prompt("Enter your Password:\n")
-			if passwd == "" {
-				return xerrors.Errorf("Must enter your passwd")
-			}
+		if wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) {
+			rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
+			if rest != nil && rest.(bool) {
+				// passwd := cctx.String("passwd")
+				passwd := wallet.Prompt("Enter your Password:\n")
+				if passwd == "" {
+					return xerrors.Errorf("Must enter your passwd")
+				}
 
-			if err := wallet.RegexpPasswd(passwd); err != nil {
-				return err
-			}
+				if err := wallet.RegexpPasswd(passwd); err != nil {
+					return err
+				}
 
-			_, err = api.WalletCustomMethod(ctx, lapi.WalletDeleteForEnc, []interface{}{addr, passwd})
-			if err != nil {
-				return err
+				_, err = api.WalletCustomMethod(ctx, lapi.WalletDeleteForEnc, []interface{}{addr, passwd})
+				if err != nil {
+					return err
+				}
+			} else {
+				if err := api.WalletDelete(ctx, addr); err != nil {
+					return err
+				}
 			}
 		} else {
 			if err := api.WalletDelete(ctx, addr); err != nil {

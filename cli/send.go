@@ -203,17 +203,17 @@ var sendCmd = &cli.Command{
 			params.Params = decparams
 		}
 
-		// wallet-security WalletDefaultAddress
-		fullapi := srv.FullNodeAPI()
-		if params.From == address.Undef {
-			defaddr, err := fullapi.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-			params.From = defaddr
-		}
 		// wallet-security send
 		if wallet.GetSetupStateForLocal(getWalletPwdRepo(cctx)) {
+			fullapi := srv.FullNodeAPI()
+			// wallet-security WalletDefaultAddress
+			if params.From == address.Undef {
+				defaddr, err := fullapi.WalletDefaultAddress(ctx)
+				if err != nil {
+					return err
+				}
+				params.From = defaddr
+			}
 			rest, _ := fullapi.WalletCustomMethod(ctx, api.WalletIsEncrypt, []interface{}{params.From})
 			if rest != nil && rest.(bool) {
 				// passwd := cctx.String("passwd")
