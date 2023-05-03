@@ -22,6 +22,7 @@ var (
 	MemPoolSizeLimitLoDefault = 20000
 	PruneCooldownDefault      = time.Minute
 	GasLimitOverestimation    = 1.25
+	OptionalMetricsDefault    = types.MpoolOptionalMetrics{MpoolSize: false}
 
 	ConfigKey = datastore.NewKey("/mpool/config")
 )
@@ -98,5 +99,6 @@ func DefaultConfig() *types.MpoolConfig {
 		ReplaceByFeeRatio:      ReplaceByFeePercentageDefault,
 		PruneCooldown:          PruneCooldownDefault,
 		GasLimitOverestimation: GasLimitOverestimation,
+		OptionalMetrics:        OptionalMetricsDefault,
 	}
 }

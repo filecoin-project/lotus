@@ -127,6 +127,7 @@ type MpoolConfig struct {
 	ReplaceByFeeRatio      float64
 	PruneCooldown          time.Duration
 	GasLimitOverestimation float64
+	OptionalMetrics        MpoolOptionalMetrics
 }
 
 ```
@@ -149,6 +150,19 @@ The meaning of these fields is as follows:
   Default is 1min.
 - `GasLimitOverestimation` -- this is a parameter that controls the gas limit overestimation for new messages.
   Default is 1.25.
+- `OptionalMetrics` -- this parameter allows enabling of potentially performance impacting metrics, see below.
+
+The OptionalMetrics struct is defined as follows:
+```
+type OptionalMetrics struct {
+  MpoolSize: bool
+}
+```
+
+The meaning of these fields is as follows:
+- `MpoolSize` -- If set to true, count all the messages in the messagepool every time there's a
+  change to the mpool size, and record it to the metrics store. This operation may impact
+  performance so it's disable by default.
 
 
 ## Message Selection
