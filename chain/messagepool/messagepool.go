@@ -474,6 +474,15 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 }
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
+	//if addr is not an ID addr, then it is already resolved to a key
+	if addr.Protocol() != address.ID {
+		return addr, nil
+	}
+	return mp.resolveToKeyFromID(ctx, addr)
+}
+
+func (mp *MessagePool) resolveToKeyFromID(ctx context.Context, addr address.Address) (address.Address, error) {
+
 	// check the cache
 	a, ok := mp.keyCache.Get(addr)
 	if ok {
@@ -488,8 +497,6 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 
 	// place both entries in the cache (may both be key addresses, which is fine)
 	mp.keyCache.Add(addr, ka)
-	mp.keyCache.Add(ka, ka)
-
 	return ka, nil
 }
 

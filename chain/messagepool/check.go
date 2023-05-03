@@ -33,8 +33,13 @@ func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*api.MessageP
 func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]api.MessageCheckStatus, error) {
 	var msgs []*types.Message
 	mp.lk.RLock()
-	mset, ok := mp.pending[from]
+	mset, ok, err := mp.getPendingMset(ctx, from)
+	if err != nil {
+		log.Warnf("errored while getting pending mset: %w", err)
+		return nil, err
+	}
 	if ok {
+		msgs = make([]*types.Message, 0, len(mset.msgs))
 		for _, sm := range mset.msgs {
 			msgs = append(msgs, &sm.Message)
 		}
@@ -64,7 +69,11 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 		if !ok {
 			mmap = make(map[uint64]*types.Message)
 			msgMap[m.From] = mmap
-			mset, ok := mp.pending[m.From]
+			mset, ok, err := mp.getPendingMset(ctx, m.From)
+			if err != nil {
+				log.Warnf("errored while getting pending mset: %w", err)
+				return nil, err
+			}
 			if ok {
 				count += len(mset.msgs)
 				for _, sm := range mset.msgs {
@@ -144,7 +153,11 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		st, ok := state[m.From]
 		if !ok {
 			mp.lk.RLock()
-			mset, ok := mp.pending[m.From]
+			mset, ok, err := mp.getPendingMset(ctx, m.From)
+			if err != nil {
+				log.Warnf("errored while getting pending mset: %w", err)
+				return nil, err
+			}
 			if ok && !interned {
 				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
 				for _, m := range mset.msgs {
