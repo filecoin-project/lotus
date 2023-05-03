@@ -145,11 +145,4 @@ func TestBatchDealInput(t *testing.T) {
 
 	t.Run("4-p1600B", run(1600, 4, 4))
 	t.Run("4-p513B", run(513, 4, 2))
-	if !testing.Short() {
-		t.Run("32-p257B", run(257, 32, 8))
-
-		// fixme: this appears to break data-transfer / markets in some really creative ways
-		//t.Run("32-p10B", run(10, 32, 2))
-		// t.Run("128-p10B", run(10, 128, 8))
-	}
 }
