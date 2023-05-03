@@ -2375,7 +2375,13 @@ Inputs:
     "value": "0x0",
     "data": "0x07"
   },
-  "string value"
+  {
+    "PredefinedBlock": "string value",
+    "Number": "0x5",
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2455,7 +2461,13 @@ Inputs:
 ```json
 [
   "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "string value"
+  {
+    "PredefinedBlock": "string value",
+    "Number": "0x5",
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2588,7 +2600,13 @@ Inputs:
 ```json
 [
   "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "string value"
+  {
+    "PredefinedBlock": "string value",
+    "Number": "0x5",
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2691,7 +2709,13 @@ Inputs:
 [
   "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
   "0x07",
-  "string value"
+  {
+    "PredefinedBlock": "string value",
+    "Number": "0x5",
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
@@ -2861,7 +2885,13 @@ Inputs:
 ```json
 [
   "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
-  "string value"
+  {
+    "PredefinedBlock": "string value",
+    "Number": "0x5",
+    "blockNumber": "0x5",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "requireCanonical": true
+  }
 ]
 ```
 
