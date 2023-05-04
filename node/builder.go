@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -252,6 +253,14 @@ func isFollower(s *Settings) bool {
 
 func isNotFollower(s *Settings) bool {
 	return !s.Follower
+}
+
+func isChainCassandra() bool {
+	return os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != ""
+}
+
+func isNotChainCassandra() bool {
+	return !isChainCassandra()
 }
 
 func Base() Option {

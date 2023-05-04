@@ -11,8 +11,6 @@ import (
 	"sync"
 	"time"
 
-	ipfsbstore "github.com/ipfs/go-ipfs-blockstore"
-
 	lru "github.com/hashicorp/golang-lru/v2"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -31,9 +29,7 @@ import (
 	"github.com/filecoin-project/pubsub"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/blockstore"
 	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/blockstore/cassbs"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -141,22 +137,6 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 	tsc, _ := lru.NewARC[types.TipSetKey, *types.TipSet](DefaultTipSetCacheSize)
 	if j == nil {
 		j = journal.NilJournal()
-	}
-
-	//TODO move this function to a higher level abstraction where configuration logic belongs
-	//Set all data stores to Cassandra.
-	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
-		cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
-		if err != nil {
-			return nil
-		}
-
-		rbs := ipfsbstore.NewBlockstoreNoPrefix(cds)
-		bs := blockstore.Adapt(rbs)
-		chainBs = bs
-		stateBs = bs
-		ds = cds
-
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
