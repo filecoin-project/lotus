@@ -3,6 +3,8 @@ package stmgr
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -40,8 +42,7 @@ import (
 const LookbackNoLimit = api.LookbackNoLimit
 const ReceiptAmtBitwidth = 3
 
-const execTraceCacheSize = 16
-
+var defaultExecTraceCacheSize = 16
 var log = logging.Logger("statemgr")
 
 type StateManagerAPI interface {
@@ -72,6 +73,17 @@ type migrationResultCache struct {
 func (m *migrationResultCache) keyForMigration(root cid.Cid) dstore.Key {
 	kStr := fmt.Sprintf("%s/%s", m.keyPrefix, root)
 	return dstore.NewKey(kStr)
+}
+
+func init() {
+	if s := os.Getenv("LOTUS_EXEC_TRACE_CACHE"); s != "" {
+		letc, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_EXEC_TRACE_CACHE' env var: %s", err)
+		} else {
+			defaultExecTraceCacheSize = letc
+		}
+	}
 }
 
 func (m *migrationResultCache) Get(ctx context.Context, root cid.Cid) (cid.Cid, bool, error) {
@@ -200,9 +212,14 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		}
 	}
 
-	execTraceCache, err := lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
-	if err != nil {
-		return nil, err
+	log.Debugf("execTraceCache size: %d", defaultExecTraceCacheSize)
+	var execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	var err error
+	if defaultExecTraceCacheSize > 0 {
+		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](defaultExecTraceCacheSize)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &StateManager{
