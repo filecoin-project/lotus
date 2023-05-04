@@ -131,7 +131,7 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 	tsKey := ts.Key()
 
 	// check if we have the trace for this tipset in the cache
-	if defaultExecTraceCacheSize > 0 {
+	if execTraceCacheSize > 0 {
 		sm.execTraceCacheLock.Lock()
 		if entry, ok := sm.execTraceCache.Get(tsKey); ok {
 			// we have to make a deep copy since caller can modify the invocTrace
@@ -149,7 +149,7 @@ func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (c
 		return cid.Undef, nil, err
 	}
 
-	if defaultExecTraceCacheSize > 0 {
+	if execTraceCacheSize > 0 {
 		invocTraceCopy := makeDeepCopy(invocTrace)
 
 		sm.execTraceCacheLock.Lock()
