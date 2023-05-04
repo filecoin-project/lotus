@@ -143,7 +143,7 @@
 
   # type: bool
   # env var: LOTUS_SUBSYSTEMS_ENABLEMARKETS
-  #EnableMarkets = true
+  #EnableMarkets = false
 
   # type: string
   # env var: LOTUS_SUBSYSTEMS_SEALERAPIINFO

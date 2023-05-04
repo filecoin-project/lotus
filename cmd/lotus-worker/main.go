@@ -295,6 +295,13 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		// ensure tmpdir exists
+		td := os.TempDir()
+		if err := os.MkdirAll(td, 0755); err != nil {
+			return xerrors.Errorf("ensuring temp dir %s exists: %w", td, err)
+		}
+
+		// Check file descriptor limit
 		limit, _, err := ulimit.GetLimit()
 		switch {
 		case err == ulimit.ErrUnsupported:

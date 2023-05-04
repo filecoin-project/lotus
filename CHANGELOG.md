@@ -606,10 +606,6 @@ verifiedregistry  bafk2bzacedej3dnr62g2je2abmyjg3xqv4otvh6e26du5fcrhvw7zgcaaez3a
 ### Dependencies
 github.com/filecoin-project/go-state-types (v0.11.0-rc1 -> v0.11.1):
 
-<<<<<<< HEAD
-=======
-
->>>>>>> releases
 # v1.20.4 / 2023-03-17
 
 This is a patch release intended to alleviate performance issues reported by some users since the nv18 upgrade. 

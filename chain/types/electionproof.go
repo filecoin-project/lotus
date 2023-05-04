@@ -100,6 +100,7 @@ func polyval(p []*big.Int, x *big.Int) *big.Int {
 
 // computes lambda in Q.256
 func lambda(power, totalPower *big.Int) *big.Int {
+	blocksPerEpoch := NewInt(build.BlocksPerEpoch)
 	lam := new(big.Int).Mul(power, blocksPerEpoch.Int)   // Q.0
 	lam = lam.Lsh(lam, precision)                        // Q.256
 	lam = lam.Div(lam /* Q.256 */, totalPower /* Q.0 */) // Q.256
