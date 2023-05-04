@@ -274,9 +274,9 @@ type FullNodeMethods struct {
 
 	EthGetCode func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBytes, error) `perm:"read"`
 
-	EthGetFilterChanges func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"write"`
+	EthGetFilterChanges func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
-	EthGetFilterLogs func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"write"`
+	EthGetFilterLogs func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
 	EthGetLogs func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
@@ -302,21 +302,21 @@ type FullNodeMethods struct {
 
 	EthMaxPriorityFeePerGas func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
 
-	EthNewBlockFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"write"`
+	EthNewBlockFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"read"`
 
-	EthNewFilter func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) `perm:"write"`
+	EthNewFilter func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) `perm:"read"`
 
-	EthNewPendingTransactionFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"write"`
+	EthNewPendingTransactionFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"read"`
 
 	EthProtocolVersion func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
 	EthSendRawTransaction func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) `perm:"read"`
 
-	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) `perm:"write"`
+	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) `perm:"read"`
 
-	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"write"`
+	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"read"`
 
-	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"write"`
+	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"read"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
