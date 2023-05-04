@@ -80,7 +80,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 	dealStatus := ""
 	for {
 		// client list-deals
-		out = clientCLI.RunCmd("client", "list-deals")
+		out = clientCLI.RunCmd("client", "list-deals", "--show-failed")
 		fmt.Println("list-deals:\n", out)
 
 		lines := strings.Split(out, "\n")
