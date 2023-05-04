@@ -502,7 +502,7 @@ func (s *SplitStore) applyProtectors() error {
 		})
 
 		if err != nil {
-			return xerrors.Errorf("error applynig protector: %w", err)
+			return xerrors.Errorf("error applying protector: %w", err)
 		}
 	}
 

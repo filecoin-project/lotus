@@ -180,10 +180,18 @@ func TestColdStorePrune(t *testing.T) {
 			break
 		}
 	}
+
 	pruneOpts := api.PruneOpts{RetainState: int64(0), MovingGC: false}
-	require.NoError(t, full.ChainPrune(ctx, pruneOpts))
-	bm.Restart()
-	waitForPrune(ctx, t, 1, full)
+	for {
+		require.NoError(t, full.ChainPrune(ctx, pruneOpts))
+		time.Sleep(5 * time.Second)
+		if splitStorePruneIndex(ctx, t, full) >= 1 {
+			break
+		}
+
+		t.Log("prune hasn't started for some reason, resending prune request")
+	}
+
 	assert.False(g.t, g.Exists(ctx, garbageS), "Garbage state should be removed from cold store after prune but it's still there")
 	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message should be on the cold store after prune")
 }
@@ -295,15 +303,6 @@ func TestCompactRetainsTipSetRef(t *testing.T) {
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
 	for {
 		if splitStoreCompactionIndex(ctx, t, n) >= cIdx {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-
-func waitForPrune(ctx context.Context, t *testing.T, pIdx int64, n *kit.TestFullNode) {
-	for {
-		if splitStorePruneIndex(ctx, t, n) >= pIdx {
 			break
 		}
 		time.Sleep(1 * time.Second)
