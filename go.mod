@@ -172,6 +172,7 @@ require (
 )
 
 require (
+	filbase/filbase_redis v0.0.0-00010101000000-000000000000 // indirect
 	github.com/GeertJohan/go.incremental v1.0.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -351,3 +352,5 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 replace github.com/moran666666/sector-counter => ./extern/sxx-sector-counter
 
 replace github.com/filecoin-project/go-fil-markets => ./extern/sxx-go-fil-markets@v1.27.0-rc1
+
+replace filbase/filbase_redis => ./extern/filbase/filbase_redis

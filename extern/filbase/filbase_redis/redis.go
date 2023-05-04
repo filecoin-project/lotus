@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
+	// "strconv"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -34,12 +34,12 @@ const (
 	PWorkerKey WorkerKey = "p-worker"
 )
 
-func SetWorkerForSector(workerType WorkerKey, sectorId int, workerHostName string) (int64, error) {
-	return rdb.HSet(ctx, prefix+":sector-assignment:"+string(workerType), strconv.Itoa(sectorId), workerHostName).Result()
+func SetWorkerForSector(workerType WorkerKey, sectorId string, workerHostName string) (int64, error) {
+	return rdb.HSet(ctx, prefix+":sector-assignment:"+string(workerType), sectorId, workerHostName).Result()
 }
 
-func GetWorkerForSector(workerType WorkerKey, sectorId int) (string, error) {
-	return rdb.HGet(ctx, prefix+":sector-assignment:"+string(workerType), strconv.Itoa(sectorId)).Result()
+func GetWorkerForSector(workerType WorkerKey, sectorId string) (string, error) {
+	return rdb.HGet(ctx, prefix+":sector-assignment:"+string(workerType), sectorId).Result()
 }
 
 func GetAllWorkerSector(workerType WorkerKey) ([]interface{}, error) {

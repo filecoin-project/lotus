@@ -14,9 +14,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
-	"os"
-	"path/filepath"
+	// "os"
+	// "path/filepath"
 	"strings"
+	"filbase/filbase_redis"
 )
 
 type schedPrioCtxKey int
@@ -481,20 +482,34 @@ func (sh *Scheduler) Close(ctx context.Context) error {
 
 // add by lin
 func (sh *Scheduler) findWorker(task *WorkerRequest) int {
-	minerpath := os.Getenv("LOTUS_MINER_PATH")
-	sectorspath := filepath.Join(minerpath, "./sectorsworker")
-	path := filepath.Join(sectorspath, task.Sector.ID.Number.String())
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		log.Errorf("zlin IsNotExist file err: %+v", err)
-		return -1
+	// minerpath := os.Getenv("LOTUS_MINER_PATH")
+	// sectorspath := filepath.Join(minerpath, "./sectorsworker")
+	// path := filepath.Join(sectorspath, task.Sector.ID.Number.String())
+	// _, err := os.Stat(path)
+	// if os.IsNotExist(err) {
+	// 	log.Errorf("zlin IsNotExist file err: %+v", err)
+	// 	return -1
+	// }
+	// data, err := os.ReadFile(path)
+	// if err != nil {
+	// 	log.Errorf("zlin read file err: %+v", err)
+	// 	return -1
+	// }
+	workerid := ""
+	if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate {
+		workerid, _ = filbase_redis.GetWorkerForSector(filbase_redis.PWorkerKey, task.Sector.ID.Number.String())
+		if workerid == "" {
+			log.Errorf("can't find worker in redis")
+			return -1
+		}
+	} else if task.TaskType == sealtasks.TTCommit2 {
+		workerid, _ = filbase_redis.GetWorkerForSector(filbase_redis.CWorkerKey, task.Sector.ID.Number.String())
+		if workerid == "" {
+			log.Errorf("can't find worker in redis")
+			return -1
+		}
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		log.Errorf("zlin read file err: %+v", err)
-		return -1
-	}
-	workerid := string(data)
+	log.Errorf("find worker in redis :%+v", workerid)
 	for wnd1, windowRequest := range sh.OpenWindows {
 		worker, ok := sh.Workers[windowRequest.Worker]
 		if !ok {

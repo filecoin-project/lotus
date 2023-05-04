@@ -20,8 +20,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 
-	"path/filepath"
-	"io/ioutil"
+	// "path/filepath"
+	// "io/ioutil"
+	"filbase/filbase_redis"
 )
 
 var errSectorRemoved = errors.New("sector removed")
@@ -759,16 +760,31 @@ func (m *Sealing) ForceSectorStateOfSxx(ctx context.Context, id abi.SectorNumber
 	if err != nil {
 		return xerrors.Errorf("sector %d not found, could not change state", id)
 	}
-	minerpath := os.Getenv("LOTUS_MINER_PATH")
-	sectorspath := filepath.Join(minerpath, "./sectorsworker")
-	if err = os.MkdirAll(sectorspath, 0755); err != nil {
-		if !os.IsExist(err) {
-			return xerrors.Errorf("mkdir sectorsworker path err : %+v", err)
+	// minerpath := os.Getenv("LOTUS_MINER_PATH")
+	// sectorspath := filepath.Join(minerpath, "./sectorsworker")
+	// if err = os.MkdirAll(sectorspath, 0755); err != nil {
+	// 	if !os.IsExist(err) {
+	// 		return xerrors.Errorf("mkdir sectorsworker path err : %+v", err)
+	// 	}
+	// }
+	// if state == SectorState("Committing") || state == SectorState("AddPiece") {
+	// 	if err := ioutil.WriteFile(filepath.Join(sectorspath, id.String()), []byte(worker), 0666); err != nil {
+	// 		return xerrors.Errorf("update state err : %+v", err)
+	// 	}
+	// }
+	if state == SectorState("AddPiece") {
+		// 将扇区对应的worker记录到radis中。
+		_, err = filbase_redis.SetWorkerForSector(filbase_redis.PWorkerKey, id.String(), worker)
+		if err != nil {
+			return xerrors.Errorf("fail to set worker into radis for sector %+v", id)
 		}
 	}
-	if state == SectorState("Committing") || state == SectorState("AddPiece") {
-		if err := ioutil.WriteFile(filepath.Join(sectorspath, id.String()), []byte(worker), 0666); err != nil {
-			return xerrors.Errorf("update state err : %+v", err)
+
+	if state == SectorState("Committing") {
+		// 将扇区对应的worker记录到radis中。
+		_, err = filbase_redis.SetWorkerForSector(filbase_redis.CWorkerKey, id.String(), worker)
+		if err != nil {
+			return xerrors.Errorf("fail to set worker into radis for sector %+v", id)
 		}
 	}
 
