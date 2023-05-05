@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/blockstore/cassbs"
-	"github.com/filecoin-project/lotus/blockstore/cassbs_readonly"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -143,7 +142,7 @@ func CassandraReadonlyMetadataChainStore(lc fx.Lifecycle,
 	us stmgr.UpgradeSchedule,
 	j journal.Journal) *store.ChainStore {
 
-	readonlyMetaDataBs, err := cassbs_readonly.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+	readonlyMetaDataBs, err := cassbs.NewCassandraDSReadonly(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
 	if err != nil {
 		fmt.Println(err)
 	}
