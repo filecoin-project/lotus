@@ -43,8 +43,8 @@ func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq 
 	mp.transactionLk.Lock()
 	defer mp.transactionLk.Unlock()
 
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.stateLk.Lock()
+	defer mp.stateLk.Unlock()
 
 	// See if we need to prune before selection; excessive buildup can lead to slow selection,
 	// so prune if we have too many messages (ignoring the cooldown).

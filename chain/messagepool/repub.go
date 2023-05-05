@@ -23,9 +23,9 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	mp.transactionLk.Lock()
 	defer mp.transactionLk.Unlock()
 
-	mp.curTsLk.RLock()
+	mp.stateLk.RLock()
 	ts := mp.curTs
-	mp.curTsLk.RUnlock()
+	mp.stateLk.RUnlock()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
 	if err != nil {
@@ -177,10 +177,10 @@ loop:
 		republished[m.Cid()] = struct{}{}
 	}
 
-	mp.curTsLk.Lock()
+	mp.stateLk.Lock()
 	// update the republished set so that we can trigger early republish from head changes
 	mp.republished = republished
-	mp.curTsLk.Unlock()
+	mp.stateLk.Unlock()
 
 	return nil
 }
