@@ -424,7 +424,6 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 
 	mp.transactionLk.Lock()
 	mp.curTsLk.Lock()
-	mp.lk.Lock()
 
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
@@ -439,7 +438,6 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 		defer cancel()
 		err := mp.loadLocal(ctx)
 
-		mp.lk.Unlock()
 		mp.curTsLk.Unlock()
 		mp.transactionLk.Unlock()
 
@@ -460,10 +458,10 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
 	// while holding the mpool lock
-	if !mp.lk.TryLock() {
+	if !mp.transactionLk.TryLock() {
 		return xerrors.Errorf("mpool TryForEachPendingMessage: could not acquire lock")
 	}
-	defer mp.lk.Unlock()
+	defer mp.transactionLk.Unlock()
 
 	for _, mset := range mp.pending {
 		for _, m := range mset.msgs {
@@ -887,9 +885,6 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, local,
 		return false, xerrors.Errorf("sender actor %s is not a valid top-level sender", m.Message.From)
 	}
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
 	publish, err := mp.verifyMsgBeforeAdd(ctx, m, curTs, local)
 	if err != nil {
 		return false, xerrors.Errorf("verify msg failed: %w", err)
@@ -950,8 +945,11 @@ func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) er
 }
 
 func (mp *MessagePool) addSkipChecks(ctx context.Context, m *types.SignedMessage) error {
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
+
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
 
 	return mp.addLocked(ctx, m, false, false)
 }
@@ -1026,9 +1024,6 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ types.TipSetKey) (uint64, error) {
 	mp.curTsLk.RLock()
 	defer mp.curTsLk.RUnlock()
-
-	mp.lk.RLock()
-	defer mp.lk.RUnlock()
 
 	return mp.getNonceLocked(ctx, addr, mp.curTs)
 }
@@ -1167,8 +1162,10 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 }
 
 func (mp *MessagePool) Remove(ctx context.Context, from address.Address, nonce uint64, applied bool) {
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
 
 	mp.remove(ctx, from, nonce, applied)
 }
@@ -1215,9 +1212,6 @@ func (mp *MessagePool) Pending(ctx context.Context) ([]*types.SignedMessage, *ty
 	mp.curTsLk.RLock()
 	defer mp.curTsLk.RUnlock()
 
-	mp.lk.RLock()
-	defer mp.lk.RUnlock()
-
 	return mp.allPending(ctx)
 }
 
@@ -1235,8 +1229,6 @@ func (mp *MessagePool) PendingFor(ctx context.Context, a address.Address) ([]*ty
 	mp.curTsLk.RLock()
 	defer mp.curTsLk.RUnlock()
 
-	mp.lk.RLock()
-	defer mp.lk.RUnlock()
 	return mp.pendingFor(ctx, a), mp.curTs
 }
 
@@ -1283,9 +1275,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 	maybeRepub := func(cid cid.Cid) {
 		if !repubTrigger {
-			mp.lk.RLock()
 			_, republished := mp.republished[cid]
-			mp.lk.RUnlock()
 			if republished {
 				repubTrigger = true
 			}
@@ -1362,9 +1352,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	}
 
 	if len(revert) > 0 && futureDebug {
-		mp.lk.RLock()
 		msgs, ts := mp.allPending(ctx)
-		mp.lk.RUnlock()
 
 		buckets := map[address.Address]*statBucket{}
 
@@ -1599,12 +1587,15 @@ func (mp *MessagePool) loadLocal(ctx context.Context) error {
 }
 
 func (mp *MessagePool) Clear(ctx context.Context, local bool) {
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
 
 	// remove everything if local is true, including removing local messages from
 	// the datastore
 	if local {
+
 		mp.forEachLocal(ctx, func(ctx context.Context, la address.Address) {
 			mset, ok, err := mp.getPendingMset(ctx, la)
 			if err != nil {

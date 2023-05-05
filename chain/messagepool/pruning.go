@@ -20,9 +20,6 @@ func (mp *MessagePool) pruneExcessMessages() error {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
-
 	ts := mp.curTs
 
 	mpCfg := mp.getConfig()

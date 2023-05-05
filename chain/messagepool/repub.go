@@ -35,11 +35,8 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
 
-	mp.lk.Lock()
 	mp.republished = nil // clear this to avoid races triggering an early republish
-	mp.lk.Unlock()
 
-	mp.lk.RLock()
 	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
 		mset, ok, err := mp.getPendingMset(ctx, actor)
 		if err != nil {
@@ -60,7 +57,6 @@ func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 		}
 		pending[actor] = pend
 	})
-	mp.lk.RUnlock()
 
 	if len(pending) == 0 {
 		return nil
@@ -182,10 +178,8 @@ loop:
 	}
 
 	mp.curTsLk.Lock()
-	mp.lk.Lock()
 	// update the republished set so that we can trigger early republish from head changes
 	mp.republished = republished
-	mp.lk.Unlock()
 	mp.curTsLk.Unlock()
 
 	return nil
