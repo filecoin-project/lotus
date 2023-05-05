@@ -142,6 +142,11 @@ type MessagePool struct {
 	curTsLk sync.RWMutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
 
+	// Use this lock if you need to transact between the TS and the Message pool in a consistent manner
+	//all changes to curTs must be wrapped in a transactionLk
+	//You do not need this lock and only need curTsLk if you want a consistent view of the state without changing the state
+	transactionLk sync.RWMutex
+
 	cfgLk sync.RWMutex
 	cfg   *types.MpoolConfig
 
@@ -417,6 +422,10 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 
 	ctx, cancel := context.WithCancel(context.TODO())
 
+	mp.transactionLk.Lock()
+	mp.curTsLk.Lock()
+	mp.lk.Lock()
+
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(ctx, rev, app)
@@ -426,15 +435,13 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 		return err
 	})
 
-	mp.curTsLk.Lock()
-	mp.lk.Lock()
-
 	go func() {
 		defer cancel()
 		err := mp.loadLocal(ctx)
 
 		mp.lk.Unlock()
 		mp.curTsLk.Unlock()
+		mp.transactionLk.Unlock()
 
 		if err != nil {
 			log.Errorf("loading local messages: %+v", err)
@@ -448,6 +455,8 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	return mp, nil
 }
 
+// TryForEachPendingMessage calls the provided function for each pending message in the pool, if possible.
+// Returns an error if the lock cannot be acquired or any f call fails
 func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
 	// while holding the mpool lock
@@ -702,13 +711,10 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish
 		<-mp.addSema
 	}()
 
-	mp.curTsLk.Lock()
-	ok, err := mp.addTs(ctx, m, mp.curTs, true, false)
+	ok, err := mp.addTs(ctx, m, true, false)
 	if err != nil {
-		mp.curTsLk.Unlock()
 		return cid.Undef, err
 	}
-	mp.curTsLk.Unlock()
 
 	if ok && publish {
 		msgb, err := m.Serialize()
@@ -771,31 +777,7 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 		<-mp.addSema
 	}()
 
-	mp.curTsLk.RLock()
-	tmpCurTs := mp.curTs
-	mp.curTsLk.RUnlock()
-
-	//ensures computations are cached without holding lock
-	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
-	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
-
-	mp.curTsLk.Lock()
-	if tmpCurTs == mp.curTs {
-		//with the lock enabled, mp.curTs is the same Ts as we just had, so we know that our computations are cached
-	} else {
-		//curTs has been updated so we want to cache the new one:
-		tmpCurTs = mp.curTs
-		//we want to release the lock, cache the computations then grab it again
-		mp.curTsLk.Unlock()
-		_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
-		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
-		mp.curTsLk.Lock()
-		//now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
-	}
-
-	defer mp.curTsLk.Unlock()
-
-	_, err = mp.addTs(ctx, m, mp.curTs, false, false)
+	_, err = mp.addTs(ctx, m, false, false)
 	return err
 }
 
@@ -868,7 +850,17 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 	return nil
 }
 
-func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs *types.TipSet, local, untrusted bool) (bool, error) {
+func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, local, untrusted bool) (bool, error) {
+
+	//ensures that we have a consistent view of the state
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
+
+	//should be redundant with transactionLk but good practice
+	mp.curTsLk.RLock()
+	curTs := mp.curTs
+	mp.curTsLk.RUnlock()
+
 	done := metrics.Timer(ctx, metrics.MpoolAddTsDuration)
 	defer done()
 
@@ -907,6 +899,8 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, curTs 
 		return false, xerrors.Errorf("failed to check balance: %w", err)
 	}
 
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
 	err = mp.addLocked(ctx, m, !local, untrusted)
 	if err != nil {
 		return false, xerrors.Errorf("failed to add locked: %w", err)
@@ -1152,13 +1146,10 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 		<-mp.addSema
 	}()
 
-	mp.curTsLk.Lock()
-	publish, err := mp.addTs(ctx, m, mp.curTs, true, true)
+	publish, err := mp.addTs(ctx, m, true, true)
 	if err != nil {
-		mp.curTsLk.Unlock()
 		return cid.Undef, err
 	}
-	mp.curTsLk.Unlock()
 
 	if publish {
 		msgb, err := m.Serialize()
@@ -1264,8 +1255,6 @@ func (mp *MessagePool) pendingFor(ctx context.Context, a address.Address) []*typ
 }
 
 func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, apply []*types.TipSet) error {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
 
 	repubTrigger := false
 	rmsgs := make(map[address.Address]map[uint64]*types.SignedMessage)
@@ -1304,6 +1293,12 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	}
 
 	var merr error
+
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
+
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
 
 	for _, ts := range revert {
 		pts, err := mp.api.LoadTipSet(ctx, ts.Parents())

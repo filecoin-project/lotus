@@ -20,6 +20,9 @@ const repubMsgLimit = 30
 var RepublishBatchDelay = 100 * time.Millisecond
 
 func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
+
 	mp.curTsLk.RLock()
 	ts := mp.curTs
 	mp.curTsLk.RUnlock()
@@ -178,10 +181,12 @@ loop:
 		republished[m.Cid()] = struct{}{}
 	}
 
-	// update the republished set so that we can trigger early republish from head changes
+	mp.curTsLk.Lock()
 	mp.lk.Lock()
+	// update the republished set so that we can trigger early republish from head changes
 	mp.republished = republished
 	mp.lk.Unlock()
+	mp.curTsLk.Unlock()
 
 	return nil
 }

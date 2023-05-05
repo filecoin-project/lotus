@@ -14,12 +14,16 @@ import (
 )
 
 func (mp *MessagePool) pruneExcessMessages() error {
+	mp.transactionLk.Lock()
+	defer mp.transactionLk.Unlock()
+
 	mp.curTsLk.Lock()
-	ts := mp.curTs
-	mp.curTsLk.Unlock()
+	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
+
+	ts := mp.curTs
 
 	mpCfg := mp.getConfig()
 	if mp.currentSize < mpCfg.SizeLimitHigh {
