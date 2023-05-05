@@ -70,8 +70,7 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 			msgMap[m.From] = mmap
 			mset, ok, err := mp.getPendingMset(ctx, m.From)
 			if err != nil {
-				log.Warnf("errored while getting pending mset: %w", err)
-				return nil, err
+				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 			}
 			if ok {
 				count += len(mset.msgs)
@@ -154,8 +153,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 			mp.lk.RLock()
 			mset, ok, err := mp.getPendingMset(ctx, m.From)
 			if err != nil {
-				log.Warnf("errored while getting pending mset: %w", err)
-				return nil, err
+				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 			}
 			if ok && !interned {
 				st = &actorState{nextNonce: mset.nextNonce, requiredFunds: mset.requiredFunds}
