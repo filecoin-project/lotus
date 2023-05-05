@@ -156,10 +156,10 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 	}
 
 	if err := cs.PersistTipsets(ctx, tssToPersist); err != nil {
-		return nil, xerrors.Errorf("failed to persist tipsets: %w", err)
+		return nil, nil, xerrors.Errorf("failed to persist tipsets: %w", err)
 	}
 
-	return root, nil
+	return root, &tailBlock, nil
 }
 
 type walkSchedTaskType int
