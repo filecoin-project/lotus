@@ -79,7 +79,19 @@ var ChainNode = Options(
 	Override(new(store.WeightFunc), filcns.Weight),
 	Override(new(stmgr.Executor), consensus.NewTipSetExecutor(filcns.RewardFunc)),
 	Override(new(consensus.Consensus), filcns.NewFilecoinExpectedConsensus),
-	Override(new(*store.ChainStore), modules.ChainStore),
+
+	If(isNotChainCassandra(),
+		Override(new(*store.ChainStore), modules.ChainStore),
+	),
+	If(isChainCassandra(),
+		ApplyIf(isNotFollower,
+			Override(new(*store.ChainStore), modules.CassandraMetadataChainStore),
+		),
+
+		ApplyIf(isFollower,
+			Override(new(*store.ChainStore), modules.CassandraReadonlyMetadataChainStore),
+		),
+	),
 	Override(new(*stmgr.StateManager), modules.StateManager),
 	Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
 	Override(new(dtypes.ChainBlockService), modules.ChainBlockService), // todo: unused

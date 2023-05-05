@@ -2,6 +2,8 @@ package modules
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/ipfs/boxo/bitswap"
@@ -13,6 +15,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/cassbs"
+	"github.com/filecoin-project/lotus/blockstore/cassbs_readonly"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -109,6 +113,42 @@ func ChainStore(lc fx.Lifecycle,
 	})
 
 	return chain
+}
+
+func CassandraMetadataChainStore(lc fx.Lifecycle,
+	mctx helpers.MetricsCtx,
+	cbs dtypes.ChainBlockstore,
+	sbs dtypes.StateBlockstore,
+	ds dtypes.MetadataDS,
+	basebs dtypes.BaseBlockstore,
+	weight store.WeightFunc,
+	us stmgr.UpgradeSchedule,
+	j journal.Journal) *store.ChainStore {
+
+	metadataserver, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	return ChainStore(lc, mctx, cbs, sbs, metadataserver, basebs, weight, us, j)
+
+}
+
+func CassandraReadonlyMetadataChainStore(lc fx.Lifecycle,
+	mctx helpers.MetricsCtx,
+	cbs dtypes.ChainBlockstore,
+	sbs dtypes.StateBlockstore,
+	ds dtypes.MetadataDS,
+	basebs dtypes.BaseBlockstore,
+	weight store.WeightFunc,
+	us stmgr.UpgradeSchedule,
+	j journal.Journal) *store.ChainStore {
+
+	readonlyMetaDataBs, err := cassbs_readonly.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	return ChainStore(lc, mctx, cbs, sbs, readonlyMetaDataBs, basebs, weight, us, j)
+
 }
 
 func NetworkName(mctx helpers.MetricsCtx,
