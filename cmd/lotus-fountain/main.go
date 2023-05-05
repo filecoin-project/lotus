@@ -195,9 +195,11 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var to address.Address
-
 	addressInput := r.FormValue("address")
+
+	var filecoinAddress address.Address
+	var decodeError error
+
 	if strings.HasPrefix(addressInput, "0x") {
 		ethAddress, err := ethtypes.ParseEthAddress(addressInput)
 		if err != nil {
@@ -205,28 +207,22 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		filecoinAddress, err := ethAddress.ToFilecoinAddress()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		to = filecoinAddress
+		filecoinAddress, decodeError = ethAddress.ToFilecoinAddress()
 	} else {
-		filecoinAddress, err := address.NewFromString(addressInput)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if filecoinAddress == address.Undef {
-			http.Error(w, "empty address", http.StatusBadRequest)
-			return
-		}
+		filecoinAddress, decodeError = address.NewFromString(addressInput)
+	}
 
-		to = filecoinAddress
+	if decodeError != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if filecoinAddress == address.Undef {
+		http.Error(w, "empty address", http.StatusBadRequest)
+		return
 	}
 
 	// Limit based on wallet address
-	limiter := h.limiter.GetWalletLimiter(to.String())
+	limiter := h.limiter.GetWalletLimiter(filecoinAddress.String())
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit", http.StatusTooManyRequests)
 		return
@@ -252,7 +248,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
-		To:    to,
+		To:    filecoinAddress,
 	}, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
