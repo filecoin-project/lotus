@@ -150,7 +150,7 @@ func CassandraBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 	copt.HasBloomFilterSize = 0
 	copt.HasBloomFilterHashes = 0
 
-	rbs := bstore.NewBlockstoreNoPrefix(cds)
+	rbs := bstore.NewBlockstore(cds, bstore.NoPrefix())
 
 	// only metadata cache
 	cbs, err := bstore.CachedBlockstore(mctx, rbs, copt)

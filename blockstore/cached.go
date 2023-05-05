@@ -146,7 +146,7 @@ func (bs *CachedBlockstore) PutMany(ctx context.Context, blks []block.Block) err
 
 	//return bs.write.PutMany(ctx, toPut)
 
-	// this part is EXTREMELY aggresive
+	// this part is EXTREMELY aggressive
 
 	bs.writeLk.Lock()
 	for i, blk := range blks {

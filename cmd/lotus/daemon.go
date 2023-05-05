@@ -488,7 +488,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 			return xerrors.Errorf("open cassandra store: %w", err)
 		}
 
-		rbs := bstore.NewBlockstoreNoPrefix(cds)
+		rbs := bstore.NewBlockstore(cds, bstore.NoPrefix())
 
 		bs = blockstore.Adapt(rbs)
 	}
