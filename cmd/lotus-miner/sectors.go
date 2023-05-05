@@ -1922,7 +1922,24 @@ var sectorsBatchingPendingCommit = &cli.Command{
 			for _, sector := range pending {
 				fmt.Println(sector.Number)
 			}
-			return nil
+
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Do you want to publish these sectors now? (yes/no): ")
+			userInput, err := reader.ReadString('\n')
+			if err != nil {
+				return xerrors.Errorf("reading user input: %w", err)
+			}
+			userInput = strings.ToLower(strings.TrimSpace(userInput))
+
+			if userInput == "yes" {
+				cctx.Set("publish-now", "true")
+				return cctx.Command.Action(cctx)
+			} else if userInput == "no" {
+				return nil
+			} else {
+				fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
+				return nil
+			}
 		}
 
 		fmt.Println("No sectors queued to be committed")
@@ -1980,7 +1997,24 @@ var sectorsBatchingPendingPreCommit = &cli.Command{
 			for _, sector := range pending {
 				fmt.Println(sector.Number)
 			}
-			return nil
+
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Do you want to publish these sectors now? (yes/no): ")
+			userInput, err := reader.ReadString('\n')
+			if err != nil {
+				return xerrors.Errorf("reading user input: %w", err)
+			}
+			userInput = strings.ToLower(strings.TrimSpace(userInput))
+
+			if userInput == "yes" {
+				cctx.Set("publish-now", "true")
+				return cctx.Command.Action(cctx)
+			} else if userInput == "no" {
+				return nil
+			} else {
+				fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
+				return nil
+			}
 		}
 
 		fmt.Println("No sectors queued to be committed")
