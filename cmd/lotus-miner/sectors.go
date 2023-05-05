@@ -1944,7 +1944,9 @@ var sectorsBatchingPendingCommit = &cli.Command{
 				return nil
 			}
 
-		fmt.Println("No sectors queued to be committed")
+		} else {
+			fmt.Println("No sectors queued to be committed")
+		}
 		return nil
 	},
 }
@@ -2020,9 +2022,10 @@ var sectorsBatchingPendingPreCommit = &cli.Command{
 				fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
 				return nil
 			}
-		}
 
-		fmt.Println("No sectors queued to be committed")
+		} else {
+			fmt.Println("No sectors queued to be committed")
+		}
 		return nil
 	},
 }
