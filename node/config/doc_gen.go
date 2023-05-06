@@ -424,6 +424,50 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 	},
+	"Follower": []DocField{
+		{
+			Name: "Client",
+			Type: "Client",
+
+			Comment: ``,
+		},
+		{
+			Name: "Wallet",
+			Type: "Wallet",
+
+			Comment: ``,
+		},
+		{
+			Name: "Fees",
+			Type: "FeeConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Chainstore",
+			Type: "Chainstore",
+
+			Comment: ``,
+		},
+		{
+			Name: "Cluster",
+			Type: "UserRaftConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Fevm",
+			Type: "FevmConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Index",
+			Type: "IndexConfig",
+
+			Comment: ``,
+		},
+	},
 	"FullNode": []DocField{
 		{
 			Name: "Client",
