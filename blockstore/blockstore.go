@@ -2,11 +2,12 @@ package blockstore
 
 import (
 	"context"
+	"time"
+
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
-	"time"
 )
 
 var log = logging.Logger("blockstore")
