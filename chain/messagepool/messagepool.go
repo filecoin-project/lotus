@@ -427,7 +427,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 
 	// load the current tipset and subscribe to head changes _before_ loading local messages
 	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
-		err := mp.HeadChange(ctx, rev, app)
+		err := mp.headChange(ctx, rev, app)
 		if err != nil {
 			log.Errorf("mpool head notif handler error: %+v", err)
 		}
@@ -1246,7 +1246,7 @@ func (mp *MessagePool) pendingFor(ctx context.Context, a address.Address) []*typ
 	return mset.toSlice()
 }
 
-func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, apply []*types.TipSet) error {
+func (mp *MessagePool) headChange(ctx context.Context, revert []*types.TipSet, apply []*types.TipSet) error {
 
 	repubTrigger := false
 	rmsgs := make(map[address.Address]map[uint64]*types.SignedMessage)
@@ -1283,12 +1283,6 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	}
 
 	var merr error
-
-	mp.transactionLk.Lock()
-	defer mp.transactionLk.Unlock()
-
-	mp.stateLk.Lock()
-	defer mp.stateLk.Unlock()
 
 	for _, ts := range revert {
 		pts, err := mp.api.LoadTipSet(ctx, ts.Parents())
