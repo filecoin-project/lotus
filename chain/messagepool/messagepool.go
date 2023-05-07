@@ -947,12 +947,6 @@ func (mp *MessagePool) addLoaded(ctx context.Context, m *types.SignedMessage) er
 }
 
 func (mp *MessagePool) addSkipChecks(ctx context.Context, m *types.SignedMessage) error {
-	mp.transactionLk.Lock()
-	defer mp.transactionLk.Unlock()
-
-	mp.stateLk.Lock()
-	defer mp.stateLk.Unlock()
-
 	return mp.addLocked(ctx, m, false, false)
 }
 
