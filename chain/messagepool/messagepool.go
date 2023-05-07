@@ -422,17 +422,24 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 
 	ctx, cancel := context.WithCancel(context.TODO())
 
-	mp.transactionLk.Lock()
-	mp.stateLk.Lock()
-
 	// load the current tipset and subscribe to head changes _before_ loading local messages
-	mp.curTs = api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
+	curTs := api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
+		mp.transactionLk.Lock()
+		defer mp.transactionLk.Unlock()
+
+		mp.stateLk.Lock()
+		defer mp.stateLk.Unlock()
+
 		err := mp.headChange(ctx, rev, app)
 		if err != nil {
 			log.Errorf("mpool head notif handler error: %+v", err)
 		}
 		return err
 	})
+
+	mp.transactionLk.Lock()
+	mp.stateLk.Lock()
+	mp.curTs = curTs
 
 	go func() {
 		defer cancel()
@@ -458,9 +465,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
 	// while holding the mpool lock
-	if !mp.transactionLk.TryLock() {
-		return xerrors.Errorf("mpool TryForEachPendingMessage: could not acquire lock")
-	}
+	mp.transactionLk.Lock()
 	defer mp.transactionLk.Unlock()
 
 	for _, mset := range mp.pending {
@@ -698,11 +703,6 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage, publish
 	done := metrics.Timer(ctx, metrics.MpoolPushDuration)
 	defer done()
 
-	err := mp.checkMessage(ctx, m)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	// serialize push access to reduce lock contention
 	mp.addSema <- struct{}{}
 	defer func() {
@@ -764,18 +764,13 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	done := metrics.Timer(ctx, metrics.MpoolAddDuration)
 	defer done()
 
-	err := mp.checkMessage(ctx, m)
-	if err != nil {
-		return err
-	}
-
 	// serialize push access to reduce lock contention
 	mp.addSema <- struct{}{}
 	defer func() {
 		<-mp.addSema
 	}()
 
-	_, err = mp.addTs(ctx, m, false, false)
+	_, err := mp.addTs(ctx, m, false, false)
 	return err
 }
 
@@ -854,8 +849,12 @@ func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, local,
 	mp.transactionLk.Lock()
 	defer mp.transactionLk.Unlock()
 
-	//should be redundant with transactionLk but good practice
 	mp.stateLk.RLock()
+	err := mp.checkMessage(ctx, m)
+	if err != nil {
+		mp.stateLk.RUnlock()
+		return false, err
+	}
 	curTs := mp.curTs
 	mp.stateLk.RUnlock()
 
@@ -1130,11 +1129,6 @@ func (mp *MessagePool) getStateBalance(ctx context.Context, addr address.Address
 //   - extra strict add checks are used when adding the messages to the msgSet
 //     that means: no nonce gaps, at most 10 pending messages for the actor
 func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage) (cid.Cid, error) {
-	err := mp.checkMessage(ctx, m)
-	if err != nil {
-		return cid.Undef, err
-	}
-
 	// serialize push access to reduce lock contention
 	mp.addSema <- struct{}{}
 	defer func() {
@@ -1261,7 +1255,7 @@ func (mp *MessagePool) headChange(ctx context.Context, revert []*types.TipSet, a
 	rm := func(from address.Address, nonce uint64) {
 		s, ok := rmsgs[from]
 		if !ok {
-			mp.Remove(ctx, from, nonce, true)
+			mp.remove(ctx, from, nonce, true)
 			return
 		}
 
@@ -1270,7 +1264,7 @@ func (mp *MessagePool) headChange(ctx context.Context, revert []*types.TipSet, a
 			return
 		}
 
-		mp.Remove(ctx, from, nonce, true)
+		mp.remove(ctx, from, nonce, true)
 	}
 
 	maybeRepub := func(cid cid.Cid) {
