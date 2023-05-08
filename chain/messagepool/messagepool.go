@@ -756,8 +756,7 @@ func (mp *MessagePool) checkMessage(ctx context.Context, m *types.SignedMessage)
 	}
 
 	if err := mp.VerifyMsgSig(m); err != nil {
-		log.Warnf("signature verification failed: %s", err)
-		return err
+		return xerrors.Errorf("signature verification failed: %s", err)
 	}
 
 	return nil
@@ -957,13 +956,11 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	}
 
 	if _, err := mp.api.PutMessage(ctx, m); err != nil {
-		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
-		return err
+		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
 	}
 
 	if _, err := mp.api.PutMessage(ctx, &m.Message); err != nil {
-		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
-		return err
+		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
 	}
 
 	// Note: If performance becomes an issue, making this getOrCreatePendingMset will save some work
