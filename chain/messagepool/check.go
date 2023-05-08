@@ -32,7 +32,10 @@ func (mp *MessagePool) CheckMessages(ctx context.Context, protos []*api.MessageP
 // CheckPendingMessages performs a set of logical sets for all messages pending from a given actor
 func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Address) ([][]api.MessageCheckStatus, error) {
 	var msgs []*types.Message
+
 	mp.stateLk.RLock()
+	defer mp.stateLk.RUnlock()
+
 	mset, ok, err := mp.getPendingMset(ctx, from)
 	if err != nil {
 		return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
@@ -43,7 +46,6 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 			msgs = append(msgs, &sm.Message)
 		}
 	}
-	mp.stateLk.RUnlock()
 
 	if len(msgs) == 0 {
 		return nil, nil
@@ -63,6 +65,8 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 	count := 0
 
 	mp.stateLk.RLock()
+	defer mp.stateLk.RUnlock()
+
 	for _, m := range replace {
 		mmap, ok := msgMap[m.From]
 		if !ok {
@@ -83,7 +87,6 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 		}
 		mmap[m.Nonce] = m
 	}
-	mp.stateLk.RUnlock()
 
 	msgs := make([]*types.Message, 0, count)
 	start := 0
@@ -111,9 +114,9 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		return nil, nil
 	}
 	mp.stateLk.RLock()
-	curTs := mp.curTs
-	mp.stateLk.RUnlock()
+	defer mp.stateLk.RUnlock()
 
+	curTs := mp.curTs
 	epoch := curTs.Height() + 1
 
 	var baseFee big.Int
@@ -150,7 +153,6 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 
 		st, ok := state[m.From]
 		if !ok {
-			mp.stateLk.RLock()
 			mset, ok, err := mp.getPendingMset(ctx, m.From)
 			if err != nil {
 				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
@@ -161,14 +163,12 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 					st.requiredFunds = new(stdbig.Int).Add(st.requiredFunds, m.Message.Value.Int)
 				}
 				state[m.From] = st
-				mp.stateLk.RUnlock()
 
 				check.OK = true
 				check.Hint = map[string]interface{}{
 					"nonce": st.nextNonce,
 				}
 			} else {
-				mp.stateLk.RUnlock()
 
 				stateNonce, err := mp.getStateNonce(ctx, m.From, curTs)
 				if err != nil {
