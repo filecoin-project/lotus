@@ -277,7 +277,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "data-cid",
-			Usage: "Run the data-cid task. --add-piece defaults this to true unless overridden",
+			Usage: "Run the data-cid task. true|false (default: inherits --addpiece)",
 			Value: true,
 		},
 	},
@@ -389,9 +389,14 @@ var runCmd = &cli.Command{
 			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
 			ttDataCidDefault = true
 		}
-		if (cctx.IsSet("data-cid") && cctx.Bool("data-cid")) ||
-			(!cctx.IsSet("data-cid") && ttDataCidDefault) {
-			taskTypes = append(taskTypes, sealtasks.TTDataCid)
+		if workerType == sealtasks.WorkerSealing {
+			if cctx.IsSet("data-cid") {
+				if cctx.Bool("data-cid") {
+					taskTypes = append(taskTypes, sealtasks.TTDataCid)
+				}
+			} else if ttDataCidDefault {
+				taskTypes = append(taskTypes, sealtasks.TTDataCid)
+			}
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("sector-download")) && cctx.Bool("sector-download") {
 			taskTypes = append(taskTypes, sealtasks.TTDownloadSector)
