@@ -387,7 +387,7 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	// First, handle the case where the "sender" is an EVM actor.
@@ -475,7 +475,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	// StateManager.Call will panic if there is no parent
@@ -554,7 +554,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	l := len(position)
@@ -650,7 +650,7 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return ethtypes.EthBigInt{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	st, _, err := a.StateManager.TipSetState(ctx, ts)
@@ -1081,7 +1081,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())

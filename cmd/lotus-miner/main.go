@@ -43,16 +43,16 @@ func main() {
 		backupCmd,
 		lcli.WithCategory("chain", actorCmd),
 		lcli.WithCategory("chain", infoCmd),
-		lcli.WithCategory("market", storageDealsCmd),
-		lcli.WithCategory("market", retrievalDealsCmd),
-		lcli.WithCategory("market", dataTransfersCmd),
-		lcli.WithCategory("market", dagstoreCmd),
-		lcli.WithCategory("market", indexProvCmd),
+		lcli.WithCategory("market", setHidden(storageDealsCmd)),
+		lcli.WithCategory("market", setHidden(retrievalDealsCmd)),
+		lcli.WithCategory("market", setHidden(dataTransfersCmd)),
+		lcli.WithCategory("market", setHidden(dagstoreCmd)),
+		lcli.WithCategory("market", setHidden(indexProvCmd)),
 		lcli.WithCategory("storage", sectorsCmd),
 		lcli.WithCategory("storage", provingCmd),
 		lcli.WithCategory("storage", storageCmd),
 		lcli.WithCategory("storage", sealingCmd),
-		lcli.WithCategory("retrieval", piecesCmd),
+		lcli.WithCategory("retrieval", setHidden(piecesCmd)),
 	}
 
 	jaeger := tracing.SetupJaegerTracing("lotus")
@@ -86,6 +86,7 @@ func main() {
 	// adapt the Net* commands to always hit the node running the markets
 	// subsystem, as that is the only one that runs a libp2p node.
 	netCmd := *lcli.NetCmd // make a copy.
+	netCmd.Hidden = true
 	prev := netCmd.Before
 	netCmd.Before = func(c *cli.Context) error {
 		if prev != nil {
@@ -137,11 +138,12 @@ func main() {
 			&cli.StringFlag{
 				Name:    FlagMarketsRepo,
 				EnvVars: []string{"LOTUS_MARKETS_PATH"},
-				Usage:   fmt.Sprintf("Markets repo path"),
+				Hidden:  true,
 			},
 			&cli.BoolFlag{
-				Name:  "call-on-markets",
-				Usage: "(experimental; may be removed) call this command against a markets node; use only with common commands like net, auth, pprof, etc. whose target may be ambiguous",
+				Name:   "call-on-markets",
+				Usage:  "(experimental; may be removed) call this command against a markets node; use only with common commands like net, auth, pprof, etc. whose target may be ambiguous",
+				Hidden: true,
 			},
 			cliutil.FlagVeryVerbose,
 		},
@@ -189,4 +191,9 @@ func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Addr
 	}
 
 	return maddr, nil
+}
+
+func setHidden(cmd *cli.Command) *cli.Command {
+	cmd.Hidden = true
+	return cmd
 }
