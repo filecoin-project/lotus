@@ -1,5 +1,11 @@
 # Lotus changelog
 
+# UNRELEASED
+
+## New features
+- feat: Added new environment variable `LOTUS_EXEC_TRACE_CACHE_SIZE` to configure execution trace cache size ([filecoin-project/lotus#10585](https://github.com/filecoin-project/lotus/pull/10585))
+  - If unset, we default to caching 16 most recent execution traces. Node operatores may want to set this to 0 while exchanges may want to crank it up. 
+
 # v1.23.0 / 2023-04-21
 
 This is the stable feature release for the upcoming MANDATORY network upgrade at `2023-04-27T13:00:00Z`, epoch `2809800`. This feature release delivers the nv19 Lighting and nv20 Thunder network upgrade for mainnet, and includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.

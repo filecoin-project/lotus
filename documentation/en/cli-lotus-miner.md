@@ -412,7 +412,7 @@ NAME:
    lotus-miner actor confirm-change-beneficiary - Confirm a beneficiary address change
 
 USAGE:
-   lotus-miner actor confirm-change-beneficiary [command options] [minerAddress]
+   lotus-miner actor confirm-change-beneficiary [command options] [minerID]
 
 OPTIONS:
    --existing-beneficiary  send confirmation from the existing beneficiary address (default: false)
