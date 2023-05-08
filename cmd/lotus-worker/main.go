@@ -276,9 +276,10 @@ var runCmd = &cli.Command{
 			Value: "30s",
 		},
 		&cli.BoolFlag{
-			Name:  "data-cid",
-			Usage: "Run the data-cid task. true|false (default: inherits --addpiece)",
-			Value: true,
+			Name:        "data-cid",
+			Usage:       "Run the data-cid task. true|false ",
+			Value:       true,
+			DefaultText: "inherits --addpiece",
 		},
 	},
 	Before: func(cctx *cli.Context) error {

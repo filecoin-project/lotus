@@ -38,7 +38,7 @@ USAGE:
 OPTIONS:
    --addpiece                    enable addpiece (default: true) [$LOTUS_WORKER_ADDPIECE]
    --commit                      enable commit (default: true) [$LOTUS_WORKER_COMMIT]
-   --data-cid                    Run the data-cid task. --add-piece defaults this to true unless overridden (default: true)
+   --data-cid                    Run the data-cid task. true|false (default: inherits --addpiece)
    --http-server-timeout value   (default: "30s")
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456") [$LOTUS_WORKER_LISTEN]
    --name value                  custom worker name (default: hostname) [$LOTUS_WORKER_NAME]
