@@ -277,7 +277,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:        "data-cid",
-			Usage:       "Run the data-cid task. true|false ",
+			Usage:       "Run the data-cid task. true|false",
 			Value:       true,
 			DefaultText: "inherits --addpiece",
 		},
