@@ -1166,7 +1166,7 @@ var actorConfirmChangeWorker = &cli.Command{
 var actorConfirmChangeBeneficiary = &cli.Command{
 	Name:      "confirm-change-beneficiary",
 	Usage:     "Confirm a beneficiary address change",
-	ArgsUsage: "[minerAddress]",
+	ArgsUsage: "[minerID]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "really-do-it",
