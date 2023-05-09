@@ -121,15 +121,24 @@ func TestEthBalanceCorrectLookup(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ml.Receipt.ExitCode.IsSuccess())
 
-	bal, err := client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(ml.Height-2), 10))
+	execTs, err := client.ChainGetTipSet(ctx, ml.TipSet)
+	require.NoError(t, err)
+
+	inclTs, err := client.ChainGetTipSet(ctx, execTs.Parents())
+	require.NoError(t, err)
+
+	inclTsParents, err := client.ChainGetTipSet(ctx, inclTs.Parents())
+	require.NoError(t, err)
+
+	bal, err := client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(inclTsParents.Height()), 10))
 	require.NoError(t, err)
 	require.Equal(t, int64(0), bal.Int64())
 
-	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(ml.Height-1), 10))
+	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(inclTs.Height()), 10))
 	require.NoError(t, err)
 	require.Equal(t, val, bal.Int64())
 
-	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(ml.Height), 10))
+	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(execTs.Height()), 10))
 	require.NoError(t, err)
 	require.Equal(t, val, bal.Int64())
 }
