@@ -548,12 +548,12 @@ func (h EthSubscriptionID) String() string {
 }
 
 type EthFilterSpec struct {
-	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
 	FromBlock *string `json:"fromBlock,omitempty"`
 
-	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
 	ToBlock *string `json:"toBlock,omitempty"`
