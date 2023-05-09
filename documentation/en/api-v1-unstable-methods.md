@@ -6930,7 +6930,6 @@ Response:
     "UpgradeRefuelHeight": 10101,
     "UpgradeTapeHeight": 10101,
     "UpgradeKumquatHeight": 10101,
-    "UpgradePriceListOopsHeight": 10101,
     "BreezeGasTampingDuration": 10101,
     "UpgradeCalicoHeight": 10101,
     "UpgradePersianHeight": 10101,
