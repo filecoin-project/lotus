@@ -52,3 +52,4 @@ dist/
 # The following files are checked into git and result
 # in dirty git state if removed from the docker context
 !extern/filecoin-ffi/rust/filecoin.pc
+!extern/test-vectors
