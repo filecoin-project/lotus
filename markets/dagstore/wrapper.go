@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -15,8 +16,11 @@ import (
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipld/go-car/v2"
 	carindex "github.com/ipld/go-car/v2/index"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/multiformats/go-multicodec"
+	"github.com/multiformats/go-multihash"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 
@@ -24,9 +28,11 @@ import (
 	"github.com/filecoin-project/dagstore/index"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
+	"github.com/filecoin-project/go-data-segment/datasegment"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerstates"
 	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine/fsm"
 
 	"github.com/filecoin-project/lotus/node/config"
@@ -97,6 +103,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI, h host.Host) (*da
 		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
 		MaxConcurrentReadyFetches: cfg.MaxConcurrentReadyFetches,
 		RecoverOnStart:            dagstore.RecoverOnAcquire,
+		ShardIndexer:              shardIndexer,
 	}
 
 	dagst, err := dagstore.NewDAGStore(dcfg)
@@ -461,4 +468,76 @@ func (w *Wrapper) Close() error {
 	log.Info("exited dagstore background wrapper goroutines")
 
 	return nil
+}
+
+func shardIndexer(ctx context.Context, k shard.Key, r mount.Reader) (carindex.Index, error) {
+	size, err := r.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+	if idx, err := parseShardWithDataSegmentIndex(ctx, k, size, r); err == nil {
+		return idx, nil
+	}
+
+	zero, err := r.Seek(0, io.SeekStart)
+	if zero != 0 || err != nil {
+		log.Warnf("initialize: failed to rewind shard reader", "shard", k)
+		return nil, xerrors.Errorf("failed to rewind shard reader: %w", err)
+	}
+
+	idx, err := car.ReadOrGenerateIndex(r, car.ZeroLengthSectionAsEOF(true), car.StoreIdentityCIDs(true))
+	if err == nil {
+		log.Debugw("initialize: finished generating index for shard", "shard", k)
+	} else {
+		log.Warnw("initialize: failed to generate index for shard", "shard", k, "error", err)
+	}
+	return idx, err
+}
+
+func parseShardWithDataSegmentIndex(ctx context.Context, sKey shard.Key, size int64, r mount.Reader) (carindex.IterableIndex, error) {
+	ps := abi.UnpaddedPieceSize(size).Padded()
+	dsis := datasegment.DataSegmentIndexStartOffset(ps)
+	if _, err := r.Seek(int64(dsis), io.SeekStart); err != nil {
+		return nil, fmt.Errorf("could not seek to data segment index: %w", err)
+	}
+	dataSegments, err := datasegment.ParseDataSegmentIndex(r)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse data segment index: %w", err)
+	}
+	segments, err := dataSegments.ValidEntries()
+	if err != nil {
+		return nil, fmt.Errorf("could not calculate valid entries: %w", err)
+	}
+
+	if len(segments) == 0 {
+		return nil, fmt.Errorf("no data segments found")
+	}
+
+	finalIdx := carindex.NewInsertionIndex()
+	for _, s := range segments {
+		segOffset := s.UnpaddedOffest()
+		segSize := s.UnpaddedLength()
+		var idx carindex.Index
+		var err error
+
+		lr := io.NewSectionReader(r, int64(segOffset), int64(segSize))
+		idx, err = car.ReadOrGenerateIndex(lr, car.ZeroLengthSectionAsEOF(true), car.StoreIdentityCIDs(true))
+		if err == nil {
+			log.Debugw("initialize: finished generating index for shard", "shard", sKey, "segment", s.Offset)
+		} else {
+			log.Warnw("initialize: failed to generate index for shard", "shard", sKey, "segment", s.Offset, "error", err)
+		}
+		if err == nil {
+			if mhi, ok := idx.(*carindex.MultihashIndexSorted); ok {
+				_ = mhi.ForEach(func(mh multihash.Multihash, offset uint64) error {
+					finalIdx.InsertNoReplace(cid.NewCidV1(uint64(multicodec.Raw), mh), segOffset+offset)
+					return nil
+				})
+			} else {
+				log.Debugw("initialize: Unexpected index format on generation in shard", "shard", sKey, "offset", segOffset)
+			}
+		}
+	}
+
+	return finalIdx, nil
 }
