@@ -544,6 +544,8 @@ type FullNodeMethods struct {
 
 	StateMinerSectors func(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
 
+	StateMinerStats func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerStats, error) `perm:"read"`
+
 	StateNetworkName func(p0 context.Context) (dtypes.NetworkName, error) `perm:"read"`
 
 	StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) `perm:"read"`
@@ -3677,6 +3679,17 @@ func (s *FullNodeStruct) StateMinerSectors(p0 context.Context, p1 address.Addres
 
 func (s *FullNodeStub) StateMinerSectors(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	return *new([]*miner.SectorOnChainInfo), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateMinerStats(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerStats, error) {
+	if s.Internal.StateMinerStats == nil {
+		return *new(MinerStats), ErrNotSupported
+	}
+	return s.Internal.StateMinerStats(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateMinerStats(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerStats, error) {
+	return *new(MinerStats), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {

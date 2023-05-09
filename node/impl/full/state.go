@@ -27,6 +27,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
+	miner8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/miner"
+	smoothing8 "github.com/filecoin-project/specs-actors/v8/actors/util/smoothing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -140,6 +142,92 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	}
 
 	return mas.LoadSectors(&activeSectors)
+}
+
+func (m *StateAPI) StateMinerStats(ctx context.Context, maddr address.Address, tsk types.TipSetKey, smoothedRew, smoothedPow smoothing8.FilterEstimate) (api.MinerStats, error) {
+	act, err := m.StateManager.LoadActorTsk(ctx, maddr, tsk)
+	if err != nil {
+		return api.MinerStats{}, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(m.StateManager.ChainStore().ActorStore(ctx), act)
+	if err != nil {
+		return api.MinerStats{}, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	activeSectors, err := miner.AllPartSectors(mas, miner.Partition.ActiveSectors)
+	if err != nil {
+		return api.MinerStats{}, xerrors.Errorf("merge partition active sets: %w", err)
+	}
+
+	sectors, err := mas.LoadSectors(&activeSectors)
+	if err != nil {
+		return api.MinerStats{}, xerrors.Errorf("load active sectors: %w", err)
+	}
+
+	info, err := m.StateMinerInfo(ctx, maddr, tsk)
+	if err != nil {
+		return api.MinerStats{}, xerrors.Errorf("failed to load miner info: %w", err)
+	}
+
+	minerStats := api.MinerStats{
+		MinerInfo:           info,
+		PenaltyTermination:  big.NewInt(0),
+		ExpectedDailyReward: big.NewInt(0),
+		PenaltyFaultPerDay:  big.NewInt(0),
+	}
+
+	currEpoch := m.Chain.GetHeaviestTipSet().Height()
+
+	for _, s := range sectors {
+		epochsUntilTerm := s.Expiration - currEpoch
+
+		// if the sector is already terminated (but in the termination queue), skip it
+		if epochsUntilTerm <= 0 {
+			continue
+		}
+
+		s8 := &miner8.SectorOnChainInfo{
+			SectorNumber:          s.SectorNumber,
+			SealProof:             s.SealProof,
+			SealedCID:             s.SealedCID,
+			DealIDs:               s.DealIDs,
+			Activation:            s.Activation,
+			Expiration:            s.Expiration,
+			DealWeight:            s.DealWeight,
+			VerifiedDealWeight:    s.VerifiedDealWeight,
+			InitialPledge:         s.InitialPledge,
+			ExpectedDayReward:     s.ExpectedDayReward,
+			ExpectedStoragePledge: s.ExpectedStoragePledge,
+			ReplacedSectorAge:     s.ReplacedSectorAge,
+			ReplacedDayReward:     s.ReplacedDayReward,
+			SectorKeyCID:          s.SectorKeyCID,
+		}
+
+		// quality adjusted power for sector
+		sectorPower := miner8.QAPowerForSector(info.SectorSize, s8)
+
+		// penalty for missing a PoST window for sector
+		sectorFaultPenaltyPerDay := miner8.PledgePenaltyForContinuedFault(smoothedRew, smoothedPow, sectorPower)
+
+		// penalty for termination the sector
+		sectorTerminationPenalty := miner8.PledgePenaltyForTermination(
+			s.ExpectedDayReward,
+			currEpoch-s.Activation,
+			s.ExpectedStoragePledge,
+			smoothedPow,
+			sectorPower,
+			smoothedRew,
+			s.ReplacedDayReward,
+			s.ReplacedSectorAge,
+		)
+
+		// aggregate the sector data
+		minerStats.PenaltyFaultPerDay = big.Add(minerStats.PenaltyFaultPerDay, sectorFaultPenaltyPerDay)
+		minerStats.PenaltyTermination = big.Add(minerStats.PenaltyTermination, sectorTerminationPenalty)
+		minerStats.ExpectedDailyReward = big.Add(minerStats.ExpectedDailyReward, s.ExpectedDayReward)
+	}
+	return api.MinerStats{}, nil
 }
 
 func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {

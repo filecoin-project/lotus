@@ -485,6 +485,8 @@ type FullNode interface {
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerSectorAllocated checks if a sector number is marked as allocated.
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read
+	// StateMinerStats returns the indicated miner's stats for the given tipset
+	StateMinerStats(context.Context, address.Address, types.TipSetKey) (MinerStats, error) //perm:read
 	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
 	// Returns nil and no error if the sector isn't precommitted.
 	//
@@ -894,6 +896,13 @@ type MinerSectors struct {
 	Active uint64
 	// Sectors with failed proofs.
 	Faulty uint64
+}
+
+type MinerStats struct {
+	MinerInfo
+	PenaltyTermination  big.Int
+	ExpectedDailyReward big.Int
+	PenaltyFaultPerDay  big.Int
 }
 
 type ImportRes struct {

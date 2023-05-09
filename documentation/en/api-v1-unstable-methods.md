@@ -260,6 +260,7 @@
   * [StateMinerSectorAllocated](#StateMinerSectorAllocated)
   * [StateMinerSectorCount](#StateMinerSectorCount)
   * [StateMinerSectors](#StateMinerSectors)
+  * [StateMinerStats](#StateMinerStats)
   * [StateNetworkName](#StateNetworkName)
   * [StateNetworkVersion](#StateNetworkVersion)
   * [StateReadState](#StateReadState)
@@ -7844,6 +7845,64 @@ Response:
     "SimpleQAPower": true
   }
 ]
+```
+
+### StateMinerStats
+StateMinerStats returns the indicated miner's stats for the given tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Owner": "f01234",
+  "Worker": "f01234",
+  "NewWorker": "f01234",
+  "ControlAddresses": [
+    "f01234"
+  ],
+  "WorkerChangeEpoch": 10101,
+  "PeerId": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Multiaddrs": [
+    "Ynl0ZSBhcnJheQ=="
+  ],
+  "WindowPoStProofType": 8,
+  "SectorSize": 34359738368,
+  "WindowPoStPartitionSectors": 42,
+  "ConsensusFaultElapsed": 10101,
+  "Beneficiary": "f01234",
+  "BeneficiaryTerm": {
+    "Quota": "0",
+    "UsedQuota": "0",
+    "Expiration": 10101
+  },
+  "PendingBeneficiaryTerm": {
+    "NewBeneficiary": "f01234",
+    "NewQuota": "0",
+    "NewExpiration": 10101,
+    "ApprovedByBeneficiary": true,
+    "ApprovedByNominee": true
+  },
+  "PenaltyTermination": "0",
+  "ExpectedDailyReward": "0",
+  "PenaltyFaultPerDay": "0"
+}
 ```
 
 ### StateNetworkName
