@@ -215,20 +215,7 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 }
 
 func NewSyncerFollower(params SyncerParams) (*chain.Syncer, error) {
-	var (
-		ds     = params.MetadataDS
-		sm     = params.StateManager
-		ex     = params.ChainXchg
-		smCtor = params.SyncMgrCtor
-		h      = params.Host
-		b      = params.Beacon
-	)
-	syncer, err := chain.NewSyncerFollower(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, params.Gent, params.Consensus)
-	if err != nil {
-		return nil, err
-	}
-	//don't start syncer
-	return syncer, nil
+	return nil, nil
 }
 
 func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
