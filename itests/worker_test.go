@@ -556,7 +556,7 @@ func TestWindowPostV1P1NV20WorkerFault(t *testing.T) {
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
 
-	// wait for some crons(?)
+	// wait for sectors to be committed
 	require.Eventually(t, func() bool {
 		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
@@ -596,11 +596,11 @@ func TestWindowPostV1P1NV20WorkerFault(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint64(2), n)
 
-		// Drop the sector in second partition
+		// Drop the sector in first partition
 		sid, err := secs.First()
 		require.NoError(t, err)
 
-		t.Logf("Drop sector %d; dl %d part %d", sid, di.Index+1, 0)
+		t.Logf("Drop sector %d; dl %d part %d", sid, di.Index, 0)
 
 		atomic.StoreUint64(&badsector, sid)
 		require.NoError(t, err)
