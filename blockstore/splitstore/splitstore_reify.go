@@ -140,7 +140,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 		func(missing cid.Cid) error {
 			log.Warnf("missing reference while reifying %s: %s", c, missing)
 			return errStopWalk
-		})
+		}, true)
 
 	if err != nil {
 		if errors.Is(err, errReifyLimit) {

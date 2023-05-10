@@ -254,7 +254,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 			func(missing cid.Cid) error {
 				log.Warnf("missing object reference %s in %s", missing, c)
 				return errStopWalk
-			})
+			}, false)
 	}
 
 	// optimize the common case of single put
@@ -486,7 +486,7 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) 
 				s.txnRefsMx.Unlock()
 			}
 			return errStopWalk
-		})
+		}, true)
 }
 
 func (s *SplitStore) applyProtectors() error {
@@ -1001,7 +1001,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if err != nil {
 			return xerrors.Errorf("error computing cid reference to parent tipset")
 		}
-		sz, err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk)
+		sz, err := s.walkObjectIncomplete(pRef, visitor, fHot, stopWalk, true)
 		if err != nil {
 			return xerrors.Errorf("error walking parent tipset cid reference")
 		}
@@ -1012,13 +1012,13 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			if inclMsgs < inclState {
 				// we need to use walkObjectIncomplete here, as messages/receipts may be missing early on if we
 				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
-				sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fHot, stopWalk)
+				sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fHot, stopWalk, true)
 				if err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
 				atomic.AddInt64(szWalk, sz)
 
-				sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk)
+				sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk, true)
 				if err != nil {
 					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
@@ -1030,7 +1030,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 				}
 				atomic.AddInt64(szWalk, sz)
 
-				sz, err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk)
+				sz, err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk, true)
 				if err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
@@ -1040,12 +1040,12 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 
 		// messages and receipts outside of inclMsgs are included in the cold store
 		if hdr.Height < inclMsgs && hdr.Height > 0 {
-			sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk)
+			sz, err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk, true)
 			if err != nil {
 				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 			}
 			atomic.AddInt64(szWalk, sz)
-			sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk)
+			sz, err = s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fCold, stopWalk, true)
 			if err != nil {
 				return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 			}
@@ -1076,7 +1076,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	if err != nil {
 		return xerrors.Errorf("error computing cid reference to parent tipset")
 	}
-	sz, err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk)
+	sz, err := s.walkObjectIncomplete(hRef, visitor, fHot, stopWalk, true)
 	if err != nil {
 		return xerrors.Errorf("error walking parent tipset cid reference")
 	}
@@ -1181,7 +1181,7 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 }
 
 // like walkObject, but the object may be potentially incomplete (references missing)
-func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) (int64, error) {
+func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error, yielding bool) (int64, error) {
 	var sz int64
 	visit, err := visitor.Visit(c)
 	if err != nil {
@@ -1222,8 +1222,10 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 	}
 
 	// check this before recursing
-	if err := s.checkYield(); err != nil {
-		return sz, err
+	if yielding {
+		if err := s.checkYield(); err != nil {
+			return sz, err
+		}
 	}
 
 	var links []cid.Cid
@@ -1239,7 +1241,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 	}
 
 	for _, c := range links {
-		szLink, err := s.walkObjectIncomplete(c, visitor, f, missing)
+		szLink, err := s.walkObjectIncomplete(c, visitor, f, missing, true)
 		if err != nil {
 			return 0, xerrors.Errorf("error walking link (cid: %s): %w", c, err)
 		}
@@ -1640,7 +1642,7 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 				func(c cid.Cid) error {
 					missing[c] = struct{}{}
 					return errStopWalk
-				})
+				}, true)
 
 			if err != nil {
 				log.Warnf("error marking: %s", err)
