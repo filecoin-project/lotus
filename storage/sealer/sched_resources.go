@@ -38,7 +38,7 @@ func newTaskCounter() *taskCounter {
 func (tc *taskCounter) Add(tt sealtasks.SealTaskType, schedID uuid.UUID) {
 	tc.lk.Lock()
 	defer tc.lk.Unlock()
-	tc.getUnlocked(tt)[schedID] += 1
+	tc.getUnlocked(tt)[schedID]++
 }
 
 func (tc *taskCounter) Free(tt sealtasks.SealTaskType, schedID uuid.UUID) {
@@ -48,7 +48,7 @@ func (tc *taskCounter) Free(tt sealtasks.SealTaskType, schedID uuid.UUID) {
 	if m[schedID] <= 1 {
 		delete(m, schedID)
 	} else {
-		m[schedID] -= 1
+		m[schedID]--
 	}
 }
 
