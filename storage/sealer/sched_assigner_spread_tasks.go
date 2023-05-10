@@ -41,7 +41,7 @@ func SpreadTasksWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWind
 
 				log.Debugf("SCHED try assign sqi:%d sector %d to window %d (awi:%d)", sqi, task.Sector.ID.Number, wnd, i)
 
-				if !windows[wnd].Allocated.CanHandleRequest(task.SealTask(), res, wid, "schedAssign", w.Info) {
+				if !windows[wnd].Allocated.CanHandleRequest(task.SchedId, task.SealTask(), res, wid, "schedAssign", w.Info) {
 					continue
 				}
 
@@ -80,7 +80,7 @@ func SpreadTasksWS(queued bool) func(sh *Scheduler, queueLen int, acceptableWind
 				"assigned", bestAssigned)
 
 			workerAssigned[bestWid]++
-			windows[selectedWindow].Allocated.Add(task.SealTask(), info.Resources, needRes)
+			windows[selectedWindow].Allocated.Add(task.SchedId, task.SealTask(), info.Resources, needRes)
 			windows[selectedWindow].Todo = append(windows[selectedWindow].Todo, task)
 
 			rmQueue = append(rmQueue, sqi)
