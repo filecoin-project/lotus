@@ -220,14 +220,17 @@ func TestNetBlockIPAddr(t *testing.T) {
 	firstAddrInfo, _ := firstNode.NetAddrsListen(ctx)
 	secondAddrInfo, _ := secondNode.NetAddrsListen(ctx)
 
-	var secondNodeIPs []string
-
+	secondNodeIPsMap := map[string]struct{}{} // so we can deduplicate
 	for _, addr := range secondAddrInfo.Addrs {
 		ip, err := manet.ToIP(addr)
 		if err != nil {
 			continue
 		}
-		secondNodeIPs = append(secondNodeIPs, ip.String())
+		secondNodeIPsMap[ip.String()] = struct{}{}
+	}
+	var secondNodeIPs []string
+	for s := range secondNodeIPsMap {
+		secondNodeIPs = append(secondNodeIPs, s)
 	}
 
 	// Sanity check that we're not already connected somehow
@@ -243,6 +246,8 @@ func TestNetBlockIPAddr(t *testing.T) {
 	list, err := firstNode.NetBlockList(ctx)
 	require.NoError(t, err)
 
+	fmt.Println(list.IPAddrs)
+	fmt.Println(secondNodeIPs)
 	require.Equal(t, len(list.IPAddrs), len(secondNodeIPs), "expected %d blocked IPs", len(secondNodeIPs))
 	for _, blockedIP := range list.IPAddrs {
 		found := false
@@ -256,7 +261,8 @@ func TestNetBlockIPAddr(t *testing.T) {
 		require.True(t, found, "blocked IP %s is not one of secondNodeIPs", blockedIP)
 	}
 
-	require.Error(t, secondNode.NetConnect(ctx, firstAddrInfo), "shouldn't be able to connect to second node")
+	// a QUIC connection might still succeed when gated, but will be killed right after the handshake
+	_ = secondNode.NetConnect(ctx, firstAddrInfo)
 	connectedness, err = secondNode.NetConnectedness(ctx, firstAddrInfo.ID)
 	require.NoError(t, err, "failed to determine connectedness")
 	require.NotEqual(t, connectedness, network.Connected)
