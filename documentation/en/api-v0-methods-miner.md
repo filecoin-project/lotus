@@ -1701,7 +1701,10 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Reachability": 1
+  "Reachability": 1,
+  "PublicAddrs": [
+    "string value"
+  ]
 }
 ```
 
