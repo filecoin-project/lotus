@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -134,7 +135,7 @@ func (a *NetAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, err
 	return a.Router.FindPeer(ctx, p)
 }
 
-func (a *NetAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
+func (a *NetAPI) NetAutoNatStatus(context.Context) (i api.NatInfo, err error) {
 	autonat := a.RawHost.(*basichost.BasicHost).GetAutoNat()
 
 	if autonat == nil {
@@ -143,18 +144,18 @@ func (a *NetAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error
 		}, nil
 	}
 
-	var maddr string
+	var addrs []string
 	if autonat.Status() == network.ReachabilityPublic {
-		pa, err := autonat.PublicAddr()
-		if err != nil {
-			return api.NatInfo{}, err
+		for _, addr := range a.Host.Addrs() {
+			if manet.IsPublicAddr(addr) {
+				addrs = append(addrs, addr.String())
+			}
 		}
-		maddr = pa.String()
 	}
 
 	return api.NatInfo{
 		Reachability: autonat.Status(),
-		PublicAddr:   maddr,
+		PublicAddrs:  addrs,
 	}, nil
 }
 

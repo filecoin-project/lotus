@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -1180,6 +1181,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		} else if *filterSpec.FromBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.FromBlock, "0x") {
+				return nil, xerrors.Errorf("FromBlock is not a hex")
+			}
 			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")
@@ -1195,6 +1199,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		} else if *filterSpec.ToBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.ToBlock, "0x") {
+				return nil, xerrors.Errorf("ToBlock is not a hex")
+			}
 			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.ToBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")
