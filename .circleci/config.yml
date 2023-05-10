@@ -883,6 +883,12 @@ workflows:
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"
       - test:
+          name: test-itest-sealing_resources
+          requires:
+            - build
+          suite: itest-sealing_resources
+          target: "./itests/sealing_resources_test.go"
+      - test:
           name: test-itest-sector_finalize_early
           requires:
             - build
