@@ -33,7 +33,7 @@ This benchmark has the following features:
 
 To use this benchmark you must specify the rpc methods you want to test using the --method options, the format of it is:
 
-  --method=NAME[:CONCURRENCY][:QPS][:PARAMS] where only METHOD is required.
+  --method=NAME[:CONCURRENCY][:QPS][:PARAMS] where only NAME is required.
 
 Here are some real examples:
   lotus-bench rpc --method='eth_chainId' // run eth_chainId with default concurrency and qps
@@ -86,7 +86,7 @@ Here are some real examples:
 
 		var rpcMethods []*RPCMethod
 		for _, str := range cctx.StringSlice("method") {
-			entries := strings.Split(str, ":")
+			entries := strings.SplitN(str, ":", 4)
 			if len(entries) == 0 {
 				return errors.New("invalid method format")
 			}
@@ -118,25 +118,7 @@ Here are some real examples:
 			// check if params was specified
 			params := "[]"
 			if len(entries) > 3 {
-				// the params are everything after the 3rd ':' character in str. Since params can itself
-				// contain the ':' characters we can't just split on ':', so instead we need to locate the
-				// index of the 3rd ':' character and then take everything after that
-				occur := 0
-				idx := -1
-				for i := 0; i < len(str); i++ {
-					if str[i] == ':' {
-						occur++
-						if occur == 3 {
-							idx = i
-							break
-						}
-					}
-				}
-				if idx == -1 {
-					log.Fatalf("could not parse the params from method %s", entries[0])
-				}
-
-				params = str[idx+1:]
+				params = entries[3]
 			}
 
 			rpcMethods = append(rpcMethods, &RPCMethod{
@@ -175,19 +157,19 @@ Here are some real examples:
 
 		for _, e := range rpcMethods {
 			go func(e *RPCMethod) {
+				defer wg.Done()
 				err := e.Run()
 				if err != nil {
 					fmt.Printf("error running rpc method: %v\n", err)
 				}
-				wg.Done()
 			}(e)
 		}
 
 		// if watch is set then print a report every N seconds
-		var progressCh chan bool
+		var progressCh chan struct{}
 		if cctx.Duration("watch") > 0 {
-			progressCh = make(chan bool, 1)
-			go func(progressCh chan bool) {
+			progressCh = make(chan struct{}, 1)
+			go func(progressCh chan struct{}) {
 				ticker := time.NewTicker(cctx.Duration("watch"))
 				for {
 					clearAndPrintReport := func() {
@@ -216,7 +198,7 @@ Here are some real examples:
 
 		if progressCh != nil {
 			// wait for the watch go routine to return
-			progressCh <- true
+			progressCh <- struct{}{}
 
 			// no need to print the report again
 			return nil
