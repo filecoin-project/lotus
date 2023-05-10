@@ -812,6 +812,7 @@ type FullNode interface {
 	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) //perm:read
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)                              //perm:read
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)                                                                               //perm:read
+	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)                                                                        //perm:read
 	NetVersion(ctx context.Context) (string, error)                                                                                           //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                                                           //perm:read
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                       //perm:read

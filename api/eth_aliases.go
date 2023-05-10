@@ -21,6 +21,7 @@ func CreateEthRPCAliases(as apitypes.Aliaser) {
 	as.AliasMethod("eth_getStorageAt", "Filecoin.EthGetStorageAt")
 	as.AliasMethod("eth_getBalance", "Filecoin.EthGetBalance")
 	as.AliasMethod("eth_chainId", "Filecoin.EthChainId")
+	as.AliasMethod("eth_syncing", "Filecoin.EthSyncing")
 	as.AliasMethod("eth_feeHistory", "Filecoin.EthFeeHistory")
 	as.AliasMethod("eth_protocolVersion", "Filecoin.EthProtocolVersion")
 	as.AliasMethod("eth_maxPriorityFeePerGas", "Filecoin.EthMaxPriorityFeePerGas")
