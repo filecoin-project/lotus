@@ -502,6 +502,7 @@ func (sw *schedWorker) startProcessingTask(req *WorkerRequest) error {
 			w.lk.Unlock()
 			defer w.lk.Lock() // we MUST return locked from this function
 
+			// make sure the worker loop sees that the prepare task has finished
 			select {
 			case sw.taskDone <- struct{}{}:
 			case <-sh.closing:
@@ -524,6 +525,12 @@ func (sw *schedWorker) startProcessingTask(req *WorkerRequest) error {
 		})
 
 		w.lk.Unlock()
+
+		// make sure the worker loop sees that the task has finished
+		select {
+		case sw.taskDone <- struct{}{}:
+		default: // there is a notification pending already
+		}
 
 		// This error should always be nil, since nothing is setting it, but just to be safe:
 		if err != nil {
