@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -263,9 +264,12 @@ func TestNetBlockIPAddr(t *testing.T) {
 
 	// a QUIC connection might still succeed when gated, but will be killed right after the handshake
 	_ = secondNode.NetConnect(ctx, firstAddrInfo)
-	connectedness, err = secondNode.NetConnectedness(ctx, firstAddrInfo.ID)
-	require.NoError(t, err, "failed to determine connectedness")
-	require.NotEqual(t, connectedness, network.Connected)
+
+	require.Eventually(t, func() bool {
+		connectedness, err = secondNode.NetConnectedness(ctx, firstAddrInfo.ID)
+		require.NoError(t, err, "failed to determine connectedness")
+		return connectedness != network.Connected
+	}, time.Second*5, time.Millisecond*10)
 
 	// stm: @NETWORK_COMMON_BLOCK_REMOVE_001
 	err = firstNode.NetBlockRemove(ctx, api.NetBlockList{IPAddrs: secondNodeIPs})
