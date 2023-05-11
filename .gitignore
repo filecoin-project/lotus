@@ -48,6 +48,8 @@ build/builtin-actors/*.car
 
 dist/
 
+build/params_2k.go
+scripts/docker-git-state-check.sh
 
 # The following files are checked into git and result
 # in dirty git state if removed from the docker context
