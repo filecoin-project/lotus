@@ -61,9 +61,9 @@ var UpgradeSharkHeight = abi.ChainEpoch(-20)
 
 var UpgradeHyggeHeight = abi.ChainEpoch(-21)
 
-var UpgradeLightningHeight = abi.ChainEpoch(30)
+var UpgradeLightningHeight = abi.ChainEpoch(-22)
 
-var UpgradeThunderHeight = abi.ChainEpoch(1000)
+var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -125,7 +125,7 @@ func init() {
 
 }
 
-const BlockDelaySecs = uint64(4)
+const BlockDelaySecs = uint64(15)
 
 const PropagationDelaySecs = uint64(1)
 
