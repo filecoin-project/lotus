@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 	"strconv"
-	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -27,8 +27,7 @@ func init() {
 }
 
 type ChainIndex struct {
-	indexCacheLk sync.Mutex
-	indexCache   map[types.TipSetKey]*lbEntry
+	indexCache *lru.ARCCache[types.TipSetKey, *lbEntry]
 
 	loadTipSet loadTipSetFunc
 
@@ -37,8 +36,9 @@ type ChainIndex struct {
 type loadTipSetFunc func(context.Context, types.TipSetKey) (*types.TipSet, error)
 
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
+	sc, _ := lru.NewARC[types.TipSetKey, *lbEntry](DefaultChainIndexCacheSize)
 	return &ChainIndex{
-		indexCache: make(map[types.TipSetKey]*lbEntry, DefaultChainIndexCacheSize),
+		indexCache: sc,
 		loadTipSet: lts,
 		skipLength: 20,
 	}
@@ -59,11 +59,9 @@ func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet,
 		return nil, xerrors.Errorf("failed to round down: %w", err)
 	}
 
-	ci.indexCacheLk.Lock()
-	defer ci.indexCacheLk.Unlock()
 	cur := rounded.Key()
 	for {
-		lbe, ok := ci.indexCache[cur]
+		lbe, ok := ci.indexCache.Get(cur)
 		if !ok {
 			fc, err := ci.fillCache(ctx, cur)
 			if err != nil {
@@ -137,7 +135,7 @@ func (ci *ChainIndex) fillCache(ctx context.Context, tsk types.TipSetKey) (*lbEn
 		targetHeight: skipTarget.Height(),
 		target:       skipTarget.Key(),
 	}
-	ci.indexCache[tsk] = lbe
+	ci.indexCache.Add(tsk, lbe)
 
 	return lbe, nil
 }
