@@ -139,13 +139,24 @@ type MessagePool struct {
 
 	keyCache *lru.Cache[address.Address, address.Address]
 
-	stateLk sync.RWMutex
-	curTs   *types.TipSet
+	// curTs stands for 'current TipSet'
+	curTs *types.TipSet
 
-	// Use this lock if you need to transact between the TS and the Message pool in a consistent manner
-	//all changes to curTs must be wrapped in a transactionLk
-	//You do not need this lock and only need stateLk if you want a consistent view of the state without changing the state
+	// The transactionLk lock is used to ensure consistency when transacting between the TipSet (TS) and the Message Pool.
+	// Any modification to curTs must be wrapped in a transactionLk.
+	// This lock is not needed if you're only interested in a consistent view of the state without changing it.
 	transactionLk sync.RWMutex
+
+	// The stateLk lock is used when you need to interact with the state within the Message Pool.
+	// If the state is being modified, use the Write form of this mutex.
+	// Ensure that the transactionLk lock is acquired before the stateLk lock to maintain consistency.
+	// Example usage:
+	// mp.transactionLk.Lock()
+	// defer mp.transactionLk.Unlock()
+	//
+	// mp.stateLk.Lock()
+	// defer mp.stateLk.Unlock()
+	stateLk sync.RWMutex
 
 	cfgLk sync.RWMutex
 	cfg   *types.MpoolConfig
