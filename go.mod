@@ -142,7 +142,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.3.0
-	github.com/snissn/gomap v0.0.0-20230406203820-f36023da3b5c
+	github.com/snissn/gomap v0.0.0-20230512011542-b6ce7bacba99
 	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/urfave/cli/v2 v2.16.3
@@ -196,7 +196,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
-	github.com/dgraph-io/ristretto v0.1.0 // indirect
+	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/drand/kyber-bls12381 v0.2.3 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect

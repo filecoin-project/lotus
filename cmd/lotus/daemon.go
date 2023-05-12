@@ -482,7 +482,6 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
-	fmt.Println("Adding GOMAP")
 	if os.Getenv("LOTUS_GOMAP_STORE") != "" {
 		fmt.Println("Adding GOMAP")
 		gmds, err := gomapbs.NewGomapDS(os.Getenv("LOTUS_GOMAP_STORE"))

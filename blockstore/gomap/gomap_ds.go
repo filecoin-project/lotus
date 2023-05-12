@@ -2,6 +2,7 @@ package gomapbs
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -20,21 +21,22 @@ type GomapDatastore struct {
 }
 
 func NewGomapDS(folder string) (*GomapDatastore, error) {
+	fmt.Println("NewGomapDS", folder)
 	var h gomap.Hashmap
 	h.New(folder)
 	gmds := GomapDatastore{gmap: &h}
 	return &gmds, nil
 }
 
-func toKey(key cid.Cid) string {
+func toKey(key cid.Cid) []byte {
 
-	return string(key.Bytes()) //todo zero copy?
+	return key.Bytes() //todo zero copy?
 }
 
 func (gmds *GomapDatastore) Put(ctx context.Context, block blocks.Block) error {
 	gmds.lock.Lock()
 	defer gmds.lock.Unlock()
-	gmds.gmap.Add(toKey(block.Cid()), string(block.RawData()))
+	gmds.gmap.Add(toKey(block.Cid()), block.RawData())
 	//todo less copy and return err
 	return nil
 }
