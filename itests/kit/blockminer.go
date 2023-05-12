@@ -236,7 +236,7 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					break
 				}
 
-				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
+				require.NotEqual(bm.t, i, nloops-1, "block at height %d never managed to sync to node, which is at height %d", target, ts.Height())
 				time.Sleep(time.Millisecond * 10)
 			}
 
@@ -348,7 +348,7 @@ func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn *TestFullNode, cb f
 					break
 				}
 
-				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
+				require.NotEqual(bm.t, i, nloops-1, "block at height %d never managed to sync to node, which is at height %d", epoch, ts.Height())
 				time.Sleep(time.Millisecond * 10)
 			}
 
