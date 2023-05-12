@@ -471,15 +471,8 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	return mp, nil
 }
 
-// TryForEachPendingMessage calls the provided function for each pending message in the pool, if possible.
-// Returns an error if the lock cannot be acquired or any f call fails
-func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
-	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
-	// while holding the mpool lock
-	if !mp.transactionLk.TryLock() {
-		return xerrors.Errorf("mpool TryForEachPendingMessage: could not acquire lock")
-	}
-
+func (mp *MessagePool) ForEachPendingMessage(f func(cid.Cid) error) error {
+	mp.transactionLk.Lock()
 	defer mp.transactionLk.Unlock()
 
 	for _, mset := range mp.pending {

@@ -3,6 +3,8 @@ package sealer
 import (
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -20,7 +22,7 @@ type ActiveResources struct {
 }
 
 type taskCounter struct {
-	taskCounters map[sealtasks.SealTaskType]int
+	taskCounters map[sealtasks.SealTaskType]map[uuid.UUID]int
 
 	// this lock is technically redundant, as ActiveResources is always accessed
 	// with the worker lock, but let's not panic if we ever change that
@@ -29,26 +31,40 @@ type taskCounter struct {
 
 func newTaskCounter() *taskCounter {
 	return &taskCounter{
-		taskCounters: map[sealtasks.SealTaskType]int{},
+		taskCounters: make(map[sealtasks.SealTaskType]map[uuid.UUID]int),
 	}
 }
 
-func (tc *taskCounter) Add(tt sealtasks.SealTaskType) {
+func (tc *taskCounter) Add(tt sealtasks.SealTaskType, schedID uuid.UUID) {
 	tc.lk.Lock()
 	defer tc.lk.Unlock()
-	tc.taskCounters[tt]++
+	tc.getUnlocked(tt)[schedID]++
 }
 
-func (tc *taskCounter) Free(tt sealtasks.SealTaskType) {
+func (tc *taskCounter) Free(tt sealtasks.SealTaskType, schedID uuid.UUID) {
 	tc.lk.Lock()
 	defer tc.lk.Unlock()
-	tc.taskCounters[tt]--
+	m := tc.getUnlocked(tt)
+	if m[schedID] <= 1 {
+		delete(m, schedID)
+	} else {
+		m[schedID]--
+	}
 }
 
-func (tc *taskCounter) Get(tt sealtasks.SealTaskType) int {
-	tc.lk.Lock()
-	defer tc.lk.Unlock()
+func (tc *taskCounter) getUnlocked(tt sealtasks.SealTaskType) map[uuid.UUID]int {
+	if tc.taskCounters[tt] == nil {
+		tc.taskCounters[tt] = make(map[uuid.UUID]int)
+	}
+
 	return tc.taskCounters[tt]
+}
+
+func (tc *taskCounter) Get(tt sealtasks.SealTaskType) map[uuid.UUID]int {
+	tc.lk.Lock()
+	defer tc.lk.Unlock()
+
+	return tc.getUnlocked(tt)
 }
 
 func (tc *taskCounter) Sum() int {
@@ -56,7 +72,7 @@ func (tc *taskCounter) Sum() int {
 	defer tc.lk.Unlock()
 	sum := 0
 	for _, v := range tc.taskCounters {
-		sum += v
+		sum += len(v)
 	}
 	return sum
 }
@@ -64,8 +80,8 @@ func (tc *taskCounter) Sum() int {
 func (tc *taskCounter) ForEach(cb func(tt sealtasks.SealTaskType, count int)) {
 	tc.lk.Lock()
 	defer tc.lk.Unlock()
-	for tt, count := range tc.taskCounters {
-		cb(tt, count)
+	for tt, v := range tc.taskCounters {
+		cb(tt, len(v))
 	}
 }
 
@@ -75,8 +91,8 @@ func NewActiveResources(tc *taskCounter) *ActiveResources {
 	}
 }
 
-func (a *ActiveResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, tt sealtasks.SealTaskType, r storiface.Resources, locker sync.Locker, cb func() error) error {
-	for !a.CanHandleRequest(tt, r, id, "withResources", wr) {
+func (a *ActiveResources) withResources(schedID uuid.UUID, id storiface.WorkerID, wr storiface.WorkerInfo, tt sealtasks.SealTaskType, r storiface.Resources, locker sync.Locker, cb func() error) error {
+	for !a.CanHandleRequest(schedID, tt, r, id, "withResources", wr) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
 		}
@@ -85,11 +101,11 @@ func (a *ActiveResources) withResources(id storiface.WorkerID, wr storiface.Work
 		a.waiting--
 	}
 
-	a.Add(tt, wr.Resources, r)
+	a.Add(schedID, tt, wr.Resources, r)
 
 	err := cb()
 
-	a.Free(tt, wr.Resources, r)
+	a.Free(schedID, tt, wr.Resources, r)
 
 	return err
 }
@@ -100,7 +116,7 @@ func (a *ActiveResources) hasWorkWaiting() bool {
 }
 
 // add task resources to ActiveResources and return utilization difference
-func (a *ActiveResources) Add(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
+func (a *ActiveResources) Add(schedID uuid.UUID, tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
 	startUtil := a.utilization(wr)
 
 	if r.GPUUtilization > 0 {
@@ -109,19 +125,19 @@ func (a *ActiveResources) Add(tt sealtasks.SealTaskType, wr storiface.WorkerReso
 	a.cpuUse += r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
-	a.taskCounters.Add(tt)
+	a.taskCounters.Add(tt, schedID)
 
 	return a.utilization(wr) - startUtil
 }
 
-func (a *ActiveResources) Free(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
+func (a *ActiveResources) Free(schedID uuid.UUID, tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed -= r.GPUUtilization
 	}
 	a.cpuUse -= r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin -= r.MinMemory
 	a.memUsedMax -= r.MaxMemory
-	a.taskCounters.Free(tt)
+	a.taskCounters.Free(tt, schedID)
 
 	if a.cond != nil {
 		a.cond.Broadcast()
@@ -130,9 +146,10 @@ func (a *ActiveResources) Free(tt sealtasks.SealTaskType, wr storiface.WorkerRes
 
 // CanHandleRequest evaluates if the worker has enough available resources to
 // handle the request.
-func (a *ActiveResources) CanHandleRequest(tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
+func (a *ActiveResources) CanHandleRequest(schedID uuid.UUID, tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
 	if needRes.MaxConcurrent > 0 {
-		if a.taskCounters.Get(tt) >= needRes.MaxConcurrent {
+		tasks := a.taskCounters.Get(tt)
+		if len(tasks) >= needRes.MaxConcurrent && (schedID == uuid.UUID{} || tasks[schedID] == 0) {
 			log.Debugf("sched: not scheduling on worker %s for %s; at task limit tt=%s, curcount=%d", wid, caller, tt, a.taskCounters.Get(tt))
 			return false
 		}
@@ -226,7 +243,7 @@ func (a *ActiveResources) taskCount(tt *sealtasks.SealTaskType) int {
 		return a.taskCounters.Sum()
 	}
 
-	return a.taskCounters.Get(*tt)
+	return len(a.taskCounters.Get(*tt))
 }
 
 func (wh *WorkerHandle) Utilization() float64 {

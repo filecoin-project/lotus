@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sending Funds - Lotus Fountain</title>
+    <title>Grant DataCap - Lotus Fountain</title>
     <link rel="stylesheet" type="text/css" href="main.css">
 	<script src="https://www.google.com/recaptcha/api.js"></script>
 	<script>
@@ -15,19 +15,20 @@
 <div class="Index">
     <div class="Index-nodes">
         <div class="Index-node">
-            SENDING FUNDS
+            GRANT DATACAP
         </div>
         <div class="Index-node">
-            <form action='/send' method='post' id='funds-form'>
+            <form action='/datacap' method='post' id='datacap-form'>
                 <span>Enter destination address:</span>
-				<input type='text' name='address' style="width: 300px">
-				<button class="g-recaptcha" 
-						data-sitekey="{{ . }}"
-						data-callback='onSubmit' 
-						data-action='submit'>Send Funds</button>
+                <input type='text' name='address' style="width: 300px">
+                <button class="g-recaptcha"
+                        data-sitekey="{{ . }}"
+                        data-callback='onSubmit'
+                        data-action='submit'>Grant Datacap</button>
             </form>
         </div>
     </div>
+
     <div class="Index-footer">
         <div>
             <a href="index.html">[Back]</a>

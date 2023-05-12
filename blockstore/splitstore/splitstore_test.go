@@ -429,7 +429,7 @@ func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.
 	}
 	defer ss.Close() //nolint
 
-	ss.warmupEpoch = 1
+	ss.warmupEpoch.Store(1)
 	go ss.reifyOrchestrator()
 
 	waitForReification := func() {
@@ -529,7 +529,7 @@ func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blocks
 	}
 	defer ss.Close() //nolint
 
-	ss.warmupEpoch = 1
+	ss.warmupEpoch.Store(1)
 	go ss.reifyOrchestrator()
 
 	waitForReification := func() {
