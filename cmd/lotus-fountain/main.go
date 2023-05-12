@@ -275,13 +275,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.ctx, &types.Message{
 				Value: types.BigInt(h.sendPerRequest),
 				From:  h.from,
-				To:    to,
+				To:    filecoinAddress,
 			}, nil)
 	} else if r.RequestURI == "/datacap" {
 		var params []byte
 		params, err = actors.SerializeParams(
 			&verifregtypes9.AddVerifiedClientParams{
-				Address:   to,
+				Address:   filecoinAddress,
 				Allowance: h.allowance,
 			})
 		if err != nil {
@@ -299,7 +299,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
