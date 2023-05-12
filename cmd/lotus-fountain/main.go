@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
@@ -193,18 +195,34 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	to, err := address.NewFromString(r.FormValue("address"))
-	if err != nil {
+	addressInput := r.FormValue("address")
+
+	var filecoinAddress address.Address
+	var decodeError error
+
+	if strings.HasPrefix(addressInput, "0x") {
+		ethAddress, err := ethtypes.ParseEthAddress(addressInput)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		filecoinAddress, decodeError = ethAddress.ToFilecoinAddress()
+	} else {
+		filecoinAddress, decodeError = address.NewFromString(addressInput)
+	}
+
+	if decodeError != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if to == address.Undef {
+	if filecoinAddress == address.Undef {
 		http.Error(w, "empty address", http.StatusBadRequest)
 		return
 	}
 
 	// Limit based on wallet address
-	limiter := h.limiter.GetWalletLimiter(to.String())
+	limiter := h.limiter.GetWalletLimiter(filecoinAddress.String())
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit", http.StatusTooManyRequests)
 		return
@@ -230,7 +248,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
 		Value: types.BigInt(h.sendPerRequest),
 		From:  h.from,
-		To:    to,
+		To:    filecoinAddress,
 	}, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
