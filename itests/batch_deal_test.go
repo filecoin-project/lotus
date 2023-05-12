@@ -37,6 +37,8 @@ func TestBatchDealInput(t *testing.T) {
 
 	run := func(piece, deals, expectSectors int) func(t *testing.T) {
 		return func(t *testing.T) {
+			t.Logf("batchtest start")
+
 			ctx := context.Background()
 
 			publishPeriod := 10 * time.Second
@@ -72,6 +74,8 @@ func TestBatchDealInput(t *testing.T) {
 
 			err := miner.MarketSetAsk(ctx, big.Zero(), big.Zero(), 200, 128, 32<<30)
 			require.NoError(t, err)
+
+			t.Logf("batchtest ask set")
 
 			checkNoPadding := func() {
 				sl, err := miner.SectorsListNonGenesis(ctx)
@@ -118,26 +122,27 @@ func TestBatchDealInput(t *testing.T) {
 				}()
 			}
 
+			t.Logf("batchtest deals started")
+
 			// Wait for maxDealsPerMsg of the deals to be published
 			for i := 0; i < int(maxDealsPerMsg); i++ {
 				<-done
 			}
 
+			t.Logf("batchtest deals published")
+
 			checkNoPadding()
+
+			t.Logf("batchtest no padding")
 
 			sl, err := miner.SectorsListNonGenesis(ctx)
 			require.NoError(t, err)
 			require.Equal(t, len(sl), expectSectors)
+
+			t.Logf("batchtest done")
 		}
 	}
 
 	t.Run("4-p1600B", run(1600, 4, 4))
 	t.Run("4-p513B", run(513, 4, 2))
-	if !testing.Short() {
-		t.Run("32-p257B", run(257, 32, 8))
-
-		// fixme: this appears to break data-transfer / markets in some really creative ways
-		//t.Run("32-p10B", run(10, 32, 2))
-		// t.Run("128-p10B", run(10, 128, 8))
-	}
 }

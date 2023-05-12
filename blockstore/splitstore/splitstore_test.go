@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 
@@ -429,7 +429,7 @@ func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.
 	}
 	defer ss.Close() //nolint
 
-	ss.warmupEpoch = 1
+	ss.warmupEpoch.Store(1)
 	go ss.reifyOrchestrator()
 
 	waitForReification := func() {
@@ -529,7 +529,7 @@ func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blocks
 	}
 	defer ss.Close() //nolint
 
-	ss.warmupEpoch = 1
+	ss.warmupEpoch.Store(1)
 	go ss.reifyOrchestrator()
 
 	waitForReification := func() {

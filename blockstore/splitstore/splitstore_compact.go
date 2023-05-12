@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"golang.org/x/sync/errgroup"
@@ -455,7 +455,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
 func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) (int64, error) {
-	if err := s.checkYield(); err != nil {
+	if err := s.checkClosing(); err != nil {
 		return 0, err
 	}
 
@@ -1114,13 +1114,17 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 					if err := walkBlock(c); err != nil {
 						return xerrors.Errorf("error walking block (cid: %s): %w", c, err)
 					}
+
+					if err := s.checkYield(); err != nil {
+						return xerrors.Errorf("check yield: %w", err)
+					}
 				}
 				return nil
 			})
 		}
 
 		if err := g.Wait(); err != nil {
-			return err
+			return xerrors.Errorf("walkBlock workers errored: %w", err)
 		}
 	}
 
@@ -1153,8 +1157,8 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 	}
 
 	// check this before recursing
-	if err := s.checkYield(); err != nil {
-		return 0, err
+	if err := s.checkClosing(); err != nil {
+		return 0, xerrors.Errorf("check closing: %w", err)
 	}
 
 	var links []cid.Cid
@@ -1222,8 +1226,8 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 	}
 
 	// check this before recursing
-	if err := s.checkYield(); err != nil {
-		return sz, err
+	if err := s.checkClosing(); err != nil {
+		return sz, xerrors.Errorf("check closing: %w", err)
 	}
 
 	var links []cid.Cid

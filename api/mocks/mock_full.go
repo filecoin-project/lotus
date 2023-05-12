@@ -12,8 +12,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	metrics "github.com/libp2p/go-libp2p/core/metrics"
 	network0 "github.com/libp2p/go-libp2p/core/network"
 	peer "github.com/libp2p/go-libp2p/core/peer"
@@ -1474,6 +1474,21 @@ func (m *MockFullNode) EthSubscribe(arg0 context.Context, arg1 jsonrpc.RawParams
 func (mr *MockFullNodeMockRecorder) EthSubscribe(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSubscribe", reflect.TypeOf((*MockFullNode)(nil).EthSubscribe), arg0, arg1)
+}
+
+// EthSyncing mocks base method.
+func (m *MockFullNode) EthSyncing(arg0 context.Context) (ethtypes.EthSyncingResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthSyncing", arg0)
+	ret0, _ := ret[0].(ethtypes.EthSyncingResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthSyncing indicates an expected call of EthSyncing.
+func (mr *MockFullNodeMockRecorder) EthSyncing(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSyncing", reflect.TypeOf((*MockFullNode)(nil).EthSyncing), arg0)
 }
 
 // EthUninstallFilter mocks base method.

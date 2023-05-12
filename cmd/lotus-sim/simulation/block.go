@@ -80,7 +80,7 @@ func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message
 		return nil, xerrors.Errorf("failed to create new tipset: %w", err)
 	}
 
-	err = sim.Node.Chainstore.PersistTipset(ctx, newTipSet)
+	err = sim.Node.Chainstore.PersistTipsets(ctx, []*types.TipSet{newTipSet})
 	if err != nil {
 		return nil, xerrors.Errorf("failed to persist block headers: %w", err)
 	}

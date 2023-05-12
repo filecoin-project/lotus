@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
@@ -297,8 +297,10 @@ type FullNode interface {
 	MpoolGetNonce(context.Context, address.Address) (uint64, error) //perm:read
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)           //perm:read
 
-	// MpoolClear clears pending messages from the mpool
-	MpoolClear(context.Context, bool) error //perm:write
+	// MpoolClear clears pending messages from the mpool.
+	// If clearLocal is true, ALL messages will be cleared.
+	// If clearLocal is false, local messages will be protected, all others will be cleared.
+	MpoolClear(ctx context.Context, clearLocal bool) error //perm:write
 
 	// MpoolGetConfig returns (a copy of) the current mpool config
 	MpoolGetConfig(context.Context) (*types.MpoolConfig, error) //perm:read
@@ -810,6 +812,7 @@ type FullNode interface {
 	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) //perm:read
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)                              //perm:read
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)                                                                               //perm:read
+	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)                                                                        //perm:read
 	NetVersion(ctx context.Context) (string, error)                                                                                           //perm:read
 	NetListening(ctx context.Context) (bool, error)                                                                                           //perm:read
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)                                                                       //perm:read
@@ -827,23 +830,23 @@ type FullNode interface {
 
 	// Polling method for a filter, returns event logs which occurred since last poll.
 	// (requires write perm since timestamp of last filter execution will be written)
-	EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) //perm:write
+	EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) //perm:read
 
 	// Returns event logs matching filter with given id.
 	// (requires write perm since timestamp of last filter execution will be written)
-	EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) //perm:write
+	EthGetFilterLogs(ctx context.Context, id ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) //perm:read
 
 	// Installs a persistent filter based on given filter spec.
-	EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) //perm:write
+	EthNewFilter(ctx context.Context, filter *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) //perm:read
 
 	// Installs a persistent filter to notify when a new block arrives.
-	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error) //perm:write
+	EthNewBlockFilter(ctx context.Context) (ethtypes.EthFilterID, error) //perm:read
 
 	// Installs a persistent filter to notify when new messages arrive in the message pool.
-	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error) //perm:write
+	EthNewPendingTransactionFilter(ctx context.Context) (ethtypes.EthFilterID, error) //perm:read
 
 	// Uninstalls a filter with given id.
-	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error) //perm:write
+	EthUninstallFilter(ctx context.Context, id ethtypes.EthFilterID) (bool, error) //perm:read
 
 	// Subscribe to different event types using websockets
 	// eventTypes is one or more of:
@@ -852,10 +855,10 @@ type FullNode interface {
 	//  - logs: notify new event logs that match a criteria
 	// params contains additional parameters used with the log event type
 	// The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
-	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) //perm:write
+	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) //perm:read
 
 	// Unsubscribe from a websocket subscription
-	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) //perm:write
+	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error) //perm:read
 
 	// Returns the client version
 	Web3ClientVersion(ctx context.Context) (string, error) //perm:read

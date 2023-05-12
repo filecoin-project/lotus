@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/docker/go-units"
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
-	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"

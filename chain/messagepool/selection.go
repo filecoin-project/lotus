@@ -40,11 +40,21 @@ type msgChain struct {
 }
 
 func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
+
+	// See if we need to prune before selection; excessive buildup can lead to slow selection,
+	// so prune if we have too many messages (ignoring the cooldown).
+	mpCfg := mp.getConfig()
+	if mp.currentSize > mpCfg.SizeLimitHigh {
+		log.Infof("too many messages; pruning before selection")
+		if err := mp.pruneMessages(ctx, ts); err != nil {
+			log.Warnf("error pruning excess messages: %s", err)
+		}
+	}
 
 	// if the ticket quality is high enough that the first block has higher probability
 	// than any other block, then we don't bother with optimal selection because the

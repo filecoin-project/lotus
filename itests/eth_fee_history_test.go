@@ -50,19 +50,6 @@ func TestEthFeeHistory(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	heads, err := client.ChainNotify(ctx)
-	require.NoError(err)
-
-	// Save the full view of the tipsets to calculate the answer when there are null rounds
-	tsHeights := []int{1}
-	go func() {
-		for chg := range heads {
-			for _, c := range chg {
-				tsHeights = append(tsHeights, int(c.Val.Height()))
-			}
-		}
-	}()
-
 	miner := ens.InterconnectAll().BeginMining(blockTime)
 
 	client.WaitTillChain(ctx, kit.HeightAtLeast(7))
@@ -88,6 +75,16 @@ func TestEthFeeHistory(t *testing.T) {
 			}
 		}
 	}()
+
+	currTs, err := client.ChainHead(ctx)
+	require.NoError(err)
+
+	var tsHeights []int
+	for currTs.Height() != 0 {
+		tsHeights = append(tsHeights, int(currTs.Height()))
+		currTs, err = client.ChainGetTipSet(ctx, currTs.Parents())
+		require.NoError(err)
+	}
 
 	sort.Ints(tsHeights)
 

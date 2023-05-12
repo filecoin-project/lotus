@@ -26,6 +26,7 @@ func main() {
 		base32Cmd,
 		base16Cmd,
 		bitFieldCmd,
+		chainwatchCmd,
 		cronWcCmd,
 		frozenMinersCmd,
 		dealLabelCmd,
@@ -83,6 +84,9 @@ func main() {
 		invariantsCmd,
 		gasTraceCmd,
 		replayOfflineCmd,
+		msgindexCmd,
+		FevmAnalyticsCmd,
+		mismatchesCmd,
 	}
 
 	app := &cli.App{

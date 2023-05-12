@@ -13,9 +13,9 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/dgraph-io/badger/v2/pb"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/multiformats/go-base32"
@@ -746,6 +746,20 @@ func (b *Blockstore) Put(ctx context.Context, block blocks.Block) error {
 	}
 
 	put := func(db *badger.DB) error {
+		// Check if we have it before writing it.
+		switch err := db.View(func(txn *badger.Txn) error {
+			_, err := txn.Get(k)
+			return err
+		}); err {
+		case badger.ErrKeyNotFound:
+		case nil:
+			// Already exists, skip the put.
+			return nil
+		default:
+			return err
+		}
+
+		// Then write it.
 		err := db.Update(func(txn *badger.Txn) error {
 			return txn.Set(k, block.RawData())
 		})
@@ -801,12 +815,33 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		keys = append(keys, k)
 	}
 
+	err := b.db.View(func(txn *badger.Txn) error {
+		for i, k := range keys {
+			switch _, err := txn.Get(k); err {
+			case badger.ErrKeyNotFound:
+			case nil:
+				keys[i] = nil
+			default:
+				// Something is actually wrong
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	put := func(db *badger.DB) error {
 		batch := db.NewWriteBatch()
 		defer batch.Cancel()
 
 		for i, block := range blocks {
 			k := keys[i]
+			if k == nil {
+				// skipped because we already have it.
+				continue
+			}
 			if err := batch.Set(k, block.RawData()); err != nil {
 				return err
 			}

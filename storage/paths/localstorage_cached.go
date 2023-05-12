@@ -1,6 +1,7 @@
 package paths
 
 import (
+	"os"
 	"sync"
 	"time"
 
@@ -103,7 +104,9 @@ func (c *cachedLocalStorage) DiskUsage(path string) (int64, error) {
 		go func() {
 			du, err := c.base.DiskUsage(path)
 			if err != nil {
-				log.Errorw("error getting disk usage", "path", path, "error", err)
+				if !os.IsNotExist(err) {
+					log.Errorw("error getting disk usage", "path", path, "error", err)
+				}
 			}
 			resCh <- diskUsageResult{
 				usage: du,

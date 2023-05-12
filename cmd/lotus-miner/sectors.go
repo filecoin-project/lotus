@@ -67,6 +67,7 @@ var sectorsCmd = &cli.Command{
 		sectorsBatching,
 		sectorsRefreshPieceMatchingCmd,
 		sectorsCompactPartitionsCmd,
+		sectorsUnsealCmd,
 	},
 }
 
@@ -1392,6 +1393,12 @@ var sectorsRemoveCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
+		// Check if the sector exists
+		_, err = minerAPI.SectorsStatus(ctx, abi.SectorNumber(id), false)
+		if err != nil {
+			return xerrors.Errorf("sectorID %d has not been created yet: %w", id, err)
+		}
+
 		return minerAPI.SectorRemove(ctx, abi.SectorNumber(id))
 	},
 }
@@ -1915,10 +1922,31 @@ var sectorsBatchingPendingCommit = &cli.Command{
 			for _, sector := range pending {
 				fmt.Println(sector.Number)
 			}
-			return nil
-		}
 
-		fmt.Println("No sectors queued to be committed")
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Do you want to publish these sectors now? (yes/no): ")
+			userInput, err := reader.ReadString('\n')
+			if err != nil {
+				return xerrors.Errorf("reading user input: %w", err)
+			}
+			userInput = strings.ToLower(strings.TrimSpace(userInput))
+
+			if userInput == "yes" {
+				err := cctx.Set("publish-now", "true")
+				if err != nil {
+					return xerrors.Errorf("setting publish-now flag: %w", err)
+				}
+				return cctx.Command.Action(cctx)
+			} else if userInput == "no" {
+				return nil
+			} else {
+				fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
+				return nil
+			}
+
+		} else {
+			fmt.Println("No sectors queued to be committed")
+		}
 		return nil
 	},
 }
@@ -1973,10 +2001,31 @@ var sectorsBatchingPendingPreCommit = &cli.Command{
 			for _, sector := range pending {
 				fmt.Println(sector.Number)
 			}
-			return nil
-		}
 
-		fmt.Println("No sectors queued to be committed")
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Do you want to publish these sectors now? (yes/no): ")
+			userInput, err := reader.ReadString('\n')
+			if err != nil {
+				return xerrors.Errorf("reading user input: %w", err)
+			}
+			userInput = strings.ToLower(strings.TrimSpace(userInput))
+
+			if userInput == "yes" {
+				err := cctx.Set("publish-now", "true")
+				if err != nil {
+					return xerrors.Errorf("setting publish-now flag: %w", err)
+				}
+				return cctx.Command.Action(cctx)
+			} else if userInput == "no" {
+				return nil
+			} else {
+				fmt.Println("Invalid input. Please answer with 'yes' or 'no'.")
+				return nil
+			}
+
+		} else {
+			fmt.Println("No sectors queued to be committed")
+		}
 		return nil
 	},
 }
@@ -2246,5 +2295,29 @@ var sectorsNumbersFreeCmd = &cli.Command{
 		}
 
 		return minerAPI.SectorNumFree(ctx, cctx.Args().First())
+	},
+}
+
+var sectorsUnsealCmd = &cli.Command{
+	Name:      "unseal",
+	Usage:     "unseal a sector",
+	ArgsUsage: "[sector number]",
+	Action: func(cctx *cli.Context) error {
+		minerAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		sectorNum, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return minerAPI.SectorUnseal(ctx, abi.SectorNumber(sectorNum))
 	},
 }

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	"github.com/libp2p/go-libp2p/core/metrics"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -274,9 +274,9 @@ type FullNodeMethods struct {
 
 	EthGetCode func(p0 context.Context, p1 ethtypes.EthAddress, p2 string) (ethtypes.EthBytes, error) `perm:"read"`
 
-	EthGetFilterChanges func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"write"`
+	EthGetFilterChanges func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
-	EthGetFilterLogs func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"write"`
+	EthGetFilterLogs func(p0 context.Context, p1 ethtypes.EthFilterID) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
 	EthGetLogs func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (*ethtypes.EthFilterResult, error) `perm:"read"`
 
@@ -302,21 +302,23 @@ type FullNodeMethods struct {
 
 	EthMaxPriorityFeePerGas func(p0 context.Context) (ethtypes.EthBigInt, error) `perm:"read"`
 
-	EthNewBlockFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"write"`
+	EthNewBlockFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"read"`
 
-	EthNewFilter func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) `perm:"write"`
+	EthNewFilter func(p0 context.Context, p1 *ethtypes.EthFilterSpec) (ethtypes.EthFilterID, error) `perm:"read"`
 
-	EthNewPendingTransactionFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"write"`
+	EthNewPendingTransactionFilter func(p0 context.Context) (ethtypes.EthFilterID, error) `perm:"read"`
 
 	EthProtocolVersion func(p0 context.Context) (ethtypes.EthUint64, error) `perm:"read"`
 
 	EthSendRawTransaction func(p0 context.Context, p1 ethtypes.EthBytes) (ethtypes.EthHash, error) `perm:"read"`
 
-	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) `perm:"write"`
+	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) `perm:"read"`
 
-	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"write"`
+	EthSyncing func(p0 context.Context) (ethtypes.EthSyncingResult, error) `perm:"read"`
 
-	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"write"`
+	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) `perm:"read"`
+
+	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) `perm:"read"`
 
 	FilecoinAddressToEthAddress func(p0 context.Context, p1 address.Address) (ethtypes.EthAddress, error) `perm:"read"`
 
@@ -722,9 +724,13 @@ type GatewayMethods struct {
 
 	EthSubscribe func(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) ``
 
+	EthSyncing func(p0 context.Context) (ethtypes.EthSyncingResult, error) ``
+
 	EthUninstallFilter func(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) ``
 
 	EthUnsubscribe func(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) ``
+
+	GasEstimateGasPremium func(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) ``
 
 	GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
@@ -768,11 +774,15 @@ type GatewayMethods struct {
 
 	StateMinerProvingDeadline func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) ``
 
+	StateMinerSectorCount func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerSectors, error) ``
+
 	StateNetworkName func(p0 context.Context) (dtypes.NetworkName, error) ``
 
 	StateNetworkVersion func(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) ``
 
 	StateReadState func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) ``
+
+	StateReplay func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) ``
 
 	StateSearchMsg func(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
 
@@ -1078,6 +1088,8 @@ type StorageMinerMethods struct {
 	SectorTerminateFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
 
 	SectorTerminatePending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
+
+	SectorUnseal func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
 	SectorsList func(p0 context.Context) ([]abi.SectorNumber, error) `perm:"read"`
 
@@ -2412,6 +2424,17 @@ func (s *FullNodeStruct) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) 
 
 func (s *FullNodeStub) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error) {
 	return *new(ethtypes.EthSubscriptionID), ErrNotSupported
+}
+
+func (s *FullNodeStruct) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {
+	if s.Internal.EthSyncing == nil {
+		return *new(ethtypes.EthSyncingResult), ErrNotSupported
+	}
+	return s.Internal.EthSyncing(p0)
+}
+
+func (s *FullNodeStub) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {
+	return *new(ethtypes.EthSyncingResult), ErrNotSupported
 }
 
 func (s *FullNodeStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
@@ -4592,6 +4615,17 @@ func (s *GatewayStub) EthSubscribe(p0 context.Context, p1 jsonrpc.RawParams) (et
 	return *new(ethtypes.EthSubscriptionID), ErrNotSupported
 }
 
+func (s *GatewayStruct) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {
+	if s.Internal.EthSyncing == nil {
+		return *new(ethtypes.EthSyncingResult), ErrNotSupported
+	}
+	return s.Internal.EthSyncing(p0)
+}
+
+func (s *GatewayStub) EthSyncing(p0 context.Context) (ethtypes.EthSyncingResult, error) {
+	return *new(ethtypes.EthSyncingResult), ErrNotSupported
+}
+
 func (s *GatewayStruct) EthUninstallFilter(p0 context.Context, p1 ethtypes.EthFilterID) (bool, error) {
 	if s.Internal.EthUninstallFilter == nil {
 		return false, ErrNotSupported
@@ -4612,6 +4646,17 @@ func (s *GatewayStruct) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscr
 
 func (s *GatewayStub) EthUnsubscribe(p0 context.Context, p1 ethtypes.EthSubscriptionID) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *GatewayStruct) GasEstimateGasPremium(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.GasEstimateGasPremium == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
+	return s.Internal.GasEstimateGasPremium(p0, p1, p2, p3, p4)
+}
+
+func (s *GatewayStub) GasEstimateGasPremium(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
@@ -4845,6 +4890,17 @@ func (s *GatewayStub) StateMinerProvingDeadline(p0 context.Context, p1 address.A
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) StateMinerSectorCount(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerSectors, error) {
+	if s.Internal.StateMinerSectorCount == nil {
+		return *new(MinerSectors), ErrNotSupported
+	}
+	return s.Internal.StateMinerSectorCount(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateMinerSectorCount(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerSectors, error) {
+	return *new(MinerSectors), ErrNotSupported
+}
+
 func (s *GatewayStruct) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
 	if s.Internal.StateNetworkName == nil {
 		return *new(dtypes.NetworkName), ErrNotSupported
@@ -4875,6 +4931,17 @@ func (s *GatewayStruct) StateReadState(p0 context.Context, p1 address.Address, p
 }
 
 func (s *GatewayStub) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) {
+	if s.Internal.StateReplay == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateReplay(p0, p1, p2)
+}
+
+func (s *GatewayStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) {
 	return nil, ErrNotSupported
 }
 
@@ -6383,6 +6450,17 @@ func (s *StorageMinerStruct) SectorTerminatePending(p0 context.Context) ([]abi.S
 
 func (s *StorageMinerStub) SectorTerminatePending(p0 context.Context) ([]abi.SectorID, error) {
 	return *new([]abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorUnseal(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorUnseal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorUnseal(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorUnseal(p0 context.Context, p1 abi.SectorNumber) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsList(p0 context.Context) ([]abi.SectorNumber, error) {

@@ -37,6 +37,7 @@ var aggFeeDen = big.NewInt(100)
 
 type CommitBatcherApi interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 
@@ -234,7 +235,11 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 	if individual {
 		res, err = b.processIndividually(cfg)
 	} else {
-		res, err = b.processBatch(cfg)
+		var sectors []abi.SectorNumber
+		for sn := range b.todo {
+			sectors = append(sectors, sn)
+		}
+		res, err = b.processBatch(cfg, sectors)
 	}
 
 	if err != nil {
@@ -264,13 +269,13 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 	return res, nil
 }
 
-func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
+func (b *CommitBatcher) processBatch(cfg sealiface.Config, sectors []abi.SectorNumber) ([]sealiface.CommitBatchRes, error) {
 	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
 
-	total := len(b.todo)
+	total := len(sectors)
 
 	res := sealiface.CommitBatchRes{
 		FailedSectors: map[abi.SectorNumber]string{},
@@ -284,24 +289,19 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	infos := make([]proof.AggregateSealVerifyInfo, 0, total)
 	collateral := big.Zero()
 
-	for id, p := range b.todo {
-		if len(infos) >= cfg.MaxCommitBatch {
-			log.Infow("commit batch full")
-			break
-		}
+	for _, sector := range sectors {
+		res.Sectors = append(res.Sectors, sector)
 
-		res.Sectors = append(res.Sectors, id)
-
-		sc, err := b.getSectorCollateral(id, ts.Key())
+		sc, err := b.getSectorCollateral(sector, ts.Key())
 		if err != nil {
-			res.FailedSectors[id] = err.Error()
+			res.FailedSectors[sector] = err.Error()
 			continue
 		}
 
 		collateral = big.Add(collateral, sc)
 
-		params.SectorNumbers.Set(uint64(id))
-		infos = append(infos, p.Info)
+		params.SectorNumbers.Set(uint64(sector))
+		infos = append(infos, b.todo[sector].Info)
 	}
 
 	if len(infos) == 0 {
@@ -318,17 +318,20 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	mid, err := address.IDFromAddress(b.maddr)
 	if err != nil {
+		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting miner id: %w", err)
 	}
 
 	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
+		res.Error = err.Error()
 		log.Errorf("getting network version: %s", err)
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
 	}
 
 	arp, err := b.aggregateProofType(nv)
 	if err != nil {
+		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate proof type: %w", err)
 	}
 
@@ -339,16 +342,19 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		Infos:          infos,
 	}, proofs)
 	if err != nil {
+		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("aggregating proofs: %w", err)
 	}
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
+		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitAggregateParams: %w", err)
 	}
 
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
+		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
@@ -356,6 +362,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), ts.MinTicketBlock().ParentBaseFee)
 	if err != nil {
+		res.Error = err.Error()
 		log.Errorf("getting aggregate commit network fee: %s", err)
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate commit network fee: %s", err)
 	}
@@ -365,6 +372,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	needFunds := big.Add(collateral, aggFee)
 	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
 	if err != nil {
+		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, err
 	}
 
@@ -372,7 +380,26 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	from, _, err := b.addrSel.AddressFor(b.mctx, b.api, mi, api.CommitAddr, goodFunds, needFunds)
 	if err != nil {
+		res.Error = err.Error()
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
+	}
+
+	_, err = simulateMsgGas(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
+
+	if err != nil && (!api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || len(sectors) < miner.MinAggregatedSectors*2) {
+		log.Errorf("simulating CommitBatch message failed: %s", err)
+		res.Error = err.Error()
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
+	}
+
+	// If we're out of gas, split the batch in half and evaluate again
+	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
+		log.Warnf("CommitAggregate message ran out of gas, splitting batch in half and trying again (sectors: %d)", len(sectors))
+		mid := len(sectors) / 2
+		ret0, _ := b.processBatch(cfg, sectors[:mid])
+		ret1, _ := b.processBatch(cfg, sectors[mid:])
+
+		return append(ret0, ret1...), nil
 	}
 
 	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
@@ -388,6 +415,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 }
 
 func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
+
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
@@ -414,10 +442,29 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 
 	var res []sealiface.CommitBatchRes
 
+	sectorsProcessed := 0
+
 	for sn, info := range b.todo {
 		r := sealiface.CommitBatchRes{
 			Sectors:       []abi.SectorNumber{sn},
 			FailedSectors: map[abi.SectorNumber]string{},
+		}
+
+		if cfg.MaxSectorProveCommitsSubmittedPerEpoch > 0 &&
+			uint64(sectorsProcessed) >= cfg.MaxSectorProveCommitsSubmittedPerEpoch {
+
+			tmp := ts
+			for tmp.Height() <= ts.Height() {
+				tmp, err = b.api.ChainHead(b.mctx)
+				if err != nil {
+					log.Errorf("getting chain head: %+v", err)
+					return nil, err
+				}
+				time.Sleep(3 * time.Second)
+			}
+
+			sectorsProcessed = 0
+			ts = tmp
 		}
 
 		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, ts.Key())
@@ -429,6 +476,8 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 		}
 
 		res = append(res, r)
+
+		sectorsProcessed++
 	}
 
 	return res, nil

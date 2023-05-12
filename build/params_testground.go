@@ -9,6 +9,7 @@ package build
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -137,3 +138,7 @@ const BootstrapPeerThreshold = 1
 // ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 // As per https://github.com/ethereum-lists/chains
 const Eip155ChainId = 31415926
+
+// Reducing the delivery delay for equivocation of
+// consistent broadcast to just half a second.
+var CBDeliveryDelay = 500 * time.Millisecond

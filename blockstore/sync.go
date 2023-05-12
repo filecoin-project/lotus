@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 )
 
 // NewMemorySync returns a thread-safe in-memory blockstore.

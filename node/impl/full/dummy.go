@@ -102,6 +102,10 @@ func (e *EthModuleDummy) EthChainId(ctx context.Context) (ethtypes.EthUint64, er
 	return 0, ErrModuleDisabled
 }
 
+func (e *EthModuleDummy) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
+	return ethtypes.EthSyncingResult{}, ErrModuleDisabled
+}
+
 func (e *EthModuleDummy) NetVersion(ctx context.Context) (string, error) {
 	return "", ErrModuleDisabled
 }

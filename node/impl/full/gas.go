@@ -378,18 +378,6 @@ func gasEstimateGasLimit(
 	}
 	ret = (ret * int64(transitionalMulti*1024)) >> 10
 
-	// Special case for PaymentChannel collect, which is deleting actor
-	// We ignore errors in this special case since they CAN occur,
-	// and we just want to detect existing payment channel actors
-	st, err := smgr.ParentState(ts)
-	if err == nil {
-		act, err := st.GetActor(msg.To)
-		if err == nil && lbuiltin.IsPaymentChannelActor(act.Code) && msgIn.Method == builtin.MethodsPaych.Collect {
-			// add the refunded gas for DestroyActor back into the gas used
-			ret += 76e3
-		}
-	}
-
 	return ret, nil
 }
 
@@ -400,6 +388,11 @@ func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Messag
 			return nil, err
 		}
 		msg.GasLimit = int64(float64(gasLimit) * m.Mpool.GetConfig().GasLimitOverestimation)
+
+		// Gas overestimation can cause us to exceed the block gas limit, cap it.
+		if msg.GasLimit > build.BlockGasLimit {
+			msg.GasLimit = build.BlockGasLimit
+		}
 	}
 
 	if msg.GasPremium == types.EmptyInt || types.BigCmp(msg.GasPremium, types.NewInt(0)) == 0 {

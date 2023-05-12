@@ -31,7 +31,7 @@ const (
 
 type LotusTraceEvent struct {
 	Type       pubsub_pb.TraceEvent_Type `json:"type,omitempty"`
-	PeerID     string                    `json:"peerID,omitempty"`
+	PeerID     []byte                    `json:"peerID,omitempty"`
 	Timestamp  *int64                    `json:"timestamp,omitempty"`
 	PeerScore  TraceEventPeerScore       `json:"peerScore,omitempty"`
 	SourceAuth string                    `json:"sourceAuth,omitempty"`
@@ -46,7 +46,7 @@ type TopicScore struct {
 }
 
 type TraceEventPeerScore struct {
-	PeerID             string       `json:"peerID"`
+	PeerID             []byte       `json:"peerID"`
 	Score              float64      `json:"score"`
 	AppSpecificScore   float64      `json:"appSpecificScore"`
 	IPColocationFactor float64      `json:"ipColocationFactor"`
@@ -77,11 +77,11 @@ func (lt *lotusTracer) PeerScores(scores map[peer.ID]*pubsub.PeerScoreSnapshot) 
 
 		evt := &LotusTraceEvent{
 			Type:       *TraceEventPeerScores.Enum(),
-			PeerID:     lt.pid.Pretty(),
 			Timestamp:  &now,
+			PeerID:     []byte(lt.pid),
 			SourceAuth: lt.sa,
 			PeerScore: TraceEventPeerScore{
-				PeerID:             pid.Pretty(),
+				PeerID:             []byte(pid),
 				Score:              score.Score,
 				AppSpecificScore:   score.AppSpecificScore,
 				IPColocationFactor: score.IPColocationFactor,
@@ -104,7 +104,6 @@ func (lt *lotusTracer) TraceLotusEvent(evt *LotusTraceEvent) {
 			log.Errorf("error while transporting peer scores: %s", err)
 		}
 	}
-
 }
 
 func (lt *lotusTracer) Trace(evt *pubsub_pb.TraceEvent) {
