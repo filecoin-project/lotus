@@ -16,9 +16,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	verifregtypes9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -72,6 +75,11 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_FOUNTAIN_AMOUNT"},
 			Value:   "50",
 		},
+		&cli.Uint64Flag{
+			Name:    "data-cap",
+			EnvVars: []string{"LOTUS_DATACAP_AMOUNT"},
+			Value:   10240,
+		},
 		&cli.Float64Flag{
 			Name:  "captcha-threshold",
 			Value: 0.5,
@@ -110,6 +118,7 @@ var runCmd = &cli.Command{
 			ctx:            ctx,
 			api:            nodeApi,
 			from:           from,
+			allowance:      types.NewInt(cctx.Uint64("data-cap")),
 			sendPerRequest: sendPerRequest,
 			limiter: NewLimiter(LimiterConfig{
 				TotalRate:   500 * time.Millisecond,
@@ -126,6 +135,8 @@ var runCmd = &cli.Command{
 		http.Handle("/", http.FileServer(box.HTTPBox()))
 		http.HandleFunc("/funds.html", prepFundsHtml(box))
 		http.Handle("/send", h)
+		http.HandleFunc("/datacap.html", prepDataCapHtml(box))
+		http.Handle("/datacap", h)
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
 		go func() {
@@ -158,12 +169,24 @@ func prepFundsHtml(box *rice.Box) http.HandlerFunc {
 	}
 }
 
+func prepDataCapHtml(box *rice.Box) http.HandlerFunc {
+	tmpl := template.Must(template.New("datacaps").Parse(box.MustString("datacap.html")))
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := tmpl.Execute(w, os.Getenv("RECAPTCHA_SITE_KEY"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+	}
+}
+
 type handler struct {
 	ctx context.Context
 	api v0api.FullNode
 
 	from           address.Address
 	sendPerRequest types.FIL
+	allowance      types.BigInt
 
 	limiter        *Limiter
 	recapThreshold float64
@@ -189,6 +212,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
+
 	if !capResp.Success || capResp.Score < h.recapThreshold {
 		log.Infow("spam", "capResp", capResp)
 		http.Error(w, "spam protection", http.StatusUnprocessableEntity)
@@ -245,11 +269,37 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: types.BigInt(h.sendPerRequest),
-		From:  h.from,
-		To:    filecoinAddress,
-	}, nil)
+	var smsg *types.SignedMessage
+	if r.RequestURI == "/send" {
+		smsg, err = h.api.MpoolPushMessage(
+			h.ctx, &types.Message{
+				Value: types.BigInt(h.sendPerRequest),
+				From:  h.from,
+				To:    filecoinAddress,
+			}, nil)
+	} else if r.RequestURI == "/datacap" {
+		var params []byte
+		params, err = actors.SerializeParams(
+			&verifregtypes9.AddVerifiedClientParams{
+				Address:   filecoinAddress,
+				Allowance: h.allowance,
+			})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		smsg, err = h.api.MpoolPushMessage(
+			h.ctx, &types.Message{
+				Params: params,
+				From:   h.from,
+				To:     verifreg.Address,
+				Method: verifreg.Methods.AddVerifiedClient,
+			}, nil)
+	} else {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
