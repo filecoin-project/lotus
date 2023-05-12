@@ -145,7 +145,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 func (s *SplitStore) Info() map[string]interface{} {
 	info := make(map[string]interface{})
 	info["base epoch"] = s.baseEpoch
-	info["warmup epoch"] = s.warmupEpoch
+	info["warmup epoch"] = s.warmupEpoch.Load()
 	info["compactions"] = s.compactionIndex
 	info["prunes"] = s.pruneIndex
 	info["compacting"] = s.compacting == 1

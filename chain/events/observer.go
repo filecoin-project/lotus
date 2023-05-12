@@ -125,7 +125,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 
 	for changes := range notifs {
 		if err := o.applyChanges(ctx, changes); err != nil {
-			return err
+			return xerrors.Errorf("failed to apply a change notification: %w", err)
 		}
 	}
 

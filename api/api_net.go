@@ -73,5 +73,5 @@ type CommonNet interface {
 
 type NatInfo struct {
 	Reachability network.Reachability
-	PublicAddr   string
+	PublicAddrs  []string
 }

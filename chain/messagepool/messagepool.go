@@ -448,12 +448,8 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 	return mp, nil
 }
 
-func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
-	// avoid deadlocks in splitstore compaction when something else needs to access the blockstore
-	// while holding the mpool lock
-	if !mp.lk.TryLock() {
-		return xerrors.Errorf("mpool TryForEachPendingMessage: could not acquire lock")
-	}
+func (mp *MessagePool) ForEachPendingMessage(f func(cid.Cid) error) error {
+	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
 	for _, mset := range mp.pending {
@@ -474,6 +470,15 @@ func (mp *MessagePool) TryForEachPendingMessage(f func(cid.Cid) error) error {
 }
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
+	//if addr is not an ID addr, then it is already resolved to a key
+	if addr.Protocol() != address.ID {
+		return addr, nil
+	}
+	return mp.resolveToKeyFromID(ctx, addr)
+}
+
+func (mp *MessagePool) resolveToKeyFromID(ctx context.Context, addr address.Address) (address.Address, error) {
+
 	// check the cache
 	a, ok := mp.keyCache.Get(addr)
 	if ok {
@@ -488,8 +493,6 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 
 	// place both entries in the cache (may both be key addresses, which is fine)
 	mp.keyCache.Add(addr, ka)
-	mp.keyCache.Add(ka, ka)
-
 	return ka, nil
 }
 
@@ -742,8 +745,7 @@ func (mp *MessagePool) checkMessage(ctx context.Context, m *types.SignedMessage)
 	}
 
 	if err := mp.VerifyMsgSig(m); err != nil {
-		log.Warnf("signature verification failed: %s", err)
-		return err
+		return xerrors.Errorf("signature verification failed: %s", err)
 	}
 
 	return nil
@@ -962,13 +964,11 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 	}
 
 	if _, err := mp.api.PutMessage(ctx, m); err != nil {
-		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
-		return err
+		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
 	}
 
 	if _, err := mp.api.PutMessage(ctx, &m.Message); err != nil {
-		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
-		return err
+		return xerrors.Errorf("mpooladd cs.PutMessage failed: %s", err)
 	}
 
 	// Note: If performance becomes an issue, making this getOrCreatePendingMset will save some work

@@ -86,6 +86,7 @@ func main() {
 		replayOfflineCmd,
 		msgindexCmd,
 		FevmAnalyticsCmd,
+		mismatchesCmd,
 	}
 
 	app := &cli.App{

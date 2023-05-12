@@ -85,7 +85,7 @@ func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, p
 		log.Info("GenerateWindowPoSt run at lotus-miner")
 		p, s, err := m.localProver.GenerateWindowPoSt(ctx, minerID, postProofType, sectorInfo, randomness)
 		if err != nil {
-			return nil, nil, xerrors.Errorf("local prover: %w", err)
+			return p, s, xerrors.Errorf("local prover: %w", err)
 		}
 
 		return p, s, nil

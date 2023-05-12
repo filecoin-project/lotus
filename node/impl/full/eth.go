@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,6 +67,7 @@ type EthModuleAPI interface {
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
+	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
@@ -132,6 +134,7 @@ type EthModule struct {
 	ChainAPI
 	MpoolAPI
 	StateAPI
+	SyncAPI
 }
 
 var _ EthModuleAPI = (*EthModule)(nil)
@@ -387,7 +390,7 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	// First, handle the case where the "sender" is an EVM actor.
@@ -475,7 +478,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	// StateManager.Call will panic if there is no parent
@@ -554,7 +557,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	l := len(position)
@@ -650,7 +653,7 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return ethtypes.EthBigInt{}, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	st, _, err := a.StateManager.TipSetState(ctx, ts)
@@ -670,6 +673,42 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 
 func (a *EthModule) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
 	return ethtypes.EthUint64(build.Eip155ChainId), nil
+}
+
+func (a *EthModule) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
+	state, err := a.SyncAPI.SyncState(ctx)
+	if err != nil {
+		return ethtypes.EthSyncingResult{}, fmt.Errorf("failed calling SyncState: %w", err)
+	}
+
+	if len(state.ActiveSyncs) == 0 {
+		return ethtypes.EthSyncingResult{}, errors.New("no active syncs, try again")
+	}
+
+	working := -1
+	for i, ss := range state.ActiveSyncs {
+		if ss.Stage == api.StageIdle {
+			continue
+		}
+		working = i
+	}
+	if working == -1 {
+		working = len(state.ActiveSyncs) - 1
+	}
+
+	ss := state.ActiveSyncs[working]
+	if ss.Base == nil || ss.Target == nil {
+		return ethtypes.EthSyncingResult{}, errors.New("missing syncing information, try again")
+	}
+
+	res := ethtypes.EthSyncingResult{
+		DoneSync:      ss.Stage == api.StageSyncComplete,
+		CurrentBlock:  ethtypes.EthUint64(ss.Height),
+		StartingBlock: ethtypes.EthUint64(ss.Base.Height()),
+		HighestBlock:  ethtypes.EthUint64(ss.Target.Height()),
+	}
+
+	return res, nil
 }
 
 func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
@@ -1081,7 +1120,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam s
 
 	ts, err := a.parseBlkParam(ctx, blkParam, false)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot parse block param: %s", blkParam)
+		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())
@@ -1180,6 +1219,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		} else if *filterSpec.FromBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.FromBlock, "0x") {
+				return nil, xerrors.Errorf("FromBlock is not a hex")
+			}
 			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")
@@ -1195,6 +1237,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		} else if *filterSpec.ToBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.ToBlock, "0x") {
+				return nil, xerrors.Errorf("ToBlock is not a hex")
+			}
 			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.ToBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")

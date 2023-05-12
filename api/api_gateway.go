@@ -98,6 +98,7 @@ type Gateway interface {
 	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error)
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
+	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)

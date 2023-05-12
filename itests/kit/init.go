@@ -40,11 +40,6 @@ func init() {
 
 	build.InsecurePoStValidation = true
 
-	// Disabling consistent broadcast in itests. Many tests use really fast
-	// block times, and adding this additional delay for block delivery
-	// would make these tests to fail.
-	build.CBDeliveryDelay = 0
-
 	if err := os.Setenv("BELLMAN_NO_GPU", "1"); err != nil {
 		panic(fmt.Sprintf("failed to set BELLMAN_NO_GPU env variable: %s", err))
 	}
