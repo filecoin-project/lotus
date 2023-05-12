@@ -144,7 +144,7 @@ type MessagePool struct {
 
 	// Use this lock if you need to transact between the TS and the Message pool in a consistent manner
 	//all changes to curTs must be wrapped in a transactionLk
-	//You do not need this lock and only need curTsLk if you want a consistent view of the state without changing the state
+	//You do not need this lock and only need stateLk if you want a consistent view of the state without changing the state
 	transactionLk sync.RWMutex
 
 	cfgLk sync.RWMutex
