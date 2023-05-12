@@ -117,6 +117,45 @@ func DefaultFullNode() *FullNode {
 	}
 }
 
+// DefaultFullNode returns the default config
+func DefaultFollowerNode() *Follower {
+	return &Follower{
+		Common: defCommon(),
+		Fees: FeeConfig{
+			DefaultMaxFee: DefaultDefaultMaxFee,
+		},
+		Client: Client{
+			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
+			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
+		},
+		Chainstore: Chainstore{
+			EnableSplitstore: true,
+			Splitstore: Splitstore{
+				ColdStoreType: "discard",
+				HotStoreType:  "badger",
+				MarkSetType:   "badger",
+
+				HotStoreFullGCFrequency:      20,
+				HotStoreMaxSpaceThreshold:    150_000_000_000,
+				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
+			},
+		},
+		Cluster: *DefaultUserRaftConfig(),
+		Fevm: FevmConfig{
+			EnableEthRPC:                 false,
+			EthTxHashMappingLifetimeDays: 0,
+			Events: Events{
+				DisableRealTimeFilterAPI: false,
+				DisableHistoricFilterAPI: false,
+				FilterTTL:                Duration(time.Hour * 24),
+				MaxFilters:               100,
+				MaxFilterResults:         10000,
+				MaxFilterHeightRange:     2880, // conservative limit of one day
+			},
+		},
+	}
+}
+
 func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),

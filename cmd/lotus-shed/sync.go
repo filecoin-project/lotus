@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -12,8 +13,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var syncCmd = &cli.Command{
@@ -23,6 +27,7 @@ var syncCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		syncValidateCmd,
 		syncScrapePowerCmd,
+		syncFlushValidationCacdeCmd,
 	},
 }
 
@@ -174,5 +179,52 @@ var syncScrapePowerCmd = &cli.Command{
 		))
 
 		return nil
+	},
+}
+
+var syncFlushValidationCacdeCmd = &cli.Command{
+	Name:        "flush-validation-cache",
+	Description: "Remove validation cache entries",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		if cctx.NArg() != 0 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		fsrepo, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		if err != nil {
+			return err
+		}
+
+		defer lkrepo.Close() //nolint:errcheck
+
+		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		if err != nil {
+			return fmt.Errorf("failed to open blockstore: %w", err)
+		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
+
+		mds, err := lkrepo.Datastore(ctx, "/metadata")
+		if err != nil {
+			return err
+		}
+
+		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
+		defer cs.Close() //nolint:errcheck
+
+		return cs.FlushValidationCache(ctx)
 	},
 }

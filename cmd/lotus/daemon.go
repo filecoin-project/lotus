@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -32,8 +33,8 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/cassbs"
 	gomapbs "github.com/filecoin-project/lotus/blockstore/gomap"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -130,6 +131,10 @@ var DaemonCmd = &cli.Command{
 			Name:  "lite",
 			Usage: "start lotus in lite mode",
 		},
+		&cli.BoolFlag{
+			Name:  "follower",
+			Usage: "start lotus in follower mode",
+		},
 		&cli.StringFlag{
 			Name:  "pprof",
 			Usage: "specify name of file for writing cpu profile to",
@@ -167,6 +172,8 @@ var DaemonCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		fmt.Println("MIKEDAEMON")
 		isLite := cctx.Bool("lite")
+
+		isFollower := cctx.Bool("follower")
 
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
 			EnableCPU:    true,
@@ -304,7 +311,7 @@ var DaemonCmd = &cli.Command{
 		// If the daemon is started in "lite mode", provide a  Gateway
 		// for RPC calls
 		liteModeDeps := node.Options()
-		if isLite {
+		if isLite || isFollower {
 			gapi, closer, err := lcli.GetGatewayAPI(cctx)
 			if err != nil {
 				return err
@@ -323,7 +330,7 @@ var DaemonCmd = &cli.Command{
 
 		var api lapi.FullNode
 		stop, err := node.New(ctx,
-			node.FullAPI(&api, node.Lite(isLite)),
+			node.FullAPI(&api, node.Lite(isLite), node.Follower(isFollower)),
 
 			node.Base(),
 			node.Repo(r),
@@ -481,10 +488,16 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		fmt.Println("Adding GOMAP")
 		gmds, err := gomapbs.NewGomapDS(os.Getenv("LOTUS_GOMAP_STORE"))
 		if err != nil {
-			return xerrors.Errorf("open cassandra store: %w", err)
+			return xerrors.Errorf("open gomap store: %w", err)
 		}
-
+		rbs := bstore.NewBlockstore(gmds, bstore.NoPrefix())
 		bs = blockstore.Adapt(gmds)
+	}
+
+	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
+		cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+		rbs := bstore.NewBlockstore(cds, bstore.NoPrefix())
+		bs = blockstore.Adapt(rbs)
 	}
 
 	mds, err := lr.Datastore(ctx, "/metadata")
@@ -529,7 +542,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	bar.Start()
-	ts, err := cst.Import(ctx, ir)
+	ts, gen, err := cst.Import(ctx, ir)
 	bar.Finish()
 
 	if err != nil {
@@ -540,12 +553,8 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
-	gb, err := cst.GetTipsetByHeight(ctx, 0, ts, true)
-	if err != nil {
-		return err
-	}
-
-	err = cst.SetGenesis(ctx, gb.Blocks()[0])
+	log.Infof("setting genesis")
+	err = cst.SetGenesis(ctx, gen)
 	if err != nil {
 		return err
 	}

@@ -79,17 +79,36 @@ var ChainNode = Options(
 	Override(new(store.WeightFunc), filcns.Weight),
 	Override(new(stmgr.Executor), consensus.NewTipSetExecutor(filcns.RewardFunc)),
 	Override(new(consensus.Consensus), filcns.NewFilecoinExpectedConsensus),
-	Override(new(*store.ChainStore), modules.ChainStore),
+
+	If(isNotChainCassandra(),
+		Override(new(*store.ChainStore), modules.ChainStore),
+	),
+	If(isChainCassandra(),
+		ApplyIf(isNotFollower,
+			Override(new(*store.ChainStore), modules.CassandraMetadataChainStore),
+		),
+
+		ApplyIf(isFollower,
+			Override(new(*store.ChainStore), modules.CassandraReadonlyMetadataChainStore),
+		),
+	),
 	Override(new(*stmgr.StateManager), modules.StateManager),
 	Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
 	Override(new(dtypes.ChainBlockService), modules.ChainBlockService), // todo: unused
 
 	// Consensus: Chain sync
-
 	// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
 	// It will be called implicitly by the Syncer constructor.
 	Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
-	Override(new(*chain.Syncer), modules.NewSyncer),
+
+	ApplyIf(isNotFollower,
+		Override(new(*chain.Syncer), modules.NewSyncer),
+	),
+
+	ApplyIf(isFollower,
+		Override(new(*chain.Syncer), modules.NewSyncerFollower),
+	),
+
 	Override(new(exchange.Client), exchange.NewClient),
 
 	// Chain networking
@@ -167,11 +186,14 @@ var ChainNode = Options(
 		Override(new(full.StateModuleAPI), From(new(full.StateModule))),
 		Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
 
-		Override(RunHelloKey, modules.RunHello),
+		ApplyIf(isNotFollower,
+			Override(RunHelloKey, modules.RunHello),
+		),
 		Override(RunChainExchangeKey, modules.RunChainExchange),
 		Override(RunPeerMgrKey, modules.RunPeerMgr),
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
-		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+
+		ApplyIf(isNotFollower, Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks)),
 	),
 )
 
@@ -186,9 +208,12 @@ func ConfigFullNode(c interface{}) Option {
 	ipfsMaddr := cfg.Client.IpfsMAddr
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
-
-		Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
-
+		If(isNotChainCassandra(),
+			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
+		),
+		If(isChainCassandra(),
+			Override(new(dtypes.UniversalBlockstore), modules.CassandraBlockstore),
+		),
 		If(cfg.Chainstore.EnableSplitstore,
 			If(cfg.Chainstore.Splitstore.ColdStoreType == "universal" || cfg.Chainstore.Splitstore.ColdStoreType == "messages",
 				Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
@@ -288,6 +313,13 @@ type FullOption = Option
 func Lite(enable bool) FullOption {
 	return func(s *Settings) error {
 		s.Lite = enable
+		return nil
+	}
+}
+
+func Follower(enable bool) FullOption {
+	return func(s *Settings) error {
+		s.Follower = enable
 		return nil
 	}
 }

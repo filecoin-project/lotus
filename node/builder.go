@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -147,9 +148,10 @@ type Settings struct {
 
 	nodeType repo.RepoType
 
-	Base   bool // Base option applied
-	Config bool // Config option applied
-	Lite   bool // Start node in "lite" mode
+	Base     bool // Base option applied
+	Config   bool // Config option applied
+	Lite     bool // Start node in "lite" mode
+	Follower bool // Start node in "follower" mode
 
 	enableLibp2pNode bool
 }
@@ -243,6 +245,22 @@ func isFullNode(s *Settings) bool {
 }
 func isLiteNode(s *Settings) bool {
 	return s.nodeType == repo.FullNode && s.Lite
+}
+
+func isFollower(s *Settings) bool {
+	return s.Follower
+}
+
+func isNotFollower(s *Settings) bool {
+	return !s.Follower
+}
+
+func isChainCassandra() bool {
+	return os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != ""
+}
+
+func isNotChainCassandra() bool {
+	return !isChainCassandra()
 }
 
 func Base() Option {
