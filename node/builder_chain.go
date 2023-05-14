@@ -208,11 +208,12 @@ func ConfigFullNode(c interface{}) Option {
 	ipfsMaddr := cfg.Client.IpfsMAddr
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
-		If(isNotChainCassandra(),
-			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
-		),
+		//Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 		If(isChainCassandra(),
 			Override(new(dtypes.UniversalBlockstore), modules.CassandraBlockstore),
+		),
+		If(isChainGomap(),
+			Override(new(dtypes.UniversalBlockstore), modules.GomapBlockstore),
 		),
 		If(cfg.Chainstore.EnableSplitstore,
 			If(cfg.Chainstore.Splitstore.ColdStoreType == "universal" || cfg.Chainstore.Splitstore.ColdStoreType == "messages",

@@ -64,7 +64,7 @@ func (gmds *GomapDatastore) Get(ctx context.Context, key cid.Cid) (blocks.Block,
 	gmds.lock.RLock()
 	defer gmds.lock.RUnlock()
 	val, err := gmds.gmap.Get(toKey(key))
-	if err != nil {
+	if val == nil || err != nil {
 		//todo check error
 		return nil, datastore.ErrNotFound
 	}

@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -170,7 +171,7 @@ func GomapBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo
 	copt.HasARCCacheSize = 1 << 20
 	copt.HasBloomFilterSize = 0
 	copt.HasBloomFilterHashes = 0
-
+	fmt.Println("Making gomap")
 	cbs, err := bstore.CachedBlockstore(mctx, gmds, copt)
 	if err != nil {
 		return nil, err

@@ -142,7 +142,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.3.0
-	github.com/snissn/gomap v0.0.0-20230512011542-b6ce7bacba99
+	github.com/snissn/gomap v0.0.0-20230513231805-37098056b811
 	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/urfave/cli/v2 v2.16.3
