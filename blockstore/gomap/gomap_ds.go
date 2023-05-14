@@ -42,10 +42,16 @@ func (gmds *GomapDatastore) Put(ctx context.Context, block blocks.Block) error {
 }
 
 func (gmds *GomapDatastore) PutMany(ctx context.Context, blocks []blocks.Block) error {
-	for _, block := range blocks {
-		//Put holds lock
-		gmds.Put(ctx, block)
+	items := make([]gomap.Item, len(blocks))
+	for i, block := range blocks {
+		items[i] = gomap.Item{Key: toKey(block.Cid()), Value: block.RawData()}
 	}
+
+	gmds.lock.Lock()
+	defer gmds.lock.Unlock()
+
+	gmds.gmap.AddMany(items)
+
 	return nil
 }
 
