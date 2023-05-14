@@ -2,6 +2,7 @@ package blockstore
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru/v2"

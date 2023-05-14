@@ -490,12 +490,28 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		if err != nil {
 			return xerrors.Errorf("open gomap store: %w", err)
 		}
-		rbs := bstore.NewBlockstore(gmds, bstore.NoPrefix())
 		bs = blockstore.Adapt(gmds)
+
+		/*
+			copt := bstore.DefaultCacheOpts()
+			copt.HasARCCacheSize = 1 << 20
+			copt.HasBloomFilterSize = 0
+			copt.HasBloomFilterHashes = 0
+
+			cbs, err := bstore.CachedBlockstore(ctx, gmds, copt)
+			if err != nil {
+				return err
+			}
+
+			bs = blockstore.WithCache(blockstore.Adapt(cbs))
+		*/
 	}
 
 	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
 		cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+		if err != nil {
+			return xerrors.Errorf("open gomap store: %w", err)
+		}
 		rbs := bstore.NewBlockstore(cds, bstore.NoPrefix())
 		bs = blockstore.Adapt(rbs)
 	}
