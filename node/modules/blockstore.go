@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/blockstore/cassbs"
+	gomapbs "github.com/filecoin-project/lotus/blockstore/gomap"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -154,6 +154,24 @@ func CassandraBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 
 	// only metadata cache
 	cbs, err := bstore.CachedBlockstore(mctx, rbs, copt)
+	if err != nil {
+		return nil, err
+	}
+
+	return blockstore.WithCache(blockstore.Adapt(cbs)), nil
+}
+
+func GomapBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.UniversalBlockstore, error) {
+	gmds, err := gomapbs.NewGomapDS(os.Getenv("LOTUS_GOMAP_STORE"))
+	if err != nil {
+		return nil, xerrors.Errorf("open gomap store: %w", err)
+	}
+	copt := bstore.DefaultCacheOpts()
+	copt.HasARCCacheSize = 1 << 20
+	copt.HasBloomFilterSize = 0
+	copt.HasBloomFilterHashes = 0
+
+	cbs, err := bstore.CachedBlockstore(mctx, gmds, copt)
 	if err != nil {
 		return nil, err
 	}

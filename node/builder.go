@@ -263,6 +263,14 @@ func isNotChainCassandra() bool {
 	return !isChainCassandra()
 }
 
+func isChainGomap() bool {
+	return os.Getenv("LOTUS_GOMAP_STORE") != ""
+}
+
+func isNotChainGomap() bool {
+	return !isChainGomap()
+}
+
 func Base() Option {
 	return Options(
 		func(s *Settings) error { s.Base = true; return nil }, // mark Base as applied
