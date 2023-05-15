@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	stdbig "math/big"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -312,7 +313,7 @@ func (ms *msgSet) add(ctx context.Context, m *types.SignedMessage, mp *MessagePo
 	ms.msgs[m.Message.Nonce] = m
 	ms.requiredFunds.Add(ms.requiredFunds, m.Message.RequiredFunds().Int)
 	// ms.requiredFunds.Add(ms.requiredFunds, m.Message.Value.Int)
-	if mp.cfg.OptionalMetrics.MpoolSize {
+	if mp.mpoolMonitoringEnabled() {
 		stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 	}
 
@@ -378,6 +379,10 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 	})
 
 	return set
+}
+
+func (mp *MessagePool) mpoolMonitoringEnabled() bool {
+	return mp.getConfig().OptionalMetrics.MpoolSize || os.Getenv("LOTUS_MPOOL_DETAILED_METRICS_ENABLED") == "true"
 }
 
 func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
@@ -526,7 +531,7 @@ func (mp *MessagePool) setPendingMset(ctx context.Context, addr address.Address,
 	}
 
 	mp.pending[ra] = ms
-	if mp.cfg.OptionalMetrics.MpoolSize {
+	if mp.mpoolMonitoringEnabled() {
 		stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 	}
 
@@ -547,7 +552,7 @@ func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Addre
 	}
 
 	delete(mp.pending, ra)
-	if mp.cfg.OptionalMetrics.MpoolSize {
+	if mp.mpoolMonitoringEnabled() {
 		stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 	}
 
@@ -557,7 +562,7 @@ func (mp *MessagePool) deletePendingMset(ctx context.Context, addr address.Addre
 // This method isn't strictly necessary, since it doesn't resolve any addresses, but it's safer to have
 func (mp *MessagePool) clearPending(ctx context.Context) {
 	mp.pending = make(map[address.Address]*msgSet)
-	if mp.cfg.OptionalMetrics.MpoolSize {
+	if mp.mpoolMonitoringEnabled() {
 		stats.Record(ctx, metrics.MessagePending.M(int64(int64(mp.getTotalPendingMessages()))))
 	}
 }

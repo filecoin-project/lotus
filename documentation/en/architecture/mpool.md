@@ -151,6 +151,7 @@ The meaning of these fields is as follows:
 - `GasLimitOverestimation` -- this is a parameter that controls the gas limit overestimation for new messages.
   Default is 1.25.
 - `OptionalMetrics` -- this parameter allows enabling of potentially performance impacting metrics, see below.
+  Note, all mpool metrics can be enabled by setting the env var `LOTUS_MPOOL_DETAILED_METRICS_ENABLED=true`
 
 The OptionalMetrics struct is defined as follows:
 ```
