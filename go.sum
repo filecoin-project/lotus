@@ -1579,6 +1579,8 @@ github.com/snissn/gomap v0.0.0-20230512011542-b6ce7bacba99 h1:2Gn4LBHlXIwcIFaQG7
 github.com/snissn/gomap v0.0.0-20230512011542-b6ce7bacba99/go.mod h1:HGfJwGiFxgwkLo6fQbl08QeiteQ1USUH4CPRzaemv+w=
 github.com/snissn/gomap v0.0.0-20230513231805-37098056b811 h1:RMoOjIYSmSiCEAosgCnOEXpG5ogTY/+bW/rHU5vvv7U=
 github.com/snissn/gomap v0.0.0-20230513231805-37098056b811/go.mod h1:HGfJwGiFxgwkLo6fQbl08QeiteQ1USUH4CPRzaemv+w=
+github.com/snissn/gomap v0.0.0-20230514000921-3f56c05529af h1:COO+qvG3fVZ4DGfivzHPMDT9X+s6VoNQqYNQxalGsnA=
+github.com/snissn/gomap v0.0.0-20230514000921-3f56c05529af/go.mod h1:HGfJwGiFxgwkLo6fQbl08QeiteQ1USUH4CPRzaemv+w=
 github.com/snissn/gomap v0.0.0-20230514012359-6475fda7c393 h1:FbYC156RS6QhcQW+SKvHFwWyl0FcHG/GroLoG1UKAFg=
 github.com/snissn/gomap v0.0.0-20230514012359-6475fda7c393/go.mod h1:HGfJwGiFxgwkLo6fQbl08QeiteQ1USUH4CPRzaemv+w=
 github.com/snissn/gomap v0.0.0-20230514014310-52f94c63e8a9 h1:o1gkbeDyMHbzoz8A767amhY+CvqDRCq/3eI6sWrF60w=
