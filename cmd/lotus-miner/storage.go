@@ -225,6 +225,7 @@ var storageRedeclareCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "drop-missing",
 			Usage: "Drop index entries with missing files",
+			Value: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -264,13 +265,17 @@ var storageRedeclareCmd = &cli.Command{
 		var meta storiface.LocalStorageMeta
 		metaFile, err := os.Open(metaFilePath)
 		if err != nil {
-			return xerrors.Errorf("Failed to open meta file: %w", err)
+			return xerrors.Errorf("Failed to open file: %w", err)
 		}
-		defer metaFile.Close()
+		defer func() {
+			if closeErr := metaFile.Close(); closeErr != nil {
+				log.Error("Failed to close the file: %v", closeErr)
+			}
+		}()
 
 		err = json.NewDecoder(metaFile).Decode(&meta)
 		if err != nil {
-			return xerrors.Errorf("Failed to decode meta file: %w", err)
+			return xerrors.Errorf("Failed to decode file: %w", err)
 		}
 
 		id := meta.ID
