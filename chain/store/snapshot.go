@@ -74,7 +74,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 
 	s := cs.StateBlockstore()
 
-	parallelPuts := 16
+	parallelPuts := 2
 	putThrottle := make(chan error, parallelPuts)
 	for i := 0; i < parallelPuts; i++ {
 		putThrottle <- nil
@@ -115,7 +115,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (head *types.TipS
 		// append to batch
 		buf = append(buf, blk)
 
-		if len(buf) > 1000000 {
+		if len(buf) > 10000 {
 			if lastErr := <-putThrottle; lastErr != nil { // consume one error to have the right to add one
 				return nil, nil, lastErr
 			}
