@@ -473,14 +473,14 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 
 			smgr, err := sealer.New(ctx, lstor, stor, lr, si, config.SealerConfig{
 				ParallelFetchLimit:       10,
-				AllowAddPiece:            true,
-				AllowPreCommit1:          true,
-				AllowPreCommit2:          true,
-				AllowCommit:              true,
-				AllowUnseal:              true,
-				AllowReplicaUpdate:       true,
-				AllowProveReplicaUpdate2: true,
-				AllowRegenSectorKey:      true,
+				AllowAddPiece:            false,
+				AllowPreCommit1:          false,
+				AllowPreCommit2:          false,
+				AllowCommit:              false,
+				AllowUnseal:              false,
+				AllowReplicaUpdate:       false,
+				AllowProveReplicaUpdate2: false,
+				AllowRegenSectorKey:      false,
 			}, config.ProvingConfig{}, wsts, smsts)
 			if err != nil {
 				return err

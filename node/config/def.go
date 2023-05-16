@@ -164,15 +164,15 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Storage: SealerConfig{
-			AllowSectorDownload:      true,
-			AllowAddPiece:            true,
-			AllowPreCommit1:          true,
-			AllowPreCommit2:          true,
-			AllowCommit:              true,
-			AllowUnseal:              true,
-			AllowReplicaUpdate:       true,
-			AllowProveReplicaUpdate2: true,
-			AllowRegenSectorKey:      true,
+			AllowSectorDownload:      false,
+			AllowAddPiece:            false,
+			AllowPreCommit1:          false,
+			AllowPreCommit2:          false,
+			AllowCommit:              false,
+			AllowUnseal:              false,
+			AllowReplicaUpdate:       false,
+			AllowProveReplicaUpdate2: false,
+			AllowRegenSectorKey:      false,
 
 			// Default to 10 - tcp should still be able to figure this out, and
 			// it's the ratio between 10gbit / 1gbit

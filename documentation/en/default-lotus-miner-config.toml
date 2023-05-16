@@ -687,39 +687,39 @@
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWSECTORDOWNLOAD
-  #AllowSectorDownload = true
+  #AllowSectorDownload = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWADDPIECE
-  #AllowAddPiece = true
+  #AllowAddPiece = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWPRECOMMIT1
-  #AllowPreCommit1 = true
+  #AllowPreCommit1 = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWPRECOMMIT2
-  #AllowPreCommit2 = true
+  #AllowPreCommit2 = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWCOMMIT
-  #AllowCommit = true
+  #AllowCommit = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWUNSEAL
-  #AllowUnseal = true
+  #AllowUnseal = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWREPLICAUPDATE
-  #AllowReplicaUpdate = true
+  #AllowReplicaUpdate = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWPROVEREPLICAUPDATE2
-  #AllowProveReplicaUpdate2 = true
+  #AllowProveReplicaUpdate2 = false
 
   # type: bool
   # env var: LOTUS_STORAGE_ALLOWREGENSECTORKEY
-  #AllowRegenSectorKey = true
+  #AllowRegenSectorKey = false
 
   # LocalWorkerName specifies a custom name for the builtin worker.
   # If set to an empty string (default) os hostname will be used
