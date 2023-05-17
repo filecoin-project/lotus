@@ -1149,6 +1149,10 @@ func (cs *ChainStore) TryFillTipSet(ctx context.Context, ts *types.TipSet) (*Ful
 // selects the tipset before the null round if true, and the tipset following
 // the null round if false.
 func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet, prev bool) (*types.TipSet, error) {
+	if h < 0 {
+		return nil, xerrors.Errorf("height %d is negative", h)
+	}
+
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
