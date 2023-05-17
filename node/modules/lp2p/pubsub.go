@@ -381,9 +381,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics = append(allowTopics, drandTopics...)
 	options = append(options,
 		pubsub.WithSubscriptionFilter(
-		pubsub.WrapLimitSubscriptionFilter(
-		pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
-		100)))
+			pubsub.WrapLimitSubscriptionFilter(
+				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
+				100)))
 
 	var transports []tracer.TracerTransport
 	if in.Cfg.JsonTracer != "" {
@@ -505,7 +505,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 
 	case pubsub_pb.TraceEvent_DELIVER_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDeliverMessage.M(1))
-		
+
 	case pubsub_pb.TraceEvent_REJECT_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubRejectMessage.M(1))
 		if trw.traceMessage(evt.GetRejectMessage().GetTopic()) {

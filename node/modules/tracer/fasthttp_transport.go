@@ -1,7 +1,7 @@
 package tracer
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -68,7 +68,7 @@ func (t *FastHttpTransport) copyResponse(dst *http.Response, src *fasthttp.Respo
 
 	// Cast to a string to make a copy seeing as src.Body() won't
 	// be valid after the response is released back to the pool (fasthttp.ReleaseResponse).
-	dst.Body = ioutil.NopCloser(strings.NewReader(string(src.Body())))
+	dst.Body = io.NopCloser(strings.NewReader(string(src.Body())))
 
 	return dst
 }
