@@ -34,6 +34,7 @@ var marketCmd = &cli.Command{
 		marketExportDatastoreCmd,
 		marketImportDatastoreCmd,
 		marketDealsTotalStorageCmd,
+		marketDealsInRangeCmd,
 	},
 }
 
@@ -316,6 +317,53 @@ var marketDealsTotalStorageCmd = &cli.Command{
 
 		fmt.Println("Total deals: ", count)
 		fmt.Println("Total storage: ", total)
+
+		return nil
+	},
+}
+
+var marketDealsInRangeCmd = &cli.Command{
+	Name:  "get-deals-storage-in-range",
+	Usage: "View the total storage available in market deals of a given range",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name: "start-epoch",
+		},
+		&cli.Int64Flag{
+			Name: "end-epoch",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		total := big.Zero()
+		count := 0
+
+		se := abi.ChainEpoch(cctx.Int64("start-epoch"))
+		ee := abi.ChainEpoch(cctx.Int64("end-epoch"))
+
+		for _, deal := range deals {
+			if market.IsDealActive(deal.State) && deal.State.SectorStartEpoch >= se && deal.State.SectorStartEpoch < ee {
+				dealStorage := big.NewIntUnsigned(uint64(deal.Proposal.PieceSize))
+				total = big.Add(total, dealStorage)
+				count++
+			}
+
+		}
+
+		fmt.Println("From ", se, "to ", ee, "Total deals: ", count)
+		fmt.Println("From ", se, "to ", ee, "Total storage: ", total)
 
 		return nil
 	},
