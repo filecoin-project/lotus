@@ -114,6 +114,7 @@ require (
 	github.com/ipni/go-libipni v0.0.8
 	github.com/ipni/index-provider v0.12.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.27.3
 	github.com/libp2p/go-libp2p-consensus v0.0.1
@@ -248,7 +249,6 @@ require (
 	github.com/ipfs/go-peertaskqueue v0.8.1 // indirect
 	github.com/ipfs/go-verifcid v0.0.2 // indirect
 	github.com/ipld/go-ipld-adl-hamt v0.0.0-20220616142416-9004dbd839e0 // indirect
-	github.com/ipni/storetheindex v0.5.10 // indirect
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jbenet/go-random v0.0.0-20190219211222-123a90aedc0c // indirect

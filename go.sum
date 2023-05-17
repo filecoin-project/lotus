@@ -889,8 +889,6 @@ github.com/ipni/go-libipni v0.0.8 h1:0wLfZRSBG84swmZwmaLKul/iB/FlBkkl9ZcR1ub+Z+w
 github.com/ipni/go-libipni v0.0.8/go.mod h1:paYP9U4N3/vOzGCuN9kU972vtvw9JUcQjOKyiCFGwRk=
 github.com/ipni/index-provider v0.12.0 h1:R3F6dxxKNv4XkE4GJZNLOG0bDEbBQ/S5iztXwSD8jhQ=
 github.com/ipni/index-provider v0.12.0/go.mod h1:GhyrADJp7n06fqoc1djzkvL4buZYHzV8SoWrlxEo5F4=
-github.com/ipni/storetheindex v0.5.10 h1:r97jIZsXPuwQvePJQuStu2a/kn+Zn8X4MAdA0rU2Pu4=
-github.com/ipni/storetheindex v0.5.10/go.mod h1:SJKFCnSx4X/4ekQuZvq8pVU/7tmxkEv632Qmgu3m2bQ=
 github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 h1:QG4CGBqCeuBo6aZlGAamSkxWdgWfZGeE49eUOWJPA4c=
 github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52/go.mod h1:fdg+/X9Gg4AsAIzWpEHwnqd+QY3b7lajxyjE1m4hkq4=
 github.com/jackpal/gateway v1.0.5/go.mod h1:lTpwd4ACLXmpyiCTRtfiNyVnUmqT9RivzCDQetPfnjA=
