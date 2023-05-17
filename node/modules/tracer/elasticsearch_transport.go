@@ -1,10 +1,10 @@
 package tracer
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"bytes"
 	"net/url"
 	"time"
 
@@ -32,8 +32,8 @@ func NewElasticSearchTransport(connectionString string, elasticsearchIndex strin
 		Addresses: []string{
 			conUrl.Scheme + "://" + conUrl.Host,
 		},
-		Username: username,
-		Password: password,
+		Username:  username,
+		Password:  password,
 		Transport: &FastHttpTransport{},
 	}
 
@@ -65,15 +65,15 @@ func NewElasticSearchTransport(connectionString string, elasticsearchIndex strin
 	}
 
 	return &elasticSearchTransport{
-		cl:	es,
-		bi:	bi,
+		cl:      es,
+		bi:      bi,
 		esIndex: esIndex,
 	}, nil
 }
 
 type elasticSearchTransport struct {
 	cl      *elasticsearch.Client
-	bi		esutil.BulkIndexer
+	bi      esutil.BulkIndexer
 	esIndex string
 }
 
