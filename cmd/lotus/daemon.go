@@ -482,18 +482,18 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
+	mds, err := lr.Datastore(ctx, "/metadata")
+
 	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
 		cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
 		if err != nil {
 			return xerrors.Errorf("open cassandra store: %w", err)
 		}
-
+		mds = cds
 		rbs := bstore.NewBlockstore(cds, bstore.NoPrefix())
-
 		bs = blockstore.Adapt(rbs)
 	}
 
-	mds, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
 		return err
 	}
