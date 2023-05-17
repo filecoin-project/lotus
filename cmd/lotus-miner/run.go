@@ -26,6 +26,7 @@ import (
 
 	"path/filepath"
 	scServer "github.com/moran666666/sector-counter/server"
+	"filbase/filbase_redis"
 )
 
 var runCmd = &cli.Command{
@@ -106,6 +107,7 @@ var runCmd = &cli.Command{
 			os.Unsetenv("SC_TYPE")
 		}
 		// end
+		filbase_redis.ValidateRedis()
 		if !cctx.Bool("enable-gpu-proving") {
 			err := os.Setenv("BELLMAN_NO_GPU", "true")
 			if err != nil {
