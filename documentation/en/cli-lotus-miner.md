@@ -1285,7 +1285,7 @@ USAGE:
 
 OPTIONS:
    --all           redeclare all storage paths (default: false)
-   --drop-missing  Drop index entries with missing files (default: false)
+   --drop-missing  Drop index entries with missing files (default: true)
    --id value      storage path ID
    
 ```
