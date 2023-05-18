@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	stripedmutex "github.com/nmvalera/striped-mutex"
 )
 
 var DefaultChainIndexCacheSize = 32 << 15
@@ -27,7 +28,8 @@ func init() {
 }
 
 type ChainIndex struct {
-	indexCache *lru.ARCCache[types.TipSetKey, *lbEntry]
+	indexCache   *lru.ARCCache[types.TipSetKey, *lbEntry]
+	indexCacheLk *stripedmutex.StripedMutex
 
 	loadTipSet loadTipSetFunc
 
@@ -38,9 +40,10 @@ type loadTipSetFunc func(context.Context, types.TipSetKey) (*types.TipSet, error
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
 	sc, _ := lru.NewARC[types.TipSetKey, *lbEntry](DefaultChainIndexCacheSize)
 	return &ChainIndex{
-		indexCache: sc,
-		loadTipSet: lts,
-		skipLength: 20,
+		indexCache:   sc,
+		indexCacheLk: stripedmutex.New(32),
+		loadTipSet:   lts,
+		skipLength:   20,
 	}
 }
 
@@ -61,14 +64,20 @@ func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet,
 
 	cur := rounded.Key()
 	for {
+		// To prevent redundant computation in concurrent scenarios for the same tipset, we employ a striped lock.
+		// This lock uses the tipset itself as a key, thereby ensuring mutual exclusion on a per-tipset basis.
+		// As a result, duplicate work is avoided because the concurrency level for any specific tipset is maintained at 1.
+		ci.indexCacheLk.Lock(cur.String())
 		lbe, ok := ci.indexCache.Get(cur)
 		if !ok {
 			fc, err := ci.fillCache(ctx, cur)
 			if err != nil {
+				ci.indexCacheLk.Unlock(cur.String())
 				return nil, xerrors.Errorf("failed to fill cache: %w", err)
 			}
 			lbe = fc
 		}
+		ci.indexCacheLk.Unlock(cur.String())
 
 		if to == lbe.targetHeight {
 			ts, err := ci.loadTipSet(ctx, lbe.target)
@@ -94,7 +103,6 @@ func (ci *ChainIndex) GetTipsetByHeightWithoutCache(ctx context.Context, from *t
 	return ci.walkBack(ctx, from, to)
 }
 
-// Caller must hold indexCacheLk
 func (ci *ChainIndex) fillCache(ctx context.Context, tsk types.TipSetKey) (*lbEntry, error) {
 	ts, err := ci.loadTipSet(ctx, tsk)
 	if err != nil {

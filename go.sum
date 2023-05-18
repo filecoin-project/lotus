@@ -1366,6 +1366,8 @@ github.com/nikkolasg/hexjson v0.1.0 h1:Cgi1MSZVQFoJKYeRpBNEcdF3LB+Zo4fYKsDz7h8uJ
 github.com/nikkolasg/hexjson v0.1.0/go.mod h1:fbGbWFZ0FmJMFbpCMtJpwb0tudVxSSZ+Es2TsCg57cA=
 github.com/nkovacs/streamquote v1.0.0 h1:PmVIV08Zlx2lZK5fFZlMZ04eHcDTIFJCv/5/0twVUow=
 github.com/nkovacs/streamquote v1.0.0/go.mod h1:BN+NaZ2CmdKqUuTUXUEm9j95B2TRbpOWpxbJYzzgUsc=
+github.com/nmvalera/striped-mutex v0.1.0 h1:+fwhVWGAsgkiOqmZGZ0HzDD3p/CEt3S85wf0YnMUpL0=
+github.com/nmvalera/striped-mutex v0.1.0/go.mod h1:D22iujuGIgMJ/2xSnQDK0I3kh0t3ZOiao5VPYBbq1O0=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
