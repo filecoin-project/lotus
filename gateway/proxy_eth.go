@@ -252,6 +252,14 @@ func (gw *Node) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
 	return gw.target.EthChainId(ctx)
 }
 
+func (gw *Node) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
+		return ethtypes.EthSyncingResult{}, err
+	}
+
+	return gw.target.EthSyncing(ctx)
+}
+
 func (gw *Node) NetVersion(ctx context.Context) (string, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return "", err

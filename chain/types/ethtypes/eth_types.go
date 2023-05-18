@@ -238,6 +238,30 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type EthSyncingResult struct {
+	DoneSync      bool
+	StartingBlock EthUint64
+	CurrentBlock  EthUint64
+	HighestBlock  EthUint64
+}
+
+func (sr EthSyncingResult) MarshalJSON() ([]byte, error) {
+	if sr.DoneSync {
+		// when done syncing, the json response should be '"result": false'
+		return []byte("false"), nil
+	}
+
+	// need to do an anonymous struct to avoid infinite recursion
+	return json.Marshal(&struct {
+		StartingBlock EthUint64 `json:"startingblock"`
+		CurrentBlock  EthUint64 `json:"currentblock"`
+		HighestBlock  EthUint64 `json:"highestblock"`
+	}{
+		StartingBlock: sr.StartingBlock,
+		CurrentBlock:  sr.CurrentBlock,
+		HighestBlock:  sr.HighestBlock})
+}
+
 const (
 	EthAddressLength = 20
 	EthHashLength    = 32
@@ -548,12 +572,12 @@ func (h EthSubscriptionID) String() string {
 }
 
 type EthFilterSpec struct {
-	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
 	FromBlock *string `json:"fromBlock,omitempty"`
 
-	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
 	ToBlock *string `json:"toBlock,omitempty"`

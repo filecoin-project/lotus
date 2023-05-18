@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
+	syncds "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -143,7 +144,7 @@ func TestSimple(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	ctx := context.Background()
-	m, lstor, _, _, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, syncds.MutexWrap(datastore.NewMapDatastore()))
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
@@ -200,7 +201,7 @@ func (m NullReader) NullBytes() int64 {
 func TestSnapDeals(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelWarn)
 	ctx := context.Background()
-	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, syncds.MutexWrap(datastore.NewMapDatastore()))
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
@@ -208,7 +209,7 @@ func TestSnapDeals(t *testing.T) {
 		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2, sealtasks.TTUnseal,
 		sealtasks.TTRegenSectorKey, sealtasks.TTFinalizeUnsealed,
 	}
-	wds := datastore.NewMapDatastore()
+	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	w := NewLocalWorker(WorkerConfig{TaskTypes: localTasks}, stor, lstor, idx, m, statestore.New(wds))
 	err := m.AddWorker(ctx, w)
@@ -329,7 +330,7 @@ func TestSnapDeals(t *testing.T) {
 func TestSnarkPackV2(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelWarn)
 	ctx := context.Background()
-	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, syncds.MutexWrap(datastore.NewMapDatastore()))
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
@@ -337,7 +338,7 @@ func TestSnarkPackV2(t *testing.T) {
 		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2, sealtasks.TTUnseal,
 		sealtasks.TTRegenSectorKey, sealtasks.TTFinalizeUnsealed,
 	}
-	wds := datastore.NewMapDatastore()
+	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	w := NewLocalWorker(WorkerConfig{TaskTypes: localTasks}, stor, lstor, idx, m, statestore.New(wds))
 	err := m.AddWorker(ctx, w)
@@ -471,7 +472,7 @@ func TestRedoPC1(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	ctx := context.Background()
-	m, lstor, _, _, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	m, lstor, _, _, cleanup := newTestMgr(ctx, t, syncds.MutexWrap(datastore.NewMapDatastore()))
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
@@ -524,7 +525,7 @@ func TestRestartManager(t *testing.T) {
 			ctx, done := context.WithCancel(context.Background())
 			defer done()
 
-			ds := datastore.NewMapDatastore()
+			ds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 			m, lstor, _, _, cleanup := newTestMgr(ctx, t, ds)
 			defer cleanup()
@@ -622,7 +623,7 @@ func TestRestartWorker(t *testing.T) {
 	ctx, done := context.WithCancel(context.Background())
 	defer done()
 
-	ds := datastore.NewMapDatastore()
+	ds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
 	defer cleanup()
@@ -631,7 +632,7 @@ func TestRestartWorker(t *testing.T) {
 		sealtasks.TTAddPiece, sealtasks.TTFetch,
 	}
 
-	wds := datastore.NewMapDatastore()
+	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	arch := make(chan chan apres)
 	w := newLocalWorker(func() (storiface.Storage, error) {
@@ -695,7 +696,7 @@ func TestReenableWorker(t *testing.T) {
 	ctx, done := context.WithCancel(context.Background())
 	defer done()
 
-	ds := datastore.NewMapDatastore()
+	ds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
 	defer cleanup()
@@ -768,7 +769,7 @@ func TestResUse(t *testing.T) {
 	ctx, done := context.WithCancel(context.Background())
 	defer done()
 
-	ds := datastore.NewMapDatastore()
+	ds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
 	defer cleanup()
@@ -777,7 +778,7 @@ func TestResUse(t *testing.T) {
 		sealtasks.TTAddPiece, sealtasks.TTFetch,
 	}
 
-	wds := datastore.NewMapDatastore()
+	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	arch := make(chan chan apres)
 	w := newLocalWorker(func() (storiface.Storage, error) {
@@ -826,7 +827,7 @@ func TestResOverride(t *testing.T) {
 	ctx, done := context.WithCancel(context.Background())
 	defer done()
 
-	ds := datastore.NewMapDatastore()
+	ds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
 	defer cleanup()
@@ -835,7 +836,7 @@ func TestResOverride(t *testing.T) {
 		sealtasks.TTAddPiece, sealtasks.TTFetch,
 	}
 
-	wds := datastore.NewMapDatastore()
+	wds := syncds.MutexWrap(datastore.NewMapDatastore())
 
 	arch := make(chan chan apres)
 	w := newLocalWorker(func() (storiface.Storage, error) {

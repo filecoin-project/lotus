@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,6 +67,7 @@ type EthModuleAPI interface {
 	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
+	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)
 	NetVersion(ctx context.Context) (string, error)
 	NetListening(ctx context.Context) (bool, error)
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
@@ -132,6 +134,7 @@ type EthModule struct {
 	ChainAPI
 	MpoolAPI
 	StateAPI
+	SyncAPI
 }
 
 var _ EthModuleAPI = (*EthModule)(nil)
@@ -672,6 +675,42 @@ func (a *EthModule) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) 
 	return ethtypes.EthUint64(build.Eip155ChainId), nil
 }
 
+func (a *EthModule) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
+	state, err := a.SyncAPI.SyncState(ctx)
+	if err != nil {
+		return ethtypes.EthSyncingResult{}, fmt.Errorf("failed calling SyncState: %w", err)
+	}
+
+	if len(state.ActiveSyncs) == 0 {
+		return ethtypes.EthSyncingResult{}, errors.New("no active syncs, try again")
+	}
+
+	working := -1
+	for i, ss := range state.ActiveSyncs {
+		if ss.Stage == api.StageIdle {
+			continue
+		}
+		working = i
+	}
+	if working == -1 {
+		working = len(state.ActiveSyncs) - 1
+	}
+
+	ss := state.ActiveSyncs[working]
+	if ss.Base == nil || ss.Target == nil {
+		return ethtypes.EthSyncingResult{}, errors.New("missing syncing information, try again")
+	}
+
+	res := ethtypes.EthSyncingResult{
+		DoneSync:      ss.Stage == api.StageSyncComplete,
+		CurrentBlock:  ethtypes.EthUint64(ss.Height),
+		StartingBlock: ethtypes.EthUint64(ss.Base.Height()),
+		HighestBlock:  ethtypes.EthUint64(ss.Target.Height()),
+	}
+
+	return res, nil
+}
+
 func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error) {
 	params, err := jsonrpc.DecodeParams[ethtypes.EthFeeHistoryParams](p)
 	if err != nil {
@@ -1170,7 +1209,7 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 			return nil, xerrors.Errorf("must not specify block hash and from/to block")
 		}
 
-		// TODO: derive a tipset hash from eth hash - might need to push this down into the EventFilterManager
+		tipsetCid = filterSpec.BlockHash.ToCid()
 	} else {
 		if filterSpec.FromBlock == nil || *filterSpec.FromBlock == "latest" {
 			ts := e.Chain.GetHeaviestTipSet()
@@ -1180,6 +1219,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		} else if *filterSpec.FromBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.FromBlock, "0x") {
+				return nil, xerrors.Errorf("FromBlock is not a hex")
+			}
 			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.FromBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")
@@ -1195,6 +1237,9 @@ func (e *EthEvent) installEthFilterSpec(ctx context.Context, filterSpec *ethtype
 		} else if *filterSpec.ToBlock == "pending" {
 			return nil, api.ErrNotSupported
 		} else {
+			if !strings.HasPrefix(*filterSpec.ToBlock, "0x") {
+				return nil, xerrors.Errorf("ToBlock is not a hex")
+			}
 			epoch, err := ethtypes.EthUint64FromHex(*filterSpec.ToBlock)
 			if err != nil {
 				return nil, xerrors.Errorf("invalid epoch")

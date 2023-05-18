@@ -1476,6 +1476,21 @@ func (mr *MockFullNodeMockRecorder) EthSubscribe(arg0, arg1 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSubscribe", reflect.TypeOf((*MockFullNode)(nil).EthSubscribe), arg0, arg1)
 }
 
+// EthSyncing mocks base method.
+func (m *MockFullNode) EthSyncing(arg0 context.Context) (ethtypes.EthSyncingResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthSyncing", arg0)
+	ret0, _ := ret[0].(ethtypes.EthSyncingResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthSyncing indicates an expected call of EthSyncing.
+func (mr *MockFullNodeMockRecorder) EthSyncing(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSyncing", reflect.TypeOf((*MockFullNode)(nil).EthSyncing), arg0)
+}
+
 // EthUninstallFilter mocks base method.
 func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 ethtypes.EthFilterID) (bool, error) {
 	m.ctrl.T.Helper()

@@ -90,6 +90,7 @@ const (
 
 	// health checks
 	CheckFDLimit
+	LegacyMarketsEOL
 
 	// libp2p
 	PstoreAddSelfKeysKey
