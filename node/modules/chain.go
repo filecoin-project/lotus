@@ -124,7 +124,7 @@ func CassandraMetadataChainStore(lc fx.Lifecycle,
 	us stmgr.UpgradeSchedule,
 	j journal.Journal) *store.ChainStore {
 
-	metadataserver, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+	metadataserver, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "metadata")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -142,7 +142,7 @@ func CassandraReadonlyMetadataChainStore(lc fx.Lifecycle,
 	us stmgr.UpgradeSchedule,
 	j journal.Journal) *store.ChainStore {
 
-	readonlyMetaDataBs, err := cassbs.NewCassandraDSReadonly(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+	readonlyMetaDataBs, err := cassbs.NewCassandraDSReadonly(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "metadata")
 	if err != nil {
 		fmt.Println(err)
 	}

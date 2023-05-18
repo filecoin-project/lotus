@@ -19,12 +19,13 @@ import (
 var log = logging.Logger("casbs")
 
 type CassandraDatastore struct {
-	session *gocql.Session
+	session   *gocql.Session
+	nameSpace string
 }
 
 var ReplicationFactor = 2
 
-func NewCassandraDS(connectString string) (*CassandraDatastore, error) {
+func NewCassandraDS(connectString string, nameSpace string) (*CassandraDatastore, error) {
 	cluster := gocql.NewCluster(connectString)
 	cluster.Consistency = gocql.Quorum
 	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 30}
@@ -35,44 +36,44 @@ func NewCassandraDS(connectString string) (*CassandraDatastore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating new Cassandra session: %w", err)
 	}
-	if err := setupSchema(session, ReplicationFactor); err != nil {
+	if err := setupSchema(session, ReplicationFactor, nameSpace); err != nil {
 		return nil, xerrors.Errorf("setup schema: %w", err)
 	}
-	return &CassandraDatastore{session: session}, nil
+	return &CassandraDatastore{session: session, nameSpace: nameSpace}, nil
 }
 
-func setupSchema(session *gocql.Session, replicationFactor int) error {
+func setupSchema(session *gocql.Session, replicationFactor int, nameSpace string) error {
 	if os.Getenv("LOTUS_DROP_CAS") == "1" {
-		// drop lotus.chain table
-		if err := session.Query(`DROP TABLE IF EXISTS lotus.chain`).WithContext(context.Background()).Exec(); err != nil {
+		// drop table
+		if err := session.Query(fmt.Sprintf(`DROP TABLE IF EXISTS %s.%s`, nameSpace, nameSpace)).WithContext(context.Background()).Exec(); err != nil {
 			return fmt.Errorf("dropping table: %w", err)
 		}
 
 		// drop keyspace
-		if err := session.Query(`DROP KEYSPACE IF EXISTS lotus`).WithContext(context.Background()).Exec(); err != nil {
+		if err := session.Query(fmt.Sprintf(`DROP KEYSPACE IF EXISTS %s`, nameSpace)).WithContext(context.Background()).Exec(); err != nil {
 			return fmt.Errorf("dropping keyspace: %w", err)
 		}
 	}
 
 	// Set up keyspace if needed
 	keyspaceQuery := fmt.Sprintf(`
-		CREATE KEYSPACE IF NOT EXISTS lotus
+		CREATE KEYSPACE IF NOT EXISTS %s
 		WITH REPLICATION = {
 			'class': 'SimpleStrategy',
 			'replication_factor': %d
 		}
-	`, replicationFactor)
+	`, nameSpace, replicationFactor)
 	if err := session.Query(keyspaceQuery).WithContext(context.Background()).Exec(); err != nil {
 		return fmt.Errorf("creating keyspace: %w", err)
 	}
 
 	// Set up table schema if needed
-	tableSchemaQuery := `
-		CREATE TABLE IF NOT EXISTS lotus.chain (
+	tableSchemaQuery := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s.%s (
 			key text PRIMARY KEY,
 			value blob
 		)
-	`
+	`, nameSpace, nameSpace)
 	if err := session.Query(tableSchemaQuery).WithContext(context.Background()).Exec(); err != nil {
 		return fmt.Errorf("creating table schema: %w", err)
 	}
@@ -86,7 +87,7 @@ func toCasKey(key datastore.Key) string {
 
 func (cds *CassandraDatastore) Put(ctx context.Context, key datastore.Key, value []byte) error {
 	keyStr := toCasKey(key)
-	qry := `UPDATE lotus.chain SET value = ? WHERE key = ?`
+	qry := fmt.Sprintf(`UPDATE %s.%s SET value = ? WHERE key = ?`, cds.nameSpace, cds.nameSpace)
 	if err := cds.session.Query(qry, value, keyStr).WithContext(ctx).Exec(); err != nil {
 		return fmt.Errorf("upserting key-value pair: %w", err)
 	}
@@ -95,7 +96,7 @@ func (cds *CassandraDatastore) Put(ctx context.Context, key datastore.Key, value
 
 func (cds *CassandraDatastore) Delete(ctx context.Context, key datastore.Key) error {
 	keyStr := toCasKey(key)
-	qry := `DELETE FROM lotus.chain WHERE key = ?`
+	qry := fmt.Sprintf(`DELETE FROM %s.%s WHERE key = ?`, cds.nameSpace, cds.nameSpace)
 	if err := cds.session.Query(qry, keyStr).WithContext(ctx).Exec(); err != nil {
 		return fmt.Errorf("deleting key: %w", err)
 	}
@@ -106,7 +107,7 @@ var _ datastore.Write = (*CassandraDatastore)(nil)
 
 func (cds *CassandraDatastore) Get(ctx context.Context, key datastore.Key) ([]byte, error) {
 	var value []byte
-	err := cds.session.Query("SELECT value FROM lotus.chain WHERE key = ?", toCasKey(key)).WithContext(ctx).Scan(&value)
+	err := cds.session.Query(fmt.Sprintf("SELECT value FROM %s.%s WHERE key = ?", cds.nameSpace, cds.nameSpace), toCasKey(key)).WithContext(ctx).Scan(&value)
 	if err != nil {
 		if err == gocql.ErrNotFound {
 			return nil, datastore.ErrNotFound
@@ -118,7 +119,7 @@ func (cds *CassandraDatastore) Get(ctx context.Context, key datastore.Key) ([]by
 
 func (cds *CassandraDatastore) Has(ctx context.Context, key datastore.Key) (bool, error) {
 	var count int
-	err := cds.session.Query("SELECT COUNT(*) FROM lotus.chain WHERE key = ?", toCasKey(key)).WithContext(ctx).Scan(&count)
+	err := cds.session.Query(fmt.Sprintf("SELECT COUNT(*) FROM %s.%s WHERE key = ?", cds.nameSpace, cds.nameSpace), toCasKey(key)).WithContext(ctx).Scan(&count)
 	if err != nil {
 		return false, err
 	}
@@ -134,9 +135,9 @@ func (cds *CassandraDatastore) GetSize(ctx context.Context, key datastore.Key) (
 }
 
 func (cds *CassandraDatastore) Query(ctx context.Context, q query.Query) (query.Results, error) {
-	// Basic implementation assumes all filters, orders and limits are applied client-side
+	// Basic implementation assumes all filters, orders, and limits are applied client-side
 	// todo do more fancy things if needed
-	iter := cds.session.Query("SELECT key, value FROM lotus.chain").WithContext(ctx).Iter()
+	iter := cds.session.Query(fmt.Sprintf("SELECT key, value FROM %s.%s", cds.nameSpace, cds.nameSpace)).WithContext(ctx).Iter()
 
 	var (
 		k       string
@@ -164,7 +165,7 @@ func (cds *CassandraDatastore) Query(ctx context.Context, q query.Query) (query.
 		return nil, err
 	}
 
-	// Apply filters, orders and limits client-side
+	// Apply filters, orders, and limits client-side
 	qr := query.ResultsWithEntries(q, entries)
 	for _, filter := range q.Filters {
 		qr = query.NaiveFilter(qr, filter)
@@ -193,10 +194,11 @@ type cassandraBatch struct {
 	session *gocql.Session
 	batch   *gocql.Batch
 	wg      sync.WaitGroup
+	nameSpace string
 }
 
 func (c *cassandraBatch) Put(ctx context.Context, key datastore.Key, value []byte) error {
-	statement := "UPDATE lotus.chain SET value = ? WHERE key = ?"
+	statement := fmt.Sprintf("UPDATE %s.%s SET value = ? WHERE key = ?", c.nameSpace, c.nameSpace)
 	c.batch.Query(statement, value, toCasKey(key))
 
 	if c.batch.Size() >= 64 {
@@ -214,7 +216,7 @@ func (c *cassandraBatch) Put(ctx context.Context, key datastore.Key, value []byt
 }
 
 func (c *cassandraBatch) Delete(ctx context.Context, key datastore.Key) error {
-	statement := "DELETE FROM lotus.chain WHERE key = ?"
+	statement := fmt.Sprintf("DELETE FROM %s.%s WHERE key = ?", c.nameSpace, c.nameSpace)
 	c.batch.Query(statement, toCasKey(key))
 	return nil
 }
@@ -244,7 +246,9 @@ func (cds *CassandraDatastore) Batch(ctx context.Context) (datastore.Batch, erro
 	return &cassandraBatch{
 		session: cds.session,
 		batch:   cds.session.NewBatch(gocql.UnloggedBatch),
+		nameSpace: cds.nameSpace,
 	}, nil
 }
 
 var _ datastore.Batching = (*CassandraDatastore)(nil)
+

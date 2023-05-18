@@ -485,13 +485,15 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	mds, err := lr.Datastore(ctx, "/metadata")
 
 	if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") != "" {
-		cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+		mds, err = cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "metadata")
 		if err != nil {
 			return xerrors.Errorf("open cassandra store: %w", err)
 		}
-		mds = cds
-		rbs := bstore.NewBlockstore(cds, bstore.NoPrefix())
-		bs = blockstore.Adapt(rbs)
+		chain_ds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "data")
+		if err != nil {
+			return xerrors.Errorf("open cassandra store: %w", err)
+		}
+		bs = blockstore.Adapt(bstore.NewBlockstore(chain_ds, bstore.NoPrefix()))
 	}
 
 	if err != nil {
@@ -542,9 +544,9 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
-	if err := cst.FlushValidationCache(ctx); err != nil {
-		return xerrors.Errorf("flushing validation cache failed: %w", err)
-	}
+	//if err := cst.FlushValidationCache(ctx); err != nil {
+		//return xerrors.Errorf("flushing validation cache failed: %w", err)
+	//}
 
 	log.Infof("setting genesis")
 	err = cst.SetGenesis(ctx, gen)

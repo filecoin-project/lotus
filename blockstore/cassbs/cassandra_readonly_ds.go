@@ -22,8 +22,8 @@ type CassandraDatastoreReadonly struct {
 	base *CassandraDatastore
 }
 
-func NewCassandraDSReadonly(connectString string) (*CassandraDatastoreReadonly, error) {
-	base, err := NewCassandraDS(connectString)
+func NewCassandraDSReadonly(connectString string, nameSpace string) (*CassandraDatastoreReadonly, error) {
+	base, err := NewCassandraDS(connectString, nameSpace)
 	if err != nil {
 		return nil, fmt.Errorf("creating new Cassandra Readonly Datastore: %w", err)
 	}

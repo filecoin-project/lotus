@@ -141,7 +141,7 @@ func ChainSplitBlockstore(_ fx.Lifecycle, _ helpers.MetricsCtx, bs dtypes.SplitB
 // and then wraps it with a cache layer. The resulting blockstore is suitable for storing
 // both chain data and state data.
 func CassandraBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.UniversalBlockstore, error) {
-	cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"))
+	cds, err := cassbs.NewCassandraDS(os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE"), "data")
 	if err != nil {
 		return nil, err
 	}
