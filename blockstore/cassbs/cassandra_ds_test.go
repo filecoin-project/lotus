@@ -13,7 +13,7 @@ func TestCassandraDS(t *testing.T) {
 		t.Skip("CASSANDRA_TEST_CONNECTION not set")
 	}
 
-	ds, err := NewCassandraDS(casConn)
+	ds, err := NewCassandraDS(casConn, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
