@@ -2,9 +2,8 @@ package paths
 
 import (
 	"context"
-	"os"
-
 	"github.com/filecoin-project/go-state-types/abi"
+	"io"
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
@@ -24,7 +23,7 @@ type PartialFileHandler interface {
 	HasAllocated(pf *partialfile.PartialFile, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
 
 	// Reader returns a file from which we can read the unsealed piece in the partial file.
-	Reader(pf *partialfile.PartialFile, offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (*os.File, error)
+	Reader(pf *partialfile.PartialFile, offset storiface.PaddedByteIndex, size abi.PaddedPieceSize) (io.Reader, error)
 
 	// Close closes the partial file
 	Close(pf *partialfile.PartialFile) error

@@ -559,7 +559,7 @@ func (r *Remote) CheckIsUnsealed(ctx context.Context, s storiface.SectorRef, off
 // 1. no worker(local worker included) has an unsealed file for the given sector OR
 // 2. no worker(local worker included) has the unsealed piece in their unsealed sector file.
 // Will return a nil reader and a nil error in such a case.
-func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size abi.PaddedPieceSize) (func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error), error) {
+func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size abi.PaddedPieceSize) (func(startOffsetAligned, endOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error), error) {
 	ft := storiface.FTUnsealed
 
 	// check if we have the unsealed sector file locally
@@ -598,20 +598,8 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 		if has {
 			log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
 
-			return func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
-				// don't reuse between readers unless closed
-				f := pf
-				pf = nil
-
-				if f == nil {
-					f, err = r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
-					if err != nil {
-						return nil, xerrors.Errorf("opening partial file: %w", err)
-					}
-					log.Debugf("local partial file (re)opened %s (+%d,%d)", path, offset, size)
-				}
-
-				r, err := r.pfHandler.Reader(f, storiface.PaddedByteIndex(offset)+startOffsetAligned, size-abi.PaddedPieceSize(startOffsetAligned))
+			return func(startOffsetAligned, endOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
+				r, err := r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset)+startOffsetAligned, abi.PaddedPieceSize(endOffsetAligned-startOffsetAligned))
 				if err != nil {
 					return nil, err
 				}
@@ -622,22 +610,7 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 				}{
 					Reader: r,
 					Closer: funcCloser(func() error {
-						// if we already have a reader cached, close this one
-						if pf != nil {
-							if f == nil {
-								return nil
-							}
-							if pf == f {
-								pf = nil
-							}
-
-							tmp := f
-							f = nil
-							return tmp.Close()
-						}
-
-						// otherwise stash it away for reuse
-						pf = f
+						// todo keep some refcount, close pf (or push to some lru) when it hits 0
 						return nil
 					}),
 				}, nil
@@ -685,10 +658,10 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 				continue
 			}
 
-			return func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
+			return func(startOffsetAligned, endOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
 				// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
 				// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
-				rd, err := r.readRemote(ctx, url, offset+abi.PaddedPieceSize(startOffsetAligned), size)
+				rd, err := r.readRemote(ctx, url, offset+abi.PaddedPieceSize(startOffsetAligned), offset+abi.PaddedPieceSize(endOffsetAligned))
 				if err != nil {
 					log.Warnw("reading from remote", "url", url, "error", err)
 					return nil, err

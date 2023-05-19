@@ -21,7 +21,7 @@ import (
 var MaxPieceReaderBurnBytes int64 = 1 << 20 // 1M
 var ReadBuf = 128 * (127 * 8)               // unpadded(128k)
 
-type pieceGetter func(ctx context.Context, offset uint64) (io.ReadCloser, error)
+type pieceGetter func(ctx context.Context, offset, size uint64) (io.ReadCloser, error)
 
 type pieceReader struct {
 	ctx       context.Context
@@ -43,7 +43,7 @@ func (p *pieceReader) init() (_ *pieceReader, err error) {
 	stats.Record(p.ctx, metrics.DagStorePRInitCount.M(1))
 
 	p.rAt = 0
-	p.r, err = p.getReader(p.ctx, uint64(p.rAt))
+	p.r, err = p.getReader(p.ctx, uint64(p.rAt), uint64(p.len))
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (p *pieceReader) readAtUnlocked(b []byte, off int64) (n int, err error) {
 		}
 
 		p.rAt = off
-		p.r, err = p.getReader(p.ctx, uint64(p.rAt))
+		p.r, err = p.getReader(p.ctx, uint64(p.rAt), uint64(p.len))
 		p.br = bufio.NewReaderSize(p.r, ReadBuf)
 		if err != nil {
 			return 0, xerrors.Errorf("getting backing reader: %w", err)
