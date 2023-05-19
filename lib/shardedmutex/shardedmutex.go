@@ -20,12 +20,12 @@ type ShardedMutex struct {
 }
 
 // New creates a new ShardedMutex with N shards
-func New(n_shards int) ShardedMutex {
-	if n_shards < 1 {
+func New(nShards int) ShardedMutex {
+	if nShards < 1 {
 		panic("n_shards cannot be less than 1")
 	}
 	return ShardedMutex{
-		shards: make([]paddedMutex, n_shards),
+		shards: make([]paddedMutex, nShards),
 	}
 }
 
@@ -52,9 +52,9 @@ type ShardedMutexFor[K any] struct {
 	seed   maphash.Seed
 }
 
-func NewFor[K any](hasher func(maphash.Seed, K) uint64, n_shards int) ShardedMutexFor[K] {
+func NewFor[K any](hasher func(maphash.Seed, K) uint64, nShards int) ShardedMutexFor[K] {
 	return ShardedMutexFor[K]{
-		inner:  New(n_shards),
+		inner:  New(nShards),
 		hasher: hasher,
 		seed:   maphash.MakeSeed(),
 	}
