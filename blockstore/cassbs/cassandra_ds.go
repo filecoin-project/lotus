@@ -191,9 +191,9 @@ func (cds *CassandraDatastore) Close() error {
 var _ datastore.Datastore = (*CassandraDatastore)(nil)
 
 type cassandraBatch struct {
-	session *gocql.Session
-	batch   *gocql.Batch
-	wg      sync.WaitGroup
+	session   *gocql.Session
+	batch     *gocql.Batch
+	wg        sync.WaitGroup
 	nameSpace string
 }
 
@@ -244,11 +244,10 @@ func (c *cassandraBatch) Commit(ctx context.Context) error {
 
 func (cds *CassandraDatastore) Batch(ctx context.Context) (datastore.Batch, error) {
 	return &cassandraBatch{
-		session: cds.session,
-		batch:   cds.session.NewBatch(gocql.UnloggedBatch),
+		session:   cds.session,
+		batch:     cds.session.NewBatch(gocql.UnloggedBatch),
 		nameSpace: cds.nameSpace,
 	}, nil
 }
 
 var _ datastore.Batching = (*CassandraDatastore)(nil)
-
