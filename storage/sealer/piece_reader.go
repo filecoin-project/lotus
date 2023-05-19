@@ -276,11 +276,18 @@ func (p *pieceReader) readInto(b []byte, off int64) (n int, err error) {
 	}
 
 	n, err = io.ReadFull(rd, b)
+
+	cerr := rd.Close()
+
 	if err == io.ErrUnexpectedEOF {
 		err = io.EOF
 	}
 
-	return n, err
+	if err != nil {
+		return n, err
+	}
+
+	return n, cerr
 }
 
 var _ mount.Reader = (*pieceReader)(nil)
