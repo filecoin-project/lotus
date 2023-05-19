@@ -37,6 +37,34 @@ type EventEntry struct {
 	Value []byte
 }
 
+func (e *EventEntry) Equals(other *EventEntry) bool {
+	if e == nil && other == nil {
+		return true
+	}
+
+	if e == nil || other == nil {
+		return false
+	}
+
+	if e.Flags != other.Flags {
+		return false
+	}
+
+	if e.Key != other.Key {
+		return false
+	}
+
+	if e.Codec != other.Codec {
+		return false
+	}
+
+	if !bytes.Equal(e.Value, other.Value) {
+		return false
+	}
+
+	return true
+}
+
 type FilterID [32]byte // compatible with EthHash
 
 // DecodeEvents decodes a CBOR list of CBOR-encoded events.

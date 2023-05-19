@@ -55,6 +55,53 @@ type CollectedEvent struct {
 	MsgCid      cid.Cid         // cid of message that produced event
 }
 
+// EqualsExceptRevert returns true if e and other are equal except for the Reverted field
+func (e *CollectedEvent) EqualsExceptRevert(other *CollectedEvent) bool {
+	if e == nil && other == nil {
+		return true
+	}
+
+	if e == nil || other == nil {
+		return false
+	}
+
+	if e.EventIdx != other.EventIdx {
+		return false
+	}
+
+	if e.Height != other.Height {
+		return false
+	}
+
+	if e.TipSetKey != other.TipSetKey {
+		return false
+	}
+
+	if e.MsgIdx != other.MsgIdx {
+		return false
+	}
+
+	if e.MsgCid != other.MsgCid {
+		return false
+	}
+
+	if e.EmitterAddr != other.EmitterAddr {
+		return false
+	}
+
+	if len(e.Entries) != len(other.Entries) {
+		return false
+	}
+
+	for i, e1 := range e.Entries {
+		if !e1.Equals(&other.Entries[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (f *EventFilter) ID() types.FilterID {
 	return f.id
 }

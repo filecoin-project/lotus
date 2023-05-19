@@ -284,7 +284,7 @@ func (ei *EventIndex) PrefillFilter(ctx context.Context, f *EventFilter) error {
 		s = s + " WHERE " + strings.Join(clauses, " AND ")
 	}
 
-	s += " ORDER BY event.height DESC"
+	s += " ORDER BY event.height DESC, event.id ASC"
 
 	stmt, err := ei.db.Prepare(s)
 	if err != nil {
