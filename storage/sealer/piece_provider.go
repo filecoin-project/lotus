@@ -3,6 +3,7 @@ package sealer
 import (
 	"bufio"
 	"context"
+	pool "github.com/libp2p/go-buffer-pool"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -93,8 +94,6 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 		return nil, nil
 	}
 
-	buf := make([]byte, fr32.BufSize(pieceSize.Padded()))
-
 	pr, err := (&pieceReader{
 		ctx: ctx,
 		getReader: func(ctx context.Context, startOffset, readSize uint64) (io.ReadCloser, error) {
@@ -108,6 +107,8 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 			if err != nil {
 				return nil, xerrors.Errorf("getting reader at +%d: %w", startOffsetAligned, err)
 			}
+
+			buf := pool.Get(fr32.BufSize(pieceSize.Padded()))
 
 			upr, err := fr32.NewUnpadReaderBuf(r, pieceSize.Padded(), buf)
 			if err != nil {
@@ -129,6 +130,7 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 			}{
 				Reader: bir,
 				Closer: funcCloser(func() error {
+					pool.Put(buf)
 					return r.Close()
 				}),
 			}, nil
