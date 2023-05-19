@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/shardedmutex"
 )
 
-// DefaultChainIndexCacheSize no longer sets the maximum size, just the inital size of the map.
+// DefaultChainIndexCacheSize no longer sets the maximum size, just the initial size of the map.
 var DefaultChainIndexCacheSize = 1 << 15
 
 func init() {
