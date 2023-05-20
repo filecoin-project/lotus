@@ -1591,6 +1591,8 @@ github.com/snissn/gomap v0.0.0-20230514080829-1e0957e3b1ae h1:4jAl1RMwgFpaGT+j4j
 github.com/snissn/gomap v0.0.0-20230514080829-1e0957e3b1ae/go.mod h1:HGfJwGiFxgwkLo6fQbl08QeiteQ1USUH4CPRzaemv+w=
 github.com/snissn/gomap v0.0.0-20230514083639-a13f9acefb1e h1:WhpkMMAmBOl2zrvxacy0Aqknh3D1t2KvtmNcv5xvbJM=
 github.com/snissn/gomap v0.0.0-20230514083639-a13f9acefb1e/go.mod h1:HGfJwGiFxgwkLo6fQbl08QeiteQ1USUH4CPRzaemv+w=
+github.com/snissn/gomap v0.0.0-20230517094550-61fd2a124fe9 h1:YAdaR4ZNjgi6QTWtWxV0vLr9Dx8EnisJkv4Yj2X/cmA=
+github.com/snissn/gomap v0.0.0-20230517094550-61fd2a124fe9/go.mod h1:HGfJwGiFxgwkLo6fQbl08QeiteQ1USUH4CPRzaemv+w=
 github.com/soheilhy/cmux v0.1.4/go.mod h1:IM3LyeVVIOuxMH7sFAkER9+bJ4dT7Ms6E4xg4kGIyLM=
 github.com/sony/gobreaker v0.4.1/go.mod h1:ZKptC7FHNvhBz7dN2LGjPVBz2sZJmc0/PkyDJOjmxWY=
 github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d/go.mod h1:UdhH50NIW0fCiwBSr0co2m7BnFLdv4fQTgdqdJTHFeE=
