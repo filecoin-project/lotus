@@ -16,8 +16,8 @@ import (
 
 	// "os"
 	// "path/filepath"
-	"strings"
 	"filbase/filbase_redis"
+	"strings"
 )
 
 type schedPrioCtxKey int
@@ -499,17 +499,17 @@ func (sh *Scheduler) findWorker(task *WorkerRequest) int {
 	if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate {
 		workerid, _ = filbase_redis.GetWorkerForSector(filbase_redis.PWorkerKey, task.Sector.ID.Number.String())
 		if workerid == "" {
-			log.Errorf("can't find worker in redis")
+			log.Errorf("can't find p-worker in redis: %s", task.Sector.ID.Number.String())
 			return -1
 		}
 	} else if task.TaskType == sealtasks.TTCommit2 {
 		workerid, _ = filbase_redis.GetWorkerForSector(filbase_redis.CWorkerKey, task.Sector.ID.Number.String())
 		if workerid == "" {
-			log.Errorf("can't find worker in redis")
+			log.Errorf("can't find c-worker in redis: %s", task.Sector.ID.Number.String())
 			return -1
 		}
 	}
-	log.Errorf("find worker in redis :%+v", workerid)
+	log.Infof("find worker in redis :%+v", workerid)
 	for wnd1, windowRequest := range sh.OpenWindows {
 		worker, ok := sh.Workers[windowRequest.Worker]
 		if !ok {
