@@ -609,10 +609,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 		// check if we have any of iwant msgs (it doesn't classify per topic - just msg.ID)
-		var validIwant bool = false
-		if len(iwant) > 0 {
-			validIwant = true
-		}
+		validIwant := len(iwant) > 0
 
 		// trace the event if any of the flags was triggered
 		if validIhave || validIwant || validTopic {
@@ -648,10 +645,8 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 		// check if there was any of the Iwant msgs
-		var validIwant bool = false
-		if len(iwant) > 0 {
-			validIwant = true
-		}
+		validIwant := len(iwant) > 0 
+
 		// trace the msgs if any of the flags was triggered
 		if validIhave || validIwant || validTopic {
 			if trw.lp2pTracer != nil {
