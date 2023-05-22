@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -34,7 +35,7 @@ func NewElasticSearchTransport(connectionString string, elasticsearchIndex strin
 		},
 		Username:  username,
 		Password:  password,
-		Transport: &FastHttpTransport{},
+		Transport: &http.Transport{},
 	}
 
 	es, err := elasticsearch.NewClient(cfg)

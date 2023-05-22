@@ -645,7 +645,7 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 			}
 		}
 		// check if there was any of the Iwant msgs
-		validIwant := len(iwant) > 0 
+		validIwant := len(iwant) > 0
 
 		// trace the msgs if any of the flags was triggered
 		if validIhave || validIwant || validTopic {
