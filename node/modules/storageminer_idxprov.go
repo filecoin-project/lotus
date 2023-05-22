@@ -64,7 +64,7 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		// If announcements to the network are enabled, then set options for datatransfer publisher.
 		if cfg.Enable {
 			// Join the indexer topic using the market's pubsub instance. Otherwise, the provider
-			// engine would create its own instance of pubsub down the line in go-legs, which has
+			// engine would create its own instance of pubsub down the line in dagsync, which has
 			// no validators by default.
 			t, err := ps.Join(topicName)
 			if err != nil {
