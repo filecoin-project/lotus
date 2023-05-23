@@ -3,10 +3,10 @@ package sealer
 import (
 	"bufio"
 	"context"
-	pool "github.com/libp2p/go-buffer-pool"
 	"io"
 
 	"github.com/ipfs/go-cid"
+	pool "github.com/libp2p/go-buffer-pool"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore/mount"

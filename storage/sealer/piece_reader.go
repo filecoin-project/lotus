@@ -6,13 +6,13 @@ import (
 	"io"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-state-types/abi"
-	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/filecoin-project/lotus/metrics"
 )
