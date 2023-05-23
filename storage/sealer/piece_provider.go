@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	pool "github.com/libp2p/go-buffer-pool"
@@ -124,13 +125,19 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 				}
 			}
 
+			var closeOnce sync.Once
+
 			return struct {
 				io.Reader
 				io.Closer
 			}{
 				Reader: bir,
 				Closer: funcCloser(func() error {
-					pool.Put(buf)
+					// this close can be called more than once - double close signals to the paths.Reader that we are done with the piece
+
+					closeOnce.Do(func() {
+						pool.Put(buf)
+					})
 					return r.Close()
 				}),
 			}, nil
