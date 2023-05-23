@@ -2,8 +2,9 @@ package paths
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
 	"io"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"

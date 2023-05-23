@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	os "os"
+	io "io"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -84,10 +84,10 @@ func (mr *MockPartialFileHandlerMockRecorder) OpenPartialFile(arg0, arg1 interfa
 }
 
 // Reader mocks base method.
-func (m *MockPartialFileHandler) Reader(arg0 *partialfile.PartialFile, arg1 storiface.PaddedByteIndex, arg2 abi.PaddedPieceSize) (*os.File, error) {
+func (m *MockPartialFileHandler) Reader(arg0 *partialfile.PartialFile, arg1 storiface.PaddedByteIndex, arg2 abi.PaddedPieceSize) (io.Reader, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Reader", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*os.File)
+	ret0, _ := ret[0].(io.Reader)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
