@@ -214,8 +214,6 @@ func (p *pieceReader) readSeqReader(b []byte) (n int, err error) {
 }
 
 func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
-	log.Errorw("ReadAt called on pieceReader", "piece", p.pieceCid, "off", off, "len", len(b))
-
 	stats.Record(p.atMCtx, metrics.DagStorePRBytesRequested.M(int64(len(b))))
 
 	var filled int64
@@ -257,7 +255,7 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 			return int(filled), err
 		}
 
-		_ = stats.RecordWithTags(p.atMCtx, []tag.Mutator{tag.Insert(metrics.PRReadSize, "")}, metrics.DagStorePRAtReadBytes.M(int64(bn)), metrics.DagStorePRAtReadCount.M(1))
+		_ = stats.RecordWithTags(p.atMCtx, []tag.Mutator{tag.Insert(metrics.PRReadSize, "small")}, metrics.DagStorePRAtReadBytes.M(int64(bn)), metrics.DagStorePRAtReadCount.M(1))
 
 		// reslice so that the slice is the data
 		readBuf = readBuf[:bn]
@@ -279,7 +277,7 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 		}
 		filled += int64(bn)
 
-		_ = stats.RecordWithTags(p.atMCtx, []tag.Mutator{tag.Insert(metrics.PRReadSize, "")}, metrics.DagStorePRAtReadBytes.M(int64(bn)), metrics.DagStorePRAtReadCount.M(1))
+		_ = stats.RecordWithTags(p.atMCtx, []tag.Mutator{tag.Insert(metrics.PRReadSize, "big")}, metrics.DagStorePRAtReadBytes.M(int64(bn)), metrics.DagStorePRAtReadCount.M(1))
 	}
 
 	if filled < int64(len(b)) {
