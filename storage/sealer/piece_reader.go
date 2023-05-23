@@ -9,6 +9,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore/mount"
@@ -33,6 +34,9 @@ type pieceReader struct {
 	len       abi.UnpaddedPieceSize
 	onClose   context.CancelFunc
 
+	seqMCtx context.Context
+	atMCtx  context.Context
+
 	closed bool
 	seqAt  int64 // next byte to be read by io.Reader
 
@@ -51,6 +55,9 @@ type pieceReader struct {
 
 func (p *pieceReader) init() (_ *pieceReader, err error) {
 	stats.Record(p.ctx, metrics.DagStorePRInitCount.M(1))
+
+	p.seqMCtx, _ = tag.New(p.ctx, tag.Upsert(metrics.PRReadType, "seq"))
+	p.atMCtx, _ = tag.New(p.ctx, tag.Upsert(metrics.PRReadType, "rand"))
 
 	p.remReads, err = lru.New[int64, []byte](100)
 	if err != nil {
@@ -146,7 +153,7 @@ func (p *pieceReader) readSeqReader(b []byte) (n int, err error) {
 		return 0, err
 	}
 
-	stats.Record(p.ctx, metrics.DagStorePRBytesRequested.M(int64(len(b))))
+	stats.Record(p.seqMCtx, metrics.DagStorePRBytesRequested.M(int64(len(b))))
 
 	// 1. Get the backing reader into the correct position
 
@@ -164,9 +171,9 @@ func (p *pieceReader) readSeqReader(b []byte) (n int, err error) {
 		log.Debugw("pieceReader new stream", "piece", p.pieceCid, "at", p.rAt, "off", off-p.rAt, "n", len(b))
 
 		if off > p.rAt {
-			stats.Record(p.ctx, metrics.DagStorePRSeekForwardBytes.M(off-p.rAt), metrics.DagStorePRSeekForwardCount.M(1))
+			stats.Record(p.seqMCtx, metrics.DagStorePRSeekForwardBytes.M(off-p.rAt), metrics.DagStorePRSeekForwardCount.M(1))
 		} else {
-			stats.Record(p.ctx, metrics.DagStorePRSeekBackBytes.M(p.rAt-off), metrics.DagStorePRSeekBackCount.M(1))
+			stats.Record(p.seqMCtx, metrics.DagStorePRSeekBackBytes.M(p.rAt-off), metrics.DagStorePRSeekBackCount.M(1))
 		}
 
 		p.rAt = off
@@ -179,7 +186,7 @@ func (p *pieceReader) readSeqReader(b []byte) (n int, err error) {
 
 	// 2. Check if we need to burn some bytes
 	if off > p.rAt {
-		stats.Record(p.ctx, metrics.DagStorePRBytesDiscarded.M(off-p.rAt), metrics.DagStorePRDiscardCount.M(1))
+		stats.Record(p.seqMCtx, metrics.DagStorePRBytesDiscarded.M(off-p.rAt), metrics.DagStorePRDiscardCount.M(1))
 
 		n, err := io.CopyN(io.Discard, p.br, off-p.rAt)
 		p.rAt += n
@@ -207,6 +214,10 @@ func (p *pieceReader) readSeqReader(b []byte) (n int, err error) {
 }
 
 func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
+	log.Errorw("ReadAt called on pieceReader", "piece", p.pieceCid, "off", off, "len", len(b))
+
+	stats.Record(p.atMCtx, metrics.DagStorePRBytesRequested.M(int64(len(b))))
+
 	var filled int64
 
 	// try to get a buf from lru
@@ -223,8 +234,13 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 				p.remReads.Remove(off)
 			}
 		}
+
+		stats.Record(p.atMCtx, metrics.DagStorePRAtHitBytes.M(int64(n)), metrics.DagStorePRAtHitCount.M(1))
+		// dagstore/pr_at_hit_bytes, dagstore/pr_at_hit_count
 	}
 	if filled == int64(len(b)) {
+		// dagstore/pr_at_cache_fill_count
+		stats.Record(p.atMCtx, metrics.DagStorePRAtCacheFillCount.M(1))
 		return n, nil
 	}
 
@@ -240,6 +256,8 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 		if err != nil && err != io.EOF {
 			return int(filled), err
 		}
+
+		_ = stats.RecordWithTags(p.atMCtx, []tag.Mutator{tag.Insert(metrics.PRReadSize, "")}, metrics.DagStorePRAtReadBytes.M(int64(bn)), metrics.DagStorePRAtReadCount.M(1))
 
 		// reslice so that the slice is the data
 		readBuf = readBuf[:bn]
@@ -260,6 +278,8 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 			return int(filled), err
 		}
 		filled += int64(bn)
+
+		_ = stats.RecordWithTags(p.atMCtx, []tag.Mutator{tag.Insert(metrics.PRReadSize, "")}, metrics.DagStorePRAtReadBytes.M(int64(bn)), metrics.DagStorePRAtReadCount.M(1))
 	}
 
 	if filled < int64(len(b)) {
