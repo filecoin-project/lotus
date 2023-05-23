@@ -1528,6 +1528,9 @@ func printMsg(ctx context.Context, api v0api.FullNode, msg cid.Cid, mw *lapi.Msg
 	if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
 		return err
 	}
+	if mw.Receipt.EventsRoot != nil {
+		fmt.Printf("Events Root: %s\n", mw.Receipt.EventsRoot)
+	}
 
 	return nil
 }
