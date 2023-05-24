@@ -232,6 +232,10 @@ type FullNode interface {
 	// yet synced block headers.
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) //perm:read
 
+	// SlashFilterMinedBlock returns blockHeader and error, potentially not
+	// yet synced block headers.
+	SlashFilterMinedBlock(ctx context.Context, bh *types.BlockHeader) (*types.BlockHeader, error) //perm:read
+
 	// SyncCheckpoint marks a blocks as checkpointed, meaning that it won't ever fork away from it.
 	SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error //perm:admin
 

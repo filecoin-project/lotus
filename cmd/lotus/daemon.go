@@ -9,6 +9,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/ipfs/go-cid"
 	"io"
 	"os"
 	"path"
@@ -573,4 +579,89 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	return nil
+}
+
+func slashConsensus(a lapi.FullNode, from string, extra string) error {
+	ctx := context.Background()
+
+	blocks, err := a.SyncIncomingBlocks(ctx)
+	if err != nil {
+		return err
+	}
+
+	for block := range blocks {
+		log.Infof("deal with block: %d, %v, %s", block.Height, block.Miner, block.Cid())
+		if otherBlock, err := a.SlashFilterMinedBlock(ctx, block); err != nil {
+			if otherBlock == nil {
+				continue
+			}
+			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+			var fromAddr address.Address
+			if from == "" {
+				defaddr, err := a.WalletDefaultAddress(ctx)
+				if err != nil {
+					continue
+				}
+
+				fromAddr = defaddr
+			} else {
+				addr, err := address.NewFromString(from)
+				if err != nil {
+					continue
+				}
+
+				fromAddr = addr
+			}
+
+			bh1, err := cborutil.Dump(otherBlock)
+			if err != nil {
+				continue
+			}
+
+			bh2, err := cborutil.Dump(block)
+			if err != nil {
+				continue
+			}
+
+			params := miner.ReportConsensusFaultParams{
+				BlockHeader1: bh1,
+				BlockHeader2: bh2,
+			}
+			if extra != "" {
+				cExtra, err := cid.Parse(extra)
+				if err != nil {
+					return xerrors.Errorf("parsing cid extra: %w", err)
+				}
+
+				bExtra, err := a.ChainGetBlock(ctx, cExtra)
+				if err != nil {
+					return xerrors.Errorf("getting block extra: %w", err)
+				}
+
+				be, err := cborutil.Dump(bExtra)
+				if err != nil {
+					return err
+				}
+
+				params.BlockHeaderExtra = be
+			}
+			enc, err := actors.SerializeParams(&params)
+			if err != nil {
+				continue
+			}
+			message, err := a.MpoolPushMessage(ctx, &types.Message{
+				To:     block.Miner,
+				From:   fromAddr,
+				Value:  types.NewInt(0),
+				Method: builtin.MethodsMiner.ReportConsensusFault,
+				Params: enc,
+			}, nil)
+			if err != nil {
+				continue
+			}
+			log.Infof("ReportConsensusFault message CID:%s", message.Cid())
+
+		}
+	}
+	return err
 }

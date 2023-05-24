@@ -381,6 +381,8 @@ type FullNodeMethods struct {
 
 	SyncIncomingBlocks func(p0 context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
+	SlashFilterMinedBlock func(ctx context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) `perm:"read"`
+
 	SyncMarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
 	SyncState func(p0 context.Context) (*api.SyncState, error) `perm:"read"`
@@ -2366,6 +2368,13 @@ func (s *FullNodeStruct) SyncIncomingBlocks(p0 context.Context) (<-chan *types.B
 		return nil, ErrNotSupported
 	}
 	return s.Internal.SyncIncomingBlocks(p0)
+}
+
+func (s *FullNodeStruct) SlashFilterMinedBlock(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error){
+	if s.Internal.SlashFilterMinedBlock == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.SlashFilterMinedBlock(p0, p1)
 }
 
 func (s *FullNodeStub) SyncIncomingBlocks(p0 context.Context) (<-chan *types.BlockHeader, error) {

@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 	"os"
+	"strings"
 	"sync/atomic"
 
 	"github.com/ipfs/go-cid"
@@ -103,6 +104,26 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
 	return a.Syncer.IncomingBlocks(ctx)
+}
+
+func (a *SyncAPI) SlashFilterMinedBlock(ctx context.Context, bh *types.BlockHeader) (*types.BlockHeader, error) {
+	parent, err := a.Syncer.ChainStore().GetBlock(ctx, bh.Parents[0])
+	if err != nil {
+		return nil, nil
+	}
+	err = a.SlashFilter.MinedBlock(ctx, bh, parent.Height)
+	if err != nil && strings.Contains(err.Error(), "mining faults") {
+		res := strings.Split(err.Error(), "others: ")
+		if len(res) == 2 {
+			otherCid, err2 := cid.Decode(res[1])
+			if err2 != nil {
+				return nil, nil
+			}
+			otherHeader, err3 := a.Syncer.ChainStore().GetBlock(ctx, otherCid)
+			return otherHeader, err3
+		}
+	}
+	return nil, nil
 }
 
 func (a *SyncAPI) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
