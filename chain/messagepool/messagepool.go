@@ -118,8 +118,6 @@ func init() {
 }
 
 type MessagePool struct {
-	lk sync.RWMutex
-
 	ds dtypes.MetadataDS
 
 	addSema chan struct{}
@@ -145,7 +143,7 @@ type MessagePool struct {
 	// The transactionLk lock is used to ensure consistency when transacting between the TipSet (TS) and the Message Pool.
 	// Any modification to curTs must be wrapped in a transactionLk.
 	// This lock is not needed if you're only interested in a consistent view of the state without changing it.
-	transactionLk sync.RWMutex
+	transactionLk sync.Mutex
 
 	// The stateLk lock is used when you need to interact with the state within the Message Pool.
 	// If the state is being modified, use the Write form of this mutex.
