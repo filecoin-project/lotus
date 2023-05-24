@@ -166,6 +166,19 @@ var DaemonCmd = &cli.Command{
 			Name:  "restore-config",
 			Usage: "config file to use when restoring from backup",
 		},
+		&cli.BoolFlag{
+			Name:  "slash-consensus",
+			Usage: "Report consensus fault",
+			Value: false,
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to report consensus from",
+		},
+		&cli.StringFlag{
+			Name:  "extra",
+			Usage: "Extra block cid",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		isLite := cctx.Bool("lite")
@@ -386,7 +399,14 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
-
+		if cctx.IsSet("slash-consensus") {
+			go func() {
+				err := slashConsensus(api, cctx.String("from"), cctx.String("extra"))
+				if err != nil {
+					panic("slashConsensus error")
+				}
+			}()
+		}
 		// Monitor for shutdown.
 		finishCh := node.MonitorShutdown(shutdownChan,
 			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
