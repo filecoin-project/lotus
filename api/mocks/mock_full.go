@@ -2948,6 +2948,21 @@ func (mr *MockFullNodeMockRecorder) Shutdown(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shutdown", reflect.TypeOf((*MockFullNode)(nil).Shutdown), arg0)
 }
 
+// SlashFilterMinedBlock mocks base method.
+func (m *MockFullNode) SlashFilterMinedBlock(arg0 context.Context, arg1 *types.BlockHeader) (*types.BlockHeader, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SlashFilterMinedBlock", arg0, arg1)
+	ret0, _ := ret[0].(*types.BlockHeader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SlashFilterMinedBlock indicates an expected call of SlashFilterMinedBlock.
+func (mr *MockFullNodeMockRecorder) SlashFilterMinedBlock(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SlashFilterMinedBlock", reflect.TypeOf((*MockFullNode)(nil).SlashFilterMinedBlock), arg0, arg1)
+}
+
 // StartTime mocks base method.
 func (m *MockFullNode) StartTime(arg0 context.Context) (time.Time, error) {
 	m.ctrl.T.Helper()

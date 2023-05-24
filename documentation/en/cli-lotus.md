@@ -75,6 +75,9 @@ OPTIONS:
    --api-max-req-size value  maximum API request size accepted by the JSON RPC server (default: 0)
    --restore value           restore from backup file
    --restore-config value    config file to use when restoring from backup
+   --slash-consensus         Report consensus fault (default: false)
+   --from value              optionally specify the account to report consensus from
+   --extra value             Extra block cid
    --help, -h                show help (default: false)
    
 ```

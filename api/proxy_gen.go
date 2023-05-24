@@ -454,6 +454,8 @@ type FullNodeMethods struct {
 
 	RaftState func(p0 context.Context) (*RaftStateData, error) `perm:"read"`
 
+	SlashFilterMinedBlock func(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) `perm:"read"`
+
 	StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
 	StateActorCodeCIDs func(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) `perm:"read"`
@@ -3193,6 +3195,17 @@ func (s *FullNodeStruct) RaftState(p0 context.Context) (*RaftStateData, error) {
 }
 
 func (s *FullNodeStub) RaftState(p0 context.Context) (*RaftStateData, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) SlashFilterMinedBlock(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) {
+	if s.Internal.SlashFilterMinedBlock == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.SlashFilterMinedBlock(p0, p1)
+}
+
+func (s *FullNodeStub) SlashFilterMinedBlock(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) {
 	return nil, ErrNotSupported
 }
 

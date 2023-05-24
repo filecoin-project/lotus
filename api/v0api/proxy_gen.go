@@ -259,6 +259,8 @@ type FullNodeMethods struct {
 
 	PaychVoucherSubmit func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) `perm:"sign"`
 
+	SlashFilterMinedBlock func(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) `perm:"read"`
+
 	StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
 	StateActorCodeCIDs func(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) `perm:"read"`
@@ -380,8 +382,6 @@ type FullNodeMethods struct {
 	SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
 
 	SyncIncomingBlocks func(p0 context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
-
-	SlashFilterMinedBlock func(ctx context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) `perm:"read"`
 
 	SyncMarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
@@ -1703,6 +1703,17 @@ func (s *FullNodeStub) PaychVoucherSubmit(p0 context.Context, p1 address.Address
 	return *new(cid.Cid), ErrNotSupported
 }
 
+func (s *FullNodeStruct) SlashFilterMinedBlock(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) {
+	if s.Internal.SlashFilterMinedBlock == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.SlashFilterMinedBlock(p0, p1)
+}
+
+func (s *FullNodeStub) SlashFilterMinedBlock(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	if s.Internal.StateAccountKey == nil {
 		return *new(address.Address), ErrNotSupported
@@ -2368,13 +2379,6 @@ func (s *FullNodeStruct) SyncIncomingBlocks(p0 context.Context) (<-chan *types.B
 		return nil, ErrNotSupported
 	}
 	return s.Internal.SyncIncomingBlocks(p0)
-}
-
-func (s *FullNodeStruct) SlashFilterMinedBlock(p0 context.Context, p1 *types.BlockHeader) (*types.BlockHeader, error){
-	if s.Internal.SlashFilterMinedBlock == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.SlashFilterMinedBlock(p0, p1)
 }
 
 func (s *FullNodeStub) SyncIncomingBlocks(p0 context.Context) (<-chan *types.BlockHeader, error) {

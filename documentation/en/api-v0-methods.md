@@ -156,6 +156,8 @@
   * [PaychVoucherCreate](#PaychVoucherCreate)
   * [PaychVoucherList](#PaychVoucherList)
   * [PaychVoucherSubmit](#PaychVoucherSubmit)
+* [Slash](#Slash)
+  * [SlashFilterMinedBlock](#SlashFilterMinedBlock)
 * [Start](#Start)
   * [StartTime](#StartTime)
 * [State](#State)
@@ -4676,6 +4678,124 @@ Response:
 ```json
 {
   "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
+## Slash
+
+
+### SlashFilterMinedBlock
+SlashFilterMinedBlock returns blockHeader and error, potentially not
+yet synced block headers.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "Miner": "f01234",
+    "Ticket": {
+      "VRFProof": "Ynl0ZSBhcnJheQ=="
+    },
+    "ElectionProof": {
+      "WinCount": 9,
+      "VRFProof": "Ynl0ZSBhcnJheQ=="
+    },
+    "BeaconEntries": [
+      {
+        "Round": 42,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "WinPoStProof": [
+      {
+        "PoStProof": 8,
+        "ProofBytes": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "Parents": [
+      {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    ],
+    "ParentWeight": "0",
+    "Height": 10101,
+    "ParentStateRoot": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "ParentMessageReceipts": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "Messages": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "BLSAggregate": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "Timestamp": 42,
+    "BlockSig": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "ForkSignaling": 42,
+    "ParentBaseFee": "0"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Miner": "f01234",
+  "Ticket": {
+    "VRFProof": "Ynl0ZSBhcnJheQ=="
+  },
+  "ElectionProof": {
+    "WinCount": 9,
+    "VRFProof": "Ynl0ZSBhcnJheQ=="
+  },
+  "BeaconEntries": [
+    {
+      "Round": 42,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "WinPoStProof": [
+    {
+      "PoStProof": 8,
+      "ProofBytes": "Ynl0ZSBhcnJheQ=="
+    }
+  ],
+  "Parents": [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ],
+  "ParentWeight": "0",
+  "Height": 10101,
+  "ParentStateRoot": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ParentMessageReceipts": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "Messages": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "BLSAggregate": {
+    "Type": 2,
+    "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "Timestamp": 42,
+  "BlockSig": {
+    "Type": 2,
+    "Data": "Ynl0ZSBhcnJheQ=="
+  },
+  "ForkSignaling": 42,
+  "ParentBaseFee": "0"
 }
 ```
 
