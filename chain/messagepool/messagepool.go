@@ -850,7 +850,6 @@ func (mp *MessagePool) checkBalance(ctx context.Context, m *types.SignedMessage,
 }
 
 func (mp *MessagePool) addTs(ctx context.Context, m *types.SignedMessage, local, untrusted bool) (bool, error) {
-
 	//ensures that we have a consistent view of the state
 	mp.transactionLk.Lock()
 	defer mp.transactionLk.Unlock()
