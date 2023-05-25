@@ -8,8 +8,8 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
+	bserv "github.com/ipfs/boxo/blockservice"
 	blocks "github.com/ipfs/go-block-format"
-	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipni/go-libipni/announce/message"
