@@ -84,27 +84,30 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 	// Reader returns a reader getter for an unsealed piece at the given offset in the given sector.
 	// The returned reader will be nil if none of the workers has an unsealed sector file containing
 	// the unsealed piece.
-	rg, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()), pieceSize.Padded())
+	readerGetter, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()), pieceSize.Padded())
 	if err != nil {
 		cancel()
 		log.Debugf("did not get storage reader;sector=%+v, err:%s", sector.ID, err)
 		return nil, err
 	}
-	if rg == nil {
+	if readerGetter == nil {
 		cancel()
 		return nil, nil
 	}
 
 	pr, err := (&pieceReader{
-		ctx: ctx,
-		getReader: func(ctx context.Context, startOffset, readSize uint64) (io.ReadCloser, error) {
-			startOffsetAligned := storiface.UnpaddedByteIndex(startOffset / 127 * 127) // floor to multiple of 127
+		getReader: func(startOffset, readSize uint64) (io.ReadCloser, error) {
+			// The request is for unpadded bytes, at any offset.
+			// storage.Reader readers give us fr32-padded bytes, so we need to
+			// do the unpadding here.
+
+			startOffsetAligned := storiface.UnpaddedFloor(startOffset)
 			startOffsetDiff := int(startOffset - uint64(startOffsetAligned))
 
 			endOffset := startOffset + readSize
-			endOffsetAligned := storiface.UnpaddedByteIndex((endOffset + 126) / 127 * 127) // ceil to multiple of 127
+			endOffsetAligned := storiface.UnpaddedCeil(endOffset)
 
-			r, err := rg(startOffsetAligned.Padded(), endOffsetAligned.Padded())
+			r, err := readerGetter(startOffsetAligned.Padded(), endOffsetAligned.Padded())
 			if err != nil {
 				return nil, xerrors.Errorf("getting reader at +%d: %w", startOffsetAligned, err)
 			}
@@ -133,8 +136,6 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 			}{
 				Reader: bir,
 				Closer: funcCloser(func() error {
-					// this close can be called more than once - double close signals to the paths.Reader that we are done with the piece
-
 					closeOnce.Do(func() {
 						pool.Put(buf)
 					})
@@ -145,7 +146,7 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 		len:      pieceSize,
 		onClose:  cancel,
 		pieceCid: pc,
-	}).init()
+	}).init(ctx)
 	if err != nil || pr == nil { // pr == nil to make sure we don't return typed nil
 		cancel()
 		return nil, err

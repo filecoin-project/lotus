@@ -25,10 +25,9 @@ var ReadBuf = 128 * (127 * 8)               // unpadded(128k)
 
 var MinRandomReadSize = int64(4 << 10)
 
-type pieceGetter func(ctx context.Context, offset, size uint64) (io.ReadCloser, error)
+type pieceGetter func(offset, size uint64) (io.ReadCloser, error)
 
 type pieceReader struct {
-	ctx       context.Context
 	getReader pieceGetter
 	pieceCid  cid.Cid
 	len       abi.UnpaddedPieceSize
@@ -53,11 +52,11 @@ type pieceReader struct {
 	//  a long sequential read
 }
 
-func (p *pieceReader) init() (_ *pieceReader, err error) {
-	stats.Record(p.ctx, metrics.DagStorePRInitCount.M(1))
+func (p *pieceReader) init(ctx context.Context) (_ *pieceReader, err error) {
+	stats.Record(ctx, metrics.DagStorePRInitCount.M(1))
 
-	p.seqMCtx, _ = tag.New(p.ctx, tag.Upsert(metrics.PRReadType, "seq"))
-	p.atMCtx, _ = tag.New(p.ctx, tag.Upsert(metrics.PRReadType, "rand"))
+	p.seqMCtx, _ = tag.New(ctx, tag.Upsert(metrics.PRReadType, "seq"))
+	p.atMCtx, _ = tag.New(ctx, tag.Upsert(metrics.PRReadType, "rand"))
 
 	p.remReads, err = lru.New[int64, []byte](100)
 	if err != nil {
@@ -65,7 +64,7 @@ func (p *pieceReader) init() (_ *pieceReader, err error) {
 	}
 
 	p.rAt = 0
-	p.r, err = p.getReader(p.ctx, uint64(p.rAt), uint64(p.len))
+	p.r, err = p.getReader(uint64(p.rAt), uint64(p.len))
 	if err != nil {
 		return nil, err
 	}
@@ -95,9 +94,6 @@ func (p *pieceReader) Close() error {
 	}
 
 	if p.r != nil {
-		if err := p.r.Close(); err != nil {
-			return err
-		}
 		if err := p.r.Close(); err != nil {
 			return err
 		}
@@ -177,7 +173,7 @@ func (p *pieceReader) readSeqReader(b []byte) (n int, err error) {
 		}
 
 		p.rAt = off
-		p.r, err = p.getReader(p.ctx, uint64(p.rAt), uint64(p.len))
+		p.r, err = p.getReader(uint64(p.rAt), uint64(p.len))
 		p.br = bufio.NewReaderSize(p.r, ReadBuf)
 		if err != nil {
 			return 0, xerrors.Errorf("getting backing reader: %w", err)
@@ -288,7 +284,7 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 }
 
 func (p *pieceReader) readInto(b []byte, off int64) (n int, err error) {
-	rd, err := p.getReader(p.ctx, uint64(off), uint64(len(b)))
+	rd, err := p.getReader(uint64(off), uint64(len(b)))
 	if err != nil {
 		return 0, xerrors.Errorf("getting reader: %w", err)
 	}

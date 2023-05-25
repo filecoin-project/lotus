@@ -8,6 +8,21 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
+// UnpaddedFr32Chunk is the minimum amount of data which can be fr32-padded
+// Fr32 padding inserts two zero bits every 254 bits, so the minimum amount of
+// data which can be padded is 254 bits. 127 bytes is the smallest multiple of
+// 254 bits which has a whole number of bytes.
+const UnpaddedFr32Chunk abi.UnpaddedPieceSize = 127
+
+// PaddedFr32Chunk is the size of a UnpaddedFr32Chunk chunk after fr32 padding
+const PaddedFr32Chunk abi.PaddedPieceSize = 128
+
+func init() {
+	if PaddedFr32Chunk != UnpaddedFr32Chunk.Padded() {
+		panic("bad math")
+	}
+}
+
 var MTTresh = uint64(512 << 10)
 
 func mtChunkCount(usz abi.PaddedPieceSize) uint64 {

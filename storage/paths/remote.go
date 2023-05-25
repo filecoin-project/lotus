@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
@@ -21,12 +22,17 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var FetchTempSubdir = "fetching"
 
 var CopyBuf = 1 << 20
+
+// LocalReaderTimeout is the timeout for keeping local reader files open without
+// any read activity.
+var LocalReaderTimeout = 5 * time.Second
 
 type Remote struct {
 	local Store
@@ -598,7 +604,66 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 		if has {
 			log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
 
+			// refs keep track of the currently opened pf
+			// if they drop to 0 for longer than LocalReaderTimeout, pf will be closed
+			var refsLk sync.Mutex
+			refs := 0
+
+			cleanupIdle := func() {
+				lastRefs := 1
+
+				for range time.After(LocalReaderTimeout) {
+					refsLk.Lock()
+					if refs == 0 && lastRefs == 0 && pf != nil { // pf can't really be nil here, but better be safe
+						log.Infow("closing idle partial file", "path", path)
+						err := pf.Close()
+						if err != nil {
+							log.Errorw("closing idle partial file", "path", path, "error", err)
+						}
+
+						pf = nil
+						refsLk.Unlock()
+						return
+					}
+					lastRefs = refs
+					refsLk.Unlock()
+				}
+			}
+
+			getPF := func() (*partialfile.PartialFile, func() error, error) {
+				refsLk.Lock()
+				defer refsLk.Unlock()
+
+				if pf == nil {
+					// got closed in the meantime, reopen
+
+					var err error
+					pf, err = r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+					if err != nil {
+						return nil, nil, xerrors.Errorf("reopening partial file: %w", err)
+					}
+					log.Debugf("local partial file reopened %s (+%d,%d)", path, offset, size)
+
+					go cleanupIdle()
+				}
+
+				refs++
+
+				return pf, func() error {
+					refsLk.Lock()
+					defer refsLk.Unlock()
+
+					refs--
+					return nil
+				}, nil
+			}
+
 			return func(startOffsetAligned, endOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
+				pf, done, err := getPF()
+				if err != nil {
+					return nil, xerrors.Errorf("getting partialfile handle: %w", err)
+				}
+
 				r, err := r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset)+startOffsetAligned, abi.PaddedPieceSize(endOffsetAligned-startOffsetAligned))
 				if err != nil {
 					return nil, err
@@ -609,10 +674,7 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 					io.Closer
 				}{
 					Reader: r,
-					Closer: funcCloser(func() error {
-						// todo keep some refcount, close pf (or push to some lru) when it hits 0
-						return nil
-					}),
+					Closer: funcCloser(done),
 				}, nil
 			}, nil
 
