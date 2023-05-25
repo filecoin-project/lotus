@@ -33,6 +33,14 @@ type MsgIndex interface {
 	Close() error
 }
 
+// TipsetIndex is the interface to the tipset index
+type TipsetIndex interface {
+	// GetTipsetCID returns the tipset cid for the given epoch
+	GetTipsetCID(ctx context.Context, epoch abi.ChainEpoch) (*cid.Cid, error)
+	// Close closes the index
+	Close() error
+}
+
 type dummyMsgIndex struct{}
 
 func (dummyMsgIndex) GetMsgInfo(ctx context.Context, mCid cid.Cid) (MsgInfo, cid.Cid, error) {
@@ -44,3 +52,15 @@ func (dummyMsgIndex) Close() error {
 }
 
 var DummyMsgIndex MsgIndex = dummyMsgIndex{}
+
+type dummyTipsetIndex struct{}
+
+func (dummyTipsetIndex) GetTipsetCID(ctx context.Context, epoch abi.ChainEpoch) (*cid.Cid, error) {
+	return nil, ErrNotFound
+}
+
+func (dummyTipsetIndex) Close() error {
+	return nil
+}
+
+var DummyTipsetIndex TipsetIndex = dummyTipsetIndex{}

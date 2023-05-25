@@ -45,7 +45,6 @@ const (
 	dbqInsertMessage        = "INSERT INTO messages VALUES (?, ?, ?)"
 	dbqDeleteTipsetMessages = "DELETE FROM messages WHERE tipset_cid = ?"
 	dbqGetTipsetByEpoch     = "SELECT tipset_cid FROM messages WHERE epoch = ? LIMIT 1"
-
 	// reconciliation
 	dbqCountMessages         = "SELECT COUNT(*) FROM messages"
 	dbqMinEpoch              = "SELECT MIN(epoch) FROM messages"
@@ -544,6 +543,33 @@ func (x *msgIndex) GetMsgInfo(ctx context.Context, mCid cid.Cid) (MsgInfo, cid.C
 	}
 
 	return msgInfo, xtsCid, nil
+}
+
+func (x *msgIndex) GetTipsetCID(ctx context.Context, epoch abi.ChainEpoch) (*cid.Cid, error) {
+	x.closeLk.RLock()
+	defer x.closeLk.RUnlock()
+
+	if x.closed {
+		return nil, ErrClosed
+	}
+
+	var tipset string
+
+	row := x.selectTipsetStmt.QueryRow(epoch)
+	err := row.Scan(&tipset)
+	switch {
+	case err == sql.ErrNoRows:
+		return nil, ErrNotFound
+
+	case err != nil:
+		return nil, xerrors.Errorf("error querying msgindex database: %w", err)
+	}
+
+	tipsetCid, err := cid.Decode(tipset)
+	if err != nil {
+		return nil, xerrors.Errorf("error decoding tipset cid: %w", err)
+	}
+	return &tipsetCid, nil
 }
 
 func (x *msgIndex) Close() error {

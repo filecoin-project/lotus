@@ -161,7 +161,8 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		evtTypeHeadChange: j.RegisterEventType("sync", "head_change"),
 	}
 
-	ci := NewChainIndex(cs.LoadTipSet)
+	// TODO: what's the best way to get the message (tipset) index loaded into here?
+	ci := NewChainIndex(cs.LoadTipSet, nil)
 
 	cs.cindex = ci
 

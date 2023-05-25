@@ -6,10 +6,11 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -30,16 +31,20 @@ type ChainIndex struct {
 	indexCacheLk sync.Mutex
 	indexCache   map[types.TipSetKey]*lbEntry
 
-	loadTipSet loadTipSetFunc
+	loadTipSet   loadTipSetFunc
+	lookupTipSet lookupTipSetCIDFunc
 
 	skipLength abi.ChainEpoch
 }
 type loadTipSetFunc func(context.Context, types.TipSetKey) (*types.TipSet, error)
 
-func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
+type lookupTipSetCIDFunc func(ctx context.Context, epoch abi.ChainEpoch) (*cid.Cid, error)
+
+func NewChainIndex(lts loadTipSetFunc, luts lookupTipSetCIDFunc) *ChainIndex {
 	return &ChainIndex{
 		indexCache: make(map[types.TipSetKey]*lbEntry, DefaultChainIndexCacheSize),
 		loadTipSet: lts,
+		lookupTipSet:  luts,
 		skipLength: 20,
 	}
 }
@@ -50,6 +55,25 @@ type lbEntry struct {
 }
 
 func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet, to abi.ChainEpoch) (*types.TipSet, error) {
+	if ci.lookupTipSet != nil {
+		tsc, err := ci.lookupTipSet(ctx, to)
+		switch {
+		case err == index.ErrNotFound:
+			// fall through
+		case err != nil:
+			return nil, xerrors.Errorf("failed to load tipset cid: %w", err)
+		default:
+			ts, err := ci.loadTipSet(ctx, types.NewTipSetKey(*tsc))
+			if err != nil {
+				return nil, xerrors.Errorf("failed to load tipset: %w", err)
+			}
+			// make sure that the tipset is correct!
+			if ts.Height() == to {
+				return ts, nil
+			}
+			// otherwise, fall through
+		}
+	}
 	if from.Height()-to <= ci.skipLength {
 		return ci.walkBack(ctx, from, to)
 	}
