@@ -341,6 +341,8 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
+replace github.com/filecoin-project/go-state-types => ./extern/go-state-types
+
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
