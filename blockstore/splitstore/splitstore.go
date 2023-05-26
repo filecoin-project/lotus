@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	ipld "github.com/ipfs/go-ipld-format"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"go.uber.org/multierr"
@@ -164,7 +164,7 @@ type SplitStore struct {
 	path string
 
 	mx          sync.Mutex
-	warmupEpoch abi.ChainEpoch // protected by mx
+	warmupEpoch atomic.Int64
 	baseEpoch   abi.ChainEpoch // protected by compaction lock
 	pruneEpoch  abi.ChainEpoch // protected by compaction lock
 
@@ -684,9 +684,7 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 }
 
 func (s *SplitStore) isWarm() bool {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	return s.warmupEpoch > 0
+	return s.warmupEpoch.Load() > 0
 }
 
 // State tracking
@@ -757,7 +755,7 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 	bs, err = s.ds.Get(s.ctx, warmupEpochKey)
 	switch err {
 	case nil:
-		s.warmupEpoch = bytesToEpoch(bs)
+		s.warmupEpoch.Store(bytesToInt64(bs))
 
 	case dstore.ErrNotFound:
 		warmup = true
@@ -791,7 +789,7 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		return xerrors.Errorf("error loading compaction index: %w", err)
 	}
 
-	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch)
+	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch.Load())
 
 	if warmup {
 		err = s.warmup(curTs)

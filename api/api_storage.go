@@ -129,6 +129,8 @@ type StorageMiner interface {
 	SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error //perm:admin
 	// SectorAbortUpgrade can be called on sectors that are in the process of being upgraded to abort it
 	SectorAbortUpgrade(context.Context, abi.SectorNumber) error //perm:admin
+	// SectorUnseal unseals the provided sector
+	SectorUnseal(ctx context.Context, number abi.SectorNumber) error //perm:admin
 
 	// SectorNumAssignerMeta returns sector number assigner metadata - reserved/allocated
 	SectorNumAssignerMeta(ctx context.Context) (NumAssignerMeta, error) //perm:read

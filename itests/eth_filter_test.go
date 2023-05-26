@@ -425,6 +425,11 @@ func TestEthNewFilterDefaultSpec(t *testing.T) {
 	elogs, err := parseEthLogsFromFilterResult(res)
 	require.NoError(err)
 	AssertEthLogs(t, elogs, expected, received)
+
+	// giving a number to fromBlock/toBlock needs to be in hex format, so make sure passing in decimal fails
+	blockNrInDecimal := "2812200"
+	_, err = client.EthNewFilter(ctx, &ethtypes.EthFilterSpec{FromBlock: &blockNrInDecimal, ToBlock: &blockNrInDecimal})
+	require.Error(err, "expected error when fromBlock/toBlock is not in hex format")
 }
 
 func TestEthGetLogsBasic(t *testing.T) {

@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -88,6 +89,7 @@ const (
 
 	// health checks
 	CheckFDLimit
+	LegacyMarketsEOL
 
 	// libp2p
 	PstoreAddSelfKeysKey
@@ -390,6 +392,7 @@ func Test() Option {
 		Unset(new(*peermgr.PeerMgr)),
 		Override(new(beacon.Schedule), testing.RandomBeacon),
 		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
+		Override(new(index.MsgIndex), modules.DummyMsgIndex),
 	)
 }
 

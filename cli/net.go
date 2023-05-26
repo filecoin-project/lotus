@@ -367,7 +367,7 @@ func AddrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, e
 		pis = append(pis, pi)
 	}
 
-	return pis, err
+	return pis, nil
 }
 
 var NetId = &cli.Command{
@@ -445,8 +445,8 @@ var NetReachability = &cli.Command{
 		}
 
 		fmt.Println("AutoNAT status: ", i.Reachability.String())
-		if i.PublicAddr != "" {
-			fmt.Println("Public address: ", i.PublicAddr)
+		if len(i.PublicAddrs) > 0 {
+			fmt.Println("Public address:", i.PublicAddrs)
 		}
 		return nil
 	},

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"math/big"
 
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	block "github.com/ipfs/go-libipfs/blocks"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
@@ -13,8 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/proof"
-
-	"github.com/filecoin-project/lotus/build"
 )
 
 type Ticket struct {
@@ -193,36 +191,6 @@ func CidArrsContains(a []cid.Cid, b cid.Cid) bool {
 		}
 	}
 	return false
-}
-
-var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
-
-const sha256bits = 256
-
-func IsTicketWinner(vrfTicket []byte, mypow BigInt, totpow BigInt) bool {
-	/*
-		Need to check that
-		(h(vrfout) + 1) / (max(h) + 1) <= e * myPower / totalPower
-		max(h) == 2^256-1
-		which in terms of integer math means:
-		(h(vrfout) + 1) * totalPower <= e * myPower * 2^256
-		in 2^256 space, it is equivalent to:
-		h(vrfout) * totalPower < e * myPower * 2^256
-
-	*/
-
-	h := blake2b.Sum256(vrfTicket)
-
-	lhs := BigFromBytes(h[:]).Int
-	lhs = lhs.Mul(lhs, totpow.Int)
-
-	// rhs = sectorSize * 2^256
-	// rhs = sectorSize << 256
-	rhs := new(big.Int).Lsh(mypow.Int, sha256bits)
-	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
-
-	// h(vrfout) * totalPower < e * sectorSize * 2^256?
-	return lhs.Cmp(rhs) < 0
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

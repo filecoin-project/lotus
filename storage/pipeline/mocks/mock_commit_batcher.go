@@ -58,6 +58,21 @@ func (mr *MockCommitBatcherApiMockRecorder) ChainHead(arg0 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainHead", reflect.TypeOf((*MockCommitBatcherApi)(nil).ChainHead), arg0)
 }
 
+// GasEstimateMessageGas mocks base method.
+func (m *MockCommitBatcherApi) GasEstimateMessageGas(arg0 context.Context, arg1 *types.Message, arg2 *api.MessageSendSpec, arg3 types.TipSetKey) (*types.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GasEstimateMessageGas", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*types.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GasEstimateMessageGas indicates an expected call of GasEstimateMessageGas.
+func (mr *MockCommitBatcherApiMockRecorder) GasEstimateMessageGas(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GasEstimateMessageGas", reflect.TypeOf((*MockCommitBatcherApi)(nil).GasEstimateMessageGas), arg0, arg1, arg2, arg3)
+}
+
 // MpoolPushMessage mocks base method.
 func (m *MockCommitBatcherApi) MpoolPushMessage(arg0 context.Context, arg1 *types.Message, arg2 *api.MessageSendSpec) (*types.SignedMessage, error) {
 	m.ctrl.T.Helper()

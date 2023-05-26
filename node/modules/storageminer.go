@@ -1014,9 +1014,10 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AggregateAboveBaseFee:      types.FIL(cfg.AggregateAboveBaseFee),
 				BatchPreCommitAboveBaseFee: types.FIL(cfg.BatchPreCommitAboveBaseFee),
 
-				TerminateBatchMax:  cfg.TerminateBatchMax,
-				TerminateBatchMin:  cfg.TerminateBatchMin,
-				TerminateBatchWait: config.Duration(cfg.TerminateBatchWait),
+				TerminateBatchMax:                      cfg.TerminateBatchMax,
+				TerminateBatchMin:                      cfg.TerminateBatchMin,
+				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
+				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
 			}
 			c.SetSealingConfig(newCfg)
 		})
@@ -1051,13 +1052,14 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		PreCommitBatchWait:  time.Duration(sealingCfg.PreCommitBatchWait),
 		PreCommitBatchSlack: time.Duration(sealingCfg.PreCommitBatchSlack),
 
-		AggregateCommits:           sealingCfg.AggregateCommits,
-		MinCommitBatch:             sealingCfg.MinCommitBatch,
-		MaxCommitBatch:             sealingCfg.MaxCommitBatch,
-		CommitBatchWait:            time.Duration(sealingCfg.CommitBatchWait),
-		CommitBatchSlack:           time.Duration(sealingCfg.CommitBatchSlack),
-		AggregateAboveBaseFee:      types.BigInt(sealingCfg.AggregateAboveBaseFee),
-		BatchPreCommitAboveBaseFee: types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
+		AggregateCommits:                       sealingCfg.AggregateCommits,
+		MinCommitBatch:                         sealingCfg.MinCommitBatch,
+		MaxCommitBatch:                         sealingCfg.MaxCommitBatch,
+		CommitBatchWait:                        time.Duration(sealingCfg.CommitBatchWait),
+		CommitBatchSlack:                       time.Duration(sealingCfg.CommitBatchSlack),
+		AggregateAboveBaseFee:                  types.BigInt(sealingCfg.AggregateAboveBaseFee),
+		BatchPreCommitAboveBaseFee:             types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
+		MaxSectorProveCommitsSubmittedPerEpoch: sealingCfg.MaxSectorProveCommitsSubmittedPerEpoch,
 
 		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
 		TerminateBatchMin:  sealingCfg.TerminateBatchMin,

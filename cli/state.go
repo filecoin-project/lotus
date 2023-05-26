@@ -1268,7 +1268,7 @@ var compStateMsg = `
  {{end}}
 
  {{if ne .MsgRct.ExitCode 0}}
-  <div class="error">Error: <pre>{{.Error}}</pre></div>
+  <div class="error">Exit: <pre>{{.MsgRct.ExitCode}}</pre></div>
  {{end}}
 
 <details>
@@ -1372,7 +1372,14 @@ func isVerySlow(t time.Duration) bool {
 }
 
 func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	p, err := stmgr.GetParamType(consensus.NewActorRegistry(), code, method) // todo use api for correct actor registry
+	ar := consensus.NewActorRegistry()
+
+	_, found := ar.Methods[code][method]
+	if !found {
+		return fmt.Sprintf("raw:%x", params), nil
+	}
+
+	p, err := stmgr.GetParamType(ar, code, method) // todo use api for correct actor registry
 	if err != nil {
 		return "", err
 	}
@@ -1520,6 +1527,9 @@ func printMsg(ctx context.Context, api v0api.FullNode, msg cid.Cid, mw *lapi.Msg
 	fmt.Printf("Return: %x\n", mw.Receipt.Return)
 	if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
 		return err
+	}
+	if mw.Receipt.EventsRoot != nil {
+		fmt.Printf("Events Root: %s\n", mw.Receipt.EventsRoot)
 	}
 
 	return nil

@@ -10,8 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
+	"path"
 	"runtime/pprof"
 	"strings"
 
@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -41,10 +42,12 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
+	"github.com/filecoin-project/lotus/lib/httpreader"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
@@ -431,18 +434,13 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	var rd io.Reader
 	var l int64
 	if strings.HasPrefix(fname, "http://") || strings.HasPrefix(fname, "https://") {
-		resp, err := http.Get(fname) //nolint:gosec
+		rrd, err := httpreader.NewResumableReader(ctx, fname)
 		if err != nil {
-			return err
-		}
-		defer resp.Body.Close() //nolint:errcheck
-
-		if resp.StatusCode != http.StatusOK {
-			return xerrors.Errorf("fetching chain CAR failed with non-200 response: %d", resp.StatusCode)
+			return xerrors.Errorf("fetching chain CAR failed: setting up resumable reader: %w", err)
 		}
 
-		rd = resp.Body
-		l = resp.ContentLength
+		rd = rrd
+		l = rrd.ContentLength()
 	} else {
 		fname, err = homedir.Expand(fname)
 		if err != nil {
@@ -539,7 +537,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	// TODO: We need to supply the actual beacon after v14
-	stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds)
+	stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds, index.DummyMsgIndex)
 	if err != nil {
 		return err
 	}
@@ -554,6 +552,24 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	log.Infof("accepting %s as new head", ts.Cids())
 	if err := cst.ForceHeadSilent(ctx, ts); err != nil {
 		return err
+	}
+
+	// populate the message index if user has EnableMsgIndex enabled
+	//
+	c, err := lr.Config()
+	if err != nil {
+		return err
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return xerrors.Errorf("invalid config for repo, got: %T", c)
+	}
+	if cfg.Index.EnableMsgIndex {
+		log.Info("populating message index...")
+		if err := index.PopulateAfterSnapshot(ctx, path.Join(lr.Path(), "sqlite"), cst); err != nil {
+			return err
+		}
+		log.Info("populating message index done")
 	}
 
 	return nil

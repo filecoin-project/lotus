@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	cid "github.com/ipfs/go-cid"
@@ -15,6 +16,15 @@ import (
 var (
 	StatSends   uint64
 	StatApplied uint64
+)
+
+type ExecutionLane int
+
+const (
+	// ExecutionLaneDefault signifies a default, non prioritized execution lane.
+	ExecutionLaneDefault ExecutionLane = iota
+	// ExecutionLanePriority signifies a prioritized execution lane with reserved resources.
+	ExecutionLanePriority
 )
 
 type Interface interface {
@@ -33,7 +43,7 @@ type Interface interface {
 // Message failures, unexpected terminations,gas costs, etc. should all be ignored.
 var useFvmDebug = os.Getenv("LOTUS_FVM_DEVELOPER_DEBUG") == "1"
 
-func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
+func makeVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
 		if useFvmDebug {
 			return NewDualExecutionFVM(ctx, opts)
@@ -42,4 +52,19 @@ func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	}
 
 	return NewLegacyVM(ctx, opts)
+}
+
+func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
+	switch opts.ExecutionLane {
+	case ExecutionLaneDefault, ExecutionLanePriority:
+	default:
+		return nil, fmt.Errorf("invalid execution lane: %d", opts.ExecutionLane)
+	}
+
+	vmi, err := makeVM(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return newVMExecutor(vmi, opts.ExecutionLane), nil
 }
