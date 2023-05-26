@@ -31,7 +31,7 @@ func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) 
 
 // SealProofTypeFromSectorSize returns preferred seal proof type for creating
 // new miner actors and new sectors
-func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.RegisteredSealProof, error) {
+func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synthetic bool) (abi.RegisteredSealProof, error) {
 	switch {
 	case nv < network.Version7:
 		switch ssize {
