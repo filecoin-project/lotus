@@ -654,17 +654,37 @@ NAME:
    lotus-miner sectors list - List sectors
 
 USAGE:
-   lotus-miner sectors list [command options] [arguments...]
+   lotus-miner sectors list command [command options] [arguments...]
+
+COMMANDS:
+     upgrade-bounds  Output upgrade bounds for available sectors
+     help, h         Shows a list of commands or help for one command
 
 OPTIONS:
-   --check-parallelism value  number of parallel requests to make for checking sector states (default: 300)
-   --events, -e               display number of events the sector has received (default: false)
+   --show-removed, -r         show removed sectors (default: false)
    --fast, -f                 don't show on-chain info for better performance (default: false)
+   --events, -e               display number of events the sector has received (default: false)
    --initial-pledge, -p       display initial pledge (default: false)
    --seal-time, -t            display how long it took for the sector to be sealed (default: false)
-   --show-removed, -r         show removed sectors (default: false)
    --states value             filter sectors by a comma-separated list of states
    --unproven, -u             only show sectors which aren't in the 'Proving' state (default: false)
+   --check-parallelism value  number of parallel requests to make for checking sector states (default: 300)
+   --help, -h                 show help (default: false)
+   
+```
+
+#### lotus-miner sectors list upgrade-bounds
+```
+NAME:
+   lotus-miner sectors list upgrade-bounds - Output upgrade bounds for available sectors
+
+USAGE:
+   lotus-miner sectors list upgrade-bounds [command options] [arguments...]
+
+OPTIONS:
+   --buckets value  (default: 25)
+   --csv            output machine-readable values (default: false)
+   --deal-terms     bucket by how many deal-sectors can start at a given expiration (default: false)
    
 ```
 
