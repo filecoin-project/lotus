@@ -494,36 +494,36 @@ func (x *msgIndex) doApply(ctx context.Context, tx *sql.Tx, ts *types.TipSet) er
 }
 
 // interface
-func (x *msgIndex) GetMsgInfo(ctx context.Context, mCid cid.Cid) (MsgInfo, cid.Cid, error) {
+func (x *msgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
 	x.closeLk.RLock()
 	defer x.closeLk.RUnlock()
 
 	if x.closed {
-		return MsgInfo{}, cid.Undef, ErrClosed
+		return MsgInfo{}, ErrClosed
 	}
 
 	// fetch message from index (if it exists)
 	//
 	var tipset string
 	var epoch int64
-	err := x.selectMsgStmt.QueryRow(mCid.String()).Scan(&tipset, &epoch)
+	err := x.selectMsgStmt.QueryRow(m.String()).Scan(&tipset, &epoch)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// mCid not in index, its fine
-			return MsgInfo{}, cid.Undef, ErrNotFound
+			return MsgInfo{}, ErrNotFound
 		}
 
-		return MsgInfo{}, cid.Undef, xerrors.Errorf("error querying msgindex database: %w", err)
+		return MsgInfo{}, xerrors.Errorf("error querying msgindex database: %w", err)
 	}
 	tsCid, err := cid.Decode(tipset)
 	if err != nil {
-		return MsgInfo{}, cid.Undef, xerrors.Errorf("error decoding tipset cid: %w", err)
+		return MsgInfo{}, xerrors.Errorf("error decoding tipset cid: %w", err)
 	}
 
 	msgInfo := MsgInfo{
-		Message: mCid,
+		Message: m,
 		TipSet:  tsCid,
 		Epoch:   abi.ChainEpoch(epoch),
+		ExTsCid: cid.Undef,
 	}
 
 	// fetch execution tipset of message (if it exists)
@@ -533,17 +533,17 @@ func (x *msgIndex) GetMsgInfo(ctx context.Context, mCid cid.Cid) (MsgInfo, cid.C
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// execution tipset not in index, its fine
-			return msgInfo, cid.Undef, nil
+			return msgInfo, nil
 		}
 
-		return MsgInfo{}, cid.Undef, xerrors.Errorf("error querying for execution tipset: %w", err)
+		return MsgInfo{}, xerrors.Errorf("error querying for execution tipset: %w", err)
 	}
-	xtsCid, err := cid.Decode(xTipset)
+	msgInfo.ExTsCid, err = cid.Decode(xTipset)
 	if err != nil {
-		return MsgInfo{}, cid.Undef, xerrors.Errorf("error decoding execution tipset cid: %w", err)
+		return MsgInfo{}, xerrors.Errorf("error decoding execution tipset cid: %w", err)
 	}
 
-	return msgInfo, xtsCid, nil
+	return msgInfo, nil
 }
 
 func (x *msgIndex) Close() error {

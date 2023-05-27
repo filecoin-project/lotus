@@ -190,7 +190,7 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 }
 
 func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
-	minfo, xtsCid, err := sm.msgIndex.GetMsgInfo(ctx, mcid)
+	minfo, err := sm.msgIndex.GetMsgInfo(ctx, mcid)
 	if err != nil {
 		return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in index: %w", err)
 	}
@@ -203,10 +203,10 @@ func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m
 	}
 
 	// now get the execution tipset
-	var xts *types.TipSet = nil
-	if xtsCid != cid.Undef {
+	var xts *types.TipSet
+	if minfo.ExTsCid.Defined() {
 		// lookup by cid which is faster
-		xts, err = sm.cs.GetTipSetByCid(ctx, xtsCid)
+		xts, err = sm.cs.GetTipSetByCid(ctx, minfo.ExTsCid)
 		if err != nil {
 			return nil, nil, cid.Undef, xerrors.Errorf("error calling GetTipSetByCid: %w", err)
 		}

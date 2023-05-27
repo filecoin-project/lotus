@@ -20,23 +20,24 @@ type MsgInfo struct {
 	TipSet cid.Cid
 	// the epoch where this message was included
 	Epoch abi.ChainEpoch
+	// the execution tipset of the message (if it exists)
+	ExTsCid cid.Cid
 }
 
 // MsgIndex is the interface to the message index
 type MsgIndex interface {
-	// GetMsgInfo looks up the message in index and retrieves its metadata and execution
-	// tipset cid.
+	// GetMsgInfo looks up the message in index and retrieves its metadata.
 	// The lookup is done using the onchain message Cid; that is the signed message Cid
 	// for SECP messages and unsigned message Cid for BLS messages.
-	GetMsgInfo(ctx context.Context, mCid cid.Cid) (MsgInfo, cid.Cid, error)
+	GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error)
 	// Close closes the index
 	Close() error
 }
 
 type dummyMsgIndex struct{}
 
-func (dummyMsgIndex) GetMsgInfo(ctx context.Context, mCid cid.Cid) (MsgInfo, cid.Cid, error) {
-	return MsgInfo{}, cid.Undef, ErrNotFound
+func (dummyMsgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
+	return MsgInfo{}, ErrNotFound
 }
 
 func (dummyMsgIndex) Close() error {
