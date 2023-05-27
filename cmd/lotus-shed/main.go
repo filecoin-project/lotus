@@ -127,7 +127,7 @@ func main() {
 	go func() {
 		<-c
 		cancel()
-		fmt.Println("Received interrupt, stopping... Press CTRL+C again to force stop")
+		fmt.Println("Received interrupt, shutting down... Press CTRL+C again to force shutdown")
 		<-c
 		fmt.Println("Forcing stop")
 		os.Exit(1)
