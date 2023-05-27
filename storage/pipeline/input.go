@@ -738,11 +738,16 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 			continue
 		}
 
+		if pb.dealBytesInBound.Padded() == 0 {
+			log.Debugw("skipping available sector", "sector", s.Number, "reason", "no deals in expiration bounds", "expiration", expirationEpoch)
+			continue
+		}
+
 		// if the sector has less than one sector worth of candidate deals, and
 		// the best candidate has more candidate deals, this sector isn't better
 
 		lessThanSectorOfData := pb.dealBytesInBound.Padded() < abi.PaddedPieceSize(ssize)
-		moreDealsThanBest := bestDealBytes > pb.dealBytesInBound.Padded()
+		moreDealsThanBest := pb.dealBytesInBound.Padded() > bestDealBytes
 
 		// we want lower pledge, but only if we have more than one sector worth of deals
 
