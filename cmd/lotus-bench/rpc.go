@@ -41,7 +41,9 @@ Here are some real examples:
   lotus-bench rpc --method='eth_chainId::100' // override to 100 qps while using default concurrency
   lotus-bench rpc --method='eth_chainId:3:100' // run using 3 workers but limit to 100 qps
   lotus-bench rpc --method='eth_getTransactionCount:::["0xd4c70007F3F502f212c7e6794b94C06F36173B36", "latest"]' // run using optional params while using default concurrency and qps
-  lotus-bench rpc --method='eth_chainId' --method='eth_getTransactionCount:10:0:["0xd4c70007F3F502f212c7e6794b94C06F36173B36", "latest"]' // run multiple methods at once`,
+  lotus-bench rpc --method='eth_chainId' --method='eth_getTransactionCount:10:0:["0xd4c70007F3F502f212c7e6794b94C06F36173B36", "latest"]' // run multiple methods at once
+
+NOTE: The last two examples will not work until we upgrade urfave dependency (tracked in https://github.com/urfave/cli/issues/1734)`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "endpoint",
