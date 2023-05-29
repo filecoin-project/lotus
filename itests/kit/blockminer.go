@@ -184,7 +184,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 
 			dlinfo, err := bm.miner.FullNode.StateMinerProvingDeadline(ctx, bm.miner.ActorAddr, ts.Key())
 			require.NoError(bm.t, err)
-			if ts.Height()+1+abi.ChainEpoch(nulls) >= dlinfo.Last() { // Next block brings us past the last epoch in dline, we need to wait for miner to post
+			if ts.Height()+5+abi.ChainEpoch(nulls) >= dlinfo.Last() { // Next block brings us past the last epoch in dline, we need to wait for miner to post
+				bm.t.Logf("forcing post to get in before deadline closes at %d", dlinfo.Last())
 				bm.forcePoSt(ctx, ts, dlinfo)
 			}
 
@@ -216,7 +217,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 				}
 				if !success {
 					// if we are mining a new null block and it brings us past deadline boundary we need to wait for miner to post
-					if ts.Height()+1+abi.ChainEpoch(nulls+i) >= dlinfo.Last() {
+					if ts.Height()+5+abi.ChainEpoch(nulls+i) >= dlinfo.Last() {
+						bm.t.Logf("forcing post to get in before deadline closes at %d", dlinfo.Last())
 						bm.forcePoSt(ctx, ts, dlinfo)
 					}
 				}
