@@ -301,7 +301,7 @@ func TestMigrationNV17(t *testing.T) {
 	minerInfo, err := testClient.StateMinerInfo(ctx, testMiner.ActorAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	spt, err := miner.SealProofTypeFromSectorSize(minerInfo.SectorSize, network.Version17)
+	spt, err := miner.SealProofTypeFromSectorSize(minerInfo.SectorSize, network.Version17, false)
 	require.NoError(t, err)
 
 	preCommitParams := miner9.PreCommitSectorParams{

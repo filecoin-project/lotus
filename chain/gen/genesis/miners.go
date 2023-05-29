@@ -79,7 +79,7 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 }
 
 // Note: Much of this is brittle, if the methodNum / param / return changes, it will break things
-func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder, sroot cid.Cid, miners []genesis.Miner, nv network.Version) (cid.Cid, error) {
+func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder, sroot cid.Cid, miners []genesis.Miner, nv network.Version, synthetic bool) (cid.Cid, error) {
 
 	cst := cbor.NewCborStore(cs.StateBlockstore())
 	av, err := actorstypes.VersionForNetwork(nv)
@@ -132,7 +132,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		i := i
 		m := m
 
-		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv)
+		spt, err := miner.SealProofTypeFromSectorSize(m.SectorSize, nv, synthetic)
 		if err != nil {
 			return cid.Undef, err
 		}
