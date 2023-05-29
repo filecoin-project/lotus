@@ -437,6 +437,11 @@ type SealingConfig struct {
 	// todo TargetSealingSectors uint64
 
 	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
+
+	// SealWithSyntheticPoRep will reduce data holdings after PC1 by storing the precomputed responses
+	// to any challenge. This proof's PC1 step uses a cheaper-to-compute algorithm for the responses,
+	// but still must do more computation during PC1 in order to create this oracle.
+	SealWithSyntheticPoRep bool
 }
 
 type SealerConfig struct {
