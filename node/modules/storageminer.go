@@ -1016,6 +1016,7 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				TerminateBatchMin:                      cfg.TerminateBatchMin,
 				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
 				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
+				SealWithSyntheticPoRep:                 cfg.SealWithSyntheticPoRep,
 			}
 			c.SetSealingConfig(newCfg)
 		})
@@ -1057,9 +1058,10 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		BatchPreCommitAboveBaseFee:             types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
 		MaxSectorProveCommitsSubmittedPerEpoch: sealingCfg.MaxSectorProveCommitsSubmittedPerEpoch,
 
-		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
-		TerminateBatchMin:  sealingCfg.TerminateBatchMin,
-		TerminateBatchWait: time.Duration(sealingCfg.TerminateBatchWait),
+		TerminateBatchMax:      sealingCfg.TerminateBatchMax,
+		TerminateBatchMin:      sealingCfg.TerminateBatchMin,
+		TerminateBatchWait:     time.Duration(sealingCfg.TerminateBatchWait),
+		SealWithSyntheticPoRep: sealingCfg.SealWithSyntheticPoRep,
 	}
 }
 

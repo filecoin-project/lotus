@@ -60,4 +60,6 @@ type Config struct {
 	TerminateBatchMax  uint64
 	TerminateBatchMin  uint64
 	TerminateBatchWait time.Duration
+
+	SealWithSyntheticPoRep bool
 }
