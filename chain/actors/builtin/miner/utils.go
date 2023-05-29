@@ -49,23 +49,47 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synth
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 	case nv >= network.Version7:
+		var v abi.RegisteredSealProof
 		switch ssize {
 		case 2 << 10:
-			return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg2KiBV1_1
 		case 8 << 20:
-			return abi.RegisteredSealProof_StackedDrg8MiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg8MiBV1_1
 		case 512 << 20:
-			return abi.RegisteredSealProof_StackedDrg512MiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg512MiBV1_1
 		case 32 << 30:
-			return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg32GiBV1_1
 		case 64 << 30:
-			return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
+			v = abi.RegisteredSealProof_StackedDrg64GiBV1_1
 		default:
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+		}
+
+		if synthetic {
+			return toSynthetic(v)
+		} else {
+			return v, nil
 		}
 	}
 
 	return 0, xerrors.Errorf("unsupported network version")
+}
+
+func toSynthetic(in abi.RegisteredSealProof) (abi.RegisteredSealProof, error) {
+	switch in {
+	case abi.RegisteredSealProof_StackedDrg2KiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg8MiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg8MiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg512MiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg512MiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg32GiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep, nil
+	case abi.RegisteredSealProof_StackedDrg64GiBV1_1:
+		return abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep, nil
+	default:
+		return 0, xerrors.Errorf("unsupported conversion to synthetic: %v", in)
+	}
 }
 
 // WindowPoStProofTypeFromSectorSize returns preferred post proof type for creating
