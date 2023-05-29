@@ -741,7 +741,7 @@ func (mp *MessagePool) checkMessage(ctx context.Context, m *types.SignedMessage)
 	}
 
 	// Perform syntactic validation, minGas=0 as we check the actual mingas before we add it
-	if err := m.Message.ValidForBlockInclusion(0, mp.api.StateNetworkVersion(ctx, mp.curTs.Height())); err != nil {
+	if err := m.Message.ValidForBlockInclusion(0, network.Version20); err != nil {
 		return xerrors.Errorf("message not valid for block inclusion: %w", err)
 	}
 
