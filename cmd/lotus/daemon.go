@@ -9,6 +9,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/ipfs/go-cid"
+	levelds "github.com/ipfs/go-ds-leveldb"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"io"
 	"os"
 	"path"
@@ -16,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
-	"github.com/ipfs/go-cid"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -28,16 +36,10 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 
-	"github.com/filecoin-project/go-address"
-	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
@@ -172,12 +174,12 @@ var DaemonCmd = &cli.Command{
 			Value: false,
 		},
 		&cli.StringFlag{
-			Name:  "from",
+			Name:  "slasher-sender",
 			Usage: "optionally specify the account to report consensus from",
 		},
 		&cli.StringFlag{
-			Name:  "extra",
-			Usage: "Extra block cid",
+			Name:  "slashdb-dir",
+			Value: "slash watch db dir path",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -399,9 +401,9 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
-		if cctx.IsSet("slash-consensus") {
+		if cctx.IsSet("slash-consensus") && cctx.IsSet("slashdb-dir") {
 			go func() {
-				err := slashConsensus(api, cctx.String("from"), cctx.String("extra"))
+				err := slashConsensus(api, cctx.String("slashdb-dir"), cctx.String("slasher-sender"))
 				if err != nil {
 					panic("slashConsensus error")
 				}
@@ -601,45 +603,55 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	return nil
 }
 
-func slashConsensus(a lapi.FullNode, from string, extra string) error {
+func slashConsensus(a lapi.FullNode, p string, from string) error {
 	ctx := context.Background()
+	var fromAddr address.Address
+
+	ds, err := levelds.NewDatastore(p, &levelds.Options{
+		Compression: ldbopts.NoCompression,
+		NoSync:      false,
+		Strict:      ldbopts.StrictAll,
+		ReadOnly:    false,
+	})
+	if err != nil {
+		return xerrors.Errorf("open leveldb: %w", err)
+	}
+	sf := slashfilter.New(ds)
+	if from == "" {
+		defaddr, err := a.WalletDefaultAddress(ctx)
+		if err != nil {
+			return err
+		}
+		fromAddr = defaddr
+	} else {
+		addr, err := address.NewFromString(from)
+		if err != nil {
+			return err
+		}
+
+		fromAddr = addr
+	}
 
 	blocks, err := a.SyncIncomingBlocks(ctx)
 	if err != nil {
-		return err
+		return xerrors.Errorf("sync incoming blocks failed: %w", err)
 	}
-
 	for block := range blocks {
 		log.Infof("deal with block: %d, %v, %s", block.Height, block.Miner, block.Cid())
-		if otherBlock, err := a.SlashFilterMinedBlock(ctx, block); err != nil {
+		if otherBlock, err := slashFilterMinedBlock(ctx, sf, a, block); err != nil {
 			if otherBlock == nil {
 				continue
 			}
 			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-			var fromAddr address.Address
-			if from == "" {
-				defaddr, err := a.WalletDefaultAddress(ctx)
-				if err != nil {
-					continue
-				}
-
-				fromAddr = defaddr
-			} else {
-				addr, err := address.NewFromString(from)
-				if err != nil {
-					continue
-				}
-
-				fromAddr = addr
-			}
-
 			bh1, err := cborutil.Dump(otherBlock)
 			if err != nil {
+				log.Errorf("could not dump otherblock:%s, err:%s", otherBlock.Cid(), err)
 				continue
 			}
 
 			bh2, err := cborutil.Dump(block)
 			if err != nil {
+				log.Errorf("could not dump block:%s, err:%s", block.Cid(), err)
 				continue
 			}
 
@@ -647,26 +659,10 @@ func slashConsensus(a lapi.FullNode, from string, extra string) error {
 				BlockHeader1: bh1,
 				BlockHeader2: bh2,
 			}
-			if extra != "" {
-				cExtra, err := cid.Parse(extra)
-				if err != nil {
-					return xerrors.Errorf("parsing cid extra: %w", err)
-				}
 
-				bExtra, err := a.ChainGetBlock(ctx, cExtra)
-				if err != nil {
-					return xerrors.Errorf("getting block extra: %w", err)
-				}
-
-				be, err := cborutil.Dump(bExtra)
-				if err != nil {
-					return err
-				}
-
-				params.BlockHeaderExtra = be
-			}
 			enc, err := actors.SerializeParams(&params)
 			if err != nil {
+				log.Errorf("could not serialize declare faults parameters: %s", err)
 				continue
 			}
 			message, err := a.MpoolPushMessage(ctx, &types.Message{
@@ -677,6 +673,7 @@ func slashConsensus(a lapi.FullNode, from string, extra string) error {
 				Params: enc,
 			}, nil)
 			if err != nil {
+				log.Errorf("ReportConsensusFault to messagepool error:%s", err)
 				continue
 			}
 			log.Infof("ReportConsensusFault message CID:%s", message.Cid())
@@ -684,4 +681,20 @@ func slashConsensus(a lapi.FullNode, from string, extra string) error {
 		}
 	}
 	return err
+}
+
+func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a lapi.FullNode, bh *types.BlockHeader) (*types.BlockHeader, error) {
+	parent, err := a.ChainGetBlock(ctx, bh.Parents[0])
+	if err != nil {
+		return nil, xerrors.Errorf("chain get block error:%s", err)
+	}
+	otherCid, err := sf.CheckBlock(ctx, bh, parent.Height)
+	if err != nil {
+		return nil, xerrors.Errorf("slash filter check block error:%s", err)
+	}
+	if otherCid != cid.Undef {
+		otherHeader, err := a.ChainGetBlock(ctx, otherCid)
+		return otherHeader, xerrors.Errorf("chain get other block error:%s", err)
+	}
+	return nil, nil
 }
