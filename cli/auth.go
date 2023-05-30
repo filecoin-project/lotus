@@ -3,25 +3,25 @@ package cli
 import (
 	"fmt"
 
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
-	"github.com/filecoin-project/lotus/api/apistruct"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var authCmd = &cli.Command{
+var AuthCmd = &cli.Command{
 	Name:  "auth",
 	Usage: "Manage RPC permissions",
 	Subcommands: []*cli.Command{
-		authCreateAdminToken,
-		authApiInfoToken,
+		AuthCreateAdminToken,
+		AuthApiInfoToken,
 	},
 }
 
-var authCreateAdminToken = &cli.Command{
+var AuthCreateAdminToken = &cli.Command{
 	Name:  "create-token",
 	Usage: "Create token",
 	Flags: []cli.Flag{
@@ -46,18 +46,18 @@ var authCreateAdminToken = &cli.Command{
 
 		perm := cctx.String("perm")
 		idx := 0
-		for i, p := range apistruct.AllPermissions {
+		for i, p := range api.AllPermissions {
 			if auth.Permission(perm) == p {
 				idx = i + 1
 			}
 		}
 
 		if idx == 0 {
-			return fmt.Errorf("--perm flag has to be one of: %s", apistruct.AllPermissions)
+			return fmt.Errorf("--perm flag has to be one of: %s", api.AllPermissions)
 		}
 
 		// slice on [:idx] so for example: 'sign' gives you [read, write, sign]
-		token, err := napi.AuthNew(ctx, apistruct.AllPermissions[:idx])
+		token, err := napi.AuthNew(ctx, api.AllPermissions[:idx])
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ var authCreateAdminToken = &cli.Command{
 	},
 }
 
-var authApiInfoToken = &cli.Command{
+var AuthApiInfoToken = &cli.Command{
 	Name:  "api-info",
 	Usage: "Get token with API info required to connect to this node",
 	Flags: []cli.Flag{
@@ -89,30 +89,30 @@ var authApiInfoToken = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if !cctx.IsSet("perm") {
-			return xerrors.New("--perm flag not set")
+			return xerrors.New("--perm flag not set, use with one of: read, write, sign, admin")
 		}
 
 		perm := cctx.String("perm")
 		idx := 0
-		for i, p := range apistruct.AllPermissions {
+		for i, p := range api.AllPermissions {
 			if auth.Permission(perm) == p {
 				idx = i + 1
 			}
 		}
 
 		if idx == 0 {
-			return fmt.Errorf("--perm flag has to be one of: %s", apistruct.AllPermissions)
+			return fmt.Errorf("--perm flag has to be one of: %s", api.AllPermissions)
 		}
 
 		// slice on [:idx] so for example: 'sign' gives you [read, write, sign]
-		token, err := napi.AuthNew(ctx, apistruct.AllPermissions[:idx])
+		token, err := napi.AuthNew(ctx, api.AllPermissions[:idx])
 		if err != nil {
 			return err
 		}
 
 		ti, ok := cctx.App.Metadata["repoType"]
 		if !ok {
-			log.Errorf("unknown repo type, are you sure you want to use GetAPI?")
+			log.Errorf("unknown repo type, are you sure you want to use GetCommonAPI?")
 			ti = repo.FullNode
 		}
 		t, ok := ti.(repo.RepoType)
@@ -122,14 +122,13 @@ var authApiInfoToken = &cli.Command{
 
 		ainfo, err := GetAPIInfo(cctx, t)
 		if err != nil {
-			return xerrors.Errorf("could not get API info: %w", err)
+			return xerrors.Errorf("could not get API info for %s: %w", t, err)
 		}
-
-		envVar := envForRepo(t)
 
 		// TODO: Log in audit log when it is implemented
 
-		fmt.Printf("%s=%s:%s\n", envVar, string(token), ainfo.Addr)
+		currentEnv, _, _ := t.APIInfoEnvVars()
+		fmt.Printf("%s=%s:%s\n", currentEnv, string(token), ainfo.Addr)
 		return nil
 	},
 }

@@ -1,0 +1,191 @@
+package builtin
+
+import (
+	"fmt"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
+
+{{range .versions}}
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+	{{end}}
+{{end}}
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/proof"
+    "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	smoothingtypes "github.com/filecoin-project/go-state-types/builtin/v8/util/smoothing"
+)
+
+var SystemActorAddr = builtin.SystemActorAddr
+var BurntFundsActorAddr = builtin.BurntFundsActorAddr
+var CronActorAddr = builtin.CronActorAddr
+var EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
+var SaftAddress = makeAddress("t0122")
+var ReserveAddress = makeAddress("t090")
+var RootVerifierAddress = makeAddress("t080")
+
+var (
+	ExpectedLeadersPerEpoch = builtin.ExpectedLeadersPerEpoch
+)
+
+const (
+	EpochDurationSeconds = builtin.EpochDurationSeconds
+	EpochsInDay          = builtin.EpochsInDay
+	SecondsInDay         = builtin.SecondsInDay
+)
+
+const (
+	MethodSend        = builtin.MethodSend
+	MethodConstructor = builtin.MethodConstructor
+)
+
+// These are all just type aliases across actor versions. In the future, that might change
+// and we might need to do something fancier.
+type SectorInfo = proof.SectorInfo
+type ExtendedSectorInfo = proof.ExtendedSectorInfo
+type PoStProof = proof.PoStProof
+type FilterEstimate = smoothingtypes.FilterEstimate
+
+func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
+	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)
+}
+
+func ActorNameByCode(c cid.Cid) string {
+	if name, version, ok := actors.GetActorMetaByCode(c); ok {
+		return fmt.Sprintf("fil/%d/%s", version, name)
+	}
+
+	switch {
+	    {{range .versions}}
+	        {{if (le . 7)}}
+            case builtin{{.}}.IsBuiltinActor(c):
+            return builtin{{.}}.ActorNameByCode(c)
+            {{end}}
+        {{end}}
+	default:
+		return "<unknown>"
+	}
+}
+
+func IsBuiltinActor(c cid.Cid) bool {
+	_, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return true
+	}
+
+	{{range .versions}}
+	    {{if (le . 7)}}
+            if builtin{{.}}.IsBuiltinActor(c) {
+                return true
+            }
+	    {{end}}
+	{{end}}
+	return false
+}
+
+func IsAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == "account"
+	}
+
+	{{range .versions}}
+        {{if (le . 7)}}
+            if c == builtin{{.}}.AccountActorCodeID {
+                return true
+            }
+        {{end}}
+	{{end}}
+	return false
+}
+
+func IsStorageMinerActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == manifest.MinerKey
+	}
+
+	{{range .versions}}
+        {{if (le . 7)}}
+            if c == builtin{{.}}.StorageMinerActorCodeID {
+                return true
+            }
+        {{end}}
+	{{end}}
+	return false
+}
+
+func IsMultisigActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == manifest.MultisigKey
+	}
+
+	{{range .versions}}
+        {{if (le . 7)}}
+            if c == builtin{{.}}.MultisigActorCodeID {
+                return true
+            }
+        {{end}}
+	{{end}}
+	return false
+}
+
+func IsPaymentChannelActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == "paymentchannel"
+	}
+
+	{{range .versions}}
+        {{if (le . 7)}}
+            if c == builtin{{.}}.PaymentChannelActorCodeID {
+                return true
+            }
+        {{end}}
+	{{end}}
+	return false
+}
+
+func IsPlaceholderActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == manifest.PlaceholderKey
+	}
+
+	return false
+}
+
+func IsEvmActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == manifest.EvmKey
+	}
+
+	return false
+}
+
+func IsEthAccountActor(c cid.Cid) bool {
+	name, _, ok := actors.GetActorMetaByCode(c)
+    if ok {
+    	return name == manifest.EthAccountKey
+	}
+
+	return false
+}
+
+func makeAddress(addr string) address.Address {
+	ret, err := address.NewFromString(addr)
+	if err != nil {
+		panic(err)
+	}
+
+	return ret
+}

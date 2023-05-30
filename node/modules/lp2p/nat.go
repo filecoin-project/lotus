@@ -7,12 +7,10 @@ import (
 /*import (
 	"github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
-	host "github.com/libp2p/go-libp2p-core/host"
-	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
+	host "github.com/libp2p/go-libp2p/core/host"
+	libp2pquic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"go.uber.org/fx"
-
 	"github.com/ipfs/go-ipfs/repo"
-
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 

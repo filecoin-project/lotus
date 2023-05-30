@@ -1,44 +1,48 @@
 package build
 
-import "fmt"
+import "os"
 
 var CurrentCommit string
-
-// BuildVersion is the local build version, set by build system
-const BuildVersion = "0.3.0"
-
-var UserVersion = BuildVersion + CurrentCommit
-
-type Version uint32
-
-func newVer(major, minor, patch uint8) Version {
-	return Version(uint32(major)<<16 | uint32(minor)<<8 | uint32(patch))
-}
-
-// Ints returns (major, minor, patch) versions
-func (ve Version) Ints() (uint32, uint32, uint32) {
-	v := uint32(ve)
-	return (v & majorOnlyMask) >> 16, (v & minorOnlyMask) >> 8, v & patchOnlyMask
-}
-
-func (ve Version) String() string {
-	vmj, vmi, vp := ve.Ints()
-	return fmt.Sprintf("%d.%d.%d", vmj, vmi, vp)
-}
-
-func (ve Version) EqMajorMinor(v2 Version) bool {
-	return ve&minorMask == v2&minorMask
-}
-
-// APIVersion is a semver version of the rpc api exposed
-var APIVersion Version = newVer(0, 3, 0)
+var BuildType int
 
 const (
-	majorMask = 0xff0000
-	minorMask = 0xffff00
-	patchMask = 0xffffff
-
-	majorOnlyMask = 0xff0000
-	minorOnlyMask = 0x00ff00
-	patchOnlyMask = 0x0000ff
+	BuildDefault      = 0
+	BuildMainnet      = 0x1
+	Build2k           = 0x2
+	BuildDebug        = 0x3
+	BuildCalibnet     = 0x4
+	BuildInteropnet   = 0x5
+	BuildButterflynet = 0x7
 )
+
+func BuildTypeString() string {
+	switch BuildType {
+	case BuildDefault:
+		return ""
+	case BuildMainnet:
+		return "+mainnet"
+	case Build2k:
+		return "+2k"
+	case BuildDebug:
+		return "+debug"
+	case BuildCalibnet:
+		return "+calibnet"
+	case BuildInteropnet:
+		return "+interopnet"
+	case BuildButterflynet:
+		return "+butterflynet"
+	default:
+		return "+huh?"
+	}
+}
+
+// BuildVersion is the local build version
+const BuildVersion = "1.23.2-dev"
+
+func UserVersion() string {
+	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
+		return BuildVersion
+	}
+
+	return BuildVersion + BuildTypeString() + CurrentCommit
+}

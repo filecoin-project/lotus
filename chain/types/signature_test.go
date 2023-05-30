@@ -1,13 +1,15 @@
+// stm: #unit
 package types
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 func TestSignatureSerializeRoundTrip(t *testing.T) {
+	//stm: @CHAIN_TYPES_SIGNATURE_SERIALIZATION_001
 	s := &crypto.Signature{
 		Data: []byte("foo bar cat dog"),
 		Type: crypto.SigTypeBLS,

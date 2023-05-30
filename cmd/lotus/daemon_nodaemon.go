@@ -1,3 +1,4 @@
+//go:build nodaemon
 // +build nodaemon
 
 package main
@@ -5,7 +6,7 @@ package main
 import (
 	"errors"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/urfave/cli/v2"
 )
 
 // DaemonCmd is the `go-lotus daemon` command

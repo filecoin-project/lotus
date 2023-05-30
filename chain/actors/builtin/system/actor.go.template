@@ -1,0 +1,79 @@
+package system
+
+import (
+	"github.com/ipfs/go-cid"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
+
+	"golang.org/x/xerrors"
+
+{{range .versions}}
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{end}}
+{{end}}
+    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+)
+
+var (
+	Address = builtin{{.latestVersion}}.SystemActorAddr
+)
+
+func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != manifest.SystemKey {
+          return nil, xerrors.Errorf("actor code is not system: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+                {{if (ge . 8)}}
+                case actorstypes.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
+            {{end}}
+       }
+	}
+
+	switch act.Code {
+{{range .versions}}
+    {{if (le . 7)}}
+        case builtin{{.}}.SystemActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
+{{end}}
+	}
+
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av actorstypes.Version, builtinActors cid.Cid) (State, error) {
+	switch av {
+{{range .versions}}
+	case actorstypes.Version{{.}}:
+		return make{{.}}(store{{if (ge . 8)}}, builtinActors{{end}})
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+type State interface {
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
+	GetState() interface{}
+	GetBuiltinActors() cid.Cid
+	SetBuiltinActors(cid.Cid) error
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}

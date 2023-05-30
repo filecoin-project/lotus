@@ -1,0 +1,100 @@
+package verifreg
+
+import (
+	"github.com/ipfs/go-cid"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/go-state-types/cbor"
+{{range .versions}}
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{end}}
+{{end}}
+    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
+    verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+)
+
+var (
+	Address = builtin{{.latestVersion}}.VerifiedRegistryActorAddr
+	Methods = builtin{{.latestVersion}}.MethodsVerifiedRegistry
+)
+
+func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != manifest.VerifregKey {
+          return nil, xerrors.Errorf("actor code is not verifreg: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+                {{if (ge . 8)}}
+                case actorstypes.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
+            {{end}}
+       }
+	}
+
+	switch act.Code {
+{{range .versions}}
+    {{if (le . 7)}}
+        case builtin{{.}}.VerifiedRegistryActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
+{{end}}
+	}
+
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av actorstypes.Version, rootKeyAddress address.Address) (State, error) {
+	switch av {
+{{range .versions}}
+	case actorstypes.Version{{.}}:
+		return make{{.}}(store, rootKeyAddress)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+type State interface {
+	cbor.Marshaler
+
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
+	RootKey() (address.Address, error)
+	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
+	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
+	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
+	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
+	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
+	GetAllocation(clientIdAddr address.Address, allocationId AllocationId) (*Allocation, bool, error)
+	GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error)
+	GetClaim(providerIdAddr address.Address, claimId ClaimId) (*Claim, bool, error)
+	GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error)
+	GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error)
+	GetState() interface{}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+type Allocation = verifregtypes.Allocation
+type AllocationId = verifregtypes.AllocationId
+type Claim = verifregtypes.Claim
+type ClaimId = verifregtypes.ClaimId

@@ -7,12 +7,13 @@ import (
 	"io"
 	"sort"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var log = logging.Logger("types")
@@ -23,8 +24,6 @@ type TipSet struct {
 	height abi.ChainEpoch
 }
 
-// why didnt i just export the fields? Because the struct has methods with the
-// same names already
 type ExpTipSet struct {
 	Cids   []cid.Cid
 	Blocks []*BlockHeader
@@ -32,6 +31,8 @@ type ExpTipSet struct {
 }
 
 func (ts *TipSet) MarshalJSON() ([]byte, error) {
+	// why didnt i just export the fields? Because the struct has methods with the
+	// same names already
 	return json.Marshal(ExpTipSet{
 		Cids:   ts.cids,
 		Blocks: ts.blks,
@@ -97,6 +98,12 @@ func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
 	}
 }
 
+// Checks:
+//   - A tipset is composed of at least one block. (Because of our variable
+//     number of blocks per tipset, determined by randomness, we do not impose
+//     an upper limit.)
+//   - All blocks have the same height.
+//   - All blocks have the same parents (same number of them and matching CIDs).
 func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 	if len(blks) == 0 {
 		return nil, xerrors.Errorf("NewTipSet called with zero length array of blocks")
@@ -110,6 +117,10 @@ func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 	for _, b := range blks[1:] {
 		if b.Height != blks[0].Height {
 			return nil, fmt.Errorf("cannot create tipset with mismatching heights")
+		}
+
+		if len(blks[0].Parents) != len(b.Parents) {
+			return nil, fmt.Errorf("cannot create tipset with mismatching number of parents")
 		}
 
 		for i, cid := range b.Parents {
@@ -157,12 +168,16 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 		return false
 	}
 
-	if len(ts.blks) != len(ots.blks) {
+	if ts.height != ots.height {
 		return false
 	}
 
-	for i, b := range ts.blks {
-		if b.Cid() != ots.blks[i].Cid() {
+	if len(ts.cids) != len(ots.cids) {
+		return false
+	}
+
+	for i, cid := range ts.cids {
+		if cid != ots.cids[i] {
 			return false
 		}
 	}
@@ -181,8 +196,23 @@ func (ts *TipSet) MinTicket() *Ticket {
 }
 
 func (ts *TipSet) MinTimestamp() uint64 {
-	minTs := ts.Blocks()[0].Timestamp
-	for _, bh := range ts.Blocks()[1:] {
+	if ts == nil {
+		return 0
+	}
+
+	blks := ts.Blocks()
+
+	// TODO::FVM @vyzo @magik Null rounds shouldn't ever be represented as
+	//  tipsets with no blocks; Null-round generally means that the tipset at
+	//  that epoch doesn't exist - and the next tipset that does exist links
+	//  straight to first epoch with blocks (@raulk agrees -- this is odd)
+	if len(blks) == 0 {
+		// null rounds make things crash -- it is threaded in every fvm instantiation
+		return 0
+	}
+
+	minTs := blks[0].Timestamp
+	for _, bh := range blks[1:] {
 		if bh.Timestamp < minTs {
 			minTs = bh.Timestamp
 		}
@@ -204,6 +234,10 @@ func (ts *TipSet) MinTicketBlock() *BlockHeader {
 	return min
 }
 
+func (ts *TipSet) ParentMessageReceipts() cid.Cid {
+	return ts.blks[0].ParentMessageReceipts
+}
+
 func (ts *TipSet) ParentState() cid.Cid {
 	return ts.blks[0].ParentStateRoot
 }
@@ -219,4 +253,16 @@ func (ts *TipSet) Contains(oc cid.Cid) bool {
 		}
 	}
 	return false
+}
+
+func (ts *TipSet) IsChildOf(parent *TipSet) bool {
+	return CidArrsEqual(ts.Parents().Cids(), parent.Cids()) &&
+		// FIXME: The height check might go beyond what is meant by
+		//  "parent", but many parts of the code rely on the tipset's
+		//  height for their processing logic at the moment to obviate it.
+		ts.height > parent.height
+}
+
+func (ts *TipSet) String() string {
+	return fmt.Sprintf("%v", ts.cids)
 }

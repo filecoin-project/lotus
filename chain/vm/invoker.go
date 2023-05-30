@@ -6,96 +6,195 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
-	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	"github.com/filecoin-project/specs-actors/actors/builtin/power"
-	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/filecoin-project/specs-actors/actors/builtin/system"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/go-state-types/abi"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	builtinst "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type invoker struct {
-	builtInCode  map[cid.Cid]nativeCode
-	builtInState map[cid.Cid]reflect.Type
+type MethodMeta struct {
+	Name string
+
+	Params reflect.Type
+	Ret    reflect.Type
 }
 
-type invokeFunc func(rt runtime.Runtime, params []byte) ([]byte, aerrors.ActorError)
-type nativeCode []invokeFunc
+type ActorRegistry struct {
+	actors map[cid.Cid]*actorInfo
 
-func NewInvoker() *invoker {
-	inv := &invoker{
-		builtInCode:  make(map[cid.Cid]nativeCode),
-		builtInState: make(map[cid.Cid]reflect.Type),
+	Methods map[cid.Cid]map[abi.MethodNum]MethodMeta
+}
+
+// An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
+type ActorPredicate func(vmr.Runtime, cid.Cid) error
+
+func ActorsVersionPredicate(ver actorstypes.Version) ActorPredicate {
+	return func(rt vmr.Runtime, codeCid cid.Cid) error {
+		aver, err := actorstypes.VersionForNetwork(rt.NetworkVersion())
+		if err != nil {
+			return xerrors.Errorf("unsupported network version: %w", err)
+		}
+		if aver != ver {
+			return xerrors.Errorf("actor %s is a version %d actor; chain only supports actor version %d at height %d and nver %d", codeCid, ver, aver, rt.CurrEpoch(), rt.NetworkVersion())
+		}
+		return nil
 	}
-
-	// add builtInCode using: register(cid, singleton)
-	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
-	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
-	inv.Register(builtin.RewardActorCodeID, reward.Actor{}, reward.State{})
-	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
-	inv.Register(builtin.StoragePowerActorCodeID, power.Actor{}, power.State{})
-	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})
-	inv.Register(builtin.StorageMinerActorCodeID, miner.Actor{}, miner.State{})
-	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
-	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
-	inv.Register(builtin.VerifiedRegistryActorCodeID, verifreg.Actor{}, verifreg.State{})
-	inv.Register(builtin.AccountActorCodeID, account.Actor{}, account.State{})
-
-	return inv
 }
 
-func (inv *invoker) Invoke(codeCid cid.Cid, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+type invokeFunc func(rt vmr.Runtime, params []byte) ([]byte, aerrors.ActorError)
+type nativeCode map[abi.MethodNum]invokeFunc
 
-	code, ok := inv.builtInCode[codeCid]
+type actorInfo struct {
+	methods nativeCode
+	vmActor builtin.RegistryEntry
+	// TODO: consider making this a network version range?
+	predicate ActorPredicate
+}
+
+func NewActorRegistry() *ActorRegistry {
+	return &ActorRegistry{
+		actors:  make(map[cid.Cid]*actorInfo),
+		Methods: map[cid.Cid]map[abi.MethodNum]MethodMeta{},
+	}
+}
+
+func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+	act, ok := ar.actors[codeCid]
 	if !ok {
-		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Message().Receiver())
+		log.Errorf("no code for actor %s (Addr: %s)", codeCid, rt.Receiver())
 		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "no code for actor %s(%d)(%s)", codeCid, method, hex.EncodeToString(params))
 	}
-	if method >= abi.MethodNum(len(code)) || code[method] == nil {
+	if err := act.predicate(rt, codeCid); err != nil {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalActor, "unsupported actor: %s", err)
+	}
+	if act.methods[method] == nil {
 		return nil, aerrors.Newf(exitcode.SysErrInvalidMethod, "no method %d on actor", method)
 	}
-	return code[method](rt, params)
+	return act.methods[method](rt, params)
 
 }
 
-func (inv *invoker) Register(c cid.Cid, instance Invokee, state interface{}) {
-	code, err := inv.transform(instance)
-	if err != nil {
-		panic(xerrors.Errorf("%s: %w", string(c.Hash()), err))
+func (ar *ActorRegistry) Register(av actorstypes.Version, pred ActorPredicate, vmactors []builtin.RegistryEntry) {
+	if pred == nil {
+		pred = func(vmr.Runtime, cid.Cid) error { return nil }
 	}
-	inv.builtInCode[c] = code
-	inv.builtInState[c] = reflect.TypeOf(state)
+	for _, a := range vmactors {
+
+		var code nativeCode
+		var err error
+		if av <= actorstypes.Version7 {
+			// register in the `actors` map (for the invoker)
+			code, err = ar.transform(a)
+			if err != nil {
+				panic(xerrors.Errorf("%s: %w", string(a.Code().Hash()), err))
+			}
+		}
+
+		ai := &actorInfo{
+			methods:   code,
+			vmActor:   a,
+			predicate: pred,
+		}
+
+		ac := a.Code()
+		ar.actors[ac] = ai
+
+		// necessary to make stuff work
+		var realCode cid.Cid
+		if av >= actorstypes.Version8 {
+			name := actors.CanonicalName(builtin.ActorNameByCode(ac))
+
+			var ok bool
+			realCode, ok = actors.GetActorCodeID(av, name)
+			if ok {
+				ar.actors[realCode] = ai
+			}
+		}
+
+		// register in the `Methods` map (used by statemanager utils)
+		exports := a.Exports()
+		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
+
+		// Explicitly add send, it's special.
+		methods[builtin.MethodSend] = MethodMeta{
+			Name:   "Send",
+			Params: reflect.TypeOf(new(abi.EmptyValue)),
+			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
+		}
+
+		// Iterate over exported methods. Some of these _may_ be nil and
+		// must be skipped.
+		for number, export := range exports {
+			if export.Method == nil {
+				continue
+			}
+
+			ev := reflect.ValueOf(export.Method)
+			et := ev.Type()
+
+			mm := MethodMeta{
+				Name: export.Name,
+				Ret:  et.Out(0),
+			}
+
+			if av <= actorstypes.Version7 {
+				// methods exported from specs-actors have the runtime as the first param, so we want et.In(1)
+				mm.Params = et.In(1)
+			} else {
+				// methods exported from go-state-types do not, so we want et.In(0)
+				mm.Params = et.In(0)
+			}
+
+			methods[number] = mm
+		}
+		if realCode.Defined() {
+			ar.Methods[realCode] = methods
+		} else {
+			ar.Methods[a.Code()] = methods
+		}
+	}
 }
 
-type Invokee interface {
-	Exports() []interface{}
+func (ar *ActorRegistry) Create(codeCid cid.Cid, rt vmr.Runtime) (*types.Actor, aerrors.ActorError) {
+	act, ok := ar.actors[codeCid]
+	if !ok {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Can only create built-in actors.")
+	}
+
+	if err := act.predicate(rt, codeCid); err != nil {
+		return nil, aerrors.Newf(exitcode.SysErrorIllegalArgument, "Cannot create actor: %w", err)
+	}
+
+	return &types.Actor{
+		Code:    codeCid,
+		Head:    EmptyObjectCid,
+		Nonce:   0,
+		Balance: abi.NewTokenAmount(0),
+	}, nil
 }
 
-var tAError = reflect.TypeOf((*aerrors.ActorError)(nil)).Elem()
+type invokee interface {
+	Exports() map[abi.MethodNum]builtinst.MethodMeta
+}
 
-func (*invoker) transform(instance Invokee) (nativeCode, error) {
+func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
-	for i, m := range exports {
+	runtimeType := reflect.TypeOf((*vmr.Runtime)(nil)).Elem()
+	for i, e := range exports {
 		i := i
+		m := e.Method
 		newErr := func(format string, args ...interface{}) error {
 			str := fmt.Sprintf(format, args...)
 			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
@@ -114,11 +213,11 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("wrong number of inputs should be: " +
 				"vmr.Runtime, <parameter>")
 		}
-		if t.In(0) != reflect.TypeOf((*vmr.Runtime)(nil)).Elem() {
-			return nil, newErr("first arguemnt should be vmr.Runtime")
+		if !runtimeType.Implements(t.In(0)) {
+			return nil, newErr("first argument should be vmr.Runtime")
 		}
 		if t.In(1).Kind() != reflect.Ptr {
-			return nil, newErr("second argument should be Runtime")
+			return nil, newErr("second argument should be of kind reflect.Ptr")
 		}
 
 		if t.NumOut() != 1 {
@@ -131,16 +230,25 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 		}
 	}
 	code := make(nativeCode, len(exports))
-	for id, m := range exports {
+	for id, e := range exports {
+		m := e.Method
+		if m == nil {
+			continue
+		}
 		meth := reflect.ValueOf(m)
 		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
 			func(in []reflect.Value) []reflect.Value {
 				paramT := meth.Type().In(1).Elem()
 				param := reflect.New(paramT)
 
+				rt := in[0].Interface().(*Runtime)
 				inBytes := in[1].Interface().([]byte)
 				if err := DecodeParams(inBytes, param.Interface()); err != nil {
-					aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
+					ec := exitcode.ErrSerialization
+					if rt.NetworkVersion() < network.Version7 {
+						ec = 1
+					}
+					aerr := aerrors.Absorb(err, ec, "failed to decode parameters")
 					return []reflect.Value{
 						reflect.ValueOf([]byte{}),
 						// Below is a hack, fixed in Go 1.13
@@ -148,7 +256,6 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 						reflect.ValueOf(&aerr).Elem(),
 					}
 				}
-				rt := in[0].Interface().(*Runtime)
 				rval, aerror := rt.shimCall(func() interface{} {
 					ret := meth.Call([]reflect.Value{
 						reflect.ValueOf(rt),
@@ -176,27 +283,23 @@ func DecodeParams(b []byte, out interface{}) error {
 	return um.UnmarshalCBOR(bytes.NewReader(b))
 }
 
-func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
-	if code == builtin.AccountActorCodeID { // Account code special case
+func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, error) {
+	actInfo, ok := i.actors[act.Code]
+	if !ok {
+		return nil, xerrors.Errorf("state type for actor %s not found", act.Code)
+	}
+
+	um := actInfo.vmActor.State()
+	if um == nil {
+		if act.Head != EmptyObjectCid {
+			return nil, xerrors.Errorf("actor with code %s should only have empty object (%s) as its Head, instead has %s", act.Code, EmptyObjectCid, act.Head)
+		}
+
 		return nil, nil
 	}
-
-	i := NewInvoker() // TODO: register builtins in init block
-
-	typ, ok := i.builtInState[code]
-	if !ok {
-		return nil, xerrors.Errorf("state type for actor %s not found", code)
-	}
-
-	rv := reflect.New(typ)
-	um, ok := rv.Interface().(cbg.CBORUnmarshaler)
-	if !ok {
-		return nil, xerrors.New("state type does not implement CBORUnmarshaler")
-	}
-
 	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("unmarshaling actor state: %w", err)
 	}
 
-	return rv.Elem().Interface(), nil
+	return um, nil
 }

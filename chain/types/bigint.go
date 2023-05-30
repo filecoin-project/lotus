@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"math/big"
 
-	big2 "github.com/filecoin-project/specs-actors/actors/abi/big"
+	big2 "github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build"
 )
 
 const BigIntMaxSerializedLen = 128 // is this big enough? or too big?
 
-var TotalFilecoinInt = FromFil(build.TotalFilecoin)
+var TotalFilecoinInt = FromFil(build.FilBase)
 
 var EmptyInt = BigInt{}
 
@@ -47,6 +47,11 @@ func BigDiv(a, b BigInt) BigInt {
 	return BigInt{Int: big.NewInt(0).Div(a.Int, b.Int)}
 }
 
+func BigDivFloat(num, den BigInt) float64 {
+	res, _ := new(big.Rat).SetFrac(num.Int, den.Int).Float64()
+	return res
+}
+
 func BigMod(a, b BigInt) BigInt {
 	return BigInt{Int: big.NewInt(0).Mod(a.Int, b.Int)}
 }
@@ -76,7 +81,7 @@ func SizeStr(bi BigInt) string {
 	}
 
 	f, _ := r.Float64()
-	return fmt.Sprintf("%.3g %s", f, byteSizeUnits[i])
+	return fmt.Sprintf("%.4g %s", f, byteSizeUnits[i])
 }
 
 var deciUnits = []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"}

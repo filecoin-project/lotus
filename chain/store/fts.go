@@ -1,8 +1,9 @@
 package store
 
 import (
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // FullTipSet is an expanded version of the TipSet that contains all the blocks and messages
@@ -32,8 +33,11 @@ func (fts *FullTipSet) Cids() []cid.Cid {
 	return cids
 }
 
+// TipSet returns a narrower view of this FullTipSet elliding the block
+// messages.
 func (fts *FullTipSet) TipSet() *types.TipSet {
 	if fts.tipset != nil {
+		// FIXME: fts.tipset is actually never set. Should it memoize?
 		return fts.tipset
 	}
 

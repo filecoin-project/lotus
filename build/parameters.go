@@ -1,7 +1,19 @@
 package build
 
-import rice "github.com/GeertJohan/go.rice"
+import (
+	_ "embed"
+)
 
-func ParametersJson() []byte {
-	return rice.MustFindBox("proof-params").MustBytes("parameters.json")
+//go:embed proof-params/parameters.json
+var params []byte
+
+//go:embed proof-params/srs-inner-product.json
+var srs []byte
+
+func ParametersJSON() []byte {
+	return params
+}
+
+func SrsJSON() []byte {
+	return srs
 }

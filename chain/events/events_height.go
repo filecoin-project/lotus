@@ -4,189 +4,243 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type heightEvents struct {
-	lk           sync.Mutex
-	tsc          *tipSetCache
-	gcConfidence abi.ChainEpoch
+type heightHandler struct {
+	ts     *types.TipSet
+	height abi.ChainEpoch
+	called bool
 
-	ctr triggerId
-
-	heightTriggers map[triggerId]*heightHandler
-
-	htTriggerHeights map[triggerH][]triggerId
-	htHeights        map[msgH][]triggerId
-
-	ctx context.Context
+	handle HeightHandler
+	revert RevertHandler
 }
 
-func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
-	ctx, span := trace.StartSpan(e.ctx, "events.HeightHeadChange")
-	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("endHeight", int64(app[0].Height())))
-	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
-	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
+type heightEvents struct {
+	api          EventAPI
+	gcConfidence abi.ChainEpoch
 
-	for _, ts := range rev {
-		// TODO: log error if h below gcconfidence
-		// revert height-based triggers
+	lk                        sync.Mutex
+	head                      *types.TipSet
+	tsHeights, triggerHeights map[abi.ChainEpoch][]*heightHandler
+	lastGc                    abi.ChainEpoch //nolint:structcheck
+}
 
-		revert := func(h abi.ChainEpoch, ts *types.TipSet) {
-			for _, tid := range e.htHeights[h] {
-				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
-
-				err := e.heightTriggers[tid].revert(ctx, ts)
-				e.heightTriggers[tid].called = false
-
-				span.End()
-
-				if err != nil {
-					log.Errorf("reverting chain trigger (@H %d): %s", h, err)
-				}
-			}
-		}
-		revert(ts.Height(), ts)
-
-		subh := ts.Height() - 1
-		for {
-			cts, err := e.tsc.get(subh)
-			if err != nil {
-				return err
-			}
-
-			if cts != nil {
-				break
-			}
-
-			revert(subh, ts)
-			subh--
-		}
-
-		if err := e.tsc.revert(ts); err != nil {
-			return err
-		}
+func newHeightEvents(api EventAPI, obs *observer, gcConfidence abi.ChainEpoch) *heightEvents {
+	he := &heightEvents{
+		api:            api,
+		gcConfidence:   gcConfidence,
+		tsHeights:      map[abi.ChainEpoch][]*heightHandler{},
+		triggerHeights: map[abi.ChainEpoch][]*heightHandler{},
 	}
+	he.lk.Lock()
+	he.head = obs.Observe((*heightEventsObserver)(he))
+	he.lk.Unlock()
+	return he
+}
 
-	for i := range app {
-		ts := app[i]
+// ChainAt invokes the specified `HeightHandler` when the chain reaches the
+// specified height+confidence threshold. If the chain is rolled-back under the
+// specified height, `RevertHandler` will be called.
+//
+// ts passed to handlers is the tipset at the specified epoch, or above if lower tipsets were null.
+//
+// The context governs cancellations of this call, it won't cancel the event handler.
+func (e *heightEvents) ChainAt(ctx context.Context, hnd HeightHandler, rev RevertHandler, confidence int, h abi.ChainEpoch) error {
+	if abi.ChainEpoch(confidence) > e.gcConfidence {
+		// Need this to be able to GC effectively.
+		return xerrors.Errorf("confidence cannot be greater than gcConfidence: %d > %d", confidence, e.gcConfidence)
+	}
+	handler := &heightHandler{
+		height: h,
+		handle: hnd,
+		revert: rev,
+	}
+	triggerAt := h + abi.ChainEpoch(confidence)
 
-		if err := e.tsc.add(ts); err != nil {
-			return err
-		}
+	// Here we try to jump onto a moving train. To avoid stopping the train, we release the lock
+	// while calling the API and/or the trigger functions. Unfortunately, it's entirely possible
+	// (although unlikely) to go back and forth across the trigger heights, so we need to keep
+	// going back and forth here till we're synced.
+	//
+	// TODO: Consider using a worker goroutine so we can just drop the handler in a channel? The
+	// downside is that we'd either need a tipset cache, or we'd need to potentially fetch
+	// tipsets in-line inside the event loop.
+	e.lk.Lock()
+	for {
+		head := e.head
+		if head.Height() >= h {
+			// Head is past the handler height. We at least need to stash the tipset to
+			// avoid doing this from the main event loop.
+			e.lk.Unlock()
 
-		// height triggers
-
-		apply := func(h abi.ChainEpoch, ts *types.TipSet) error {
-			for _, tid := range e.htTriggerHeights[h] {
-				hnd := e.heightTriggers[tid]
-				if hnd.called {
-					return nil
+			var ts *types.TipSet
+			if head.Height() == h {
+				ts = head
+			} else {
+				var err error
+				ts, err = e.api.ChainGetTipSetAfterHeight(ctx, handler.height, head.Key())
+				if err != nil {
+					return xerrors.Errorf("events.ChainAt: failed to get tipset: %s", err)
 				}
-				hnd.called = true
+			}
 
-				triggerH := h - abi.ChainEpoch(hnd.confidence)
+			// If we've applied the handler on the wrong tipset, revert.
+			if handler.called && !ts.Equals(handler.ts) {
+				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
+				span.AddAttributes(trace.BoolAttribute("immediate", true))
+				err := handler.revert(ctx, handler.ts)
+				span.End()
+				if err != nil {
+					return err
+				}
+				handler.called = false
+			}
 
-				incTs, err := e.tsc.getNonNull(triggerH)
+			// Save the tipset.
+			handler.ts = ts
+
+			// If we've reached confidence and haven't called, call.
+			if !handler.called && head.Height() >= triggerAt {
+				ctx, span := trace.StartSpan(ctx, "events.HeightApply")
+				span.AddAttributes(trace.BoolAttribute("immediate", true))
+				err := handler.handle(ctx, handler.ts, head.Height())
+				span.End()
 				if err != nil {
 					return err
 				}
 
-				ctx, span := trace.StartSpan(ctx, "events.HeightApply")
-				span.AddAttributes(trace.BoolAttribute("immediate", false))
+				handler.called = true
 
-				err = hnd.handle(ctx, incTs, h)
-				span.End()
-
-				if err != nil {
-					log.Errorf("chain trigger (@H %d, called @ %d) failed: %+v", triggerH, ts.Height(), err)
+				// If we've reached gcConfidence, return without saving anything.
+				if head.Height() >= h+e.gcConfidence {
+					return nil
 				}
 			}
-			return nil
-		}
 
-		if err := apply(ts.Height(), ts); err != nil {
-			return err
-		}
-		subh := ts.Height() - 1
-		for {
-			cts, err := e.tsc.get(subh)
+			e.lk.Lock()
+		} else if handler.called {
+			// We're not passed the head (anymore) but have applied the handler. Revert, try again.
+			e.lk.Unlock()
+			ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
+			span.AddAttributes(trace.BoolAttribute("immediate", true))
+			err := handler.revert(ctx, handler.ts)
+			span.End()
 			if err != nil {
 				return err
 			}
+			handler.called = false
+			e.lk.Lock()
+		} // otherwise, we changed heads but the change didn't matter.
 
-			if cts != nil {
-				break
-			}
-
-			if err := apply(subh, ts); err != nil {
-				return err
-			}
-
-			subh--
+		// If we managed to get through this without the head changing, we're finally done.
+		if head.Equals(e.head) {
+			e.triggerHeights[triggerAt] = append(e.triggerHeights[triggerAt], handler)
+			e.tsHeights[h] = append(e.tsHeights[h], handler)
+			e.lk.Unlock()
+			return nil
 		}
-
 	}
+}
 
+// Updates the head and garbage collects if we're 2x over our garbage collection confidence period.
+func (e *heightEventsObserver) updateHead(h *types.TipSet) {
+	e.lk.Lock()
+	defer e.lk.Unlock()
+	e.head = h
+
+	if e.head.Height() < e.lastGc+e.gcConfidence*2 {
+		return
+	}
+	e.lastGc = h.Height()
+
+	targetGcHeight := e.head.Height() - e.gcConfidence
+	for h := range e.tsHeights {
+		if h >= targetGcHeight {
+			continue
+		}
+		delete(e.tsHeights, h)
+	}
+	for h := range e.triggerHeights {
+		if h >= targetGcHeight {
+			continue
+		}
+		delete(e.triggerHeights, h)
+	}
+}
+
+type heightEventsObserver heightEvents
+
+func (e *heightEventsObserver) Revert(ctx context.Context, from, to *types.TipSet) error {
+	// Update the head first so we don't accidental skip reverting a concurrent call to ChainAt.
+	e.updateHead(to)
+
+	// Call revert on all hights between the two tipsets, handling empty tipsets.
+	for h := from.Height(); h > to.Height(); h-- {
+		e.lk.Lock()
+		triggers := e.tsHeights[h]
+		e.lk.Unlock()
+
+		// 1. Triggers are only invoked from the global event loop, we don't need to hold the lock while calling.
+		// 2. We only ever append to or replace the trigger slice, so it's safe to iterate over it without the lock.
+		for _, handler := range triggers {
+			handler.ts = nil // invalidate
+			if !handler.called {
+				// We haven't triggered this yet, or there has been a concurrent call to ChainAt.
+				continue
+			}
+			ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
+			err := handler.revert(ctx, from)
+			span.End()
+
+			if err != nil {
+				log.Errorf("reverting chain trigger (@H %d): %s", h, err)
+			}
+			handler.called = false
+		}
+	}
 	return nil
 }
 
-// ChainAt invokes the specified `HeightHandler` when the chain reaches the
-//  specified height+confidence threshold. If the chain is rolled-back under the
-//  specified height, `RevertHandler` will be called.
-//
-// ts passed to handlers is the tipset at the specified, or above, if lower tipsets were null
-func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h abi.ChainEpoch) error {
+func (e *heightEventsObserver) Apply(ctx context.Context, from, to *types.TipSet) error {
+	// Update the head first so we don't accidental skip applying a concurrent call to ChainAt.
+	e.updateHead(to)
 
-	e.lk.Lock() // Tricky locking, check your locks if you modify this function!
-
-	bestH := e.tsc.best().Height()
-
-	if bestH >= h+abi.ChainEpoch(confidence) {
-		ts, err := e.tsc.getNonNull(h)
-		if err != nil {
-			log.Warnf("events.ChainAt: calling HandleFunc with nil tipset, not found in cache: %s", err)
-		}
-
-		e.lk.Unlock()
-		ctx, span := trace.StartSpan(e.ctx, "events.HeightApply")
-		span.AddAttributes(trace.BoolAttribute("immediate", true))
-
-		err = hnd(ctx, ts, bestH)
-		span.End()
-
-		if err != nil {
-			return err
-		}
-
+	for h := from.Height() + 1; h <= to.Height(); h++ {
 		e.lk.Lock()
-		bestH = e.tsc.best().Height()
+		triggers := e.triggerHeights[h]
+		tipsets := e.tsHeights[h]
+		e.lk.Unlock()
+
+		// Stash the tipset for future triggers.
+		for _, handler := range tipsets {
+			handler.ts = to
+		}
+
+		// Trigger the ready triggers.
+		for _, handler := range triggers {
+			if handler.called {
+				// We may have reverted past the trigger point, but not past the call point.
+				// Or there has been a concurrent call to ChainAt.
+				continue
+			}
+
+			ctx, span := trace.StartSpan(ctx, "events.HeightApply")
+			span.AddAttributes(trace.BoolAttribute("immediate", false))
+			err := handler.handle(ctx, handler.ts, h)
+			span.End()
+
+			if err != nil {
+				log.Errorf("chain trigger (@H %d, called @ %d) failed: %+v", h, to.Height(), err)
+			}
+
+			handler.called = true
+		}
 	}
-
-	defer e.lk.Unlock()
-
-	if bestH >= h+abi.ChainEpoch(confidence)+e.gcConfidence {
-		return nil
-	}
-
-	triggerAt := h + abi.ChainEpoch(confidence)
-
-	id := e.ctr
-	e.ctr++
-
-	e.heightTriggers[id] = &heightHandler{
-		confidence: confidence,
-
-		handle: hnd,
-		revert: rev,
-	}
-
-	e.htHeights[h] = append(e.htHeights[h], id)
-	e.htTriggerHeights[triggerAt] = append(e.htTriggerHeights[triggerAt], id)
-
 	return nil
 }

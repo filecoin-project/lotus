@@ -1,0 +1,85 @@
+name: "Bug Report"
+description: "File a bug report to help us improve"
+labels: [need/triage, kind/bug]
+body:
+- type: checkboxes
+  attributes:
+    label: Checklist
+    description: Please check off the following boxes before continuing to file a bug report!
+    options:
+      - label: This is **not** a security-related bug/issue. If it is, please follow please follow the [security policy](https://github.com/filecoin-project/lotus/security/policy).
+        required: true
+      - label: I **have** searched on the [issue tracker](https://github.com/filecoin-project/lotus/issues) and the [lotus forum](https://github.com/filecoin-project/lotus/discussions), and there is no existing related issue or discussion.
+        required: true
+      - label: I am running the [`Latest release`](https://github.com/filecoin-project/lotus/releases), the most recent RC(release canadiate) for the upcoming release or the dev branch(master), or have an issue updating to any of these.
+        required: true
+      - label: I did not make any code changes to lotus.
+        required: false
+- type: checkboxes
+  attributes:
+    label: Lotus component
+    description: Please select the lotus component you are filing a bug for
+    options:
+      - label: lotus daemon - chain sync
+        required: false
+      - label: lotus fvm/fevm - Lotus FVM and FEVM interactions
+        required: false
+      - label: lotus miner/worker - sealing
+        required: false
+      - label: lotus miner - proving(WindowPoSt/WinningPoSt)
+        required: false
+      - label: lotus JSON-RPC API
+        required: false
+      - label: lotus message management (mpool)
+        required: false
+      - label:  Other
+        required: false
+- type: textarea
+  id: version
+  attributes:
+    label: Lotus Version
+    render: text
+    description: Enter the output of `lotus version` and `lotus-miner version` if applicable.
+    placeholder: |
+      e.g. 
+      Daemon:  1.19.0+mainnet+git.64059ca87+api1.5.0
+      Local: lotus-miner version 1.19.0+mainnet+git.64059ca87
+  validations:
+    required: true
+- type: textarea
+  id: ReproSteps
+  attributes:
+    label: Repro Steps
+    description: "Steps to reproduce the behavior"
+    value: |
+      1. Run '...'
+      2. Do '...'
+      3. See error '...'
+      ...
+  validations:
+    required: false
+- type: textarea
+  id: Description
+  attributes:
+    label: Describe the Bug
+    description: |
+      This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information:
+      * What you were doing when you experienced the bug?
+      * Any *error* messages you saw, *where* you saw them, and what you believe may have caused them (if you have any ideas).
+      * What is the expected behaviour?
+      * For sealing issues, include the output of `lotus-miner sectors status --log <sectorId>` for the failed sector(s).
+      * For proving issues, include the output of `lotus-miner proving` info.
+  validations:
+    required: true
+- type: textarea
+  id: extraInfo
+  attributes:
+    label: Logging Information
+    render: text
+    description: |
+      Please provide debug logs of the problem, remember you can get set log level control for:
+      * lotus: use `lotus log list` to get all log systems available and set level by `lotus log set-level`. An example can be found [here](https://lotus.filecoin.io/lotus/configure/defaults/#log-level-control).
+      * lotus-miner:`lotus-miner log list` to get all log systems available and set level by `lotus-miner log set-level
+      If you don't provide detailed logs when you raise the issue it will almost certainly be the first request we make before furthur diagnosing the problem.
+  validations:
+    required: true

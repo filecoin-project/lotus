@@ -6,10 +6,13 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // Mock beacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds
@@ -53,12 +56,9 @@ func (mb *mockBeacon) VerifyEntry(from types.BeaconEntry, to types.BeaconEntry) 
 	return nil
 }
 
-func (mb *mockBeacon) IsEntryForEpoch(e types.BeaconEntry, epoch abi.ChainEpoch, nulls int) (bool, error) {
-	return int64(e.Round) <= int64(epoch) && int64(epoch)-int64(nulls) >= int64(e.Round), nil
-}
-
-func (mb *mockBeacon) MaxBeaconRoundForEpoch(epoch abi.ChainEpoch, prevEntry types.BeaconEntry) uint64 {
-	return uint64(epoch)
+func (mb *mockBeacon) MaxBeaconRoundForEpoch(nv network.Version, epoch abi.ChainEpoch) uint64 {
+	// offset for better testing
+	return uint64(epoch + 100)
 }
 
 var _ RandomBeacon = (*mockBeacon)(nil)

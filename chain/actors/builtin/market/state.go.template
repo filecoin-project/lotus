@@ -1,0 +1,412 @@
+package market
+
+import (
+    "fmt"
+	"bytes"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+	{{if (ge .v 6)}}
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+	"github.com/filecoin-project/go-bitfield"
+	{{end}}
+
+
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+{{if (le .v 7)}}
+	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
+	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+{{end}}
+{{if (ge .v 9)}}
+	"github.com/filecoin-project/go-state-types/builtin"
+{{end}}
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store) (State, error) {
+	out := state{{.v}}{store: store}
+	{{if (le .v 2)}}
+		ea, err := adt{{.v}}.MakeEmptyArray(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		em, err := adt{{.v}}.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *market{{.v}}.ConstructState(ea, em, em)
+	{{else}}
+		s, err := market{{.v}}.ConstructState(store)
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *s
+	{{end}}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	market{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) TotalLocked() (abi.TokenAmount, error) {
+	fml := types.BigAdd(s.TotalClientLockedCollateral, s.TotalProviderLockedCollateral)
+	fml = types.BigAdd(fml, s.TotalClientStorageFee)
+	return fml, nil
+}
+
+func (s *state{{.v}}) BalancesChanged(otherState State) (bool, error) {
+	otherState{{.v}}, ok := otherState.(*state{{.v}})
+	if !ok {
+		// there's no way to compare different versions of the state, so let's
+		// just say that means the state of balances has changed
+		return true, nil
+	}
+	return !s.State.EscrowTable.Equals(otherState{{.v}}.State.EscrowTable) || !s.State.LockedTable.Equals(otherState{{.v}}.State.LockedTable), nil
+}
+
+func (s *state{{.v}}) StatesChanged(otherState State) (bool, error) {
+	otherState{{.v}}, ok := otherState.(*state{{.v}})
+	if !ok {
+		// there's no way to compare different versions of the state, so let's
+		// just say that means the state of balances has changed
+		return true, nil
+	}
+	return !s.State.States.Equals(otherState{{.v}}.State.States), nil
+}
+
+func (s *state{{.v}}) States() (DealStates, error) {
+	stateArray, err := adt{{.v}}.AsArray(s.store, s.State.States{{if (ge .v 3)}}, market{{.v}}.StatesAmtBitwidth{{end}})
+	if err != nil {
+		return nil, err
+	}
+	return &dealStates{{.v}}{stateArray}, nil
+}
+
+func (s *state{{.v}}) ProposalsChanged(otherState State) (bool, error) {
+	otherState{{.v}}, ok := otherState.(*state{{.v}})
+	if !ok {
+		// there's no way to compare different versions of the state, so let's
+		// just say that means the state of balances has changed
+		return true, nil
+	}
+	return !s.State.Proposals.Equals(otherState{{.v}}.State.Proposals), nil
+}
+
+func (s *state{{.v}}) Proposals() (DealProposals, error) {
+	proposalArray, err := adt{{.v}}.AsArray(s.store, s.State.Proposals{{if (ge .v 3)}}, market{{.v}}.ProposalsAmtBitwidth{{end}})
+	if err != nil {
+		return nil, err
+	}
+	return &dealProposals{{.v}}{proposalArray}, nil
+}
+
+func (s *state{{.v}}) EscrowTable() (BalanceTable, error) {
+	bt, err := adt{{.v}}.AsBalanceTable(s.store, s.State.EscrowTable)
+	if err != nil {
+		return nil, err
+	}
+	return &balanceTable{{.v}}{bt}, nil
+}
+
+func (s *state{{.v}}) LockedTable() (BalanceTable, error) {
+	bt, err := adt{{.v}}.AsBalanceTable(s.store, s.State.LockedTable)
+	if err != nil {
+		return nil, err
+	}
+	return &balanceTable{{.v}}{bt}, nil
+}
+
+func (s *state{{.v}}) VerifyDealsForActivation(
+	minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
+) (weight, verifiedWeight abi.DealWeight, err error) {
+	w, vw{{if (ge .v 2)}}, _{{end}}, err := market{{.v}}.ValidateDealsForActivation(&s.State, s.store, deals, minerAddr, sectorExpiry, currEpoch)
+	return w, vw, err
+}
+
+func (s *state{{.v}}) NextID() (abi.DealID, error) {
+	return s.State.NextID, nil
+}
+
+type balanceTable{{.v}} struct {
+	*adt{{.v}}.BalanceTable
+}
+
+func (bt *balanceTable{{.v}}) ForEach(cb func(address.Address, abi.TokenAmount) error) error {
+	asMap := (*adt{{.v}}.Map)(bt.BalanceTable)
+	var ta abi.TokenAmount
+	return asMap.ForEach(&ta, func(key string) error {
+		a, err := address.NewFromBytes([]byte(key))
+		if err != nil {
+			return err
+		}
+		return cb(a, ta)
+	})
+}
+
+type dealStates{{.v}} struct {
+	adt.Array
+}
+
+func (s *dealStates{{.v}}) Get(dealID abi.DealID) (*DealState, bool, error) {
+	var deal{{.v}} market{{.v}}.DealState
+	found, err := s.Array.Get(uint64(dealID), &deal{{.v}})
+	if err != nil {
+		return nil, false, err
+	}
+	if !found {
+		return nil, false, nil
+	}
+	deal := fromV{{.v}}DealState(deal{{.v}})
+	return &deal, true, nil
+}
+
+func (s *dealStates{{.v}}) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
+	var ds{{.v}} market{{.v}}.DealState
+	return s.Array.ForEach(&ds{{.v}}, func(idx int64) error {
+		return cb(abi.DealID(idx), fromV{{.v}}DealState(ds{{.v}}))
+	})
+}
+
+func (s *dealStates{{.v}}) decode(val *cbg.Deferred) (*DealState, error) {
+	var ds{{.v}} market{{.v}}.DealState
+	if err := ds{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return nil, err
+	}
+	ds := fromV{{.v}}DealState(ds{{.v}})
+	return &ds, nil
+}
+
+func (s *dealStates{{.v}}) array() adt.Array {
+	return s.Array
+}
+
+func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
+    ret := DealState{
+        SectorStartEpoch: v{{.v}}.SectorStartEpoch,
+        LastUpdatedEpoch: v{{.v}}.LastUpdatedEpoch,
+        SlashEpoch: v{{.v}}.SlashEpoch,
+        VerifiedClaim: 0,
+    }
+    {{if (ge .v 9)}}
+        ret.VerifiedClaim = verifregtypes.AllocationId(v{{.v}}.VerifiedClaim)
+    {{end}}
+
+    return ret
+}
+
+type dealProposals{{.v}} struct {
+	adt.Array
+}
+
+func (s *dealProposals{{.v}}) Get(dealID abi.DealID) (*DealProposal, bool, error) {
+	var proposal{{.v}} market{{.v}}.DealProposal
+	found, err := s.Array.Get(uint64(dealID), &proposal{{.v}})
+	if err != nil {
+		return nil, false, err
+	}
+	if !found {
+		return nil, false, nil
+	}
+
+    proposal, err := fromV{{.v}}DealProposal(proposal{{.v}})
+    if err != nil {
+        return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+    }
+
+    return &proposal, true, nil
+}
+
+func (s *dealProposals{{.v}}) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
+	var dp{{.v}} market{{.v}}.DealProposal
+	return s.Array.ForEach(&dp{{.v}}, func(idx int64) error {
+        dp, err := fromV{{.v}}DealProposal(dp{{.v}})
+        if err != nil {
+            return xerrors.Errorf("decoding proposal: %w", err)
+        }
+
+        return cb(abi.DealID(idx), dp)
+	})
+}
+
+func (s *dealProposals{{.v}}) decode(val *cbg.Deferred) (*DealProposal, error) {
+	var dp{{.v}} market{{.v}}.DealProposal
+	if err := dp{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return nil, err
+	}
+
+    dp, err := fromV{{.v}}DealProposal(dp{{.v}})
+    if err != nil {
+        return nil, err
+    }
+
+    return &dp, nil
+}
+
+func (s *dealProposals{{.v}}) array() adt.Array {
+	return s.Array
+}
+
+func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, error) {
+    {{if (le .v 7)}}
+        label, err := labelFromGoString(v{{.v}}.Label)
+    {{else}}
+        label, err := fromV{{.v}}Label(v{{.v}}.Label)
+    {{end}}
+    if err != nil {
+        return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+    }
+
+    return DealProposal{
+        PieceCID: v{{.v}}.PieceCID,
+        PieceSize: v{{.v}}.PieceSize,
+        VerifiedDeal: v{{.v}}.VerifiedDeal,
+        Client: v{{.v}}.Client,
+        Provider: v{{.v}}.Provider,
+
+        Label: label,
+
+        StartEpoch: v{{.v}}.StartEpoch,
+        EndEpoch: v{{.v}}.EndEpoch,
+        StoragePricePerEpoch: v{{.v}}.StoragePricePerEpoch,
+
+        ProviderCollateral: v{{.v}}.ProviderCollateral,
+        ClientCollateral: v{{.v}}.ClientCollateral,
+    }, nil
+}
+
+{{if (ge .v 8)}}
+    func fromV{{.v}}Label(v{{.v}} market{{.v}}.DealLabel) (DealLabel, error) {
+        if v{{.v}}.IsString() {
+            str, err := v{{.v}}.ToString()
+            if err != nil {
+                return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert string label to string: %w", err)
+            }
+            return markettypes.NewLabelFromString(str)
+        }
+
+        bs, err := v{{.v}}.ToBytes()
+        if err != nil {
+            return markettypes.EmptyDealLabel, xerrors.Errorf("failed to convert bytes label to bytes: %w", err)
+        }
+        return markettypes.NewLabelFromBytes(bs)
+    }
+{{end}}
+
+
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+var _ PublishStorageDealsReturn = (*publishStorageDealsReturn{{.v}})(nil)
+
+func decodePublishStorageDealsReturn{{.v}}(b []byte) (PublishStorageDealsReturn, error) {
+	var retval market{{.v}}.PublishStorageDealsReturn
+	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+	}
+
+	return &publishStorageDealsReturn{{.v}}{retval}, nil
+}
+
+type publishStorageDealsReturn{{.v}} struct {
+	market{{.v}}.PublishStorageDealsReturn
+}
+
+func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, int, error) {
+	{{if (ge .v 6)}}
+	set, err := r.ValidDeals.IsSet(index)
+	if err != nil || !set {
+		return false, -1, err
+	}
+	maskBf, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{rlepluslazy.Run{Val: true, Len: index}}})
+	if err != nil {
+		return false, -1, err
+	}
+	before, err := bitfield.IntersectBitField(maskBf, r.ValidDeals)
+	if err != nil {
+		return false, -1, err
+	}
+	outIdx, err := before.Count()
+	if err != nil {
+		return false, -1, err
+	}
+	return set, int(outIdx), nil
+	{{else}}
+	    // PublishStorageDeals only succeeded if all deals were valid in this version of actors
+	    return true, int(index), nil
+	{{end}}
+}
+
+func (r *publishStorageDealsReturn{{.v}}) DealIDs() ([]abi.DealID, error) {
+    return r.IDs, nil
+}
+
+func (s *state{{.v}}) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
+{{if (le .v 8)}}
+    	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
+{{else}}
+	allocations, err := adt{{.v}}.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
+    if err != nil {
+        return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+    }
+
+	var allocationId cbg.CborInt
+	found, err := allocations.Get(abi.UIntKey(uint64(dealId)), &allocationId)
+	if err != nil {
+		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
+	}
+	if !found {
+		return verifregtypes.NoAllocationID, nil
+	}
+
+	return verifregtypes.AllocationId(allocationId), nil
+{{end}}
+}
+
+
+func (s *state{{.v}}) ActorKey() string {
+    return manifest.MarketKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}

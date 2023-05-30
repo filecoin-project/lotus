@@ -1,0 +1,128 @@
+package paych
+
+import (
+    {{if (ge .v 8)}}
+  	"golang.org/x/xerrors"
+    {{end}}
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+    {{if (le .v 7)}}
+	    builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+	    init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
+	    paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
+    {{else}}
+    	actorstypes "github.com/filecoin-project/go-state-types/actors"
+        builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+        paych{{.v}} "github.com/filecoin-project/go-state-types/builtin/v{{.v}}/paych"
+        init{{.v}} "github.com/filecoin-project/go-state-types/builtin/v{{.v}}/init"
+    {{end}}
+
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/types"
+)
+
+type message{{.v}} struct{ from address.Address }
+
+func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
+    {{if (le .v 7)}}
+    actorCodeID := builtin{{.v}}.PaymentChannelActorCodeID
+    {{else}}
+    actorCodeID, ok := actors.GetActorCodeID(actorstypes.Version{{.v}}, "paymentchannel")
+    if !ok {
+      return nil, xerrors.Errorf("error getting actor paymentchannel code id for actor version %d", {{.v}})
+    }
+    {{end}}
+
+	params, aerr := actors.SerializeParams(&paych{{.v}}.ConstructorParams{From: m.from, To: to})
+	if aerr != nil {
+		return nil, aerr
+	}
+	enc, aerr := actors.SerializeParams(&init{{.v}}.ExecParams{
+		CodeCID:           actorCodeID,
+		ConstructorParams: params,
+	})
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	return &types.Message{
+		To:     init_.Address,
+		From:   m.from,
+		Value:  initialAmount,
+		Method: builtin{{.v}}.MethodsInit.Exec,
+		Params: enc,
+	}, nil
+}
+
+func (m message{{.v}}) Update(paych address.Address, sv *paychtypes.SignedVoucher, secret []byte) (*types.Message, error) {
+	params, aerr := actors.SerializeParams(&paych{{.v}}.UpdateChannelStateParams{
+	{{if (le .v 6)}}
+	    Sv:     toV0SignedVoucher(*sv),
+	{{else if (le .v 8)}}
+		Sv:     *sv,
+    {{else}}
+        Sv:     toV{{.v}}SignedVoucher(*sv),
+	{{end}}
+		Secret: secret,
+	})
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	return &types.Message{
+		To:     paych,
+		From:   m.from,
+		Value:  abi.NewTokenAmount(0),
+		Method: builtin{{.v}}.MethodsPaych.UpdateChannelState,
+		Params: params,
+	}, nil
+}
+
+{{if (ge .v 9)}}
+    func toV{{.v}}SignedVoucher(sv paychtypes.SignedVoucher) paych{{.v}}.SignedVoucher {
+    	merges := make([]paych{{.v}}.Merge, len(sv.Merges))
+        for i := range sv.Merges {
+            merges[i] = paych{{.v}}.Merge{
+                Lane:  sv.Merges[i].Lane,
+                Nonce: sv.Merges[i].Nonce,
+            }
+        }
+
+        return paych{{.v}}.SignedVoucher{
+            ChannelAddr:     sv.ChannelAddr,
+            TimeLockMin:     sv.TimeLockMin,
+            TimeLockMax:     sv.TimeLockMax,
+            SecretHash:      sv.SecretHash,
+            Extra:           (*paych{{.v}}.ModVerifyParams)(sv.Extra),
+            Lane:            sv.Lane,
+            Nonce:           sv.Nonce,
+            Amount:          sv.Amount,
+            MinSettleHeight: sv.MinSettleHeight,
+            Merges:          merges,
+            Signature:       sv.Signature,
+        }
+    }
+{{end}}
+
+func (m message{{.v}}) Settle(paych address.Address) (*types.Message, error) {
+	return &types.Message{
+		To:     paych,
+		From:   m.from,
+		Value:  abi.NewTokenAmount(0),
+		Method: builtin{{.v}}.MethodsPaych.Settle,
+	}, nil
+}
+
+func (m message{{.v}}) Collect(paych address.Address) (*types.Message, error) {
+	return &types.Message{
+		To:     paych,
+		From:   m.from,
+		Value:  abi.NewTokenAmount(0),
+		Method: builtin{{.v}}.MethodsPaych.Collect,
+	}, nil
+}

@@ -1,3 +1,4 @@
+// stm: #unit
 package vm
 
 import (
@@ -8,7 +9,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
@@ -22,6 +23,7 @@ func (*NotAVeryGoodMarshaler) MarshalCBOR(writer io.Writer) error {
 var _ cbg.CBORMarshaler = &NotAVeryGoodMarshaler{}
 
 func TestRuntimePutErrors(t *testing.T) {
+	//stm: @CHAIN_VM_STORE_PUT_002
 	defer func() {
 		err := recover()
 		if err == nil {
@@ -42,6 +44,26 @@ func TestRuntimePutErrors(t *testing.T) {
 		cst: cbor.NewCborStore(nil),
 	}
 
-	rt.Put(&NotAVeryGoodMarshaler{})
+	rt.StorePut(&NotAVeryGoodMarshaler{})
 	t.Error("expected panic")
+}
+
+func BenchmarkRuntime_CreateRuntimeChargeGas_TracingDisabled(b *testing.B) {
+	var (
+		cst = cbor.NewCborStore(nil)
+		gch = newGasCharge("foo", 1000, 1000)
+	)
+
+	b.ResetTimer()
+
+	EnableDetailedTracing = false
+	noop := func() bool { return EnableDetailedTracing }
+	for n := 0; n < b.N; n++ {
+		// flip the value and access it to make sure
+		// the compiler doesn't optimize away
+		EnableDetailedTracing = true
+		_ = noop()
+		EnableDetailedTracing = false
+		_ = (&Runtime{cst: cst}).chargeGasInternal(gch, 0)
+	}
 }

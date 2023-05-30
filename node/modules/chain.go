@@ -1,42 +1,52 @@
 package modules
 
 import (
-	"bytes"
 	"context"
+	"time"
 
-	"github.com/ipfs/go-bitswap"
-	"github.com/ipfs/go-bitswap/network"
+	"github.com/ipfs/boxo/bitswap"
+	"github.com/ipfs/boxo/bitswap/network"
 	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipld/go-car"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/routing"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/routing"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/exchange"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
-	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainExchange {
+// ChainBitswap uses a blockstore that bypasses all caches.
+func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt routing.Routing, bs dtypes.ExposedBlockstore) dtypes.ChainBitswap {
 	// prefix protocol for chain bitswap
 	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
 	bitswapNetwork := network.NewFromIpfsHost(host, rt, network.Prefix("/chain"))
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
-	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, bs, bitswapOptions...)
+
+	// Write all incoming bitswap blocks into a temporary blockstore for two
+	// block times. If they validate, they'll be persisted later.
+	cache := blockstore.NewTimedCacheBlockstore(2 * time.Duration(build.BlockDelaySecs) * time.Second)
+	lc.Append(fx.Hook{OnStop: cache.Stop, OnStart: cache.Start})
+
+	bitswapBs := blockstore.NewTieredBstore(bs, cache)
+
+	// Use just exch.Close(), closing the context is not needed
+	exch := bitswap.New(mctx, bitswapNetwork, bitswapBs, bitswapOptions...)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			return exch.Close()
@@ -46,9 +56,12 @@ func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt 
 	return exch
 }
 
-func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS, nn dtypes.NetworkName) (*messagepool.MessagePool, error) {
-	mpp := messagepool.NewProvider(sm, ps)
-	mp, err := messagepool.New(mpp, ds, nn)
+func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dtypes.ChainBlockService {
+	return blockservice.New(bs, rem)
+}
+
+func MessagePool(lc fx.Lifecycle, mctx helpers.MetricsCtx, us stmgr.UpgradeSchedule, mpp messagepool.Provider, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal, protector dtypes.GCReferenceProtector) (*messagepool.MessagePool, error) {
+	mp, err := messagepool.New(helpers.LifecycleCtx(mctx, lc), mpp, ds, us, nn, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
 	}
@@ -57,100 +70,94 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 			return mp.Close()
 		},
 	})
+	protector.AddProtector(mp.ForEachPendingMessage)
 	return mp, nil
 }
 
-func ChainBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.ChainBlockstore, error) {
-	blocks, err := r.Datastore("/blocks")
-	if err != nil {
-		return nil, err
-	}
+func ChainStore(lc fx.Lifecycle,
+	mctx helpers.MetricsCtx,
+	cbs dtypes.ChainBlockstore,
+	sbs dtypes.StateBlockstore,
+	ds dtypes.MetadataDS,
+	basebs dtypes.BaseBlockstore,
+	weight store.WeightFunc,
+	us stmgr.UpgradeSchedule,
+	j journal.Journal) *store.ChainStore {
 
-	bs := blockstore.NewBlockstore(blocks)
-	cbs, err := blockstore.CachedBlockstore(helpers.LifecycleCtx(mctx, lc), bs, blockstore.DefaultCacheOpts())
-	if err != nil {
-		return nil, err
-	}
+	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
 
-	return blockstore.NewIdStore(cbs), nil
-}
-
-func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtypes.ChainGCBlockstore {
-	return blockstore.NewGCBlockstore(bs, gcl)
-}
-
-func ChainBlockservice(bs dtypes.ChainBlockstore, rem dtypes.ChainExchange) dtypes.ChainBlockService {
-	return blockservice.New(bs, rem)
-}
-
-func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls runtime.Syscalls) *store.ChainStore {
-	chain := store.NewChainStore(bs, ds, syscalls)
-
-	if err := chain.Load(); err != nil {
+	if err := chain.Load(helpers.LifecycleCtx(mctx, lc)); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
 	}
+
+	var startHook func(context.Context) error
+	if ss, ok := basebs.(*splitstore.SplitStore); ok {
+		startHook = func(_ context.Context) error {
+			err := ss.Start(chain, us)
+			if err != nil {
+				err = xerrors.Errorf("error starting splitstore: %w", err)
+			}
+			return err
+		}
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: startHook,
+		OnStop: func(_ context.Context) error {
+			return chain.Close()
+		},
+	})
 
 	return chain
 }
 
-func ErrorGenesis() Genesis {
-	return func() (header *types.BlockHeader, e error) {
-		return nil, xerrors.New("No genesis block provided, provide the file with 'lotus daemon --genesis=[genesis file]'")
-	}
-}
-
-func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
-	return func(bs dtypes.ChainBlockstore) Genesis {
-		return func() (header *types.BlockHeader, e error) {
-			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
-			if err != nil {
-				return nil, xerrors.Errorf("loading genesis car file failed: %w", err)
-			}
-			if len(c.Roots) != 1 {
-				return nil, xerrors.New("expected genesis file to have one root")
-			}
-			root, err := bs.Get(c.Roots[0])
-			if err != nil {
-				return nil, err
-			}
-
-			h, err := types.DecodeBlock(root.RawData())
-			if err != nil {
-				return nil, xerrors.Errorf("decoding block failed: %w", err)
-			}
-			return h, nil
-		}
-	}
-}
-
-func DoSetGenesis(_ dtypes.AfterGenesisSet) {}
-
-func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
-	_, err := cs.GetGenesis()
-	if err == nil {
-		return dtypes.AfterGenesisSet{}, nil // already set, noop
-	}
-	if err != datastore.ErrNotFound {
-		return dtypes.AfterGenesisSet{}, xerrors.Errorf("getting genesis block failed: %w", err)
+func NetworkName(mctx helpers.MetricsCtx,
+	lc fx.Lifecycle,
+	cs *store.ChainStore,
+	tsexec stmgr.Executor,
+	syscalls vm.SyscallBuilder,
+	us stmgr.UpgradeSchedule,
+	_ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+	if !build.Devnet {
+		return "testnetnet", nil
 	}
 
-	genesis, err := g()
-	if err != nil {
-		return dtypes.AfterGenesisSet{}, xerrors.Errorf("genesis func failed: %w", err)
-	}
-
-	return dtypes.AfterGenesisSet{}, cs.SetGenesis(genesis)
-}
-
-func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	netName, err := stmgr.GetNetworkName(ctx, stmgr.NewStateManager(cs), cs.GetHeaviestTipSet().ParentState())
+	sm, err := stmgr.NewStateManager(cs, tsexec, syscalls, us, nil, nil, index.DummyMsgIndex)
+	if err != nil {
+		return "", err
+	}
+
+	netName, err := stmgr.GetNetworkName(ctx, sm, cs.GetHeaviestTipSet().ParentState())
 	return netName, err
 }
 
-func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSync, h host.Host, beacon beacon.RandomBeacon, verifier ffiwrapper.Verifier) (*chain.Syncer, error) {
-	syncer, err := chain.NewSyncer(sm, bsync, h.ConnManager(), h.ID(), beacon, verifier)
+type SyncerParams struct {
+	fx.In
+
+	Lifecycle    fx.Lifecycle
+	MetadataDS   dtypes.MetadataDS
+	StateManager *stmgr.StateManager
+	ChainXchg    exchange.Client
+	SyncMgrCtor  chain.SyncManagerCtor
+	Host         host.Host
+	Beacon       beacon.Schedule
+	Gent         chain.Genesis
+	Consensus    consensus.Consensus
+}
+
+func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
+	var (
+		lc     = params.Lifecycle
+		ds     = params.MetadataDS
+		sm     = params.StateManager
+		ex     = params.ChainXchg
+		smCtor = params.SyncMgrCtor
+		h      = params.Host
+		b      = params.Beacon
+	)
+	syncer, err := chain.NewSyncer(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, params.Gent, params.Consensus)
 	if err != nil {
 		return nil, err
 	}
@@ -166,4 +173,16 @@ func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSy
 		},
 	})
 	return syncer, nil
+}
+
+func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
+	return slashfilter.New(ds)
+}
+
+func UpgradeSchedule() stmgr.UpgradeSchedule {
+	return filcns.DefaultUpgradeSchedule()
+}
+
+func EnableStoringEvents(cs *store.ChainStore) {
+	cs.StoreEvents(true)
 }

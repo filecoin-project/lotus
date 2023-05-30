@@ -9,10 +9,12 @@ api_repo="repos/$org/$repo"
 
 exclusions=(
 	'master'
+	'main'
+	'releases'
 )
 
 gh_api_next() {
-	links=$(grep '^Link:' | sed -e 's/Link: //' -e 's/, /\n/g')
+	links=$(grep '^link:' | sed -e 's/link: //' -e 's/, /\n/g')
 	echo "$links" | grep '; rel="next"' >/dev/null || return
 	link=$(echo "$links" | grep '; rel="next"' | sed -e 's/^<//' -e 's/>.*//')
 
@@ -43,7 +45,7 @@ active_branches() {
 
 git remote add archived "git@github.com:$arch_repo.git" || true
 
-branches_to_move="$(cat <(active_branches) <(pr_branches) <((IFS=$'\n'; echo "${exclusions[*]}")) | sort -u | comm - <(origin_refs | sort) -13)"
+branches_to_move="$(cat <(active_branches) <(pr_branches) <((IFS=$'\n'; echo "${exclusions[*]}")) | sort -u | comm - <(origin_refs | sort) -13 | grep -v -e '^release/' -e '^ntwk-')"
 
 echo "================"
 printf "%s\n" "$branches_to_move"

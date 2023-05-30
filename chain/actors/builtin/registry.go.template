@@ -1,0 +1,219 @@
+package builtin
+
+import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
+		"reflect"
+	"runtime"
+	"strings"
+
+	"github.com/filecoin-project/go-state-types/builtin"
+	{{range .versions}}
+        {{if (ge . 8)}}
+            account{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/account"
+            cron{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/cron"
+            _init{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/init"
+            multisig{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/multisig"
+            miner{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/miner"
+            market{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/market"
+            reward{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/reward"
+            paych{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/paych"
+            power{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/power"
+            system{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/system"
+            verifreg{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/verifreg"
+        {{end}}
+        {{if (ge . 9)}}
+            datacap{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/datacap"
+        {{end}}
+        {{if (ge . 10)}}
+            evm{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/evm"
+            eam{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/eam"
+            placeholder{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/placeholder"
+            ethaccount{{.}} "github.com/filecoin-project/go-state-types/builtin/v{{.}}/ethaccount"
+        {{end}}
+    {{end}}
+	"github.com/filecoin-project/go-state-types/cbor"
+	rtt "github.com/filecoin-project/go-state-types/rt"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/manifest"
+)
+
+type RegistryEntry struct {
+	state   cbor.Er
+	code    cid.Cid
+	methods map[abi.MethodNum]builtin.MethodMeta
+}
+
+func (r RegistryEntry) State() cbor.Er {
+	return r.state
+}
+
+func (r RegistryEntry) Exports() map[abi.MethodNum]builtin.MethodMeta {
+	return r.methods
+}
+
+func (r RegistryEntry) Code() cid.Cid {
+	return r.code
+}
+
+func MakeRegistryLegacy(actors []rtt.VMActor) []RegistryEntry {
+	registry := make([]RegistryEntry, 0)
+
+    for _, actor := range actors {
+        methodMap := make(map[abi.MethodNum]builtin.MethodMeta)
+        for methodNum, method := range actor.Exports() {
+			if method != nil {
+				methodMap[abi.MethodNum(methodNum)] = makeMethodMeta(method)
+			}
+	    }
+        registry = append(registry, RegistryEntry{
+            code:    actor.Code(),
+            methods: methodMap,
+            state:   actor.State(),
+        })
+    }
+
+	return registry
+}
+
+func makeMethodMeta(method interface{}) builtin.MethodMeta {
+	ev := reflect.ValueOf(method)
+	// Extract the method names using reflection. These
+	// method names always match the field names in the
+	// `builtin.Method*` structs (tested in the specs-actors
+	// tests).
+	fnName := runtime.FuncForPC(ev.Pointer()).Name()
+	fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
+	return builtin.MethodMeta{
+		Name:   fnName,
+		Method: method,
+	}
+}
+
+func MakeRegistry(av actorstypes.Version) []RegistryEntry {
+	if av < actorstypes.Version8 {
+		panic("expected version v8 and up only, use specs-actors for v0-7")
+	}
+	registry := make([]RegistryEntry, 0)
+
+	codeIDs, err := actors.GetActorCodeIDs(av)
+	if err != nil {
+		panic(err)
+	}
+
+    switch av {
+        {{range .versions}}
+            {{if (ge . 8)}}
+                case actorstypes.Version{{.}}:
+                    for key, codeID := range codeIDs {
+                        switch key {
+                        case manifest.AccountKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: account{{.}}.Methods,
+                                state:   new(account{{.}}.State),
+                            })
+                        case manifest.CronKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: cron{{.}}.Methods,
+                                state:   new(cron{{.}}.State),
+                            })
+                        case manifest.InitKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: _init{{.}}.Methods,
+                                state:   new(_init{{.}}.State),
+                            })
+                        case manifest.MarketKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: market{{.}}.Methods,
+                                state:   new(market{{.}}.State),
+                            })
+                        case manifest.MinerKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: miner{{.}}.Methods,
+                                state:   new(miner{{.}}.State),
+                            })
+                        case manifest.MultisigKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: multisig{{.}}.Methods,
+                                state:   new(multisig{{.}}.State),
+                            })
+                        case manifest.PaychKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: paych{{.}}.Methods,
+                                state:   new(paych{{.}}.State),
+                            })
+                        case manifest.PowerKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: power{{.}}.Methods,
+                                state:   new(power{{.}}.State),
+                            })
+                        case manifest.RewardKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: reward{{.}}.Methods,
+                                state:   new(reward{{.}}.State),
+                            })
+                        case manifest.SystemKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: system{{.}}.Methods,
+                                state:   new(system{{.}}.State),
+                            })
+                        case manifest.VerifregKey:
+                            registry = append(registry, RegistryEntry{
+                                code: codeID,
+                                methods: verifreg{{.}}.Methods,
+                                state:   new(verifreg{{.}}.State),
+                            })
+                        {{if (ge . 9)}}case manifest.DatacapKey:
+                            registry = append(registry, RegistryEntry{
+                                code:    codeID,
+                                methods: datacap{{.}}.Methods,
+                                state:   new(datacap{{.}}.State),
+                            }){{end}}
+                        {{if (ge . 10)}}
+                            case manifest.EvmKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: evm{{.}}.Methods,
+                                    state:   new(evm{{.}}.State),
+                                })
+                            case manifest.EamKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: eam{{.}}.Methods,
+                                    state:   nil,
+                                })
+                            case manifest.PlaceholderKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: placeholder{{.}}.Methods,
+                                    state:   nil,
+                                })
+                            case manifest.EthAccountKey:
+                                registry = append(registry, RegistryEntry{
+                                    code:    codeID,
+                                    methods: ethaccount{{.}}.Methods,
+                                    state:   nil,
+                                })
+                        {{end}}
+                        }
+                    }
+            {{end}}
+        {{end}}
+
+        default:
+            panic("expected version v8 and up only, use specs-actors for v0-7")
+	}
+
+	return registry
+}

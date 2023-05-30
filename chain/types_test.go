@@ -1,26 +1,32 @@
+// stm: #unit
 package chain
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func TestSignedMessageJsonRoundtrip(t *testing.T) {
+	//stm: @TYPES_MESSAGE_JSON_EQUAL_CALL_002
 	to, _ := address.NewIDAddress(5234623)
 	from, _ := address.NewIDAddress(603911192)
 	smsg := &types.SignedMessage{
 		Message: types.Message{
-			To:       to,
-			From:     from,
-			Params:   []byte("some bytes, idk"),
-			Method:   1235126,
-			Value:    types.NewInt(123123),
-			GasPrice: types.NewInt(1234),
-			GasLimit: 9992969384,
-			Nonce:    123123,
+			To:         to,
+			From:       from,
+			Params:     []byte("some bytes, idk"),
+			Method:     1235126,
+			Value:      types.NewInt(123123),
+			GasFeeCap:  types.NewInt(1234),
+			GasPremium: types.NewInt(132414234),
+			GasLimit:   100_000_000,
+			Nonce:      123123,
 		},
 	}
 
@@ -33,4 +39,42 @@ func TestSignedMessageJsonRoundtrip(t *testing.T) {
 	if err := json.Unmarshal(out, &osmsg); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestAddressType(t *testing.T) {
+	//stm: @CHAIN_TYPES_ADDRESS_PREFIX_001
+	build.SetAddressNetwork(address.Testnet)
+	addr, err := makeRandomAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(addr[0]) != address.TestnetPrefix {
+		t.Fatalf("address should start with %s", address.TestnetPrefix)
+	}
+
+	build.SetAddressNetwork(address.Mainnet)
+	addr, err = makeRandomAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(addr[0]) != address.MainnetPrefix {
+		t.Fatalf("address should start with %s", address.MainnetPrefix)
+	}
+}
+
+func makeRandomAddress() (string, error) {
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	addr, err := address.NewActorAddress(bytes)
+	if err != nil {
+		return "", err
+	}
+
+	return addr.String(), nil
 }

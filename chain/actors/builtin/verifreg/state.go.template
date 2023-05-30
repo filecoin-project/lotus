@@ -1,0 +1,209 @@
+package verifreg
+
+import (
+    "fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"golang.org/x/xerrors"
+
+{{if (le .v 7)}}
+    {{if (ge .v 3)}}
+        builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+    {{end}}
+    verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
+	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	verifreg{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}verifreg"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+{{end}}
+{{if (ge .v 9)}}
+	"github.com/filecoin-project/go-state-types/big"
+{{if (gt .v 9)}}
+    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+{{end}}
+{{else}}
+    verifreg9 "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+{{end}}
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store, rootKeyAddress address.Address) (State, error) {
+	out := state{{.v}}{store: store}
+	{{if (le .v 2)}}
+		em, err := adt{{.v}}.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *verifreg{{.v}}.ConstructState(em, rootKeyAddress)
+	{{else}}
+		s, err := verifreg{{.v}}.ConstructState(store, rootKeyAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *s
+	{{end}}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	verifreg{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) RootKey() (address.Address, error) {
+	return s.State.RootKey, nil
+}
+
+func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+{{if (le .v 8)}}
+	return getDataCap(s.store, actors.Version{{.v}}, s.verifiedClients, addr)
+{{else}}
+    return false, big.Zero(), xerrors.Errorf("unsupported in actors v{{.v}}")
+{{end}}
+}
+
+func (s *state{{.v}}) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+	return getDataCap(s.store, actors.Version{{.v}}, s.verifiers, addr)
+}
+
+func (s *state{{.v}}) RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error) {
+	return getRemoveDataCapProposalID(s.store, actors.Version{{.v}}, s.removeDataCapProposalIDs, verifier, client)
+}
+
+func (s *state{{.v}}) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+	return forEachCap(s.store, actors.Version{{.v}}, s.verifiers, cb)
+}
+
+func (s *state{{.v}}) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+{{if (le .v 8)}}
+	return forEachCap(s.store, actors.Version{{.v}}, s.verifiedClients, cb)
+{{else}}
+    return xerrors.Errorf("unsupported in actors v{{.v}}")
+{{end}}
+}
+
+func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
+{{if (le .v 8)}}
+	return adt{{.v}}.AsMap(s.store, s.VerifiedClients{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+{{else}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{end}}
+}
+
+func (s *state{{.v}}) verifiers() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.Verifiers{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+}
+
+func (s *state{{.v}}) removeDataCapProposalIDs() (adt.Map, error) {
+    {{if le .v 6}}return nil, nil
+    {{else}}return adt{{.v}}.AsMap(s.store, s.RemoveDataCapProposalIDs, builtin{{.v}}.DefaultHamtBitwidth){{end}}
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state{{.v}}) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
+{{if (le .v 8)}}
+    return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg{{.v}}.AllocationId(allocationId))
+	return (*Allocation)(alloc), ok, err{{end}}
+}
+
+func (s *state{{.v}}) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	v{{.v}}Map, err := s.LoadAllocationsToMap(s.store, clientIdAddr)
+
+	retMap := make(map[AllocationId]Allocation, len(v{{.v}}Map))
+	for k, v := range v{{.v}}Map {
+		retMap[AllocationId(k)] = Allocation(v)
+	}
+
+	return retMap, err
+{{end}}
+}
+
+func (s *state{{.v}}) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
+{{if (le .v 8)}}
+    return nil, false, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg{{.v}}.ClaimId(claimId))
+	return (*Claim)(claim), ok, err
+{{end}}
+}
+
+func (s *state{{.v}}) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	v{{.v}}Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[ClaimId]Claim, len(v{{.v}}Map))
+	for k, v := range v{{.v}}Map {
+		retMap[ClaimId(k)] = Claim(v)
+	}
+
+	return retMap, err
+
+{{end}}
+}
+
+func (s *state{{.v}}) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
+{{if (le .v 8)}}
+    return nil, xerrors.Errorf("unsupported in actors v{{.v}}")
+{{else}}
+	v{{.v}}Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
+
+	retMap := make(map[abi.SectorNumber][]ClaimId)
+	for k, v := range v{{.v}}Map {
+		claims, ok := retMap[v.Sector]
+		if !ok {
+			retMap[v.Sector] = []ClaimId{ClaimId(k)}
+		} else {
+			retMap[v.Sector] = append(claims, ClaimId(k))
+		}
+	}
+
+	return retMap, err
+
+{{end}}
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return manifest.VerifregKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}

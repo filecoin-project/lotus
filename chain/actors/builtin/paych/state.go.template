@@ -1,0 +1,140 @@
+package paych
+
+import (
+    "fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+{{if (le .v 7)}}
+	paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
+	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	paych{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}paych"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+{{end}}
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = paych{{.v}}.State{}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	paych{{.v}}.State
+	store adt.Store
+	lsAmt *adt{{.v}}.Array
+}
+
+// Channel owner, who has funded the actor
+func (s *state{{.v}}) From() (address.Address, error) {
+	return s.State.From, nil
+}
+
+// Recipient of payouts from channel
+func (s *state{{.v}}) To() (address.Address, error) {
+	return s.State.To, nil
+}
+
+// Height at which the channel can be `Collected`
+func (s *state{{.v}}) SettlingAt() (abi.ChainEpoch, error) {
+	return s.State.SettlingAt, nil
+}
+
+// Amount successfully redeemed through the payment channel, paid out on `Collect()`
+func (s *state{{.v}}) ToSend() (abi.TokenAmount, error) {
+	return s.State.ToSend, nil
+}
+
+func (s *state{{.v}}) getOrLoadLsAmt() (*adt{{.v}}.Array, error) {
+	if s.lsAmt != nil {
+		return s.lsAmt, nil
+	}
+
+	// Get the lane state from the chain
+	lsamt, err := adt{{.v}}.AsArray(s.store, s.State.LaneStates{{if (ge .v 3)}}, paych{{.v}}.LaneStatesAmtBitwidth{{end}})
+	if err != nil {
+		return nil, err
+	}
+
+	s.lsAmt = lsamt
+	return lsamt, nil
+}
+
+// Get total number of lanes
+func (s *state{{.v}}) LaneCount() (uint64, error) {
+	lsamt, err := s.getOrLoadLsAmt()
+	if err != nil {
+		return 0, err
+	}
+	return lsamt.Length(), nil
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+// Iterate lane states
+func (s *state{{.v}}) ForEachLaneState(cb func(idx uint64, dl LaneState) error) error {
+	// Get the lane state from the chain
+	lsamt, err := s.getOrLoadLsAmt()
+	if err != nil {
+		return err
+	}
+
+	// Note: we use a map instead of an array to store laneStates because the
+	// client sets the lane ID (the index) and potentially they could use a
+	// very large index.
+	var ls paych{{.v}}.LaneState
+	return lsamt.ForEach(&ls, func(i int64) error {
+		return cb(uint64(i), &laneState{{.v}}{ls})
+	})
+}
+
+type laneState{{.v}} struct {
+	paych{{.v}}.LaneState
+}
+
+func (ls *laneState{{.v}}) Redeemed() (big.Int, error) {
+	return ls.LaneState.Redeemed, nil
+}
+
+func (ls *laneState{{.v}}) Nonce() (uint64, error) {
+	return ls.LaneState.Nonce, nil
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return manifest.PaychKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}

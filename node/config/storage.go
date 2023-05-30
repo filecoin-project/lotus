@@ -2,15 +2,15 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/filecoin-project/sector-storage/stores"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-func StorageFromFile(path string, def *stores.StorageConfig) (*stores.StorageConfig, error) {
+func StorageFromFile(path string, def *storiface.StorageConfig) (*storiface.StorageConfig, error) {
 	file, err := os.Open(path)
 	switch {
 	case os.IsNotExist(err):
@@ -26,8 +26,8 @@ func StorageFromFile(path string, def *stores.StorageConfig) (*stores.StorageCon
 	return StorageFromReader(file)
 }
 
-func StorageFromReader(reader io.Reader) (*stores.StorageConfig, error) {
-	var cfg stores.StorageConfig
+func StorageFromReader(reader io.Reader) (*storiface.StorageConfig, error) {
+	var cfg storiface.StorageConfig
 	err := json.NewDecoder(reader).Decode(&cfg)
 	if err != nil {
 		return nil, err
@@ -36,13 +36,13 @@ func StorageFromReader(reader io.Reader) (*stores.StorageConfig, error) {
 	return &cfg, nil
 }
 
-func WriteStorageFile(path string, config stores.StorageConfig) error {
+func WriteStorageFile(path string, config storiface.StorageConfig) error {
 	b, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return xerrors.Errorf("marshaling storage config: %w", err)
 	}
 
-	if err := ioutil.WriteFile(path, b, 0644); err != nil {
+	if err := os.WriteFile(path, b, 0644); err != nil {
 		return xerrors.Errorf("persisting storage config (%s): %w", path, err)
 	}
 

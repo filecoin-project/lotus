@@ -1,3 +1,0 @@
-comment: off
-ignore:
-  - "cbor_gen.go"

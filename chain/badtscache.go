@@ -1,17 +1,49 @@
 package chain
 
 import (
-	"github.com/filecoin-project/lotus/build"
-	lru "github.com/hashicorp/golang-lru"
+	"fmt"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type BadBlockCache struct {
-	badBlocks *lru.ARCCache
+	badBlocks *lru.ARCCache[cid.Cid, BadBlockReason]
+}
+
+type BadBlockReason struct {
+	Reason         string
+	TipSet         []cid.Cid
+	OriginalReason *BadBlockReason
+}
+
+func NewBadBlockReason(cid []cid.Cid, format string, i ...interface{}) BadBlockReason {
+	return BadBlockReason{
+		TipSet: cid,
+		Reason: fmt.Sprintf(format, i...),
+	}
+}
+
+func (bbr BadBlockReason) Linked(reason string, i ...interface{}) BadBlockReason {
+	or := &bbr
+	if bbr.OriginalReason != nil {
+		or = bbr.OriginalReason
+	}
+	return BadBlockReason{Reason: fmt.Sprintf(reason, i...), OriginalReason: or}
+}
+
+func (bbr BadBlockReason) String() string {
+	res := bbr.Reason
+	if bbr.OriginalReason != nil {
+		res += " caused by: " + fmt.Sprintf("%s %s", bbr.OriginalReason.TipSet, bbr.OriginalReason.String())
+	}
+	return res
 }
 
 func NewBadBlockCache() *BadBlockCache {
-	cache, err := lru.NewARC(build.BadBlockCacheSize)
+	cache, err := lru.NewARC[cid.Cid, BadBlockReason](build.BadBlockCacheSize)
 	if err != nil {
 		panic(err) // ok
 	}
@@ -21,15 +53,18 @@ func NewBadBlockCache() *BadBlockCache {
 	}
 }
 
-func (bts *BadBlockCache) Add(c cid.Cid, reason string) {
-	bts.badBlocks.Add(c, reason)
+func (bts *BadBlockCache) Add(c cid.Cid, bbr BadBlockReason) {
+	bts.badBlocks.Add(c, bbr)
 }
 
-func (bts *BadBlockCache) Has(c cid.Cid) (string, bool) {
-	rval, ok := bts.badBlocks.Get(c)
-	if !ok {
-		return "", false
-	}
+func (bts *BadBlockCache) Remove(c cid.Cid) {
+	bts.badBlocks.Remove(c)
+}
 
-	return rval.(string), true
+func (bts *BadBlockCache) Purge() {
+	bts.badBlocks.Purge()
+}
+
+func (bts *BadBlockCache) Has(c cid.Cid) (BadBlockReason, bool) {
+	return bts.badBlocks.Get(c)
 }

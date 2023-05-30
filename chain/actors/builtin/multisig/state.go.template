@@ -1,0 +1,154 @@
+package multisig
+
+import (
+    "fmt"
+	"bytes"
+	"encoding/binary"
+
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+{{if (le .v 7)}}
+    {{if (ge .v 3)}}
+        builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+    {{end}}
+        msig{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/multisig"
+        adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	msig{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}multisig"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+{{end}}
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = msig{{.v}}.State{}
+	out.State.Signers = signers
+	out.State.NumApprovalsThreshold = threshold
+	out.State.StartEpoch = startEpoch
+	out.State.UnlockDuration = unlockDuration
+	out.State.InitialBalance = initialBalance
+	{{if (le .v 2)}}
+		em, err := adt{{.v}}.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		out.State.PendingTxns = em
+	{{else}}
+		em, err := adt{{.v}}.StoreEmptyMap(store, builtin{{.v}}.DefaultHamtBitwidth)
+		if err != nil {
+			return nil, err
+		}
+
+		out.State.PendingTxns = em
+	{{end}}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	msig{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) LockedBalance(currEpoch abi.ChainEpoch) (abi.TokenAmount, error) {
+	return s.State.AmountLocked(currEpoch - s.State.StartEpoch), nil
+}
+
+func (s *state{{.v}}) StartEpoch() (abi.ChainEpoch, error) {
+	return s.State.StartEpoch, nil
+}
+
+func (s *state{{.v}}) UnlockDuration() (abi.ChainEpoch, error) {
+	return s.State.UnlockDuration, nil
+}
+
+func (s *state{{.v}}) InitialBalance() (abi.TokenAmount, error) {
+	return s.State.InitialBalance, nil
+}
+
+func (s *state{{.v}}) Threshold() (uint64, error) {
+	return s.State.NumApprovalsThreshold, nil
+}
+
+func (s *state{{.v}}) Signers() ([]address.Address, error) {
+	return s.State.Signers, nil
+}
+
+func (s *state{{.v}}) ForEachPendingTxn(cb func(id int64, txn Transaction) error) error {
+	arr, err := adt{{.v}}.AsMap(s.store, s.State.PendingTxns{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+	if err != nil {
+		return err
+	}
+	var out msig{{.v}}.Transaction
+	return arr.ForEach(&out, func(key string) error {
+		txid, n := binary.Varint([]byte(key))
+		if n <= 0 {
+			return xerrors.Errorf("invalid pending transaction key: %v", key)
+		}
+		return cb(txid, (Transaction)(out)) //nolint:unconvert
+	})
+}
+
+func (s *state{{.v}}) PendingTxnChanged(other State) (bool, error) {
+	other{{.v}}, ok := other.(*state{{.v}})
+	if !ok {
+		// treat an upgrade as a change, always
+		return true, nil
+	}
+	return !s.State.PendingTxns.Equals(other{{.v}}.PendingTxns), nil
+}
+
+func (s *state{{.v}}) transactions() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.PendingTxns{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+}
+
+func (s *state{{.v}}) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
+	var tx msig{{.v}}.Transaction
+	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
+		return Transaction{}, err
+	}
+	return Transaction(tx), nil
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return manifest.MultisigKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}

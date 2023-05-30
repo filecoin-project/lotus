@@ -5,8 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/lotus/chain/types"
-	"gopkg.in/urfave/cli.v2"
 )
 
 var bigIntParseCmd = &cli.Command{

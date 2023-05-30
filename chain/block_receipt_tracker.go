@@ -5,9 +5,11 @@ import (
 	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/libp2p/go-libp2p/core/peer"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/hashicorp/golang-lru"
-	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 type blockReceiptTracker struct {
@@ -15,7 +17,7 @@ type blockReceiptTracker struct {
 
 	// using an LRU cache because i don't want to handle all the edge cases for
 	// manual cleanup and maintenance of a fixed size set
-	cache *lru.Cache
+	cache *lru.Cache[types.TipSetKey, *peerSet]
 }
 
 type peerSet struct {
@@ -23,7 +25,7 @@ type peerSet struct {
 }
 
 func newBlockReceiptTracker() *blockReceiptTracker {
-	c, _ := lru.New(512)
+	c, _ := lru.New[types.TipSetKey, *peerSet](512)
 	return &blockReceiptTracker{
 		cache: c,
 	}
@@ -37,26 +39,24 @@ func (brt *blockReceiptTracker) Add(p peer.ID, ts *types.TipSet) {
 	if !ok {
 		pset := &peerSet{
 			peers: map[peer.ID]time.Time{
-				p: time.Now(),
+				p: build.Clock.Now(),
 			},
 		}
 		brt.cache.Add(ts.Key(), pset)
 		return
 	}
 
-	val.(*peerSet).peers[p] = time.Now()
+	val.peers[p] = build.Clock.Now()
 }
 
 func (brt *blockReceiptTracker) GetPeers(ts *types.TipSet) []peer.ID {
 	brt.lk.Lock()
 	defer brt.lk.Unlock()
 
-	val, ok := brt.cache.Get(ts.Key())
+	ps, ok := brt.cache.Get(ts.Key())
 	if !ok {
 		return nil
 	}
-
-	ps := val.(*peerSet)
 
 	out := make([]peer.ID, 0, len(ps.peers))
 	for p := range ps.peers {

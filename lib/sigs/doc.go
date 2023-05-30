@@ -1,4 +1,4 @@
-// Sigs package allows for signing, verifying signatures and key generation
+// Package sigs allows for signing, verifying signatures and key generation
 // using key types selected by package user.
 //
 // For support of secp256k1 import:

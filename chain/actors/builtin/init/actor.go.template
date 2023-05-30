@@ -1,0 +1,107 @@
+package init
+
+import (
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-state-types/manifest"
+{{range .versions}}
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{end}}
+{{end}}
+    builtin{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin"
+)
+
+var (
+	Address = builtin{{.latestVersion}}.InitActorAddr
+	Methods = builtin{{.latestVersion}}.MethodsInit
+)
+
+func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != manifest.InitKey {
+          return nil, xerrors.Errorf("actor code is not init: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+                {{if (ge . 8)}}
+                case actorstypes.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
+            {{end}}
+       }
+	}
+
+	switch act.Code {
+{{range .versions}}
+    {{if (le . 7)}}
+        case builtin{{.}}.InitActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
+{{end}}
+	}
+
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av actorstypes.Version, networkName string) (State, error) {
+	switch av {
+{{range .versions}}
+	case actorstypes.Version{{.}}:
+		return make{{.}}(store, networkName)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+type State interface {
+	cbor.Marshaler
+
+    Code() cid.Cid
+    ActorKey() string
+    ActorVersion() actorstypes.Version
+
+	ResolveAddress(address address.Address) (address.Address, bool, error)
+	MapAddressToNewID(address address.Address) (address.Address, error)
+	NetworkName() (dtypes.NetworkName, error)
+
+	ForEachActor(func(id abi.ActorID, address address.Address) error) error
+
+	// Remove exists to support tooling that manipulates state for testing.
+	// It should not be used in production code, as init actor entries are
+	// immutable.
+	Remove(addrs ...address.Address) error
+
+	// Sets the network's name. This should only be used on upgrade/fork.
+	SetNetworkName(name string) error
+
+	// Sets the next ID for the init actor. This should only be used for testing.
+	SetNextID(id abi.ActorID) error
+
+	// Sets the address map for the init actor. This should only be used for testing.
+	SetAddressMap(mcid cid.Cid) error
+
+	GetState() interface{}
+
+	AddressMap() (adt.Map, error)
+	AddressMapBitWidth() int
+	AddressMapHashFunction() func(input []byte) []byte
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}

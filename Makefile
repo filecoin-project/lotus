@@ -5,10 +5,14 @@ all: build
 
 unexport GOFLAGS
 
-GOVERSION:=$(shell go version | cut -d' ' -f 3 | cut -d. -f 2)
-ifeq ($(shell expr $(GOVERSION) \< 13), 1)
-$(warning Your Golang version is go 1.$(GOVERSION))
-$(error Update Golang to version $(shell grep '^go' go.mod))
+GOCC?=go
+
+GOVERSION:=$(shell $(GOCC) version | tr ' ' '\n' | grep go1 | sed 's/^go//' | awk -F. '{printf "%d%03d%03d", $$1, $$2, $$3}')
+GOVERSIONMIN:=$(shell cat GO_VERSION_MIN | awk -F. '{printf "%d%03d%03d", $$1, $$2, $$3}')
+
+ifeq ($(shell expr $(GOVERSION) \< $(GOVERSIONMIN)), 1)
+$(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell expr $(GOVERSION) % 1000000 / 1000).$(shell expr $(GOVERSION) % 1000))
+$(error Update Golang to version to at least $(shell cat GO_VERSION_MIN))
 endif
 
 # git modules that need to be loaded
@@ -17,7 +21,7 @@ MODULES:=
 CLEAN:=
 BINS:=
 
-ldflags=-X=github.com/filecoin-project/lotus/build.CurrentCommit='+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))'
+ldflags=-X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
 ifneq ($(strip $(LDFLAGS)),)
 	ldflags+=-extldflags=$(LDFLAGS)
 endif
@@ -41,8 +45,13 @@ MODULES+=$(FFI_PATH)
 BUILD_DEPS+=build/.filecoin-install
 CLEAN+=build/.filecoin-install
 
-$(MODULES): build/.update-modules ;
+ffi-version-check:
+	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 3 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
+BUILD_DEPS+=ffi-version-check
 
+.PHONY: ffi-version-check
+
+$(MODULES): build/.update-modules ;
 # dummy file that marks the last time modules were updated
 build/.update-modules:
 	git submodule update --init --recursive
@@ -57,146 +66,213 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
+build-devnets: build lotus-seed lotus-shed
+.PHONY: build-devnets
+
 debug: GOFLAGS+=-tags=debug
-debug: lotus lotus-storage-miner lotus-seal-worker lotus-seed
+debug: build-devnets
 
 2k: GOFLAGS+=-tags=2k
-2k: lotus lotus-storage-miner lotus-seal-worker lotus-seed
+2k: build-devnets
+
+calibnet: GOFLAGS+=-tags=calibnet
+calibnet: build-devnets
+
+butterflynet: GOFLAGS+=-tags=butterflynet
+butterflynet: build-devnets
+
+interopnet: GOFLAGS+=-tags=interopnet
+interopnet: build-devnets
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
-	go build $(GOFLAGS) -o lotus ./cmd/lotus
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
+	$(GOCC) build $(GOFLAGS) -o lotus ./cmd/lotus
 
 .PHONY: lotus
 BINS+=lotus
 
-lotus-storage-miner: $(BUILD_DEPS)
-	rm -f lotus-storage-miner
-	go build $(GOFLAGS) -o lotus-storage-miner ./cmd/lotus-storage-miner
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
-.PHONY: lotus-storage-miner
-BINS+=lotus-storage-miner
+lotus-miner: $(BUILD_DEPS)
+	rm -f lotus-miner
+	$(GOCC) build $(GOFLAGS) -o lotus-miner ./cmd/lotus-miner
+.PHONY: lotus-miner
+BINS+=lotus-miner
 
-lotus-seal-worker: $(BUILD_DEPS)
-	rm -f lotus-seal-worker
-	go build $(GOFLAGS) -o lotus-seal-worker ./cmd/lotus-seal-worker
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seal-worker -i ./build
-.PHONY: lotus-seal-worker
-BINS+=lotus-seal-worker
+lotus-worker: $(BUILD_DEPS)
+	rm -f lotus-worker
+	$(GOCC) build $(GOFLAGS) -o lotus-worker ./cmd/lotus-worker
+.PHONY: lotus-worker
+BINS+=lotus-worker
 
 lotus-shed: $(BUILD_DEPS)
 	rm -f lotus-shed
-	go build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-shed -i ./build
+	$(GOCC) build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
-build: lotus lotus-storage-miner lotus-seal-worker
+lotus-gateway: $(BUILD_DEPS)
+	rm -f lotus-gateway
+	$(GOCC) build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
+.PHONY: lotus-gateway
+BINS+=lotus-gateway
+
+build: lotus lotus-miner lotus-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
 an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
 
 .PHONY: build
 
-install:
+install: install-daemon install-miner install-worker
+
+install-daemon:
 	install -C ./lotus /usr/local/bin/lotus
-	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
-	install -C ./lotus-seal-worker /usr/local/bin/lotus-seal-worker
 
-install-services: install
-	mkdir -p /usr/local/lib/systemd/system
-	install -C -m 0644 ./scripts/lotus-daemon.service /usr/local/lib/systemd/system/lotus-daemon.service
-	install -C -m 0644 ./scripts/lotus-miner.service /usr/local/lib/systemd/system/lotus-miner.service
-	systemctl daemon-reload
-	@echo
-	@echo "lotus and lotus-miner services installed. Don't forget to 'systemctl enable lotus|lotus-miner' for it to be enabled on startup."
+install-miner:
+	install -C ./lotus-miner /usr/local/bin/lotus-miner
 
-clean-services:
-	rm -f /usr/local/lib/systemd/system/lotus-daemon.service
-	rm -f /usr/local/lib/systemd/system/lotus-miner.service
-	systemctl daemon-reload
+install-worker:
+	install -C ./lotus-worker /usr/local/bin/lotus-worker
+
+install-app:
+	install -C ./$(APP) /usr/local/bin/$(APP)
+
+uninstall: uninstall-daemon uninstall-miner uninstall-worker
+.PHONY: uninstall
+
+uninstall-daemon:
+	rm -f /usr/local/bin/lotus
+
+uninstall-miner:
+	rm -f /usr/local/bin/lotus-miner
+
+uninstall-worker:
+	rm -f /usr/local/bin/lotus-worker
 
 # TOOLS
 
 lotus-seed: $(BUILD_DEPS)
 	rm -f lotus-seed
-	go build $(GOFLAGS) -o lotus-seed ./cmd/lotus-seed
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seed -i ./build
+	$(GOCC) build $(GOFLAGS) -o lotus-seed ./cmd/lotus-seed
 
 .PHONY: lotus-seed
 BINS+=lotus-seed
 
 benchmarks:
-	go run github.com/whyrusleeping/bencher ./... > bench.json
+	$(GOCC) run github.com/whyrusleeping/bencher ./... > bench.json
 	@echo Submitting results
 	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
 
-pond: build
-	go build -o pond ./lotuspond
-	(cd lotuspond/front && npm i && CI=false npm run build)
-.PHONY: pond
-BINS+=pond
+lotus-fountain:
+	rm -f lotus-fountain
+	$(GOCC) build $(GOFLAGS) -o lotus-fountain ./cmd/lotus-fountain
+	$(GOCC) run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
+.PHONY: lotus-fountain
+BINS+=lotus-fountain
 
-townhall:
-	rm -f townhall
-	go build -o townhall ./cmd/lotus-townhall
-	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
-	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall -i ./build
-.PHONY: townhall
-BINS+=townhall
+lotus-bench:
+	rm -f lotus-bench
+	$(GOCC) build $(GOFLAGS) -o lotus-bench ./cmd/lotus-bench
+.PHONY: lotus-bench
+BINS+=lotus-bench
 
-fountain:
-	rm -f fountain
-	go build -o fountain ./cmd/lotus-fountain
-	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain -i ./build
-.PHONY: fountain
-BINS+=fountain
+lotus-stats:
+	rm -f lotus-stats
+	$(GOCC) build $(GOFLAGS) -o lotus-stats ./cmd/lotus-stats
+.PHONY: lotus-stats
+BINS+=lotus-stats
 
-chainwatch:
-	rm -f chainwatch
-	go build -o chainwatch ./cmd/lotus-chainwatch
-	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch -i ./build
-.PHONY: chainwatch
-BINS+=chainwatch
+lotus-pcr:
+	rm -f lotus-pcr
+	$(GOCC) build $(GOFLAGS) -o lotus-pcr ./cmd/lotus-pcr
+.PHONY: lotus-pcr
+BINS+=lotus-pcr
 
-bench:
-	rm -f bench
-	go build -o bench ./cmd/lotus-bench
-	go run github.com/GeertJohan/go.rice/rice append --exec bench -i ./build
-.PHONY: bench
-BINS+=bench
-
-stats:
-	rm -f stats
-	go build -o stats ./tools/stats
-	go run github.com/GeertJohan/go.rice/rice append --exec stats -i ./build
-.PHONY: stats
-BINS+=stats
-
-health:
+lotus-health:
 	rm -f lotus-health
-	go build -o lotus-health ./cmd/lotus-health
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-health -i ./build
+	$(GOCC) build -o lotus-health ./cmd/lotus-health
+.PHONY: lotus-health
+BINS+=lotus-health
 
-.PHONY: health
-BINS+=health
+lotus-wallet:
+	rm -f lotus-wallet
+	$(GOCC) build $(GOFLAGS) -o lotus-wallet ./cmd/lotus-wallet
+.PHONY: lotus-wallet
+BINS+=lotus-wallet
+
+lotus-keygen:
+	rm -f lotus-keygen
+	$(GOCC) build -o lotus-keygen ./cmd/lotus-keygen
+.PHONY: lotus-keygen
+BINS+=lotus-keygen
+
+testground:
+	$(GOCC) build -tags testground -o /dev/null ./cmd/lotus
+.PHONY: testground
+BINS+=testground
+
+
+tvx:
+	rm -f tvx
+	$(GOCC) build -o tvx ./cmd/tvx
+.PHONY: tvx
+BINS+=tvx
+
+lotus-sim: $(BUILD_DEPS)
+	rm -f lotus-sim
+	$(GOCC) build $(GOFLAGS) -o lotus-sim ./cmd/lotus-sim
+.PHONY: lotus-sim
+BINS+=lotus-sim
+
+# SYSTEMD
+
+install-daemon-service: install-daemon
+	mkdir -p /etc/systemd/system
+	mkdir -p /var/log/lotus
+	install -C -m 0644 ./scripts/lotus-daemon.service /etc/systemd/system/lotus-daemon.service
+	systemctl daemon-reload
+	@echo
+	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
+
+install-miner-service: install-miner install-daemon-service
+	mkdir -p /etc/systemd/system
+	mkdir -p /var/log/lotus
+	install -C -m 0644 ./scripts/lotus-miner.service /etc/systemd/system/lotus-miner.service
+	systemctl daemon-reload
+	@echo
+	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
+
+install-main-services: install-miner-service
+
+install-all-services: install-main-services
+
+install-services: install-main-services
+
+clean-daemon-service: clean-miner-service
+	-systemctl stop lotus-daemon
+	-systemctl disable lotus-daemon
+	rm -f /etc/systemd/system/lotus-daemon.service
+	systemctl daemon-reload
+
+clean-miner-service:
+	-systemctl stop lotus-miner
+	-systemctl disable lotus-miner
+	rm -f /etc/systemd/system/lotus-miner.service
+	systemctl daemon-reload
+
+clean-main-services: clean-daemon-service
+
+clean-all-services: clean-main-services
+
+clean-services: clean-all-services
 
 # MISC
 
 buildall: $(BINS)
 
-completions:
-	./scripts/make-completions.sh lotus
-	./scripts/make-completions.sh lotus-storage-miner
-.PHONY: completions
-
 install-completions:
 	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
 	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
-	install -C ./scripts/bash-completion/lotus-storage-miner /usr/share/bash-completion/completions/lotus-storage-miner
 	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
-	install -C ./scripts/zsh-completion/lotus-storage-miner /usr/local/share/zsh/site-functions/_lotus-storage-miner
 
 clean:
 	rm -rf $(CLEAN) $(BINS)
@@ -208,13 +284,95 @@ dist-clean:
 	git submodule deinit --all -f
 .PHONY: dist-clean
 
-type-gen:
-	go run ./gen/main.go
+type-gen: api-gen
+	$(GOCC) run ./gen/main.go
+	$(GOCC) generate -x ./...
+	goimports -w api/
 
-method-gen:
-	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
+actors-code-gen:
+	$(GOCC) run ./gen/inline-gen . gen/inlinegen-data.json
+	$(GOCC) run ./chain/actors/agen
+	$(GOCC) fmt ./...
 
-gen: type-gen method-gen
+actors-gen: actors-code-gen fiximports
+.PHONY: actors-gen
+
+bundle-gen:
+	$(GOCC) run ./gen/bundle $(VERSION) $(RELEASE) $(RELEASE_OVERRIDES)
+	$(GOCC) fmt ./build/...
+.PHONY: bundle-gen
+
+
+api-gen:
+	$(GOCC) run ./gen/api
+	goimports -w api
+	goimports -w api
+.PHONY: api-gen
+
+cfgdoc-gen:
+	$(GOCC) run ./node/config/cfgdocgen > ./node/config/doc_gen.go
+
+appimage: lotus
+	rm -rf appimage-builder-cache || true
+	rm AppDir/io.filecoin.lotus.desktop || true
+	rm AppDir/icon.svg || true
+	rm Appdir/AppRun || true
+	mkdir -p AppDir/usr/bin
+	cp ./lotus AppDir/usr/bin/
+	appimage-builder
+
+docsgen: docsgen-md docsgen-openrpc fiximports
+
+docsgen-md-bin: api-gen actors-gen
+	$(GOCC) build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
+docsgen-openrpc-bin: api-gen actors-gen
+	$(GOCC) build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
+
+docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
+
+docsgen-md-full: docsgen-md-bin
+	./docgen-md "api/api_full.go" "FullNode" "api" "./api" > documentation/en/api-v1-unstable-methods.md
+	./docgen-md "api/v0api/full.go" "FullNode" "v0api" "./api/v0api" > documentation/en/api-v0-methods.md
+docsgen-md-storage: docsgen-md-bin
+	./docgen-md "api/api_storage.go" "StorageMiner" "api" "./api" > documentation/en/api-v0-methods-miner.md
+docsgen-md-worker: docsgen-md-bin
+	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
+
+docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker docsgen-openrpc-gateway
+
+docsgen-openrpc-full: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_full.go" "FullNode" "api" "./api" -gzip > build/openrpc/full.json.gz
+docsgen-openrpc-storage: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_storage.go" "StorageMiner" "api" "./api" -gzip > build/openrpc/miner.json.gz
+docsgen-openrpc-worker: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_worker.go" "Worker" "api" "./api" -gzip > build/openrpc/worker.json.gz
+docsgen-openrpc-gateway: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_gateway.go" "Gateway" "api" "./api" -gzip > build/openrpc/gateway.json.gz
+
+.PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
+
+fiximports:
+	./scripts/fiximports
+
+gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci fiximports
+	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
+.PHONY: gen
+
+jen: gen
+
+snap: lotus lotus-miner lotus-worker
+	snapcraft
+	# snapcraft upload ./lotus_*.snap
+
+# separate from gen because it needs binaries
+docsgen-cli: lotus lotus-miner lotus-worker
+	python3 ./scripts/generate-lotus-cli.py
+	./lotus config default > documentation/en/default-lotus-config.toml
+	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
+.PHONY: docsgen-cli
 
 print-%:
 	@echo $*=$($*)
+
+circleci:
+	go generate -x ./.circleci

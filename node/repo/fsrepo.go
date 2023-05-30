@@ -2,18 +2,17 @@ package repo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -21,10 +20,13 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/sector-storage/stores"
-
+	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/system"
 )
 
 const (
@@ -35,28 +37,177 @@ const (
 	fsDatastore     = "datastore"
 	fsLock          = "repo.lock"
 	fsKeystore      = "keystore"
+	fsSqlite        = "sqlite"
 )
 
-type RepoType int
-
-const (
-	_                 = iota // Default is invalid
-	FullNode RepoType = iota
-	StorageMiner
-	Worker
-)
-
-func defConfForType(t RepoType) interface{} {
+func NewRepoTypeFromString(t string) RepoType {
 	switch t {
-	case FullNode:
-		return config.DefaultFullNode()
-	case StorageMiner:
-		return config.DefaultStorageMiner()
-	case Worker:
-		return &struct{}{}
+	case "FullNode":
+		return FullNode
+	case "StorageMiner":
+		return StorageMiner
+	case "Worker":
+		return Worker
+	case "Wallet":
+		return Wallet
 	default:
-		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
+		panic("unknown RepoType")
 	}
+}
+
+type RepoType interface {
+	Type() string
+	Config() interface{}
+
+	// APIFlags returns flags passed on the command line with the listen address
+	// of the API server (only used by the tests), in the order of precedence they
+	// should be applied for the requested kind of node.
+	APIFlags() []string
+
+	RepoFlags() []string
+
+	// APIInfoEnvVars returns the environment variables to use in order of precedence
+	// to determine the API endpoint of the specified node type.
+	//
+	// It returns the current variables and deprecated ones separately, so that
+	// the user can log a warning when deprecated ones are found to be in use.
+	APIInfoEnvVars() (string, []string, []string)
+}
+
+// SupportsStagingDeals is a trait for services that support staging deals
+type SupportsStagingDeals interface {
+	SupportsStagingDeals()
+}
+
+var FullNode fullNode
+
+type fullNode struct {
+}
+
+func (fullNode) Type() string {
+	return "FullNode"
+}
+
+func (fullNode) Config() interface{} {
+	return config.DefaultFullNode()
+}
+
+func (fullNode) APIFlags() []string {
+	return []string{"api-url"}
+}
+
+func (fullNode) RepoFlags() []string {
+	return []string{"repo"}
+}
+
+func (fullNode) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "FULLNODE_API_INFO", nil, nil
+}
+
+var StorageMiner storageMiner
+
+type storageMiner struct{}
+
+func (storageMiner) SupportsStagingDeals() {}
+
+func (storageMiner) Type() string {
+	return "StorageMiner"
+}
+
+func (storageMiner) Config() interface{} {
+	return config.DefaultStorageMiner()
+}
+
+func (storageMiner) APIFlags() []string {
+	return []string{"miner-api-url"}
+}
+
+func (storageMiner) RepoFlags() []string {
+	return []string{"miner-repo"}
+}
+
+func (storageMiner) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	// TODO remove deprecated deprecation period
+	return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
+}
+
+var Markets markets
+
+type markets struct{}
+
+func (markets) SupportsStagingDeals() {}
+
+func (markets) Type() string {
+	return "Markets"
+}
+
+func (markets) Config() interface{} {
+	return config.DefaultStorageMiner()
+}
+
+func (markets) APIFlags() []string {
+	// support split markets-miner and monolith deployments.
+	return []string{"markets-api-url", "miner-api-url"}
+}
+
+func (markets) RepoFlags() []string {
+	// support split markets-miner and monolith deployments.
+	return []string{"markets-repo", "miner-repo"}
+}
+
+func (markets) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	// support split markets-miner and monolith deployments.
+	return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
+}
+
+type worker struct {
+}
+
+var Worker worker
+
+func (worker) Type() string {
+	return "Worker"
+}
+
+func (worker) Config() interface{} {
+	return &struct{}{}
+}
+
+func (worker) APIFlags() []string {
+	return []string{"worker-api-url"}
+}
+
+func (worker) RepoFlags() []string {
+	return []string{"worker-repo"}
+}
+
+func (worker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "WORKER_API_INFO", nil, nil
+}
+
+var Wallet wallet
+
+type wallet struct {
+}
+
+func (wallet) Type() string {
+	return "Wallet"
+}
+
+func (wallet) Config() interface{} {
+	return &struct{}{}
+}
+
+func (wallet) APIFlags() []string {
+	panic("not supported")
+}
+
+func (wallet) RepoFlags() []string {
+	panic("not supported")
+}
+
+func (wallet) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	panic("not supported")
 }
 
 var log = logging.Logger("repo")
@@ -65,8 +216,8 @@ var ErrRepoExists = xerrors.New("repo exists")
 
 // FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
-	path     string
-	repoType RepoType
+	path       string
+	configPath string
 }
 
 var _ Repo = &FsRepo{}
@@ -79,8 +230,13 @@ func NewFS(path string) (*FsRepo, error) {
 	}
 
 	return &FsRepo{
-		path: path,
+		path:       path,
+		configPath: filepath.Join(path, fsConfig),
 	}, nil
+}
+
+func (fsr *FsRepo) SetConfigPath(cfgPath string) {
+	fsr.configPath = cfgPath
 }
 
 func (fsr *FsRepo) Exists() (bool, error) {
@@ -88,6 +244,12 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	notexist := os.IsNotExist(err)
 	if notexist {
 		err = nil
+
+		_, err = os.Stat(filepath.Join(fsr.path, fsKeystore))
+		notexist = os.IsNotExist(err)
+		if notexist {
+			err = nil
+		}
 	}
 	return !notexist, err
 }
@@ -102,7 +264,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 	}
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
-	err = os.Mkdir(fsr.path, 0755) //nolint: gosec
+	err = os.MkdirAll(fsr.path, 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -116,9 +278,7 @@ func (fsr *FsRepo) Init(t RepoType) error {
 }
 
 func (fsr *FsRepo) initConfig(t RepoType) error {
-	cfgP := filepath.Join(fsr.path, fsConfig)
-
-	_, err := os.Stat(cfgP)
+	_, err := os.Stat(fsr.configPath)
 	if err == nil {
 		// exists
 		return nil
@@ -126,12 +286,12 @@ func (fsr *FsRepo) initConfig(t RepoType) error {
 		return err
 	}
 
-	c, err := os.Create(cfgP)
+	c, err := os.Create(fsr.configPath)
 	if err != nil {
 		return err
 	}
 
-	comm, err := config.ConfigComment(defConfForType(t))
+	comm, err := config.ConfigComment(t.Config())
 	if err != nil {
 		return xerrors.Errorf("comment: %w", err)
 	}
@@ -168,7 +328,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	}
 	defer f.Close() //nolint: errcheck // Read only op
 
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to read %q: %w", p, err)
 	}
@@ -193,7 +353,7 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 	}
 	defer f.Close() //nolint: errcheck // Read only op
 
-	tb, err := ioutil.ReadAll(f)
+	tb, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -216,22 +376,56 @@ func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 		return nil, xerrors.Errorf("could not lock the repo: %w", err)
 	}
 	return &fsLockedRepo{
-		path:     fsr.path,
-		repoType: repoType,
-		closer:   closer,
+		path:       fsr.path,
+		configPath: fsr.configPath,
+		repoType:   repoType,
+		closer:     closer,
 	}, nil
 }
 
-type fsLockedRepo struct {
-	path     string
-	repoType RepoType
-	closer   io.Closer
+// Like Lock, except datastores will work in read-only mode
+func (fsr *FsRepo) LockRO(repoType RepoType) (LockedRepo, error) {
+	lr, err := fsr.Lock(repoType)
+	if err != nil {
+		return nil, err
+	}
 
-	ds     datastore.Batching
+	lr.(*fsLockedRepo).readonly = true
+	return lr, nil
+}
+
+type fsLockedRepo struct {
+	path       string
+	configPath string
+	repoType   RepoType
+	closer     io.Closer
+	readonly   bool
+
+	ds     map[string]datastore.Batching
 	dsErr  error
 	dsOnce sync.Once
 
+	bs     blockstore.Blockstore
+	bsErr  error
+	bsOnce sync.Once
+	ssPath string
+	ssErr  error
+	ssOnce sync.Once
+
+	sqlPath string
+	sqlErr  error
+	sqlOnce sync.Once
+
 	storageLk sync.Mutex
+	configLk  sync.Mutex
+}
+
+func (fsr *fsLockedRepo) RepoType() RepoType {
+	return fsr.repoType
+}
+
+func (fsr *fsLockedRepo) Readonly() bool {
+	return fsr.readonly
 }
 
 func (fsr *fsLockedRepo) Path() string {
@@ -245,14 +439,89 @@ func (fsr *fsLockedRepo) Close() error {
 		return xerrors.Errorf("could not remove API file: %w", err)
 	}
 	if fsr.ds != nil {
-		if err := fsr.ds.Close(); err != nil {
-			return xerrors.Errorf("could not close datastore: %w", err)
+		for _, ds := range fsr.ds {
+			if err := ds.Close(); err != nil {
+				return xerrors.Errorf("could not close datastore: %w", err)
+			}
+		}
+	}
+
+	// type assertion will return ok=false if fsr.bs is nil altogether.
+	if c, ok := fsr.bs.(io.Closer); ok && c != nil {
+		if err := c.Close(); err != nil {
+			return xerrors.Errorf("could not close blockstore: %w", err)
 		}
 	}
 
 	err = fsr.closer.Close()
 	fsr.closer = nil
 	return err
+}
+
+// Blockstore returns a blockstore for the provided data domain.
+func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
+	if domain != UniversalBlockstore {
+		return nil, ErrInvalidBlockstoreDomain
+	}
+
+	fsr.bsOnce.Do(func() {
+		path := fsr.join(filepath.Join(fsDatastore, "chain"))
+		readonly := fsr.readonly
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.bsErr = err
+			return
+		}
+
+		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+		if err != nil {
+			fsr.bsErr = err
+			return
+		}
+
+		if system.BadgerFsyncDisable {
+			opts.SyncWrites = false
+		}
+
+		bs, err := badgerbs.Open(opts)
+		if err != nil {
+			fsr.bsErr = err
+			return
+		}
+		fsr.bs = blockstore.WrapIDStore(bs)
+	})
+
+	return fsr.bs, fsr.bsErr
+}
+
+func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
+	fsr.ssOnce.Do(func() {
+		path := fsr.join(filepath.Join(fsDatastore, "splitstore"))
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.ssErr = err
+			return
+		}
+
+		fsr.ssPath = path
+	})
+
+	return fsr.ssPath, fsr.ssErr
+}
+
+func (fsr *fsLockedRepo) SqlitePath() (string, error) {
+	fsr.sqlOnce.Do(func() {
+		path := fsr.join(fsSqlite)
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.sqlErr = err
+			return
+		}
+
+		fsr.sqlPath = path
+	})
+
+	return fsr.sqlPath, fsr.sqlErr
 }
 
 // join joins path elements with fsr.path
@@ -267,49 +536,79 @@ func (fsr *fsLockedRepo) stillValid() error {
 	return nil
 }
 
-func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
-	fsr.dsOnce.Do(func() {
-		opts := badger.DefaultOptions
-		opts.Truncate = true
-
-		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), &opts)
-		/*if fsr.dsErr == nil {
-			fsr.ds = datastore.NewLogDatastore(fsr.ds, "fsrepo")
-		}*/
-	})
-	if fsr.dsErr != nil {
-		return nil, fsr.dsErr
-	}
-	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), nil
-}
-
 func (fsr *fsLockedRepo) Config() (interface{}, error) {
-	if err := fsr.stillValid(); err != nil {
-		return nil, err
-	}
-	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
+	fsr.configLk.Lock()
+	defer fsr.configLk.Unlock()
+
+	return fsr.loadConfigFromDisk()
 }
 
-func (fsr *fsLockedRepo) GetStorage() (stores.StorageConfig, error) {
+func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
+	var opts []config.LoadCfgOpt
+	if fsr.repoType == FullNode {
+		opts = append(opts, config.SetCanFallbackOnDefault(config.NoDefaultForSplitstoreTransition))
+		opts = append(opts, config.SetValidate(config.ValidateSplitstoreSet))
+	}
+	opts = append(opts, config.SetDefault(func() (interface{}, error) {
+		return fsr.repoType.Config(), nil
+	}))
+	return config.FromFile(fsr.configPath, opts...)
+}
+
+func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
+	if err := fsr.stillValid(); err != nil {
+		return err
+	}
+
+	fsr.configLk.Lock()
+	defer fsr.configLk.Unlock()
+
+	cfg, err := fsr.loadConfigFromDisk()
+	if err != nil {
+		return err
+	}
+
+	// mutate in-memory representation of config
+	c(cfg)
+
+	// buffer into which we write TOML bytes
+	buf := new(bytes.Buffer)
+
+	// encode now-mutated config as TOML and write to buffer
+	err = toml.NewEncoder(buf).Encode(cfg)
+	if err != nil {
+		return err
+	}
+
+	// write buffer of TOML bytes to config file
+	err = os.WriteFile(fsr.configPath, buf.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (fsr *fsLockedRepo) GetStorage() (storiface.StorageConfig, error) {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
 	return fsr.getStorage(nil)
 }
 
-func (fsr *fsLockedRepo) getStorage(def *stores.StorageConfig) (stores.StorageConfig, error) {
+func (fsr *fsLockedRepo) getStorage(def *storiface.StorageConfig) (storiface.StorageConfig, error) {
 	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), def)
 	if err != nil {
-		return stores.StorageConfig{}, err
+		return storiface.StorageConfig{}, err
 	}
 	return *c, nil
 }
 
-func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
+func (fsr *fsLockedRepo) SetStorage(c func(*storiface.StorageConfig)) error {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
-	sc, err := fsr.getStorage(&stores.StorageConfig{})
+	sc, err := fsr.getStorage(&storiface.StorageConfig{})
 	if err != nil {
 		return xerrors.Errorf("get storage: %w", err)
 	}
@@ -319,18 +618,30 @@ func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
 	return config.WriteStorageFile(fsr.join(fsStorageConfig), sc)
 }
 
+func (fsr *fsLockedRepo) Stat(path string) (fsutil.FsStat, error) {
+	return fsutil.Statfs(path)
+}
+
+func (fsr *fsLockedRepo) DiskUsage(path string) (int64, error) {
+	si, err := fsutil.FileSize(path)
+	if err != nil {
+		return 0, err
+	}
+	return si.OnDisk, nil
+}
+
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
+	return os.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
 }
 
 func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPIToken), token, 0600)
+	return os.WriteFile(fsr.join(fsAPIToken), token, 0600)
 }
 
 func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
@@ -354,6 +665,7 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("opening dir to list keystore: %w", err)
 	}
+	defer dir.Close() //nolint:errcheck
 	files, err := dir.Readdir(-1)
 	if err != nil {
 		return nil, xerrors.Errorf("reading keystore dir: %w", err)
@@ -398,7 +710,7 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	}
 	defer file.Close() //nolint: errcheck // read only op
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return types.KeyInfo{}, xerrors.Errorf("reading key '%s': %w", name, err)
 	}
@@ -412,17 +724,31 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	return res, nil
 }
 
+const KTrashPrefix = "trash-"
+
 // Put saves key info under given name
 func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
+	return fsr.put(name, info, 0)
+}
+
+func (fsr *fsLockedRepo) put(rawName string, info types.KeyInfo, retries int) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
+	}
+
+	name := rawName
+	if retries > 0 {
+		name = fmt.Sprintf("%s-%d", rawName, retries)
 	}
 
 	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
 	keyPath := fsr.join(fsKeystore, encName)
 
 	_, err := os.Stat(keyPath)
-	if err == nil {
+	if err == nil && strings.HasPrefix(name, KTrashPrefix) {
+		// retry writing the trash-prefixed file with a number suffix
+		return fsr.put(rawName, info, retries+1)
+	} else if err == nil {
 		return xerrors.Errorf("checking key before put '%s': %w", name, types.ErrKeyExists)
 	} else if !os.IsNotExist(err) {
 		return xerrors.Errorf("checking key before put '%s': %w", name, err)
@@ -433,7 +759,7 @@ func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
 		return xerrors.Errorf("encoding key '%s': %w", name, err)
 	}
 
-	err = ioutil.WriteFile(keyPath, keyData, 0600)
+	err = os.WriteFile(keyPath, keyData, 0600)
 	if err != nil {
 		return xerrors.Errorf("writing key '%s': %w", name, err)
 	}

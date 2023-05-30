@@ -2,4 +2,4 @@
 
 set -o xtrace
 
-rm -rf ~/.lotus ~/.lotusstorage/ ~/.genesis-sectors ~/.lotusworker
+rm -rf ~/.lotus ~/.lotusminer/ ~/.genesis-sectors ~/.lotusworker

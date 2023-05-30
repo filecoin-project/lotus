@@ -3,10 +3,15 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"strings"
 
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
+	typegen "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var EmptyTSK = TipSetKey{}
@@ -15,7 +20,9 @@ var EmptyTSK = TipSetKey{}
 var blockHeaderCIDLen int
 
 func init() {
-	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}.Sum([]byte{})
+	// hash a large string of zeros so we don't estimate based on inlined CIDs.
+	var buf [256]byte
+	c, err := abi.CidBuilder.Sum(buf[:])
 	if err != nil {
 		panic(err)
 	}
@@ -45,7 +52,7 @@ func NewTipSetKey(cids ...cid.Cid) TipSetKey {
 func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 	_, err := decodeKey(encoded)
 	if err != nil {
-		return TipSetKey{}, err
+		return EmptyTSK, err
 	}
 	return TipSetKey{string(encoded)}, nil
 }
@@ -92,6 +99,67 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (k TipSetKey) Cid() (cid.Cid, error) {
+	blk, err := k.ToStorageBlock()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return blk.Cid(), nil
+}
+
+func (k TipSetKey) ToStorageBlock() (block.Block, error) {
+	buf := new(bytes.Buffer)
+	if err := k.MarshalCBOR(buf); err != nil {
+		log.Errorf("failed to marshal ts key as CBOR: %s", k)
+	}
+
+	cid, err := abi.CidBuilder.Sum(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewBlockWithCid(buf.Bytes(), cid)
+}
+
+func (k TipSetKey) MarshalCBOR(writer io.Writer) error {
+	if err := typegen.WriteMajorTypeHeader(writer, typegen.MajByteString, uint64(len(k.Bytes()))); err != nil {
+		return err
+	}
+
+	_, err := writer.Write(k.Bytes())
+	return err
+}
+
+func (k *TipSetKey) UnmarshalCBOR(reader io.Reader) error {
+	cr := typegen.NewCborReader(reader)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if extra > typegen.ByteArrayMaxLen {
+		return fmt.Errorf("t.Binary: byte array too large (%d)", extra)
+	}
+	if maj != typegen.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+
+	b := make([]uint8, extra)
+
+	if _, err := io.ReadFull(cr, b); err != nil {
+		return err
+	}
+
+	*k, err = TipSetKeyFromBytes(b)
+	return err
+}
+
 func (k TipSetKey) IsEmpty() bool {
 	return len(k.value) == 0
 }
@@ -121,3 +189,6 @@ func decodeKey(encoded []byte) ([]cid.Cid, error) {
 	}
 	return cids, nil
 }
+
+var _ typegen.CBORMarshaler = &TipSetKey{}
+var _ typegen.CBORUnmarshaler = &TipSetKey{}

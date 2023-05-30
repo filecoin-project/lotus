@@ -8,25 +8,20 @@ import (
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	storage2 "github.com/filecoin-project/specs-storage/storage"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/sector-storage"
+	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 type remoteWorker struct {
-	api.WorkerApi
+	api.Worker
 	closer jsonrpc.ClientCloser
 }
 
 func (r *remoteWorker) NewSector(ctx context.Context, sector abi.SectorID) error {
 	return xerrors.New("unsupported")
-}
-
-func (r *remoteWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage2.Data) (abi.PieceInfo, error) {
-	return abi.PieceInfo{}, xerrors.New("unsupported")
 }
 
 func connectRemoteWorker(ctx context.Context, fa api.Common, url string) (*remoteWorker, error) {
@@ -38,9 +33,19 @@ func connectRemoteWorker(ctx context.Context, fa api.Common, url string) (*remot
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 
-	wapi, closer, err := client.NewWorkerRPC(url, headers)
+	wapi, closer, err := client.NewWorkerRPCV0(context.TODO(), url, headers)
 	if err != nil {
 		return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
+	}
+
+	wver, err := wapi.Version(ctx)
+	if err != nil {
+		closer()
+		return nil, err
+	}
+
+	if !wver.EqMajorMinor(api.WorkerAPIVersion0) {
+		return nil, xerrors.Errorf("unsupported worker api version: %s (expected %s)", wver, api.WorkerAPIVersion0)
 	}
 
 	return &remoteWorker{wapi, closer}, nil
@@ -51,4 +56,4 @@ func (r *remoteWorker) Close() error {
 	return nil
 }
 
-var _ sectorstorage.Worker = &remoteWorker{}
+var _ sealer.Worker = &remoteWorker{}

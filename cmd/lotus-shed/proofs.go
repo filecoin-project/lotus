@@ -4,12 +4,15 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"gopkg.in/urfave/cli.v2"
+	"github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/go-state-types/abi"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var proofsCmd = &cli.Command{
@@ -41,8 +44,8 @@ var verifySealProofCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must specify commR, commD, and proof to verify")
+		if cctx.NArg() != 3 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		commr, err := cid.Decode(cctx.Args().Get(0))
@@ -82,17 +85,17 @@ var verifySealProofCmd = &cli.Command{
 
 		snum := abi.SectorNumber(cctx.Uint64("sector-id"))
 
-		ok, err := ffi.VerifySeal(abi.SealVerifyInfo{
+		ok, err := ffi.VerifySeal(prooftypes.SealVerifyInfo{
 			SectorID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: snum,
 			},
 			SealedCID:             commr,
-			RegisteredProof:       abi.RegisteredProof(cctx.Int64("proof-type")),
+			SealProof:             abi.RegisteredSealProof(cctx.Int64("proof-type")),
 			Proof:                 proof,
 			DealIDs:               nil,
-			Randomness:            abi.SealRandomness(ticket),
-			InteractiveRandomness: abi.InteractiveSealRandomness(proofRand),
+			Randomness:            ticket,
+			InteractiveRandomness: proofRand,
 			UnsealedCID:           commd,
 		})
 		if err != nil {

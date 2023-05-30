@@ -1,3 +1,4 @@
+// stm: #unit
 package state
 
 import (
@@ -5,17 +6,21 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-
-	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/network"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func BenchmarkStateTreeSet(b *testing.B) {
+	//stm: @CHAIN_STATETREE_SET_ACTOR_001
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst)
+	st, err := NewStateTree(cst, types.StateTreeVersion1)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -30,8 +35,8 @@ func BenchmarkStateTreeSet(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
-			Code:    builtin.StorageMinerActorCodeID,
-			Head:    builtin.AccountActorCodeID,
+			Code:    builtin2.StorageMinerActorCodeID,
+			Head:    builtin2.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -41,8 +46,14 @@ func BenchmarkStateTreeSet(b *testing.B) {
 }
 
 func BenchmarkStateTreeSetFlush(b *testing.B) {
+	//stm: @CHAIN_STATETREE_SET_ACTOR_001
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst)
+	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -57,8 +68,8 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
-			Code:    builtin.StorageMinerActorCodeID,
-			Head:    builtin.AccountActorCodeID,
+			Code:    builtin2.StorageMinerActorCodeID,
+			Head:    builtin2.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -70,9 +81,120 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 	}
 }
 
-func BenchmarkStateTree10kGetActor(b *testing.B) {
+func TestResolveCache(t *testing.T) {
+	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
+	//stm: @CHAIN_STATETREE_SNAPSHOT_001, @CHAIN_STATETREE_SNAPSHOT_CLEAR_001
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst)
+	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonId := address.NewForTestGetter()()
+	id, _ := address.NewIDAddress(1000)
+
+	st.lookupIDFun = func(a address.Address) (address.Address, error) {
+		if a == nonId {
+			return id, nil
+		}
+		return address.Undef, types.ErrActorNotFound
+	}
+
+	err = st.SetActor(nonId, &types.Actor{Nonce: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	{
+		err = st.Snapshot(context.TODO())
+		if err != nil {
+			t.Fatal(err)
+		}
+		act, err := st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 1 {
+			t.Fatalf("expected nonce 1, got %d", act.Nonce)
+		}
+		err = st.SetActor(nonId, &types.Actor{Nonce: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		act, err = st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 2 {
+			t.Fatalf("expected nonce 2, got %d", act.Nonce)
+		}
+
+		if err := st.Revert(); err != nil {
+			t.Fatal(err)
+		}
+		st.ClearSnapshot()
+	}
+
+	act, err := st.GetActor(nonId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if act.Nonce != 1 {
+		t.Fatalf("expected nonce 1, got %d", act.Nonce)
+	}
+
+	{
+		err = st.Snapshot(context.TODO())
+		if err != nil {
+			t.Fatal(err)
+		}
+		act, err := st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 1 {
+			t.Fatalf("expected nonce 1, got %d", act.Nonce)
+		}
+		err = st.SetActor(nonId, &types.Actor{Nonce: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		act, err = st.GetActor(nonId)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if act.Nonce != 2 {
+			t.Fatalf("expected nonce 2, got %d", act.Nonce)
+		}
+		st.ClearSnapshot()
+	}
+
+	act, err = st.GetActor(nonId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if act.Nonce != 2 {
+		t.Fatalf("expected nonce 2, got %d", act.Nonce)
+	}
+
+}
+
+func BenchmarkStateTree10kGetActor(b *testing.B) {
+	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
+	//stm: @CHAIN_STATETREE_FLUSH_001
+	cst := cbor.NewMemCborStore()
+	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -83,8 +205,8 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523 + uint64(i)),
-			Code:    builtin.StorageMinerActorCodeID,
-			Head:    builtin.AccountActorCodeID,
+			Code:    builtin2.StorageMinerActorCodeID,
+			Head:    builtin2.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -113,8 +235,14 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 }
 
 func TestSetCache(t *testing.T) {
+	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst)
+	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,8 +254,8 @@ func TestSetCache(t *testing.T) {
 
 	act := &types.Actor{
 		Balance: types.NewInt(0),
-		Code:    builtin.StorageMinerActorCodeID,
-		Head:    builtin.AccountActorCodeID,
+		Code:    builtin2.StorageMinerActorCodeID,
+		Head:    builtin2.AccountActorCodeID,
 		Nonce:   0,
 	}
 
@@ -149,9 +277,17 @@ func TestSetCache(t *testing.T) {
 }
 
 func TestSnapshots(t *testing.T) {
+	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001
+	//stm: @CHAIN_STATETREE_FLUSH_001, @CHAIN_STATETREE_SNAPSHOT_REVERT_001, CHAIN_STATETREE_SNAPSHOT_CLEAR_001
 	ctx := context.Background()
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst)
+
+	sv, err := VersionForNetwork(build.TestNetworkVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +306,7 @@ func TestSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := st.SetActor(addrs[0], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(55)}); err != nil {
+	if err := st.SetActor(addrs[0], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(55)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -179,7 +315,7 @@ func TestSnapshots(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := st.SetActor(addrs[1], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(77)}); err != nil {
+		if err := st.SetActor(addrs[1], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(77)}); err != nil {
 			t.Fatal(err)
 		}
 
@@ -190,7 +326,7 @@ func TestSnapshots(t *testing.T) {
 	}
 
 	// more operations in top level call...
-	if err := st.SetActor(addrs[2], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(123)}); err != nil {
+	if err := st.SetActor(addrs[2], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(123)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -199,7 +335,7 @@ func TestSnapshots(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := st.SetActor(addrs[3], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(5)}); err != nil {
+		if err := st.SetActor(addrs[3], &types.Actor{Code: builtin2.AccountActorCodeID, Head: builtin2.AccountActorCodeID, Balance: types.NewInt(5)}); err != nil {
 			t.Fatal(err)
 		}
 
@@ -233,8 +369,17 @@ func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
 }
 
 func TestStateTreeConsistency(t *testing.T) {
+	//stm: @CHAIN_STATETREE_SET_ACTOR_001, @CHAIN_STATETREE_VERSION_FOR_NETWORK_001, @CHAIN_STATETREE_FLUSH_001
 	cst := cbor.NewMemCborStore()
-	st, err := NewStateTree(cst)
+
+	// TODO: ActorUpgrade: this test tests pre actors v2
+
+	sv, err := VersionForNetwork(network.Version3)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStateTree(cst, sv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,12 +400,15 @@ func TestStateTreeConsistency(t *testing.T) {
 	}
 
 	for i, a := range addrs {
-		st.SetActor(a, &types.Actor{
+		err := st.SetActor(a, &types.Actor{
 			Code:    randomCid,
 			Head:    randomCid,
 			Balance: types.NewInt(uint64(10000 + i)),
 			Nonce:   uint64(1000 - i),
 		})
+		if err != nil {
+			t.Fatalf("while setting actor: %+v", err)
+		}
 	}
 
 	root, err := st.Flush(context.TODO())
@@ -269,7 +417,7 @@ func TestStateTreeConsistency(t *testing.T) {
 	}
 
 	fmt.Println("root is: ", root)
-	if root.String() != "bafy2bzaceadyjnrv3sbjvowfl3jr4pdn5p2bf3exjjie2f3shg4oy5sub7h34" {
+	if root.String() != "bafy2bzaceb2bhqw75pqp44efoxvlnm73lnctq6djair56bfn5x3gw56epcxbi" {
 		t.Fatal("MISMATCH!")
 	}
 }

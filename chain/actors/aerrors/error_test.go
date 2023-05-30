@@ -1,16 +1,19 @@
+// stm: #unit
 package aerrors_test
 
 import (
 	"testing"
 
-	. "github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/exitcode"
+
+	. "github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
 
 func TestFatalError(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_ACTOR_ERRORS_001
 	e1 := xerrors.New("out of disk space")
 	e2 := xerrors.Errorf("could not put node: %w", e1)
 	e3 := xerrors.Errorf("could not save head: %w", e2)
@@ -24,6 +27,7 @@ func TestFatalError(t *testing.T) {
 	assert.True(t, IsFatal(aw4), "should be fatal")
 }
 func TestAbsorbeError(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_ACTOR_ERRORS_001
 	e1 := xerrors.New("EOF")
 	e2 := xerrors.Errorf("could not decode: %w", e1)
 	ae := Absorb(e2, 35, "failed to decode CBOR")

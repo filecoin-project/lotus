@@ -1,3 +1,4 @@
+// stm: #unit
 package vm
 
 import (
@@ -5,18 +6,36 @@ import (
 	"io"
 	"testing"
 
+	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	cbor2 "github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/rt"
+	runtime2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 type basicContract struct{}
+
+func (b basicContract) Code() cid.Cid {
+	return cid.Undef
+}
+
+func (b basicContract) State() cbor2.Er {
+	// works well enough as a dummy state
+	return new(basicParams)
+}
+
 type basicParams struct {
 	B byte
 }
@@ -60,31 +79,57 @@ func (b basicContract) Exports() []interface{} {
 	}
 }
 
-func (basicContract) InvokeSomething0(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
+func (basicContract) InvokeSomething0(rt runtime2.Runtime, params *basicParams) *abi.EmptyValue {
 	rt.Abortf(exitcode.ExitCode(params.B), "params.B")
 	return nil
 }
 
-func (basicContract) BadParam(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
+func (basicContract) BadParam(rt runtime2.Runtime, params *basicParams) *abi.EmptyValue {
 	rt.Abortf(255, "bad params")
 	return nil
 }
 
-func (basicContract) InvokeSomething10(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
+func (basicContract) InvokeSomething10(rt runtime2.Runtime, params *basicParams) *abi.EmptyValue {
 	rt.Abortf(exitcode.ExitCode(params.B+10), "params.B")
 	return nil
 }
 
+type basicRtMessage struct{}
+
+var _ runtime2.Message = (*basicRtMessage)(nil)
+
+func (*basicRtMessage) Caller() address.Address {
+	a, err := address.NewIDAddress(0)
+	if err != nil {
+		panic(err)
+	}
+	return a
+}
+
+func (*basicRtMessage) Receiver() address.Address {
+	a, err := address.NewIDAddress(1)
+	if err != nil {
+		panic(err)
+	}
+	return a
+}
+
+func (*basicRtMessage) ValueReceived() abi.TokenAmount {
+	return big.NewInt(0)
+}
+
 func TestInvokerBasic(t *testing.T) {
-	inv := invoker{}
-	code, err := inv.transform(basicContract{})
+	//stm: @INVOKER_TRANSFORM_001
+	inv := ActorRegistry{}
+	registry := builtin.MakeRegistryLegacy([]rt.VMActor{basicContract{}})
+	code, err := inv.transform(registry[0])
 	assert.NoError(t, err)
 
 	{
 		bParam, err := actors.SerializeParams(&basicParams{B: 1})
 		assert.NoError(t, err)
 
-		_, aerr := code[0](&Runtime{}, bParam)
+		_, aerr := code[0](&Runtime{Message: &basicRtMessage{}}, bParam)
 
 		assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 		if aerrors.IsFatal(aerr) {
@@ -96,17 +141,32 @@ func TestInvokerBasic(t *testing.T) {
 		bParam, err := actors.SerializeParams(&basicParams{B: 2})
 		assert.NoError(t, err)
 
-		_, aerr := code[10](&Runtime{}, bParam)
+		_, aerr := code[10](&Runtime{Message: &basicRtMessage{}}, bParam)
 		assert.Equal(t, exitcode.ExitCode(12), aerrors.RetCode(aerr), "return code should be 12")
 		if aerrors.IsFatal(aerr) {
 			t.Fatal("err should not be fatal")
 		}
 	}
 
-	_, aerr := code[1](&Runtime{}, []byte{99})
-	if aerrors.IsFatal(aerr) {
-		t.Fatal("err should not be fatal")
+	{
+		_, aerr := code[1](&Runtime{
+			vm:      &LegacyVM{networkVersion: network.Version0},
+			Message: &basicRtMessage{},
+		}, []byte{99})
+		if aerrors.IsFatal(aerr) {
+			t.Fatal("err should not be fatal")
+		}
+		assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 	}
-	assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 
+	{
+		_, aerr := code[1](&Runtime{
+			vm:      &LegacyVM{networkVersion: network.Version7},
+			Message: &basicRtMessage{},
+		}, []byte{99})
+		if aerrors.IsFatal(aerr) {
+			t.Fatal("err should not be fatal")
+		}
+		assert.Equal(t, exitcode.ErrSerialization, aerrors.RetCode(aerr), "return code should be %s", 1)
+	}
 }

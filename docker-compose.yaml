@@ -1,0 +1,146 @@
+# By default, this docker-compose file will start a lotus fullnode
+#
+# Some directives have been left commented out so they serve as an
+# example for more advanced use.
+#
+# To provide a custom configuration file, or automatically import
+# a wallet, uncomment the "configs" or "secrets" sections.
+# 
+# start on a single node:
+#
+#    docker-compose up
+#
+# start on docker swarm:
+#
+#    docker swarm init (if you haven't already)
+#    docker stack deploy -c docker-compose.yaml mylotuscluster
+#
+# for more information, please visit lotus.filecoin.io
+
+version: "3.8"
+
+volumes:
+  parameters:
+  lotus-repo:
+  lotus-miner-repo:
+  lotus-worker-repo:
+
+configs:
+  lotus-config-toml:
+    file: /path/to/lotus/config.toml
+  lotus-miner-config-toml:
+    file: /path/to/lotus-miner/config.toml
+
+secrets:
+  lotus-wallet:
+    file: /path/to/exported/lotus/wallet
+
+services:
+  lotus:
+    build:
+      context: .
+      target: lotus
+      dockerfile: Dockerfile.lotus
+    image: filecoin/lotus
+    volumes:
+      - parameters:/var/tmp/filecoin-proof-parameters
+      - lotus-repo:/var/lib/lotus
+    ports:
+      - 1234:1234
+    environment:
+      - LOTUS_JAEGER_AGENT_HOST=jaeger
+      - LOTUS_JAEGER_AGENT_PORT=6831
+    # - DOCKER_LOTUS_IMPORT_WALLET=/tmp/wallet
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 30s
+    # configs:
+    #   - source: lotus-config-toml
+    #     target: /var/lib/lotus/config.toml
+    # secrets:
+    #   - source: lotus-wallet
+    #     target: /tmp/wallet
+    command:
+      - daemon
+  lotus-gateway:
+    build:
+      context: .
+      target: lotus-gateway
+      dockerfile: Dockerfile.lotus
+    image: filecoin/lotus-gateway
+    depends_on:
+      - lotus
+    ports:
+      - 1235:1234
+    environment:
+      - FULLNODE_API_INFO=/dns/lotus/tcp/1234/http
+      - LOTUS_JAEGER_AGENT_HOST=jaeger
+      - LOTUS_JAEGER_AGENT_PORT=6831
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 30s
+    command:
+      - run
+  #      
+  # Uncomment to run miner software
+  #
+  # lotus-miner:
+  #   build:
+  #     context: .
+  #     target: lotus-miner
+  #     dockerfile: Dockerfile.lotus
+  #   image: filecoin/lotus-miner
+  #   volumes:
+  #     - parameters:/var/tmp/filecoin-proof-parameters
+  #     - lotus-miner-repo:/var/lib/lotus-miner
+  #   depends_on:
+  #     - lotus
+  #   ports:
+  #     - 2345:2345
+  #   environment:
+  #     - FULLNODE_API_INFO=/dns/lotus/tcp/1234/http
+  #     - LOTUS_JAEGER_AGENT_HOST=jaeger
+  #     - LOTUS_JAEGER_AGENT_PORT=6831
+  #     - DOCKER_LOTUS_MINER_INIT=true
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 30s
+  #   configs:
+  #     - source: lotus-miner-config-toml
+  #     - target: /var/lib/lotus-miner/config.toml
+  #   command:
+  #     - run
+  # lotus-worker:
+  #   build:
+  #     context: .
+  #     target: lotus-worker
+  #     dockerfile: Dockerfile.lotus
+  #   image: filecoin/lotus-worker
+  #   volumes:
+  #     - parameters:/var/tmp/filecoin-proof-parameters
+  #     - lotus-worker-repo:/var/lib/lotus-worker
+  #   depends_on:
+  #     - lotus-worker
+  #   environment:
+  #     - MINER_API_INFO=/dns/lotus-miner/tcp/1234/http
+  #     - LOTUS_JAEGER_AGENT_HOST=jaeger
+  #     - LOTUS_JAEGER_AGENT_PORT=6831
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 30s
+  #       replicas: 2
+  #   command:
+  #     - run
+  jaeger:
+    image: jaegertracing/all-in-one
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 30s

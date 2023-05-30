@@ -4,22 +4,25 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/xerrors"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("p2pnode")
 
-const kstorePrivkey = "libp2p-host"
+const (
+	KLibp2pHost                = "libp2p-host"
+	KTLibp2pHost types.KeyType = KLibp2pHost
+)
 
 type Libp2pOpts struct {
 	fx.Out
@@ -28,7 +31,7 @@ type Libp2pOpts struct {
 }
 
 func PrivKey(ks types.KeyStore) (crypto.PrivKey, error) {
-	k, err := ks.Get(kstorePrivkey)
+	k, err := ks.Get(KLibp2pHost)
 	if err == nil {
 		return crypto.UnmarshalPrivateKey(k.PrivateKey)
 	}
@@ -39,13 +42,13 @@ func PrivKey(ks types.KeyStore) (crypto.PrivKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	kbytes, err := pk.Bytes()
+	kbytes, err := crypto.MarshalPrivateKey(pk)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ks.Put(kstorePrivkey, types.KeyInfo{
-		Type:       kstorePrivkey,
+	if err := ks.Put(KLibp2pHost, types.KeyInfo{
+		Type:       KTLibp2pHost,
 		PrivateKey: kbytes,
 	}); err != nil {
 		return nil, err
@@ -66,9 +69,13 @@ func genLibp2pKey() (crypto.PrivKey, error) {
 
 func ConnectionManager(low, high uint, grace time.Duration, protected []string) func() (opts Libp2pOpts, err error) {
 	return func() (Libp2pOpts, error) {
-		cm := connmgr.NewConnManager(int(low), int(high), grace)
+		cm, err := connmgr.NewConnManager(int(low), int(high), connmgr.WithGracePeriod(grace))
+		if err != nil {
+			return Libp2pOpts{}, err
+		}
+
 		for _, p := range protected {
-			pid, err := peer.IDFromString(p)
+			pid, err := peer.Decode(p)
 			if err != nil {
 				return Libp2pOpts{}, xerrors.Errorf("failed to parse peer ID in protected peers array: %w", err)
 			}

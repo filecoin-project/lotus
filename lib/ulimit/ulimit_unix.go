@@ -1,9 +1,10 @@
+//go:build darwin || linux || netbsd || openbsd
 // +build darwin linux netbsd openbsd
 
 package ulimit
 
 import (
-	unix "golang.org/x/sys/unix"
+	"golang.org/x/sys/unix"
 )
 
 func init() {

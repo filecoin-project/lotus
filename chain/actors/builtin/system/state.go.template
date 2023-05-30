@@ -1,0 +1,81 @@
+package system
+
+import (
+    "fmt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+
+{{if (le .v 7)}}
+	system{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/system"
+	"golang.org/x/xerrors"
+{{else}}
+	system{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}system"
+{{end}}
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store{{if (ge .v 8)}}, builtinActors cid.Cid{{end}}) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = system{{.v}}.State{
+	{{if (ge .v 8)}}BuiltinActors: builtinActors,{{end}}
+	}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	system{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state{{.v}}) GetBuiltinActors() cid.Cid {
+{{if (le .v 7)}}
+	return cid.Undef
+{{else}}
+	return s.State.BuiltinActors
+{{end}}
+}
+
+func (s *state{{.v}}) SetBuiltinActors(c cid.Cid) error {
+{{if (le .v 7)}}
+	return xerrors.New("cannot set manifest cid before v8")
+{{else}}
+	s.State.BuiltinActors = c
+	return nil
+{{end}}
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return manifest.SystemKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}

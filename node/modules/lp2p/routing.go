@@ -4,10 +4,10 @@ import (
 	"context"
 	"sort"
 
-	routing "github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"
 	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
+	"github.com/libp2p/go-libp2p/core/routing"
 	"go.uber.org/fx"
 )
 

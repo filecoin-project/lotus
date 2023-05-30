@@ -1,21 +1,22 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/coreos/go-systemd/v22/dbus"
 )
 
-func notifyHandler(n string, ch chan interface{}, sCh chan os.Signal) (string, error) {
+func notifyHandler(ctx context.Context, n string, ch chan interface{}, sCh chan os.Signal) (string, error) {
 	select {
 	// alerts to restart systemd unit
 	case <-ch:
 		statusCh := make(chan string, 1)
-		c, err := dbus.New()
+		c, err := dbus.NewWithContext(ctx)
 		if err != nil {
 			return "", err
 		}
-		_, err = c.TryRestartUnit(n, "fail", statusCh)
+		_, err = c.TryRestartUnitContext(ctx, n, "fail", statusCh)
 		if err != nil {
 			return "", err
 		}

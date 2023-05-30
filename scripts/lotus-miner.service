@@ -1,12 +1,13 @@
 [Unit]
-Description=Lotus Storage Miner
+Description=Lotus Miner
 After=network.target
 After=lotus-daemon.service
+Wants=lotus-daemon.service
 
 [Service]
-ExecStart=/usr/local/bin/lotus-storage-miner run
-Environment=GOLOG_FILE="/var/log/lotus-miner"
+ExecStart=/usr/local/bin/lotus-miner run
+Environment=GOLOG_FILE="/var/log/lotus/miner.log"
 Environment=GOLOG_LOG_FMT="json"
 
 [Install]
-WantedBy=multiuser.target
+WantedBy=multi-user.target

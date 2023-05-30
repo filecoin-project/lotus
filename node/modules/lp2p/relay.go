@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/libp2p/go-libp2p"
-	coredisc "github.com/libp2p/go-libp2p-core/discovery"
-	routing "github.com/libp2p/go-libp2p-core/routing"
-	discovery "github.com/libp2p/go-libp2p-discovery"
+	coredisc "github.com/libp2p/go-libp2p/core/discovery"
+	"github.com/libp2p/go-libp2p/core/routing"
+	routingdisc "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
 func NoRelay() func() (opts Libp2pOpts, err error) {
@@ -24,5 +24,5 @@ func Discovery(router BaseIpfsRouting) (coredisc.Discovery, error) {
 		return nil, fmt.Errorf("no suitable routing for discovery")
 	}
 
-	return discovery.NewRoutingDiscovery(crouter), nil
+	return routingdisc.NewRoutingDiscovery(crouter), nil
 }

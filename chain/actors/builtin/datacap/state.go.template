@@ -1,0 +1,81 @@
+package datacap
+
+import (
+    "fmt"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	actorstypes "github.com/filecoin-project/go-state-types/actors"
+
+	datacap{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}datacap"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/adt"
+	"github.com/filecoin-project/go-state-types/manifest"
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store, governor address.Address, bitwidth uint64) (State, error) {
+	out := state{{.v}}{store: store}
+    s, err := datacap{{.v}}.ConstructState(store, governor, bitwidth)
+    if err != nil {
+        return nil, err
+    }
+
+    out.State = *s
+
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	datacap{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) Governor() (address.Address, error) {
+	return s.State.Governor, nil
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state{{.v}}) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+	return forEachClient(s.store, actors.Version{{.v}}, s.verifiedClients, cb)
+}
+
+func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.Token.Balances, int(s.Token.HamtBitWidth))
+}
+
+func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+	return getDataCap(s.store, actors.Version{{.v}}, s.verifiedClients, addr)
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return manifest.DatacapKey
+}
+
+func (s *state{{.v}}) ActorVersion() actorstypes.Version {
+    return actorstypes.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}

@@ -1,0 +1,248 @@
+###
+### Special magic GitHub labels
+### https://help.github.com/en/github/building-a-strong-community/encouraging-helpful-contributions-to-your-project-with-labels
+#
+- name: "good first issue"
+  color: 7057ff
+  description: "Good for newcomers"
+- name: "help wanted"
+  color: 008672
+  description: "Extra attention is needed"
+
+###
+### Goals
+#
+- name: goal/incentives
+  color: ff004d
+  description: "Incentinet"
+
+###
+### Areas
+#
+- name: area/ux
+  color: 00A4E0
+  description: "Area: UX"
+- name: area/chain/vm
+  color: 00A4E2
+  description: "Area: Chain/VM"
+- name: area/chain/sync
+  color: 00A4E4
+  description: "Area: Chain/Sync"
+- name: area/chain/misc
+  color: 00A4E6
+  description: "Area: Chain/Misc"
+- name: area/markets
+  color: 00A4E8
+  description: "Area: Markets"  
+- name: area/sealing/fsm
+  color: 0bb1ed
+  description: "Area: Sealing/FSM"
+- name: area/sealing/storage
+  color: 0EB4F0
+  description: "Area: Sealing/Storage"
+- name: area/proving
+  color: 0EB4F0
+  description: "Area: Proving"
+- name: area/mining
+  color: 10B6F2
+  description: "Area: Mining"
+- name: area/client/storage
+  color: 13B9F5
+  description: "Area: Client/Storage"
+- name: area/client/retrieval
+  color: 15BBF7
+  description: "Area: Client/Retrieval"
+- name: area/wallet
+  color: 15BBF7
+  description: "Area: Wallet"
+- name: area/payment-channel
+  color: ff6767
+  description: "Area: Payment Channel"
+- name: area/multisig
+  color: fff0ff
+  description: "Area: Multisig"
+- name: area/networking
+  color: 273f8a
+  description: "Area: Networking"
+
+###
+### Kinds
+#
+- name: kind/bug
+  color: c92712
+  description: "Kind: Bug"
+- name: kind/chore
+  color: fcf0b5
+  description: "Kind: Chore"
+- name: kind/feature
+  color: FFF3B8
+  description: "Kind: Feature"
+- name: kind/improvement
+  color: FFF5BA
+  description: "Kind: Improvement"
+- name: kind/test
+  color: FFF8BD
+  description: "Kind: Test"
+- name: kind/question
+  color: FFFDC2
+  description: "Kind: Question"
+- name: kind/enhancement
+  color: FFFFC5
+  description: "Kind: Enhancement"
+- name: kind/discussion
+  color: FFFFC7
+  description: "Kind: Discussion"
+
+###
+### Difficulties
+#
+- name: dif/trivial
+  color: b2b7ff
+  description: "Can be confidently tackled by newcomers, who are widely unfamiliar with lotus"
+- name: dif/easy
+  color: 7886d7
+  description: "An existing lotus user should be able to pick this up"
+- name: dif/medium
+  color: 6574cd
+  description: "Prior development experience with lotus is likely helpful"
+- name: dif/hard
+  color: 5661b3
+  description: "Suggests that having worked on the specific component affected by this issue is important"
+- name: dif/expert
+  color: 2f365f
+  description: "Requires extensive knowledge of the history, implications, ramifications of the issue"
+
+###
+### Efforts
+#
+- name: effort/minutes
+  color: e8fffe
+  description: "Effort: Minutes"
+- name: effort/hours
+  color: a0f0ed
+  description: "Effort: Hours"
+- name: effort/day
+  color: 64d5ca
+  description: "Effort: One Day"
+- name: effort/days
+  color: 4dc0b5
+  description: "Effort: Multiple Days"
+- name: effort/week
+  color: 38a89d
+  description: "Effort: One Week"
+- name: effort/weeks
+  color: 20504f
+  description: "Effort: Multiple Weeks"
+
+###
+### Impacts
+#
+- name: impact/regression
+  color: f1f5f8
+  description: "Impact: Regression"
+- name: impact/api-breakage
+  color: ECF0F3
+  description: "Impact: API Breakage"
+- name: impact/quality
+  color: E7EBEE
+  description: "Impact: Quality"
+- name: impact/dx
+  color: E2E6E9
+  description: "Impact: Developer Experience"
+- name: impact/test-flakiness
+  color: DDE1E4
+  description: "Impact: Test Flakiness"
+- name: impact/consensus
+  color: b20014
+  description: "Impact: Consensus"
+
+###
+### Topics
+#
+- name: topic/interoperability
+  color: bf0f73
+  description: "Topic: Interoperability"
+- name: topic/specs
+  color: CC1C80
+  description: "Topic: Specs"
+- name: topic/docs
+  color: D9298D
+  description: "Topic: Documentation"
+- name: topic/architecture
+  color: E53599
+  description: "Topic: Architecture"
+
+###
+### Priorities
+###
+- name: P0
+  color: dd362a
+  description: "P0: Critical Blocker"
+- name: P1
+  color: ce8048
+  description: "P1: Must be resolved"
+- name: P2
+  color: dbd81a
+  description: "P2: Should be resolved"
+- name: P3
+  color: 9fea8f
+  description: "P3: Might get resolved"
+
+###
+### Hints
+#
+#- name: hint/good-first-issue
+#  color: 7057ff
+#  description: "Hint: Good First Issue"
+#- name: hint/help-wanted
+#  color: 008672
+#  description: "Hint: Help Wanted"
+- name: hint/needs-decision
+  color: 33B9A5
+  description: "Hint: Needs Decision"
+- name: hint/needs-triage
+  color: 1AA08C
+  description: "Hint: Needs Triage"
+- name: hint/needs-analysis
+  color: 26AC98
+  description: "Hint: Needs Analysis"
+- name: hint/needs-author-input
+  color: 33B9A5
+  description: "Hint: Needs Author Input"
+- name: hint/needs-team-input
+  color: 40C6B2
+  description: "Hint: Needs Team Input"
+- name: hint/needs-community-input
+  color: 4DD3BF
+  description: "Hint: Needs Community Input"
+- name: hint/needs-review
+  color: 5AE0CC
+  description: "Hint: Needs Review"
+
+###
+### Statuses
+#
+- name: status/done
+  color: edb3a6
+  description: "Status: Done"
+- name: status/deferred
+  color: E0A699
+  description: "Status: Deferred"
+- name: status/in-progress
+  color: D49A8D
+  description: "Status: In Progress"
+- name: status/blocked
+  color: C78D80
+  description: "Status: Blocked"
+- name: status/inactive
+  color: BA8073
+  description: "Status: Inactive"
+- name: status/waiting
+  color: AD7366
+  description: "Status: Waiting"
+- name: status/rotten
+  color: 7A4033
+  description: "Status: Rotten"
+- name: status/discarded
+  color: 6D3326
+  description: "Status: Discarded / Won't fix"

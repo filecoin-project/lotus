@@ -4,7 +4,7 @@ filebeat.inputs:
 
 - type: log
   paths:
-    - /root/.lotusstorage/logs
+    - /root/.lotusminer/logs
   fields:
     logzio_codec: json
     token: <API TOKEN>

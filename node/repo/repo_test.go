@@ -1,3 +1,4 @@
+// stm: #unit
 package repo
 
 import (
@@ -5,6 +6,7 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -47,9 +49,22 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "setting multiaddr shouldn't error")
 	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
 
-	cfg, err := lrepo.Config()
-	assert.Equal(t, config.DefaultFullNode(), cfg, "there should be a default config")
+	c1, err := lrepo.Config()
+	assert.Equal(t, config.DefaultFullNode(), c1, "there should be a default config")
 	assert.NoError(t, err, "config should not error")
+
+	// mutate config and persist back to repo
+	err = lrepo.SetConfig(func(c interface{}) {
+		cfg := c.(*config.FullNode)
+		cfg.Client.IpfsMAddr = "duvall"
+	})
+	assert.NoError(t, err)
+
+	// load config and verify changes
+	c2, err := lrepo.Config()
+	require.NoError(t, err)
+	cfg2 := c2.(*config.FullNode)
+	require.Equal(t, cfg2.Client.IpfsMAddr, "duvall")
 
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to close")

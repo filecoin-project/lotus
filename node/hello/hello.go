@@ -4,22 +4,27 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	inet "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p/core/host"
+	inet "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 )
+
+// TODO(TEST): missing test coverage.
 
 const ProtocolID = "/fil/hello/1.0.0"
 
@@ -31,21 +36,24 @@ type HelloMessage struct {
 	HeaviestTipSetWeight big.Int
 	GenesisHash          cid.Cid
 }
+
 type LatencyMessage struct {
-	TArrial int64
-	TSent   int64
+	TArrival int64
+	TSent    int64
 }
 
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
+
 type Service struct {
 	h host.Host
 
 	cs     *store.ChainStore
 	syncer *chain.Syncer
+	cons   consensus.Consensus
 	pmgr   *peermgr.PeerMgr
 }
 
-func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr peermgr.MaybePeerMgr) *Service {
+func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, cons consensus.Consensus, pmgr peermgr.MaybePeerMgr) *Service {
 	if pmgr.Mgr == nil {
 		log.Warn("running without peer manager")
 	}
@@ -55,19 +63,19 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 
 		cs:     cs,
 		syncer: syncer,
+		cons:   cons,
 		pmgr:   pmgr.Mgr,
 	}
 }
 
 func (hs *Service) HandleStream(s inet.Stream) {
-
 	var hmsg HelloMessage
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message, disconnecting", "error", err)
-		s.Conn().Close()
+		_ = s.Conn().Close()
 		return
 	}
-	arrived := time.Now()
+	arrived := build.Clock.Now()
 
 	log.Debugw("genesis from hello",
 		"tipset", hmsg.HeaviestTipSet,
@@ -75,17 +83,17 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		"hash", hmsg.GenesisHash)
 
 	if hmsg.GenesisHash != hs.syncer.Genesis.Cids()[0] {
-		log.Warnf("other peer has different genesis! (%s)", hmsg.GenesisHash)
-		s.Conn().Close()
+		log.Debugf("other peer has different genesis! (%s)", hmsg.GenesisHash)
+		_ = s.Conn().Close()
 		return
 	}
 	go func() {
-		defer s.Close()
+		defer s.Close() //nolint:errcheck
 
-		sent := time.Now()
+		sent := build.Clock.Now()
 		msg := &LatencyMessage{
-			TArrial: arrived.UnixNano(),
-			TSent:   sent.UnixNano(),
+			TArrival: arrived.UnixNano(),
+			TSent:    sent.UnixNano(),
 		}
 		if err := cborutil.WriteCborRPC(s, msg); err != nil {
 			log.Debugf("error while responding to latency: %v", err)
@@ -99,7 +107,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	if len(protos) == 0 {
 		log.Warn("other peer hasnt completed libp2p identify, waiting a bit")
 		// TODO: this better
-		time.Sleep(time.Millisecond * 300)
+		build.Clock.Sleep(time.Millisecond * 300)
+	}
+
+	if hs.pmgr != nil {
+		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
 
 	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
@@ -112,19 +124,15 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 10)
 
 		// don't bother informing about genesis
-		log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
+		log.Debugf("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
 	}
-	if hs.pmgr != nil {
-		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
-	}
-
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	s, err := hs.h.NewStream(ctx, pid, ProtocolID)
 	if err != nil {
-		return err
+		return xerrors.Errorf("error opening stream: %w", err)
 	}
 
 	hts := hs.cs.GetHeaviestTipSet()
@@ -133,7 +141,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		return err
 	}
 
-	gen, err := hs.cs.GetGenesis()
+	gen, err := hs.cs.GetGenesis(ctx)
 	if err != nil {
 		return err
 	}
@@ -146,22 +154,25 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	}
 	log.Debug("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
 
-	t0 := time.Now()
+	t0 := build.Clock.Now()
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
-		return err
+		return xerrors.Errorf("writing rpc to peer: %w", err)
+	}
+	if err := s.CloseWrite(); err != nil {
+		log.Warnw("CloseWrite err", "error", err)
 	}
 
 	go func() {
-		defer s.Close()
+		defer s.Close() //nolint:errcheck
 
 		lmsg := &LatencyMessage{}
-		s.SetReadDeadline(time.Now().Add(10 * time.Second))
+		_ = s.SetReadDeadline(build.Clock.Now().Add(10 * time.Second))
 		err := cborutil.ReadCborRPC(s, lmsg)
 		if err != nil {
-			log.Infow("reading latency message", "error", err)
+			log.Debugw("reading latency message", "error", err)
 		}
 
-		t3 := time.Now()
+		t3 := build.Clock.Now()
 		lat := t3.Sub(t0)
 		// add to peer tracker
 		if hs.pmgr != nil {
@@ -169,12 +180,14 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		}
 
 		if err == nil {
-			if lmsg.TArrial != 0 && lmsg.TSent != 0 {
-				t1 := time.Unix(0, lmsg.TArrial)
+			if lmsg.TArrival != 0 && lmsg.TSent != 0 {
+				t1 := time.Unix(0, lmsg.TArrival)
 				t2 := time.Unix(0, lmsg.TSent)
 				offset := t0.Sub(t1) + t3.Sub(t2)
 				offset /= 2
-				log.Infow("time offset", "offset", offset.Seconds(), "peerid", pid.String())
+				if offset > 5*time.Second || offset < -5*time.Second {
+					log.Infow("time offset", "offset", offset.Seconds(), "peerid", pid.String())
+				}
 			}
 		}
 	}()
