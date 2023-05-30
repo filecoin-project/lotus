@@ -3,11 +3,14 @@ package cli
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -18,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/eam"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -36,6 +40,7 @@ var EvmCmd = &cli.Command{
 		EvmCallSimulateCmd,
 		EvmGetContractAddress,
 		EvmGetBytecode,
+		EvmBackfillTxHashCmd,
 	},
 }
 
@@ -534,4 +539,143 @@ var EvmGetBytecode = &cli.Command{
 		fmt.Printf("Code for %s written to %s\n", contractAddr, fileName)
 		return nil
 	},
+}
+
+var EvmBackfillTxHashCmd = &cli.Command{
+	Name:        "backfill-txhash",
+	Description: "Backfills the txhash.db for a number of epochs starting from a specified height",
+	Flags: []cli.Flag{
+		&cli.UintFlag{
+			Name:  "from",
+			Value: 0,
+			Usage: "the tipset height to start backfilling from (0 is head of chain)",
+		},
+		&cli.IntFlag{
+			Name:  "epochs",
+			Value: 2000,
+			Usage: "the number of epochs to backfill",
+		},
+		&cli.StringFlag{
+			Name:  "repo",
+			Value: "~/.lotus",
+			Usage: "path to the repo",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		return backfillTxHash(cctx)
+	},
+}
+
+func backfillTxHash(cctx *cli.Context) error {
+	api, closer, err := GetFullNodeAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	ctx := ReqContext(cctx)
+
+	curTs, err := api.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	startHeight := int64(cctx.Int("from"))
+	if startHeight == 0 {
+		startHeight = int64(curTs.Height()) - 1
+	}
+
+	epochs := cctx.Int("epochs")
+
+	basePath, err := homedir.Expand(cctx.String("repo"))
+	if err != nil {
+		return err
+	}
+
+	dbPath := filepath.Join(basePath, "sqlite", "txhash.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			fmt.Printf("ERROR: closing db: %s", err)
+		}
+	}()
+
+	insertStmt, err := db.Prepare("INSERT OR IGNORE INTO eth_tx_hashes(hash, cid) VALUES(?, ?)")
+	if err != nil {
+		return err
+	}
+
+	var totalRowsAffected int64 = 0
+	for i := 0; i < epochs; i++ {
+		epoch := abi.ChainEpoch(startHeight - int64(i))
+
+		select {
+		case <-cctx.Done():
+			fmt.Println("request cancelled")
+			return nil
+		default:
+		}
+
+		curTsk := curTs.Parents()
+		execTs, err := api.ChainGetTipSet(ctx, curTsk)
+		if err != nil {
+			return fmt.Errorf("failed to call ChainGetTipSet for %s: %w", curTsk, err)
+		}
+
+		if i%100 == 0 {
+			log.Infof("%d/%d processing epoch:%d", i, epochs, epoch)
+		}
+
+		for _, blockheader := range execTs.Blocks() {
+			blkMsgs, err := api.ChainGetBlockMessages(ctx, blockheader.Cid())
+			if err != nil {
+				log.Infof("Could not get block messages at epoch: %d, stopping walking up the chain", epoch)
+				epochs = i
+				break
+			}
+
+			for _, smsg := range blkMsgs.SecpkMessages {
+				if smsg.Signature.Type != crypto.SigTypeDelegated {
+					continue
+				}
+
+				tx, err := ethtypes.EthTxFromSignedEthMessage(smsg)
+				if err != nil {
+					return fmt.Errorf("failed to convert from signed message: %w at epoch: %d", err, epoch)
+				}
+
+				tx.Hash, err = tx.TxHash()
+				if err != nil {
+					return fmt.Errorf("failed to calculate hash for ethTx: %w at epoch: %d", err, epoch)
+				}
+
+				res, err := insertStmt.Exec(tx.Hash.String(), smsg.Cid().String())
+				if err != nil {
+					return fmt.Errorf("error inserting tx mapping to db: %s at epoch: %d", err, epoch)
+				}
+
+				rowsAffected, err := res.RowsAffected()
+				if err != nil {
+					return fmt.Errorf("error getting rows affected: %s at epoch: %d", err, epoch)
+				}
+
+				if rowsAffected > 0 {
+					log.Debugf("Inserted txhash %s, cid: %s at epoch: %d", tx.Hash.String(), smsg.Cid().String(), epoch)
+				}
+
+				totalRowsAffected += rowsAffected
+			}
+		}
+
+		curTs = execTs
+	}
+
+	log.Infof("Done, inserted %d missing txhashes", totalRowsAffected)
+
+	return nil
 }
