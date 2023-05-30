@@ -674,7 +674,7 @@ func slashConsensus(a lapi.FullNode, p string, from string) error {
 				Params: enc,
 			}, nil)
 			if err != nil {
-				log.Errorf("ReportConsensusFault to messagepool error:%s", err)
+				log.Errorf("ReportConsensusFault to messagepool error:%w", err)
 				continue
 			}
 			log.Infof("ReportConsensusFault message CID:%s", message.Cid())
