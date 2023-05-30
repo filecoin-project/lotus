@@ -102,7 +102,7 @@ func (f *SlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, par
 func checkFault(ctx context.Context, t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) (cid.Cid, error) {
 	fault, err := t.Has(ctx, key)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("failed to read from datastore: %w", err)
 	}
 
 	if fault {
