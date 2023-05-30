@@ -12,7 +12,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipni/storetheindex/announce/message"
+	"github.com/ipni/go-libipni/announce/message"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -357,6 +357,8 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceGap):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrGasFeeCapTooLow):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceTooLow):
 			return pubsub.ValidationIgnore

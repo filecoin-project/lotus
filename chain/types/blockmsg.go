@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 )
@@ -14,10 +15,13 @@ type BlockMsg struct {
 
 func DecodeBlockMsg(b []byte) (*BlockMsg, error) {
 	var bm BlockMsg
-	if err := bm.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+	data := bytes.NewReader(b)
+	if err := bm.UnmarshalCBOR(data); err != nil {
 		return nil, err
 	}
-
+	if l := data.Len(); l != 0 {
+		return nil, fmt.Errorf("extraneous data in BlockMsg CBOR encoding: got %d unexpected bytes", l)
+	}
 	return &bm, nil
 }
 

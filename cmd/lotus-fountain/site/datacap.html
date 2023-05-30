@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sending Funds - Lotus Fountain</title>
+    <title>Grant DataCap - Lotus Fountain</title>
     <link rel="stylesheet" type="text/css" href="main.css">
 	<script src="https://www.google.com/recaptcha/api.js"></script>
 	<script>
    		function onSubmit(token) {
-     	document.getElementById("funds-form").submit();
+     	document.getElementById("datacap-form").submit();
    	}
 	</script>
 
@@ -15,20 +15,21 @@
 <div class="Index">
     <div class="Index-nodes">
         <div class="Index-node">
-            <h3>Send funds</h3>
-            <p>Please input your address to receive test FIL (tFIL) on the Calibration Testnet. This faucet dispenses 100 tFIL.</p>
+            <h3>Grant datacap</h3>
+            <p>Please input your address to receive a data cap on the Calibration Testnet.</p>
         </div>
         <div class="Index-node">
-            <form action='/send' method='post' id='funds-form'>
+            <form action='/datacap' method='post' id='datacap-form'>
                 <span>Enter destination address:</span>
-                <input type='text' name='address' style="width: 300px" placeholder="Enter t0/1/2/3/4 or 0xETH">
-				<button class="g-recaptcha" 
-						data-sitekey="{{ . }}"
-						data-callback='onSubmit' 
-						data-action='submit'>Send Funds</button>
+                <input type='text' name='address' style="width: 300px" placeholder="t0/1/2/3/4 or 0xETH">
+                <button class="g-recaptcha"
+                        data-sitekey="{{ . }}"
+                        data-callback='onSubmit'
+                        data-action='submit'>Grant Datacap</button>
             </form>
         </div>
     </div>
+
     <div class="Index-footer">
         <div>
             <a href="index.html">[Back]</a>
