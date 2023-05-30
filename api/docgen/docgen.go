@@ -86,6 +86,7 @@ func init() {
 	}
 
 	ExampleValues[reflect.TypeOf(addr)] = addr
+	ExampleValues[reflect.TypeOf(&addr)] = &addr
 
 	pid, err := peer.Decode("12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf")
 	if err != nil {
