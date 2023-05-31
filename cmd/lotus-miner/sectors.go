@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -319,6 +320,9 @@ var sectorsListCmd = &cli.Command{
 			Value: parallelSectorChecks,
 		},
 	},
+	Subcommands: []*cli.Command{
+		sectorsListUpgradeBoundsCmd,
+	},
 	Action: func(cctx *cli.Context) error {
 		// http mode allows for parallel json decoding/encoding, which was a bottleneck here
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
@@ -580,6 +584,169 @@ var sectorsListCmd = &cli.Command{
 			}
 
 			tw.Write(m)
+		}
+
+		return tw.Flush(os.Stdout)
+	},
+}
+
+var sectorsListUpgradeBoundsCmd = &cli.Command{
+	Name:  "upgrade-bounds",
+	Usage: "Output upgrade bounds for available sectors",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "buckets",
+			Value: 25,
+		},
+		&cli.BoolFlag{
+			Name:  "csv",
+			Usage: "output machine-readable values",
+		},
+		&cli.BoolFlag{
+			Name:  "deal-terms",
+			Usage: "bucket by how many deal-sectors can start at a given expiration",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		fullApi, closer2, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer2()
+
+		ctx := lcli.ReqContext(cctx)
+
+		list, err := minerApi.SectorsListInStates(ctx, []api.SectorState{
+			api.SectorState(sealing.Available),
+		})
+		if err != nil {
+			return xerrors.Errorf("getting sector list: %w", err)
+		}
+
+		head, err := fullApi.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		filter := bitfield.New()
+
+		for _, s := range list {
+			filter.Set(uint64(s))
+		}
+
+		maddr, err := minerApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, &filter, head.Key())
+		if err != nil {
+			return err
+		}
+
+		if len(sset) == 0 {
+			return nil
+		}
+
+		var minExpiration, maxExpiration abi.ChainEpoch
+
+		for _, s := range sset {
+			if s.Expiration < minExpiration || minExpiration == 0 {
+				minExpiration = s.Expiration
+			}
+			if s.Expiration > maxExpiration {
+				maxExpiration = s.Expiration
+			}
+		}
+
+		buckets := cctx.Int("buckets")
+		bucketSize := (maxExpiration - minExpiration) / abi.ChainEpoch(buckets)
+		bucketCounts := make([]int, buckets+1)
+
+		for b := range bucketCounts {
+			bucketMin := minExpiration + abi.ChainEpoch(b)*bucketSize
+			bucketMax := minExpiration + abi.ChainEpoch(b+1)*bucketSize
+
+			if cctx.Bool("deal-terms") {
+				bucketMax = bucketMax + policy.MarketDefaultAllocationTermBuffer
+			}
+
+			for _, s := range sset {
+				isInBucket := s.Expiration >= bucketMin && s.Expiration < bucketMax
+
+				if isInBucket {
+					bucketCounts[b]++
+				}
+			}
+
+		}
+
+		// Creating CSV writer
+		writer := csv.NewWriter(os.Stdout)
+
+		// Writing CSV headers
+		err = writer.Write([]string{"Max Expiration in Bucket", "Sector Count"})
+		if err != nil {
+			return xerrors.Errorf("writing csv headers: %w", err)
+		}
+
+		// Writing bucket details
+
+		if cctx.Bool("csv") {
+			for i := 0; i < buckets; i++ {
+				maxExp := minExpiration + abi.ChainEpoch(i+1)*bucketSize
+
+				timeStr := strconv.FormatInt(int64(maxExp), 10)
+
+				err = writer.Write([]string{
+					timeStr,
+					strconv.Itoa(bucketCounts[i]),
+				})
+				if err != nil {
+					return xerrors.Errorf("writing csv row: %w", err)
+				}
+			}
+
+			// Flush to make sure all data is written to the underlying writer
+			writer.Flush()
+
+			if err := writer.Error(); err != nil {
+				return xerrors.Errorf("flushing csv writer: %w", err)
+			}
+
+			return nil
+		}
+
+		tw := tablewriter.New(
+			tablewriter.Col("Bucket Expiration"),
+			tablewriter.Col("Sector Count"),
+			tablewriter.Col("Bar"),
+		)
+
+		var barCols = 40
+		var maxCount int
+
+		for _, c := range bucketCounts {
+			if c > maxCount {
+				maxCount = c
+			}
+		}
+
+		for i := 0; i < buckets; i++ {
+			maxExp := minExpiration + abi.ChainEpoch(i+1)*bucketSize
+			timeStr := cliutil.EpochTime(head.Height(), maxExp)
+
+			tw.Write(map[string]interface{}{
+				"Bucket Expiration": timeStr,
+				"Sector Count":      color.YellowString("%d", bucketCounts[i]),
+				"Bar":               "[" + color.GreenString(strings.Repeat("|", bucketCounts[i]*barCols/maxCount)) + strings.Repeat(" ", barCols-bucketCounts[i]*barCols/maxCount) + "]",
+			})
 		}
 
 		return tw.Flush(os.Stdout)

@@ -13,6 +13,7 @@ import (
 	"os"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -1689,4 +1690,189 @@ readLoop:
 		t.Fatalf("failed to pack with tq=0.01; packed %d, minimum packing: %d", gasLimit, minGasLimit)
 	}
 
+}
+
+func TestRealWorldSelectionTiming(t *testing.T) {
+	//stm: @TOKEN_WALLET_NEW_001, @TOKEN_WALLET_SIGN_001, @CHAIN_MEMPOOL_SELECT_001
+
+	// load test-messages.json.gz and rewrite the messages so that
+	// 1) we map each real actor to a test actor so that we can sign the messages
+	// 2) adjust the nonces so that they start from 0
+	file, err := os.Open("test-messages2.json.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gzr, err := gzip.NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dec := json.NewDecoder(gzr)
+
+	var msgs []*types.SignedMessage
+	baseNonces := make(map[address.Address]uint64)
+
+readLoop:
+	for {
+		m := new(types.SignedMessage)
+		err := dec.Decode(m)
+		switch err {
+		case nil:
+			msgs = append(msgs, m)
+			nonce, ok := baseNonces[m.Message.From]
+			if !ok || m.Message.Nonce < nonce {
+				baseNonces[m.Message.From] = m.Message.Nonce
+			}
+
+		case io.EOF:
+			break readLoop
+
+		default:
+			t.Fatal(err)
+		}
+	}
+
+	actorMap := make(map[address.Address]address.Address)
+	actorWallets := make(map[address.Address]api.Wallet)
+
+	for _, m := range msgs {
+		baseNonce := baseNonces[m.Message.From]
+
+		localActor, ok := actorMap[m.Message.From]
+		if !ok {
+			w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			a, err := w.WalletNew(context.Background(), types.KTSecp256k1)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			actorMap[m.Message.From] = a
+			actorWallets[a] = w
+			localActor = a
+		}
+
+		w, ok := actorWallets[localActor]
+		if !ok {
+			t.Fatalf("failed to lookup wallet for actor %s", localActor)
+		}
+
+		m.Message.From = localActor
+		m.Message.Nonce -= baseNonce
+
+		sig, err := w.WalletSign(context.TODO(), localActor, m.Message.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		m.Signature = *sig
+	}
+
+	mp, tma := makeTestMpool()
+
+	block := tma.nextBlockWithHeight(uint64(build.UpgradeHyggeHeight) + 10)
+	ts := mock.TipSet(block)
+	tma.applyBlock(t, block)
+
+	for _, a := range actorMap {
+		tma.setBalance(a, 1000000)
+	}
+
+	tma.baseFee = types.NewInt(800_000_000)
+
+	sort.Slice(msgs, func(i, j int) bool {
+		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
+	})
+
+	// add the messages
+	for _, m := range msgs {
+		mustAdd(t, mp, m)
+	}
+
+	// do message selection and check block packing
+	minGasLimit := int64(0.9 * float64(build.BlockGasLimit))
+
+	// greedy first
+	start := time.Now()
+	selected, err := mp.SelectMessages(context.Background(), ts, 1.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("selected %d messages in %s", len(selected), time.Since(start))
+
+	gasLimit := int64(0)
+	for _, m := range selected {
+		gasLimit += m.Message.GasLimit
+	}
+	if gasLimit < minGasLimit {
+		t.Fatalf("failed to pack with tq=1.0; packed %d, minimum packing: %d", gasLimit, minGasLimit)
+	}
+
+	// high quality ticket
+	start = time.Now()
+	selected, err = mp.SelectMessages(context.Background(), ts, .8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("selected %d messages in %s", len(selected), time.Since(start))
+
+	gasLimit = int64(0)
+	for _, m := range selected {
+		gasLimit += m.Message.GasLimit
+	}
+	if gasLimit < minGasLimit {
+		t.Fatalf("failed to pack with tq=0.8; packed %d, minimum packing: %d", gasLimit, minGasLimit)
+	}
+
+	// mid quality ticket
+	start = time.Now()
+	selected, err = mp.SelectMessages(context.Background(), ts, .4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("selected %d messages in %s", len(selected), time.Since(start))
+
+	gasLimit = int64(0)
+	for _, m := range selected {
+		gasLimit += m.Message.GasLimit
+	}
+	if gasLimit < minGasLimit {
+		t.Fatalf("failed to pack with tq=0.4; packed %d, minimum packing: %d", gasLimit, minGasLimit)
+	}
+
+	// low quality ticket
+	start = time.Now()
+	selected, err = mp.SelectMessages(context.Background(), ts, .1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("selected %d messages in %s", len(selected), time.Since(start))
+
+	gasLimit = int64(0)
+	for _, m := range selected {
+		gasLimit += m.Message.GasLimit
+	}
+	if gasLimit < minGasLimit {
+		t.Fatalf("failed to pack with tq=0.1; packed %d, minimum packing: %d", gasLimit, minGasLimit)
+	}
+
+	// very low quality ticket
+	start = time.Now()
+	selected, err = mp.SelectMessages(context.Background(), ts, .01)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("selected %d messages in %s", len(selected), time.Since(start))
+
+	gasLimit = int64(0)
+	for _, m := range selected {
+		gasLimit += m.Message.GasLimit
+	}
+	if gasLimit < minGasLimit {
+		t.Fatalf("failed to pack with tq=0.01; packed %d, minimum packing: %d", gasLimit, minGasLimit)
+	}
 }

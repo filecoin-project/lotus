@@ -106,6 +106,7 @@ func main() {
 			sealBenchCmd,
 			simpleCmd,
 			importBenchCmd,
+			rpcCmd,
 		},
 	}
 
