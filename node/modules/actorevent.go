@@ -84,6 +84,18 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 				return nil, err
 			}
 
+			if cfg.Events.EnableEventBackfillOnStartup {
+				go func() {
+					log.Infof("EnableEventBackfillOnStartup was set, starting backfill of actor events in the background...")
+					now := time.Now()
+					err := full.BackfillEvents(ctx, chainapi, stateapi, sm)
+					if err != nil {
+						log.Infof("backfill events error: %s", err)
+					}
+					log.Infof("backfill of actor events done in: %s", time.Since(now))
+				}()
+			}
+
 			lc.Append(fx.Hook{
 				OnStop: func(context.Context) error {
 					return eventIndex.Close()

@@ -389,6 +389,14 @@
     # env var: LOTUS_FEVM_EVENTS_DATABASEPATH
     #DatabasePath = ""
 
+    # EnableEventBackfillOnStartup will run a backfill of all actor events from the current head up to the genesis
+    # block (while we have state) and populate the events.db. The DisableHistoricFilterAPI must be set to false
+    # for this to have any effect.
+    #
+    # type: bool
+    # env var: LOTUS_FEVM_EVENTS_ENABLEEVENTBACKFILLONSTARTUP
+    #EnableEventBackfillOnStartup = false
+
 
 [Index]
   # EXPERIMENTAL FEATURE. USE WITH CAUTION

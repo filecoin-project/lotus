@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/xerrors"
 
@@ -51,16 +52,23 @@ var ddls = []string{
 		value BLOB NOT NULL
 	)`,
 
+	// contains the height that we have backfilled to
+	`CREATE TABLE IF NOT EXISTS event_backfilled (	
+	    height INTEGER NOT NULL UNIQUE
+	)`,
+
 	// metadata containing version of schema
 	`CREATE TABLE IF NOT EXISTS _meta (
     	version UINT64 NOT NULL UNIQUE
 	)`,
 
-	// version 1.
-	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
+	// version 2.
+	`INSERT OR IGNORE INTO _meta (version) VALUES (2)`,
 }
 
-const schemaVersion = 1
+var log = logging.Logger("filter")
+
+const schemaVersion = 2
 
 const (
 	insertEvent = `INSERT OR IGNORE INTO event
@@ -102,8 +110,7 @@ func NewEventIndex(path string) (*EventIndex, error) {
 		_ = db.Close()
 		return nil, xerrors.Errorf("looking for _meta table: %w", err)
 	} else {
-		// Ensure we don't open a database from a different schema version
-
+		// check the schema version to see if we need to upgrade the database schema
 		row := db.QueryRow("SELECT max(version) FROM _meta")
 		var version int
 		err := row.Scan(&version)
@@ -111,6 +118,23 @@ func NewEventIndex(path string) (*EventIndex, error) {
 			_ = db.Close()
 			return nil, xerrors.Errorf("invalid database version: no version found")
 		}
+
+		if version == 1 {
+			log.Infof("upgrading event index from version 1 to version 2")
+
+			// to upgrade to version version 2 we only need to create the event_backfilled_ranges table
+			// which means we can just recreate the schema (it will not have any effect on existing data)
+			for _, ddl := range ddls {
+				if _, err := db.Exec(ddl); err != nil {
+					_ = db.Close()
+					return nil, xerrors.Errorf("could not upgrade index to version 2, exec ddl %q: %w", ddl, err)
+				}
+			}
+
+			version = 2
+		}
+
+		// unsupported schema version
 		if version != schemaVersion {
 			_ = db.Close()
 			return nil, xerrors.Errorf("invalid database version: got %d, expected %d", version, schemaVersion)

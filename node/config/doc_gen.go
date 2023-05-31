@@ -393,6 +393,14 @@ support the historic filter APIs. If the database does not exist it will be crea
 the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
 relative to the CWD (current working directory).`,
 		},
+		{
+			Name: "EnableEventBackfillOnStartup",
+			Type: "bool",
+
+			Comment: `EnableEventBackfillOnStartup will run a backfill of all actor events from the current head up to the genesis
+block (while we have state) and populate the events.db. The DisableHistoricFilterAPI must be set to false
+for this to have any effect.`,
+		},
 	},
 	"FeeConfig": []DocField{
 		{

@@ -721,6 +721,11 @@ type Events struct {
 	// relative to the CWD (current working directory).
 	DatabasePath string
 
+	// EnableEventBackfillOnStartup will run a backfill of all actor events from the current head up to the genesis
+	// block (while we have state) and populate the events.db. The DisableHistoricFilterAPI must be set to false
+	// for this to have any effect.
+	EnableEventBackfillOnStartup bool
+
 	// Others, not implemented yet:
 	// Set a limit on the number of active websocket subscriptions (may be zero)
 	// Set a timeout for subscription clients
