@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.23.1-rc2 / 2023-05-10
+# v1.23.1-rc3 / 2023-05-31
 
-This is the first release candidate of the upcoming optional feature release of Lotus v1.23.1.
+This is the 3rd release candidate of the upcoming optional feature release of Lotus v1.23.1.
 
 **☢️ Upgrade Warnings ☢️**
 
@@ -26,6 +26,8 @@ This is the first release candidate of the upcoming optional feature release of 
 - feat: shed: incoming block-sub chainwatch tool ([filecoin-project/lotus#10513](https://github.com/filecoin-project/lotus/pull/10513))
 
 ## Improvements
+- feat: chainstore: sharded mutex for filling chain height index
+- Check if epoch is negative in GetTipsetByHeight
 - fix: sched: Address GET_32G_MAX_CONCURRENT regression
 - fix: cli: Hide legacy markets cmds
 - fix: ci: Debugging m1 build
@@ -74,6 +76,7 @@ This is the first release candidate of the upcoming optional feature release of 
 - Merge branch 'feat/new-gw-methods'
 
 ## Dependencies
+- devs: update libp2p #10937
 - chore: deps: update to FVM 3.3.1 ([filecoin-project/lotus#10786](https://github.com/filecoin-project/lotus/pull/10786))
 -  chore: boxo: migrate from go-libipfs to boxo ([filecoin-project/lotus#10562](https://github.com/filecoin-project/lotus/pull/10562))
 - chore: deps: update to go-state-types v0.11.0-alpha-3 ([filecoin-project/lotus#10606](https://github.com/filecoin-project/lotus/pull/10606))
