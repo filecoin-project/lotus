@@ -89,6 +89,7 @@ const (
 
 	// health checks
 	CheckFDLimit
+	CheckFvmConcurrency
 	LegacyMarketsEOL
 
 	// libp2p
@@ -165,6 +166,7 @@ func defaults() []Option {
 		Override(new(dtypes.NodeStartTime), FromVal(dtypes.NodeStartTime(time.Now()))),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
+		Override(CheckFvmConcurrency, modules.CheckFvmConcurrency()),
 
 		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
 		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
