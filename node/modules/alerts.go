@@ -63,12 +63,12 @@ func CheckFvmConcurrency() func(al *alerting.Alerting) {
 		}
 
 		// Raise alert if LOTUS_FVM_CONCURRENCY is set to a high value
-		if fvmConcurrencyVal >= 24 {
+		if fvmConcurrencyVal > 24 {
 			alert := al.AddAlertType("process", "fvm-concurrency")
 			al.Raise(alert, map[string]interface{}{
 				"message":     "LOTUS_FVM_CONCURRENCY is set to a high value that can cause chain sync panics on network migrations/upgrades",
 				"set_value":   fvmConcurrencyVal,
-				"recommended": "23 or less during network upgrades",
+				"recommended": "24 or less during network upgrades",
 			})
 		}
 	}
