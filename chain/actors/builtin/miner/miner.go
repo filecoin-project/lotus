@@ -228,7 +228,7 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 		}
 	}
 
-	if !configWantSynthetic {
+	if nver < network.SyntheticVersion || !configWantSynthetic {
 		switch proof {
 		case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1:
 			return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
@@ -244,6 +244,7 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 			return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
 		}
 	}
+
 	switch proof {
 	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1:
 		return abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep, nil

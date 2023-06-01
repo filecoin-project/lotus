@@ -65,7 +65,7 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synth
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 
-		if synthetic {
+		if nv >= network.SyntheticVersion && synthetic {
 			return toSynthetic(v)
 		} else {
 			return v, nil

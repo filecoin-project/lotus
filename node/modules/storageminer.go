@@ -147,7 +147,7 @@ func StorageNetworkName(ctx helpers.MetricsCtx, a v1api.FullNode) (dtypes.Networ
 	return a.StateNetworkName(ctx)
 }
 
-func SealProofType(maddr dtypes.MinerAddress, fnapi v1api.FullNode) (abi.RegisteredSealProof, error) {
+func SealProofType(maddr dtypes.MinerAddress, fnapi v1api.FullNode, configSyntheticPoRep bool) (abi.RegisteredSealProof, error) {
 	mi, err := fnapi.StateMinerInfo(context.TODO(), address.Address(maddr), types.EmptyTSK)
 	if err != nil {
 		return 0, err
@@ -157,7 +157,7 @@ func SealProofType(maddr dtypes.MinerAddress, fnapi v1api.FullNode) (abi.Registe
 		return 0, err
 	}
 
-	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
+	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType, configSyntheticPoRep)
 }
 
 func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.AddressSelector, error) {
