@@ -37,7 +37,17 @@ var dbDefs = []string{
 	)`,
 	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
 }
-var dbPragmas = []string{}
+
+var dbPragmas = []string{
+	"PRAGMA synchronous = normal",
+	"PRAGMA temp_store = memory",
+	"PRAGMA mmap_size = 30000000000",
+	"PRAGMA page_size = 32768",
+	"PRAGMA auto_vacuum = NONE",
+	"PRAGMA automatic_index = OFF",
+	"PRAGMA journal_mode = WAL",
+	"PRAGMA read_uncommitted = ON",
+}
 
 const (
 	// prepared stmts
