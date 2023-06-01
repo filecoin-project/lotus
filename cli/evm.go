@@ -542,8 +542,8 @@ var EvmGetBytecode = &cli.Command{
 }
 
 var EvmBackfillTxHashCmd = &cli.Command{
-	Name:        "backfill-txhash",
-	Description: "Backfills the txhash.db for a number of epochs starting from a specified height",
+	Name:  "backfill-txhash",
+	Usage: "Backfills the txhash.db for a number of epochs starting from a specified height",
 	Flags: []cli.Flag{
 		&cli.UintFlag{
 			Name:  "from",
