@@ -859,6 +859,33 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 		}
 	}
 
+	if abi.Synthetic[sector.ProofType] {
+		err = ffi.GenerateSynthProofs(
+			sector.ProofType,
+			sealedCID,
+			unsealedCID,
+			paths.Cache,
+			paths.Sealed,
+			sector.ID.Number,
+			sector.ID.Miner, ticket,
+			[]abi.PieceInfo{{Size: abi.PaddedPieceSize(ssize), PieceCID: unsealedCID}})
+		if err != nil {
+			log.Warn("GenerateSynthProofs() failed: ", err)
+			log.Warnf("num:%d tkt:%v seed:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
+			return storiface.SectorCids{}, xerrors.Errorf("checking PreCommit failed: %w", err)
+		}
+
+		if err = ffi.ClearLayerData(ssize, paths.Cache); err != nil {
+			log.Warn("failed to GenerateSynthProofs(): ", err)
+			log.Warnf("num:%d tkt:%v seed:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
+			return storiface.SectorCids{
+				Unsealed: unsealedCID,
+				Sealed:   sealedCID,
+			}, nil
+			// Note: non-fatal error.
+		}
+	}
+
 	return storiface.SectorCids{
 		Unsealed: unsealedCID,
 		Sealed:   sealedCID,
@@ -888,6 +915,18 @@ func (sb *Sealer) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 		log.Warnf("num:%d tkt:%v seed:%v, pi:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, seed, pieces, cids.Sealed, cids.Unsealed)
 
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
+	}
+
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		log.Warn("Unable to delete Synth cache: Could not read sector size:", err)
+		return output, nil // Non-fatal error.
+	}
+
+	ffi.ClearCache(uint64(ssize), paths.Cache)
+	if err != nil {
+		log.Warn("Unable to delete Synth cache:", err)
+		return output, nil // Non-fatal error.
 	}
 	return output, nil
 }

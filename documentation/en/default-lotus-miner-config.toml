@@ -671,6 +671,14 @@
   # env var: LOTUS_SEALING_TERMINATEBATCHWAIT
   #TerminateBatchWait = "5m0s"
 
+  # SealWithSyntheticPoRep will reduce data holdings after PC1 by storing the precomputed responses
+  # to any challenge. This proof's PC1 step uses a cheaper-to-compute algorithm for the responses,
+  # but still must do more computation during PC1 in order to create this oracle.
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_SEALWITHSYNTHETICPOREP
+  #SealWithSyntheticPoRep = false
+
 
 [Storage]
   # type: int
