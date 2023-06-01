@@ -923,7 +923,7 @@ func (sb *Sealer) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 		return output, nil // Non-fatal error.
 	}
 
-	ffi.ClearCache(uint64(ssize), paths.Cache)
+	ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache)
 	if err != nil {
 		log.Warn("Unable to delete Synth cache:", err)
 		return output, nil // Non-fatal error.
