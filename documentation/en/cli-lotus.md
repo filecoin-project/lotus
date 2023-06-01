@@ -2648,6 +2648,7 @@ COMMANDS:
      call              Simulate an eth contract call
      contract-address  Generate contract address from smart contract code
      bytecode          Write the bytecode of a smart contract to a file
+     backfill-txhash   
      help, h           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2732,6 +2733,24 @@ USAGE:
 
 OPTIONS:
    --bin  write the bytecode as raw binary and don't hex-encode (default: false)
+   
+```
+
+### lotus evm backfill-txhash
+```
+NAME:
+   lotus evm backfill-txhash
+
+USAGE:
+   lotus evm backfill-txhash [command options] [arguments...]
+
+DESCRIPTION:
+   Backfills the txhash.db for a number of epochs starting from a specified height
+
+OPTIONS:
+   --epochs value  the number of epochs to backfill (default: 2000)
+   --from value    the tipset height to start backfilling from (0 is head of chain) (default: 0)
+   --repo value    path to the repo (default: "~/.lotus")
    
 ```
 
