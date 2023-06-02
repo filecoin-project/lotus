@@ -67,10 +67,27 @@ NAME:
    lotus-worker stop - Stop a running lotus worker
 
 USAGE:
-   lotus-worker stop [command options] [arguments...]
+   lotus-worker stop command [command options] [arguments...]
+
+COMMANDS:
+     gracefully  Gracefully stop a running lotus worker
+     help, h     Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus-worker stop gracefully
+```
+NAME:
+   lotus-worker stop gracefully - Gracefully stop a running lotus worker
+
+USAGE:
+   lotus-worker stop gracefully [command options] [arguments...]
+
+OPTIONS:
+   --checks value  Number of consecutive checks (every second without a running tasks) we wait before stopping the worker (default: 30)) (default: 30)
    
 ```
 

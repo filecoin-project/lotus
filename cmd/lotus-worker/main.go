@@ -133,21 +133,20 @@ func stopCmdAct(cctx *cli.Context) error {
 	}
 	defer closer()
 
-		ctx := lcli.ReqContext(cctx)
+	ctx := lcli.ReqContext(cctx)
 
-		// Detach any storage associated with this worker
-		err = api.StorageDetachAll(ctx)
-		if err != nil {
-			return err
-		}
+	// Detach any storage associated with this worker
+	err = api.StorageDetachAll(ctx)
+	if err != nil {
+		return err
+	}
 
-		err = api.Shutdown(ctx)
-		if err != nil {
-			return err
-		}
+	err = api.Shutdown(ctx)
+	if err != nil {
+		return err
+	}
 
-		return nil
-	},
+	return nil
 }
 
 var runCmd = &cli.Command{
