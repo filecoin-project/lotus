@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/index"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -28,28 +27,29 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
 
-	tsub := sm.cs.SubHeadChanges(ctx)
+	head := sm.cs.GetHeaviestTipSet()
+	//tsub := sm.cs.SubHeadChanges(ctx)
 
-	head, ok := <-tsub
-	if !ok {
-		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges stream was invalid")
-	}
+	//head, ok := <-tsub
+	//if !ok {
+	//	return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges stream was invalid")
+	//}
 
-	if len(head) != 1 {
-		return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges first entry should have been one item")
-	}
+	//if len(head) != 1 {
+	//	return nil, nil, cid.Undef, fmt.Errorf("SubHeadChanges first entry should have been one item")
+	//}
+	//
+	//if head[0].Type != store.HCCurrent {
+	//	return nil, nil, cid.Undef, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
+	//}
 
-	if head[0].Type != store.HCCurrent {
-		return nil, nil, cid.Undef, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
-	}
-
-	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, head[0].Val, mcid, msg.VMMessage(), allowReplaced)
+	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, head, mcid, msg.VMMessage(), allowReplaced)
 	if err != nil {
 		return nil, nil, cid.Undef, err
 	}
 
 	if r != nil {
-		return head[0].Val, r, foundMsg, nil
+		return head, r, foundMsg, nil
 	}
 
 	var backTs *types.TipSet
@@ -61,7 +61,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 
 		found := (err == nil && r != nil && foundMsg.Defined())
 		if !found {
-			fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
+			fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head, msg, lookbackLimit, allowReplaced)
 			if err != nil {
 				log.Warnf("failed to look back through chain for message: %v", err)
 				return
@@ -74,48 +74,60 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 		close(backSearchWait)
 	}()
 
-	var candidateTs *types.TipSet
-	var candidateRcp *types.MessageReceipt
-	var candidateFm cid.Cid
-	heightOfHead := head[0].Val.Height()
+	//var candidateTs *types.TipSet
+	//var candidateRcp *types.MessageReceipt
+	//var candidateFm cid.Cid
+	heightOfHead := head.Height()
 	reverts := map[types.TipSetKey]bool{}
+
+	ch, err := sm.msgIndex.WaitForMessageCid(ctx, mcid, confidence)
+	if err != nil {
+		return nil, nil, cid.Undef, err
+	}
 
 	for {
 		select {
-		case notif, ok := <-tsub:
+		case waitMsgRet, ok := <-ch:
 			if !ok {
 				return nil, nil, cid.Undef, ctx.Err()
 			}
-			for _, val := range notif {
-				switch val.Type {
-				case store.HCRevert:
-					if val.Val.Equals(candidateTs) {
-						candidateTs = nil
-						candidateRcp = nil
-						candidateFm = cid.Undef
-					}
-					if backSearchWait != nil {
-						reverts[val.Val.Key()] = true
-					}
-				case store.HCApply:
-					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
-						return candidateTs, candidateRcp, candidateFm, nil
-					}
-					r, foundMsg, err := sm.tipsetExecutedMessage(ctx, val.Val, mcid, msg.VMMessage(), allowReplaced)
-					if err != nil {
-						return nil, nil, cid.Undef, err
-					}
-					if r != nil {
-						if confidence == 0 {
-							return val.Val, r, foundMsg, err
-						}
-						candidateTs = val.Val
-						candidateRcp = r
-						candidateFm = foundMsg
-					}
-					heightOfHead = val.Val.Height()
-				}
-			}
+
+			//close(ch)
+			return waitMsgRet.Tipset, waitMsgRet.Receipt, mcid, nil
+		//case notif, ok := <-tsub:
+		//	if !ok {
+		//		return nil, nil, cid.Undef, ctx.Err()
+		//	}
+		//	for _, val := range notif {
+		//		switch val.Type {
+		//		case store.HCRevert:
+		//			if val.Val.Equals(candidateTs) {
+		//				candidateTs = nil
+		//				candidateRcp = nil
+		//				candidateFm = cid.Undef
+		//			}
+		//			if backSearchWait != nil {
+		//				reverts[val.Val.Key()] = true
+		//			}
+		//		case store.HCApply:
+		//			if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
+		//				return candidateTs, candidateRcp, candidateFm, nil
+		//			}
+		//			r, foundMsg, err := sm.tipsetExecutedMessage(ctx, val.Val, mcid, msg.VMMessage(), allowReplaced)
+		//			if err != nil {
+		//				return nil, nil, cid.Undef, err
+		//			}
+		//			if r != nil {
+		//				if confidence == 0 {
+		//					return val.Val, r, foundMsg, err
+		//				}
+		//				candidateTs = val.Val
+		//				candidateRcp = r
+		//				candidateFm = foundMsg
+		//			}
+		//			heightOfHead = val.Val.Height()
+		//		}
+		//	}
 		case <-backSearchWait:
 			// check if we found the message in the chain and that is hasn't been reverted since we started searching
 			if backTs != nil && !reverts[backTs.Key()] {
@@ -125,12 +137,13 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 				}
 
 				// wait for confidence interval
-				candidateTs = backTs
-				candidateRcp = backRcp
-				candidateFm = backFm
+				//candidateTs = backTs
+				//candidateRcp = backRcp
+				//candidateFm = backFm
 			}
 			reverts = nil
 			backSearchWait = nil
+
 		case <-ctx.Done():
 			return nil, nil, cid.Undef, ctx.Err()
 		}
@@ -336,6 +349,7 @@ func (sm *StateManager) tipsetExecutedMessage(ctx context.Context, ts *types.Tip
 					}
 				}
 
+				// State root in every blockheader is the same so use the first blockheader
 				pr, err := sm.cs.GetParentReceipt(ctx, ts.Blocks()[0], i)
 				if err != nil {
 					return nil, cid.Undef, err

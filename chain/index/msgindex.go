@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/filecoin-project/go-address"
+	"github.com/google/uuid"
 	"io/fs"
 	"os"
 	"path"
@@ -66,9 +68,37 @@ type ChainStore interface {
 	MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error)
 	GetHeaviestTipSet() *types.TipSet
 	GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
+	GetParentReceipt(ctx context.Context, header *types.BlockHeader, i int) (*types.MessageReceipt, error)
+	LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 }
 
 var _ ChainStore = (*store.ChainStore)(nil)
+
+const (
+	TSRevert = "tsRevert"
+	MsgFound = "msgFound"
+)
+
+type WaitMsgReturn struct {
+	Tipset  *types.TipSet
+	Receipt *types.MessageReceipt
+}
+
+//type SubscriptionMapVal struct {
+//	tipset   *types.TipSet
+//	channels []chan WaitMsgReturn
+//}
+
+type MsgId struct {
+	From  address.Address
+	Nonce uint64
+}
+
+type WaitMsgSub struct {
+	Msg        cid.Cid
+	Confidence uint64
+	ch         chan WaitMsgReturn
+}
 
 type msgIndex struct {
 	cs ChainStore
@@ -77,6 +107,13 @@ type msgIndex struct {
 	selectMsgStmt    *sql.Stmt
 	insertMsgStmt    *sql.Stmt
 	deleteTipSetStmt *sql.Stmt
+
+	msgSubs       map[cid.Cid]map[uuid.UUID]bool
+	msgTipsets    map[cid.Cid]*types.TipSet
+	msgReceipts   map[cid.Cid]*types.MessageReceipt
+	subscriptions map[uuid.UUID]*WaitMsgSub
+	readyEpochs   map[abi.ChainEpoch]map[uuid.UUID]bool // subscriptions which are ready at this epoch
+	subEpoch      map[uuid.UUID]abi.ChainEpoch
 
 	sema chan struct{}
 	mx   sync.Mutex
@@ -140,10 +177,22 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 	ctx, cancel := context.WithCancel(lctx)
 
 	msgIndex := &msgIndex{
-		db:     db,
-		cs:     cs,
-		sema:   make(chan struct{}, 1),
-		cancel: cancel,
+		db:            db,
+		cs:            cs,
+		sema:          make(chan struct{}, 1),
+		cancel:        cancel,
+		msgSubs:       make(map[cid.Cid]map[uuid.UUID]bool),
+		msgReceipts:   make(map[cid.Cid]*types.MessageReceipt),
+		msgTipsets:    make(map[cid.Cid]*types.TipSet),
+		subscriptions: make(map[uuid.UUID]*WaitMsgSub),
+		readyEpochs:   make(map[abi.ChainEpoch]map[uuid.UUID]bool),
+		subEpoch:      make(map[uuid.UUID]abi.ChainEpoch),
+		//msgSubs       map[cid.Cid][]uuid.UUID
+		//msgTipsets    map[cid.Cid]*types.TipSet
+		//msgReceipts   map[cid.Cid]*types.MessageReceipt
+		//subscriptions map[uuid.UUID]*WaitMsgSub
+		//readyEpochs   map[abi.ChainEpoch]map[uuid.UUID]bool // subscriptions which are ready at this epoch
+		//subEpoch      map[uuid.UUID]abi.ChainEpoch
 	}
 
 	err = msgIndex.prepareStatements()
@@ -456,6 +505,29 @@ func (x *msgIndex) doRevert(ctx context.Context, tx *sql.Tx, ts *types.TipSet) e
 
 	key := tskey.String()
 	_, err = tx.Stmt(x.deleteTipSetStmt).Exec(key)
+
+	// Processing of WaitMsg subscriptions
+	msgs, err := x.cs.MessagesForTipset(ctx, ts)
+	if err != nil {
+		return xerrors.Errorf("error retrieving messages for tipset %s: %w", ts, err)
+	}
+	for _, msg := range msgs {
+		mcid := msg.Cid()
+
+		// For all subs for this msg, remove any references in readyEpochs since this msg is no
+		// longer valid
+		for subId, _ := range x.msgSubs[mcid] {
+			rEpoch, ok := x.subEpoch[subId]
+			if ok {
+				delete(x.readyEpochs[rEpoch], subId)
+				delete(x.subEpoch, subId)
+			}
+		}
+
+		delete(x.msgTipsets, mcid)
+		delete(x.msgReceipts, mcid)
+	}
+
 	return err
 }
 
@@ -473,15 +545,110 @@ func (x *msgIndex) doApply(ctx context.Context, tx *sql.Tx, ts *types.TipSet) er
 		return xerrors.Errorf("error retrieving messages for tipset %s: %w", ts, err)
 	}
 
+	pts, err := x.cs.LoadTipSet(ctx, ts.Parents())
+	if err != nil {
+		return err
+	}
+
+	pmsgs, err := x.cs.MessagesForTipset(ctx, pts)
+	if err != nil {
+		return err
+	}
+
 	insertStmt := tx.Stmt(x.insertMsgStmt)
 	for _, msg := range msgs {
+
 		key := msg.Cid().String()
 		if _, err := insertStmt.Exec(key, tskey, epoch); err != nil {
 			return xerrors.Errorf("error inserting message: %w", err)
 		}
 	}
 
+	// Processing of parent msgs for wait msg subscription
+	for i, pmsg := range pmsgs {
+		cid := pmsg.Cid()
+		subIds, ok := x.msgSubs[cid]
+		if ok {
+			pr, err := x.cs.GetParentReceipt(ctx, ts.Blocks()[0], i)
+			if err != nil {
+				return xerrors.Errorf("Can't find parent receipt for message: %w", err)
+			}
+			x.msgReceipts[cid] = pr
+			x.msgTipsets[cid] = ts
+
+			// Run through all the Wait Subs for this message and determine the epoch we need to
+			// signal the channel
+			for subId, _ := range subIds {
+				rEpoch := ts.Height() + abi.ChainEpoch(x.subscriptions[subId].Confidence)
+				x.subEpoch[subId] = rEpoch
+				_, ok := x.readyEpochs[rEpoch]
+				if !ok {
+					x.readyEpochs[rEpoch] = make(map[uuid.UUID]bool)
+					x.readyEpochs[rEpoch][subId] = true
+				} else {
+					x.readyEpochs[rEpoch][subId] = true
+				}
+			}
+			//for _, ch := range chans {
+			//	ch <- WaitMsgReturn{
+			//		Tipset:  ts,
+			//		Receipt: pr,
+			//	}
+			//}
+			//delete(x.subscriptions, cid)
+		}
+	}
+
+	// Go through the ready epochs to check if any channel needs signaling
+	if _, ok := x.readyEpochs[ts.Height()]; ok {
+		for subId, _ := range x.readyEpochs[ts.Height()] {
+			sub := x.subscriptions[subId]
+			sub.ch <- WaitMsgReturn{
+				Tipset:  x.msgTipsets[sub.Msg],
+				Receipt: x.msgReceipts[sub.Msg],
+			}
+
+			// Remove all info for this subscription
+			delete(x.msgSubs[sub.Msg], subId)
+			if len(x.msgSubs[sub.Msg]) == 0 {
+				delete(x.msgSubs, sub.Msg)
+			}
+			delete(x.subscriptions, subId)
+			delete(x.subEpoch, subId)
+		}
+		delete(x.readyEpochs, ts.Height())
+	}
+
 	return nil
+}
+
+//msgSubs       map[cid.Cid][]uuid.UUID
+//msgTipsets    map[cid.Cid]*types.TipSet
+//msgReceipts   map[cid.Cid]*types.MessageReceipt
+//subscriptions map[uuid.UUID]*WaitMsgSub
+//readyEpochs   map[abi.ChainEpoch]map[uuid.UUID]bool // subscriptions which are ready at this epoch
+//subEpoch      map[uuid.UUID]abi.ChainEpoch
+
+func (x *msgIndex) WaitForMessageCid(ctx context.Context, msgCid cid.Cid, confidence uint64) (chan WaitMsgReturn, error) {
+
+	//ch := make(chan WaitMsgReturn)
+	sub := WaitMsgSub{
+		Msg:        msgCid,
+		Confidence: confidence,
+		ch:         make(chan WaitMsgReturn),
+	}
+	subId := uuid.New()
+
+	x.subscriptions[subId] = &sub
+
+	_, ok := x.msgSubs[msgCid]
+	if !ok {
+		x.msgSubs[msgCid] = make(map[uuid.UUID]bool)
+		x.msgSubs[msgCid][subId] = true
+	} else {
+		x.msgSubs[msgCid][subId] = true
+	}
+	return sub.ch, nil
 }
 
 // interface

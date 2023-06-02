@@ -3,7 +3,6 @@ package index
 import (
 	"context"
 	"errors"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -28,11 +27,17 @@ type MsgIndex interface {
 	// The lookup is done using the onchain message Cid; that is the signed message Cid
 	// for SECP messages and unsigned message Cid for BLS messages.
 	GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error)
+
+	WaitForMessageCid(ctx context.Context, msgCid cid.Cid, confidence uint64) (chan WaitMsgReturn, error)
 	// Close closes the index
 	Close() error
 }
 
 type dummyMsgIndex struct{}
+
+func (dummyMsgIndex) WaitForMessageCid(ctx context.Context, msgCid cid.Cid, confidence uint64) (chan WaitMsgReturn, error) {
+	return make(chan WaitMsgReturn), nil
+}
 
 func (dummyMsgIndex) GetMsgInfo(ctx context.Context, m cid.Cid) (MsgInfo, error) {
 	return MsgInfo{}, ErrNotFound

@@ -273,6 +273,14 @@ func (cs *mockChainStore) makeGarbageCid() cid.Cid {
 	return garbage.Cid()
 }
 
+func (cs *mockChainStore) GetParentReceipt(ctx context.Context, header *types.BlockHeader, i int) (*types.MessageReceipt, error) {
+	return nil, nil
+}
+
+func (cs *mockChainStore) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+	return nil, nil
+}
+
 func (cs *mockChainStore) SubscribeHeadChanges(f store.ReorgNotifee) {
 	cs.notify = f
 }
