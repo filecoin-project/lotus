@@ -119,13 +119,19 @@ func main() {
 var stopCmd = &cli.Command{
 	Name:  "stop",
 	Usage: "Stop a running lotus worker",
-	Flags: []cli.Flag{},
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetWorkerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
+	Subcommands: []*cli.Command{
+		gracefulStopCmd,
+	},
+	Flags:  []cli.Flag{},
+	Action: stopCmdAct,
+}
+
+func stopCmdAct(cctx *cli.Context) error {
+	api, closer, err := lcli.GetWorkerAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
 
 		ctx := lcli.ReqContext(cctx)
 
