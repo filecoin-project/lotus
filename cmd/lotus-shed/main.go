@@ -89,6 +89,7 @@ func main() {
 		msgindexCmd,
 		FevmAnalyticsCmd,
 		mismatchesCmd,
+		rpcStressCmd,
 	}
 
 	app := &cli.App{
