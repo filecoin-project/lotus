@@ -86,7 +86,7 @@ func main() {
 		invariantsCmd,
 		gasTraceCmd,
 		replayOfflineCmd,
-		msgindexCmd,
+		indexesCmd,
 		FevmAnalyticsCmd,
 		mismatchesCmd,
 	}
