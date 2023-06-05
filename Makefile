@@ -355,7 +355,7 @@ fiximports:
 	./scripts/fiximports
 
 gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci fiximports
-	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
+	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
 .PHONY: gen
 
 jen: gen
