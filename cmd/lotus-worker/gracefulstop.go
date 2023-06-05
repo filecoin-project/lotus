@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/urfave/cli/v2"
 )
 
 var gracefulStopCmd = &cli.Command{
