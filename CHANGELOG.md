@@ -76,11 +76,12 @@ This is the 3rd release candidate of the upcoming optional feature release of Lo
 - Merge branch 'feat/new-gw-methods'
 
 ## Dependencies
+- chore: deps: update to go-libp2p 0.27.5
 - devs: update libp2p #10937
 - chore: deps: update to FVM 3.3.1 ([filecoin-project/lotus#10786](https://github.com/filecoin-project/lotus/pull/10786))
--  chore: boxo: migrate from go-libipfs to boxo ([filecoin-project/lotus#10562](https://github.com/filecoin-project/lotus/pull/10562))
+- chore: boxo: migrate from go-libipfs to boxo ([filecoin-project/lotus#10562](https://github.com/filecoin-project/lotus/pull/10562))
 - chore: deps: update to go-state-types v0.11.0-alpha-3 ([filecoin-project/lotus#10606](https://github.com/filecoin-project/lotus/pull/10606))
--  chore: bump go-libipfs ([filecoin-project/lotus#10531](https://github.com/filecoin-project/lotus/pull/10531))
+- chore: bump go-libipfs ([filecoin-project/lotus#10531](https://github.com/filecoin-project/lotus/pull/10531))
 
 ## Others
 - feat:networking:  (Synchronous) Consistent Broadcast for Filecoin EC ([filecoin-project/lotus#9858](https://github.com/filecoin-project/lotus/pull/9858))
