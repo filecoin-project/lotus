@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.23.1-rc3 / 2023-05-31
+# v1.23.1-rc4 / 2023-06-05
 
-This is the 3rd release candidate of the upcoming optional feature release of Lotus v1.23.1.
+This is the 4th release candidate of the upcoming optional feature release of Lotus v1.23.1.
 
 **☢️ Upgrade Warnings ☢️**
 
