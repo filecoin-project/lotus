@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
@@ -23,6 +24,7 @@ var ethCmd = &cli.Command{
 	},
 	Subcommands: []*cli.Command{
 		checkTipsetsCmd,
+		computeEthHashCmd,
 	},
 }
 
@@ -67,6 +69,39 @@ var checkTipsetsCmd = &cli.Command{
 				fmt.Printf("[FAIL] blocks received via eth_getBlockByNumber and eth_getBlockByHash for tipset @%d are NOT identical\n", i)
 			}
 		}
+		return nil
+	},
+}
+
+var computeEthHashCmd = &cli.Command{
+	Name:  "compute-eth-hash",
+	Usage: "Compute the eth hash for a given message CID",
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
+		msg, err := messageFromString(cctx, cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		switch msg := msg.(type) {
+		case *types.SignedMessage:
+			tx, err := ethtypes.EthTxFromSignedEthMessage(msg)
+			if err != nil {
+				return fmt.Errorf("failed to convert from signed message: %w", err)
+			}
+
+			tx.Hash, err = tx.TxHash()
+			if err != nil {
+				return fmt.Errorf("failed to call TxHash: %w", err)
+			}
+			fmt.Println(tx.Hash)
+		default:
+			return fmt.Errorf("not a signed message")
+		}
+
 		return nil
 	},
 }
