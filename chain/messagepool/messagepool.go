@@ -1235,6 +1235,8 @@ func (mp *MessagePool) pendingFor(ctx context.Context, a address.Address) []*typ
 	return mset.toSlice()
 }
 
+
+// caller must hold transactionLk and stateLk
 func (mp *MessagePool) headChange(ctx context.Context, revert []*types.TipSet, apply []*types.TipSet) error {
 
 	repubTrigger := false
