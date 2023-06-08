@@ -684,12 +684,12 @@ func slashConsensus(a lapi.FullNode, p string, from string) error {
 	return err
 }
 
-func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a lapi.FullNode, bh *types.BlockHeader) (*types.BlockHeader, error) {
-	parent, err := a.ChainGetBlock(ctx, bh.Parents[0])
+func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a lapi.FullNode, blockB *types.BlockHeader) (*types.BlockHeader, error) {
+	blockC, err := a.ChainGetBlock(ctx, blockB.Parents[0])
 	if err != nil {
 		return nil, xerrors.Errorf("chain get block error:%s", err)
 	}
-	otherCid, err := sf.CheckBlock(ctx, bh, parent.Height)
+	otherCid, err := sf.CheckBlock(ctx, blockB, blockC.Height)
 	if err != nil {
 		return nil, xerrors.Errorf("slash filter check block error:%s", err)
 	}
@@ -697,5 +697,20 @@ func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a l
 		otherHeader, err := a.ChainGetBlock(ctx, otherCid)
 		return otherHeader, xerrors.Errorf("chain get other block error:%s", err)
 	}
+	blockA, err := a.ChainGetBlock(ctx, otherCid)
+
+	// (c) parent-grinding fault
+	// Here extra is the "witness", a third block that shows the connection between A and B as
+	// A's sibling and B's parent.
+	// Specifically, since A is of lower height, it must be that B was mined omitting A from its tipset
+	//
+	//      B
+	//      |
+	//  [A, C]
+	if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
+		types.CidArrsContains(blockB.Parents, blockC.Cid()) && !types.CidArrsContains(blockB.Parents, blockA.Cid()) {
+		return blockC, xerrors.Errorf("chain get other block error:%s", err)
+	}
+
 	return nil, nil
 }
