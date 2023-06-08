@@ -1065,12 +1065,19 @@ var StateComputeStateCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		ts, err := LoadTipSet(ctx, cctx, api)
+		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
+		var ts *types.TipSet
+		if tss := cctx.String("tipset"); tss != "" {
+			ts, err = ParseTipSetRef(ctx, api, tss)
+		} else if h > 0 {
+			ts, err = api.ChainGetTipSetByHeight(ctx, h, types.EmptyTSK)
+		} else {
+			ts, err = api.ChainHead(ctx)
+		}
 		if err != nil {
 			return err
 		}
 
-		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
 		if h == 0 {
 			h = ts.Height()
 		}
