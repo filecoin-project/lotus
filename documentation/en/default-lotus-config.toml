@@ -391,6 +391,7 @@
 
 
 [Index]
+  # EXPERIMENTAL FEATURE. USE WITH CAUTION
   # EnableMsgIndex enables indexing of messages on chain.
   #
   # type: bool
