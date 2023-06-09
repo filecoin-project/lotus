@@ -77,7 +77,7 @@ OPTIONS:
    --slash-consensus         Report consensus fault (default: false)
    --slasher-sender value    optionally specify the account to report consensus from
    --slashdb-dir value       (default: "slash watch db dir path")
-   --help, -h                show help (default: false)
+   --help, -h                show help
 ```
 
 ### lotus daemon stop
