@@ -639,7 +639,7 @@ func slashConsensus(a lapi.FullNode, p string, from string) error {
 	}
 	for block := range blocks {
 		log.Infof("deal with block: %d, %v, %s", block.Height, block.Miner, block.Cid())
-		if otherBlock, err := slashFilterMinedBlock(ctx, sf, a, block); err != nil {
+		if otherBlock, extraBlock, err := slashFilterMinedBlock(ctx, sf, a, block); err != nil {
 			if otherBlock == nil {
 				continue
 			}
@@ -659,6 +659,14 @@ func slashConsensus(a lapi.FullNode, p string, from string) error {
 			params := miner.ReportConsensusFaultParams{
 				BlockHeader1: bh1,
 				BlockHeader2: bh2,
+			}
+			if extraBlock != nil {
+				be, err := cborutil.Dump(extraBlock)
+				if err != nil {
+					log.Errorf("could not dump block:%s, err:%s", block.Cid(), err)
+					continue
+				}
+				params.BlockHeaderExtra = be
 			}
 
 			enc, err := actors.SerializeParams(&params)
@@ -684,18 +692,18 @@ func slashConsensus(a lapi.FullNode, p string, from string) error {
 	return err
 }
 
-func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a lapi.FullNode, blockB *types.BlockHeader) (*types.BlockHeader, error) {
+func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a lapi.FullNode, blockB *types.BlockHeader) (*types.BlockHeader, *types.BlockHeader, error) {
 	blockC, err := a.ChainGetBlock(ctx, blockB.Parents[0])
 	if err != nil {
-		return nil, xerrors.Errorf("chain get block error:%s", err)
+		return nil, nil, xerrors.Errorf("chain get block error:%s", err)
 	}
-	otherCid, err := sf.CheckBlock(ctx, blockB, blockC.Height)
+	otherCid, err := sf.MinedBlock(ctx, blockB, blockC.Height)
 	if err != nil {
-		return nil, xerrors.Errorf("slash filter check block error:%s", err)
+		return nil, nil, xerrors.Errorf("slash filter check block error:%s", err)
 	}
 	if otherCid != cid.Undef {
 		otherHeader, err := a.ChainGetBlock(ctx, otherCid)
-		return otherHeader, xerrors.Errorf("chain get other block error:%s", err)
+		return otherHeader, nil, xerrors.Errorf("chain get other block error:%s", err)
 	}
 	blockA, err := a.ChainGetBlock(ctx, otherCid)
 
@@ -709,8 +717,8 @@ func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a l
 	//  [A, C]
 	if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
 		types.CidArrsContains(blockB.Parents, blockC.Cid()) && !types.CidArrsContains(blockB.Parents, blockA.Cid()) {
-		return blockC, xerrors.Errorf("chain get other block error:%s", err)
+		return blockA, blockC, xerrors.Errorf("chain get other block error:%s", err)
 	}
 
-	return nil, nil
+	return nil, nil, nil
 }
