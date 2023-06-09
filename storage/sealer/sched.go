@@ -515,11 +515,15 @@ func (sh *Scheduler) findWorker(task *WorkerRequest) int {
 		if !ok {
 			continue
 		}
+		if worker.Enabled == false {
+			log.Infof("find worker in OpenWindows,but it is disabled :%+v", workerid)
+			continue
+		}
 		if strings.TrimSpace(workerid) == worker.Info.Hostname {
 			return wnd1
 		}
 	}
-
+	log.Infof("can't find enabled worker in OpenWindows :%+v", workerid)
 	return -1
 }
 

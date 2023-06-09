@@ -89,18 +89,25 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 			var havePreferred bool
 
+			// add by pan
+			workerIdx := -1
+			if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate || task.TaskType == sealtasks.TTCommit2 {
+				workerIdx = sh.findWorker(task)
+				if workerIdx == -1 {
+					log.Infof("no worker to do %s SectorId(%s)", task.TaskType.Short(), task.Sector.ID.Number.String())
+					return
+				}
+			}
+			// end
+
 			for wnd, windowRequest := range sh.OpenWindows {
 
 				// add by pan
 				var skip = false
-
-				if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate || task.TaskType == sealtasks.TTCommit2 {
-					i := sh.findWorker(task)
-					if i > -1 {
-						wnd = i
-						windowRequest = sh.OpenWindows[i]
-						skip = true
-					}
+				if workerIdx > -1 {
+					wnd = workerIdx
+					windowRequest = sh.OpenWindows[workerIdx]
+					skip = true
 				}
 				// end
 
