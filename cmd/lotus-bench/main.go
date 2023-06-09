@@ -98,9 +98,10 @@ func main() {
 	log.Info("Starting lotus-bench")
 
 	app := &cli.App{
-		Name:    "lotus-bench",
-		Usage:   "Benchmark performance of lotus on your hardware",
-		Version: build.UserVersion(),
+		Name:                      "lotus-bench",
+		Usage:                     "Benchmark performance of lotus on your hardware",
+		Version:                   build.UserVersion(),
+		DisableSliceFlagSeparator: true,
 		Commands: []*cli.Command{
 			proveCmd,
 			sealBenchCmd,

@@ -4,8 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"go.uber.org/fx"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -53,6 +56,17 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 				return nil, err
 			}
 		}
+
+		// prefill the whole skiplist cache maintained internally by the GetTipsetByHeight
+		go func() {
+			start := time.Now()
+			log.Infoln("Start prefilling GetTipsetByHeight cache")
+			_, err := cs.GetTipsetByHeight(mctx, abi.ChainEpoch(0), cs.GetHeaviestTipSet(), false)
+			if err != nil {
+				log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
+			}
+			log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
+		}()
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 		lc.Append(fx.Hook{
