@@ -736,6 +736,7 @@ type Events struct {
 }
 
 type IndexConfig struct {
+	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
 	EnableMsgIndex bool
 }
