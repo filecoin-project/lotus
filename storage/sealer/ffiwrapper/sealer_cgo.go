@@ -917,17 +917,6 @@ func (sb *Sealer) SealCommit1(ctx context.Context, sector storiface.SectorRef, t
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
-	ssize, err := sector.ProofType.SectorSize()
-	if err != nil {
-		log.Warn("Unable to delete Synth cache: Could not read sector size:", err)
-		return output, nil // Non-fatal error.
-	}
-
-	ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache)
-	if err != nil {
-		log.Warn("Unable to delete Synth cache:", err)
-		return output, nil // Non-fatal error.
-	}
 	return output, nil
 }
 
@@ -1117,6 +1106,13 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storiface.SectorRef
 	}
 	defer done()
 
+	if abi.Synthetic[sector.ProofType] {
+		if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
+			log.Warn("Unable to delete Synth cache:", err)
+			// Pass-Thru on error.
+		}
+	}
+
 	return ffi.ClearCache(uint64(ssize), paths.Cache)
 }
 
@@ -1155,6 +1151,13 @@ func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.Secto
 		}
 	}
 
+	if abi.Synthetic[sector.ProofType] {
+		if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
+			log.Warn("Unable to delete Synth cache:", err)
+			// Pass-Thru on error.
+		}
+	}
+
 	return ffi.ClearCache(uint64(ssize), dest)
 }
 
@@ -1182,6 +1185,13 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 			return xerrors.Errorf("acquiring sector cache path: %w", err)
 		}
 		defer done()
+
+		if abi.Synthetic[sector.ProofType] {
+			if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
+				log.Warn("Unable to delete Synth cache:", err)
+				// Pass-Thru on error.
+			}
+		}
 
 		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
 			return xerrors.Errorf("clear cache: %w", err)

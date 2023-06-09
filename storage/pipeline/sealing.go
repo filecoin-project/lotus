@@ -339,7 +339,12 @@ func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof
 		return 0, err
 	}
 
-	return lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
+	c, err := m.getConfig()
+	if err != nil {
+		return 0, err
+	}
+
+	return lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType, c.SealWithSyntheticPoRep)
 }
 
 func (m *Sealing) minerSector(spt abi.RegisteredSealProof, num abi.SectorNumber) storiface.SectorRef {
