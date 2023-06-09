@@ -197,7 +197,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		return nil, xerrors.Errorf("failed to get network version: %w", err)
 	}
 
-	st, err := miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
+	st, err := miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType, false)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get seal proof type: %w", err)
 	}

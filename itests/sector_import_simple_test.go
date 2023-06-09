@@ -61,7 +61,7 @@ func TestSectorImportAfterPC2(t *testing.T) {
 	require.NoError(t, err)
 	ver, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
 	require.NoError(t, err)
-	spt, err := lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
+	spt, err := lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType, false)
 	require.NoError(t, err)
 
 	ssize, err := spt.SectorSize()

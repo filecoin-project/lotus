@@ -165,7 +165,7 @@ func (stage *PreCommitStage) packMiner(
 
 	// Generate pre-commits.
 	sealType, err := miner.PreferredSealProofTypeFromWindowPoStType(
-		nv, minerInfo.WindowPoStProofType,
+		nv, minerInfo.WindowPoStProofType, false
 	)
 	if err != nil {
 		return 0, false, err
