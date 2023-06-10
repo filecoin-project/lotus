@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/journal"
@@ -66,6 +68,21 @@ func NewMiner(api v1api.FullNode, epp gen.WinningPoStProver, addr address.Addres
 		panic(err)
 	}
 
+	marc, err := lru.NewARC[BaseKey, bool](1000)
+	if err != nil {
+		panic(err)
+	}
+
+	mtarc, err := lru.NewARC[abi.ChainEpoch, *MinningTicket](1000)
+	if err != nil {
+		panic(err)
+	}
+
+	pparc, err := lru.NewARC[abi.ChainEpoch, *PoStProof](1000)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Miner{
 		api:     api,
 		epp:     epp,
@@ -97,6 +114,13 @@ func NewMiner(api v1api.FullNode, epp gen.WinningPoStProver, addr address.Addres
 			evtTypeBlockMined: j.RegisterEventType("miner", "block_mined"),
 		},
 		journal: j,
+
+		minedBlks:   make(map[abi.ChainEpoch][]*MinedInfo),
+		baseRecords: marc,
+		baseCh:      make(chan struct{}, 1),
+
+		minningTickets: mtarc,
+		wPoStProofs:    pparc,
 	}
 }
 
@@ -126,6 +150,14 @@ type Miner struct {
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
+
+	minedBlks   map[abi.ChainEpoch][]*MinedInfo
+	mlk         sync.Mutex
+	baseRecords *lru.ARCCache[BaseKey, bool]
+	baseCh      chan struct{}
+
+	minningTickets *lru.ARCCache[abi.ChainEpoch, *MinningTicket]
+	wPoStProofs    *lru.ARCCache[abi.ChainEpoch, *PoStProof]
 }
 
 // Address returns the address of the miner.
@@ -146,6 +178,7 @@ func (m *Miner) Start(_ context.Context) error {
 	}
 	m.stop = make(chan struct{})
 	go m.mine(context.TODO())
+
 	return nil
 }
 
@@ -205,6 +238,8 @@ func (m *Miner) mine(ctx context.Context) {
 	defer span.End()
 
 	go m.doWinPoStWarmup(ctx)
+
+	go m.startMulti(ctx)
 
 	var lastBase MiningBase
 minerLoop:
@@ -281,6 +316,8 @@ minerLoop:
 			continue
 		}
 
+		m.baseRecord(ctx, base)
+
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
 			log.Errorf("mining block failed: %+v", err)
@@ -323,6 +360,11 @@ minerLoop:
 				log.Warnw("mined block in the past",
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
+
+			b, base = m.heaviestBlk(ctx, &MinedInfo{
+				blk:  b,
+				base: base,
+			})
 
 			if err := m.sf.MinedBlock(ctx, b.Header, base.TipSet.Height()+base.NullRounds); err != nil {
 				log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
@@ -368,6 +410,19 @@ minerLoop:
 type MiningBase struct {
 	TipSet     *types.TipSet
 	NullRounds abi.ChainEpoch
+}
+
+func (mb *MiningBase) getBaseKey() BaseKey {
+	baseKey := mb.TipSet.Key().String() + "/" + mb.NullRounds.String()
+	return BaseKey{baseKey}
+}
+
+type BaseKey struct {
+	str string
+}
+
+func (bk *BaseKey) String() string {
+	return fmt.Sprintf("%v", bk.str)
 }
 
 // GetBestMiningCandidate implements the fork choice rule from a miner's
@@ -500,15 +555,23 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
-	if err != nil {
-		err = xerrors.Errorf("scratching ticket failed: %w", err)
-		return nil, err
+	ticketHandle := func() (*types.Ticket, *types.ElectionProof, error) {
+		ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
+		if err != nil {
+			err = xerrors.Errorf("scratching ticket failed: %w", err)
+			return nil, nil, err
+		}
+
+		winner, err := gen.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
+		if err != nil {
+			err = xerrors.Errorf("failed to check if we win next round: %w", err)
+			return nil, nil, err
+		}
+		return ticket, winner, nil
 	}
 
-	winner, err = gen.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
+	ticket, winner, err := m.getTickets(ctx, round, ticketHandle)
 	if err != nil {
-		err = xerrors.Errorf("failed to check if we win next round: %w", err)
 		return nil, err
 	}
 
@@ -538,9 +601,17 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
-	postProof, err := m.epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
+	proofHandle := func() ([]proof.PoStProof, error) {
+		postProof, err := m.epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
+		if err != nil {
+			err = xerrors.Errorf("failed to compute winning post proof: %w", err)
+			return nil, err
+		}
+		return postProof, nil
+	}
+
+	postProof, err := m.getPoStProof(ctx, round, proofHandle)
 	if err != nil {
-		err = xerrors.Errorf("failed to compute winning post proof: %w", err)
 		return nil, err
 	}
 
@@ -626,4 +697,283 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 		Timestamp:        uts,
 		WinningPoStProof: wpostProof,
 	})
+}
+
+const multiMinningDelaySecs uint64 = 3
+
+type MinedInfo struct {
+	blk  *types.BlockMsg
+	base *MiningBase
+}
+
+func (m *Miner) startMulti(ctx context.Context) {
+
+	go m.multiSched(ctx)
+
+	for {
+		select {
+		case <-m.baseCh:
+		case <-ctx.Done():
+			return
+		case <-m.stop:
+			return
+		}
+
+		go func() {
+			var base *MiningBase
+
+			for {
+				prebase, err := m.GetBestMiningCandidate(ctx)
+				if err != nil {
+					log.Errorf("failed to get best mining candidate: %s", err)
+					if !m.niceSleep(time.Second * 5) {
+						continue
+					}
+					continue
+				}
+
+				diff := build.Clock.Now().Unix() - int64(prebase.TipSet.MinTimestamp())
+
+				prebase.NullRounds = abi.ChainEpoch(diff / int64(build.BlockDelaySecs))
+
+				if base != nil && base.TipSet.Height() == prebase.TipSet.Height() && base.NullRounds == prebase.NullRounds {
+					base = prebase
+					break
+				}
+
+				// Wait until propagation delay period after block we plan to mine on
+				_, _, err = m.waitFunc(ctx, prebase.TipSet.MinTimestamp()+multiMinningDelaySecs)
+				if err != nil {
+					log.Error(err)
+					continue
+				}
+
+				// just wait for the beacon entry to become available before we select our final mining base
+				_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
+				if err != nil {
+					log.Errorf("failed getting beacon entry: %s", err)
+					if !m.niceSleep(time.Second) {
+						continue
+					}
+					continue
+				}
+
+				base = prebase
+			}
+
+			if !m.baseRecord(ctx, base) {
+				return
+			}
+
+			blk, err := m.mineOne(ctx, base)
+
+			if err != nil {
+				log.Error("multi mineOne failed:", err)
+				return
+			}
+
+			m.insertBlk(ctx, &MinedInfo{
+				blk:  blk,
+				base: base,
+			})
+		}()
+	}
+}
+
+func (m *Miner) multiSched(ctx context.Context) {
+	go func() {
+		var notifs <-chan []*api.HeadChange
+		var err error
+		var gotCur bool
+		for {
+			if notifs == nil {
+				notifs, err = m.api.ChainNotify(ctx)
+				if err != nil {
+					continue
+				}
+				gotCur = false
+			}
+
+			select {
+			case changes, ok := <-notifs:
+				if !ok {
+					log.Warn("multi minning scheduler notifs channel closed")
+					notifs = nil
+					continue
+				}
+
+				if !gotCur {
+					if len(changes) != 1 {
+						log.Errorf("expected first notif to have len = 1")
+						continue
+					}
+					chg := changes[0]
+					if chg.Type != store.HCCurrent {
+						log.Errorf("expected first notif to tell current ts")
+						continue
+					}
+
+					gotCur = true
+					continue
+				}
+
+				var lowest, highest *types.TipSet = nil, nil
+
+				for _, change := range changes {
+					if change.Val == nil {
+						log.Errorf("change.Val was nil")
+					}
+					switch change.Type {
+					case store.HCRevert:
+						lowest = change.Val
+					case store.HCApply:
+						highest = change.Val
+					}
+				}
+
+				m.baseNotify(ctx, lowest, highest)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return
+}
+
+func (m *Miner) baseNotify(ctx context.Context, lowest, highest *types.TipSet) {
+	m.baseCh <- struct{}{}
+}
+
+func (m *Miner) insertBlk(ctx context.Context, mi *MinedInfo) {
+	if mi.blk == nil {
+		log.Error("multi mineOne failed, blk is nil")
+		return
+	}
+
+	log.Debug("insert blk ", "cid", mi.blk.Cid(), "height", int64(mi.blk.Header.Height), "parentTipset", mi.base.TipSet.Key().String())
+
+	m.mlk.Lock()
+	defer m.mlk.Unlock()
+
+	height := mi.blk.Header.Height
+
+	if _, ok := m.minedBlks[height]; !ok {
+		m.minedBlks[height] = make([]*MinedInfo, 0)
+	}
+
+	m.minedBlks[height] = append(m.minedBlks[height], mi)
+
+	sort.Slice(m.minedBlks[height], func(i, j int) bool {
+		iParentWeight := m.minedBlks[height][i].blk.Header.ParentWeight
+		jParentWeight := m.minedBlks[height][j].blk.Header.ParentWeight
+		return iParentWeight.GreaterThan(jParentWeight.Abs())
+	})
+
+	return
+}
+
+func (m *Miner) heaviestBlk(ctx context.Context, mi *MinedInfo) (blk *types.BlockMsg, base *MiningBase) {
+	height := mi.blk.Header.Height
+	blk = mi.blk
+	base = mi.base
+
+	m.mlk.Lock()
+	defer m.mlk.Unlock()
+	if _, ok := m.minedBlks[height]; !ok {
+		return
+	}
+
+	if len(m.minedBlks[height]) == 0 {
+		return
+	}
+
+	multiParentWeight := m.minedBlks[height][0].blk.Header.ParentWeight
+	blkParentWeight := mi.blk.Header.ParentWeight
+
+	if multiParentWeight.LessThanEqual(blkParentWeight.Abs()) {
+		return
+	}
+
+	blk = m.minedBlks[height][0].blk
+	base = m.minedBlks[height][0].base
+
+	parentMiners := make([]address.Address, len(base.TipSet.Blocks()))
+	for i, header := range base.TipSet.Blocks() {
+		parentMiners[i] = header.Miner
+	}
+
+	log.Debug("update blk ", "cid", blk.Cid(), "height", int64(blk.Header.Height), "miner", blk.Header.Miner, "parents", parentMiners, "parentTipset", base.TipSet.Key().String())
+
+	return
+}
+
+func (m *Miner) baseRecord(ctx context.Context, base *MiningBase) bool {
+	baseKey := base.getBaseKey()
+
+	if _, ok := m.baseRecords.Get(baseKey); ok {
+		log.Debugf("already recorded based basekey: %s", baseKey)
+		return false
+	}
+
+	m.baseRecords.Add(baseKey, true)
+
+	nextRound := int64(base.TipSet.MinTimestamp()+build.BlockDelaySecs*uint64(base.NullRounds)) + int64(build.PropagationDelaySecs) + int64(multiMinningDelaySecs)
+
+	log.Debug("parents record at epoch: ", base.TipSet.Height(), " nullround: ", base.NullRounds, " now: ", build.Clock.Now().Unix(), " start: ", nextRound, " baseKey: ", baseKey)
+
+	return true
+}
+
+type MinningTicket struct {
+	ticket *types.Ticket
+	winner *types.ElectionProof
+}
+
+type TicketHandle func() (*types.Ticket, *types.ElectionProof, error)
+
+func (m *Miner) getTickets(ctx context.Context, round abi.ChainEpoch, cb TicketHandle) (ticket *types.Ticket, winner *types.ElectionProof, err error) {
+	mt, ok := m.minningTickets.Get(round)
+	if ok {
+		ticket = mt.ticket
+		winner = mt.winner
+		log.Debug("get ticket from cache")
+	} else {
+		ticket, winner, err = cb()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		m.minningTickets.Add(round, &MinningTicket{
+			ticket: ticket,
+			winner: winner,
+		})
+	}
+
+	return ticket, winner, nil
+}
+
+type PoStProof struct {
+	wpostProof []proof.PoStProof
+}
+
+type PoStProofHandle func() ([]proof.PoStProof, error)
+
+func (m *Miner) getPoStProof(ctx context.Context, round abi.ChainEpoch, cb PoStProofHandle) (wproof []proof.PoStProof, err error) {
+	pp, ok := m.wPoStProofs.Get(round)
+	if ok {
+		wproof = pp.wpostProof
+		log.Debug("get window post proof from cache")
+	} else {
+		wproof, err = cb()
+		if err != nil {
+			return nil, err
+		}
+
+		m.wPoStProofs.Add(round, &PoStProof{
+			wpostProof: wproof,
+		})
+	}
+
+	return wproof, nil
 }

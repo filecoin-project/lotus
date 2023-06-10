@@ -27,6 +27,21 @@ func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(v1api.FullNo
 			panic(err)
 		}
 
+		marc, err := lru.NewARC[BaseKey, bool](10000)
+		if err != nil {
+			panic(err)
+		}
+
+		mtarc, err := lru.NewARC[abi.ChainEpoch, *MinningTicket](10000)
+		if err != nil {
+			panic(err)
+		}
+
+		pparc, err := lru.NewARC[abi.ChainEpoch, *PoStProof](10000)
+		if err != nil {
+			panic(err)
+		}
+
 		m := &Miner{
 			api:               api,
 			waitFunc:          chanWaiter(nextCh),
@@ -35,6 +50,9 @@ func NewTestMiner(nextCh <-chan MineReq, addr address.Address) func(v1api.FullNo
 			address:           addr,
 			sf:                slashfilter.New(ds.NewMapDatastore()),
 			journal:           journal.NilJournal(),
+			baseRecords:       marc,
+			minningTickets:    mtarc,
+			wPoStProofs:       pparc,
 		}
 
 		if err := m.Start(context.TODO()); err != nil {
