@@ -361,6 +361,8 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		case xerrors.Is(err, messagepool.ErrGasFeeCapTooLow):
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceTooLow):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrExistingNonce):
 			return pubsub.ValidationIgnore
 		default:
 			return pubsub.ValidationReject
