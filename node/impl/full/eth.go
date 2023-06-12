@@ -1537,6 +1537,8 @@ func ethLogFromEvent(entries []types.EventEntry) (data []byte, topics []ethtypes
 		topicsFoundCount int
 		dataFound        bool
 	)
+	// Topics must be non-nil, even if empty. So we might as well pre-allocate for 4 (the max).
+	topics = make([]ethtypes.EthHash, 0, 4)
 	for _, entry := range entries {
 		// Drop events with non-raw topics to avoid mistakes.
 		if entry.Codec != cid.Raw {
