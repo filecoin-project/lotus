@@ -31,7 +31,7 @@ func (f *SlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, par
 	{
 		// double-fork mining (2 blocks at one epoch)
 		if witness, err := checkFault(ctx, f.byEpoch, epochKey, bh, "double-fork mining faults"); err != nil {
-			return witness, err
+			return witness, xerrors.Errorf("check double-fork mining faults: %w", err)
 		}
 	}
 
@@ -39,7 +39,7 @@ func (f *SlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, par
 	{
 		// time-offset mining faults (2 blocks with the same parents)
 		if witness, err := checkFault(ctx, f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
-			return witness, err
+			return witness, xerrors.Errorf("check time-offset mining faults: %w", err)
 		}
 	}
 
