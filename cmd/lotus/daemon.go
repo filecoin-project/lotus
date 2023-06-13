@@ -406,7 +406,7 @@ var DaemonCmd = &cli.Command{
 			go func() {
 				err := slashConsensus(api, cctx.String("slashdb-dir"), cctx.String("slasher-sender"))
 				if err != nil {
-					panic("slashConsensus error")
+					panic("slashConsensus error: " + err.Error())
 				}
 			}()
 		}
@@ -697,15 +697,19 @@ func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a l
 	if err != nil {
 		return nil, nil, xerrors.Errorf("chain get block error:%s", err)
 	}
+
 	otherCid, err := sf.MinedBlock(ctx, blockB, blockC.Height)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("slash filter check block error:%s", err)
 	}
+
 	if otherCid != cid.Undef {
 		otherHeader, err := a.ChainGetBlock(ctx, otherCid)
 		return otherHeader, nil, xerrors.Errorf("chain get other block error:%s", err)
 	}
+
 	blockA, err := a.ChainGetBlock(ctx, otherCid)
+	if 
 
 	// (c) parent-grinding fault
 	// Here extra is the "witness", a third block that shows the connection between A and B as
