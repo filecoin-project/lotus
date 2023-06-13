@@ -58,9 +58,16 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 	}
 
 	if a.SlashFilter != nil && os.Getenv("LOTUS_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" {
-		if _, err = a.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
-			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-			return xerrors.Errorf("<!!> SLASH FILTER ERROR: %w", err)
+		witness, fault, err := a.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height)
+		if err != nil {
+			log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
+			// Return an error here, because it's _probably_ wiser to not submit this block
+			return xerrors.Errorf("<!!> SLASH FILTER ERRORED: %w", err)
+		}
+
+		if fault {
+			log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to witness %s", witness)
+			return xerrors.Errorf("<!!> SLASH FILTER DETECTED FAULT due to witness %s", witness)
 		}
 	}
 
