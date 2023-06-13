@@ -333,7 +333,7 @@ minerLoop:
 				}
 
 				if fault {
-					log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to witness %s", witness)
+					log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to blocks %s and %s", b.Header.Cid(), witness)
 					continue
 				}
 			}
