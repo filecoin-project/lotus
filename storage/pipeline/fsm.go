@@ -77,8 +77,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
 	),
-	WaitAP: planOne(
-	),
+	WaitAP: planOne(),
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
 		on(SectorWaitPC{}, WaitPC),
@@ -92,8 +91,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorTicket{}, WaitPC),
 		on(SectorCommitFailed{}, CommitFailed),
 	),
-	WaitPC: planOne(
-	),
+	WaitPC: planOne(),
 	PreCommit1: planOne(
 		on(SectorPreCommit1{}, PreCommit2),
 		on(SectorWaitAP{}, WaitAP),
@@ -140,9 +138,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorSeedReady{}, WaitC),
 		on(SectorChainPreCommitFailed{}, PreCommitFailed),
 	),
-	WaitC: planOne(
-	),
-	Committing: planCommitting,
+	WaitC:              planOne(),
+	Committing:         planCommitting,
+	WaitCommitFinalize: planOne(),
 	CommitFinalize: planOne(
 		on(SectorFinalized{}, SubmitCommit),
 		on(SectorFinalizedAvailable{}, SubmitCommit),
@@ -159,12 +157,14 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 	CommitWait: planOne(
-		on(SectorProving{}, FinalizeSector),
+		// on(SectorProving{}, FinalizeSector),
+		on(SectorProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 	CommitAggregateWait: planOne(
-		on(SectorProving{}, FinalizeSector),
+		// on(SectorProving{}, FinalizeSector),
+		on(SectorProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
@@ -535,6 +535,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleWaitC, processed, nil
 	case Committing:
 		return m.handleCommitting, processed, nil
+	case WaitCommitFinalize:
+		return m.handleWaitCommitFinalize, processed, nil
 	case SubmitCommit:
 		return m.handleSubmitCommit, processed, nil
 	case SubmitCommitAggregate:
@@ -701,6 +703,9 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) (uint64, err
 		case SectorProofReady: // early finalize
 			e.apply(state)
 			state.State = CommitFinalize
+		case SectorWaitCommitFinalize: // early finalize
+			e.apply(state)
+			state.State = WaitCommitFinalize
 		case SectorSeedReady: // seed changed :/
 			if e.SeedEpoch == state.SeedEpoch && bytes.Equal(e.SeedValue, state.SeedValue) {
 				log.Warnf("planCommitting: got SectorSeedReady, but the seed didn't change")
@@ -785,6 +790,18 @@ func (m *Sealing) ForceSectorStateOfSxx(ctx context.Context, id abi.SectorNumber
 		_, err = filbase_redis.SetWorkerForSector(filbase_redis.CWorkerKey, id.String(), worker)
 		if err != nil {
 			return xerrors.Errorf("fail to set worker into radis for sector %+v", id)
+		}
+	}
+
+	if state == SectorState("CommitFinalize") || state == SectorState("FinalizeSector") {
+		cfg, err := m.getConfig()
+		if err != nil {
+			return xerrors.Errorf("getting config: %w", err)
+		}
+		if cfg.FinalizeEarly {
+			state = SectorState("CommitFinalize")
+		} else {
+			state = SectorState("FinalizeSector")
 		}
 	}
 

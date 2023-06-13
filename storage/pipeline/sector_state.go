@@ -69,6 +69,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	WaitAP:                      {},
 	WaitPC:                      {},
 	WaitC:                       {},
+	WaitCommitFinalize:          {},
 }
 
 // cmd/lotus-miner/info.go defines CLI colors corresponding to these states
@@ -159,9 +160,10 @@ const (
 	RemoveFailed SectorState = "RemoveFailed"
 	Removed      SectorState = "Removed"
 
-	WaitAP       SectorState = "WaitAP"
-	WaitPC       SectorState = "WaitPC"
-	WaitC        SectorState = "WaitC"
+	WaitAP             SectorState = "WaitAP"
+	WaitPC             SectorState = "WaitPC"
+	WaitC              SectorState = "WaitC"
+	WaitCommitFinalize SectorState = "WaitCommitFinalize"
 )
 
 func toStatState(st SectorState, finEarly bool) statSectorState {

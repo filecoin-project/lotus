@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -29,8 +30,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
-	"strings"
 	"fmt"
+	"strings"
 )
 
 var DealSectorPriority = 1024
@@ -225,6 +226,10 @@ func (m *Sealing) handleWaitPC(ctx statemachine.Context, sector SectorInfo) erro
 }
 
 func (m *Sealing) handleWaitC(ctx statemachine.Context, sector SectorInfo) error {
+	return nil
+}
+
+func (m *Sealing) handleWaitCommitFinalize(ctx statemachine.Context, sector SectorInfo) error {
 	return nil
 }
 
@@ -711,6 +716,11 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	if cfg.FinalizeEarly {
+		if os.Getenv("LOTUS_OF_SXX") == "1" {
+			return ctx.Send(SectorWaitCommitFinalize{
+				Proof: porepProof,
+			})
+		}
 		return ctx.Send(SectorProofReady{
 			Proof: porepProof,
 		})

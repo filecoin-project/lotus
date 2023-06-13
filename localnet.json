@@ -1,0 +1,30 @@
+{
+  "NetworkVersion": 18,
+  "Accounts": [],
+  "Miners": [],
+  "NetworkName": "localnet-37a57899-4d68-4e32-b277-79ad07256701",
+  "VerifregRootKey": {
+    "Type": "multisig",
+    "Balance": "0",
+    "Meta": {
+      "Signers": [
+        "t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy"
+      ],
+      "Threshold": 1,
+      "VestingDuration": 0,
+      "VestingStart": 0
+    }
+  },
+  "RemainderAccount": {
+    "Type": "multisig",
+    "Balance": "0",
+    "Meta": {
+      "Signers": [
+        "t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy"
+      ],
+      "Threshold": 1,
+      "VestingDuration": 0,
+      "VestingStart": 0
+    }
+  }
+}

@@ -103,6 +103,14 @@ type SectorWaitC struct{}
 
 func (evt SectorWaitC) apply(*SectorInfo) {}
 
+type SectorWaitCommitFinalize struct {
+	Proof []byte
+}
+
+func (evt SectorWaitCommitFinalize) apply(state *SectorInfo) {
+	state.Proof = evt.Proof
+}
+
 type SectorPieceAdded struct {
 	NewPieces []api.SectorPiece
 }
