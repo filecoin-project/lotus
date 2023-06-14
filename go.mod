@@ -94,7 +94,7 @@ require (
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-unixfsnode v1.7.1
-	github.com/ipfs/kubo v0.20.1-0.20230614204534-b685355ca8ce
+	github.com/ipfs/kubo v0.21.0-rc1
 	github.com/ipld/go-car v0.6.1
 	github.com/ipld/go-car/v2 v2.10.1
 	github.com/ipld/go-codec-dagpb v1.6.0

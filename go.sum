@@ -831,8 +831,8 @@ github.com/ipfs/go-unixfsnode v1.7.1/go.mod h1:PVfoyZkX1B34qzT3vJO4nsLUpRCyhnMuH
 github.com/ipfs/go-verifcid v0.0.1/go.mod h1:5Hrva5KBeIog4A+UpqlaIU+DEstipcJYQQZc0g37pY0=
 github.com/ipfs/go-verifcid v0.0.2 h1:XPnUv0XmdH+ZIhLGKg6U2vaPaRDXb9urMyNVCE7uvTs=
 github.com/ipfs/go-verifcid v0.0.2/go.mod h1:40cD9x1y4OWnFXbLNJYRe7MpNvWlMn3LZAG5Wb4xnPU=
-github.com/ipfs/kubo v0.20.1-0.20230614204534-b685355ca8ce h1:MXCSF48JPhGvKN+JvmvbYrFZrsW9JCe93Taq+vQRB+o=
-github.com/ipfs/kubo v0.20.1-0.20230614204534-b685355ca8ce/go.mod h1:/99eEdOIzYv2lYVghzME7Wp4nmL7SEUg8WI5/YGn3fI=
+github.com/ipfs/kubo v0.21.0-rc1 h1:E/Q32wIhuVXbtDwgzjVCwZnxAjKvj8sj70EkEYAqPhQ=
+github.com/ipfs/kubo v0.21.0-rc1/go.mod h1:/99eEdOIzYv2lYVghzME7Wp4nmL7SEUg8WI5/YGn3fI=
 github.com/ipld/go-car v0.1.0/go.mod h1:RCWzaUh2i4mOEkB3W45Vc+9jnS/M6Qay5ooytiBHl3g=
 github.com/ipld/go-car v0.6.1 h1:blWbEHf1j62JMWFIqWE//YR0m7k5ZMw0AuUOU5hjrH8=
 github.com/ipld/go-car v0.6.1/go.mod h1:oEGXdwp6bmxJCZ+rARSkDliTeYnVzv3++eXajZ+Bmr8=
