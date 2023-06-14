@@ -888,6 +888,14 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("proof validation failed, sector not found in sector set after cron")})
 	}
 
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting config: %w", err)
+	}
+	if !cfg.FinalizeEarly && os.Getenv("LOTUS_OF_SXX") == "1" {
+		return ctx.Send(SectorWaitProving{})
+	}
+
 	return ctx.Send(SectorProving{})
 }
 

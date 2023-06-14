@@ -157,14 +157,14 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 	CommitWait: planOne(
-		// on(SectorProving{}, FinalizeSector),
-		on(SectorProving{}, WaitCommitFinalize),
+		on(SectorProving{}, FinalizeSector),
+		on(SectorWaitProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
 	CommitAggregateWait: planOne(
-		// on(SectorProving{}, FinalizeSector),
-		on(SectorProving{}, WaitCommitFinalize),
+		on(SectorProving{}, FinalizeSector),
+		on(SectorWaitProving{}, WaitCommitFinalize),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),

@@ -317,6 +317,10 @@ type SectorProving struct{}
 
 func (evt SectorProving) apply(*SectorInfo) {}
 
+type SectorWaitProving struct{}
+
+func (evt SectorWaitProving) apply(*SectorInfo) {}
+
 type SectorFinalized struct{}
 
 func (evt SectorFinalized) apply(*SectorInfo) {}
