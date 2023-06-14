@@ -282,10 +282,12 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 
 			// TODO: once these changes propagate to the network, we can consider
 			// dropping peers who send us the same block multiple times
+			log.Errorf("IGNORING block message from %s", pid)
 			return pubsub.ValidationIgnore
 		}
 	} else {
 		recordFailure(ctx, metrics.BlockValidationFailure, what)
+		log.Errorf("REJECTING block message from %s", pid)
 	}
 
 	return res
