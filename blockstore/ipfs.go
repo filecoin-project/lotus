@@ -5,12 +5,12 @@ import (
 	"context"
 	"io"
 
+	rpc "github.com/filecoin-project/kubo-api-client"
 	iface "github.com/ipfs/boxo/coreiface"
 	"github.com/ipfs/boxo/coreiface/options"
 	"github.com/ipfs/boxo/coreiface/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/kubo/client/rpc"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
