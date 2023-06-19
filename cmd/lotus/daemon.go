@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime/pprof"
 	"strings"
 
@@ -27,6 +28,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 
@@ -127,6 +129,10 @@ var DaemonCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "import-snapshot",
 			Usage: "import chain state from a given chain export file or url",
+		},
+		&cli.BoolFlag{
+			Name:  "remove-existing-chain",
+			Usage: "remove existing chain and splitstore data on a snapshot-import",
 		},
 		&cli.BoolFlag{
 			Name:  "halt-after-import",
@@ -282,6 +288,69 @@ var DaemonCmd = &cli.Command{
 			}
 			if err := restore(cctx, r); err != nil {
 				return xerrors.Errorf("restoring from backup: %w", err)
+			}
+		}
+
+		if cctx.Bool("remove-existing-chain") {
+			lr, err := repo.NewFS(cctx.String("repo"))
+			if err != nil {
+				return xerrors.Errorf("error opening fs repo: %w", err)
+			}
+
+			exists, err := lr.Exists()
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return xerrors.Errorf("lotus repo doesn't exist")
+			}
+
+			lockedRepo, err := lr.Lock(repo.FullNode)
+			if err != nil {
+				return xerrors.Errorf("error locking repo: %w", err)
+			}
+
+			cfg, err := lockedRepo.Config()
+			if err != nil {
+				lockedRepo.Close()
+				return xerrors.Errorf("error getting config: %w", err)
+			}
+
+			fullNodeConfig, ok := cfg.(*config.FullNode)
+			if !ok {
+				lockedRepo.Close()
+				return xerrors.Errorf("wrong config type: %T", cfg)
+			}
+
+			if fullNodeConfig.Chainstore.EnableSplitstore {
+				log.Info("removing splitstore directory...")
+				err = deleteSplitstoreDir(lockedRepo)
+				if err != nil {
+					lockedRepo.Close()
+					return xerrors.Errorf("error removing splitstore directory: %w", err)
+				}
+			}
+
+			// Get the base repo path
+			repoPath := lockedRepo.Path()
+
+			// Construct the path to the chain directory
+			chainPath := filepath.Join(repoPath, "datastore", "chain")
+
+			log.Info("removing chain directory:", chainPath)
+
+			err = os.RemoveAll(chainPath)
+			if err != nil {
+				lockedRepo.Close()
+				return xerrors.Errorf("error removing chain directory: %w", err)
+			}
+
+			log.Info("chain and splitstore data have been removed")
+
+			// Explicitly close the lockedRepo now that we're done with it.
+			err = lockedRepo.Close()
+			if err != nil {
+				return xerrors.Errorf("error releasing lock: %w", err)
 			}
 		}
 
@@ -721,4 +790,37 @@ func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a l
 	}
 
 	return nil, nil, nil
+}
+
+func deleteSplitstoreDir(lr repo.LockedRepo) error {
+	path, err := lr.SplitstorePath()
+	if err != nil {
+		return xerrors.Errorf("error getting splitstore path: %w", err)
+	}
+
+	return os.RemoveAll(path)
+}
+
+func clearSplitstoreDir(lr repo.LockedRepo) error {
+	path, err := lr.SplitstorePath()
+	if err != nil {
+		return xerrors.Errorf("error getting splitstore path: %w", err)
+	}
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return xerrors.Errorf("error reading splitstore directory %s: %W", path, err)
+	}
+
+	var result error
+	for _, e := range entries {
+		target := filepath.Join(path, e.Name())
+		err = os.RemoveAll(target)
+		if err != nil {
+			log.Errorf("error removing %s: %s", target, err)
+			result = multierr.Append(result, err)
+		}
+	}
+
+	return result
 }
