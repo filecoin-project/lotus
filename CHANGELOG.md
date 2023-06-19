@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.23.1-rc4 / 2023-06-05
+# v1.23.1 / 2023-06-20
 
-This is the 4th release candidate of the upcoming optional feature release of Lotus v1.23.1.
+This is an optional feature release of Lotus. 
 
 **☢️ Upgrade Warnings ☢️**
 
@@ -21,7 +21,7 @@ This is the 4th release candidate of the upcoming optional feature release of Lo
 - feat: worker: Ensure tempdir exists (#10433) ([filecoin-project/lotus#10433](https://github.com/filecoin-project/lotus/pull/10433))
 - feat: sync: harden chain sync (#10756) ([filecoin-project/lotus#10756](https://github.com/filecoin-project/lotus/pull/10756))
 - feat: populate the index on snapshot import ([filecoin-project/lotus#10556](https://github.com/filecoin-project/lotus/pull/10556))
-- feat:chain: Message Index ([filecoin-project/lotus#10452](https://github.com/filecoin-project/lotus/pull/10452))
+- feat:chain: Message Index (**HIGHLY EXPERIMENTAL**) ([filecoin-project/lotus#10452](https://github.com/filecoin-project/lotus/pull/10452))
 - feat: Add small cache to execution traces ([filecoin-project/lotus#10517](https://github.com/filecoin-project/lotus/pull/10517))
 - feat: shed: incoming block-sub chainwatch tool ([filecoin-project/lotus#10513](https://github.com/filecoin-project/lotus/pull/10513))
 
