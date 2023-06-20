@@ -38,7 +38,6 @@ func (mp *MessagePool) CheckPendingMessages(ctx context.Context, from address.Ad
 
 	mset, ok, err := mp.getPendingMset(ctx, from)
 	if err != nil {
-		mp.lk.RUnlock()
 		return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 	}
 	if ok {
@@ -75,7 +74,6 @@ func (mp *MessagePool) CheckReplaceMessages(ctx context.Context, replace []*type
 			msgMap[m.From] = mmap
 			mset, ok, err := mp.getPendingMset(ctx, m.From)
 			if err != nil {
-				mp.lk.RUnlock()
 				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 			}
 			if ok {
@@ -157,7 +155,6 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		if !ok {
 			mset, ok, err := mp.getPendingMset(ctx, m.From)
 			if err != nil {
-				mp.lk.RUnlock()
 				return nil, xerrors.Errorf("errored while getting pending mset: %w", err)
 			}
 			if ok && !interned {
