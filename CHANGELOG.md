@@ -2,36 +2,72 @@
 
 # v1.23.1 / 2023-06-20
 
-This is an optional feature release of Lotus. 
+This is an optional feature release of Lotus. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 **☢️ Upgrade Warnings ☢️**
 
-- If you are upgrading to this release candidate from Lotus v1.22.1, please make sure to read the upgrade warnings section in the [v1.23.0 release first.](https://github.com/filecoin-project/lotus/releases/tag/v1.23.0)
+Please read carefully through these bulletpoints **if you are upgrading from Lotus v1.22.1**.
+
+- This release has the SplitStore feature automatically activated on new nodes. However, for existing Lotus users, you need to explicitly configure SplitStore by uncommenting the `EnableSplitstore` option in your `config.toml` file. To enable SplitStore, set `EnableSplitstore=true`, or if you want to disable it, set `EnableSplitstore=false`. **It's important to note that your Lotus node will not start unless this configuration is properly set. Set it to false if you are running a full archival node!**
+- This feature release requires a **minimum Go version of v1.19.7 or higher to successfully build Lotus.** Go version v1.20 and higher is supported.
+- *Storage Providers:* The proofs libraries now have CUDA enabled by default, which requires you to install [CUDA](https://lotus.filecoin.io/tutorials/lotus-miner/cuda/) if you haven't already done so. If you prefer to use OpenCL on your GPUs instead, check out the documentation [here](https://lotus.filecoin.io/kb/using-opencl/#using-opencl-instead-of-cuda)
+- Please also familiarize yourself with the [changelog in v1.23.0](https://github.com/filecoin-project/lotus/releases/tag/v1.23.0)
+
+If you are upgrading from Lotus v1.23.0 the above warnings should be familiar to you. One thing to note when going from v1.23.0 to v1.23.1 is that the Lotus-Miner legacy-markets has now been disbled by default and will be removed in the near term future. Users are adviced to migrate to [Boost](https://boost.filecoin.io) or other SP-market systems.
+
+## Highlights
+
+**🛣 Execution Lanes 🛣**
+This feature release introduces VM Execution Lanes! Execution lanes efficiently divide the workload between system processes  (chainsync) and RPC requests. This way syncing the chain will not be at the mercy of responding to users' requests and RPC providers nodes should have less problems catching up.
+
+To take advantage of VM Execution Lanes, you need to set up two environment variables:
+- `LOTUS_FVM_CONCURRENCY` - read more abot what this value should be set to here:
+- `LOTUS_FVM_CONCURRENCY_RESERVED = 4` 
+
+**🧱 Aggregation / Batching fixes 🔨**
+
+Numerous aggregation and batching fixes has been included in the feature release. Large `ProveCommitAggregate` and `PreCommitBatching` messages that exceeds the block limit will now automatically be split into smaller messages when sent to the chain.
+
+Additionally we have added a new feature that staggers the amount of ProveCommit messages sent simulatanously to the chain if a storage provider has been aggregating many sectors in ProveCommitAggregate message, but at the time of publishing the BaseFee is below the aggregation threshold. This stagger feature prevents issues where some of the ProveCommit messages fail with the SysErrorOutOfGas message. You can tweak how many messages will be staggered per epoch by changing `MaxSectorProveCommitsSubmittedPerEpoch` in the [sealing section of the config.toml file.](https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#sealing-section)
+
+**Unsealing CLI/API**
+
+This feature release adds a dedicated `lotus-miner sectors unseal` command and API, allowing you to unseal specific sealed sectors easily.
 
 ## New features
-
-- feat: daemon: Auto-resume interrupted snapshot imports ([filecoin-project/lotus#10636](https://github.com/filecoin-project/lotus/pull/10636))
 - feat: VM Execution Lanes ([filecoin-project/lotus#10551](https://github.com/filecoin-project/lotus/pull/10551))
-- feat: chainstore: batch writes of tipsets ([filecoin-project/lotus#10800](https://github.com/filecoin-project/lotus/pull/10800))
+   - Adds VM exections lanes, efficiently dividing the workload between system processes and RPC-requests.
 - Add API and CLI to unseal sector (#10626) ([filecoin-project/lotus#10626](https://github.com/filecoin-project/lotus/pull/10626))
+   - Adds `lotus-miner sectors unseal` cmd, and a API-method to unseal a sector.
 - feat: sealing: Split PCA/PCB batches if gas used exceeds block limit ([filecoin-project/lotus#10647](https://github.com/filecoin-project/lotus/pull/10647))
+   - Splits ProveCommitAggregate and PreCommitBatch messages into multiple messages if the message exceeds the block limit.
 - Add feature to stagger sector prove commit submission (#10543) ([filecoin-project/lotus#10543](https://github.com/filecoin-project/lotus/pull/10543))
+   - Staggers the amount of ProveCommit messages sent simultanously if a storage provider has been aggregating many message, but at the moment of publishing the BaseFee is below the threshold for aggregation to prevent unwanted SysErrorOutOfGas issues.
 - Set default for MaxSectorProveCommitsSubmittedPerEpoch ([filecoin-project/lotus#10728](https://github.com/filecoin-project/lotus/pull/10728))
-- fix: storage: Remove temp fetching files after failed fetch ([filecoin-project/lotus#10661](https://github.com/filecoin-project/lotus/pull/10661))
+   - Sets the default amount of ProveCommits submitted per epoch to 20.
 - feat: worker: Ensure tempdir exists (#10433) ([filecoin-project/lotus#10433](https://github.com/filecoin-project/lotus/pull/10433))
+   - Ensures that a temporary directory exists on start of a lotus-worker with a custom TMPDIR set.
 - feat: sync: harden chain sync (#10756) ([filecoin-project/lotus#10756](https://github.com/filecoin-project/lotus/pull/10756))
 - feat: populate the index on snapshot import ([filecoin-project/lotus#10556](https://github.com/filecoin-project/lotus/pull/10556))
 - feat:chain: Message Index (**HIGHLY EXPERIMENTAL**) ([filecoin-project/lotus#10452](https://github.com/filecoin-project/lotus/pull/10452))
+   - MVP of a message index that allows us to accelrate StateSearchMessage and related functionality, and eventually accelerate critical chain calls (follow up).
 - feat: Add small cache to execution traces ([filecoin-project/lotus#10517](https://github.com/filecoin-project/lotus/pull/10517))
 - feat: shed: incoming block-sub chainwatch tool ([filecoin-project/lotus#10513](https://github.com/filecoin-project/lotus/pull/10513))
 
 ## Improvements
-- feat: chainstore: sharded mutex for filling chain height index
+- feat: daemon: Auto-resume interrupted snapshot imports ([filecoin-project/lotus#10636](https://github.com/filecoin-project/lotus/pull/10636))
+   - Auto-resumes interrupted snapshot imports when using an URL.
+- fix: storage: Remove temp fetching files after failed fetch ([filecoin-project/lotus#10661](https://github.com/filecoin-project/lotus/pull/10661))
+   - Clean up partially fetched failed after a failed fetch on a lotus-worker.
+- feat: chainstore: batch writes of tipsets ([filecoin-project/lotus#10800](https://github.com/filecoin-project/lotus/pull/10800))
+   - Reduces the time to persist all headers from 4-5 minutes, to < 15 seconds. 
 - Check if epoch is negative in GetTipsetByHeight
 - fix: sched: Address GET_32G_MAX_CONCURRENT regression
 - fix: cli: Hide legacy markets cmds
+   - Hides the lotus-miner legacy markets commands from the lotus-miner CLI.
 - fix: ci: Debugging m1 build
 - Disable lotus markets by default (#10809) ([filecoin-project/lotus#10809](https://github.com/filecoin-project/lotus/pull/10809))
+   - Disables lotus-miner legacy markets [EOL] by default.
 - perf: mempool: lower priority optimizations (#10693) ([filecoin-project/lotus#10693](https://github.com/filecoin-project/lotus/pull/10693))
 - perf: message pool: change locks to RWMutexes for performance ([filecoin-project/lotus#10561](https://github.com/filecoin-project/lotus/pull/10561))
 - perf: eth: gas estimate set applyTsMessages false (#10546) ([filecoin-project/lotus#10546](https://github.com/filecoin-project/lotus/pull/10546))
