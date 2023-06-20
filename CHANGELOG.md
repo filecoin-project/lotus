@@ -6,14 +6,9 @@ This is an optional feature release of Lotus. This feature release includes nume
 
 **☢️ Upgrade Warnings ☢️**
 
-Please read carefully through these bulletpoints **if you are upgrading from Lotus v1.22.1**.
+If you are upgrading to this release candidate from Lotus v1.22.1, please make sure to read the upgrade warnings section in the [v1.23.0 release first.](https://github.com/filecoin-project/lotus/releases/tag/v1.23.0)
 
-- This release has the SplitStore feature automatically activated on new nodes. However, for existing Lotus users, you need to explicitly configure SplitStore by uncommenting the `EnableSplitstore` option in your `config.toml` file. To enable SplitStore, set `EnableSplitstore=true`, or if you want to disable it, set `EnableSplitstore=false`. **It's important to note that your Lotus node will not start unless this configuration is properly set. Set it to false if you are running a full archival node!**
-- This feature release requires a **minimum Go version of v1.19.7 or higher to successfully build Lotus.** Go version v1.20 and higher is supported.
-- *Storage Providers:* The proofs libraries now have CUDA enabled by default, which requires you to install [CUDA](https://lotus.filecoin.io/tutorials/lotus-miner/cuda/) if you haven't already done so. If you prefer to use OpenCL on your GPUs instead, check out the documentation [here](https://lotus.filecoin.io/kb/using-opencl/#using-opencl-instead-of-cuda)
-- Please also familiarize yourself with the [changelog in v1.23.0](https://github.com/filecoin-project/lotus/releases/tag/v1.23.0)
-
-If you are upgrading from Lotus v1.23.0 the above warnings should be familiar to you. One thing to note when going from v1.23.0 to v1.23.1 is that the Lotus-Miner legacy-markets has now been disbled by default and will be removed in the near term future. Users are adviced to migrate to [Boost](https://boost.filecoin.io) or other SP-market systems.
+- *Storage providers:* The Lotus-Miner legacy-markets has been disbled by default in this feature release and will be removed in the near term future. Users are adviced to migrate to [Boost](https://boost.filecoin.io) or other SP markets systems.
 
 ## Highlights
 
@@ -29,6 +24,8 @@ To take advantage of VM Execution Lanes, you need to set up two environment vari
 Numerous aggregation and batching fixes has been included in the feature release. Large `ProveCommitAggregate` and `PreCommitBatching` messages that exceeds the block limit will now automatically be split into smaller messages when sent to the chain.
 
 Additionally we have added a new feature that staggers the amount of ProveCommit messages sent simulatanously to the chain if a storage provider has been aggregating many sectors in ProveCommitAggregate message, but at the time of publishing the BaseFee is below the aggregation threshold. This stagger feature prevents issues where some of the ProveCommit messages fail with the SysErrorOutOfGas message. You can tweak how many messages will be staggered per epoch by changing `MaxSectorProveCommitsSubmittedPerEpoch` in the [sealing section of the config.toml file.](https://lotus.filecoin.io/storage-providers/advanced-configurations/sealing/#sealing-section)
+
+*NB:* While these fixes are great for the reliability of aggregation and batching on the Lotus side, it has been uncovered that aggregating ProveCommit messages for sectors containing verified deals are currently more expensive then single messages due to an issue on the actors side. We therefore do not reccomend our users to aggregate ProveCommit messages when doing verified deals until that issue has been resolved. You can follow the discussion on resolving the issue on the [actors side here.](https://github.com/filecoin-project/FIPs/discussions/689)
 
 **Unsealing CLI/API**
 
