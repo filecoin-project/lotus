@@ -1364,6 +1364,7 @@ var sectorsExtendCmd = &cli.Command{
 		}
 
 		stotal := 0
+		gasTotal := big.NewInt(0)
 
 		for i := range params {
 			scount := 0
@@ -1389,6 +1390,23 @@ var sectorsExtendCmd = &cli.Command{
 				}
 
 				fmt.Println("\n", string(data))
+
+				sp, aerr := actors.SerializeParams(&params[i])
+				if aerr != nil {
+					return xerrors.Errorf("serializing params: %w", err)
+				}
+
+				estMsg, err := fullApi.GasEstimateMessageGas(ctx, &types.Message{
+					From:   mi.Worker,
+					To:     maddr,
+					Method: builtin.MethodsMiner.ExtendSectorExpiration2,
+					Value:  big.Zero(),
+					Params: sp,
+				}, nil, types.EmptyTSK)
+				if err != nil {
+					return err
+				}
+				gasTotal.Add(gasTotal.Int, estMsg.RequiredFunds().Int)
 				continue
 			}
 
@@ -1411,7 +1429,10 @@ var sectorsExtendCmd = &cli.Command{
 			fmt.Println(smsg.Cid())
 		}
 
-		fmt.Printf("%d sectors extended\n", stotal)
+		fmt.Printf("Simulating extending %d sector - estimated costs %s\n", stotal, types.FIL(gasTotal))
+		if !cctx.Bool("really-do-it") {
+			fmt.Println("You need to pass the --really-do-it flag to actully send the message")
+		}
 
 		return nil
 	},
