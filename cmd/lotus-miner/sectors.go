@@ -1403,7 +1403,9 @@ var sectorsExtendCmd = &cli.Command{
 					Value:  big.Zero(),
 					Params: sp,
 				}, nil, types.EmptyTSK)
-				if err != nil {
+				if err != nil && xerrors.Is(err, &api.ErrOutOfGas{}) {
+					return xerrors.Errorf("out of gas, please use --max-sectors to reduce the number of single message sectors")
+				} else if err != nil {
 					return err
 				}
 				gasTotal.Add(gasTotal.Int, estMsg.RequiredFunds().Int)
