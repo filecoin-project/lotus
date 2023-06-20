@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.23.1-rc4
+   1.23.1
 
 COMMANDS:
    init     Initialize a lotus miner repo
