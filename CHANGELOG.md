@@ -16,7 +16,7 @@ If you are upgrading to this release candidate from Lotus v1.22.1, please make s
 This feature release introduces VM Execution Lanes! Execution lanes efficiently divide the workload between system processes  (chainsync) and RPC requests. This way syncing the chain will not be at the mercy of responding to users' requests and RPC providers nodes should have less problems catching up.
 
 To take advantage of VM Execution Lanes, you need to set up two environment variables:
-- `LOTUS_FVM_CONCURRENCY` - read more abot what this value should be set to here:
+- `LOTUS_FVM_CONCURRENCY` - read more about how this value should be set to [here](https://lotus.filecoin.io/lotus/configure/ethereum-rpc/#environment-variables)
 - `LOTUS_FVM_CONCURRENCY_RESERVED = 4` 
 
 **🧱 Aggregation / Batching fixes 🔨**
