@@ -473,7 +473,8 @@ Set to 0 to keep all mappings`,
 			Name: "EnableMsgIndex",
 			Type: "bool",
 
-			Comment: `EnableMsgIndex enables indexing of messages on chain.`,
+			Comment: `EXPERIMENTAL FEATURE. USE WITH CAUTION
+EnableMsgIndex enables indexing of messages on chain.`,
 		},
 	},
 	"IndexProviderConfig": []DocField{
@@ -1106,15 +1107,7 @@ required to have expiration of at least the soonest-ending deal`,
 			Name: "MinTargetUpgradeSectorExpiration",
 			Type: "uint64",
 
-			Comment: `When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
-be selected based on lowest initial pledge.
-
-Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
-selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
-where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
-
-Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
-initial pledge - upgrade sectors will always be chosen based on longest expiration`,
+			Comment: `DEPRECATED: Target expiration is no longer used`,
 		},
 		{
 			Name: "CommittedCapacitySectorLifetime",

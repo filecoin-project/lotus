@@ -299,6 +299,7 @@ type MinerInfo struct {
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 	ConsensusFaultElapsed      abi.ChainEpoch
+	PendingOwnerAddress        *address.Address
 	Beneficiary                address.Address
 	BeneficiaryTerm            *miner.BeneficiaryTerm
 	PendingBeneficiaryTerm     *miner.PendingBeneficiaryChange

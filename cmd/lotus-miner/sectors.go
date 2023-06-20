@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -318,6 +320,9 @@ var sectorsListCmd = &cli.Command{
 			Value: parallelSectorChecks,
 		},
 	},
+	Subcommands: []*cli.Command{
+		sectorsListUpgradeBoundsCmd,
+	},
 	Action: func(cctx *cli.Context) error {
 		// http mode allows for parallel json decoding/encoding, which was a bottleneck here
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
@@ -579,6 +584,169 @@ var sectorsListCmd = &cli.Command{
 			}
 
 			tw.Write(m)
+		}
+
+		return tw.Flush(os.Stdout)
+	},
+}
+
+var sectorsListUpgradeBoundsCmd = &cli.Command{
+	Name:  "upgrade-bounds",
+	Usage: "Output upgrade bounds for available sectors",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "buckets",
+			Value: 25,
+		},
+		&cli.BoolFlag{
+			Name:  "csv",
+			Usage: "output machine-readable values",
+		},
+		&cli.BoolFlag{
+			Name:  "deal-terms",
+			Usage: "bucket by how many deal-sectors can start at a given expiration",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		fullApi, closer2, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer2()
+
+		ctx := lcli.ReqContext(cctx)
+
+		list, err := minerApi.SectorsListInStates(ctx, []api.SectorState{
+			api.SectorState(sealing.Available),
+		})
+		if err != nil {
+			return xerrors.Errorf("getting sector list: %w", err)
+		}
+
+		head, err := fullApi.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		filter := bitfield.New()
+
+		for _, s := range list {
+			filter.Set(uint64(s))
+		}
+
+		maddr, err := minerApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, &filter, head.Key())
+		if err != nil {
+			return err
+		}
+
+		if len(sset) == 0 {
+			return nil
+		}
+
+		var minExpiration, maxExpiration abi.ChainEpoch
+
+		for _, s := range sset {
+			if s.Expiration < minExpiration || minExpiration == 0 {
+				minExpiration = s.Expiration
+			}
+			if s.Expiration > maxExpiration {
+				maxExpiration = s.Expiration
+			}
+		}
+
+		buckets := cctx.Int("buckets")
+		bucketSize := (maxExpiration - minExpiration) / abi.ChainEpoch(buckets)
+		bucketCounts := make([]int, buckets+1)
+
+		for b := range bucketCounts {
+			bucketMin := minExpiration + abi.ChainEpoch(b)*bucketSize
+			bucketMax := minExpiration + abi.ChainEpoch(b+1)*bucketSize
+
+			if cctx.Bool("deal-terms") {
+				bucketMax = bucketMax + policy.MarketDefaultAllocationTermBuffer
+			}
+
+			for _, s := range sset {
+				isInBucket := s.Expiration >= bucketMin && s.Expiration < bucketMax
+
+				if isInBucket {
+					bucketCounts[b]++
+				}
+			}
+
+		}
+
+		// Creating CSV writer
+		writer := csv.NewWriter(os.Stdout)
+
+		// Writing CSV headers
+		err = writer.Write([]string{"Max Expiration in Bucket", "Sector Count"})
+		if err != nil {
+			return xerrors.Errorf("writing csv headers: %w", err)
+		}
+
+		// Writing bucket details
+
+		if cctx.Bool("csv") {
+			for i := 0; i < buckets; i++ {
+				maxExp := minExpiration + abi.ChainEpoch(i+1)*bucketSize
+
+				timeStr := strconv.FormatInt(int64(maxExp), 10)
+
+				err = writer.Write([]string{
+					timeStr,
+					strconv.Itoa(bucketCounts[i]),
+				})
+				if err != nil {
+					return xerrors.Errorf("writing csv row: %w", err)
+				}
+			}
+
+			// Flush to make sure all data is written to the underlying writer
+			writer.Flush()
+
+			if err := writer.Error(); err != nil {
+				return xerrors.Errorf("flushing csv writer: %w", err)
+			}
+
+			return nil
+		}
+
+		tw := tablewriter.New(
+			tablewriter.Col("Bucket Expiration"),
+			tablewriter.Col("Sector Count"),
+			tablewriter.Col("Bar"),
+		)
+
+		var barCols = 40
+		var maxCount int
+
+		for _, c := range bucketCounts {
+			if c > maxCount {
+				maxCount = c
+			}
+		}
+
+		for i := 0; i < buckets; i++ {
+			maxExp := minExpiration + abi.ChainEpoch(i+1)*bucketSize
+			timeStr := cliutil.EpochTime(head.Height(), maxExp)
+
+			tw.Write(map[string]interface{}{
+				"Bucket Expiration": timeStr,
+				"Sector Count":      color.YellowString("%d", bucketCounts[i]),
+				"Bar":               "[" + color.GreenString(strings.Repeat("|", bucketCounts[i]*barCols/maxCount)) + strings.Repeat(" ", barCols-bucketCounts[i]*barCols/maxCount) + "]",
+			})
 		}
 
 		return tw.Flush(os.Stdout)
@@ -2056,7 +2224,6 @@ func yesno(b bool) string {
 	return color.RedString("NO")
 }
 
-// TODO simulate this call if --really-do-it is not used
 var sectorsCompactPartitionsCmd = &cli.Command{
 	Name:  "compact-partitions",
 	Usage: "removes dead sectors from partitions and reduces the number of partitions used if possible",
@@ -2082,12 +2249,7 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
-			return nil
-		}
-
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		fullNodeAPI, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -2100,7 +2262,7 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 			return err
 		}
 
-		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		minfo, err := fullNodeAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -2116,46 +2278,118 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		}
 		fmt.Printf("compacting %d paritions\n", len(parts))
 
+		var makeMsgForPartitions func(partitionsBf bitfield.BitField) ([]*types.Message, error)
+		makeMsgForPartitions = func(partitionsBf bitfield.BitField) ([]*types.Message, error) {
+			params := miner.CompactPartitionsParams{
+				Deadline:   deadline,
+				Partitions: partitionsBf,
+			}
+
+			sp, aerr := actors.SerializeParams(&params)
+			if aerr != nil {
+				return nil, xerrors.Errorf("serializing params: %w", err)
+			}
+
+			msg := &types.Message{
+				From:   minfo.Worker,
+				To:     maddr,
+				Method: builtin.MethodsMiner.CompactPartitions,
+				Value:  big.Zero(),
+				Params: sp,
+			}
+
+			estimatedMsg, err := fullNodeAPI.GasEstimateMessageGas(ctx, msg, nil, types.EmptyTSK)
+			if err != nil && xerrors.Is(err, &api.ErrOutOfGas{}) {
+				// the message is too big -- split into 2
+				partitionsSlice, err := partitionsBf.All(math.MaxUint64)
+				if err != nil {
+					return nil, err
+				}
+
+				partitions1 := bitfield.New()
+				for i := 0; i < len(partitionsSlice)/2; i++ {
+					partitions1.Set(uint64(i))
+				}
+
+				msgs1, err := makeMsgForPartitions(partitions1)
+				if err != nil {
+					return nil, err
+				}
+
+				// time for the second half
+				partitions2 := bitfield.New()
+				for i := len(partitionsSlice) / 2; i < len(partitionsSlice); i++ {
+					partitions2.Set(uint64(i))
+				}
+
+				msgs2, err := makeMsgForPartitions(partitions2)
+				if err != nil {
+					return nil, err
+				}
+
+				return append(msgs1, msgs2...), nil
+			} else if err != nil {
+				return nil, err
+			}
+
+			return []*types.Message{estimatedMsg}, nil
+		}
+
 		partitions := bitfield.New()
 		for _, partition := range parts {
 			partitions.Set(uint64(partition))
 		}
 
-		params := miner.CompactPartitionsParams{
-			Deadline:   deadline,
-			Partitions: partitions,
-		}
-
-		sp, err := actors.SerializeParams(&params)
+		msgs, err := makeMsgForPartitions(partitions)
 		if err != nil {
-			return xerrors.Errorf("serializing params: %w", err)
+			return xerrors.Errorf("failed to make messages: %w", err)
 		}
 
-		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			From:   minfo.Worker,
-			To:     maddr,
-			Method: builtin.MethodsMiner.CompactPartitions,
-			Value:  big.Zero(),
-			Params: sp,
-		}, nil)
-		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
+		// Actually send the messages if really-do-it provided, simulate otherwise
+		if cctx.Bool("really-do-it") {
+			smsgs, err := fullNodeAPI.MpoolBatchPushMessage(ctx, msgs, nil)
+			if err != nil {
+				return xerrors.Errorf("mpool push: %w", err)
+			}
+
+			if len(smsgs) == 1 {
+				fmt.Printf("Requested compact partitions in message %s\n", smsgs[0].Cid())
+			} else {
+				fmt.Printf("Requested compact partitions in %d messages\n\n", len(smsgs))
+				for _, v := range smsgs {
+					fmt.Println(v.Cid())
+				}
+			}
+
+			for _, v := range smsgs {
+				wait, err := fullNodeAPI.StateWaitMsg(ctx, v.Cid(), 2)
+				if err != nil {
+					return err
+				}
+
+				// check it executed successfully
+				if wait.Receipt.ExitCode.IsError() {
+					fmt.Println(cctx.App.Writer, "compact partitions msg %s failed!", v.Cid())
+					return err
+				}
+			}
+
+			return nil
 		}
 
-		fmt.Printf("Requested compact partitions in message %s\n", smsg.Cid())
+		for i, v := range msgs {
+			fmt.Printf("total of %d CompactPartitions msgs would be sent\n", len(msgs))
 
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
-		if err != nil {
-			return err
-		}
+			estMsg, err := fullNodeAPI.GasEstimateMessageGas(ctx, v, nil, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
 
-		// check it executed successfully
-		if wait.Receipt.ExitCode.IsError() {
-			fmt.Println(cctx.App.Writer, "compact partitions failed!")
-			return err
+			fmt.Printf("msg %d would cost up to %s\n", i+1, types.FIL(estMsg.RequiredFunds()))
 		}
 
 		return nil
+
 	},
 }
 

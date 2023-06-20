@@ -147,6 +147,10 @@ func ConfigStorageMiner(c interface{}) Option {
 		),
 
 		If(cfg.Subsystems.EnableMarkets,
+
+			// Alert that legacy-markets is being deprecated
+			Override(LegacyMarketsEOL, modules.LegacyMarketsEOL),
+
 			// Markets
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfersForStorage, cfg.Dealmaking.SimultaneousTransfersForStoragePerClient, cfg.Dealmaking.SimultaneousTransfersForRetrieval)),

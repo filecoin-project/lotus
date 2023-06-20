@@ -352,15 +352,7 @@ type SealingConfig struct {
 	// required to have expiration of at least the soonest-ending deal
 	MinUpgradeSectorExpiration uint64
 
-	// When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
-	// be selected based on lowest initial pledge.
-	//
-	// Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
-	// selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
-	// where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
-	//
-	// Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
-	// initial pledge - upgrade sectors will always be chosen based on longest expiration
+	// DEPRECATED: Target expiration is no longer used
 	MinTargetUpgradeSectorExpiration uint64
 
 	// CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
@@ -736,6 +728,7 @@ type Events struct {
 }
 
 type IndexConfig struct {
+	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
 	EnableMsgIndex bool
 }

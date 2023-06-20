@@ -632,6 +632,8 @@ type GatewayStruct struct {
 }
 
 type GatewayMethods struct {
+	ChainGetBlock func(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) ``
+
 	ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
 	ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
@@ -734,7 +736,11 @@ type GatewayMethods struct {
 
 	GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
+	MinerGetBaseInfo func(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*MiningBaseInfo, error) ``
+
 	MpoolGetNonce func(p0 context.Context, p1 address.Address) (uint64, error) ``
+
+	MpoolPending func(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) ``
 
 	MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
 
@@ -4109,6 +4115,17 @@ func (s *FullNodeStub) Web3ClientVersion(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
 }
 
+func (s *GatewayStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) {
+	if s.Internal.ChainGetBlock == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetBlock(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
 	if s.Internal.ChainGetBlockMessages == nil {
 		return nil, ErrNotSupported
@@ -4670,6 +4687,17 @@ func (s *GatewayStub) GasEstimateMessageGas(p0 context.Context, p1 *types.Messag
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*MiningBaseInfo, error) {
+	if s.Internal.MinerGetBaseInfo == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.MinerGetBaseInfo(p0, p1, p2, p3)
+}
+
+func (s *GatewayStub) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*MiningBaseInfo, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *GatewayStruct) MpoolGetNonce(p0 context.Context, p1 address.Address) (uint64, error) {
 	if s.Internal.MpoolGetNonce == nil {
 		return 0, ErrNotSupported
@@ -4679,6 +4707,17 @@ func (s *GatewayStruct) MpoolGetNonce(p0 context.Context, p1 address.Address) (u
 
 func (s *GatewayStub) MpoolGetNonce(p0 context.Context, p1 address.Address) (uint64, error) {
 	return 0, ErrNotSupported
+}
+
+func (s *GatewayStruct) MpoolPending(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) {
+	if s.Internal.MpoolPending == nil {
+		return *new([]*types.SignedMessage), ErrNotSupported
+	}
+	return s.Internal.MpoolPending(p0, p1)
+}
+
+func (s *GatewayStub) MpoolPending(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) {
+	return *new([]*types.SignedMessage), ErrNotSupported
 }
 
 func (s *GatewayStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
