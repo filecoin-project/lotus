@@ -129,15 +129,15 @@ func TestEthBalanceCorrectLookup(t *testing.T) {
 	inclTsParents, err := client.ChainGetTipSet(ctx, inclTs.Parents())
 	require.NoError(t, err)
 
-	bal, err := client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockParamFromNumber(inclTsParents.Height()))
+	bal, err := client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockParamFromNumber(ethtypes.EthUint64(inclTsParents.Height())))
 	require.NoError(t, err)
 	require.Equal(t, int64(0), bal.Int64())
 
-	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockParamFromNumber(inclTs.Height()))
+	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockParamFromNumber(ethtypes.EthUint64(inclTs.Height())))
 	require.NoError(t, err)
 	require.Equal(t, val, bal.Int64())
 
-	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockParamFromNumber(execTs.Height()))
+	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockParamFromNumber(ethtypes.EthUint64(execTs.Height())))
 	require.NoError(t, err)
 	require.Equal(t, val, bal.Int64())
 }
