@@ -3941,7 +3941,9 @@ Response:
 ```
 
 ### MpoolClear
-MpoolClear clears pending messages from the mpool
+MpoolClear clears pending messages from the mpool.
+If clearLocal is true, ALL messages will be cleared.
+If clearLocal is false, local messages will be protected, all others will be cleared.
 
 
 Perms: write
@@ -5020,7 +5022,9 @@ Response:
 ```json
 {
   "Reachability": 1,
-  "PublicAddr": "string value"
+  "PublicAddrs": [
+    "string value"
+  ]
 }
 ```
 

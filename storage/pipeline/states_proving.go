@@ -81,7 +81,12 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 
 func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInfo) error {
 	if sector.TerminateMessage == nil {
-		return xerrors.New("entered TerminateWait with nil TerminateMessage")
+		ts, err := m.Api.ChainHead(ctx.Context())
+		if err != nil {
+			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting chain head: %w", err)})
+		}
+
+		return ctx.Send(SectorTerminated{TerminatedAt: ts.Height()})
 	}
 
 	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage, build.MessageConfidence, api.LookbackNoLimit, true)

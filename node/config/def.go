@@ -151,9 +151,10 @@ func DefaultStorageMiner() *StorageMiner {
 			BatchPreCommitAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
 			AggregateAboveBaseFee:      types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
 
-			TerminateBatchMin:  1,
-			TerminateBatchMax:  100,
-			TerminateBatchWait: Duration(5 * time.Minute),
+			TerminateBatchMin:                      1,
+			TerminateBatchMax:                      100,
+			TerminateBatchWait:                     Duration(5 * time.Minute),
+			MaxSectorProveCommitsSubmittedPerEpoch: 20,
 		},
 
 		Proving: ProvingConfig{
@@ -229,7 +230,7 @@ func DefaultStorageMiner() *StorageMiner {
 			EnableMining:        true,
 			EnableSealing:       true,
 			EnableSectorStorage: true,
-			EnableMarkets:       true,
+			EnableMarkets:       false,
 		},
 
 		Fees: MinerFeeConfig{

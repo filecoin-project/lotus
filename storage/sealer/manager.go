@@ -319,6 +319,15 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 		return xerrors.Errorf("acquiring unseal sector lock: %w", err)
 	}
 
+	// Check if sealed or update sector file exists
+	s, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTSealed|storiface.FTUpdate, 0, false)
+	if err != nil {
+		return xerrors.Errorf("finding sealed or updated sector: %w", err)
+	}
+	if len(s) == 0 {
+		return xerrors.Errorf("sealed or updated sector file not found for sector %d", sector.ID)
+	}
+
 	// if the selected worker does NOT have the sealed files for the sector, instruct it to fetch it from a worker that has them and
 	// put it in the sealing scratch space.
 	sealFetch := PrepareAction{

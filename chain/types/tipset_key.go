@@ -7,8 +7,8 @@ import (
 	"io"
 	"strings"
 
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	block "github.com/ipfs/go-libipfs/blocks"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-state-types/abi"

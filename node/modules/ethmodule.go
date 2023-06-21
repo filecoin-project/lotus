@@ -54,12 +54,10 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			}
 		}
 
-		const ChainHeadConfidence = 1
-
 		ctx := helpers.LifecycleCtx(mctx, lc)
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				ev, err := events.NewEventsWithConfidence(ctx, &evapi, ChainHeadConfidence)
+				ev, err := events.NewEvents(ctx, &evapi)
 				if err != nil {
 					return err
 				}

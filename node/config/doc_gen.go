@@ -461,6 +461,21 @@ Set to 0 to keep all mappings`,
 
 			Comment: ``,
 		},
+		{
+			Name: "Index",
+			Type: "IndexConfig",
+
+			Comment: ``,
+		},
+	},
+	"IndexConfig": []DocField{
+		{
+			Name: "EnableMsgIndex",
+			Type: "bool",
+
+			Comment: `EXPERIMENTAL FEATURE. USE WITH CAUTION
+EnableMsgIndex enables indexing of messages on chain.`,
+		},
 	},
 	"IndexProviderConfig": []DocField{
 		{
@@ -1229,6 +1244,16 @@ sending precommit messages to the chain individually`,
 
 			Comment: `network BaseFee below which to stop doing commit aggregation, instead
 submitting proofs to the chain individually`,
+		},
+		{
+			Name: "MaxSectorProveCommitsSubmittedPerEpoch",
+			Type: "uint64",
+
+			Comment: `When submitting several sector prove commit messages simultaneously, this option allows you to
+stagger the number of prove commits submitted per epoch
+This is done because gas estimates for ProveCommits are non deterministic and increasing as a large
+number of sectors get committed within the same epoch resulting in occasionally failed msgs.
+Submitting a smaller number of prove commits per epoch would reduce the possibility of failed msgs`,
 		},
 		{
 			Name: "TerminateBatchMax",

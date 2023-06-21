@@ -3,8 +3,8 @@ package v0api
 import (
 	"context"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	blocks "github.com/ipfs/go-libipfs/blocks"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -35,6 +35,9 @@ import (
 //  * Generate openrpc blobs
 
 type Gateway interface {
+	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (api.MinerSectors, error)
+	GasEstimateGasPremium(context.Context, uint64, address.Address, int64, types.TipSetKey) (types.BigInt, error)
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainPutObj(context.Context, blocks.Block) error
 	ChainHead(ctx context.Context) (*types.TipSet, error)

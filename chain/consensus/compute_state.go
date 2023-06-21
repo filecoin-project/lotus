@@ -110,6 +110,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			TipSetGetter:   stmgr.TipSetGetterForTipset(sm.ChainStore(), ts),
 			Tracing:        vmTracing,
 			ReturnEvents:   sm.ChainStore().IsStoringEvents(),
+			ExecutionLane:  vm.ExecutionLanePriority,
 		}
 
 		return sm.VMConstructor()(ctx, vmopt)
