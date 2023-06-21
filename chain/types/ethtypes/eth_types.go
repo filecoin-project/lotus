@@ -840,61 +840,72 @@ func (e EthFeeHistoryParams) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]interface{}{e.BlkCount, e.NewestBlkNum})
 }
 
-type EthBlockParamByNumberOrHash struct {
-	PredefinedBlock *string
-	Number          *EthUint64
+type EthBlockNumberOrHash struct {
+	// PredefinedBlock can be one of "earliest", "pending" or "latest". We could merge this
+	// field with BlockNumber if the latter could store negative numbers representing
+	// each predefined value (e.g. -1 for "earliest", -2 for "pending" and -3 for "latest")
+	PredefinedBlock *string `json:"-"`
 
 	BlockNumber      *EthUint64 `json:"blockNumber,omitempty"`
 	BlockHash        *EthHash   `json:"blockHash,omitempty"`
 	RequireCanonical bool       `json:"requireCanonical,omitempty"`
 }
 
-func NewEthBlockParamFromPredefined(predefined string) EthBlockParamByNumberOrHash {
-	return EthBlockParamByNumberOrHash{
+func NewEthBlockNumberOrHashFromPredefined(predefined string) EthBlockNumberOrHash {
+	return EthBlockNumberOrHash{
 		PredefinedBlock:  &predefined,
-		Number:           nil,
+		BlockNumber:      nil,
 		BlockHash:        nil,
 		RequireCanonical: false,
 	}
 }
 
-func NewEthBlockParamFromNumber(number EthUint64) EthBlockParamByNumberOrHash {
-	return EthBlockParamByNumberOrHash{
+func NewEthBlockNumberOrHashFromNumber(number EthUint64) EthBlockNumberOrHash {
+	return EthBlockNumberOrHash{
 		PredefinedBlock:  nil,
-		Number:           &number,
+		BlockNumber:      &number,
 		BlockHash:        nil,
 		RequireCanonical: false,
 	}
 }
 
-func NewEthBlockParamFromHexString(str string) (EthBlockParamByNumberOrHash, error) {
+func NewEthBlockNumberOrHashFromHexString(str string) (EthBlockNumberOrHash, error) {
 	// check if block param is a number (decimal or hex)
 	var num EthUint64 = 0
 	err := num.UnmarshalJSON([]byte(str))
 	if err != nil {
-		return NewEthBlockParamFromNumber(0), err
+		return NewEthBlockNumberOrHashFromNumber(0), err
 	}
 
-	return EthBlockParamByNumberOrHash{
+	return EthBlockNumberOrHash{
 		PredefinedBlock:  nil,
-		Number:           &num,
+		BlockNumber:      &num,
 		BlockHash:        nil,
 		RequireCanonical: false,
 	}, nil
 }
 
-func (e *EthBlockParamByNumberOrHash) UnmarshalJSON(b []byte) error {
-	// we first try to unmarshal into a EthBlockParamByNumberOrHash struct to check
+func (e EthBlockNumberOrHash) MarshalJSON() ([]byte, error) {
+	if e.PredefinedBlock != nil {
+		return json.Marshal(*e.PredefinedBlock)
+	}
+
+	type tmpStruct EthBlockNumberOrHash
+	return json.Marshal(tmpStruct(e))
+}
+
+func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
+	// we first try to unmarshal into a EthBlockNumberOrHash struct to check
 	// if the block param is a block hash or block number (see EIP-1898). We use
 	// a temporary struct to avoid infinite recursion.
-	type tmpStruct EthBlockParamByNumberOrHash
+	type tmpStruct EthBlockNumberOrHash
 	var tmp tmpStruct
 	if err := json.Unmarshal(b, &tmp); err == nil {
 		if tmp.BlockNumber != nil && tmp.BlockHash != nil {
 			return errors.New("cannot specify both blockNumber and blockHash")
 		}
 
-		*e = EthBlockParamByNumberOrHash(tmp)
+		*e = EthBlockNumberOrHash(tmp)
 		return nil
 	}
 
@@ -912,7 +923,7 @@ func (e *EthBlockParamByNumberOrHash) UnmarshalJSON(b []byte) error {
 	// check if block param is a number (decimal or hex)
 	var num EthUint64
 	if err := num.UnmarshalJSON(b); err == nil {
-		e.Number = &num
+		e.BlockNumber = &num
 		return nil
 	}
 

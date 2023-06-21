@@ -80,36 +80,41 @@ func (gw *Node) checkBlkHash(ctx context.Context, blkHash ethtypes.EthHash) erro
 	return gw.checkTipsetKey(ctx, tsk)
 }
 
-func (gw *Node) checkEthBlockParamByNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockParamByNumberOrHash, lookback ethtypes.EthUint64) error {
-	head, err := gw.target.ChainHead(ctx)
-	if err != nil {
-		return err
-	}
-
-	var num ethtypes.EthUint64 = 0
-	if blkParam.PredefinedBlock != nil {
-		if *blkParam.PredefinedBlock == "earliest" {
-			return fmt.Errorf("block param \"earliest\" is not supported")
-		} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
-			// Head is always ok.
-			if lookback == 0 {
-				return nil
-			}
-
-			if lookback <= ethtypes.EthUint64(head.Height()) {
-				num = ethtypes.EthUint64(head.Height()) - lookback
-			}
+func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, lookback ethtypes.EthUint64) error {
+	// first check if its a predefined block or a block number
+	if blkParam.PredefinedBlock != nil || blkParam.BlockNumber != nil {
+		head, err := gw.target.ChainHead(ctx)
+		if err != nil {
+			return err
 		}
-	} else if blkParam.Number != nil {
-		num = *blkParam.Number
-	} else if blkParam.BlockHash != nil || blkParam.BlockNumber != nil {
-		return fmt.Errorf("block hash and block number are not supported")
-	} else {
-		return fmt.Errorf("invalid block param")
+
+		var num ethtypes.EthUint64 = 0
+		if blkParam.PredefinedBlock != nil {
+			if *blkParam.PredefinedBlock == "earliest" {
+				return fmt.Errorf("block param \"earliest\" is not supported")
+			} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
+				// Head is always ok.
+				if lookback == 0 {
+					return nil
+				}
+
+				if lookback <= ethtypes.EthUint64(head.Height()) {
+					num = ethtypes.EthUint64(head.Height()) - lookback
+				}
+			}
+		} else {
+			num = *blkParam.BlockNumber
+		}
+
+		return gw.checkTipsetHeight(head, abi.ChainEpoch(num))
 	}
 
-	return gw.checkTipsetHeight(head, abi.ChainEpoch(num))
+	// otherwise its a block hash
+	if blkParam.BlockHash != nil {
+		return gw.checkBlkHash(ctx, *blkParam.BlockHash)
+	}
 
+	return fmt.Errorf("invalid block param")
 }
 
 func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
@@ -210,12 +215,12 @@ func (gw *Node) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *e
 	return gw.target.EthGetMessageCidByTransactionHash(ctx, txHash)
 }
 
-func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthUint64, error) {
+func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return 0, err
 	}
 
-	if err := gw.checkEthBlockParamByNumberOrHash(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return 0, err
 	}
 
@@ -240,36 +245,36 @@ func (gw *Node) EthGetTransactionReceiptLimited(ctx context.Context, txHash etht
 	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, limit)
 }
 
-func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBytes, error) {
+func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
-	if err := gw.checkEthBlockParamByNumberOrHash(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
 	return gw.target.EthGetCode(ctx, address, blkParam)
 }
 
-func (gw *Node) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBytes, error) {
+func (gw *Node) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
-	if err := gw.checkEthBlockParamByNumberOrHash(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
 	return gw.target.EthGetStorageAt(ctx, address, position, blkParam)
 }
 
-func (gw *Node) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBigInt, error) {
+func (gw *Node) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
-	if err := gw.checkEthBlockParamByNumberOrHash(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
@@ -364,12 +369,12 @@ func (gw *Node) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtyp
 	return gw.target.EthEstimateGas(ctx, tx)
 }
 
-func (gw *Node) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBytes, error) {
+func (gw *Node) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
-	if err := gw.checkEthBlockParamByNumberOrHash(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 

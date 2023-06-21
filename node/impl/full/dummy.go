@@ -62,7 +62,7 @@ func (e *EthModuleDummy) EthGetTransactionByHashLimited(ctx context.Context, txH
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthUint64, error) {
+func (e *EthModuleDummy) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
 
@@ -82,15 +82,15 @@ func (e *EthModuleDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Cont
 	return ethtypes.EthTx{}, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBigInt, error) {
+func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigIntZero, ErrModuleDisabled
 }
 
@@ -126,7 +126,7 @@ func (e *EthModuleDummy) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall
 	return 0, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockParamByNumberOrHash) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
