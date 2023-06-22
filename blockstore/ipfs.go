@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 
-	rpc "github.com/filecoin-project/kubo-api-client"
 	iface "github.com/ipfs/boxo/coreiface"
 	"github.com/ipfs/boxo/coreiface/options"
 	"github.com/ipfs/boxo/coreiface/path"
@@ -14,6 +13,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
+
+	rpc "github.com/filecoin-project/kubo-api-client"
 )
 
 type IPFSBlockstore struct {
