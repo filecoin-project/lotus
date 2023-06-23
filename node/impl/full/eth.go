@@ -59,12 +59,12 @@ type EthModuleAPI interface {
 	EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error)
 	EthGetMessageCidByTransactionHash(ctx context.Context, txHash *ethtypes.EthHash) (*cid.Cid, error)
 	EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid) (*ethtypes.EthHash, error)
-	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error)
+	EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error)
 	EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error)
 	EthGetTransactionReceiptLimited(ctx context.Context, txHash ethtypes.EthHash, limit abi.ChainEpoch) (*api.EthTxReceipt, error)
-	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error)
-	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error)
-	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error)
+	EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
+	EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
+	EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error)
 	EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (ethtypes.EthFeeHistory, error)
 	EthChainId(ctx context.Context) (ethtypes.EthUint64, error)
 	EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error)
@@ -73,7 +73,7 @@ type EthModuleAPI interface {
 	EthProtocolVersion(ctx context.Context) (ethtypes.EthUint64, error)
 	EthGasPrice(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtypes.EthUint64, error)
-	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error)
+	EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error)
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 	Web3ClientVersion(ctx context.Context) (string, error)
@@ -241,7 +241,65 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
-func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string, strict bool) (tipset *types.TipSet, err error) {
+func (a *EthModule) getTipsetByEthBlockNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
+	head := a.Chain.GetHeaviestTipSet()
+
+	predefined := blkParam.PredefinedBlock
+	if predefined != nil {
+		if *predefined == "earliest" {
+			return nil, fmt.Errorf("block param \"earliest\" is not supported")
+		} else if *predefined == "pending" {
+			return head, nil
+		} else if *predefined == "latest" {
+			parent, err := a.Chain.GetTipSetFromKey(ctx, head.Parents())
+			if err != nil {
+				return nil, fmt.Errorf("cannot get parent tipset")
+			}
+			return parent, nil
+		} else {
+			return nil, fmt.Errorf("unknown predefined block %s", *predefined)
+		}
+	}
+
+	if blkParam.BlockNumber != nil {
+		height := abi.ChainEpoch(*blkParam.BlockNumber)
+		if height > head.Height()-1 {
+			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+		}
+		ts, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, height, head.Key())
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset at height: %v", height)
+		}
+		return ts, nil
+	}
+
+	if blkParam.BlockHash != nil {
+		ts, err := a.Chain.GetTipSetByCid(ctx, blkParam.BlockHash.ToCid())
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tipset by hash: %v", err)
+		}
+
+		// verify that the tipset is in the canonical chain
+		if blkParam.RequireCanonical {
+			// walk up the current chain (our head) until we reach ts.Height()
+			walkTs, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, ts.Height(), head.Key())
+			if err != nil {
+				return nil, fmt.Errorf("cannot get tipset at height: %v", ts.Height())
+			}
+
+			// verify that it equals the expected tipset
+			if !walkTs.Equals(ts) {
+				return nil, fmt.Errorf("tipset is not canonical")
+			}
+		}
+
+		return ts, nil
+	}
+
+	return nil, errors.New("invalid block param")
+}
+
+func (a *EthModule) parseBlkParam(ctx context.Context, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
 		return nil, fmt.Errorf("block param \"earliest\" is not supported")
 	}
@@ -382,15 +440,15 @@ func (a *EthModule) EthGetTransactionHashByCid(ctx context.Context, cid cid.Cid)
 	return &hash, err
 }
 
-func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam string) (ethtypes.EthUint64, error) {
+func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	addr, err := sender.ToFilecoinAddress()
 	if err != nil {
 		return ethtypes.EthUint64(0), nil
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam, false)
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
+		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
 	// First, handle the case where the "sender" is an EVM actor.
@@ -470,15 +528,15 @@ func (a *EthAPI) EthGetTransactionByBlockNumberAndIndex(context.Context, ethtype
 }
 
 // EthGetCode returns string value of the compiled bytecode
-func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress, blkParam string) (ethtypes.EthBytes, error) {
+func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	to, err := ethAddr.ToFilecoinAddress()
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam, false)
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
+		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
 	// StateManager.Call will panic if there is no parent
@@ -554,10 +612,10 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 	return blk.RawData(), nil
 }
 
-func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
-	ts, err := a.parseBlkParam(ctx, blkParam, false)
+func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
+		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
 	l := len(position)
@@ -645,15 +703,15 @@ func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAdd
 	return ethtypes.EthBytes(ret), nil
 }
 
-func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error) {
+func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
 	filAddr, err := address.ToFilecoinAddress()
 	if err != nil {
 		return ethtypes.EthBigInt{}, err
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam, false)
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
+		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
 	st, _, err := a.StateManager.TipSetState(ctx, ts)
@@ -1112,15 +1170,15 @@ func ethGasSearch(
 	return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 }
 
-func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) {
+func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	msg, err := a.ethCallToFilecoinMessage(ctx, tx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
 
-	ts, err := a.parseBlkParam(ctx, blkParam, false)
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to process block param: %s; %w", blkParam, err)
+		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
 	invokeResult, err := a.applyMessage(ctx, msg, ts.Key())

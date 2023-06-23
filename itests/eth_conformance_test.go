@@ -33,25 +33,25 @@ import (
 type ethAPIRaw struct {
 	EthAccounts                            func(context.Context) (json.RawMessage, error)
 	EthBlockNumber                         func(context.Context) (json.RawMessage, error)
-	EthCall                                func(context.Context, ethtypes.EthCall, string) (json.RawMessage, error)
+	EthCall                                func(context.Context, ethtypes.EthCall, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthChainId                             func(context.Context) (json.RawMessage, error)
 	EthEstimateGas                         func(context.Context, ethtypes.EthCall) (json.RawMessage, error)
 	EthFeeHistory                          func(context.Context, ethtypes.EthUint64, string, []float64) (json.RawMessage, error)
 	EthGasPrice                            func(context.Context) (json.RawMessage, error)
-	EthGetBalance                          func(context.Context, ethtypes.EthAddress, string) (json.RawMessage, error)
+	EthGetBalance                          func(context.Context, ethtypes.EthAddress, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthGetBlockByHash                      func(context.Context, ethtypes.EthHash, bool) (json.RawMessage, error)
 	EthGetBlockByNumber                    func(context.Context, string, bool) (json.RawMessage, error)
 	EthGetBlockTransactionCountByHash      func(context.Context, ethtypes.EthHash) (json.RawMessage, error)
 	EthGetBlockTransactionCountByNumber    func(context.Context, ethtypes.EthUint64) (json.RawMessage, error)
-	EthGetCode                             func(context.Context, ethtypes.EthAddress, string) (json.RawMessage, error)
+	EthGetCode                             func(context.Context, ethtypes.EthAddress, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthGetFilterChanges                    func(context.Context, ethtypes.EthFilterID) (json.RawMessage, error)
 	EthGetFilterLogs                       func(context.Context, ethtypes.EthFilterID) (json.RawMessage, error)
 	EthGetLogs                             func(context.Context, *ethtypes.EthFilterSpec) (json.RawMessage, error)
-	EthGetStorageAt                        func(context.Context, ethtypes.EthAddress, ethtypes.EthBytes, string) (json.RawMessage, error)
+	EthGetStorageAt                        func(context.Context, ethtypes.EthAddress, ethtypes.EthBytes, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthGetTransactionByBlockHashAndIndex   func(context.Context, ethtypes.EthHash, ethtypes.EthUint64) (json.RawMessage, error)
 	EthGetTransactionByBlockNumberAndIndex func(context.Context, ethtypes.EthUint64, ethtypes.EthUint64) (json.RawMessage, error)
 	EthGetTransactionByHash                func(context.Context, *ethtypes.EthHash) (json.RawMessage, error)
-	EthGetTransactionCount                 func(context.Context, ethtypes.EthAddress, string) (json.RawMessage, error)
+	EthGetTransactionCount                 func(context.Context, ethtypes.EthAddress, ethtypes.EthBlockNumberOrHash) (json.RawMessage, error)
 	EthGetTransactionReceipt               func(context.Context, ethtypes.EthHash) (json.RawMessage, error)
 	EthMaxPriorityFeePerGas                func(context.Context) (json.RawMessage, error)
 	EthNewBlockFilter                      func(context.Context) (json.RawMessage, error)
@@ -168,7 +168,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 				return ethapi.EthCall(context.Background(), ethtypes.EthCall{
 					From: &senderEthAddr,
 					Data: contractBin,
-				}, "latest")
+				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 			},
 		},
 
@@ -207,7 +207,8 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getBalance",
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetBalance(context.Background(), contractEthAddr, "0x0")
+				blockParam, _ := ethtypes.NewEthBlockNumberOrHashFromHexString("0x0")
+				return ethapi.EthGetBalance(context.Background(), contractEthAddr, blockParam)
 			},
 		},
 
@@ -261,7 +262,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getCode",
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetCode(context.Background(), contractEthAddr, blockNumberWithMessage.Hex())
+				return ethapi.EthGetCode(context.Background(), contractEthAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
 			},
 		},
 
@@ -307,7 +308,8 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getStorageAt",
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetStorageAt(context.Background(), contractEthAddr, ethtypes.EthBytes{0}, "0x0")
+				blockParam, _ := ethtypes.NewEthBlockNumberOrHashFromHexString("0x0")
+				return ethapi.EthGetStorageAt(context.Background(), contractEthAddr, ethtypes.EthBytes{0}, blockParam)
 			},
 		},
 
@@ -338,7 +340,7 @@ func TestEthOpenRPCConformance(t *testing.T) {
 			method:  "eth_getTransactionCount",
 			variant: "blocknumber",
 			call: func(a *ethAPIRaw) (json.RawMessage, error) {
-				return ethapi.EthGetTransactionCount(context.Background(), senderEthAddr, blockNumberWithMessage.Hex())
+				return ethapi.EthGetTransactionCount(context.Background(), senderEthAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(blockNumberWithMessage))
 			},
 		},
 
