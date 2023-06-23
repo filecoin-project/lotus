@@ -630,6 +630,10 @@ func (m *Sealing) pendingPieceEpochBounds() []pieceBound {
 	boundsByEpoch := map[abi.ChainEpoch]*pieceBound{}
 
 	for ppi, piece := range m.pendingPieces {
+		if piece.assigned {
+			continue
+		}
+
 		// start bound on deal end
 		if boundsByEpoch[piece.deal.DealProposal.EndEpoch] == nil {
 			boundsByEpoch[piece.deal.DealProposal.EndEpoch] = &pieceBound{
