@@ -31,6 +31,11 @@ import (
 // EnvDisablePreMigrations when set to '1' stops pre-migrations from running
 const EnvDisablePreMigrations = "LOTUS_DISABLE_PRE_MIGRATIONS"
 
+// EnvDisableMigrations when set to '1' stops migrations from running
+// Useful when running a non-bootstrapped node initialized with
+// a chain snapshot containing the full state tree
+const EnvDisableMigrations = "LOTUS_DISABLE_MIGRATIONS"
+
 // MigrationCache can be used to cache information used by a migration. This is primarily useful to
 // "pre-compute" some migration state ahead of time, and make it accessible in the migration itself.
 type MigrationCache interface {
@@ -173,6 +178,11 @@ func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, err
 }
 
 func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
+	if disabled := os.Getenv(EnvDisableMigrations); strings.TrimSpace(disabled) == "1" {
+		log.Warnw("SKIPPING migration", "height", height)
+		return root, nil
+	}
+
 	retCid := root
 	u := sm.stateMigrations[height]
 	if u != nil && u.upgrade != nil {
