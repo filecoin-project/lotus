@@ -1404,11 +1404,11 @@ var sectorsExtendCmd = &cli.Command{
 					Params: sp,
 				}, nil, types.EmptyTSK)
 				if err != nil && xerrors.Is(err, &api.ErrOutOfGas{}) {
-					return xerrors.Errorf("out of gas, please use --max-sectors to reduce the number of single message sectors")
+					return xerrors.Errorf("out of gas, please use --max-sectors and reduce the amount of sectors you extend in each message")
 				} else if err != nil {
 					return err
 				}
-				gasTotal.Add(gasTotal.Int, estMsg.RequiredFunds().Int)
+				gasTotal = big.Add(gasTotal, estMsg.RequiredFunds())
 				continue
 			}
 
@@ -1431,9 +1431,9 @@ var sectorsExtendCmd = &cli.Command{
 			fmt.Println(smsg.Cid())
 		}
 
-		fmt.Printf("Simulating extending %d sector - estimated costs %s\n", stotal, types.FIL(gasTotal))
+		fmt.Printf("Simulating extending %d sector(s) - estimated costs %s\n", stotal, types.FIL(gasTotal))
 		if !cctx.Bool("really-do-it") {
-			fmt.Println("You need to pass the --really-do-it flag to actully send the message")
+			fmt.Println("You need to pass the --really-do-it flag to actually send the message")
 		}
 
 		return nil
