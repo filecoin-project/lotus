@@ -104,6 +104,34 @@ type statItem struct {
 	Stat  api.ObjStat
 }
 
+// var snapShotStatCmd = &cli.Command{
+// 	Name:  "snapshot-stat",
+// 	Usage: "print statistics of the snapshot rooted at given block",
+// 	Flags: []cli.Flag{
+// 		&cli.StringFlag{
+// 			Name:  "tipset",
+// 			Usage: "specify tipset to start from",
+// 		},
+// 	},
+// 	Action: func(cctx *cli.Context) error {
+// 		api, closer, err := lcli.GetFullNodeAPI(cctx)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		defer closer()
+// 		ctx := lcli.ReqContext(cctx)
+
+// 		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		api.ChainStatSnapshot(ctx, ts.Key())
+
+// 	},
+// }
+
 var staterootStatCmd = &cli.Command{
 	Name:  "stat",
 	Usage: "print statistics for the stateroot of a given block",
@@ -197,7 +225,7 @@ var staterootStatCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("%s\t%s\t%d\n", inf.Addr, string(cmh.Digest), inf.Stat.Size)
+			fmt.Printf("%s\t%x\t%d\n", inf.Addr, cmh.Digest, inf.Stat.Size)
 		}
 		return nil
 	},
