@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path"
 	"reflect"
 	"sort"
 	"sync"
@@ -22,9 +23,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	gstactors "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -49,6 +53,19 @@ type fieldItem struct {
 	Name  string
 	Cid   cid.Cid
 	Stats api.ObjStat
+}
+
+type job struct {
+	c   cid.Cid
+	key string // prefix path for the region being recorded i.e. "/state/mineractor"
+}
+type cidCall struct {
+	c    cid.Cid
+	resp chan bool
+}
+type result struct {
+	key   string
+	stats api.ObjStat
 }
 
 type cacheNodeGetter struct {
@@ -213,7 +230,6 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer lr.Close() //nolint:errcheck
 
 	bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 	if err != nil {
@@ -221,6 +237,7 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 	}
 
 	closer := func() {
+		lr.Close()
 		if c, ok := bs.(io.Closer); ok {
 			if err := c.Close(); err != nil {
 				log.Warnf("failed to close blockstore: %s", err)
@@ -297,105 +314,14 @@ var statSnapshotCmd = &cli.Command{
 			return err
 		}
 
-		type job struct {
-			c   cid.Cid
-			key string // prefix path for the region being recorded i.e. "/state/mineractor"
-		}
-		type cidCall struct {
-			c    cid.Cid
-			resp chan bool
-		}
-		type result struct {
-			key   string
-			stats api.ObjStat
-		}
-		// Stage 1 walk the latest state root
-		// A) walk all actors
-		// B) when done walk the actor HAMT
-
-		st, err := h.sm.StateTree(ts.ParentState())
-		if err != nil {
-			return err
-		}
 		numWorkers := cctx.Int("workers")
 		dagCacheSize := cctx.Int("dag-cache-size")
 
 		eg, egctx := errgroup.WithContext(ctx)
 
-		jobs := make(chan job, numWorkers)
-		results := make(chan result)
+		jobCh := make(chan job, numWorkers)
+		resultCh := make(chan result)
 		cidCh := make(chan cidCall, numWorkers)
-
-		go func() {
-			seen := cid.NewSet()
-
-			select {
-			case call := <-cidCh:
-				call.resp <- seen.Visit(call.c)
-			case <-ctx.Done():
-				log.Infof("shutting down cid set goroutine")
-				close(cidCh)
-			}
-
-		}()
-
-		worker := func(ctx context.Context, id int) error {
-			defer func() {
-				//log.Infow("worker done", "id", id, "completed", completed)
-			}()
-
-			for {
-				select {
-				case job, ok := <-jobs:
-					if !ok {
-						return nil
-					}
-
-					var dag format.NodeGetter = merkledag.NewDAGService(blockservice.New(h.bs, offline.Exchange(h.bs)))
-					if dagCacheSize != 0 {
-						var err error
-						dag, err = newCacheNodeGetter(merkledag.NewDAGService(blockservice.New(h.bs, offline.Exchange(h.bs))), dagCacheSize)
-						if err != nil {
-							return err
-						}
-					}
-
-					stats := snapshotJobStats(job, dag, cidCh)
-					for _, stat := range stats {
-						select {
-						case results <- stat:
-						case <-ctx.Done():
-							return ctx.Err()
-						}
-					}
-				case <-ctx.Done():
-					return ctx.Err()
-				}
-
-			}
-		}
-
-		go func() {
-			st.ForEach(func(_ address.Address, act *types.Actor) error {
-				actType := builtin.ActorNameByCode(act.Code)
-				if actType == "<unknown>" {
-					actType = act.Code.String()
-				}
-
-				jobs <- job{c: act.Head, key: fmt.Sprintf("/state/%s", actType)}
-
-				return nil
-			})
-
-		}()
-
-		for w := 0; w < numWorkers; w++ {
-			id := w
-			eg.Go(func() error {
-				return worker(egctx, id)
-			})
-		}
-
 		summary := make(map[string]api.ObjStat)
 		combine := func(statsA, statsB api.ObjStat) api.ObjStat {
 			return api.ObjStat{
@@ -403,30 +329,129 @@ var statSnapshotCmd = &cli.Command{
 				Links: statsA.Links + statsB.Links,
 			}
 		}
-	LOOP:
-		for {
-			select {
-			case result, ok := <-results:
-				if !ok {
-					return eg.Wait()
+		var workerWg sync.WaitGroup
+
+		// Threadsafe cid set lives across different pipelines so not part of error group
+		go func() error {
+			seen := cid.NewSet()
+			for {
+				select {
+				case call := <-cidCh:
+					call.resp <- seen.Visit(call.c)
+				case <-ctx.Done():
+					log.Infof("shutting down cid set goroutine")
+					return ctx.Err()
 				}
+			}
+		}()
+		visit := func(c cid.Cid) bool {
+			ch := make(chan bool)
+			cidCh <- cidCall{c: c, resp: ch}
+			out := <-ch
+			return out
+		}
+
+		// Stage 1 walk all actors in latest state root
+		eg.Go(func() error {
+			defer func() {
+				close(jobCh)
+			}()
+			st, err := h.sm.StateTree(ts.ParentState())
+			if err != nil {
+				return err
+			}
+			return st.ForEach(func(_ address.Address, act *types.Actor) error {
+				actType := builtin.ActorNameByCode(act.Code)
+				if actType == "<unknown>" {
+					actType = act.Code.String()
+				}
+
+				jobCh <- job{c: act.Head, key: fmt.Sprintf("/state/%s", actType)}
+
+				return nil
+			})
+
+		})
+
+		worker := func(ctx context.Context, id int, jobCh chan job, resultCh chan result) error {
+			var dag format.NodeGetter = merkledag.NewDAGService(blockservice.New(h.bs, offline.Exchange(h.bs)))
+			if dagCacheSize != 0 {
+				var err error
+				dag, err = newCacheNodeGetter(merkledag.NewDAGService(blockservice.New(h.bs, offline.Exchange(h.bs))), dagCacheSize)
+				if err != nil {
+					return err
+				}
+			}
+
+			for job := range jobCh {
+				stats, err := collectSnapshotJobStats(ctx, job, dag, visit)
+				if err != nil {
+					return err
+				}
+				for _, stat := range stats {
+					select {
+					case resultCh <- stat:
+					case <-ctx.Done():
+						return ctx.Err()
+					}
+				}
+			}
+			return nil
+		}
+		var id int
+		for w := 0; w < numWorkers; w++ {
+			id = w
+			workerWg.Add(1)
+			eg.Go(func() error {
+				defer workerWg.Done()
+				return worker(egctx, id, jobCh, resultCh)
+			})
+		}
+
+		// Close result channel when workers are done sending to it.
+		eg.Go(func() error {
+			workerWg.Wait()
+			close(resultCh)
+			return nil
+		})
+
+		eg.Go(func() error {
+			for result := range resultCh {
 				if stat, ok := summary[result.key]; ok {
 					summary[result.key] = combine(stat, summary[result.key])
 				} else {
 					summary[result.key] = result.stats
 				}
-
-			case <-ctx.Done():
-				break LOOP
 			}
-		}
-		// XXX walk the top of the state tree
+			return nil
+		})
 
-		// Stage 2 walk the rest of the chain: headers, messages, churn
+		if err := eg.Wait(); err != nil {
+			return fmt.Errorf("failed to measure space in latest state root: %w", err)
+		}
+
+		// Stage 2: walk the top of the latest state root
+
+		id += 1
+		resultCh = make(chan result)
+		jobCh = make(chan job)
+		go func() {
+			defer close(jobCh)
+			jobCh <- job{c: ts.ParentState(), key: "statetop"}
+		}()
+		go func() {
+			defer close(resultCh)
+			worker(ctx, id, jobCh, resultCh)
+		}()
+		res := <-resultCh
+		summary[res.key] = res.stats
+
+		// Stage 3 walk the rest of the chain: headers, messages, churn
 		// ordering:
-		// A) for each header send jobs for messages, receipts, state tree churn
+		// for each header send jobs for messages, receipts, state tree churn
 		//    don't walk header directly as it would just walk everything including parent tipsets
-		// B) when done walk all actor HAMTs for churn
+
+		// Stage 4 walk all actor HAMTs for churn
 
 		if cctx.Bool("pretty") {
 			DumpSnapshotStats(summary)
@@ -610,6 +635,93 @@ to reduce the number of decode operations performed by caching the decoded objec
 			}
 		}
 	},
+}
+
+func collectSnapshotJobStats(ctx context.Context, in job, dag format.NodeGetter, visit func(c cid.Cid) bool) ([]result, error) {
+	// "state" and "churn" require further breakdown by actor type
+	if path.Dir(in.key) != "state" && path.Dir(in.key) != "churn" {
+		dsc := &dagStatCollector{
+			ds:   dag,
+			walk: carWalkFunc,
+		}
+
+		if err := merkledag.Walk(ctx, dsc.walkLinks, in.c, visit, merkledag.Concurrent()); err != nil {
+			return nil, err
+		}
+		return []result{{key: in.key, stats: dsc.stats}}, nil
+	}
+
+	// in.c is an actor head cid, try to unmarshal and create sub keys for different regions of state
+	nd, err := dag.Get(ctx, in.c)
+	if err != nil {
+		return nil, err
+	}
+	subjobs := make([]job, 0)
+	results := make([]result, 0)
+
+	// reconstruct actor for state parsing from key
+	av, err := gstactors.VersionForNetwork(network.Version20)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get actors version for network: %w", err)
+	}
+	code, ok := actors.GetActorCodeID(av, path.Base(in.key))
+	if !ok { // try parsing key directly
+		code, err = cid.Parse(path.Base(in.key))
+		if err != nil {
+			log.Debugf("failing to parse actor string: %s", path.Base(in.key))
+		}
+	}
+
+	actor := types.ActorV5{Head: in.c, Code: code}
+	oif, err := vm.DumpActorState(consensus.NewTipSetExecutor(filcns.RewardFunc).NewActorRegistry(), &actor, nd.RawData())
+	if err != nil {
+		oif = nil
+	}
+	// Account actors return nil from DumpActorState as they have no state
+	if oif != nil {
+		v := reflect.Indirect(reflect.ValueOf(oif))
+		for i := 0; i < v.NumField(); i++ {
+			varName := v.Type().Field(i).Name
+			varType := v.Type().Field(i).Type
+			varValue := v.Field(i).Interface()
+
+			if varType == reflect.TypeOf(cid.Cid{}) {
+				subjobs = append(subjobs, job{
+					key: fmt.Sprintf("%s/%s", in.key, varName),
+					c:   varValue.(cid.Cid),
+				})
+			}
+		}
+	}
+
+	// Walk subfields
+	for _, job := range subjobs {
+		dsc := &dagStatCollector{
+			ds:   dag,
+			walk: carWalkFunc,
+		}
+
+		if err := merkledag.Walk(ctx, dsc.walkLinks, job.c, visit, merkledag.Concurrent()); err != nil {
+			return nil, err
+		}
+		var res result
+		res.key = job.key
+		res.stats = dsc.stats
+
+		results = append(results, res)
+	}
+
+	// now walk the top level object of actor state
+	dsc := &dagStatCollector{
+		ds:   dag,
+		walk: carWalkFunc,
+	}
+
+	if err := merkledag.Walk(ctx, dsc.walkLinks, in.c, visit, merkledag.Concurrent()); err != nil {
+		return nil, err
+	}
+	results = append(results, result{key: in.key, stats: dsc.stats})
+	return results, nil
 }
 
 func collectStats(ctx context.Context, addr address.Address, actor *types.Actor, dag format.NodeGetter) (actorStats, error) {
