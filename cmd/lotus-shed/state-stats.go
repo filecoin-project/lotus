@@ -444,7 +444,7 @@ var statSnapshotCmd = &cli.Command{
 		jobCh = make(chan job)
 		go func() {
 			defer close(jobCh)
-			jobCh <- job{c: ts.ParentState(), key: "/statetree"}
+			jobCh <- job{c: ts.ParentState(), key: "/statetree/latest"}
 		}()
 		go func() {
 			defer close(resultCh)
