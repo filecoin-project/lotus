@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/term"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -327,13 +328,21 @@ var walletImport = &cli.Command{
 
 		var inpdata []byte
 		if !cctx.Args().Present() || cctx.Args().First() == "-" {
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Print("Enter private key: ")
-			indata, err := reader.ReadBytes('\n')
-			if err != nil {
-				return err
+			if term.IsTerminal(int(os.Stdin.Fd())) {
+				fmt.Print("Enter private key(not display in the terminal): ")
+				inpdata, err = term.ReadPassword(int(os.Stdin.Fd()))
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+			} else {
+				reader := bufio.NewReader(os.Stdin)
+				indata, err := reader.ReadBytes('\n')
+				if err != nil {
+					return err
+				}
+				inpdata = indata
 			}
-			inpdata = indata
 
 		} else {
 			fdata, err := os.ReadFile(cctx.Args().First())
