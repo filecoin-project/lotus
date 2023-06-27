@@ -1,5 +1,6 @@
 import plotly.express as px
 import sys, json
+import pathlib
 
 snapshot_data = json.load(sys.stdin)
 
@@ -12,9 +13,11 @@ names = []
 values = []
 
 for key in snapshot_data:
-    path = key.split('/')
-    name = path[len(path) - 1]
-    parent = path[len(path) - 2]
+    path = pathlib.Path(key)
+    name = key
+    parent = str(path.parent)
+    if key == '/':
+        parent = ''
     stats = snapshot_data[key]
     parents.append(parent)
     names.append(name)

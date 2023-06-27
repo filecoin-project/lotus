@@ -324,8 +324,10 @@ var statSnapshotCmd = &cli.Command{
 		resultCh := make(chan result)
 		cidCh := make(chan cidCall, numWorkers)
 		summary := make(map[string]api.ObjStat)
-		summary["/snapshot"] = api.ObjStat{Size: 0, Links: 0}       // snapshot root object has no additional bytes or links
-		summary["/snapshot/churn"] = api.ObjStat{Size: 0, Links: 0} // snapshot root object has no additional bytes or links
+		// snapshot root objects with no additional bytes or links
+		summary["/"] = api.ObjStat{Size: 0, Links: 0}
+		summary["/statetree"] = api.ObjStat{Size: 0, Links: 0}
+		summary["/statetree/churn"] = api.ObjStat{Size: 0, Links: 0} // XXX this will be calculated
 
 		combine := func(statsA, statsB api.ObjStat) api.ObjStat {
 			return api.ObjStat{
@@ -372,7 +374,7 @@ var statSnapshotCmd = &cli.Command{
 				if actType == "<unknown>" {
 					actType = act.Code.String()
 				}
-				jobCh <- job{c: act.Head, key: fmt.Sprintf("/snapshot/state/%s", actType)}
+				jobCh <- job{c: act.Head, key: fmt.Sprintf("/statetree/latest/%s", actType)}
 
 				return nil
 			})
@@ -442,7 +444,7 @@ var statSnapshotCmd = &cli.Command{
 		jobCh = make(chan job)
 		go func() {
 			defer close(jobCh)
-			jobCh <- job{c: ts.ParentState(), key: "/snapshot/state"}
+			jobCh <- job{c: ts.ParentState(), key: "/statetree"}
 		}()
 		go func() {
 			defer close(resultCh)
@@ -499,10 +501,10 @@ var statSnapshotCmd = &cli.Command{
 				}
 
 				// header directly to result channel
-				resultCh <- result{key: "snapshot/headers", stats: api.ObjStat{Size: uint64(len(nd.RawData())), Links: uint64(len(nd.Links()))}}
+				resultCh <- result{key: "/headers", stats: api.ObjStat{Size: uint64(len(nd.RawData())), Links: uint64(len(nd.Links()))}}
 				// message job
 				if b.Height > startHeight-snapshotStateLimit {
-					jobCh <- job{key: "snapshot/messages", c: b.Messages}
+					jobCh <- job{key: "/messages", c: b.Messages}
 				}
 
 				// state churn job
@@ -520,7 +522,7 @@ var statSnapshotCmd = &cli.Command{
 								if actType == "<unknown>" {
 									actType = act.Code.String()
 								}
-								jobCh <- job{c: act.Head, key: fmt.Sprintf("/snapshot/churn/%s", actType)}
+								jobCh <- job{c: act.Head, key: fmt.Sprintf("/statetree/churn/%s", actType)}
 							}
 
 							return nil
@@ -757,7 +759,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 
 func collectSnapshotJobStats(ctx context.Context, in job, dag format.NodeGetter, visit func(c cid.Cid) bool) ([]result, error) {
 	// "state" and "churn" attempt further breakdown by actor type
-	if !(path.Dir(in.key) == "/snapshot/state") && !(path.Dir(in.key) == "/snapshot/churn") {
+	if !(path.Dir(in.key) == "/statetree/latest") && !(path.Dir(in.key) == "/statetree/churn") {
 		dsc := &dagStatCollector{
 			ds:   dag,
 			walk: carWalkFunc,
