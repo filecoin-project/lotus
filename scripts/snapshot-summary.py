@@ -4,9 +4,10 @@ import pathlib
 
 snapshot_data = json.load(sys.stdin)
 
-# XXX: parameterize to use block count as value instead of byte size
-# XXX: parameterize on different types of px chart types
-# XXX: parameterize on output port so we can serve this from infra
+# Possible extensions:
+# 1. parameterize to use block count as value instead of byte size
+# 2. parameterize on different types of px chart types
+# 3. parameterize on output port so we can serve this from infra
 
 parents = []
 names = []
