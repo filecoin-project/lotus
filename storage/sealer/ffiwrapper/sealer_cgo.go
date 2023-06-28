@@ -403,27 +403,53 @@ func (sb *Sealer) pieceCid(spt abi.RegisteredSealProof, in []byte) (cid.Cid, err
 	return pieceCID, werr()
 }
 
-func (sb *Sealer) tryDecodeUpdatedReplica(ctx context.Context, sector storiface.SectorRef, commD cid.Cid, unsealedPath string, randomness abi.SealRandomness) (bool, error) {
-	replicaPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathSealing)
+func (sb *Sealer) maybeAcquireUpdatePath(ctx context.Context, sector storiface.SectorRef) (string, func(), error) {
+	replicaPath, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdate, storiface.FTNone, storiface.PathSealing)
 	if xerrors.Is(err, storiface.ErrSectorNotFound) {
-		return false, nil
+		return "", done, nil
 	} else if err != nil {
-		return false, xerrors.Errorf("reading updated replica: %w", err)
+		return "", done, xerrors.Errorf("reading updated replica: %w", err)
 	}
-	defer done()
 
-	sealedPaths, done2, err := sb.AcquireSectorKeyOrRegenerate(ctx, sector, randomness)
+	return replicaPath.Update, done, nil
+}
+
+func (sb *Sealer) decodeUpdatedReplica(ctx context.Context, sector storiface.SectorRef, commD cid.Cid, updatePath, unsealedPath string, randomness abi.SealRandomness) (error) {
+	keyPaths, done2, err := sb.AcquireSectorKeyOrRegenerate(ctx, sector, randomness)
 	if err != nil {
-		return false, xerrors.Errorf("acquiring sealed sector: %w", err)
+		return xerrors.Errorf("acquiring sealed sector: %w", err)
 	}
 	defer done2()
 
 	// Sector data stored in replica update
 	updateProof, err := sector.ProofType.RegisteredUpdateProof()
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, ffi.SectorUpdate.DecodeFrom(updateProof, unsealedPath, replicaPath.Update, sealedPaths.Sealed, sealedPaths.Cache, commD)
+	if err := ffi.SectorUpdate.DecodeFrom(updateProof, unsealedPath, updatePath, keyPaths.Sealed, keyPaths.Cache, commD); err != nil {
+		return xerrors.Errorf("decoding unsealed sector data: %w", err)
+	}
+
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+	maxPieceSize := abi.PaddedPieceSize(ssize)
+
+	pf, err := partialfile.OpenPartialFile(maxPieceSize, unsealedPath)
+	if err != nil {
+		return xerrors.Errorf("opening partial file: %w", err)
+	}
+
+	if err := pf.MarkAllocated(0, maxPieceSize); err != nil {
+		return xerrors.Errorf("marking range allocated: %w", err)
+	}
+
+	if err := pf.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (sb *Sealer) AcquireSectorKeyOrRegenerate(ctx context.Context, sector storiface.SectorRef, randomness abi.SealRandomness) (storiface.SectorPaths, func(), error) {
@@ -461,26 +487,21 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 
 	switch {
 	case xerrors.Is(err, storiface.ErrSectorNotFound):
+		// allocate if doesn't exist
 		unsealedPath, done, err = sb.sectors.AcquireSector(ctx, sector, storiface.FTNone, storiface.FTUnsealed, storiface.PathSealing)
 		if err != nil {
 			return xerrors.Errorf("acquire unsealed sector path (allocate): %w", err)
 		}
-		defer done()
-
-		pf, err = partialfile.CreatePartialFile(maxPieceSize, unsealedPath.Unsealed)
-		if err != nil {
-			return xerrors.Errorf("create unsealed file: %w", err)
-		}
-
 	case err == nil:
-		defer done()
-
-		pf, err = partialfile.OpenPartialFile(maxPieceSize, unsealedPath.Unsealed)
-		if err != nil {
-			return xerrors.Errorf("opening partial file: %w", err)
-		}
 	default:
 		return xerrors.Errorf("acquire unsealed sector path (existing): %w", err)
+	}
+
+	defer done()
+
+	pf, err = partialfile.OpenPartialFile(maxPieceSize, unsealedPath.Unsealed)
+	if err != nil {
+		return xerrors.Errorf("opening partial file: %w", err)
 	}
 	defer pf.Close() // nolint
 
@@ -488,6 +509,8 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 	if err != nil {
 		return xerrors.Errorf("getting bitruns of allocated data: %w", err)
 	}
+
+	// figure out if there's anything that needs to be unsealed
 
 	toUnseal, err := computeUnsealRanges(allocated, offset, size)
 	if err != nil {
@@ -498,16 +521,30 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 		return nil
 	}
 
+	// need to unseal
+
 	// If piece data stored in updated replica decode whole sector
-	decoded, err := sb.tryDecodeUpdatedReplica(ctx, sector, commd, unsealedPath.Unsealed, randomness)
+	upd, updDone, err := sb.maybeAcquireUpdatePath(ctx, sector)
 	if err != nil {
-		return xerrors.Errorf("decoding sector from replica: %w", err)
-	}
-	if decoded {
-		return pf.MarkAllocated(0, maxPieceSize)
+		return xerrors.Errorf("acquiring update path: %w", err)
 	}
 
-	// Piece data sealed in sector
+	if upd != "" {
+		defer updDone()
+
+		// decodeUpdatedReplica mill modify the unsealed file
+		if err := pf.Close(); err != nil {
+			return err
+		}
+
+		err := sb.decodeUpdatedReplica(ctx, sector, commd, upd, unsealedPath.Unsealed, randomness)
+		if err != nil {
+			return xerrors.Errorf("decoding sector from replica: %w", err)
+		}
+		return nil
+	}
+
+	// Piece data non-upgrade sealed in sector
 	srcPaths, srcDone, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquire sealed sector paths: %w", err)
