@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	_ "net/http"
-	_ "net/http/pprof"
 	"path"
 	"reflect"
 	"sort"
@@ -365,9 +362,6 @@ var statSnapshotCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		go func() {
-			fmt.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
 
 		numWorkers := cctx.Int("workers")
 		dagCacheSize := cctx.Int("dag-cache-size")
