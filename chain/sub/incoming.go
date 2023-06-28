@@ -350,22 +350,16 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		)
 		recordFailure(ctx, metrics.MessageValidationFailure, "add")
 		switch {
-		case xerrors.Is(err, messagepool.ErrSoftValidationFailure):
+		case xerrors.Is(err, messagepool.ErrMessageTooBig):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrRBFTooLowPremium):
+		case xerrors.Is(err, messagepool.ErrMessageValueTooHigh):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrTooManyPendingMessages):
+		case xerrors.Is(err, messagepool.ErrNotEnoughFunds):
 			fallthrough
-		case xerrors.Is(err, messagepool.ErrNonceGap):
-			fallthrough
-		case xerrors.Is(err, messagepool.ErrGasFeeCapTooLow):
-			fallthrough
-		case xerrors.Is(err, messagepool.ErrNonceTooLow):
-			fallthrough
-		case xerrors.Is(err, messagepool.ErrExistingNonce):
-			return pubsub.ValidationIgnore
-		default:
+		case xerrors.Is(err, messagepool.ErrInvalidToAddr):
 			return pubsub.ValidationReject
+		default:
+			return pubsub.ValidationIgnore
 		}
 	}
 
