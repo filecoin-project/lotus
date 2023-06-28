@@ -91,7 +91,7 @@ func FetchWithTemp(ctx context.Context, urls []string, dest string, header http.
 			continue
 		}
 
-		if err := move(tempDest, dest); err != nil {
+		if err := Move(tempDest, dest); err != nil {
 			return "", xerrors.Errorf("fetch move error %s -> %s: %w", tempDest, dest, err)
 		}
 
