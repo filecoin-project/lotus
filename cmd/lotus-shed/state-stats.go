@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	_ "net/http"
+	_ "net/http/pprof"
 	"path"
 	"reflect"
 	"sort"
 	"sync"
-
-	_ "net/http"
-	_ "net/http/pprof"
 
 	"github.com/docker/go-units"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -242,7 +241,9 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 	}
 
 	closer := func() {
-		lr.Close()
+		if err := lr.Close(); err != nil {
+			log.Warnf("failed to close locked repo: %s", err)
+		}
 		if c, ok := bs.(io.Closer); ok {
 			if err := c.Close(); err != nil {
 				log.Warnf("failed to close blockstore: %s", err)
@@ -385,15 +386,15 @@ var statSnapshotCmd = &cli.Command{
 		}
 
 		// Threadsafe cid set lives across different pipelines so not part of error group
-		go func() error {
+		go func() {
 			seen := cid.NewSet()
 			for {
 				select {
 				case call := <-cidCh:
 					call.resp <- seen.Visit(call.c)
 				case <-ctx.Done():
-					log.Infof("shutting down cid set goroutine")
-					return ctx.Err()
+					log.Infof("shutting down cid set goroutine: %s", ctx.Err())
+					return
 				}
 			}
 		}()
