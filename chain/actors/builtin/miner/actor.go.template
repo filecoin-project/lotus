@@ -154,7 +154,7 @@ type Partition interface {
 
 type SectorOnChainInfo = minertypes.SectorOnChainInfo
 
-func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
+func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof, configWantSynthetic bool) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
 	// ones in network version 8.
 	if nver < network.Version7 {
@@ -174,17 +174,34 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 		}
 	}
 
+	if nver < network.SyntheticVersion || !configWantSynthetic {
+		switch proof {
+		case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1:
+			return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1, abi.RegisteredPoStProof_StackedDrgWindow8MiBV1_1:
+			return abi.RegisteredSealProof_StackedDrg8MiBV1_1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1, abi.RegisteredPoStProof_StackedDrgWindow512MiBV1_1:
+			return abi.RegisteredSealProof_StackedDrg512MiBV1_1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, abi.RegisteredPoStProof_StackedDrgWindow32GiBV1_1:
+			return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1_1:
+			return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
+		default:
+			return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
+		}
+	}
+
 	switch proof {
 	case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1:
-		return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil
+		return abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep, nil
 	case abi.RegisteredPoStProof_StackedDrgWindow8MiBV1, abi.RegisteredPoStProof_StackedDrgWindow8MiBV1_1:
-		return abi.RegisteredSealProof_StackedDrg8MiBV1_1, nil
+		return abi.RegisteredSealProof_StackedDrg8MiBV1_1_Feat_SyntheticPoRep, nil
 	case abi.RegisteredPoStProof_StackedDrgWindow512MiBV1, abi.RegisteredPoStProof_StackedDrgWindow512MiBV1_1:
-		return abi.RegisteredSealProof_StackedDrg512MiBV1_1, nil
+		return abi.RegisteredSealProof_StackedDrg512MiBV1_1_Feat_SyntheticPoRep, nil
 	case abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, abi.RegisteredPoStProof_StackedDrgWindow32GiBV1_1:
-		return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
+		return abi.RegisteredSealProof_StackedDrg32GiBV1_1_Feat_SyntheticPoRep, nil
 	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1_1:
-		return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
+		return abi.RegisteredSealProof_StackedDrg64GiBV1_1_Feat_SyntheticPoRep, nil
 	default:
 		return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
 	}
