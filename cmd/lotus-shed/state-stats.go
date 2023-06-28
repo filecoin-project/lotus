@@ -649,7 +649,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 			return err
 		}
 
-		//		log.Infow("tipset", "parentstate", ts.ParentState())
+		log.Infow("tipset", "parentstate", ts.ParentState())
 
 		if len(addrs) == 0 && cctx.Bool("all") {
 			var err error
@@ -670,7 +670,7 @@ to reduce the number of decode operations performed by caching the decoded objec
 		worker := func(ctx context.Context, id int) error {
 			completed := 0
 			defer func() {
-				//log.Infow("worker done", "id", id, "completed", completed)
+				log.Infow("worker done", "id", id, "completed", completed)
 			}()
 
 			for {
@@ -841,7 +841,7 @@ func collectSnapshotJobStats(ctx context.Context, in job, dag format.NodeGetter,
 }
 
 func collectStats(ctx context.Context, addr address.Address, actor *types.Actor, dag format.NodeGetter) (actorStats, error) {
-	//	log.Infow("actor", "addr", addr, "code", actor.Code, "name", builtin.ActorNameByCode(actor.Code))
+	log.Infow("actor", "addr", addr, "code", actor.Code, "name", builtin.ActorNameByCode(actor.Code))
 
 	nd, err := dag.Get(ctx, actor.Head)
 	if err != nil {
