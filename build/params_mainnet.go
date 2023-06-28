@@ -95,6 +95,9 @@ var UpgradeLightningHeight = abi.ChainEpoch(2809800)
 // 2023-05-18T13:00:00Z
 var UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
 
+// ???????
+var UpgradeSummerHeight = abi.ChainEpoch(9999999999)
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
@@ -108,12 +111,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_LIGHTNING") == "1" {
-		UpgradeLightningHeight = math.MaxInt64
-	}
-
-	if os.Getenv("LOTUS_DISABLE_THUNDER") == "1" {
-		UpgradeThunderHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SUMMER") == "1" {
+		UpgradeSummerHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

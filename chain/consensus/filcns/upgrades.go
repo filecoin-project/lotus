@@ -261,6 +261,17 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Height:    build.UpgradeThunderHeight,
 		Network:   network.Version20,
 		Migration: nil,
+	}, {
+		Height:    build.UpgradeSummerHeight,
+		Network:   network.Version21,
+		Migration: UpgradeActorsV12,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV12,
+			StartWithin:     120,
+			DontStartWithin: 15,
+			StopWithin:      10,
+		}},
+		Expensive: true,
 	},
 	}
 

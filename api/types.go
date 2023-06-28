@@ -339,6 +339,7 @@ type ForkUpgradeParams struct {
 	UpgradeHyggeHeight       abi.ChainEpoch
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
+	UpgradeSummerHeight      abi.ChainEpoch
 }
 
 type NonceMapType map[address.Address]uint64
