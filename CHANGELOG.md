@@ -1,5 +1,15 @@
 # Lotus changelog
 
+# v1.23.2 / 2023-06-28
+
+This is a patch release on top of 1.23.1 containing the fix for https://github.com/filecoin-project/lotus/issues/10906
+This fixes the syncing issue seen by many node operators/SPs, usually when performing actions which would result in msgs staying in their mpool for longer periods of time (ex. PSD) resulting in these msgs being republished multiple times and possibly lowering your peer scores. Please refer to the above issue for more details.
+We'd recommend everyone to accept this fix to better overall network health
+
+## Improvements
+- fix: pubsub: do not treat ErrExistingNonce as Reject
+
+
 # v1.23.1 / 2023-06-20
 
 This is an optional feature release of Lotus. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
