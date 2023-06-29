@@ -944,7 +944,7 @@ func DumpStats(actStats actorStats) {
 func DumpSnapshotStats(stats map[string]api.ObjStat) {
 	// sort keys so we get subkey locality
 	keys := make([]string, 0, len(stats))
-	for k, _ := range stats {
+	for k := range stats {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
