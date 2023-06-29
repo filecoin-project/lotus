@@ -25,8 +25,6 @@ for key in snapshot_data:
     values.append(stats['Size'])
 
 data = dict(names=names, parents=parents, values=values)
-print(data)
 fig = px.treemap(data, names='names', parents='parents', values='values')
-print(fig)
 fig.show()
     
