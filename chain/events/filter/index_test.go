@@ -74,7 +74,7 @@ func TestEventIndexPrefillFilter(t *testing.T) {
 
 	dbPath := filepath.Join(workDir, "actorevents.db")
 
-	ei, err := NewEventIndex(dbPath)
+	ei, err := NewEventIndex(context.Background(), dbPath, nil)
 	require.NoError(t, err, "create event index")
 	if err := ei.CollectEvents(context.Background(), events14000, false, addrMap.ResolveAddress); err != nil {
 		require.NoError(t, err, "collect events")
