@@ -4,7 +4,7 @@
 
 # v1.23.3-rc1 / 2023-07-04
 
-This is an optional feature release of Lotus. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the first candidate for the upcoming feature release v1.23.3 of Lotus. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 ## Highlights
 
