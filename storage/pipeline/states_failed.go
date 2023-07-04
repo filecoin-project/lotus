@@ -301,8 +301,21 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 
 		switch mw.Receipt.ExitCode {
 		case exitcode.Ok:
-			// API error in CcommitWait
-			return ctx.Send(SectorRetryCommitWait{})
+			si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, mw.TipSet)
+			if err != nil {
+				// API error
+				if err := failedCooldown(ctx, sector); err != nil {
+					return err
+				}
+
+				return ctx.Send(SectorRetryCommitWait{})
+			}
+			if si != nil {
+				// API error in CommitWait?
+				return ctx.Send(SectorRetryCommitWait{})
+			}
+			// if si == nil, something else went wrong; Likely expired deals, we'll
+			// find out in checkCommit
 		case exitcode.SysErrOutOfGas:
 			// API error in CommitWait AND gas estimator guessed a wrong number in SubmitCommit
 			return ctx.Send(SectorRetrySubmitCommit{})
