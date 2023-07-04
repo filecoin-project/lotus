@@ -1,5 +1,5 @@
 ---
-name: 🥞New Epic
+name: New Task
 about: A larger yet well-scoped task
 title: '<title>'
 labels: Needs Triage
