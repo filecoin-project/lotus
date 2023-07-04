@@ -769,7 +769,11 @@ func removeExistingChain(cctx *cli.Context, lr repo.Repo) error {
 		return xerrors.Errorf("error locking repo: %w", err)
 	}
 	// Ensure that lockedRepo is closed when this function exits
-	defer lockedRepo.Close()
+	defer func() {
+		if closeErr := lockedRepo.Close(); closeErr != nil {
+			log.Errorf("Error closing the lockedRepo: %v", closeErr)
+		}
+	}()
 
 	cfg, err := lockedRepo.Config()
 	if err != nil {
