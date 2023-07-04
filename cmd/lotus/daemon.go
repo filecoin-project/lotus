@@ -286,52 +286,9 @@ var DaemonCmd = &cli.Command{
 				return xerrors.Errorf("lotus repo doesn't exist")
 			}
 
-			lockedRepo, err := lr.Lock(repo.FullNode)
+			err = removeExistingChain(cctx, lr)
 			if err != nil {
-				return xerrors.Errorf("error locking repo: %w", err)
-			}
-
-			cfg, err := lockedRepo.Config()
-			if err != nil {
-				lockedRepo.Close()
-				return xerrors.Errorf("error getting config: %w", err)
-			}
-
-			fullNodeConfig, ok := cfg.(*config.FullNode)
-			if !ok {
-				lockedRepo.Close()
-				return xerrors.Errorf("wrong config type: %T", cfg)
-			}
-
-			if fullNodeConfig.Chainstore.EnableSplitstore {
-				log.Info("removing splitstore directory...")
-				err = deleteSplitstoreDir(lockedRepo)
-				if err != nil {
-					lockedRepo.Close()
-					return xerrors.Errorf("error removing splitstore directory: %w", err)
-				}
-			}
-
-			// Get the base repo path
-			repoPath := lockedRepo.Path()
-
-			// Construct the path to the chain directory
-			chainPath := filepath.Join(repoPath, "datastore", "chain")
-
-			log.Info("removing chain directory:", chainPath)
-
-			err = os.RemoveAll(chainPath)
-			if err != nil {
-				lockedRepo.Close()
-				return xerrors.Errorf("error removing chain directory: %w", err)
-			}
-
-			log.Info("chain and splitstore data have been removed")
-
-			// Explicitly close the lockedRepo now that we're done with it.
-			err = lockedRepo.Close()
-			if err != nil {
-				return xerrors.Errorf("error releasing lock: %w", err)
+				return err
 			}
 		}
 
@@ -804,6 +761,49 @@ func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a l
 
 	log.Error("unexpectedly reached end of slashFilterMinedBlock despite fault being reported!")
 	return nil, nil, false, nil
+}
+
+func removeExistingChain(cctx *cli.Context, lr repo.Repo) error {
+	lockedRepo, err := lr.Lock(repo.FullNode)
+	if err != nil {
+		return xerrors.Errorf("error locking repo: %w", err)
+	}
+	// Ensure that lockedRepo is closed when this function exits
+	defer lockedRepo.Close()
+
+	cfg, err := lockedRepo.Config()
+	if err != nil {
+		return xerrors.Errorf("error getting config: %w", err)
+	}
+
+	fullNodeConfig, ok := cfg.(*config.FullNode)
+	if !ok {
+		return xerrors.Errorf("wrong config type: %T", cfg)
+	}
+
+	if fullNodeConfig.Chainstore.EnableSplitstore {
+		log.Info("removing splitstore directory...")
+		err = deleteSplitstoreDir(lockedRepo)
+		if err != nil {
+			return xerrors.Errorf("error removing splitstore directory: %w", err)
+		}
+	}
+
+	// Get the base repo path
+	repoPath := lockedRepo.Path()
+
+	// Construct the path to the chain directory
+	chainPath := filepath.Join(repoPath, "datastore", "chain")
+
+	log.Info("removing chain directory:", chainPath)
+
+	err = os.RemoveAll(chainPath)
+	if err != nil {
+		return xerrors.Errorf("error removing chain directory: %w", err)
+	}
+
+	log.Info("chain and splitstore data have been removed")
+	return nil
 }
 
 func deleteSplitstoreDir(lr repo.LockedRepo) error {
