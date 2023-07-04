@@ -2,17 +2,12 @@
 
 # Lotus X.Y.Z Release
 
-
-## What will be in the release
-
+[//]: # (Open this issue as [WIP] Lotus vX.Y.Z)
+[//]: # (Apply the `tpm` label to it, and pin the issue on GitHub)
 
 ## 🚢 Estimated shipping date
 
 <Date this release will ship on if everything goes to plan (week beginning...)>
-
-## 🔦 Highlights
-
-< See Changelog>
 
 ## ✅ Release Checklist
 
