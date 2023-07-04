@@ -28,7 +28,6 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 
@@ -799,28 +798,4 @@ func deleteSplitstoreDir(lr repo.LockedRepo) error {
 	}
 
 	return os.RemoveAll(path)
-}
-
-func clearSplitstoreDir(lr repo.LockedRepo) error {
-	path, err := lr.SplitstorePath()
-	if err != nil {
-		return xerrors.Errorf("error getting splitstore path: %w", err)
-	}
-
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return xerrors.Errorf("error reading splitstore directory %s: %W", path, err)
-	}
-
-	var result error
-	for _, e := range entries {
-		target := filepath.Join(path, e.Name())
-		err = os.RemoveAll(target)
-		if err != nil {
-			log.Errorf("error removing %s: %s", target, err)
-			result = multierr.Append(result, err)
-		}
-	}
-
-	return result
 }
