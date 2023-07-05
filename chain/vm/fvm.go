@@ -459,7 +459,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	}
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
-		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		applyRet.Events, err = decodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
@@ -515,7 +515,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 	}
 
 	if vm.returnEvents && len(ret.EventsBytes) > 0 {
-		applyRet.Events, err = types.DecodeEvents(ret.EventsBytes)
+		applyRet.Events, err = decodeEvents(ret.EventsBytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode events returned by the FVM: %w", err)
 		}
