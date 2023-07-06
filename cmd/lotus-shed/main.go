@@ -89,6 +89,7 @@ func main() {
 		indexesCmd,
 		FevmAnalyticsCmd,
 		mismatchesCmd,
+		blockCmd,
 	}
 
 	app := &cli.App{
