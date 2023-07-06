@@ -17,6 +17,7 @@ type Common struct {
 	Logging Logging
 	Libp2p  Libp2p
 	Pubsub  Pubsub
+	DB      SturdyDB
 }
 
 // FullNode is a full node config
@@ -731,4 +732,11 @@ type IndexConfig struct {
 	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
 	EnableMsgIndex bool
+}
+
+type SturdyDB struct {
+	Hosts    []string
+	Username string
+	Password string
+	Database string
 }
