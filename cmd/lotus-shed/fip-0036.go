@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"sort"
 	"strconv"
 
@@ -36,7 +36,7 @@ type Option uint64
 
 const (
 	Approve Option = 49
-	Reject         = 50
+	Reject  Option = 50
 )
 
 type Vote struct {
@@ -148,7 +148,7 @@ var finalResultCmd = &cli.Command{
 		}
 		votes, err := getVotesMap(vj)
 		if err != nil {
-			return xerrors.Errorf("failed to get voters: ", err)
+			return xerrors.Errorf("failed to get voters: %w\n", err)
 		}
 
 		type minerBriefInfo struct {
@@ -160,23 +160,23 @@ var finalResultCmd = &cli.Command{
 		// power actor
 		pa, err := st.GetActor(power.Address)
 		if err != nil {
-			return xerrors.Errorf("failed to get power actor: \n", err)
+			return xerrors.Errorf("failed to get power actor: %w\n", err)
 		}
 
 		powerState, err := power.Load(store, pa)
 		if err != nil {
-			return xerrors.Errorf("failed to get power state: \n", err)
+			return xerrors.Errorf("failed to get power state: %w\n", err)
 		}
 
 		//market actor
 		ma, err := st.GetActor(market.Address)
 		if err != nil {
-			return xerrors.Errorf("fail to get market actor: ", err)
+			return xerrors.Errorf("fail to get market actor: %w\n", err)
 		}
 
 		marketState, err := market.Load(store, ma)
 		if err != nil {
-			return xerrors.Errorf("fail to load market state: ", err)
+			return xerrors.Errorf("fail to load market state: %w\n", err)
 		}
 
 		lookupId := func(addr address.Address) address.Address {
@@ -219,7 +219,7 @@ var finalResultCmd = &cli.Command{
 				// TODO: Confirm that these are always ID addresses
 				signers, err := ms.Signers()
 				if err != nil {
-					return xerrors.Errorf("fail to get msig signers", err)
+					return xerrors.Errorf("fail to get msig signers: %w", err)
 				}
 				for _, s := range signers {
 					signerId := lookupId(s)
@@ -244,12 +244,12 @@ var finalResultCmd = &cli.Command{
 			if builtin.IsStorageMinerActor(act.Code) {
 				m, err := miner.Load(store, act)
 				if err != nil {
-					return xerrors.Errorf("fail to load miner actor: \n", err)
+					return xerrors.Errorf("fail to load miner actor: %w", err)
 				}
 
 				info, err := m.Info()
 				if err != nil {
-					return xerrors.Errorf("fail to get miner info: \n", err)
+					return xerrors.Errorf("fail to get miner info: %w\n", err)
 				}
 
 				ownerId := lookupId(info.Owner)
@@ -353,7 +353,7 @@ var finalResultCmd = &cli.Command{
 			//process votes for regular accounts
 			accountActor, err := st.GetActor(signerId)
 			if err != nil {
-				return xerrors.Errorf("fail to get account account for signer: ", err)
+				return xerrors.Errorf("fail to get account account for signer: %w\n", err)
 			}
 
 			clientBytes, ok := clientToDealStorage[signerId]
@@ -537,7 +537,7 @@ var finalResultCmd = &cli.Command{
 // Returns voted sorted by votes from earliest to latest
 func getVotesMap(file string) ([]Vote, error) {
 	var votes []Vote
-	vb, err := ioutil.ReadFile(file)
+	vb, err := os.ReadFile(file)
 	if err != nil {
 		return nil, xerrors.Errorf("read vote: %w", err)
 	}

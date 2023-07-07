@@ -4,20 +4,19 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
-	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/boxo/blockservice"
+	bstore "github.com/ipfs/boxo/blockstore"
+	chunker "github.com/ipfs/boxo/chunker"
+	offline "github.com/ipfs/boxo/exchange/offline"
+	"github.com/ipfs/boxo/files"
+	"github.com/ipfs/boxo/ipld/merkledag"
+	"github.com/ipfs/boxo/ipld/unixfs/importer/balanced"
+	ihelper "github.com/ipfs/boxo/ipld/unixfs/importer/helpers"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	chunker "github.com/ipfs/go-ipfs-chunker"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-unixfs/importer/balanced"
-	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
@@ -68,7 +67,7 @@ func CreateFilestore(ctx context.Context, srcPath string, dstPath string) (cid.C
 		return cid.Undef, xerrors.Errorf("failed to create reader path file: %w", err)
 	}
 
-	f, err := ioutil.TempFile("", "")
+	f, err := os.CreateTemp("", "")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create temp file: %w", err)
 	}

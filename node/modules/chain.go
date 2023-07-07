@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/ipfs/go-bitswap"
-	"github.com/ipfs/go-bitswap/network"
-	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/boxo/bitswap"
+	"github.com/ipfs/boxo/bitswap/network"
+	"github.com/ipfs/boxo/blockservice"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"go.uber.org/fx"
@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -123,7 +124,7 @@ func NetworkName(mctx helpers.MetricsCtx,
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	sm, err := stmgr.NewStateManager(cs, tsexec, syscalls, us, nil)
+	sm, err := stmgr.NewStateManager(cs, tsexec, syscalls, us, nil, nil, index.DummyMsgIndex)
 	if err != nil {
 		return "", err
 	}
@@ -180,4 +181,8 @@ func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
 
 func UpgradeSchedule() stmgr.UpgradeSchedule {
 	return filcns.DefaultUpgradeSchedule()
+}
+
+func EnableStoringEvents(cs *store.ChainStore) {
+	cs.StoreEvents(true)
 }

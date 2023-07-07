@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-datastore"
+	provider "github.com/ipni/index-provider"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -14,7 +15,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -78,8 +78,9 @@ func Test_IndexProviderTopic(t *testing.T) {
 					func() *pubsub.PubSub { return ps },
 					func() dtypes.MetadataDS { return datastore.NewMapDatastore() },
 					modules.IndexProvider(config.IndexProviderConfig{
-						Enable:    true,
-						TopicName: test.givenConfiguredTopic,
+						Enable:           true,
+						TopicName:        test.givenConfiguredTopic,
+						EntriesChunkSize: 16384,
 					}),
 				),
 				fx.Invoke(func(p provider.Interface) {}),

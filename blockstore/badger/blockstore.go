@@ -20,6 +20,7 @@ import (
 	pool "github.com/libp2p/go-buffer-pool"
 	"github.com/multiformats/go-base32"
 	"go.uber.org/zap"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
 )
@@ -44,7 +45,8 @@ const (
 	// MemoryMap is equivalent to badger/options.MemoryMap.
 	MemoryMap = options.MemoryMap
 	// LoadToRAM is equivalent to badger/options.LoadToRAM.
-	LoadToRAM = options.LoadToRAM
+	LoadToRAM          = options.LoadToRAM
+	defaultGCThreshold = 0.125
 )
 
 // Options embeds the badger options themselves, and augments them with
@@ -394,6 +396,9 @@ func (b *Blockstore) doCopy(from, to *badger.DB) error {
 	if workers < 2 {
 		workers = 2
 	}
+	if workers > 8 {
+		workers = 8
+	}
 
 	stream := from.NewStream()
 	stream.NumGo = workers
@@ -439,7 +444,7 @@ func (b *Blockstore) deleteDB(path string) {
 	}
 }
 
-func (b *Blockstore) onlineGC() error {
+func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq time.Duration, check func() error) error {
 	b.lockDB()
 	defer b.unlockDB()
 
@@ -448,14 +453,26 @@ func (b *Blockstore) onlineGC() error {
 	if nworkers < 2 {
 		nworkers = 2
 	}
+	if nworkers > 7 { // max out at 1 goroutine per badger level
+		nworkers = 7
+	}
 
 	err := b.db.Flatten(nworkers)
 	if err != nil {
 		return err
 	}
-
+	checkTick := time.NewTimer(checkFreq)
+	defer checkTick.Stop()
 	for err == nil {
-		err = b.db.RunValueLogGC(0.125)
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+		case <-checkTick.C:
+			err = check()
+			checkTick.Reset(checkFreq)
+		default:
+			err = b.db.RunValueLogGC(threshold)
+		}
 	}
 
 	if err == badger.ErrNoRewrite {
@@ -468,7 +485,7 @@ func (b *Blockstore) onlineGC() error {
 
 // CollectGarbage compacts and runs garbage collection on the value log;
 // implements the BlockstoreGC trait
-func (b *Blockstore) CollectGarbage(opts ...blockstore.BlockstoreGCOption) error {
+func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -485,8 +502,58 @@ func (b *Blockstore) CollectGarbage(opts ...blockstore.BlockstoreGCOption) error
 	if options.FullGC {
 		return b.movingGC()
 	}
+	threshold := options.Threshold
+	if threshold == 0 {
+		threshold = defaultGCThreshold
+	}
+	checkFreq := options.CheckFreq
+	if checkFreq < 30*time.Second { // disallow checking more frequently than block time
+		checkFreq = 30 * time.Second
+	}
+	check := options.Check
+	if check == nil {
+		check = func() error {
+			return nil
+		}
+	}
+	return b.onlineGC(ctx, threshold, checkFreq, check)
+}
 
-	return b.onlineGC()
+// GCOnce runs garbage collection on the value log;
+// implements BlockstoreGCOnce trait
+func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	var options blockstore.BlockstoreGCOptions
+	for _, opt := range opts {
+		err := opt(&options)
+		if err != nil {
+			return err
+		}
+	}
+	if options.FullGC {
+		return xerrors.Errorf("FullGC option specified for GCOnce but full GC is non incremental")
+	}
+
+	threshold := options.Threshold
+	if threshold == 0 {
+		threshold = defaultGCThreshold
+	}
+
+	b.lockDB()
+	defer b.unlockDB()
+
+	// Note no compaction needed before single GC as we will hit at most one vlog anyway
+	err := b.db.RunValueLogGC(threshold)
+	if err == badger.ErrNoRewrite {
+		// not really an error in this case, it signals the end of GC
+		return nil
+	}
+
+	return err
 }
 
 // Size returns the aggregate size of the blockstore
@@ -549,6 +616,18 @@ func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) erro
 			return fmt.Errorf("failed to view block from badger blockstore: %w", err)
 		}
 	})
+}
+
+func (b *Blockstore) Flush(context.Context) error {
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	b.lockDB()
+	defer b.unlockDB()
+
+	return b.db.Sync()
 }
 
 // Has implements Blockstore.Has.
@@ -667,6 +746,20 @@ func (b *Blockstore) Put(ctx context.Context, block blocks.Block) error {
 	}
 
 	put := func(db *badger.DB) error {
+		// Check if we have it before writing it.
+		switch err := db.View(func(txn *badger.Txn) error {
+			_, err := txn.Get(k)
+			return err
+		}); err {
+		case badger.ErrKeyNotFound:
+		case nil:
+			// Already exists, skip the put.
+			return nil
+		default:
+			return err
+		}
+
+		// Then write it.
 		err := db.Update(func(txn *badger.Txn) error {
 			return txn.Set(k, block.RawData())
 		})
@@ -722,12 +815,33 @@ func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 		keys = append(keys, k)
 	}
 
+	err := b.db.View(func(txn *badger.Txn) error {
+		for i, k := range keys {
+			switch _, err := txn.Get(k); err {
+			case badger.ErrKeyNotFound:
+			case nil:
+				keys[i] = nil
+			default:
+				// Something is actually wrong
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	put := func(db *badger.DB) error {
 		batch := db.NewWriteBatch()
 		defer batch.Cancel()
 
 		for i, block := range blocks {
 			k := keys[i]
+			if k == nil {
+				// skipped because we already have it.
+				continue
+			}
 			if err := batch.Set(k, block.RawData()); err != nil {
 				return err
 			}

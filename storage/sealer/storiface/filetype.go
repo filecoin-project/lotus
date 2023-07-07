@@ -83,7 +83,7 @@ func (t SectorFileType) String() string {
 	case FTUpdateCache:
 		return "update-cache"
 	default:
-		return fmt.Sprintf("<unknown %d>", t)
+		return fmt.Sprintf("<unknown %d %v>", t, (t & ((1 << FileTypes) - 1)).Strings())
 	}
 }
 

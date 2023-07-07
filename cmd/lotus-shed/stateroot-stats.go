@@ -197,7 +197,7 @@ var staterootStatCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("%s\t%s\t%d\n", inf.Addr, string(cmh.Digest), inf.Stat.Size)
+			fmt.Printf("%s\t%x\t%d\n", inf.Addr, cmh.Digest, inf.Stat.Size)
 		}
 		return nil
 	},

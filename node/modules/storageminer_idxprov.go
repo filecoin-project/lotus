@@ -5,14 +5,14 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	provider "github.com/ipni/index-provider"
+	"github.com/ipni/index-provider/engine"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	provider "github.com/filecoin-project/index-provider"
-	"github.com/filecoin-project/index-provider/engine"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/config"
@@ -41,12 +41,17 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		}
 
 		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/index-provider"))
+		addrs := marketHost.Addrs()
+		addrsString := make([]string, 0, len(addrs))
+		for _, addr := range addrs {
+			addrsString = append(addrsString, addr.String())
+		}
 		var opts = []engine.Option{
 			engine.WithDatastore(ipds),
 			engine.WithHost(marketHost),
-			engine.WithRetrievalAddrs(marketHost.Addrs()...),
+			engine.WithRetrievalAddrs(addrsString...),
 			engine.WithEntriesCacheCapacity(cfg.EntriesCacheCapacity),
-			engine.WithEntriesChunkSize(cfg.EntriesChunkSize),
+			engine.WithChainedEntries(cfg.EntriesChunkSize),
 			engine.WithTopicName(topicName),
 			engine.WithPurgeCacheOnStart(cfg.PurgeCacheOnStart),
 		}
@@ -59,7 +64,7 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		// If announcements to the network are enabled, then set options for datatransfer publisher.
 		if cfg.Enable {
 			// Join the indexer topic using the market's pubsub instance. Otherwise, the provider
-			// engine would create its own instance of pubsub down the line in go-legs, which has
+			// engine would create its own instance of pubsub down the line in dagsync, which has
 			// no validators by default.
 			t, err := ps.Join(topicName)
 			if err != nil {

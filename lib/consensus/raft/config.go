@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"io/ioutil"
+	"io"
 	"path/filepath"
 	"time"
 
@@ -69,7 +69,7 @@ func DefaultClusterRaftConfig() *ClusterRaftConfig {
 	cfg.RaftConfig.LocalID = "will_be_set_automatically"
 
 	// Set up logging
-	cfg.RaftConfig.LogOutput = ioutil.Discard
+	cfg.RaftConfig.LogOutput = io.Discard
 	return &cfg
 }
 
@@ -91,14 +91,14 @@ func NewClusterRaftConfig(userRaftConfig *config.UserRaftConfig) *ClusterRaftCon
 	cfg.RaftConfig.LocalID = "will_be_set_automatically"
 
 	// Set up logging
-	cfg.RaftConfig.LogOutput = ioutil.Discard
+	cfg.RaftConfig.LogOutput = io.Discard
 
 	return &cfg
 
 }
 
-// // Validate checks that this configuration has working values,
-// // at least in appearance.
+// Validate checks that this configuration has working values,
+// at least in appearance.
 func ValidateConfig(cfg *ClusterRaftConfig) error {
 	if cfg.RaftConfig == nil {
 		return xerrors.Errorf("no hashicorp/raft.Config")

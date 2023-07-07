@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
 
@@ -193,7 +194,7 @@ func fromV2Claim(v2 power2.Claim) Claim {
 }
 
 func (s *state2) ActorKey() string {
-	return actors.PowerKey
+	return manifest.PowerKey
 }
 
 func (s *state2) ActorVersion() actorstypes.Version {

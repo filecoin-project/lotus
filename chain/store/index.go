@@ -2,18 +2,21 @@ package store
 
 import (
 	"context"
+	"hash/maphash"
 	"os"
 	"strconv"
 
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/puzpuzpuz/xsync/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/shardedmutex"
 )
 
-var DefaultChainIndexCacheSize = 32 << 10
+// DefaultChainIndexCacheSize no longer sets the maximum size, just the initial size of the map.
+var DefaultChainIndexCacheSize = 1 << 15
 
 func init() {
 	if s := os.Getenv("LOTUS_CHAIN_INDEX_CACHE"); s != "" {
@@ -27,7 +30,9 @@ func init() {
 }
 
 type ChainIndex struct {
-	skipCache *lru.ARCCache
+	indexCache *xsync.MapOf[types.TipSetKey, *lbEntry]
+
+	fillCacheLock shardedmutex.ShardedMutexFor[types.TipSetKey]
 
 	loadTipSet loadTipSetFunc
 
@@ -35,18 +40,20 @@ type ChainIndex struct {
 }
 type loadTipSetFunc func(context.Context, types.TipSetKey) (*types.TipSet, error)
 
+func maphashTSK(s maphash.Seed, tsk types.TipSetKey) uint64 {
+	return maphash.Bytes(s, tsk.Bytes())
+}
+
 func NewChainIndex(lts loadTipSetFunc) *ChainIndex {
-	sc, _ := lru.NewARC(DefaultChainIndexCacheSize)
 	return &ChainIndex{
-		skipCache:  sc,
-		loadTipSet: lts,
-		skipLength: 20,
+		indexCache:    xsync.NewTypedMapOfPresized[types.TipSetKey, *lbEntry](maphashTSK, DefaultChainIndexCacheSize),
+		fillCacheLock: shardedmutex.NewFor(maphashTSK, 32),
+		loadTipSet:    lts,
+		skipLength:    20,
 	}
 }
 
 type lbEntry struct {
-	ts           *types.TipSet
-	parentHeight abi.ChainEpoch
 	targetHeight abi.ChainEpoch
 	target       types.TipSetKey
 }
@@ -58,25 +65,42 @@ func (ci *ChainIndex) GetTipsetByHeight(ctx context.Context, from *types.TipSet,
 
 	rounded, err := ci.roundDown(ctx, from)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to round down: %w", err)
 	}
 
 	cur := rounded.Key()
 	for {
-		cval, ok := ci.skipCache.Get(cur)
+		lbe, ok := ci.indexCache.Load(cur) // check the cache
 		if !ok {
-			fc, err := ci.fillCache(ctx, cur)
-			if err != nil {
-				return nil, err
+			lk := ci.fillCacheLock.GetLock(cur)
+			lk.Lock()                         // if entry is missing, take the lock
+			lbe, ok = ci.indexCache.Load(cur) // check if someone else added it while we waited for lock
+			if !ok {
+				fc, err := ci.fillCache(ctx, cur)
+				if err != nil {
+					lk.Unlock()
+					return nil, xerrors.Errorf("failed to fill cache: %w", err)
+				}
+				lbe = fc
+				ci.indexCache.Store(cur, lbe)
 			}
-			cval = fc
+			lk.Unlock()
 		}
 
-		lbe := cval.(*lbEntry)
-		if lbe.ts.Height() == to || lbe.parentHeight < to {
-			return lbe.ts, nil
-		} else if to > lbe.targetHeight {
-			return ci.walkBack(ctx, lbe.ts, to)
+		if to == lbe.targetHeight {
+			ts, err := ci.loadTipSet(ctx, lbe.target)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to load tipset: %w", err)
+			}
+
+			return ts, nil
+		}
+		if to > lbe.targetHeight {
+			ts, err := ci.loadTipSet(ctx, cur)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to load tipset: %w", err)
+			}
+			return ci.walkBack(ctx, ts, to)
 		}
 
 		cur = lbe.target
@@ -87,16 +111,17 @@ func (ci *ChainIndex) GetTipsetByHeightWithoutCache(ctx context.Context, from *t
 	return ci.walkBack(ctx, from, to)
 }
 
+// Caller must hold indexCacheLk
 func (ci *ChainIndex) fillCache(ctx context.Context, tsk types.TipSetKey) (*lbEntry, error) {
 	ts, err := ci.loadTipSet(ctx, tsk)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to load tipset: %w", err)
 	}
 
 	if ts.Height() == 0 {
 		return &lbEntry{
-			ts:           ts,
-			parentHeight: 0,
+			targetHeight: 0,
+			target:       tsk,
 		}, nil
 	}
 
@@ -124,12 +149,9 @@ func (ci *ChainIndex) fillCache(ctx context.Context, tsk types.TipSetKey) (*lbEn
 	}
 
 	lbe := &lbEntry{
-		ts:           ts,
-		parentHeight: parent.Height(),
 		targetHeight: skipTarget.Height(),
 		target:       skipTarget.Key(),
 	}
-	ci.skipCache.Add(tsk, lbe)
 
 	return lbe, nil
 }
@@ -144,7 +166,7 @@ func (ci *ChainIndex) roundDown(ctx context.Context, ts *types.TipSet) (*types.T
 
 	rounded, err := ci.walkBack(ctx, ts, target)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to walk back: %w", err)
 	}
 
 	return rounded, nil
@@ -164,7 +186,7 @@ func (ci *ChainIndex) walkBack(ctx context.Context, from *types.TipSet, to abi.C
 	for {
 		pts, err := ci.loadTipSet(ctx, ts.Parents())
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("failed to load tipset: %w", err)
 		}
 
 		if to > pts.Height() {

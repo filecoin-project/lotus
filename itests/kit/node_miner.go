@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -204,7 +203,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*st
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(filepath.Join(p, metaFile), b, 0644)
+	err = os.WriteFile(filepath.Join(p, metaFile), b, 0644)
 	require.NoError(t, err)
 
 	err = tm.StorageAddLocal(ctx, p)
@@ -223,4 +222,39 @@ func (tm *TestMiner) SectorsListNonGenesis(ctx context.Context) ([]abi.SectorNum
 	})
 
 	return l[tm.PresealSectors:], nil
+}
+
+// comes from https://github.com/filecoin-project/lotus/blob/8ba4355cabd25e5f65261aaa561ff676321ffbd8/storage/sealer/manager.go#L1226
+// todo: have this defined in one place
+type SchedInfo struct {
+	CallToWork   struct{}
+	EarlyRet     interface{}
+	ReturnedWork interface{}
+	SchedInfo    struct {
+		OpenWindows []string
+		Requests    []struct {
+			Priority int
+			SchedId  uuid.UUID
+			Sector   struct {
+				Miner  int
+				Number int
+			}
+			TaskType string
+		}
+	}
+	Waiting interface{}
+}
+
+func (tm *TestMiner) SchedInfo(ctx context.Context) SchedInfo {
+	schedb, err := tm.SealingSchedDiag(ctx, false)
+	require.NoError(tm.t, err)
+
+	j, err := json.MarshalIndent(&schedb, "", "  ")
+	require.NoError(tm.t, err)
+
+	var b SchedInfo
+	err = json.Unmarshal(j, &b)
+	require.NoError(tm.t, err)
+
+	return b
 }

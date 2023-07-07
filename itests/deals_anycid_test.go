@@ -7,7 +7,10 @@ import (
 	"testing"
 	"time"
 
-	ipld "github.com/ipfs/go-ipld-format"
+	dag "github.com/ipfs/boxo/ipld/merkledag"
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
 	"github.com/ipld/go-car/v2/blockstore"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
@@ -77,12 +80,18 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	sc := car.NewSelectiveCar(ctx, bs, []car.Dag{{Root: res.Root, Selector: selectorparse.CommonSelector_ExploreAllRecursively}})
 	prepared, err := sc.Prepare()
 	require.NoError(t, err)
+
+	reg := format.Registry{}
+	reg.Register(cid.DagProtobuf, dag.DecodeProtobufBlock)
+	reg.Register(cid.DagCBOR, ipldcbor.DecodeBlock)
+	reg.Register(cid.Raw, dag.DecodeRawBlock)
+
 	cids := prepared.Cids()
 	for i, c := range cids {
 		blk, err := bs.Get(ctx, c)
 		require.NoError(t, err)
 
-		nd, err := ipld.Decode(blk)
+		nd, err := reg.Decode(blk)
 		require.NoError(t, err)
 
 		t.Log(i, c, len(nd.Links()))

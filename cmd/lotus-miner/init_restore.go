@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 
 	"github.com/docker/go-units"
@@ -59,7 +58,7 @@ var restoreCmd = &cli.Command{
 				return xerrors.Errorf("expanding storage config path: %w", err)
 			}
 
-			cfb, err := ioutil.ReadFile(cf)
+			cfb, err := os.ReadFile(cf)
 			if err != nil {
 				return xerrors.Errorf("reading storage config: %w", err)
 			}
@@ -189,7 +188,7 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 				return
 			}
 
-			ff, err := config.FromFile(cf, rcfg)
+			ff, err := config.FromFile(cf, config.SetDefault(func() (interface{}, error) { return rcfg, nil }))
 			if err != nil {
 				cerr = xerrors.Errorf("loading config: %w", err)
 				return

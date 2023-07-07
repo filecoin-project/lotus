@@ -10,7 +10,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
@@ -19,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -38,7 +36,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	ctx := context.Background()
-	blockTime := 5 * time.Millisecond
+	blockTime := 10 * time.Millisecond
 
 	var (
 		paymentCreator  kit.TestFullNode
@@ -52,8 +50,16 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		Miner(&miner, &paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll()
-	bms := ens.BeginMiningMustPost(blockTime)
-	bm := bms[0]
+	ens.BeginMiningMustPost(blockTime)
+
+	waitRecvInSync := func() {
+		// paymentCreator is the block miner, in some cases paymentReceiver may fall behind, so we wait for it to catch up
+
+		head, err := paymentReceiver.ChainHead(ctx)
+		require.NoError(t, err)
+
+		paymentReceiver.WaitTillChain(ctx, kit.HeightAtLeast(head.Height()))
+	}
 
 	// send some funds to register the receiver
 	receiverAddr, err := paymentReceiver.WalletNew(ctx, types.KTSecp256k1)
@@ -73,6 +79,8 @@ func TestPaymentChannelsAPI(t *testing.T) {
 
 	channel, err := paymentCreator.PaychGetWaitReady(ctx, channelInfo.WaitSentinel)
 	require.NoError(t, err)
+
+	waitRecvInSync()
 
 	// allocate three lanes
 	var lanes []uint64
@@ -109,6 +117,8 @@ func TestPaymentChannelsAPI(t *testing.T) {
 
 	res := waitForMessage(ctx, t, paymentCreator, settleMsgCid, time.Second*10, "settle")
 	require.EqualValues(t, 0, res.Receipt.ExitCode, "Unable to settle payment channel")
+
+	waitRecvInSync()
 
 	creatorStore := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(paymentCreator)))
 
@@ -184,7 +194,12 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	require.Errorf(t, err, "Expected shortfall error of %d", excessAmt)
 
 	// wait for the settlement period to pass before collecting
-	waitForBlocks(ctx, t, bm, paymentReceiver, receiverAddr, policy.PaychSettleDelay)
+	head, err := paymentReceiver.ChainHead(ctx)
+	require.NoError(t, err)
+
+	settleHeight := head.Height() + policy.PaychSettleDelay + 5
+	paymentReceiver.WaitTillChain(ctx, kit.HeightAtLeast(settleHeight))
+	paymentCreator.WaitTillChain(ctx, kit.HeightAtLeast(settleHeight))
 
 	creatorPreCollectBalance, err := paymentCreator.WalletBalance(ctx, createrAddr)
 	require.NoError(t, err)
@@ -211,31 +226,6 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	expectedRefund := channelAmt - totalVouchers
 	delta := big.Sub(currentCreatorBalance, creatorPreCollectBalance)
 	require.EqualValues(t, abi.NewTokenAmount(expectedRefund), delta, "did not send correct funds from creator: expected %d, got %d", expectedRefund, delta)
-}
-
-func waitForBlocks(ctx context.Context, t *testing.T, bm *kit.BlockMiner, paymentReceiver kit.TestFullNode, receiverAddr address.Address, count int) {
-	// We need to add null blocks in batches, if we add too many the chain can't sync
-	batchSize := 60
-	for i := 0; i < count; i += batchSize {
-		size := batchSize
-		if i > count {
-			size = count - i
-		}
-
-		// Add a batch of null blocks to advance the chain quicker through finalities.
-		bm.InjectNulls(abi.ChainEpoch(size - 1))
-
-		// Add a real block
-		m, err := paymentReceiver.MpoolPushMessage(ctx, &types.Message{
-			To:    builtin.BurntFundsActorAddr,
-			From:  receiverAddr,
-			Value: types.NewInt(0),
-		}, nil)
-		require.NoError(t, err)
-
-		_, err = paymentReceiver.StateWaitMsg(ctx, m.Cid(), 1, api.LookbackNoLimit, true)
-		require.NoError(t, err)
-	}
 }
 
 func waitForMessage(ctx context.Context, t *testing.T, paymentCreator kit.TestFullNode, msgCid cid.Cid, duration time.Duration, desc string) *api.MsgLookup {

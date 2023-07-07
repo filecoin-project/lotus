@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/term"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -251,8 +251,8 @@ var walletSetDefault = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address to set as default")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -279,8 +279,8 @@ var walletExport = &cli.Command{
 
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify key to export")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -328,16 +328,24 @@ var walletImport = &cli.Command{
 
 		var inpdata []byte
 		if !cctx.Args().Present() || cctx.Args().First() == "-" {
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Print("Enter private key: ")
-			indata, err := reader.ReadBytes('\n')
-			if err != nil {
-				return err
+			if term.IsTerminal(int(os.Stdin.Fd())) {
+				fmt.Print("Enter private key(not display in the terminal): ")
+				inpdata, err = term.ReadPassword(int(os.Stdin.Fd()))
+				if err != nil {
+					return err
+				}
+				fmt.Println()
+			} else {
+				reader := bufio.NewReader(os.Stdin)
+				indata, err := reader.ReadBytes('\n')
+				if err != nil {
+					return err
+				}
+				inpdata = indata
 			}
-			inpdata = indata
 
 		} else {
-			fdata, err := ioutil.ReadFile(cctx.Args().First())
+			fdata, err := os.ReadFile(cctx.Args().First())
 			if err != nil {
 				return err
 			}
@@ -414,8 +422,8 @@ var walletSign = &cli.Command{
 
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() || cctx.NArg() != 2 {
-			return fmt.Errorf("must specify signing address and message to sign")
+		if cctx.NArg() != 2 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -457,8 +465,8 @@ var walletVerify = &cli.Command{
 
 		afmt := NewAppFmt(cctx.App)
 
-		if !cctx.Args().Present() || cctx.NArg() != 3 {
-			return fmt.Errorf("must specify signing address, message, and signature to verify")
+		if cctx.NArg() != 3 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -509,8 +517,8 @@ var walletDelete = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() || cctx.NArg() != 1 {
-			return fmt.Errorf("must specify address to delete")
+		if cctx.NArg() != 1 {
+			return IncorrectNumArgs(cctx)
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -701,8 +709,8 @@ var walletMarketAdd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		// Get amount param
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass amount to add")
+		if cctx.NArg() < 1 {
+			return IncorrectNumArgs(cctx)
 		}
 		f, err := types.ParseFIL(cctx.Args().First())
 		if err != nil {

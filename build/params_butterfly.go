@@ -19,10 +19,11 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
-const GenesisNetworkVersion = network.Version16
+const GenesisNetworkVersion = network.Version18
 
 var NetworkBundle = "butterflynet"
 var BundleOverrides map[actorstypes.Version]string
+var ActorDebugging = false
 
 const BootstrappersFile = "butterflynet.pi"
 const GenesisFile = "butterflynet.car"
@@ -49,7 +50,12 @@ const UpgradeHyperdriveHeight = -16
 const UpgradeChocolateHeight = -17
 const UpgradeOhSnapHeight = -18
 const UpgradeSkyrHeight = -19
-const UpgradeSharkHeight = abi.ChainEpoch(600)
+const UpgradeSharkHeight = -20
+const UpgradeHyggeHeight = -21
+
+const UpgradeLightningHeight = 50
+
+const UpgradeThunderHeight = UpgradeLightningHeight + 360
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
@@ -79,5 +85,9 @@ const PropagationDelaySecs = uint64(6)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2
+
+// ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
+// As per https://github.com/ethereum-lists/chains
+const Eip155ChainId = 3141592
 
 var WhitelistedBlock = cid.Undef

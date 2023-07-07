@@ -24,12 +24,14 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
@@ -66,9 +68,10 @@ var (
 	ConnectionManagerKey = special{9}  // Libp2p option
 	AutoNATSvcKey        = special{10} // Libp2p option
 	BandwidthReporterKey = special{11} // Libp2p option
-	ConnGaterKey         = special{12} // libp2p option
+	ConnGaterKey         = special{12} // Libp2p option
 	DAGStoreKey          = special{13} // constructor returns multiple values
 	ResourceManagerKey   = special{14} // Libp2p option
+	UserAgentKey         = special{15} // Libp2p option
 )
 
 type invoke int
@@ -86,6 +89,8 @@ const (
 
 	// health checks
 	CheckFDLimit
+	CheckFvmConcurrency
+	LegacyMarketsEOL
 
 	// libp2p
 	PstoreAddSelfKeysKey
@@ -125,6 +130,8 @@ const (
 
 	SetApiEndpointKey
 
+	StoreEventsKey
+
 	_nInvokes // keep this last
 )
 
@@ -159,6 +166,7 @@ func defaults() []Option {
 		Override(new(dtypes.NodeStartTime), FromVal(dtypes.NodeStartTime(time.Now()))),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
+		Override(CheckFvmConcurrency, modules.CheckFvmConcurrency()),
 
 		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
 		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
@@ -386,6 +394,7 @@ func Test() Option {
 		Unset(new(*peermgr.PeerMgr)),
 		Override(new(beacon.Schedule), testing.RandomBeacon),
 		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
+		Override(new(index.MsgIndex), modules.DummyMsgIndex),
 	)
 }
 

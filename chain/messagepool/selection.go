@@ -40,11 +40,21 @@ type msgChain struct {
 }
 
 func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
-	mp.curTsLk.Lock()
-	defer mp.curTsLk.Unlock()
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
 
-	mp.lk.Lock()
-	defer mp.lk.Unlock()
+	mp.lk.RLock()
+	defer mp.lk.RUnlock()
+
+	// See if we need to prune before selection; excessive buildup can lead to slow selection,
+	// so prune if we have too many messages (ignoring the cooldown).
+	mpCfg := mp.getConfig()
+	if mp.currentSize > mpCfg.SizeLimitHigh {
+		log.Infof("too many messages; pruning before selection")
+		if err := mp.pruneMessages(ctx, ts); err != nil {
+			log.Warnf("error pruning excess messages: %s", err)
+		}
+	}
 
 	// if the ticket quality is high enough that the first block has higher probability
 	// than any other block, then we don't bother with optimal selection because the
@@ -97,7 +107,7 @@ func (sm *selectedMessages) tryToAdd(mc *msgChain) bool {
 		sm.msgs = append(sm.msgs, mc.msgs...)
 		sm.blsLimit -= l
 		sm.gasLimit -= mc.gasLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		if sm.secpLimit < l {
 			return false
 		}
@@ -123,7 +133,7 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 
 	if mc.sigType == crypto.SigTypeBLS {
 		smMsgLimit = sm.blsLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		smMsgLimit = sm.secpLimit
 	} else {
 		return false
@@ -174,7 +184,7 @@ func (sm *selectedMessages) tryToAddWithDeps(mc *msgChain, mp *MessagePool, base
 
 	if mc.sigType == crypto.SigTypeBLS {
 		sm.blsLimit -= chainMsgLimit
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		sm.secpLimit -= chainMsgLimit
 	}
 
@@ -187,7 +197,7 @@ func (sm *selectedMessages) trimChain(mc *msgChain, mp *MessagePool, baseFee typ
 		if msgLimit > sm.blsLimit {
 			msgLimit = sm.blsLimit
 		}
-	} else if mc.sigType == crypto.SigTypeSecp256k1 {
+	} else if mc.sigType == crypto.SigTypeSecp256k1 || mc.sigType == crypto.SigTypeDelegated {
 		if msgLimit > sm.secpLimit {
 			msgLimit = sm.secpLimit
 		}

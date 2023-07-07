@@ -3,6 +3,7 @@ package system
 import (
     "fmt"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/ipfs/go-cid"
 
@@ -63,7 +64,7 @@ func (s *state{{.v}}) SetBuiltinActors(c cid.Cid) error {
 }
 
 func (s *state{{.v}}) ActorKey() string {
-    return actors.SystemKey
+    return manifest.SystemKey
 }
 
 func (s *state{{.v}}) ActorVersion() actorstypes.Version {

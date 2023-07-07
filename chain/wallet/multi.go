@@ -120,22 +120,22 @@ func (m MultiWallet) WalletSign(ctx context.Context, signer address.Address, toS
 		return nil, err
 	}
 	if w == nil {
-		return nil, xerrors.Errorf("key not found")
+		return nil, xerrors.Errorf("key not found for %s", signer)
 	}
 
 	return w.WalletSign(ctx, signer, toSign, meta)
 }
 
-func (m MultiWallet) WalletExport(ctx context.Context, address address.Address) (*types.KeyInfo, error) {
-	w, err := m.find(ctx, address, m.Remote, m.Local)
+func (m MultiWallet) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
+	w, err := m.find(ctx, addr, m.Remote, m.Local)
 	if err != nil {
 		return nil, err
 	}
 	if w == nil {
-		return nil, xerrors.Errorf("key not found")
+		return nil, xerrors.Errorf("key not found for %s", addr)
 	}
 
-	return w.WalletExport(ctx, address)
+	return w.WalletExport(ctx, addr)
 }
 
 func (m MultiWallet) WalletImport(ctx context.Context, info *types.KeyInfo) (address.Address, error) {

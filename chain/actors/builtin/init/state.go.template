@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 {{if (le .v 7)}}
     {{if (ge .v 3)}}
@@ -148,7 +149,7 @@ func (s *state{{.v}}) AddressMapHashFunction() func(input []byte) []byte {
 }
 
 func (s *state{{.v}}) ActorKey() string {
-    return actors.InitKey
+    return manifest.InitKey
 }
 
 func (s *state{{.v}}) ActorVersion() actorstypes.Version {

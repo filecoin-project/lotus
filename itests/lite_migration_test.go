@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/specs-actors/v8/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -95,7 +94,7 @@ func makeTestManifest(t *testing.T, ctxStore adt.Store, av actorstypes.Version) 
 	builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
 
 	manifestData := manifest.ManifestData{}
-	for _, name := range actors.GetBuiltinActorsKeys(av) {
+	for _, name := range manifest.GetBuiltinActorsKeys(av) {
 		codeCid, err := builder.Sum([]byte(fmt.Sprintf("fil/8/%s", name)))
 		if err != nil {
 			t.Fatal(err)

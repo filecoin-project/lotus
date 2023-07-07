@@ -19,6 +19,7 @@ import (
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
@@ -124,10 +125,10 @@ func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proofty
 	panic("implement me")
 }
 
-func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []prooftypes.ExtendedSectorInfo, pr abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
+func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, ppt abi.RegisteredPoStProof, sis []prooftypes.ExtendedSectorInfo, pr abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
 	return []prooftypes.PoStProof{
 		{
-			PoStProof:  abi.RegisteredPoStProof_StackedDrgWindow2KiBV1,
+			PoStProof:  ppt,
 			ProofBytes: []byte("post-proof"),
 		},
 	}, nil, nil
@@ -570,7 +571,7 @@ func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, add
 }
 
 func (m *mockStorageMinerAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
-	code, ok := actors.GetActorCodeID(actorstypes.Version7, actors.MinerKey)
+	code, ok := actors.GetActorCodeID(actorstypes.Version7, manifest.MinerKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get miner actor code ID for actors version %d", actors.Version7)
 	}

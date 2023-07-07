@@ -159,6 +159,7 @@
   * [SectorTerminate](#SectorTerminate)
   * [SectorTerminateFlush](#SectorTerminateFlush)
   * [SectorTerminatePending](#SectorTerminatePending)
+  * [SectorUnseal](#SectorUnseal)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
   * [SectorsListInStates](#SectorsListInStates)
@@ -464,7 +465,9 @@ Inputs:
     {
       "SealProof": 8,
       "SectorNumber": 9,
-      "SectorKey": null,
+      "SectorKey": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "SealedCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
@@ -472,7 +475,7 @@ Inputs:
   ],
   "Bw==",
   10101,
-  17
+  20
 ]
 ```
 
@@ -1279,8 +1282,12 @@ Response:
   "ProposalCid": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "AddFundsCid": null,
-  "PublishCid": null,
+  "AddFundsCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "PublishCid": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "State": 42,
@@ -1295,7 +1302,9 @@ Response:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "PieceCid": null,
+    "PieceCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "PieceSize": 1024,
     "RawBlockSize": 42
   },
@@ -1457,8 +1466,12 @@ Response:
     "ProposalCid": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "AddFundsCid": null,
-    "PublishCid": null,
+    "AddFundsCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "PublishCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "State": 42,
@@ -1473,7 +1486,9 @@ Response:
       "Root": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       },
-      "PieceCid": null,
+      "PieceCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
       "PieceSize": 1024,
       "RawBlockSize": 42
     },
@@ -1492,6 +1507,7 @@ Response:
 ```
 
 ### MarketListRetrievalDeals
+MarketListRetrievalDeals is deprecated, returns empty list
 
 
 Perms: read
@@ -1501,46 +1517,7 @@ Inputs: `null`
 Response:
 ```json
 [
-  {
-    "PayloadCID": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "ID": 5,
-    "Selector": {
-      "Raw": "Ynl0ZSBhcnJheQ=="
-    },
-    "PieceCID": null,
-    "PricePerByte": "0",
-    "PaymentInterval": 42,
-    "PaymentIntervalIncrease": 42,
-    "UnsealPrice": "0",
-    "StoreID": 42,
-    "ChannelID": {
-      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "ID": 3
-    },
-    "PieceInfo": {
-      "PieceCID": {
-        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-      },
-      "Deals": [
-        {
-          "DealID": 5432,
-          "SectorID": 9,
-          "Offset": 1032,
-          "Length": 1032
-        }
-      ]
-    },
-    "Status": 0,
-    "Receiver": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "TotalSent": 42,
-    "FundsReceived": "0",
-    "Message": "string value",
-    "CurrentInterval": 42,
-    "LegacyProtocol": true
-  }
+  {}
 ]
 ```
 
@@ -1725,7 +1702,9 @@ Response:
 ```json
 {
   "Reachability": 1,
-  "PublicAddr": "string value"
+  "PublicAddrs": [
+    "string value"
+  ]
 }
 ```
 
@@ -2908,7 +2887,9 @@ Inputs:
   1024,
   {},
   {
-    "PublishCid": null,
+    "PublishCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "DealID": 5432,
     "DealProposal": {
       "PieceCID": {
@@ -2962,7 +2943,9 @@ Response:
     "FailedSectors": {
       "123": "can't acquire read lock"
     },
-    "Msg": null,
+    "Msg": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "Error": "string value"
   }
 ]
@@ -3156,7 +3139,9 @@ Response:
       123,
       124
     ],
-    "Msg": null,
+    "Msg": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "Error": "string value"
   }
 ]
@@ -3204,7 +3189,9 @@ Inputs:
           }
         },
         "DealInfo": {
-          "PublishCid": null,
+          "PublishCid": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          },
           "DealID": 5432,
           "DealProposal": {
             "PieceCID": {
@@ -3232,8 +3219,12 @@ Inputs:
     "TicketValue": "Bw==",
     "TicketEpoch": 10101,
     "PreCommit1Out": "Bw==",
-    "CommD": null,
-    "CommR": null,
+    "CommD": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "CommR": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "PreCommitInfo": {
       "SealProof": 8,
       "SectorNumber": 9,
@@ -3245,10 +3236,14 @@ Inputs:
         5432
       ],
       "Expiration": 10101,
-      "UnsealedCid": null
+      "UnsealedCid": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
     },
     "PreCommitDeposit": "0",
-    "PreCommitMessage": null,
+    "PreCommitMessage": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "PreCommitTipSet": [
       {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -3260,7 +3255,9 @@ Inputs:
     "SeedValue": "Bw==",
     "SeedEpoch": 10101,
     "CommitProof": "Ynl0ZSBhcnJheQ==",
-    "CommitMessage": null,
+    "CommitMessage": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
     "Log": [
       {
         "Kind": "string value",
@@ -3396,7 +3393,12 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ### SectorTerminatePending
 SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
@@ -3415,6 +3417,21 @@ Response:
   }
 ]
 ```
+
+### SectorUnseal
+SectorUnseal unseals the provided sector
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  9
+]
+```
+
+Response: `{}`
 
 ## Sectors
 
@@ -3497,8 +3514,12 @@ Response:
 {
   "SectorID": 9,
   "State": "Proving",
-  "CommD": null,
-  "CommR": null,
+  "CommD": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "CommR": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Proof": "Ynl0ZSBhcnJheQ==",
   "Deals": [
     5432
@@ -3512,7 +3533,9 @@ Response:
         }
       },
       "DealInfo": {
-        "PublishCid": null,
+        "PublishCid": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
         "DealID": 5432,
         "DealProposal": {
           "PieceCID": {
@@ -3545,11 +3568,17 @@ Response:
     "Value": "Bw==",
     "Epoch": 10101
   },
-  "PreCommitMsg": null,
-  "CommitMsg": null,
+  "PreCommitMsg": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "CommitMsg": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "Retries": 42,
   "ToUpgrade": true,
-  "ReplicaUpdateMessage": null,
+  "ReplicaUpdateMessage": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
   "LastErr": "string value",
   "Log": [
     {
@@ -3603,7 +3632,9 @@ Inputs:
   1040384,
   1024,
   "Bw==",
-  null
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
@@ -5179,7 +5210,7 @@ Response:
             "0": {
               "MinMemory": 2048,
               "MaxMemory": 2048,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 2048,
@@ -5188,7 +5219,7 @@ Response:
             "1": {
               "MinMemory": 8388608,
               "MaxMemory": 8388608,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 8388608,
@@ -5197,7 +5228,7 @@ Response:
             "2": {
               "MinMemory": 1073741824,
               "MaxMemory": 1073741824,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 1073741824,
@@ -5206,25 +5237,25 @@ Response:
             "3": {
               "MinMemory": 4294967296,
               "MaxMemory": 4294967296,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "4": {
               "MinMemory": 8589934592,
               "MaxMemory": 8589934592,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "5": {
               "MinMemory": 2048,
               "MaxMemory": 2048,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 2048,
@@ -5233,7 +5264,7 @@ Response:
             "6": {
               "MinMemory": 8388608,
               "MaxMemory": 8388608,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 8388608,
@@ -5242,7 +5273,7 @@ Response:
             "7": {
               "MinMemory": 1073741824,
               "MaxMemory": 1073741824,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 1073741824,
@@ -5251,18 +5282,18 @@ Response:
             "8": {
               "MinMemory": 4294967296,
               "MaxMemory": 4294967296,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "9": {
               "MinMemory": 8589934592,
               "MaxMemory": 8589934592,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             }
@@ -5271,7 +5302,7 @@ Response:
             "0": {
               "MinMemory": 2048,
               "MaxMemory": 2048,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 2048,
@@ -5280,7 +5311,7 @@ Response:
             "1": {
               "MinMemory": 8388608,
               "MaxMemory": 8388608,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 8388608,
@@ -5289,7 +5320,7 @@ Response:
             "2": {
               "MinMemory": 1073741824,
               "MaxMemory": 1073741824,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 1073741824,
@@ -5298,25 +5329,25 @@ Response:
             "3": {
               "MinMemory": 4294967296,
               "MaxMemory": 4294967296,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "4": {
               "MinMemory": 8589934592,
               "MaxMemory": 8589934592,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "5": {
               "MinMemory": 2048,
               "MaxMemory": 2048,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 2048,
@@ -5325,7 +5356,7 @@ Response:
             "6": {
               "MinMemory": 8388608,
               "MaxMemory": 8388608,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 8388608,
@@ -5334,7 +5365,7 @@ Response:
             "7": {
               "MinMemory": 1073741824,
               "MaxMemory": 1073741824,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
               "MaxParallelismGPU": 0,
               "BaseMinMemory": 1073741824,
@@ -5343,18 +5374,18 @@ Response:
             "8": {
               "MinMemory": 4294967296,
               "MaxMemory": 4294967296,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             },
             "9": {
               "MinMemory": 8589934592,
               "MaxMemory": 8589934592,
-              "GPUUtilization": 0,
+              "GPUUtilization": 1,
               "MaxParallelism": 1,
-              "MaxParallelismGPU": 0,
+              "MaxParallelismGPU": 6,
               "BaseMinMemory": 1073741824,
               "MaxConcurrent": 0
             }

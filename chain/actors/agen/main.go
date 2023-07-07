@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,6 +27,7 @@ var actors = map[string][]int{
 	"reward":   lotusactors.Versions,
 	"verifreg": lotusactors.Versions,
 	"datacap":  lotusactors.Versions[8:],
+	"evm":      lotusactors.Versions[9:],
 }
 
 func main() {
@@ -65,7 +65,7 @@ func generateAdapters() error {
 		}
 
 		{
-			af, err := ioutil.ReadFile(filepath.Join(actDir, "actor.go.template"))
+			af, err := os.ReadFile(filepath.Join(actDir, "actor.go.template"))
 			if err != nil {
 				return xerrors.Errorf("loading actor template: %w", err)
 			}
@@ -89,7 +89,7 @@ func generateAdapters() error {
 				return err
 			}
 
-			if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("%s.go", act)), fmted, 0666); err != nil {
+			if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("%s.go", act)), fmted, 0666); err != nil {
 				return err
 			}
 		}
@@ -99,7 +99,7 @@ func generateAdapters() error {
 }
 
 func generateState(actDir string, versions []int) error {
-	af, err := ioutil.ReadFile(filepath.Join(actDir, "state.go.template"))
+	af, err := os.ReadFile(filepath.Join(actDir, "state.go.template"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // skip
@@ -122,7 +122,7 @@ func generateState(actDir string, versions []int) error {
 			return err
 		}
 
-		if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("v%d.go", version)), b.Bytes(), 0666); err != nil {
+		if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("v%d.go", version)), b.Bytes(), 0666); err != nil {
 			return err
 		}
 	}
@@ -131,7 +131,7 @@ func generateState(actDir string, versions []int) error {
 }
 
 func generateMessages(actDir string) error {
-	af, err := ioutil.ReadFile(filepath.Join(actDir, "message.go.template"))
+	af, err := os.ReadFile(filepath.Join(actDir, "message.go.template"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // skip
@@ -154,7 +154,7 @@ func generateMessages(actDir string) error {
 			return err
 		}
 
-		if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("message%d.go", version)), b.Bytes(), 0666); err != nil {
+		if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("message%d.go", version)), b.Bytes(), 0666); err != nil {
 			return err
 		}
 	}
@@ -164,7 +164,7 @@ func generateMessages(actDir string) error {
 
 func generatePolicy(policyPath string) error {
 
-	pf, err := ioutil.ReadFile(policyPath + ".template")
+	pf, err := os.ReadFile(policyPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // skip
@@ -186,7 +186,7 @@ func generatePolicy(policyPath string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(policyPath, b.Bytes(), 0666); err != nil {
+	if err := os.WriteFile(policyPath, b.Bytes(), 0666); err != nil {
 		return err
 	}
 
@@ -195,7 +195,7 @@ func generatePolicy(policyPath string) error {
 
 func generateBuiltin(builtinPath string) error {
 
-	bf, err := ioutil.ReadFile(builtinPath + ".template")
+	bf, err := os.ReadFile(builtinPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // skip
@@ -217,7 +217,7 @@ func generateBuiltin(builtinPath string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(builtinPath, b.Bytes(), 0666); err != nil {
+	if err := os.WriteFile(builtinPath, b.Bytes(), 0666); err != nil {
 		return err
 	}
 
@@ -226,7 +226,7 @@ func generateBuiltin(builtinPath string) error {
 
 func generateRegistry(registryPath string) error {
 
-	bf, err := ioutil.ReadFile(registryPath + ".template")
+	bf, err := os.ReadFile(registryPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil // skip
@@ -247,7 +247,7 @@ func generateRegistry(registryPath string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(registryPath, b.Bytes(), 0666); err != nil {
+	if err := os.WriteFile(registryPath, b.Bytes(), 0666); err != nil {
 		return err
 	}
 

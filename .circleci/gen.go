@@ -106,10 +106,12 @@ func main() {
 
 	// form the input data.
 	type data struct {
+		Networks   []string
 		ItestFiles []string
 		UnitSuites map[string]string
 	}
 	in := data{
+		Networks:   []string{"mainnet", "butterflynet", "calibnet", "debug"},
 		ItestFiles: itests,
 		UnitSuites: func() map[string]string {
 			ret := make(map[string]string)

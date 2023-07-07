@@ -18,15 +18,16 @@ import (
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
+	provider "github.com/ipni/index-provider"
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
-	dtnet "github.com/filecoin-project/go-data-transfer/network"
-	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	dtimpl "github.com/filecoin-project/go-data-transfer/v2/impl"
+	dtnet "github.com/filecoin-project/go-data-transfer/v2/network"
+	dtgstransport "github.com/filecoin-project/go-data-transfer/v2/transport/graphsync"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -42,7 +43,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statestore"
-	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
@@ -233,7 +233,7 @@ func PreflightChecks(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 			return xerrors.New("key for worker not found in local wallet")
 		}
 
-		log.Infof("starting up miner %s, worker addr %s", maddr, workerKey)
+		log.Infof("starting up miner %s, worker addr %s", address.Address(maddr), workerKey)
 		return nil
 	}})
 
@@ -983,19 +983,18 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 	return func(cfg sealiface.Config) (err error) {
 		err = mutateSealingCfg(r, func(c config.SealingConfiger) {
 			newCfg := config.SealingConfig{
-				MaxWaitDealsSectors:              cfg.MaxWaitDealsSectors,
-				MaxSealingSectors:                cfg.MaxSealingSectors,
-				MaxSealingSectorsForDeals:        cfg.MaxSealingSectorsForDeals,
-				PreferNewSectorsForDeals:         cfg.PreferNewSectorsForDeals,
-				MaxUpgradingSectors:              cfg.MaxUpgradingSectors,
-				CommittedCapacitySectorLifetime:  config.Duration(cfg.CommittedCapacitySectorLifetime),
-				WaitDealsDelay:                   config.Duration(cfg.WaitDealsDelay),
-				MakeNewSectorForDeals:            cfg.MakeNewSectorForDeals,
-				MinUpgradeSectorExpiration:       cfg.MinUpgradeSectorExpiration,
-				MinTargetUpgradeSectorExpiration: cfg.MinTargetUpgradeSectorExpiration,
-				MakeCCSectorsAvailable:           cfg.MakeCCSectorsAvailable,
-				AlwaysKeepUnsealedCopy:           cfg.AlwaysKeepUnsealedCopy,
-				FinalizeEarly:                    cfg.FinalizeEarly,
+				MaxWaitDealsSectors:             cfg.MaxWaitDealsSectors,
+				MaxSealingSectors:               cfg.MaxSealingSectors,
+				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
+				PreferNewSectorsForDeals:        cfg.PreferNewSectorsForDeals,
+				MaxUpgradingSectors:             cfg.MaxUpgradingSectors,
+				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
+				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				MakeNewSectorForDeals:           cfg.MakeNewSectorForDeals,
+				MinUpgradeSectorExpiration:      cfg.MinUpgradeSectorExpiration,
+				MakeCCSectorsAvailable:          cfg.MakeCCSectorsAvailable,
+				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
+				FinalizeEarly:                   cfg.FinalizeEarly,
 
 				CollateralFromMinerBalance: cfg.CollateralFromMinerBalance,
 				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
@@ -1014,9 +1013,10 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AggregateAboveBaseFee:      types.FIL(cfg.AggregateAboveBaseFee),
 				BatchPreCommitAboveBaseFee: types.FIL(cfg.BatchPreCommitAboveBaseFee),
 
-				TerminateBatchMax:  cfg.TerminateBatchMax,
-				TerminateBatchMin:  cfg.TerminateBatchMin,
-				TerminateBatchWait: config.Duration(cfg.TerminateBatchWait),
+				TerminateBatchMax:                      cfg.TerminateBatchMax,
+				TerminateBatchMin:                      cfg.TerminateBatchMin,
+				TerminateBatchWait:                     config.Duration(cfg.TerminateBatchWait),
+				MaxSectorProveCommitsSubmittedPerEpoch: cfg.MaxSectorProveCommitsSubmittedPerEpoch,
 			}
 			c.SetSealingConfig(newCfg)
 		})
@@ -1026,13 +1026,12 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 
 func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.SealingConfig) sealiface.Config {
 	return sealiface.Config{
-		MaxWaitDealsSectors:              sealingCfg.MaxWaitDealsSectors,
-		MaxSealingSectors:                sealingCfg.MaxSealingSectors,
-		MaxSealingSectorsForDeals:        sealingCfg.MaxSealingSectorsForDeals,
-		PreferNewSectorsForDeals:         sealingCfg.PreferNewSectorsForDeals,
-		MinUpgradeSectorExpiration:       sealingCfg.MinUpgradeSectorExpiration,
-		MinTargetUpgradeSectorExpiration: sealingCfg.MinTargetUpgradeSectorExpiration,
-		MaxUpgradingSectors:              sealingCfg.MaxUpgradingSectors,
+		MaxWaitDealsSectors:        sealingCfg.MaxWaitDealsSectors,
+		MaxSealingSectors:          sealingCfg.MaxSealingSectors,
+		MaxSealingSectorsForDeals:  sealingCfg.MaxSealingSectorsForDeals,
+		PreferNewSectorsForDeals:   sealingCfg.PreferNewSectorsForDeals,
+		MinUpgradeSectorExpiration: sealingCfg.MinUpgradeSectorExpiration,
+		MaxUpgradingSectors:        sealingCfg.MaxUpgradingSectors,
 
 		StartEpochSealingBuffer:         abi.ChainEpoch(dealmakingCfg.StartEpochSealingBuffer),
 		MakeNewSectorForDeals:           sealingCfg.MakeNewSectorForDeals,
@@ -1051,13 +1050,14 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		PreCommitBatchWait:  time.Duration(sealingCfg.PreCommitBatchWait),
 		PreCommitBatchSlack: time.Duration(sealingCfg.PreCommitBatchSlack),
 
-		AggregateCommits:           sealingCfg.AggregateCommits,
-		MinCommitBatch:             sealingCfg.MinCommitBatch,
-		MaxCommitBatch:             sealingCfg.MaxCommitBatch,
-		CommitBatchWait:            time.Duration(sealingCfg.CommitBatchWait),
-		CommitBatchSlack:           time.Duration(sealingCfg.CommitBatchSlack),
-		AggregateAboveBaseFee:      types.BigInt(sealingCfg.AggregateAboveBaseFee),
-		BatchPreCommitAboveBaseFee: types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
+		AggregateCommits:                       sealingCfg.AggregateCommits,
+		MinCommitBatch:                         sealingCfg.MinCommitBatch,
+		MaxCommitBatch:                         sealingCfg.MaxCommitBatch,
+		CommitBatchWait:                        time.Duration(sealingCfg.CommitBatchWait),
+		CommitBatchSlack:                       time.Duration(sealingCfg.CommitBatchSlack),
+		AggregateAboveBaseFee:                  types.BigInt(sealingCfg.AggregateAboveBaseFee),
+		BatchPreCommitAboveBaseFee:             types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
+		MaxSectorProveCommitsSubmittedPerEpoch: sealingCfg.MaxSectorProveCommitsSubmittedPerEpoch,
 
 		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
 		TerminateBatchMin:  sealingCfg.TerminateBatchMin,

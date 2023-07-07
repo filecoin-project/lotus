@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/bits"
 	"os"
 	"path/filepath"
@@ -55,8 +54,9 @@ stored while moving through the sealing pipeline (references as 'seal').`,
 }
 
 var storageAttachCmd = &cli.Command{
-	Name:  "attach",
-	Usage: "attach local storage path",
+	Name:      "attach",
+	Usage:     "attach local storage path",
+	ArgsUsage: "[path]",
 	Description: `Storage can be attached to the miner using this command. The storage volume
 list is stored local to the miner in $LOTUS_MINER_PATH/storage.json. We do not
 recommend manually modifying this value without further understanding of the
@@ -115,8 +115,8 @@ over time
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return xerrors.Errorf("must specify storage path to attach")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		p, err := homedir.Expand(cctx.Args().First())
@@ -166,7 +166,7 @@ over time
 				return xerrors.Errorf("marshaling storage config: %w", err)
 			}
 
-			if err := ioutil.WriteFile(filepath.Join(p, metaFile), b, 0644); err != nil {
+			if err := os.WriteFile(filepath.Join(p, metaFile), b, 0644); err != nil {
 				return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(p, metaFile), err)
 			}
 		}
@@ -192,8 +192,8 @@ var storageDetachCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return xerrors.Errorf("must specify storage path")
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
 		}
 
 		p, err := homedir.Expand(cctx.Args().First())
@@ -210,8 +210,9 @@ var storageDetachCmd = &cli.Command{
 }
 
 var storageRedeclareCmd = &cli.Command{
-	Name:  "redeclare",
-	Usage: "redeclare sectors in a local storage path",
+	Name:      "redeclare",
+	Usage:     "redeclare sectors in a local storage path",
+	ArgsUsage: "[path]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "id",
@@ -224,6 +225,7 @@ var storageRedeclareCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "drop-missing",
 			Usage: "Drop index entries with missing files",
+			Value: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -234,8 +236,17 @@ var storageRedeclareCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
+		// check if no argument and no --id or --all flag is provided
+		if cctx.NArg() == 0 && !cctx.IsSet("id") && !cctx.Bool("all") {
+			return xerrors.Errorf("You must specify a storage path, or --id, or --all")
+		}
+
 		if cctx.IsSet("id") && cctx.Bool("all") {
 			return xerrors.Errorf("--id and --all can't be passed at the same time")
+		}
+
+		if cctx.Bool("all") && cctx.NArg() > 0 {
+			return xerrors.Errorf("No additional arguments are expected when --all is set")
 		}
 
 		if cctx.IsSet("id") {
@@ -247,28 +258,38 @@ var storageRedeclareCmd = &cli.Command{
 			return minerApi.StorageRedeclareLocal(ctx, nil, cctx.Bool("drop-missing"))
 		}
 
-		return xerrors.Errorf("either --all or --id must be specified")
+		// As no --id or --all flag is set, we can assume the argument is a path.
+		path := cctx.Args().First()
+		metaFilePath := filepath.Join(path, "sectorstore.json")
+
+		var meta storiface.LocalStorageMeta
+		metaFile, err := os.Open(metaFilePath)
+		if err != nil {
+			return xerrors.Errorf("Failed to open file: %w", err)
+		}
+		defer func() {
+			if closeErr := metaFile.Close(); closeErr != nil {
+				log.Error("Failed to close the file: %v", closeErr)
+			}
+		}()
+
+		err = json.NewDecoder(metaFile).Decode(&meta)
+		if err != nil {
+			return xerrors.Errorf("Failed to decode file: %w", err)
+		}
+
+		id := meta.ID
+		return minerApi.StorageRedeclareLocal(ctx, &id, cctx.Bool("drop-missing"))
 	},
 }
 
 var storageListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list local storage paths",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-	},
 	Subcommands: []*cli.Command{
 		storageListSectorsCmd,
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -477,6 +498,10 @@ var storageFindCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
+		if cctx.NArg() != 1 {
+			return lcli.IncorrectNumArgs(cctx)
+		}
+
 		ma, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
@@ -633,18 +658,7 @@ var storageFindCmd = &cli.Command{
 var storageListSectorsCmd = &cli.Command{
 	Name:  "sectors",
 	Usage: "get list of all sector files",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err

@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"sync"
 
@@ -350,10 +349,15 @@ func (mgr *SectorMgr) GenerateWinningPoSt(ctx context.Context, minerID abi.Actor
 		}
 	}
 
-	return generateFakePoSt(sectorInfo, abi.RegisteredSealProof.RegisteredWinningPoStProof, randomness), nil
+	ppt, err := sectorInfo[0].SealProof.RegisteredWinningPoStProof()
+	if err != nil {
+		panic(err)
+	}
+
+	return generateFakePoSt(sectorInfo, ppt, randomness), nil
 }
 
-func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, xSectorInfo []prooftypes.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
+func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, ppt abi.RegisteredPoStProof, xSectorInfo []prooftypes.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]prooftypes.PoStProof, []abi.SectorID, error) {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 
@@ -396,7 +400,7 @@ func (mgr *SectorMgr) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorI
 		}
 	}
 
-	return generateFakePoSt(sectorInfo, abi.RegisteredSealProof.RegisteredWindowPoStProof, randomness), skipped, nil
+	return generateFakePoSt(sectorInfo, ppt, randomness), skipped, nil
 }
 
 func generateFakePoStProof(sectorInfo []prooftypes.SectorInfo, randomness abi.PoStRandomness) []byte {
@@ -414,15 +418,10 @@ func generateFakePoStProof(sectorInfo []prooftypes.SectorInfo, randomness abi.Po
 
 }
 
-func generateFakePoSt(sectorInfo []prooftypes.SectorInfo, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error), randomness abi.PoStRandomness) []prooftypes.PoStProof {
-	wp, err := rpt(sectorInfo[0].SealProof)
-	if err != nil {
-		panic(err)
-	}
-
+func generateFakePoSt(sectorInfo []prooftypes.SectorInfo, ppt abi.RegisteredPoStProof, randomness abi.PoStRandomness) []prooftypes.PoStProof {
 	return []prooftypes.PoStProof{
 		{
-			PoStProof:  wp,
+			PoStProof:  ppt,
 			ProofBytes: generateFakePoStProof(sectorInfo, randomness),
 		},
 	}
@@ -461,7 +460,7 @@ func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storiface.SectorRef,
 		io.Seeker
 		io.ReaderAt
 	}{
-		ReadCloser: ioutil.NopCloser(br),
+		ReadCloser: io.NopCloser(br),
 		Seeker:     br,
 		ReaderAt:   br,
 	}, false, nil
@@ -497,15 +496,15 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof
 	return id, []abi.PieceInfo{pi}, nil
 }
 
-func (mgr *SectorMgr) FinalizeSector(context.Context, storiface.SectorRef, []storiface.Range) error {
+func (mgr *SectorMgr) FinalizeSector(context.Context, storiface.SectorRef) error {
 	return nil
 }
 
-func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storiface.SectorRef, []storiface.Range) error {
+func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storiface.SectorRef) error {
 	return nil
 }
 
-func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
+func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	return nil
 }
 

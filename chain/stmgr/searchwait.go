@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -18,6 +19,7 @@ import (
 // happened, with an optional limit to how many epochs it will search. It guarantees that the message has been on
 // chain for at least confidence epochs without being reverted before returning.
 func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+	// TODO use the index to speed this up.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -55,10 +57,15 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	var backFm cid.Cid
 	backSearchWait := make(chan struct{})
 	go func() {
-		fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
-		if err != nil {
-			log.Warnf("failed to look back through chain for message: %v", err)
-			return
+		fts, r, foundMsg, err := sm.searchForIndexedMsg(ctx, mcid, msg)
+
+		found := (err == nil && r != nil && foundMsg.Defined())
+		if !found {
+			fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head[0].Val, msg, lookbackLimit, allowReplaced)
+			if err != nil {
+				log.Warnf("failed to look back through chain for message: %v", err)
+				return
+			}
 		}
 
 		backTs = fts
@@ -145,7 +152,30 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 		return head, r, foundMsg, nil
 	}
 
-	fts, r, foundMsg, err := sm.searchBackForMsg(ctx, head, msg, lookbackLimit, allowReplaced)
+	fts, r, foundMsg, err := sm.searchForIndexedMsg(ctx, mcid, msg)
+
+	switch {
+	case err == nil:
+		if r != nil && foundMsg.Defined() {
+			return fts, r, foundMsg, nil
+		}
+
+		// debug log this, it's noteworthy
+		if r == nil {
+			log.Debugf("missing receipt for message in index for %s", mcid)
+		}
+		if !foundMsg.Defined() {
+			log.Debugf("message %s not found", mcid)
+		}
+
+	case errors.Is(err, index.ErrNotFound):
+		// ok for the index to have incomplete data
+
+	default:
+		log.Warnf("error searching message index: %s", err)
+	}
+
+	fts, r, foundMsg, err = sm.searchBackForMsg(ctx, head, msg, lookbackLimit, allowReplaced)
 
 	if err != nil {
 		log.Warnf("failed to look back through chain for message %s", mcid)
@@ -157,6 +187,44 @@ func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet
 	}
 
 	return fts, r, foundMsg, nil
+}
+
+func (sm *StateManager) searchForIndexedMsg(ctx context.Context, mcid cid.Cid, m types.ChainMsg) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
+	minfo, err := sm.msgIndex.GetMsgInfo(ctx, mcid)
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("error looking up message in index: %w", err)
+	}
+
+	// check the height against the current tipset; minimum execution confidence requires that the
+	// inclusion tipset height is lower than the current head + 1
+	curTs := sm.cs.GetHeaviestTipSet()
+	if curTs.Height() <= minfo.Epoch+1 {
+		return nil, nil, cid.Undef, xerrors.Errorf("indexed message does not appear before the current tipset; index epoch: %d, current epoch: %d", minfo.Epoch, curTs.Height())
+	}
+
+	// now get the execution tipset
+	// TODO optimization: the index should have it implicitly so we can return it in the msginfo.
+	xts, err := sm.cs.GetTipsetByHeight(ctx, minfo.Epoch+1, curTs, false)
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("error looking up execution tipset: %w", err)
+	}
+
+	// check that the parent of the execution index is indeed the inclusion tipset
+	parent := xts.Parents()
+	parentCid, err := parent.Cid()
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("error computing tipset cid: %w", err)
+	}
+
+	if !parentCid.Equals(minfo.TipSet) {
+		return nil, nil, cid.Undef, xerrors.Errorf("inclusion tipset mismatch: have %s, expected %s", parentCid, minfo.TipSet)
+	}
+
+	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, xts, mcid, m.VMMessage(), false)
+	if err != nil {
+		return nil, nil, cid.Undef, xerrors.Errorf("error in tipstExecutedMessage: %w", err)
+	}
+	return xts, r, foundMsg, nil
 }
 
 // searchBackForMsg searches up to limit tipsets backwards from the given

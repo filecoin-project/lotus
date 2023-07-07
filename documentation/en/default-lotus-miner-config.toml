@@ -38,7 +38,7 @@
   #
   # type: []string
   # env var: LOTUS_LIBP2P_LISTENADDRESSES
-  #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
+  #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1", "/ip6/::/udp/0/quic-v1", "/ip4/0.0.0.0/udp/0/quic-v1/webtransport", "/ip6/::/udp/0/quic-v1/webtransport"]
 
   # Addresses to explicitally announce to other peers. If not specified,
   # all interface addresses are announced
@@ -98,6 +98,35 @@
   # env var: LOTUS_PUBSUB_REMOTETRACER
   #RemoteTracer = ""
 
+  # Path to file that will be used to output tracer content in JSON format.
+  # If present tracer will save data to defined file.
+  # Format: file path
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_JSONTRACER
+  #JsonTracer = ""
+
+  # Connection string for elasticsearch instance.
+  # If present tracer will save data to elasticsearch.
+  # Format: https://<username>:<password>@<elasticsearch_url>:<port>/
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_ELASTICSEARCHTRACER
+  #ElasticSearchTracer = ""
+
+  # Name of elasticsearch index that will be used to save tracer data.
+  # This property is used only if ElasticSearchTracer propery is set.
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_ELASTICSEARCHINDEX
+  #ElasticSearchIndex = ""
+
+  # Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
+  #
+  # type: string
+  # env var: LOTUS_PUBSUB_TRACERSOURCEAUTH
+  #TracerSourceAuth = ""
+
 
 [Subsystems]
   # type: bool
@@ -114,7 +143,7 @@
 
   # type: bool
   # env var: LOTUS_SUBSYSTEMS_ENABLEMARKETS
-  #EnableMarkets = true
+  #EnableMarkets = false
 
   # type: string
   # env var: LOTUS_SUBSYSTEMS_SEALERAPIINFO
@@ -323,7 +352,7 @@
   #
   # type: int
   # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
-  #ParallelCheckLimit = 128
+  #ParallelCheckLimit = 32
 
   # Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
   # 
@@ -500,15 +529,7 @@
   # env var: LOTUS_SEALING_MINUPGRADESECTOREXPIRATION
   #MinUpgradeSectorExpiration = 0
 
-  # When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
-  # be selected based on lowest initial pledge.
-  # 
-  # Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
-  # selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
-  # where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
-  # 
-  # Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
-  # initial pledge - upgrade sectors will always be chosen based on longest expiration
+  # DEPRECATED: Target expiration is no longer used
   #
   # type: uint64
   # env var: LOTUS_SEALING_MINTARGETUPGRADESECTOREXPIRATION
@@ -641,6 +662,16 @@
   # type: types.FIL
   # env var: LOTUS_SEALING_AGGREGATEABOVEBASEFEE
   #AggregateAboveBaseFee = "0.00000000032 FIL"
+
+  # When submitting several sector prove commit messages simultaneously, this option allows you to
+  # stagger the number of prove commits submitted per epoch
+  # This is done because gas estimates for ProveCommits are non deterministic and increasing as a large
+  # number of sectors get committed within the same epoch resulting in occasionally failed msgs.
+  # Submitting a smaller number of prove commits per epoch would reduce the possibility of failed msgs
+  #
+  # type: uint64
+  # env var: LOTUS_SEALING_MAXSECTORPROVECOMMITSSUBMITTEDPEREPOCH
+  #MaxSectorProveCommitsSubmittedPerEpoch = 20
 
   # type: uint64
   # env var: LOTUS_SEALING_TERMINATEBATCHMAX

@@ -29,7 +29,7 @@ func Weight(ctx context.Context, stateBs bstore.Blockstore, ts *types.TipSet) (t
 
 	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * sum(ts.blocks[].ElectionProof.WinCount) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	tpow := big2.Zero()
+	var tpow big2.Int
 	{
 		cst := cbor.NewCborStore(stateBs)
 		state, err := state.LoadStateTree(cst, ts.ParentState())

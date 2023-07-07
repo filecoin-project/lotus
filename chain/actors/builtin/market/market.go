@@ -15,6 +15,7 @@ import (
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -36,7 +37,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.MarketKey {
+		if name != manifest.MarketKey {
 			return nil, xerrors.Errorf("actor code is not market: %s", name)
 		}
 
@@ -47,6 +48,12 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
+
+		case actorstypes.Version11:
+			return load11(store, act.Head)
 
 		}
 	}
@@ -108,6 +115,12 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 
 	case actorstypes.Version9:
 		return make9(store)
+
+	case actorstypes.Version10:
+		return make10(store)
+
+	case actorstypes.Version11:
+		return make11(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -198,6 +211,12 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	case actorstypes.Version9:
 		return decodePublishStorageDealsReturn9(b)
 
+	case actorstypes.Version10:
+		return decodePublishStorageDealsReturn10(b)
+
+	case actorstypes.Version11:
+		return decodePublishStorageDealsReturn11(b)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -282,5 +301,7 @@ func AllCodes() []cid.Cid {
 		(&state7{}).Code(),
 		(&state8{}).Code(),
 		(&state9{}).Code(),
+		(&state10{}).Code(),
+		(&state11{}).Code(),
 	}
 }

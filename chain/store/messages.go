@@ -114,12 +114,35 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 		return nil, xerrors.Errorf("failed to load state tree at tipset %s: %w", ts, err)
 	}
 
+	useIds := false
 	selectMsg := func(m *types.Message) (bool, error) {
 		var sender address.Address
 		if ts.Height() >= build.UpgradeHyperdriveHeight {
-			sender, err = st.LookupID(m.From)
-			if err != nil {
-				return false, err
+			if useIds {
+				sender, err = st.LookupID(m.From)
+				if err != nil {
+					return false, xerrors.Errorf("failed to resolve sender: %w", err)
+				}
+			} else {
+				if m.From.Protocol() != address.ID {
+					// we haven't been told to use IDs, just use the robust addr
+					sender = m.From
+				} else {
+					// uh-oh, we actually have an ID-sender!
+					useIds = true
+					for robust, nonce := range applied {
+						resolved, err := st.LookupID(robust)
+						if err != nil {
+							return false, xerrors.Errorf("failed to resolve sender: %w", err)
+						}
+						applied[resolved] = nonce
+					}
+
+					sender, err = st.LookupID(m.From)
+					if err != nil {
+						return false, xerrors.Errorf("failed to resolve sender: %w", err)
+					}
+				}
 			}
 		} else {
 			sender = m.From
@@ -207,9 +230,7 @@ type mmCids struct {
 }
 
 func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
-	o, ok := cs.mmCache.Get(mmc)
-	if ok {
-		mmcids := o.(*mmCids)
+	if mmcids, ok := cs.mmCache.Get(mmc); ok {
 		return mmcids.bls, mmcids.secpk, nil
 	}
 
@@ -229,12 +250,32 @@ func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.C
 		return nil, nil, xerrors.Errorf("loading secpk message cids for block: %w", err)
 	}
 
-	cs.mmCache.Add(mmc, &mmCids{
+	cs.mmCache.Add(mmc, mmCids{
 		bls:   blscids,
 		secpk: secpkcids,
 	})
 
 	return blscids, secpkcids, nil
+}
+
+func (cs *ChainStore) ReadReceipts(ctx context.Context, root cid.Cid) ([]types.MessageReceipt, error) {
+	a, err := blockadt.AsArray(cs.ActorStore(ctx), root)
+	if err != nil {
+		return nil, err
+	}
+
+	receipts := make([]types.MessageReceipt, 0, a.Length())
+	var rcpt types.MessageReceipt
+	if err := a.ForEach(&rcpt, func(i int64) error {
+		if int64(len(receipts)) != i {
+			return xerrors.Errorf("missing receipt %d", i)
+		}
+		receipts = append(receipts, rcpt)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return receipts, nil
 }
 
 func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
@@ -254,6 +295,20 @@ func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader
 	}
 
 	return blsmsgs, secpkmsgs, nil
+}
+
+func (cs *ChainStore) SecpkMessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.SignedMessage, error) {
+	_, secpkcids, err := cs.ReadMsgMetaCids(ctx, b.Messages)
+	if err != nil {
+		return nil, err
+	}
+
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(ctx, secpkcids)
+	if err != nil {
+		return nil, xerrors.Errorf("loading secpk messages for block: %w", err)
+	}
+
+	return secpkmsgs, nil
 }
 
 func (cs *ChainStore) GetParentReceipt(ctx context.Context, b *types.BlockHeader, i int) (*types.MessageReceipt, error) {

@@ -191,12 +191,12 @@ func (s *WindowPoStScheduler) runSubmitPoST(
 func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.BitField, tsk types.TipSetKey) (bitfield.BitField, error) {
 	mid, err := address.IDFromAddress(s.actor)
 	if err != nil {
-		return bitfield.BitField{}, err
+		return bitfield.BitField{}, xerrors.Errorf("failed to convert to ID addr: %w", err)
 	}
 
 	sectorInfos, err := s.api.StateMinerSectors(ctx, s.actor, &check, tsk)
 	if err != nil {
-		return bitfield.BitField{}, err
+		return bitfield.BitField{}, xerrors.Errorf("failed to get sector infos: %w", err)
 	}
 
 	type checkSector struct {
@@ -220,7 +220,21 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 		})
 	}
 
-	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+	nv, err := s.api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("failed to get network version: %w", err)
+	}
+
+	pp := s.proofType
+	// TODO: Drop after nv19 comes and goes
+	if nv >= network.Version19 {
+		pp, err = pp.ToV1_1PostProof()
+		if err != nil {
+			return bitfield.BitField{}, xerrors.Errorf("failed to convert to v1_1 post proof: %w", err)
+		}
+	}
+
+	bad, err := s.faultTracker.CheckProvable(ctx, pp, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
 		s, ok := sectors[id.Number]
 		if !ok {
 			return cid.Undef, false, xerrors.Errorf("sealed CID not found")
@@ -331,7 +345,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 			}
 
 			// process the batch!
-			postsResults[batchIdx] <- result.Wrap(s.processBatch(ctx, manual, di, ts, headTs, batchIdx, batch, firstBatchPartition))
+			postsResults[batchIdx] <- result.Wrap(s.processBatch(ctx, manual, di, ts, headTs, nv, batchIdx, batch, firstBatchPartition))
 		}(batchIdx, batch)
 	}
 
@@ -354,7 +368,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 	return posts, nil
 }
 
-func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di dline.Info, ts, headTs *types.TipSet, batchIdx int, batch []api.Partition, firstBatchPartition int) (*miner.SubmitWindowedPoStParams, error) {
+func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di dline.Info, ts, headTs *types.TipSet, nv network.Version, batchIdx int, batch []api.Partition, firstBatchPartition int) (*miner.SubmitWindowedPoStParams, error) {
 	log := log.WithOptions(zap.Fields(zap.Int("batch", batchIdx)))
 
 	// postSkipped is a set of sectors skipped during PoSt computation. Those sectors will be
@@ -458,9 +472,14 @@ func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di 
 			return nil, err
 		}
 
-		postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), xsinfos, append(abi.PoStRandomness{}, rand...))
+		ppt, err := xsinfos[0].SealProof.RegisteredWindowPoStProofByNetworkVersion(nv)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get window post type: %w", err)
+		}
+
+		postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), ppt, xsinfos, append(abi.PoStRandomness{}, rand...))
 		elapsed := time.Since(tsStart)
-		log.Infow("computing window post", "elapsed", elapsed, "skip", len(ps), "err", err)
+		log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed, "skip", len(ps), "err", err)
 		if err != nil {
 			log.Errorf("error generating window post: %s", err)
 		}

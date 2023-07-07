@@ -68,11 +68,13 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 	require.Equal(t, CCUpgrade, sl[0], "unexpected sector number")
-	{
-		si, err := client.StateSectorGetInfo(ctx, maddr, CCUpgrade, types.EmptyTSK)
-		require.NoError(t, err)
-		require.Less(t, 50000, int(si.Expiration))
-	}
+
+	si, err := client.StateSectorGetInfo(ctx, maddr, CCUpgrade, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotNil(t, si)
+	require.Less(t, 50000, int(si.Expiration))
+	require.True(t, si.ReplacedSectorAge == 0)
+
 	client.WaitForSectorActive(ctx, t, CCUpgrade, maddr)
 
 	//stm: @SECTOR_CC_UPGRADE_001
@@ -98,6 +100,12 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{
 		CCUpgrade: {},
 	})
+
+	siUpdate, err := client.StateSectorGetInfo(ctx, maddr, CCUpgrade, types.EmptyTSK)
+	require.NoError(t, err)
+	require.NotNil(t, siUpdate)
+	require.True(t, siUpdate.SectorKeyCID != nil)
+	require.True(t, siUpdate.Activation > si.Activation)
 
 	return client
 }

@@ -94,6 +94,21 @@ func (mr *MockSealingAPIMockRecorder) ChainReadObj(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainReadObj", reflect.TypeOf((*MockSealingAPI)(nil).ChainReadObj), arg0, arg1)
 }
 
+// GasEstimateMessageGas mocks base method.
+func (m *MockSealingAPI) GasEstimateMessageGas(arg0 context.Context, arg1 *types.Message, arg2 *api.MessageSendSpec, arg3 types.TipSetKey) (*types.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GasEstimateMessageGas", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*types.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GasEstimateMessageGas indicates an expected call of GasEstimateMessageGas.
+func (mr *MockSealingAPIMockRecorder) GasEstimateMessageGas(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GasEstimateMessageGas", reflect.TypeOf((*MockSealingAPI)(nil).GasEstimateMessageGas), arg0, arg1, arg2, arg3)
+}
+
 // MpoolPushMessage mocks base method.
 func (m *MockSealingAPI) MpoolPushMessage(arg0 context.Context, arg1 *types.Message, arg2 *api.MessageSendSpec) (*types.SignedMessage, error) {
 	m.ctrl.T.Helper()

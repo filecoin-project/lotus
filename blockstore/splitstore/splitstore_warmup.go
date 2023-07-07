@@ -136,9 +136,8 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	if err != nil {
 		return xerrors.Errorf("error saving warm up epoch: %w", err)
 	}
-	s.mx.Lock()
-	s.warmupEpoch = epoch
-	s.mx.Unlock()
+
+	s.warmupEpoch.Store(int64(epoch))
 
 	// also save the compactionIndex, as this is used as an indicator of warmup for upgraded nodes
 	err = s.ds.Put(s.ctx, compactionIndexKey, int64ToBytes(s.compactionIndex))

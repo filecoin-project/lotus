@@ -45,18 +45,7 @@ func workersCmd(sealing bool) *cli.Command {
 	return &cli.Command{
 		Name:  "workers",
 		Usage: "list workers",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "color",
-				Usage:       "use color in display output",
-				DefaultText: "depends on output being a TTY",
-			},
-		},
 		Action: func(cctx *cli.Context) error {
-			if cctx.IsSet("color") {
-				color.NoColor = !cctx.Bool("color")
-			}
-
 			minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 			if err != nil {
 				return err
@@ -146,7 +135,7 @@ func workersCmd(sealing bool) *cli.Command {
 				})
 				var taskStr string
 				for _, t := range tc {
-					taskStr = t[1] + " "
+					taskStr += t[1] + " "
 				}
 				if taskStr != "" {
 					fmt.Printf("\tTASK: %s\n", taskStr)
@@ -219,20 +208,11 @@ var sealingJobsCmd = &cli.Command{
 	Usage: "list running jobs",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:        "color",
-			Usage:       "use color in display output",
-			DefaultText: "depends on output being a TTY",
-		},
-		&cli.BoolFlag{
 			Name:  "show-ret-done",
 			Usage: "show returned but not consumed calls",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.IsSet("color") {
-			color.NoColor = !cctx.Bool("color")
-		}
-
 		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err

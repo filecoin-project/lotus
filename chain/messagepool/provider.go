@@ -2,6 +2,7 @@ package messagepool
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -27,8 +28,9 @@ type Provider interface {
 	SubscribeHeadChanges(func(rev, app []*types.TipSet) error) *types.TipSet
 	PutMessage(ctx context.Context, m types.ChainMsg) (cid.Cid, error)
 	PubSubPublish(string, []byte) error
+	GetActorBefore(address.Address, *types.TipSet) (*types.Actor, error)
 	GetActorAfter(address.Address, *types.TipSet) (*types.Actor, error)
-	StateAccountKeyAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	StateDeterministicAddressAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateNetworkVersion(context.Context, abi.ChainEpoch) network.Version
 	MessagesForBlock(context.Context, *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(context.Context, *types.TipSet) ([]types.ChainMsg, error)
@@ -58,6 +60,23 @@ func (mpp *mpoolProvider) IsLite() bool {
 	return mpp.lite != nil
 }
 
+func (mpp *mpoolProvider) getActorLite(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	if !mpp.IsLite() {
+		return nil, errors.New("should not use getActorLite on non lite Provider")
+	}
+
+	n, err := mpp.lite.GetNonce(context.TODO(), addr, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("getting nonce over lite: %w", err)
+	}
+	a, err := mpp.lite.GetActor(context.TODO(), addr, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("getting actor over lite: %w", err)
+	}
+	a.Nonce = n
+	return a, nil
+}
+
 func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
 	mpp.sm.ChainStore().SubscribeHeadChanges(
 		store.WrapHeadChangeCoalescer(
@@ -74,21 +93,20 @@ func (mpp *mpoolProvider) PutMessage(ctx context.Context, m types.ChainMsg) (cid
 }
 
 func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
-	return mpp.ps.Publish(k, v) //nolint
+	return mpp.ps.Publish(k, v) // nolint
+}
+
+func (mpp *mpoolProvider) GetActorBefore(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	if mpp.IsLite() {
+		return mpp.getActorLite(addr, ts)
+	}
+
+	return mpp.sm.LoadActor(context.TODO(), addr, ts)
 }
 
 func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	if mpp.IsLite() {
-		n, err := mpp.lite.GetNonce(context.TODO(), addr, ts.Key())
-		if err != nil {
-			return nil, xerrors.Errorf("getting nonce over lite: %w", err)
-		}
-		a, err := mpp.lite.GetActor(context.TODO(), addr, ts.Key())
-		if err != nil {
-			return nil, xerrors.Errorf("getting actor over lite: %w", err)
-		}
-		a.Nonce = n
-		return a, nil
+		return mpp.getActorLite(addr, ts)
 	}
 
 	stcid, _, err := mpp.sm.TipSetState(context.TODO(), ts)
@@ -102,8 +120,8 @@ func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) 
 	return st.GetActor(addr)
 }
 
-func (mpp *mpoolProvider) StateAccountKeyAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	return mpp.sm.ResolveToKeyAddressAtFinality(ctx, addr, ts)
+func (mpp *mpoolProvider) StateDeterministicAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	return mpp.sm.ResolveToDeterministicAddressAtFinality(ctx, addr, ts)
 }
 
 func (mpp *mpoolProvider) StateNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {

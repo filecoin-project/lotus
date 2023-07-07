@@ -3,17 +3,18 @@ package blockstore
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 
+	iface "github.com/ipfs/boxo/coreiface"
+	"github.com/ipfs/boxo/coreiface/options"
+	"github.com/ipfs/boxo/coreiface/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	httpapi "github.com/ipfs/go-ipfs-http-client"
-	iface "github.com/ipfs/interface-go-ipfs-core"
-	"github.com/ipfs/interface-go-ipfs-core/options"
-	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
+
+	rpc "github.com/filecoin-project/kubo-api-client"
 )
 
 type IPFSBlockstore struct {
@@ -24,7 +25,7 @@ type IPFSBlockstore struct {
 var _ BasicBlockstore = (*IPFSBlockstore)(nil)
 
 func NewLocalIPFSBlockstore(ctx context.Context, onlineMode bool) (Blockstore, error) {
-	localApi, err := httpapi.NewLocalApi()
+	localApi, err := rpc.NewLocalApi()
 	if err != nil {
 		return nil, xerrors.Errorf("getting local ipfs api: %w", err)
 	}
@@ -51,7 +52,7 @@ func NewLocalIPFSBlockstore(ctx context.Context, onlineMode bool) (Blockstore, e
 }
 
 func NewRemoteIPFSBlockstore(ctx context.Context, maddr multiaddr.Multiaddr, onlineMode bool) (Blockstore, error) {
-	httpApi, err := httpapi.NewApi(maddr)
+	httpApi, err := rpc.NewApi(maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("setting remote ipfs api: %w", err)
 	}
@@ -103,7 +104,7 @@ func (i *IPFSBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, er
 		return nil, xerrors.Errorf("getting ipfs block: %w", err)
 	}
 
-	data, err := ioutil.ReadAll(rd)
+	data, err := io.ReadAll(rd)
 	if err != nil {
 		return nil, err
 	}

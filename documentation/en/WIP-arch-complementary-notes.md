@@ -1,14 +1,14 @@
 # Genesis block
 
-Seems a good way to start exploring the VM state though the instantiation of its different actors like the storage power.
+Seems a good way to start exploring the VM state through the instantiation of its different actors like the storage power.
 
-Explain where do we load the genesis block, the CAR entries, and we set the root of the state. Follow the daemon command option, `chain.LoadGenesis()` saves all the blocks of the CAR file into the store provided by `ChainBlockstore` (this should already be explained in the previous section). The CAR root (MT root?) of those blocks is decoded into the `BlockHeader` that will be the Filecoin (genesis) block of the chain, but most of the information was stored in the raw data (non-Filecoin, what's the correct term?) blocks forwarded directly to the chain, the block header just has a pointer to it.
+Explain where we load the genesis block, the CAR entries, and we set the root of the state. Follow the daemon command option, `chain.LoadGenesis()` saves all the blocks of the CAR file into the store provided by `ChainBlockstore` (this should already be explained in the previous section). The CAR root (MT root?) of those blocks is decoded into the `BlockHeader` that will be the Filecoin (genesis) block of the chain, but most of the information was stored in the raw data (non-Filecoin, what's the correct term?) blocks forwarded directly to the chain, the block header just has a pointer to it.
 
 `SetGenesis` block with name 0. `(ChainStore).SetGenesis()` stores it there.
 
 `MakeInitialStateTree` (`chain/gen/genesis/genesis.go`, used to construct the genesis block (`MakeGenesisBlock()`), constructs the state tree (`NewStateTree`) which is just a "pointer" (root node in the HAMT) to the different actors. It will be continuously used in `(*StateTree).SetActor()` an `types.Actor` structure under a certain `Address` (in the HAMT). (How does the `stateSnaps` work? It has no comments.)
 
-From this point we can follow different setup function like:
+From this point we can follow different setup functions like:
 
 * `SetupInitActor()`: see the `AddressMap`.
 
@@ -40,7 +40,7 @@ List what are the main directories we should be looking at (e.g., `chain/`) and 
 
 # Tests
 
-Run a few messages and observe state changes. What is the easiest test that also let's us "interact" with it (modify something and observe the difference).
+Run a few messages and observe state changes. What is the easiest test that also lets us "interact" with it (modify something and observe the difference).
 
 ### Filecoin blocks vs IPFS blocks
 
@@ -84,7 +84,7 @@ func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
 
 These edited extracts from the `BlockHeader` show how it's treated as an IPFS block, `github.com/ipfs/go-block-format.block.BasicBlock`, to be both stored and referenced by its block storage CID.
 
-This duality permeates the code (and the Filecoin spec for that matter) but it is usually clear within the context to which block we are referring to. Normally the unqualified *block* is reserved for the Filecoin block and we won't usually refer to the IPFS one but only implicitly through the concept of its CID. With enough understanding of both stack's architecture the two definitions can coexist without much confusion as we will abstract away the IPFS layer and just use the CID as an identifier that we now its unique for two sequences of different *raw* byte strings.
+This duality permeates the code (and the Filecoin spec for that matter) but it is usually clear within the context to which block we are referring to. Normally the unqualified *block* is reserved for the Filecoin block and we won't usually refer to the IPFS one but only implicitly through the concept of its CID. With enough understanding of both stack's architecture the two definitions can coexist without much confusion as we will abstract away the IPFS layer and just use the CID as an identifier that we know is unique for two sequences of different *raw* byte strings.
 
 (FIXME: We use to do this presentation when talking about `gossipsub` topics and incoming blocks, and had to deal with, besides the block ambiguity, a similar confusion with the *message* term, used in libp2p to name anything that comes through the network, needing to present the extremely confusing hierarchy of a libp2p message containing a Filecoin block, identified by a IPFS block CID, containing Filecoin messages.)
 

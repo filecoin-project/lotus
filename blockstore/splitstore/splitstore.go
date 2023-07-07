@@ -115,6 +115,23 @@ type Config struct {
 	// A positive value is the number of compactions before a full GC is performed;
 	// a value of 1 will perform full GC in every compaction.
 	HotStoreFullGCFrequency uint64
+
+	// HotstoreMaxSpaceTarget suggests the max allowed space the hotstore can take.
+	// This is not a hard limit, it is possible for the hotstore to exceed the target
+	// for example if state grows massively between compactions. The splitstore
+	// will make a best effort to avoid overflowing the target and in practice should
+	// never overflow.  This field is used when doing GC at the end of a compaction to
+	// adaptively choose moving GC
+	HotstoreMaxSpaceTarget uint64
+
+	// Moving GC will be triggered when total moving size exceeds
+	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold
+	HotstoreMaxSpaceThreshold uint64
+
+	// Safety buffer to prevent moving GC from overflowing disk.
+	// Moving GC will not occur when total moving size exceeds
+	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
+	HotstoreMaxSpaceSafetyBuffer uint64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -147,7 +164,7 @@ type SplitStore struct {
 	path string
 
 	mx          sync.Mutex
-	warmupEpoch abi.ChainEpoch // protected by mx
+	warmupEpoch atomic.Int64
 	baseEpoch   abi.ChainEpoch // protected by compaction lock
 	pruneEpoch  abi.ChainEpoch // protected by compaction lock
 
@@ -165,9 +182,15 @@ type SplitStore struct {
 
 	compactionIndex int64
 	pruneIndex      int64
+	onlineGCCnt     int64
 
 	ctx    context.Context
 	cancel func()
+
+	outOfSync         int32 // for fast checking
+	chainSyncMx       sync.Mutex
+	chainSyncCond     sync.Cond
+	chainSyncFinished bool // protected by chainSyncMx
 
 	debug *debugLog
 
@@ -195,6 +218,17 @@ type SplitStore struct {
 
 	// registered protectors
 	protectors []func(func(cid.Cid) error) error
+
+	// dag sizes measured during latest compaction
+	// logged and used for GC strategy
+
+	// protected by compaction lock
+	szWalk          int64
+	szProtectedTxns int64
+	szKeys          int64 // approximate, not counting keys protected when entering critical section
+
+	// protected by txnLk
+	szMarkedLiveRefs int64
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -232,6 +266,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 
 	ss.txnViewsCond.L = &ss.txnViewsMx
 	ss.txnSyncCond.L = &ss.txnSyncMx
+	ss.chainSyncCond.L = &ss.chainSyncMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
 
 	ss.reifyCond.L = &ss.reifyMx
@@ -447,6 +482,23 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	}
 }
 
+func (s *SplitStore) Flush(ctx context.Context) error {
+	s.txnLk.RLock()
+	defer s.txnLk.RUnlock()
+
+	if err := s.cold.Flush(ctx); err != nil {
+		return err
+	}
+	if err := s.hot.Flush(ctx); err != nil {
+		return err
+	}
+	if err := s.ds.Sync(ctx, dstore.Key{}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	if isIdentiyCid(blk.Cid()) {
 		return nil
@@ -632,9 +684,7 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 }
 
 func (s *SplitStore) isWarm() bool {
-	s.mx.Lock()
-	defer s.mx.Unlock()
-	return s.warmupEpoch > 0
+	return s.warmupEpoch.Load() > 0
 }
 
 // State tracking
@@ -705,7 +755,7 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 	bs, err = s.ds.Get(s.ctx, warmupEpochKey)
 	switch err {
 	case nil:
-		s.warmupEpoch = bytesToEpoch(bs)
+		s.warmupEpoch.Store(bytesToInt64(bs))
 
 	case dstore.ErrNotFound:
 		warmup = true
@@ -739,7 +789,7 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		return xerrors.Errorf("error loading compaction index: %w", err)
 	}
 
-	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch)
+	log.Infow("starting splitstore", "baseEpoch", s.baseEpoch, "warmupEpoch", s.warmupEpoch.Load())
 
 	if warmup {
 		err = s.warmup(curTs)
@@ -775,6 +825,11 @@ func (s *SplitStore) Close() error {
 		s.txnSync = true
 		s.txnSyncCond.Broadcast()
 		s.txnSyncMx.Unlock()
+
+		s.chainSyncMx.Lock()
+		s.chainSyncFinished = true
+		s.chainSyncCond.Broadcast()
+		s.chainSyncMx.Unlock()
 
 		log.Warn("close with ongoing compaction in progress; waiting for it to finish...")
 		for atomic.LoadInt32(&s.compacting) == 1 {

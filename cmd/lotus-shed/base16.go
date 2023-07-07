@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -30,7 +29,7 @@ var base16Cmd = &cli.Command{
 			input = strings.NewReader(cctx.Args().First())
 		}
 
-		bytes, err := ioutil.ReadAll(input)
+		bytes, err := io.ReadAll(input)
 		if err != nil {
 			return nil
 		}

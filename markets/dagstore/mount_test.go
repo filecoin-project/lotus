@@ -4,7 +4,6 @@ package dagstore
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"strings"
 	"testing"
@@ -39,7 +38,7 @@ func TestLotusMount(t *testing.T) {
 		io.ReaderAt
 		io.Seeker
 	}{
-		ReadCloser: ioutil.NopCloser(strings.NewReader("testing")),
+		ReadCloser: io.NopCloser(strings.NewReader("testing")),
 		ReaderAt:   nil,
 		Seeker:     nil,
 	}
@@ -48,7 +47,7 @@ func TestLotusMount(t *testing.T) {
 		io.ReaderAt
 		io.Seeker
 	}{
-		ReadCloser: ioutil.NopCloser(strings.NewReader("testing")),
+		ReadCloser: io.NopCloser(strings.NewReader("testing")),
 		ReaderAt:   nil,
 		Seeker:     nil,
 	}
@@ -66,7 +65,7 @@ func TestLotusMount(t *testing.T) {
 	rd, err := mnt.Fetch(context.Background())
 	require.NoError(t, err)
 
-	bz, err := ioutil.ReadAll(rd)
+	bz, err := io.ReadAll(rd)
 	require.NoError(t, err)
 	require.NoError(t, rd.Close())
 	require.Equal(t, []byte("testing"), bz)
@@ -85,7 +84,7 @@ func TestLotusMount(t *testing.T) {
 	// fetching on this mount should get us back the same data.
 	rd, err = mnt2.Fetch(context.Background())
 	require.NoError(t, err)
-	bz, err = ioutil.ReadAll(rd)
+	bz, err = io.ReadAll(rd)
 	require.NoError(t, err)
 	require.NoError(t, rd.Close())
 	require.Equal(t, []byte("testing"), bz)

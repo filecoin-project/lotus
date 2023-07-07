@@ -13,15 +13,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/boxo/blockservice"
+	bstore "github.com/ipfs/boxo/blockstore"
+	offline "github.com/ipfs/boxo/exchange/offline"
+	"github.com/ipfs/boxo/files"
+	"github.com/ipfs/boxo/ipld/merkledag"
+	unixfile "github.com/ipfs/boxo/ipld/unixfs/file"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	files "github.com/ipfs/go-ipfs-files"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipfs/go-merkledag"
-	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
 	"github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
@@ -44,7 +44,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-commp-utils/writer"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -1302,8 +1302,8 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 		return nil, err
 	}
 	for _, s := range ps {
-		if strings.HasPrefix(s, dealProtoPrefix) {
-			res.DealProtocols = append(res.DealProtocols, s)
+		if strings.HasPrefix(string(s), dealProtoPrefix) {
+			res.DealProtocols = append(res.DealProtocols, string(s))
 		}
 	}
 	sort.Strings(res.DealProtocols)

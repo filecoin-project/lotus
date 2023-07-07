@@ -30,8 +30,9 @@ func TestDealsWithFinalizeEarly(t *testing.T) {
 
 	var blockTime = 50 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) { sc.FinalizeEarly = true })) // no mock proofs.
-	ens.InterconnectAll().BeginMining(blockTime)
+	// We use two miners so that in case the actively tested miner misses PoSt, we still have a blockchain
+	client, miner, poster, ens := kit.EnsembleOneTwo(t, kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) { sc.FinalizeEarly = true })) // no mock proofs.
+	ens.InterconnectAll().BeginMiningMustPost(blockTime, poster)
 	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	ctx := context.Background()

@@ -1,0 +1,66 @@
+{
+  "template": {
+    "settings": {},
+    "mappings": {
+      "runtime": {
+        "peerScore.weightedScore": {
+          "type": "double",
+          "script": {
+            "source": "if (doc['type'].value == 100) {\n    def score = doc['peerScore.score'].value;\n    if (doc['sourceAuth'] == \"<password>\") {\n\n        emit(score * 1.2)\n    } else {\n        emit(score)\n    }\n}\n",
+            "lang": "painless"
+          }
+        }
+      },
+      "properties": {
+        "peerScore": {
+          "properties": {
+            "appSpecificScore": {
+              "type": "double"
+            },
+            "behaviourPenalty": {
+              "type": "double"
+            },
+            "ipColocationFactor": {
+              "type": "double"
+            },
+            "score": {
+              "type": "double"
+            },
+            "topics": {
+              "type": "nested",
+              "properties": {
+                "firstMessageDeliveries": {
+                  "type": "double",
+                  "ignore_malformed": false,
+                  "coerce": true
+                },
+                "invalidMessageDeliveries": {
+                  "type": "double",
+                  "ignore_malformed": false,
+                  "coerce": true
+                },
+                "meshMessageDeliveries": {
+                  "type": "double",
+                  "ignore_malformed": false,
+                  "coerce": true
+                },
+                "timeInMesh": {
+                  "type": "double",
+                  "ignore_malformed": false,
+                  "coerce": true
+                },
+                "topic": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "sourceAuth": {
+          "type": "keyword"
+        }
+      }
+    },
+    "aliases": {}
+  }
+}

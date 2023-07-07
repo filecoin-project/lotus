@@ -17,6 +17,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	power11 "github.com/filecoin-project/go-state-types/builtin/v11/power"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
@@ -27,6 +28,7 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 	reward2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
@@ -40,7 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -94,7 +96,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			Epoch:          0,
 			Rand:           &fakeRand{},
 			Bstore:         cs.StateBlockstore(),
-			Actors:         filcns.NewActorRegistry(),
+			Actors:         consensus.NewActorRegistry(),
 			Syscalls:       mkFakedSigSyscalls(sys),
 			CircSupplyCalc: csc,
 			NetworkVersion: nv,
@@ -135,14 +137,32 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		}
 
 		{
-			constructorParams := &power0.CreateMinerParams{
-				Owner:         m.Worker,
-				Worker:        m.Worker,
-				Peer:          []byte(m.PeerId),
-				SealProofType: spt,
+			var params []byte
+			if nv <= network.Version10 {
+				constructorParams := &power2.CreateMinerParams{
+					Owner:         m.Worker,
+					Worker:        m.Worker,
+					Peer:          []byte(m.PeerId),
+					SealProofType: spt,
+				}
+
+				params = mustEnc(constructorParams)
+			} else {
+				ppt, err := spt.RegisteredWindowPoStProofByNetworkVersion(nv)
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("failed to convert spt to wpt: %w", err)
+				}
+
+				constructorParams := &power11.CreateMinerParams{
+					Owner:               m.Worker,
+					Worker:              m.Worker,
+					Peer:                []byte(m.PeerId),
+					WindowPoStProofType: ppt,
+				}
+
+				params = mustEnc(constructorParams)
 			}
 
-			params := mustEnc(constructorParams)
 			rval, err := doExecValue(ctx, genesisVm, power.Address, m.Owner, m.PowerBalance, power.Methods.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)

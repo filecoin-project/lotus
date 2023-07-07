@@ -48,7 +48,7 @@ func (s *RPCStateManager) LookupID(ctx context.Context, addr address.Address, ts
 	return s.gapi.StateLookupID(ctx, addr, ts.Key())
 }
 
-func (s *RPCStateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (s *RPCStateManager) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	return s.gapi.StateAccountKey(ctx, addr, ts.Key())
 }
 

@@ -152,6 +152,12 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 
 	peers := []peer.ID{}
 	addrInfos, err := addrutil.ParseAddresses(ctx, cfg.InitPeerset)
+	if err != nil {
+		logger.Error("error parsing addresses: ", err)
+		cancel()
+		return nil, err
+	}
+
 	for _, addrInfo := range addrInfos {
 		peers = append(peers, addrInfo.ID)
 
@@ -422,7 +428,7 @@ func (cc *Consensus) RmPeer(ctx context.Context, pid peer.ID) error {
 			return err
 		}
 		// Being here means we are the leader and can commit
-		finalErr = cc.raft.RemovePeer(ctx, peer.Encode(pid))
+		finalErr = cc.raft.RemovePeer(ctx, pid.String())
 		if finalErr != nil {
 			time.Sleep(cc.config.CommitRetryDelay)
 			continue

@@ -94,6 +94,21 @@ func collateralSendAmount(ctx context.Context, api interface {
 	return collateral, nil
 }
 
+func simulateMsgGas(ctx context.Context, sa interface {
+	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
+},
+	from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (*types.Message, error) {
+	msg := types.Message{
+		To:     to,
+		From:   from,
+		Value:  value,
+		Method: method,
+		Params: params,
+	}
+
+	return sa.GasEstimateMessageGas(ctx, &msg, nil, types.EmptyTSK)
+}
+
 func sendMsg(ctx context.Context, sa interface {
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 }, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {

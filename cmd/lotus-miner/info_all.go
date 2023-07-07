@@ -150,11 +150,6 @@ var infoAllCmd = &cli.Command{
 			}
 		}
 
-		fmt.Println("\n#: Retrieval Deals")
-		if err := retrievalDealsListCmd.Action(cctx); err != nil {
-			fmt.Println("ERROR: ", err)
-		}
-
 		fmt.Println("\n#: Data Transfers")
 		{
 			fs := &flag.FlagSet{}
@@ -198,8 +193,17 @@ var infoAllCmd = &cli.Command{
 		}
 
 		fmt.Println("\n#: Sector List")
-		if err := sectorsListCmd.Action(cctx); err != nil {
-			fmt.Println("ERROR: ", err)
+		{
+			fs := &flag.FlagSet{}
+			for _, f := range sectorsListCmd.Flags {
+				if err := f.Apply(fs); err != nil {
+					fmt.Println("ERROR: ", err)
+				}
+			}
+
+			if err := sectorsListCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
+				fmt.Println("ERROR: ", err)
+			}
 		}
 
 		fmt.Println("\n#: Storage Sector List")

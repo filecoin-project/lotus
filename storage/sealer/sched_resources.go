@@ -1,9 +1,9 @@
 package sealer
 
 import (
-	"context"
 	"sync"
-	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -15,20 +15,84 @@ type ActiveResources struct {
 	gpuUsed    float64
 	cpuUse     uint64
 
-	taskCounters map[sealtasks.SealTaskType]int
+	taskCounters *taskCounter
 
 	cond    *sync.Cond
 	waiting int
 }
 
-func NewActiveResources() *ActiveResources {
-	return &ActiveResources{
-		taskCounters: map[sealtasks.SealTaskType]int{},
+type taskCounter struct {
+	taskCounters map[sealtasks.SealTaskType]map[uuid.UUID]int
+
+	// this lock is technically redundant, as ActiveResources is always accessed
+	// with the worker lock, but let's not panic if we ever change that
+	lk sync.Mutex
+}
+
+func newTaskCounter() *taskCounter {
+	return &taskCounter{
+		taskCounters: make(map[sealtasks.SealTaskType]map[uuid.UUID]int),
 	}
 }
 
-func (a *ActiveResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, tt sealtasks.SealTaskType, r storiface.Resources, locker sync.Locker, cb func() error) error {
-	for !a.CanHandleRequest(tt, r, id, "withResources", wr) {
+func (tc *taskCounter) Add(tt sealtasks.SealTaskType, schedID uuid.UUID) {
+	tc.lk.Lock()
+	defer tc.lk.Unlock()
+	tc.getUnlocked(tt)[schedID]++
+}
+
+func (tc *taskCounter) Free(tt sealtasks.SealTaskType, schedID uuid.UUID) {
+	tc.lk.Lock()
+	defer tc.lk.Unlock()
+	m := tc.getUnlocked(tt)
+	if m[schedID] <= 1 {
+		delete(m, schedID)
+	} else {
+		m[schedID]--
+	}
+}
+
+func (tc *taskCounter) getUnlocked(tt sealtasks.SealTaskType) map[uuid.UUID]int {
+	if tc.taskCounters[tt] == nil {
+		tc.taskCounters[tt] = make(map[uuid.UUID]int)
+	}
+
+	return tc.taskCounters[tt]
+}
+
+func (tc *taskCounter) Get(tt sealtasks.SealTaskType) map[uuid.UUID]int {
+	tc.lk.Lock()
+	defer tc.lk.Unlock()
+
+	return tc.getUnlocked(tt)
+}
+
+func (tc *taskCounter) Sum() int {
+	tc.lk.Lock()
+	defer tc.lk.Unlock()
+	sum := 0
+	for _, v := range tc.taskCounters {
+		sum += len(v)
+	}
+	return sum
+}
+
+func (tc *taskCounter) ForEach(cb func(tt sealtasks.SealTaskType, count int)) {
+	tc.lk.Lock()
+	defer tc.lk.Unlock()
+	for tt, v := range tc.taskCounters {
+		cb(tt, len(v))
+	}
+}
+
+func NewActiveResources(tc *taskCounter) *ActiveResources {
+	return &ActiveResources{
+		taskCounters: tc,
+	}
+}
+
+func (a *ActiveResources) withResources(schedID uuid.UUID, id storiface.WorkerID, wr storiface.WorkerInfo, tt sealtasks.SealTaskType, r storiface.Resources, locker sync.Locker, cb func() error) error {
+	for !a.CanHandleRequest(schedID, tt, r, id, "withResources", wr) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
 		}
@@ -37,11 +101,11 @@ func (a *ActiveResources) withResources(id storiface.WorkerID, wr storiface.Work
 		a.waiting--
 	}
 
-	a.Add(tt, wr.Resources, r)
+	a.Add(schedID, tt, wr.Resources, r)
 
 	err := cb()
 
-	a.Free(tt, wr.Resources, r)
+	a.Free(schedID, tt, wr.Resources, r)
 
 	return err
 }
@@ -52,7 +116,7 @@ func (a *ActiveResources) hasWorkWaiting() bool {
 }
 
 // add task resources to ActiveResources and return utilization difference
-func (a *ActiveResources) Add(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
+func (a *ActiveResources) Add(schedID uuid.UUID, tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
 	startUtil := a.utilization(wr)
 
 	if r.GPUUtilization > 0 {
@@ -61,19 +125,19 @@ func (a *ActiveResources) Add(tt sealtasks.SealTaskType, wr storiface.WorkerReso
 	a.cpuUse += r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
-	a.taskCounters[tt]++
+	a.taskCounters.Add(tt, schedID)
 
 	return a.utilization(wr) - startUtil
 }
 
-func (a *ActiveResources) Free(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
+func (a *ActiveResources) Free(schedID uuid.UUID, tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed -= r.GPUUtilization
 	}
 	a.cpuUse -= r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin -= r.MinMemory
 	a.memUsedMax -= r.MaxMemory
-	a.taskCounters[tt]--
+	a.taskCounters.Free(tt, schedID)
 
 	if a.cond != nil {
 		a.cond.Broadcast()
@@ -82,10 +146,11 @@ func (a *ActiveResources) Free(tt sealtasks.SealTaskType, wr storiface.WorkerRes
 
 // CanHandleRequest evaluates if the worker has enough available resources to
 // handle the request.
-func (a *ActiveResources) CanHandleRequest(tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
+func (a *ActiveResources) CanHandleRequest(schedID uuid.UUID, tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
 	if needRes.MaxConcurrent > 0 {
-		if a.taskCounters[tt] >= needRes.MaxConcurrent {
-			log.Debugf("sched: not scheduling on worker %s for %s; at task limit tt=%s, curcount=%d", wid, caller, tt, a.taskCounters[tt])
+		tasks := a.taskCounters.Get(tt)
+		if len(tasks) >= needRes.MaxConcurrent && (schedID == uuid.UUID{} || tasks[schedID] == 0) {
+			log.Debugf("sched: not scheduling on worker %s for %s; at task limit tt=%s, curcount=%d", wid, caller, tt, a.taskCounters.Get(tt))
 			return false
 		}
 	}
@@ -172,6 +237,15 @@ func (a *ActiveResources) utilization(wr storiface.WorkerResources) float64 { //
 	return max
 }
 
+func (a *ActiveResources) taskCount(tt *sealtasks.SealTaskType) int {
+	// nil means all tasks
+	if tt == nil {
+		return a.taskCounters.Sum()
+	}
+
+	return len(a.taskCounters.Get(*tt))
+}
+
 func (wh *WorkerHandle) Utilization() float64 {
 	wh.lk.Lock()
 	u := wh.active.utilization(wh.Info.Resources)
@@ -186,19 +260,30 @@ func (wh *WorkerHandle) Utilization() float64 {
 	return u
 }
 
-var tasksCacheTimeout = 30 * time.Second
-
-func (wh *WorkerHandle) TaskTypes(ctx context.Context) (t map[sealtasks.TaskType]struct{}, err error) {
-	wh.tasksLk.Lock()
-	defer wh.tasksLk.Unlock()
-
-	if wh.tasksCache == nil || time.Now().Sub(wh.tasksUpdate) > tasksCacheTimeout {
-		wh.tasksCache, err = wh.workerRpc.TaskTypes(ctx)
-		if err != nil {
-			return nil, err
-		}
-		wh.tasksUpdate = time.Now()
+func (wh *WorkerHandle) TaskCounts() int {
+	wh.lk.Lock()
+	u := wh.active.taskCount(nil)
+	u += wh.preparing.taskCount(nil)
+	wh.lk.Unlock()
+	wh.wndLk.Lock()
+	for _, window := range wh.activeWindows {
+		u += window.Allocated.taskCount(nil)
 	}
+	wh.wndLk.Unlock()
 
-	return wh.tasksCache, nil
+	return u
+}
+
+func (wh *WorkerHandle) TaskCount(tt *sealtasks.SealTaskType) int {
+	wh.lk.Lock()
+	u := wh.active.taskCount(tt)
+	u += wh.preparing.taskCount(tt)
+	wh.lk.Unlock()
+	wh.wndLk.Lock()
+	for _, window := range wh.activeWindows {
+		u += window.Allocated.taskCount(tt)
+	}
+	wh.wndLk.Unlock()
+
+	return u
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
 	paych5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/paych"
 	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
 
@@ -117,7 +118,7 @@ func (ls *laneState5) Nonce() (uint64, error) {
 }
 
 func (s *state5) ActorKey() string {
-	return actors.PaychKey
+	return manifest.PaychKey
 }
 
 func (s *state5) ActorVersion() actorstypes.Version {

@@ -29,8 +29,6 @@ import (
 )
 
 func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
-	ctx := context.Background()
-
 	kit.QuietMiningLogs()
 
 	rootKey, err := key.GenerateKey(types.KTSecp256k1)
@@ -185,6 +183,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 	require.NoError(t, err)
 
 	sig, err := clientApi.WalletSign(ctx, verifiedClientAddr, serializedProposal.Bytes())
+	require.NoError(t, err)
 
 	publishDealParams := markettypes.PublishStorageDealsParams{
 		Deals: []markettypes.ClientDealProposal{{
@@ -276,6 +275,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 		Params: params,
 		Value:  big.Zero(),
 	}, types.EmptyTSK)
+	require.Error(t, err)
 	require.False(t, callResult.MsgRct.ExitCode.IsSuccess())
 
 	verifregDatacapAfter, err := clientApi.StateVerifiedClientStatus(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)

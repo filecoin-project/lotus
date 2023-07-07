@@ -627,7 +627,7 @@ var mmConfirmChangeWorker = &cli.Command{
 			return xerrors.Errorf("worker key change cannot be confirmed until %d, current height is %d", mi.WorkerChangeEpoch, head.Height())
 		}
 
-		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.ConfirmUpdateWorkerKey), nil)
+		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.ConfirmChangeWorkerAddress), nil)
 		if err != nil {
 			return xerrors.Errorf("proposing message: %w", err)
 		}

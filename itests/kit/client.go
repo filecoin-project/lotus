@@ -3,7 +3,6 @@ package kit
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -81,7 +80,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 	dealStatus := ""
 	for {
 		// client list-deals
-		out = clientCLI.RunCmd("client", "list-deals")
+		out = clientCLI.RunCmd("client", "list-deals", "--show-failed")
 		fmt.Println("list-deals:\n", out)
 
 		lines := strings.Split(out, "\n")
@@ -110,7 +109,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 
 	// Retrieve the first file from the Miner
 	// client retrieve <cid> <file path>
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-client")
+	tmpdir, err := os.MkdirTemp(os.TempDir(), "test-cli-client")
 	require.NoError(t, err)
 	path := filepath.Join(tmpdir, "outfile.dat")
 
@@ -144,13 +143,13 @@ func createRandomFile(rseed, size int) ([]byte, string, error) {
 	data := make([]byte, size)
 	rand.New(rand.NewSource(int64(rseed))).Read(data)
 
-	dir, err := ioutil.TempDir(os.TempDir(), "test-make-deal-")
+	dir, err := os.MkdirTemp(os.TempDir(), "test-make-deal-")
 	if err != nil {
 		return nil, "", err
 	}
 
 	path := filepath.Join(dir, "sourcefile.dat")
-	err = ioutil.WriteFile(path, data, 0644)
+	err = os.WriteFile(path, data, 0644)
 	if err != nil {
 		return nil, "", err
 	}

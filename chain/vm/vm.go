@@ -38,6 +38,7 @@ import (
 )
 
 const MaxCallDepth = 4096
+const CborCodec = 0x51
 
 var (
 	log            = logging.Logger("vm")
@@ -45,9 +46,11 @@ var (
 	gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 )
 
-// ResolveToKeyAddr returns the public key type of address (`BLS`/`SECP256K1`) of an account actor identified by `addr`.
-func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
-	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
+// ResolveToDeterministicAddr returns the public key type of address
+// (`BLS`/`SECP256K1`) of an actor identified by `addr`, or its
+// delegated address.
+func ResolveToDeterministicAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, error) {
+	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 || addr.Protocol() == address.Delegated {
 		return addr, nil
 	}
 
@@ -56,12 +59,19 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to find actor: %s", addr)
 	}
 
+	if state.Version() >= types.StateTreeVersion5 {
+		if act.Address != nil {
+			// If there _is_ an f4 address, return it as "key" address
+			return *act.Address, nil
+		}
+	}
+
 	aast, err := account.Load(adt.WrapStore(context.TODO(), cst), act)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to get account actor state for %s: %w", addr, err)
 	}
-
 	return aast.PubkeyAddress()
+
 }
 
 var (
@@ -116,6 +126,10 @@ func (bs *gasChargingBlocks) Put(ctx context.Context, blk block.Block) error {
 }
 
 func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runtime) *Runtime {
+	paramsCodec := uint64(0)
+	if len(msg.Params) > 0 {
+		paramsCodec = CborCodec
+	}
 	rt := &Runtime{
 		ctx:         ctx,
 		vm:          vm,
@@ -131,7 +145,14 @@ func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent 
 		pricelist:        PricelistByEpoch(vm.blockHeight),
 		allowInternal:    true,
 		callerValidated:  false,
-		executionTrace:   types.ExecutionTrace{Msg: msg},
+		executionTrace: types.ExecutionTrace{Msg: types.MessageTrace{
+			From:        msg.From,
+			To:          msg.To,
+			Value:       msg.Value,
+			Method:      msg.Method,
+			Params:      msg.Params,
+			ParamsCodec: paramsCodec,
+		}},
 	}
 
 	if parent != nil {
@@ -192,6 +213,7 @@ type (
 	CircSupplyCalculator func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error)
 	NtwkVersionGetter    func(context.Context, abi.ChainEpoch) network.Version
 	LookbackStateGetter  func(context.Context, abi.ChainEpoch) (*state.StateTree, error)
+	TipSetGetter         func(context.Context, abi.ChainEpoch) (types.TipSetKey, error)
 )
 
 var _ Interface = (*LegacyVM)(nil)
@@ -215,6 +237,7 @@ type LegacyVM struct {
 type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
+	Timestamp      uint64
 	Rand           Rand
 	Bstore         blockstore.Blockstore
 	Actors         *ActorRegistry
@@ -223,7 +246,12 @@ type VMOpts struct {
 	NetworkVersion network.Version
 	BaseFee        abi.TokenAmount
 	LookbackState  LookbackStateGetter
+	TipSetGetter   TipSetGetter
 	Tracing        bool
+	// ReturnEvents decodes and returns emitted events.
+	ReturnEvents bool
+	// ExecutionLane specifies the execution priority of the created vm
+	ExecutionLane ExecutionLane
 }
 
 func NewLegacyVM(ctx context.Context, opts *VMOpts) (*LegacyVM, error) {
@@ -270,6 +298,7 @@ type ApplyRet struct {
 	ExecutionTrace types.ExecutionTrace
 	Duration       time.Duration
 	GasCosts       *GasOutputs
+	Events         []types.Event
 }
 
 func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtime,
@@ -354,15 +383,14 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 		return nil, nil
 	}()
 
-	mr := types.MessageReceipt{
-		ExitCode: aerrors.RetCode(err),
-		Return:   ret,
-		GasUsed:  rt.gasUsed,
+	retCodec := uint64(0)
+	if len(ret) > 0 {
+		retCodec = CborCodec
 	}
-	rt.executionTrace.MsgRct = &mr
-	rt.executionTrace.Duration = time.Since(start)
-	if err != nil {
-		rt.executionTrace.Error = err.Error()
+	rt.executionTrace.MsgRct = types.ReturnTrace{
+		ExitCode:    aerrors.RetCode(err),
+		Return:      ret,
+		ReturnCodec: retCodec,
 	}
 
 	return ret, err, rt

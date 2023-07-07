@@ -249,6 +249,49 @@ func TestMessagesMode(t *testing.T) {
 	assert.True(g.t, g.Exists(ctx, garbageM), "Garbage message not found in splitstore")
 }
 
+func TestCompactRetainsTipSetRef(t *testing.T) {
+	ctx := context.Background()
+	// disable sync checking because efficient itests require that the node is out of sync : /
+	splitstore.CheckSyncGap = false
+	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
+	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
+	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	_ = genesisMiner
+	_ = bm
+
+	check, err := full.ChainHead(ctx)
+	require.NoError(t, err)
+	e := check.Height()
+	checkRef, err := check.Key().Cid()
+	require.NoError(t, err)
+	assert.True(t, ipldExists(ctx, t, checkRef, full)) // reference to tipset key should be persisted before compaction
+
+	// Determine index of compaction that covers tipset "check" and wait for compaction
+	for {
+		bm.Pause()
+		if splitStoreCompacting(ctx, t, full) {
+			bm.Restart()
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
+	}
+	lastCompactionEpoch := splitStoreBaseEpoch(ctx, t, full)
+	garbageCompactionIndex := splitStoreCompactionIndex(ctx, t, full) + 1
+	boundary := lastCompactionEpoch + splitstore.CompactionThreshold - splitstore.CompactionBoundary
+
+	for e > boundary {
+		boundary += splitstore.CompactionThreshold - splitstore.CompactionBoundary
+		garbageCompactionIndex++
+	}
+	bm.Restart()
+
+	// wait for compaction to occur
+	waitForCompaction(ctx, t, garbageCompactionIndex, full)
+	assert.True(t, ipldExists(ctx, t, checkRef, full)) // reference to tipset key should be persisted after compaction
+	bm.Stop()
+}
+
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
 	for {
 		if splitStoreCompactionIndex(ctx, t, n) >= cIdx {
@@ -307,6 +350,14 @@ func splitStorePruneIndex(ctx context.Context, t *testing.T, n *kit.TestFullNode
 	return pruneIndex
 }
 
+func ipldExists(ctx context.Context, t *testing.T, c cid.Cid, n *kit.TestFullNode) bool {
+	found, err := n.ChainHasObj(ctx, c)
+	if err != nil {
+		t.Fatalf("ChainHasObj failure: %s", err)
+	}
+	return found
+}
+
 // Create on chain unreachable garbage for a network to exercise splitstore
 // one garbage cid created at a time
 //
@@ -361,12 +412,10 @@ func (g *Garbager) Exists(ctx context.Context, c cid.Cid) bool {
 		return false
 	} else if err != nil {
 		g.t.Fatalf("ChainReadObj failure on existence check: %s", err)
+		return false // unreachable
 	} else {
 		return true
 	}
-
-	g.t.Fatal("unreachable")
-	return false
 }
 
 func (g *Garbager) newPeerID(ctx context.Context) abi.ChainEpoch {
@@ -423,7 +472,7 @@ func (g *Garbager) createMiner(ctx context.Context) *lapi.MsgLookup {
 	params, err := actors.SerializeParams(&power6.CreateMinerParams{
 		Owner:               owner,
 		Worker:              worker,
-		WindowPoStProofType: abi.RegisteredPoStProof_StackedDrgWindow32GiBV1,
+		WindowPoStProofType: abi.RegisteredPoStProof_StackedDrgWindow32GiBV1_1,
 	})
 	require.NoError(g.t, err)
 

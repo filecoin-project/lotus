@@ -13,6 +13,7 @@ import (
 	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 	power8 "github.com/filecoin-project/go-state-types/builtin/v8/power"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -189,7 +190,7 @@ func fromV8Claim(v8 power8.Claim) Claim {
 }
 
 func (s *state8) ActorKey() string {
-	return actors.PowerKey
+	return manifest.PowerKey
 }
 
 func (s *state8) ActorVersion() actorstypes.Version {

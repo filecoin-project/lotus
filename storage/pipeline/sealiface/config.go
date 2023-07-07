@@ -22,8 +22,6 @@ type Config struct {
 
 	MinUpgradeSectorExpiration uint64
 
-	MinTargetUpgradeSectorExpiration uint64
-
 	MaxUpgradingSectors uint64
 
 	MakeNewSectorForDeals bool
@@ -57,6 +55,8 @@ type Config struct {
 
 	AggregateAboveBaseFee      abi.TokenAmount
 	BatchPreCommitAboveBaseFee abi.TokenAmount
+
+	MaxSectorProveCommitsSubmittedPerEpoch uint64
 
 	TerminateBatchMax  uint64
 	TerminateBatchMin  uint64

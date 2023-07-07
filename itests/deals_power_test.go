@@ -52,7 +52,7 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	providerMined := make(chan struct{})
 
 	go func() {
-		_ = client.WaitTillChain(ctx, kit.BlockMinedBy(provider.ActorAddr))
+		_ = client.WaitTillChain(ctx, kit.BlocksMinedByAll(provider.ActorAddr))
 		close(providerMined)
 	}()
 

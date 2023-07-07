@@ -6,9 +6,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -47,6 +47,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
+	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
@@ -210,7 +211,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		n.genesis.accounts = append(n.genesis.accounts, genacc)
 	}
 
-	*full = TestFullNode{t: n.t, options: options, DefaultKey: key}
+	*full = TestFullNode{t: n.t, options: options, DefaultKey: key, EthSubRouter: gateway.NewEthSubHandler()}
 
 	n.inactive.fullnodes = append(n.inactive.fullnodes, full)
 	return n
@@ -233,7 +234,7 @@ func (n *Ensemble) MinerEnroll(minerNode *TestMiner, full *TestFullNode, opts ..
 	peerId, err := peer.IDFromPrivateKey(privkey)
 	require.NoError(n.t, err)
 
-	tdir, err := ioutil.TempDir("", "preseal-memgen")
+	tdir, err := os.MkdirTemp("", "preseal-memgen")
 	require.NoError(n.t, err)
 
 	minerCnt := len(n.inactive.miners) + len(n.active.miners)
@@ -335,6 +336,8 @@ func (n *Ensemble) Worker(minerNode *TestMiner, worker *TestWorker, opts ...Node
 		MinerNode:      minerNode,
 		RemoteListener: rl,
 		options:        options,
+
+		Stop: func(ctx context.Context) error { return nil },
 	}
 
 	n.inactive.workers = append(n.inactive.workers, worker)
@@ -510,7 +513,7 @@ func (n *Ensemble) Start() *Ensemble {
 				// this is a miner created after genesis, so it won't have a preseal.
 				// we need to create it on chain.
 
-				proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize)
+				proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize, n.genesis.version)
 				require.NoError(n.t, err)
 
 				params, aerr := actors.SerializeParams(&power3.CreateMinerParams{
@@ -708,6 +711,7 @@ func (n *Ensemble) Start() *Ensemble {
 					scfg.Storage.AllowPreCommit1 = false
 					scfg.Storage.AllowPreCommit2 = false
 					scfg.Storage.AllowCommit = false
+					scfg.Storage.AllowUnseal = false
 				}
 
 				scfg.Storage.Assigner = assigner

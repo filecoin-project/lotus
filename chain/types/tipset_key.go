@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	typegen "github.com/whyrusleeping/cbor-gen"
 
@@ -96,6 +97,28 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	}
 	k.value = string(encodeKey(cids))
 	return nil
+}
+
+func (k TipSetKey) Cid() (cid.Cid, error) {
+	blk, err := k.ToStorageBlock()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return blk.Cid(), nil
+}
+
+func (k TipSetKey) ToStorageBlock() (block.Block, error) {
+	buf := new(bytes.Buffer)
+	if err := k.MarshalCBOR(buf); err != nil {
+		log.Errorf("failed to marshal ts key as CBOR: %s", k)
+	}
+
+	cid, err := abi.CidBuilder.Sum(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewBlockWithCid(buf.Bytes(), cid)
 }
 
 func (k TipSetKey) MarshalCBOR(writer io.Writer) error {

@@ -2,6 +2,7 @@
 package itests
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -12,10 +13,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -52,6 +56,7 @@ func TestWindowedPost(t *testing.T) {
 }
 
 func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, upgradeHeight abi.ChainEpoch) {
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -338,4 +343,183 @@ waitForProof:
 	require.NoError(t, err)
 
 	require.NotEqual(t, pmr.GasCost.BaseFeeBurn, big.Zero())
+}
+
+// Tests that V1_1 proofs are generated and accepted in nv19, and V1 proofs are accepted
+func TestWindowPostV1P1NV19(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blocktime := 2 * time.Millisecond
+
+	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version19))
+	ens.InterconnectAll().BeginMining(blocktime)
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateSearchMsg(ctx, types.EmptyTSK, slm[0], -1, false)
+	require.NoError(t, err)
+
+	inclTs, err := client.ChainGetTipSet(ctx, pmr.TipSet)
+	require.NoError(t, err)
+
+	inclTsParents, err := client.ChainGetTipSet(ctx, inclTs.Parents())
+	require.NoError(t, err)
+
+	nv, err := client.StateNetworkVersion(ctx, pmr.TipSet)
+	require.NoError(t, err)
+	require.Equal(t, network.Version19, nv)
+
+	require.True(t, pmr.Receipt.ExitCode.IsSuccess())
+
+	slmsg, err := client.ChainGetMessage(ctx, slm[0])
+	require.NoError(t, err)
+
+	var params miner11.SubmitWindowedPoStParams
+	require.NoError(t, params.UnmarshalCBOR(bytes.NewBuffer(slmsg.Params)))
+	require.Equal(t, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1, params.Proofs[0].PoStProof)
+
+	// "Turn" this into a V1 proof -- the proof will be invalid, but won't be validated, and so the call should succeed
+	params.Proofs[0].PoStProof = abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
+	v1PostParams := new(bytes.Buffer)
+	require.NoError(t, params.MarshalCBOR(v1PostParams))
+
+	slmsg.Params = v1PostParams.Bytes()
+
+	// Simulate call on inclTsParents's parents, so that the partition isn't already proven
+	call, err := client.StateCall(ctx, slmsg, inclTsParents.Parents())
+	require.NoError(t, err)
+	require.True(t, call.MsgRct.ExitCode.IsSuccess())
+}
+
+// Tests that V1_1 proofs are generated and accepted in nv20, and that V1 proofs are NOT
+func TestWindowPostV1P1NV20(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blocktime := 2 * time.Millisecond
+
+	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version20))
+	ens.InterconnectAll().BeginMining(blocktime)
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	mi, err := client.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+	require.NoError(t, err)
+	en := wact.Nonce
+
+	// wait for a new message to be sent from worker address, it will be a PoSt
+
+waitForProof:
+	for {
+		//stm: @CHAIN_STATE_GET_ACTOR_001
+		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
+		require.NoError(t, err)
+		if wact.Nonce > en {
+			break waitForProof
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	slm, err := client.StateListMessages(ctx, &api.MessageMatch{To: maddr}, types.EmptyTSK, 0)
+	require.NoError(t, err)
+
+	pmr, err := client.StateSearchMsg(ctx, types.EmptyTSK, slm[0], -1, false)
+	require.NoError(t, err)
+
+	inclTs, err := client.ChainGetTipSet(ctx, pmr.TipSet)
+	require.NoError(t, err)
+
+	nv, err := client.StateNetworkVersion(ctx, pmr.TipSet)
+	require.NoError(t, err)
+	require.Equal(t, network.Version20, nv)
+
+	require.True(t, pmr.Receipt.ExitCode.IsSuccess())
+
+	slmsg, err := client.ChainGetMessage(ctx, slm[0])
+	require.NoError(t, err)
+
+	var params miner11.SubmitWindowedPoStParams
+	require.NoError(t, params.UnmarshalCBOR(bytes.NewBuffer(slmsg.Params)))
+	require.Equal(t, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1, params.Proofs[0].PoStProof)
+
+	// "Turn" this into a V1 proof -- the proof will be invalid, but we won't get that far
+	params.Proofs[0].PoStProof = abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
+	v1PostParams := new(bytes.Buffer)
+	require.NoError(t, params.MarshalCBOR(v1PostParams))
+
+	slmsg.Params = v1PostParams.Bytes()
+
+	// Simulate call on inclTs's parents, so that the partition isn't already proven
+	_, err = client.StateCall(ctx, slmsg, inclTs.Parents())
+	require.ErrorContains(t, err, "expected proof of type StackedDRGWindow2KiBV1P1, got StackedDRGWindow2KiBV1")
+
+	for {
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
+		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+		require.NoError(t, err)
+		// wait until the deadline finishes.
+		if di.Index == ((params.Deadline + 1) % di.WPoStPeriodDeadlines) {
+			break
+		}
+
+		build.Clock.Sleep(blocktime)
+	}
+
+	// Try to object to the proof. This should fail.
+
+	disputeParams := &miner11.DisputeWindowedPoStParams{
+		Deadline:  params.Deadline,
+		PoStIndex: 0,
+	}
+
+	enc, aerr := actors.SerializeParams(disputeParams)
+	require.NoError(t, aerr)
+
+	disputeMsg := &types.Message{
+		To:     maddr,
+		Method: builtin.MethodsMiner.DisputeWindowedPoSt,
+		Params: enc,
+		Value:  types.NewInt(0),
+		From:   client.DefaultKey.Address,
+	}
+
+	_, err = client.MpoolPushMessage(ctx, disputeMsg, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to dispute valid post")
+	require.Contains(t, err.Error(), "(RetCode=16)")
+
 }

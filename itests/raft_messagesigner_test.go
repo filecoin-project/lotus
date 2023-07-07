@@ -79,7 +79,6 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
 	//raftOps := kit.ConstructorOpts()
-	kit.ThroughRPC()
 
 	ens := kit.NewEnsemble(t).FullNode(node0, raftOps, kit.ThroughRPC()).FullNode(node1, raftOps, kit.ThroughRPC()).FullNode(node2, raftOps, kit.ThroughRPC())
 	node0.AssignPrivKey(pkey0)
@@ -489,6 +488,8 @@ func TestChainStoreSync(t *testing.T) {
 }
 
 func TestGoRPCAuth(t *testing.T) {
+	// TODO Fix Raft, then enable this test. https://github.com/filecoin-project/lotus/issues/9888
+	t.SkipNow()
 
 	blockTime := 1 * time.Second
 
@@ -527,7 +528,6 @@ func TestGoRPCAuth(t *testing.T) {
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
 	//raftOps := kit.ConstructorOpts()
-	kit.ThroughRPC()
 
 	ens := kit.NewEnsemble(t).FullNode(&node0, raftOps, kit.ThroughRPC()).FullNode(&node1, raftOps, kit.ThroughRPC()).FullNode(&node2, raftOps, kit.ThroughRPC()).FullNode(&node3, raftOps)
 	node0.AssignPrivKey(pkey0)

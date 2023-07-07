@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -23,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/delegated"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
@@ -67,7 +67,7 @@ var keyinfoVerifyCmd = &cli.Command{
 		defer inputFile.Close() //nolint:errcheck
 		input := bufio.NewReader(inputFile)
 
-		keyContent, err := ioutil.ReadAll(input)
+		keyContent, err := io.ReadAll(input)
 		if err != nil {
 			return err
 		}
@@ -161,7 +161,7 @@ var keyinfoImportCmd = &cli.Command{
 			input = bufio.NewReader(inputFile)
 		}
 
-		encoded, err := ioutil.ReadAll(input)
+		encoded, err := io.ReadAll(input)
 		if err != nil {
 			return err
 		}
@@ -273,7 +273,7 @@ var keyinfoInfoCmd = &cli.Command{
 			input = bufio.NewReader(inputFile)
 		}
 
-		encoded, err := ioutil.ReadAll(input)
+		encoded, err := io.ReadAll(input)
 		if err != nil {
 			return err
 		}

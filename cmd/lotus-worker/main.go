@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -184,25 +183,25 @@ var runCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:    "precommit1",
-			Usage:   "enable precommit1 (32G sectors: 1 core, 128GiB Memory)",
+			Usage:   "enable precommit1",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_PRECOMMIT1"},
 		},
 		&cli.BoolFlag{
 			Name:    "unseal",
-			Usage:   "enable unsealing (32G sectors: 1 core, 128GiB Memory)",
+			Usage:   "enable unsealing",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_UNSEAL"},
 		},
 		&cli.BoolFlag{
 			Name:    "precommit2",
-			Usage:   "enable precommit2 (32G sectors: all cores, 96GiB Memory)",
+			Usage:   "enable precommit2",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_PRECOMMIT2"},
 		},
 		&cli.BoolFlag{
 			Name:    "commit",
-			Usage:   "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
+			Usage:   "enable commit",
 			Value:   true,
 			EnvVars: []string{"LOTUS_WORKER_COMMIT"},
 		},
@@ -257,7 +256,7 @@ var runCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:    "post-parallel-reads",
 			Usage:   "maximum number of parallel challenge reads (0 = no limit)",
-			Value:   128,
+			Value:   32,
 			EnvVars: []string{"LOTUS_WORKER_POST_PARALLEL_READS"},
 		},
 		&cli.DurationFlag{
@@ -271,6 +270,16 @@ var runCmd = &cli.Command{
 			Usage:   "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
 			Value:   "30m",
 			EnvVars: []string{"LOTUS_WORKER_TIMEOUT"},
+		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "30s",
+		},
+		&cli.BoolFlag{
+			Name:        "data-cid",
+			Usage:       "Run the data-cid task. true|false",
+			Value:       true,
+			DefaultText: "inherits --addpiece",
 		},
 	},
 	Before: func(cctx *cli.Context) error {
@@ -292,6 +301,13 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		// ensure tmpdir exists
+		td := os.TempDir()
+		if err := os.MkdirAll(td, 0755); err != nil {
+			return xerrors.Errorf("ensuring temp dir %s exists: %w", td, err)
+		}
+
+		// Check file descriptor limit
 		limit, _, err := ulimit.GetLimit()
 		switch {
 		case err == ulimit.ErrUnsupported:
@@ -369,15 +385,26 @@ var runCmd = &cli.Command{
 		}
 
 		if workerType == "" {
-			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed, sealtasks.TTFinalizeReplicaUpdate)
 
 			if !cctx.Bool("no-default") {
 				workerType = sealtasks.WorkerSealing
 			}
 		}
 
+		ttDataCidDefault := false
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
-			taskTypes = append(taskTypes, sealtasks.TTAddPiece, sealtasks.TTDataCid)
+			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
+			ttDataCidDefault = true
+		}
+		if workerType == sealtasks.WorkerSealing {
+			if cctx.IsSet("data-cid") {
+				if cctx.Bool("data-cid") {
+					taskTypes = append(taskTypes, sealtasks.TTDataCid)
+				}
+			} else if ttDataCidDefault {
+				taskTypes = append(taskTypes, sealtasks.TTDataCid)
+			}
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("sector-download")) && cctx.Bool("sector-download") {
 			taskTypes = append(taskTypes, sealtasks.TTDownloadSector)
@@ -460,7 +487,7 @@ var runCmd = &cli.Command{
 					return xerrors.Errorf("marshaling storage config: %w", err)
 				}
 
-				if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+				if err := os.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
@@ -562,8 +589,14 @@ var runCmd = &cli.Command{
 
 		log.Info("Setting up control endpoint at " + address)
 
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		srv := &http.Server{
-			Handler: sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			Handler:           sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
+			ReadHeaderTimeout: timeout,
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
 				return ctx

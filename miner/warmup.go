@@ -59,6 +59,9 @@ out:
 	if err != nil {
 		return xerrors.Errorf("getting sector info: %w", err)
 	}
+	if si == nil {
+		return xerrors.Errorf("sector not found %d", sector)
+	}
 
 	ts, err := m.api.ChainHead(ctx)
 	if err != nil {

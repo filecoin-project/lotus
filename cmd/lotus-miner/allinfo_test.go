@@ -25,7 +25,7 @@ func TestMinerAllInfo(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, miner, ens := kit.EnsembleMinimal(t)
-	ens.InterconnectAll().BeginMining(time.Second)
+	ens.InterconnectAll().BeginMiningMustPost(5 * time.Millisecond)
 
 	run := func(t *testing.T) {
 		app := cli.NewApp()

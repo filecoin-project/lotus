@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -640,7 +641,46 @@ It will not send any messages to the chain.`,
 		if err != nil {
 			return err
 		}
-		jr, err := json.Marshal(res)
+
+		//convert sector information into easily readable information
+		type PoStPartition struct {
+			Index   uint64
+			Skipped []uint64
+		}
+		type SubmitWindowedPoStParams struct {
+			Deadline         uint64
+			Partitions       []PoStPartition
+			Proofs           []proof.PoStProof
+			ChainCommitEpoch abi.ChainEpoch
+			ChainCommitRand  abi.Randomness
+		}
+		var postParams []SubmitWindowedPoStParams
+		for _, i := range res {
+			var postParam SubmitWindowedPoStParams
+			postParam.Deadline = i.Deadline
+
+			// Initialize the postParam.Partitions slice with the same length as i.Partitions
+			postParam.Partitions = make([]PoStPartition, len(i.Partitions))
+
+			for id, part := range i.Partitions {
+				postParam.Partitions[id].Index = part.Index
+				count, err := part.Skipped.Count()
+				if err != nil {
+					return err
+				}
+				sectors, err := part.Skipped.All(count)
+				if err != nil {
+					return err
+				}
+				postParam.Partitions[id].Skipped = sectors
+			}
+			postParam.Proofs = i.Proofs
+			postParam.ChainCommitEpoch = i.ChainCommitEpoch
+			postParam.ChainCommitRand = i.ChainCommitRand
+			postParams = append(postParams, postParam)
+		}
+
+		jr, err := json.MarshalIndent(postParams, "", "  ")
 		if err != nil {
 			return err
 		}

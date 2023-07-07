@@ -201,7 +201,7 @@ func TestCommitBatcher(t *testing.T) {
 
 			if batch {
 				s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
-				//s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
+				s.EXPECT().GasEstimateMessageGas(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.Message{GasLimit: 100000}, nil)
 			}
 
 			s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
@@ -220,6 +220,48 @@ func TestCommitBatcher(t *testing.T) {
 				}
 				return true
 			}), gomock.Any()).Return(dummySmsg, nil).Times(ti)
+			return nil
+		}
+	}
+
+	expectProcessBatch := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool, gasOverLimit bool) action {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
+			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
+
+			ti := len(expect)
+			batch := false
+			if ti >= minBatch {
+				batch = true
+				ti = 1
+			}
+
+			if !aboveBalancer {
+				batch = false
+				ti = len(expect)
+			}
+
+			pciC := len(expect)
+			if failOnePCI {
+				s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), abi.SectorNumber(1), gomock.Any()).Return(nil, nil).Times(1) // not found
+				pciC = len(expect) - 1
+				if !batch {
+					ti--
+				}
+			}
+			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&minertypes.SectorPreCommitOnChainInfo{
+				PreCommitDeposit: big.Zero(),
+			}, nil).Times(pciC)
+			s.EXPECT().StateMinerInitialPledgeCollateral(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(big.Zero(), nil).Times(pciC)
+
+			if batch {
+				s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version18, nil)
+				if gasOverLimit {
+					s.EXPECT().GasEstimateMessageGas(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &api.ErrOutOfGas{})
+				} else {
+					s.EXPECT().GasEstimateMessageGas(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&types.Message{GasLimit: 100000}, nil)
+				}
+
+			}
 			return nil
 		}
 	}
@@ -306,6 +348,14 @@ func TestCommitBatcher(t *testing.T) {
 		"addMax-aboveBalancer": {
 			actions: []action{
 				expectSend(getSectors(maxBatch), true, false),
+				addSectors(getSectors(maxBatch), true),
+			},
+		},
+		"addMax-aboveBalancer-gasAboveLimit": {
+			actions: []action{
+				expectProcessBatch(getSectors(maxBatch), true, false, true),
+				expectSend(getSectors(maxBatch)[:maxBatch/2], true, false),
+				expectSend(getSectors(maxBatch)[maxBatch/2:], true, false),
 				addSectors(getSectors(maxBatch), true),
 			},
 		},

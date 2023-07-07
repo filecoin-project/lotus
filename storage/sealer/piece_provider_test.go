@@ -3,7 +3,7 @@ package sealer
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"net/http"
@@ -107,7 +107,7 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 	// the unsealed file from the miner.
 	ppt.addRemoteWorker(t, []sealtasks.TaskType{
 		sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1,
-		sealtasks.TTFetch, sealtasks.TTFinalize,
+		sealtasks.TTFetch, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed,
 	})
 
 	// create a worker that can ONLY unseal and fetch
@@ -346,13 +346,14 @@ func (p *pieceProviderTestHarness) readPiece(t *testing.T, offset storiface.Unpa
 	defer func() { _ = rd.Close() }()
 
 	// Make sure the input matches the output
-	readData, err := ioutil.ReadAll(rd)
+	readData, err := io.ReadAll(rd)
 	require.NoError(t, err)
 	require.Equal(t, expectedBytes, readData)
 }
 
 func (p *pieceProviderTestHarness) finalizeSector(t *testing.T, keepUnseal []storiface.Range) {
-	require.NoError(t, p.mgr.FinalizeSector(p.ctx, p.sector, keepUnseal))
+	require.NoError(t, p.mgr.ReleaseUnsealed(p.ctx, p.sector, keepUnseal))
+	require.NoError(t, p.mgr.FinalizeSector(p.ctx, p.sector))
 }
 
 func (p *pieceProviderTestHarness) shutdown(t *testing.T) {

@@ -30,7 +30,7 @@ func newMoveSelector(index paths.SectorIndex, sector abi.SectorID, alloc storifa
 	}
 }
 
-func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *WorkerHandle) (bool, bool, error) {
+func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd SchedWorker) (bool, bool, error) {
 	tasks, err := whnd.TaskTypes(ctx)
 	if err != nil {
 		return false, false, xerrors.Errorf("getting supported worker task types: %w", err)
@@ -39,7 +39,7 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		return false, false, nil
 	}
 
-	paths, err := whnd.workerRpc.Paths(ctx)
+	paths, err := whnd.Paths(ctx)
 	if err != nil {
 		return false, false, xerrors.Errorf("getting worker paths: %w", err)
 	}
@@ -99,7 +99,7 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 	return (ok && s.allowRemote) || pref, pref, nil
 }
 
-func (s *moveSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {
+func (s *moveSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b SchedWorker) (bool, error) {
 	return a.Utilization() < b.Utilization(), nil
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -128,6 +129,10 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_STATS_IPLD_STORE_CACHE_SIZE"},
 			Value:   2 << 15,
 		},
+		&cli.StringFlag{
+			Name:  "http-server-timeout",
+			Value: "30s",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
@@ -158,9 +163,18 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
+		if err != nil {
+			return xerrors.Errorf("invalid time string %s: %x", cctx.String("http-server-timeout"), err)
+		}
+
 		go func() {
 			http.Handle("/metrics", exporter)
-			if err := http.ListenAndServe(":6688", nil); err != nil {
+			server := &http.Server{
+				Addr:              ":6688",
+				ReadHeaderTimeout: timeout,
+			}
+			if err := server.ListenAndServe(); err != nil {
 				log.Errorw("failed to start http server", "err", err)
 			}
 		}()

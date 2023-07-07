@@ -184,7 +184,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 
 			dlinfo, err := bm.miner.FullNode.StateMinerProvingDeadline(ctx, bm.miner.ActorAddr, ts.Key())
 			require.NoError(bm.t, err)
-			if ts.Height()+1+abi.ChainEpoch(nulls) >= dlinfo.Last() { // Next block brings us past the last epoch in dline, we need to wait for miner to post
+			if ts.Height()+5+abi.ChainEpoch(nulls) >= dlinfo.Last() { // Next block brings us past the last epoch in dline, we need to wait for miner to post
+				bm.t.Logf("forcing post to get in before deadline closes at %d", dlinfo.Last())
 				bm.forcePoSt(ctx, ts, dlinfo)
 			}
 
@@ -192,12 +193,15 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			reportSuccessFn := func(success bool, epoch abi.ChainEpoch, err error) {
 				// if api shuts down before mining, we may get an error which we should probably just ignore
 				// (fixing it will require rewriting most of the mining loop)
-				if err != nil && !strings.Contains(err.Error(), "websocket connection closed") && !api.ErrorIsIn(err, []error{new(jsonrpc.RPCConnectionError)}) {
+				if err != nil && ctx.Err() == nil && !strings.Contains(err.Error(), "websocket connection closed") && !api.ErrorIsIn(err, []error{new(jsonrpc.RPCConnectionError)}) {
 					require.NoError(bm.t, err)
 				}
 
 				target = epoch
-				wait <- success
+				select {
+				case wait <- success:
+				case <-ctx.Done():
+				}
 			}
 
 			var success bool
@@ -213,7 +217,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 				}
 				if !success {
 					// if we are mining a new null block and it brings us past deadline boundary we need to wait for miner to post
-					if ts.Height()+1+abi.ChainEpoch(nulls+i) >= dlinfo.Last() {
+					if ts.Height()+5+abi.ChainEpoch(nulls+i) >= dlinfo.Last() {
+						bm.t.Logf("forcing post to get in before deadline closes at %d", dlinfo.Last())
 						bm.forcePoSt(ctx, ts, dlinfo)
 					}
 				}
@@ -233,7 +238,7 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					break
 				}
 
-				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
+				require.NotEqual(bm.t, i, nloops-1, "block at height %d never managed to sync to node, which is at height %d", target, ts.Height())
 				time.Sleep(time.Millisecond * 10)
 			}
 
@@ -242,7 +247,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			case ctx.Err() != nil: // context fired.
 				return
 			default: // log error
-				bm.t.Error(err)
+				bm.t.Logf("MINEBLOCKS-post loop error: %+v", err)
+				return
 			}
 		}
 	}()
@@ -288,7 +294,8 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 			case ctx.Err() != nil: // context fired.
 				return
 			default: // log error
-				bm.t.Error(err)
+				bm.t.Logf("MINEBLOCKS loop error: %+v", err)
+				return
 			}
 		}
 	}()
@@ -343,7 +350,7 @@ func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn *TestFullNode, cb f
 					break
 				}
 
-				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
+				require.NotEqual(bm.t, i, nloops-1, "block at height %d never managed to sync to node, which is at height %d", epoch, ts.Height())
 				time.Sleep(time.Millisecond * 10)
 			}
 

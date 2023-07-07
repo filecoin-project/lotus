@@ -1,0 +1,73 @@
+package evm
+
+import (
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	evm{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}evm"
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store, bytecode cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	s, err := evm{{.v}}.ConstructState(store, bytecode)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	evm{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) Nonce() (uint64, error) {
+	return s.State.Nonce, nil
+}
+
+func (s *state{{.v}}) IsAlive() (bool, error) {
+	return s.State.Tombstone == nil, nil
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state{{.v}}) GetBytecodeCID() (cid.Cid, error) {
+	return s.State.Bytecode, nil
+}
+
+func (s *state{{.v}}) GetBytecodeHash() ([32]byte, error) {
+	return s.State.BytecodeHash, nil
+}
+
+func (s *state{{.v}}) GetBytecode() ([]byte, error) {
+	bc, err := s.GetBytecodeCID()
+	if err != nil {
+		return nil, err
+	}
+
+	var byteCode abi.CborBytesTransparent
+	if err := s.store.Get(s.store.Context(), bc, &byteCode); err != nil {
+		return nil, err
+	}
+
+	return byteCode, nil
+}

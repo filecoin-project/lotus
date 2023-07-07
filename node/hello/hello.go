@@ -158,6 +158,9 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
 		return xerrors.Errorf("writing rpc to peer: %w", err)
 	}
+	if err := s.CloseWrite(); err != nil {
+		log.Warnw("CloseWrite err", "error", err)
+	}
 
 	go func() {
 		defer s.Close() //nolint:errcheck

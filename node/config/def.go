@@ -57,6 +57,10 @@ func defCommon() Common {
 			ListenAddresses: []string{
 				"/ip4/0.0.0.0/tcp/0",
 				"/ip6/::/tcp/0",
+				"/ip4/0.0.0.0/udp/0/quic-v1",
+				"/ip6/::/udp/0/quic-v1",
+				"/ip4/0.0.0.0/udp/0/quic-v1/webtransport",
+				"/ip6/::/udp/0/quic-v1/webtransport",
 			},
 			AnnounceAddresses:   []string{},
 			NoAnnounceAddresses: []string{},
@@ -70,11 +74,12 @@ func defCommon() Common {
 			DirectPeers:  nil,
 		},
 	}
-
 }
 
-var DefaultDefaultMaxFee = types.MustParseFIL("0.07")
-var DefaultSimultaneousTransfers = uint64(20)
+var (
+	DefaultDefaultMaxFee         = types.MustParseFIL("0.07")
+	DefaultSimultaneousTransfers = uint64(20)
+)
 
 // DefaultFullNode returns the default config
 func DefaultFullNode() *FullNode {
@@ -88,16 +93,31 @@ func DefaultFullNode() *FullNode {
 			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
 		},
 		Chainstore: Chainstore{
-			EnableSplitstore: false,
+			EnableSplitstore: true,
 			Splitstore: Splitstore{
-				ColdStoreType: "messages",
+				ColdStoreType: "discard",
 				HotStoreType:  "badger",
 				MarkSetType:   "badger",
 
-				HotStoreFullGCFrequency: 20,
+				HotStoreFullGCFrequency:      20,
+				HotStoreMaxSpaceTarget:       650_000_000_000,
+				HotStoreMaxSpaceThreshold:    150_000_000_000,
+				HotstoreMaxSpaceSafetyBuffer: 50_000_000_000,
 			},
 		},
 		Cluster: *DefaultUserRaftConfig(),
+		Fevm: FevmConfig{
+			EnableEthRPC:                 false,
+			EthTxHashMappingLifetimeDays: 0,
+			Events: Events{
+				DisableRealTimeFilterAPI: false,
+				DisableHistoricFilterAPI: false,
+				FilterTTL:                Duration(time.Hour * 24),
+				MaxFilters:               100,
+				MaxFilterResults:         10000,
+				MaxFilterHeightRange:     2880, // conservative limit of one day
+			},
+		},
 	}
 }
 
@@ -135,13 +155,14 @@ func DefaultStorageMiner() *StorageMiner {
 			BatchPreCommitAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
 			AggregateAboveBaseFee:      types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
 
-			TerminateBatchMin:  1,
-			TerminateBatchMax:  100,
-			TerminateBatchWait: Duration(5 * time.Minute),
+			TerminateBatchMin:                      1,
+			TerminateBatchMax:                      100,
+			TerminateBatchWait:                     Duration(5 * time.Minute),
+			MaxSectorProveCommitsSubmittedPerEpoch: 20,
 		},
 
 		Proving: ProvingConfig{
-			ParallelCheckLimit:  128,
+			ParallelCheckLimit:  32,
 			MaxBatchParallelism: 1,
 
 			PartitionCheckTimeout: Duration(20 * time.Minute),
@@ -215,7 +236,7 @@ func DefaultStorageMiner() *StorageMiner {
 			EnableMining:        true,
 			EnableSealing:       true,
 			EnableSectorStorage: true,
-			EnableMarkets:       true,
+			EnableMarkets:       false,
 		},
 
 		Fees: MinerFeeConfig{
@@ -257,8 +278,10 @@ func DefaultStorageMiner() *StorageMiner {
 	return cfg
 }
 
-var _ encoding.TextMarshaler = (*Duration)(nil)
-var _ encoding.TextUnmarshaler = (*Duration)(nil)
+var (
+	_ encoding.TextMarshaler   = (*Duration)(nil)
+	_ encoding.TextUnmarshaler = (*Duration)(nil)
+)
 
 // Duration is a wrapper type for time.Duration
 // for decoding and encoding from/to TOML

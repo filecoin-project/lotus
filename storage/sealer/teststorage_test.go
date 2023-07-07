@@ -33,7 +33,7 @@ func (t *testExec) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID,
 	panic("implement me")
 }
 
-func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (miner []proof.PoStProof, skipped []abi.SectorID, err error) {
+func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, ppt abi.RegisteredPoStProof, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (miner []proof.PoStProof, skipped []abi.SectorID, err error) {
 	panic("implement me")
 }
 
@@ -61,11 +61,11 @@ func (t *testExec) SealCommit2(ctx context.Context, sector storiface.SectorRef, 
 	panic("implement me")
 }
 
-func (t *testExec) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (t *testExec) FinalizeSector(ctx context.Context, sector storiface.SectorRef) error {
 	panic("implement me")
 }
 
-func (t *testExec) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
+func (t *testExec) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	panic("implement me")
 }
 
@@ -101,7 +101,7 @@ func (t *testExec) GenerateSectorKeyFromData(ctx context.Context, sector storifa
 	panic("implement me")
 }
 
-func (t *testExec) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
+func (t *testExec) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef) error {
 	panic("implement me")
 }
 

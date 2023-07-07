@@ -9,8 +9,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin9 "github.com/filecoin-project/go-state-types/builtin"
+	builtin11 "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/manifest"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -26,13 +27,13 @@ import (
 )
 
 var (
-	Address = builtin9.StoragePowerActorAddr
-	Methods = builtin9.MethodsPower
+	Address = builtin11.StoragePowerActorAddr
+	Methods = builtin11.MethodsPower
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != actors.PowerKey {
+		if name != manifest.PowerKey {
 			return nil, xerrors.Errorf("actor code is not power: %s", name)
 		}
 
@@ -43,6 +44,12 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 		case actorstypes.Version9:
 			return load9(store, act.Head)
+
+		case actorstypes.Version10:
+			return load10(store, act.Head)
+
+		case actorstypes.Version11:
+			return load11(store, act.Head)
 
 		}
 	}
@@ -104,6 +111,12 @@ func MakeState(store adt.Store, av actorstypes.Version) (State, error) {
 
 	case actorstypes.Version9:
 		return make9(store)
+
+	case actorstypes.Version10:
+		return make10(store)
+
+	case actorstypes.Version11:
+		return make11(store)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
@@ -168,5 +181,7 @@ func AllCodes() []cid.Cid {
 		(&state7{}).Code(),
 		(&state8{}).Code(),
 		(&state9{}).Code(),
+		(&state10{}).Code(),
+		(&state11{}).Code(),
 	}
 }

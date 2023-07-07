@@ -143,6 +143,10 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
+	if onChainInfo == nil {
+		return xerrors.Errorf("sector not found %d", sector.SectorNumber)
+	}
+
 	sp, err := m.currentSealProof(ctx.Context())
 	if err != nil {
 		log.Errorf("sealer failed to return current seal proof not proceeding: %+v", err)
@@ -305,7 +309,11 @@ func (m *Sealing) handleFinalizeReplicaUpdate(ctx statemachine.Context, sector S
 		return xerrors.Errorf("getting sealing config: %w", err)
 	}
 
-	if err := m.sealer.FinalizeReplicaUpdate(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.Pieces, false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.Pieces, false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("release unsealed: %w", err)})
+	}
+
+	if err := m.sealer.FinalizeReplicaUpdate(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
@@ -335,7 +343,7 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 
 		lb := policy.GetWinningPoStSectorSetLookback(nv)
 
-		targetHeight := mw.Height + lb + InteractivePoRepConfidence
+		targetHeight := mw.Height + lb
 
 		return m.events.ChainAt(context.Background(), func(context.Context, *types.TipSet, abi.ChainEpoch) error {
 			return ctx.Send(SectorUpdateActive{})

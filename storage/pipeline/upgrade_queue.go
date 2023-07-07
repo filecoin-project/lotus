@@ -33,6 +33,9 @@ func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
 	if err != nil {
 		return xerrors.Errorf("failed to read sector on chain info: %w", err)
 	}
+	if onChainInfo == nil {
+		return xerrors.Errorf("sector not found %d", id)
+	}
 
 	active, err := m.sectorActive(ctx, ts.Key(), id)
 	if err != nil {

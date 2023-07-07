@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"github.com/filecoin-project/go-state-types/manifest"
 
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
@@ -36,7 +37,7 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != actors.MarketKey {
+       if name != manifest.MarketKey {
           return nil, xerrors.Errorf("actor code is not market: %s", name)
        }
 

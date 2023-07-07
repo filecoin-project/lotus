@@ -14,12 +14,16 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin"
+	v10 "github.com/filecoin-project/go-state-types/builtin/v10"
+	v11 "github.com/filecoin-project/go-state-types/builtin/v11"
 	v8 "github.com/filecoin-project/go-state-types/builtin/v8"
 	v9 "github.com/filecoin-project/go-state-types/builtin/v9"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -89,7 +93,7 @@ var invariantsCmd = &cli.Command{
 		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
-		sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil)
+		sm, err := stmgr.NewStateManager(cs, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil, mds, index.DummyMsgIndex)
 		if err != nil {
 			return err
 		}
@@ -98,6 +102,9 @@ var invariantsCmd = &cli.Command{
 		fmt.Println("Network Version ", nv)
 
 		av, err := actorstypes.VersionForNetwork(nv)
+		if err != nil {
+			return err
+		}
 		fmt.Println("Actors Version ", av)
 
 		actorCodeCids, err := actors.GetActorCodeIDs(av)
@@ -114,6 +121,9 @@ var invariantsCmd = &cli.Command{
 		}
 
 		actorTree, err := builtin.LoadTree(actorStore, stateRoot.Actors)
+		if err != nil {
+			return err
+		}
 
 		startTime := time.Now()
 
@@ -126,6 +136,16 @@ var invariantsCmd = &cli.Command{
 			}
 		case actorstypes.Version9:
 			messages, err = v9.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
+			if err != nil {
+				return xerrors.Errorf("checking state invariants: %w", err)
+			}
+		case actorstypes.Version10:
+			messages, err = v10.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
+			if err != nil {
+				return xerrors.Errorf("checking state invariants: %w", err)
+			}
+		case actorstypes.Version11:
+			messages, err = v11.CheckStateInvariants(actorTree, abi.ChainEpoch(epoch), actorCodeCids)
 			if err != nil {
 				return xerrors.Errorf("checking state invariants: %w", err)
 			}

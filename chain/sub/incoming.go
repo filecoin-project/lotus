@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
+	bserv "github.com/ipfs/boxo/blockservice"
 	blocks "github.com/ipfs/go-block-format"
-	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipni/go-libipni/announce/message"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -20,7 +21,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-legs/dtsync"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
@@ -217,7 +217,7 @@ func fetchCids(
 type BlockValidator struct {
 	self peer.ID
 
-	peers *lru.TwoQueueCache
+	peers *lru.TwoQueueCache[peer.ID, int]
 
 	killThresh int
 
@@ -231,7 +231,7 @@ type BlockValidator struct {
 }
 
 func NewBlockValidator(self peer.ID, chain *store.ChainStore, cns consensus.Consensus, blacklist func(peer.ID)) *BlockValidator {
-	p, _ := lru.New2Q(4096)
+	p, _ := lru.New2Q[peer.ID, int](4096)
 	return &BlockValidator{
 		self:       self,
 		peers:      p,
@@ -244,13 +244,11 @@ func NewBlockValidator(self peer.ID, chain *store.ChainStore, cns consensus.Cons
 }
 
 func (bv *BlockValidator) flagPeer(p peer.ID) {
-	v, ok := bv.peers.Get(p)
+	val, ok := bv.peers.Get(p)
 	if !ok {
-		bv.peers.Add(p, int(1))
+		bv.peers.Add(p, 1)
 		return
 	}
-
-	val := v.(int)
 
 	if val >= bv.killThresh {
 		log.Warnf("blacklisting peer %s", p)
@@ -258,7 +256,7 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 		return
 	}
 
-	bv.peers.Add(p, v.(int)+1)
+	bv.peers.Add(p, val+1)
 }
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) (res pubsub.ValidationResult) {
@@ -273,7 +271,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	}()
 
 	var what string
-	res, what = bv.consensus.ValidateBlockPubsub(ctx, pid == bv.self, msg)
+	res, what = consensus.ValidateBlockPubsub(ctx, bv.consensus, pid == bv.self, msg)
 	if res == pubsub.ValidationAccept {
 		// it's a good block! make sure we've only seen it once
 		if count := bv.recvBlocks.add(msg.ValidatorData.(*types.BlockMsg).Cid()); count > 0 {
@@ -293,11 +291,11 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 }
 
 type blockReceiptCache struct {
-	blocks *lru.TwoQueueCache
+	blocks *lru.TwoQueueCache[cid.Cid, int]
 }
 
 func newBlockReceiptCache() *blockReceiptCache {
-	c, _ := lru.New2Q(8192)
+	c, _ := lru.New2Q[cid.Cid, int](8192)
 
 	return &blockReceiptCache{
 		blocks: c,
@@ -307,12 +305,12 @@ func newBlockReceiptCache() *blockReceiptCache {
 func (brc *blockReceiptCache) add(bcid cid.Cid) int {
 	val, ok := brc.blocks.Get(bcid)
 	if !ok {
-		brc.blocks.Add(bcid, int(1))
+		brc.blocks.Add(bcid, 1)
 		return 0
 	}
 
-	brc.blocks.Add(bcid, val.(int)+1)
-	return val.(int)
+	brc.blocks.Add(bcid, val+1)
+	return val
 }
 
 type MessageValidator struct {
@@ -360,7 +358,11 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceGap):
 			fallthrough
+		case xerrors.Is(err, messagepool.ErrGasFeeCapTooLow):
+			fallthrough
 		case xerrors.Is(err, messagepool.ErrNonceTooLow):
+			fallthrough
+		case xerrors.Is(err, messagepool.ErrExistingNonce):
 			return pubsub.ValidationIgnore
 		default:
 			return pubsub.ValidationReject
@@ -466,13 +468,13 @@ type peerMsgInfo struct {
 type IndexerMessageValidator struct {
 	self peer.ID
 
-	peerCache *lru.TwoQueueCache
+	peerCache *lru.TwoQueueCache[address.Address, *peerMsgInfo]
 	chainApi  full.ChainModuleAPI
 	stateApi  full.StateModuleAPI
 }
 
 func NewIndexerMessageValidator(self peer.ID, chainApi full.ChainModuleAPI, stateApi full.StateModuleAPI) *IndexerMessageValidator {
-	peerCache, _ := lru.New2Q(8192)
+	peerCache, _ := lru.New2Q[address.Address, *peerMsgInfo](8192)
 
 	return &IndexerMessageValidator{
 		self:      self,
@@ -497,7 +499,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		return pubsub.ValidationIgnore
 	}
 
-	idxrMsg := dtsync.Message{}
+	idxrMsg := message.Message{}
 	err := idxrMsg.UnmarshalCBOR(bytes.NewBuffer(msg.Data))
 	if err != nil {
 		log.Errorw("Could not decode indexer pubsub message", "err", err)
@@ -515,15 +517,12 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		return pubsub.ValidationReject
 	}
 
-	minerID := minerAddr.String()
 	msgCid := idxrMsg.Cid
 
 	var msgInfo *peerMsgInfo
-	val, ok := v.peerCache.Get(minerID)
+	msgInfo, ok := v.peerCache.Get(minerAddr)
 	if !ok {
 		msgInfo = &peerMsgInfo{}
-	} else {
-		msgInfo = val.(*peerMsgInfo)
 	}
 
 	// Lock this peer's message info.
@@ -544,7 +543,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		// Check that the miner ID maps to the peer that sent the message.
 		err = v.authenticateMessage(ctx, minerAddr, originPeer)
 		if err != nil {
-			log.Warnw("cannot authenticate messsage", "err", err, "peer", originPeer, "minerID", minerID)
+			log.Warnw("cannot authenticate messsage", "err", err, "peer", originPeer, "minerID", minerAddr)
 			stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
 			return pubsub.ValidationReject
 		}
@@ -554,7 +553,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 			// messages from the same peer are handled concurrently, there is a
 			// small chance that one msgInfo could replace the other here when
 			// the info is first cached.  This is OK, so no need to prevent it.
-			v.peerCache.Add(minerID, msgInfo)
+			v.peerCache.Add(minerAddr, msgInfo)
 		}
 	}
 

@@ -90,7 +90,7 @@ func ExtractTar(body io.Reader, dir string, buf []byte) (int64, error) {
 
 		sz, found := CacheFileConstraints[header.Name]
 		if !found {
-			return read, xerrors.Errorf("tar file %#v isn't expected")
+			return read, xerrors.Errorf("tar file %#v isn't expected", header.Name)
 		}
 		if header.Size > sz {
 			return read, xerrors.Errorf("tar file %#v is bigger than expected: %d > %d", header.Name, header.Size, sz)

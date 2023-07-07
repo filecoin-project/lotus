@@ -2,14 +2,13 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
 )
 
 func run() error {
-	tfb, err := ioutil.ReadFile("./node/config/types.go")
+	tfb, err := os.ReadFile("./node/config/types.go")
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
@@ -37,7 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -122,12 +123,7 @@ Genesis: {
 
 func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template genesis.Template) (*state.StateTree, map[address.Address]address.Address, error) {
 	// Create empty state tree
-
 	cst := cbor.NewCborStore(bs)
-	_, err := cst.Put(context.TODO(), []struct{}{})
-	if err != nil {
-		return nil, nil, xerrors.Errorf("putting empty object: %w", err)
-	}
 
 	sv, err := state.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
@@ -237,15 +233,12 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 	// Create accounts
 	for _, info := range template.Accounts {
-
 		switch info.Type {
 		case genesis.TAccount:
 			if err := CreateAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
 				return nil, nil, xerrors.Errorf("failed to create account actor: %w", err)
 			}
-
 		case genesis.TMultisig:
-
 			ida, err := address.NewIDAddress(uint64(idStart))
 			if err != nil {
 				return nil, nil, err
@@ -380,7 +373,7 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 		return nil, err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.AccountKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.AccountKey)
 	if !ok {
 		return nil, xerrors.Errorf("failed to get account actor code ID for actors version %d", av)
 	}
@@ -389,6 +382,7 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actorstypes.Ve
 		Code:    actcid,
 		Head:    statecid,
 		Balance: bal,
+		Address: &addr,
 	}
 
 	return act, nil
@@ -462,7 +456,7 @@ func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state
 		return err
 	}
 
-	actcid, ok := actors.GetActorCodeID(av, actors.MultisigKey)
+	actcid, ok := actors.GetActorCodeID(av, manifest.MultisigKey)
 	if !ok {
 		return xerrors.Errorf("failed to get multisig code ID for actors version %d", av)
 	}
@@ -492,7 +486,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Epoch:          0,
 		Rand:           &fakeRand{},
 		Bstore:         cs.StateBlockstore(),
-		Actors:         filcns.NewActorRegistry(),
+		Actors:         consensus.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
 		NetworkVersion: nv,
@@ -564,6 +558,11 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
+	// Set up the Ethereum Address Manager
+	if err = SetupEAM(ctx, st, template.NetworkVersion); err != nil {
+		return nil, xerrors.Errorf("failed to setup EAM: %w", err)
+	}
+
 	stateroot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("flush state tree failed: %w", err)
@@ -578,9 +577,25 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
 
+	// setup Storage Miners
 	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
+	}
+
+	st, err = state.LoadStateTree(st.Store, stateroot)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load updated state tree: %w", err)
+	}
+
+	// Set up Eth null addresses.
+	if _, err := SetupEthNullAddresses(ctx, st, template.NetworkVersion); err != nil {
+		return nil, xerrors.Errorf("failed to set up Eth null addresses: %w", err)
+	}
+
+	stateroot, err = st.Flush(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to flush state tree: %w", err)
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))

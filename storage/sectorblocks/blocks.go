@@ -8,10 +8,10 @@ import (
 	"io"
 	"sync"
 
+	dshelp "github.com/ipfs/boxo/datastore/dshelp"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
-	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"

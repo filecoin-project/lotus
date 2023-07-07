@@ -11,9 +11,11 @@ import (
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -120,6 +122,22 @@ func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
 	return nil
 }
 
+func (tma *testMpoolAPI) GetActorBefore(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	balance, ok := tma.balance[addr]
+	if !ok {
+		balance = types.NewInt(1000e6)
+		tma.balance[addr] = balance
+	}
+
+	nonce := tma.statenonce[addr]
+
+	return &types.Actor{
+		Code:    builtin2.AccountActorCodeID,
+		Nonce:   nonce,
+		Balance: balance,
+	}, nil
+}
+
 func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	// regression check for load bug
 	if ts == nil {
@@ -155,14 +173,14 @@ func (tma *testMpoolAPI) GetActorAfter(addr address.Address, ts *types.TipSet) (
 	}
 
 	return &types.Actor{
-		Code:    builtin2.StorageMarketActorCodeID,
+		Code:    builtin2.AccountActorCodeID,
 		Nonce:   nonce,
 		Balance: balance,
 	}, nil
 }
 
-func (tma *testMpoolAPI) StateAccountKeyAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 {
+func (tma *testMpoolAPI) StateDeterministicAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	if addr.Protocol() != address.BLS && addr.Protocol() != address.SECP256K1 && addr.Protocol() != address.Delegated {
 		return address.Undef, fmt.Errorf("given address was not a key addr")
 	}
 	return addr, nil
@@ -214,7 +232,7 @@ func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipS
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
 	t.Helper()
-	//stm: @CHAIN_MEMPOOL_GET_NONCE_001
+	// stm: @CHAIN_MEMPOOL_GET_NONCE_001
 	n, err := mp.GetNonce(context.TODO(), addr, types.EmptyTSK)
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +251,7 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 }
 
 func TestMessagePool(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_GET_NONCE_001
+	// stm: @CHAIN_MEMPOOL_GET_NONCE_001
 
 	tma := newTestMpoolAPI()
 
@@ -336,7 +354,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Message:   *msg,
 			Signature: *sig,
 		}
-		//stm: @CHAIN_MEMPOOL_PUSH_001
+		// stm: @CHAIN_MEMPOOL_PUSH_001
 		err = mp.Add(context.TODO(), sm)
 		assert.ErrorIs(t, err, ErrMessageTooBig)
 	}
@@ -378,10 +396,10 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 	tma.applyBlock(t, a)
 	tsa := mock.TipSet(a)
 
-	//stm: @CHAIN_MEMPOOL_PENDING_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001
 	_, _ = mp.Pending(context.TODO())
 
-	//stm: @CHAIN_MEMPOOL_SELECT_001
+	// stm: @CHAIN_MEMPOOL_SELECT_001
 	selm, _ := mp.SelectMessages(context.Background(), tsa, 1)
 	if len(selm) == 0 {
 		t.Fatal("should have returned the rest of the messages")
@@ -442,7 +460,7 @@ func TestRevertMessages(t *testing.T) {
 
 	assertNonce(t, mp, sender, 4)
 
-	//stm: @CHAIN_MEMPOOL_PENDING_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001
 	p, _ := mp.Pending(context.TODO())
 	fmt.Printf("%+v\n", p)
 	if len(p) != 3 {
@@ -501,11 +519,41 @@ func TestPruningSimple(t *testing.T) {
 
 	mp.Prune()
 
-	//stm: @CHAIN_MEMPOOL_PENDING_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001
 	msgs, _ := mp.Pending(context.TODO())
 	if len(msgs) != 5 {
 		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
 	}
+}
+
+func TestGasRewardNegative(t *testing.T) {
+	var mp MessagePool
+
+	msg := types.SignedMessage{
+		Message: types.Message{
+			GasLimit:   1000,
+			GasFeeCap:  big2.NewInt(20000),
+			GasPremium: big2.NewInt(15000),
+		},
+	}
+	baseFee := big2.NewInt(30000)
+	// Over the GasPremium, but under the BaseFee
+	gr1 := mp.getGasReward(&msg, baseFee)
+
+	msg.Message.GasFeeCap = big2.NewInt(15000)
+	// Equal to GasPremium, under the BaseFee
+	gr2 := mp.getGasReward(&msg, baseFee)
+
+	msg.Message.GasFeeCap = big2.NewInt(10000)
+	// Under both GasPremium and BaseFee
+	gr3 := mp.getGasReward(&msg, baseFee)
+
+	require.True(t, gr1.Sign() < 0)
+	require.True(t, gr2.Sign() < 0)
+	require.True(t, gr3.Sign() < 0)
+
+	require.True(t, gr1.Cmp(gr2) > 0)
+	require.True(t, gr2.Cmp(gr3) > 0)
 }
 
 func TestLoadLocal(t *testing.T) {
@@ -544,7 +592,7 @@ func TestLoadLocal(t *testing.T) {
 	msgs := make(map[cid.Cid]struct{})
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		//stm: @CHAIN_MEMPOOL_PUSH_001
+		// stm: @CHAIN_MEMPOOL_PUSH_001
 		cid, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
@@ -561,7 +609,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//stm: @CHAIN_MEMPOOL_PENDING_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001
 	pmsgs, _ := mp.Pending(context.TODO())
 	if len(msgs) != len(pmsgs) {
 		t.Fatalf("expected %d messages, but got %d", len(msgs), len(pmsgs))
@@ -617,7 +665,7 @@ func TestClearAll(t *testing.T) {
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		//stm: @CHAIN_MEMPOOL_PUSH_001
+		// stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
@@ -629,10 +677,10 @@ func TestClearAll(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	//stm: @CHAIN_MEMPOOL_CLEAR_001
+	// stm: @CHAIN_MEMPOOL_CLEAR_001
 	mp.Clear(context.Background(), true)
 
-	//stm: @CHAIN_MEMPOOL_PENDING_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001
 	pending, _ := mp.Pending(context.TODO())
 	if len(pending) > 0 {
 		t.Fatalf("cleared the mpool, but got %d pending messages", len(pending))
@@ -675,7 +723,7 @@ func TestClearNonLocal(t *testing.T) {
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		//stm: @CHAIN_MEMPOOL_PUSH_001
+		// stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
@@ -687,10 +735,10 @@ func TestClearNonLocal(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	//stm: @CHAIN_MEMPOOL_CLEAR_001
+	// stm: @CHAIN_MEMPOOL_CLEAR_001
 	mp.Clear(context.Background(), false)
 
-	//stm: @CHAIN_MEMPOOL_PENDING_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001
 	pending, _ := mp.Pending(context.TODO())
 	if len(pending) != 10 {
 		t.Fatalf("expected 10 pending messages, but got %d instead", len(pending))
@@ -748,7 +796,7 @@ func TestUpdates(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
-		//stm: @CHAIN_MEMPOOL_PUSH_001
+		// stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m, true)
 		if err != nil {
 			t.Fatal(err)
@@ -772,7 +820,7 @@ func TestUpdates(t *testing.T) {
 }
 
 func TestMessageBelowMinGasFee(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -818,7 +866,7 @@ func TestMessageBelowMinGasFee(t *testing.T) {
 }
 
 func TestMessageValueTooHigh(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -866,7 +914,7 @@ func TestMessageValueTooHigh(t *testing.T) {
 }
 
 func TestMessageSignatureInvalid(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -911,7 +959,7 @@ func TestMessageSignatureInvalid(t *testing.T) {
 }
 
 func TestAddMessageTwice(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -957,7 +1005,7 @@ func TestAddMessageTwice(t *testing.T) {
 }
 
 func TestAddMessageTwiceNonceGap(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -1011,7 +1059,7 @@ func TestAddMessageTwiceCidDiff(t *testing.T) {
 		// Create message with different data, so CID is different
 		sm2 := makeTestMessage(w, from, to, 0, 50_000_001, minimumBaseFee.Uint64())
 
-		//stm: @CHAIN_MEMPOOL_PUSH_001
+		// stm: @CHAIN_MEMPOOL_PUSH_001
 		// then try to add message again
 		err = mp.Add(context.TODO(), sm2)
 		// assert.Contains(t, err.Error(), "replace by fee has too low GasPremium")
@@ -1020,7 +1068,7 @@ func TestAddMessageTwiceCidDiff(t *testing.T) {
 }
 
 func TestAddMessageTwiceCidDiffReplaced(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -1049,7 +1097,7 @@ func TestAddMessageTwiceCidDiffReplaced(t *testing.T) {
 }
 
 func TestRemoveMessage(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -1071,13 +1119,50 @@ func TestRemoveMessage(t *testing.T) {
 		sm := makeTestMessage(w, from, to, 0, 50_000_000, minimumBaseFee.Uint64())
 		mustAdd(t, mp, sm)
 
-		//stm: @CHAIN_MEMPOOL_REMOVE_001
+		// stm: @CHAIN_MEMPOOL_REMOVE_001
 		// remove message for sender
 		mp.Remove(context.TODO(), from, sm.Message.Nonce, true)
 
-		//stm: @CHAIN_MEMPOOL_PENDING_FOR_001
+		// stm: @CHAIN_MEMPOOL_PENDING_FOR_001
 		// check messages in pool: should be none present
 		msgs := mp.pendingFor(context.TODO(), from)
 		assert.Len(t, msgs, 0)
 	}
+}
+
+func TestCapGasFee(t *testing.T) {
+	t.Run("use default maxfee", func(t *testing.T) {
+		msg := &types.Message{
+			GasLimit:   100_000_000,
+			GasFeeCap:  abi.NewTokenAmount(100_000_000),
+			GasPremium: abi.NewTokenAmount(100_000),
+		}
+		CapGasFee(func() (abi.TokenAmount, error) {
+			return abi.NewTokenAmount(100_000_000_000), nil
+		}, msg, nil)
+		assert.Equal(t, msg.GasFeeCap.Int64(), int64(1000))
+		assert.Equal(t, msg.GasPremium.Int.Int64(), int64(1000))
+	})
+
+	t.Run("use spec maxfee", func(t *testing.T) {
+		msg := &types.Message{
+			GasLimit:   100_000_000,
+			GasFeeCap:  abi.NewTokenAmount(100_000_000),
+			GasPremium: abi.NewTokenAmount(100_000),
+		}
+		CapGasFee(nil, msg, &api.MessageSendSpec{MaxFee: abi.NewTokenAmount(100_000_000_000)})
+		assert.Equal(t, msg.GasFeeCap.Int64(), int64(1000))
+		assert.Equal(t, msg.GasPremium.Int.Int64(), int64(1000))
+	})
+
+	t.Run("use smaller feecap value when fee is enough", func(t *testing.T) {
+		msg := &types.Message{
+			GasLimit:   100_000_000,
+			GasFeeCap:  abi.NewTokenAmount(100_000),
+			GasPremium: abi.NewTokenAmount(100_000_000),
+		}
+		CapGasFee(nil, msg, &api.MessageSendSpec{MaxFee: abi.NewTokenAmount(100_000_000_000_000)})
+		assert.Equal(t, msg.GasFeeCap.Int64(), int64(100_000))
+		assert.Equal(t, msg.GasPremium.Int.Int64(), int64(100_000))
+	})
 }

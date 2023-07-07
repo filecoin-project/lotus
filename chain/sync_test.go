@@ -306,13 +306,13 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	require.NoError(tu.t, err)
 	tu.t.Cleanup(func() { _ = stop(context.Background()) })
 
-	lastTs := blocks[len(blocks)-1].Blocks
-	for _, lastB := range lastTs {
-		cs := out.(*impl.FullNodeAPI).ChainAPI.Chain
+	lastTs := blocks[len(blocks)-1]
+	cs := out.(*impl.FullNodeAPI).ChainAPI.Chain
+	for _, lastB := range lastTs.Blocks {
 		require.NoError(tu.t, cs.AddToTipSetTracker(context.Background(), lastB.Header))
-		err = cs.AddBlock(tu.ctx, lastB.Header)
-		require.NoError(tu.t, err)
 	}
+	err = cs.PutTipSet(tu.ctx, lastTs.TipSet())
+	require.NoError(tu.t, err)
 
 	tu.genesis = genesis
 	tu.blocks = blocks

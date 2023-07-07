@@ -15,44 +15,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
-var manifestCids map[actorstypes.Version]cid.Cid = make(map[actorstypes.Version]cid.Cid)
-var manifests map[actorstypes.Version]map[string]cid.Cid = make(map[actorstypes.Version]map[string]cid.Cid)
-var actorMeta map[cid.Cid]actorEntry = make(map[cid.Cid]actorEntry)
-
-const (
-	AccountKey  = "account"
-	CronKey     = "cron"
-	InitKey     = "init"
-	MarketKey   = "storagemarket"
-	MinerKey    = "storageminer"
-	MultisigKey = "multisig"
-	PaychKey    = "paymentchannel"
-	PowerKey    = "storagepower"
-	RewardKey   = "reward"
-	SystemKey   = "system"
-	VerifregKey = "verifiedregistry"
-	DatacapKey  = "datacap"
-)
-
-func GetBuiltinActorsKeys(av actorstypes.Version) []string {
-	keys := []string{
-		AccountKey,
-		CronKey,
-		InitKey,
-		MarketKey,
-		MinerKey,
-		MultisigKey,
-		PaychKey,
-		PowerKey,
-		RewardKey,
-		SystemKey,
-		VerifregKey,
-	}
-	if av >= 9 {
-		keys = append(keys, DatacapKey)
-	}
-	return keys
-}
+var manifestCids = make(map[actorstypes.Version]cid.Cid)
+var manifests = make(map[actorstypes.Version]map[string]cid.Cid)
+var actorMeta = make(map[cid.Cid]actorEntry)
 
 var (
 	manifestMx sync.RWMutex

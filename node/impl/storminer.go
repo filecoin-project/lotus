@@ -25,8 +25,8 @@ import (
 	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	gst "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
+	gst "github.com/filecoin-project/go-data-transfer/v2/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -252,6 +252,33 @@ func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.Unp
 
 func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
 	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, offset, size, randomness, commd)
+}
+
+func (sm *StorageMinerAPI) SectorUnseal(ctx context.Context, sectorNum abi.SectorNumber) error {
+
+	status, err := sm.Miner.SectorsStatus(ctx, sectorNum, false)
+	if err != nil {
+		return err
+	}
+
+	minerAddr, err := sm.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+	minerID, err := address.IDFromAddress(minerAddr)
+	if err != nil {
+		return err
+	}
+
+	sector := storiface.SectorRef{
+		ID: abi.SectorID{
+			Miner:  abi.ActorID(minerID),
+			Number: sectorNum,
+		},
+		ProofType: status.SealProof,
+	}
+
+	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
 }
 
 // List all staged sectors
@@ -539,20 +566,8 @@ func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]*api.MarketDe
 	return sm.listDeals(ctx)
 }
 
-func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
-	var out []retrievalmarket.ProviderDealState
-	deals := sm.RetrievalProvider.ListDeals()
-
-	for _, deal := range deals {
-		if deal.ChannelID != nil {
-			if deal.ChannelID.Initiator == "" || deal.ChannelID.Responder == "" {
-				deal.ChannelID = nil // don't try to push unparsable peer IDs over jsonrpc
-			}
-		}
-		out = append(out, deal)
-	}
-
-	return out, nil
+func (sm *StorageMinerAPI) MarketListRetrievalDeals(ctx context.Context) ([]struct{}, error) {
+	return []struct{}{}, nil
 }
 
 func (sm *StorageMinerAPI) MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error) {

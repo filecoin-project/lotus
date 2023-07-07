@@ -9,12 +9,12 @@ import (
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/ipni/go-libipni/announce/message"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-legs/dtsync"
 
 	"github.com/filecoin-project/lotus/api/mocks"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -105,7 +105,7 @@ func TestIndexerMessageValidator_Validate(t *testing.T) {
 			mc := gomock.NewController(t)
 			node := mocks.NewMockFullNode(mc)
 			subject := NewIndexerMessageValidator(peer.ID(tc.selfPID), node, node)
-			message := dtsync.Message{
+			message := message.Message{
 				Cid:       validCid,
 				Addrs:     nil,
 				ExtraData: tc.extraData,

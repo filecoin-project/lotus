@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Grant DataCap - Lotus Fountain</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+	<script src="https://www.google.com/recaptcha/api.js"></script>
+	<script>
+   		function onSubmit(token) {
+     	document.getElementById("datacap-form").submit();
+   	}
+	</script>
+
+</head>
+<body>
+<div class="Index">
+    <div class="Index-nodes">
+        <div class="Index-node">
+            <h3>Grant datacap</h3>
+            <p>Please input your address to receive a data cap on the Calibration Testnet.</p>
+        </div>
+        <div class="Index-node">
+            <form action='/datacap' method='post' id='datacap-form'>
+                <span>Enter destination address:</span>
+                <input type='text' name='address' style="width: 300px" placeholder="t0/1/2/3/4 or 0xETH">
+                <button class="g-recaptcha"
+                        data-sitekey="{{ . }}"
+                        data-callback='onSubmit'
+                        data-action='submit'>Grant Datacap</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="Index-footer">
+        <div>
+            <a href="index.html">[Back]</a>
+            <span style="float: right">Not dispensing real Filecoin tokens</span>
+        </div>
+    </div>
+</div>
+</body>
+</html>

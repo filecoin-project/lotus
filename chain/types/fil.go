@@ -102,7 +102,7 @@ func ParseFIL(s string) (FIL, error) {
 		return FIL{}, fmt.Errorf("string length too large: %d", len(s))
 	}
 
-	r, ok := new(big.Rat).SetString(s)
+	r, ok := new(big.Rat).SetString(s) //nolint:gosec
 	if !ok {
 		return FIL{}, fmt.Errorf("failed to parse %q as a decimal number", s)
 	}

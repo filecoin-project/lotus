@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/bits"
 	"net/http"
 	"net/url"
@@ -15,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
@@ -22,12 +22,17 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var FetchTempSubdir = "fetching"
 
 var CopyBuf = 1 << 20
+
+// LocalReaderTimeout is the timeout for keeping local reader files open without
+// any read activity.
+var LocalReaderTimeout = 5 * time.Second
 
 type Remote struct {
 	local Store
@@ -237,6 +242,10 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 			err = r.fetchThrottled(ctx, url, tempDest)
 			if err != nil {
 				merr = multierror.Append(merr, xerrors.Errorf("fetch error %s (storage %s) -> %s: %w", url, info.ID, tempDest, err))
+				// fetching failed, remove temp file
+				if rerr := os.RemoveAll(tempDest); rerr != nil {
+					merr = multierror.Append(merr, xerrors.Errorf("removing temp dest (post-err cleanup): %w", rerr))
+				}
 				continue
 			}
 
@@ -412,7 +421,7 @@ func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, er
 	case 404:
 		return fsutil.FsStat{}, errPathNotFound
 	case 500:
-		b, err := ioutil.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fsutil.FsStat{}, xerrors.Errorf("fsstat: got http 500, then failed to read the error: %w", err)
 		}
@@ -560,7 +569,7 @@ func (r *Remote) CheckIsUnsealed(ctx context.Context, s storiface.SectorRef, off
 // 1. no worker(local worker included) has an unsealed file for the given sector OR
 // 2. no worker(local worker included) has the unsealed piece in their unsealed sector file.
 // Will return a nil reader and a nil error in such a case.
-func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size abi.PaddedPieceSize) (func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error), error) {
+func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size abi.PaddedPieceSize) (func(startOffsetAligned, endOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error), error) {
 	ft := storiface.FTUnsealed
 
 	// check if we have the unsealed sector file locally
@@ -599,20 +608,67 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 		if has {
 			log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
 
-			return func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
-				// don't reuse between readers unless closed
-				f := pf
-				pf = nil
+			// refs keep track of the currently opened pf
+			// if they drop to 0 for longer than LocalReaderTimeout, pf will be closed
+			var refsLk sync.Mutex
+			refs := 0
 
-				if f == nil {
-					f, err = r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
-					if err != nil {
-						return nil, xerrors.Errorf("opening partial file: %w", err)
+			cleanupIdle := func() {
+				lastRefs := 1
+
+				for range time.After(LocalReaderTimeout) {
+					refsLk.Lock()
+					if refs == 0 && lastRefs == 0 && pf != nil { // pf can't really be nil here, but better be safe
+						log.Infow("closing idle partial file", "path", path)
+						err := pf.Close()
+						if err != nil {
+							log.Errorw("closing idle partial file", "path", path, "error", err)
+						}
+
+						pf = nil
+						refsLk.Unlock()
+						return
 					}
-					log.Debugf("local partial file (re)opened %s (+%d,%d)", path, offset, size)
+					lastRefs = refs
+					refsLk.Unlock()
+				}
+			}
+
+			getPF := func() (*partialfile.PartialFile, func() error, error) {
+				refsLk.Lock()
+				defer refsLk.Unlock()
+
+				if pf == nil {
+					// got closed in the meantime, reopen
+
+					var err error
+					pf, err = r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+					if err != nil {
+						return nil, nil, xerrors.Errorf("reopening partial file: %w", err)
+					}
+					log.Debugf("local partial file reopened %s (+%d,%d)", path, offset, size)
+
+					go cleanupIdle()
 				}
 
-				r, err := r.pfHandler.Reader(f, storiface.PaddedByteIndex(offset)+startOffsetAligned, size-abi.PaddedPieceSize(startOffsetAligned))
+				refs++
+
+				return pf, func() error {
+					refsLk.Lock()
+					defer refsLk.Unlock()
+
+					refs--
+					return nil
+				}, nil
+			}
+
+			return func(startOffsetAligned, endOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
+				pf, done, err := getPF()
+				if err != nil {
+					return nil, xerrors.Errorf("getting partialfile handle: %w", err)
+				}
+
+				r, err := r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset)+startOffsetAligned, abi.PaddedPieceSize(endOffsetAligned-startOffsetAligned))
 				if err != nil {
 					return nil, err
 				}
@@ -622,25 +678,7 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 					io.Closer
 				}{
 					Reader: r,
-					Closer: funcCloser(func() error {
-						// if we already have a reader cached, close this one
-						if pf != nil {
-							if f == nil {
-								return nil
-							}
-							if pf == f {
-								pf = nil
-							}
-
-							tmp := f
-							f = nil
-							return tmp.Close()
-						}
-
-						// otherwise stash it away for reuse
-						pf = f
-						return nil
-					}),
+					Closer: funcCloser(done),
 				}, nil
 			}, nil
 
@@ -686,10 +724,10 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 				continue
 			}
 
-			return func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
+			return func(startOffsetAligned, endOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
 				// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
 				// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
-				rd, err := r.readRemote(ctx, url, offset+abi.PaddedPieceSize(startOffsetAligned), size)
+				rd, err := r.readRemote(ctx, url, offset+abi.PaddedPieceSize(startOffsetAligned), offset+abi.PaddedPieceSize(endOffsetAligned))
 				if err != nil {
 					log.Warnw("reading from remote", "url", url, "error", err)
 					return nil, err
@@ -768,7 +806,7 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 					log.Debugw("reading vanilla proof from remote not-found response", "url", url, "store", info.ID)
 					continue
 				}
-				body, err := ioutil.ReadAll(resp.Body)
+				body, err := io.ReadAll(resp.Body)
 				if err != nil {
 					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
 				}
@@ -780,7 +818,7 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body)))
 			}
 
-			body, err := ioutil.ReadAll(resp.Body)
+			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				if err := resp.Body.Close(); err != nil {
 					log.Error("response close: ", err)

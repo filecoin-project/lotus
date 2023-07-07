@@ -341,10 +341,85 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
+	"Events": []DocField{
+		{
+			Name: "DisableRealTimeFilterAPI",
+			Type: "bool",
+
+			Comment: `EnableEthRPC enables APIs that
+DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "DisableHistoricFilterAPI",
+			Type: "bool",
+
+			Comment: `DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.`,
+		},
+		{
+			Name: "FilterTTL",
+			Type: "Duration",
+
+			Comment: `FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+this time become eligible for automatic deletion.`,
+		},
+		{
+			Name: "MaxFilters",
+			Type: "int",
+
+			Comment: `MaxFilters specifies the maximum number of filters that may exist at any one time.`,
+		},
+		{
+			Name: "MaxFilterResults",
+			Type: "int",
+
+			Comment: `MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.`,
+		},
+		{
+			Name: "MaxFilterHeightRange",
+			Type: "uint64",
+
+			Comment: `MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+the entire chain)`,
+		},
+		{
+			Name: "DatabasePath",
+			Type: "string",
+
+			Comment: `DatabasePath is the full path to a sqlite database that will be used to index actor events to
+support the historic filter APIs. If the database does not exist it will be created. The directory containing
+the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+relative to the CWD (current working directory).`,
+		},
+	},
 	"FeeConfig": []DocField{
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
+
+			Comment: ``,
+		},
+	},
+	"FevmConfig": []DocField{
+		{
+			Name: "EnableEthRPC",
+			Type: "bool",
+
+			Comment: `EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.`,
+		},
+		{
+			Name: "EthTxHashMappingLifetimeDays",
+			Type: "int",
+
+			Comment: `EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+Set to 0 to keep all mappings`,
+		},
+		{
+			Name: "Events",
+			Type: "Events",
 
 			Comment: ``,
 		},
@@ -379,6 +454,27 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Type: "UserRaftConfig",
 
 			Comment: ``,
+		},
+		{
+			Name: "Fevm",
+			Type: "FevmConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "Index",
+			Type: "IndexConfig",
+
+			Comment: ``,
+		},
+	},
+	"IndexConfig": []DocField{
+		{
+			Name: "EnableMsgIndex",
+			Type: "bool",
+
+			Comment: `EXPERIMENTAL FEATURE. USE WITH CAUTION
+EnableMsgIndex enables indexing of messages on chain.`,
 		},
 	},
 	"IndexProviderConfig": []DocField{
@@ -802,6 +898,35 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 
 			Comment: ``,
 		},
+		{
+			Name: "JsonTracer",
+			Type: "string",
+
+			Comment: `Path to file that will be used to output tracer content in JSON format.
+If present tracer will save data to defined file.
+Format: file path`,
+		},
+		{
+			Name: "ElasticSearchTracer",
+			Type: "string",
+
+			Comment: `Connection string for elasticsearch instance.
+If present tracer will save data to elasticsearch.
+Format: https://<username>:<password>@<elasticsearch_url>:<port>/`,
+		},
+		{
+			Name: "ElasticSearchIndex",
+			Type: "string",
+
+			Comment: `Name of elasticsearch index that will be used to save tracer data.
+This property is used only if ElasticSearchTracer propery is set.`,
+		},
+		{
+			Name: "TracerSourceAuth",
+			Type: "string",
+
+			Comment: `Auth token that will be passed with logs to elasticsearch - used for weighted peers score.`,
+		},
 	},
 	"RetrievalPricing": []DocField{
 		{
@@ -996,15 +1121,7 @@ required to have expiration of at least the soonest-ending deal`,
 			Name: "MinTargetUpgradeSectorExpiration",
 			Type: "uint64",
 
-			Comment: `When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
-be selected based on lowest initial pledge.
-
-Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
-selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
-where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
-
-Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
-initial pledge - upgrade sectors will always be chosen based on longest expiration`,
+			Comment: `DEPRECATED: Target expiration is no longer used`,
 		},
 		{
 			Name: "CommittedCapacitySectorLifetime",
@@ -1135,6 +1252,16 @@ sending precommit messages to the chain individually`,
 submitting proofs to the chain individually`,
 		},
 		{
+			Name: "MaxSectorProveCommitsSubmittedPerEpoch",
+			Type: "uint64",
+
+			Comment: `When submitting several sector prove commit messages simultaneously, this option allows you to
+stagger the number of prove commits submitted per epoch
+This is done because gas estimates for ProveCommits are non deterministic and increasing as a large
+number of sectors get committed within the same epoch resulting in occasionally failed msgs.
+Submitting a smaller number of prove commits per epoch would reduce the possibility of failed msgs`,
+		},
+		{
 			Name: "TerminateBatchMax",
 			Type: "uint64",
 
@@ -1189,6 +1316,35 @@ the compaction boundary; default is 0.`,
 			Comment: `HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
 A value of 0 disables, while a value 1 will do full GC in every compaction.
 Default is 20 (about once a week).`,
+		},
+		{
+			Name: "HotStoreMaxSpaceTarget",
+			Type: "uint64",
+
+			Comment: `HotStoreMaxSpaceTarget sets a target max disk size for the hotstore. Splitstore GC
+will run moving GC if disk utilization gets within a threshold (150 GB) of the target.
+Splitstore GC will NOT run moving GC if the total size of the move would get
+within 50 GB of the target, and instead will run a more aggressive online GC.
+If both HotStoreFullGCFrequency and HotStoreMaxSpaceTarget are set then splitstore
+GC will trigger moving GC if either configuration condition is met.
+A reasonable minimum is 2x fully GCed hotstore size + 50 G buffer.
+At this minimum size moving GC happens every time, any smaller and moving GC won't
+be able to run. In spring 2023 this minimum is ~550 GB.`,
+		},
+		{
+			Name: "HotStoreMaxSpaceThreshold",
+			Type: "uint64",
+
+			Comment: `When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold`,
+		},
+		{
+			Name: "HotstoreMaxSpaceSafetyBuffer",
+			Type: "uint64",
+
+			Comment: `Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+is set.  Moving GC will not occur when total moving size exceeds
+HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 		},
 	},
 	"StorageMiner": []DocField{

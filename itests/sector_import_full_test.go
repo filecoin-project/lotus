@@ -65,7 +65,8 @@ func TestSectorImport(t *testing.T) {
 			////////
 			// Start a miner node
 
-			client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
+			// We use two miners so that in case the actively tested miner misses PoSt, we still have a blockchain
+			client, miner, _, ens := kit.EnsembleOneTwo(t, kit.ThroughRPC())
 			ens.InterconnectAll().BeginMining(blockTime)
 
 			ctx := context.Background()

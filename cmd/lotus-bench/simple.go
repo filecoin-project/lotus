@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -444,7 +443,7 @@ var simpleCommit1 = &cli.Command{
 			return err
 		}
 
-		if err := ioutil.WriteFile(cctx.Args().Get(4), b, 0664); err != nil {
+		if err := os.WriteFile(cctx.Args().Get(4), b, 0664); err != nil {
 			log.Warnf("%+v", err)
 		}
 
@@ -478,7 +477,7 @@ var simpleCommit2 = &cli.Command{
 			return xerrors.Errorf("Usage: lotus-bench prove [input.json]")
 		}
 
-		inb, err := ioutil.ReadFile(c.Args().First())
+		inb, err := os.ReadFile(c.Args().First())
 		if err != nil {
 			return xerrors.Errorf("reading input file: %w", err)
 		}
@@ -861,7 +860,7 @@ var simpleProveReplicaUpdate1 = &cli.Command{
 			return xerrors.Errorf("json marshal vanilla proofs: %w", err)
 		}
 
-		if err := ioutil.WriteFile(cctx.Args().Get(7), vpjb, 0666); err != nil {
+		if err := os.WriteFile(cctx.Args().Get(7), vpjb, 0666); err != nil {
 			return xerrors.Errorf("writing vanilla proofs file: %w", err)
 		}
 
@@ -934,7 +933,7 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 			return xerrors.Errorf("parse commr: %w", err)
 		}
 
-		vpb, err := ioutil.ReadFile(cctx.Args().Get(3))
+		vpb, err := os.ReadFile(cctx.Args().Get(3))
 		if err != nil {
 			return xerrors.Errorf("reading valilla proof file: %w", err)
 		}

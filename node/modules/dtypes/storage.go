@@ -1,13 +1,13 @@
 package dtypes
 
 import (
-	bserv "github.com/ipfs/go-blockservice"
+	bserv "github.com/ipfs/boxo/blockservice"
+	exchange "github.com/ipfs/boxo/exchange"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-graphsync"
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	dtnet "github.com/filecoin-project/go-data-transfer/network"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
+	dtnet "github.com/filecoin-project/go-data-transfer/v2/network"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-statestore"

@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
+	"github.com/filecoin-project/go-state-types/manifest"
 	account5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/account"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -44,7 +45,7 @@ func (s *state5) GetState() interface{} {
 }
 
 func (s *state5) ActorKey() string {
-	return actors.AccountKey
+	return manifest.AccountKey
 }
 
 func (s *state5) ActorVersion() actorstypes.Version {

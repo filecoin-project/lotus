@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
-	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/boxo/blockservice"
+	offline "github.com/ipfs/boxo/exchange/offline"
+	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
@@ -60,7 +59,7 @@ func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore
 				return nil, err
 			}
 
-			fdata, err := ioutil.ReadFile(genesisTemplate)
+			fdata, err := os.ReadFile(genesisTemplate)
 			if err != nil {
 				return nil, xerrors.Errorf("reading preseals json: %w", err)
 			}

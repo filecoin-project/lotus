@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
@@ -14,13 +13,13 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/boxo/blockservice"
+	offline "github.com/ipfs/boxo/exchange/offline"
+	"github.com/ipfs/boxo/ipld/merkledag"
 	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -328,7 +327,7 @@ func dumpThreeWayStateDiff(r Reporter, vector *schema.TestVector, bs blockstore.
 // writeStateToTempCAR writes the provided roots to a temporary CAR that'll be
 // cleaned up via t.Cleanup(). It returns the full path of the temp file.
 func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, error) {
-	tmp, err := ioutil.TempFile("", "lotus-tests-*.car")
+	tmp, err := os.CreateTemp("", "lotus-tests-*.car")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file to dump CAR for diffing: %w", err)
 	}

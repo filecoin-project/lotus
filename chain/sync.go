@@ -208,8 +208,8 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 		return false
 	}
 
-	if syncer.consensus.IsEpochBeyondCurrMax(fts.TipSet().Height()) {
-		log.Errorf("Received block with impossibly large height %d", fts.TipSet().Height())
+	if !syncer.consensus.IsEpochInConsensusRange(fts.TipSet().Height()) {
+		log.Infof("received block outside of consensus range at height %d", fts.TipSet().Height())
 		return false
 	}
 
@@ -228,7 +228,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
-	if err := syncer.store.PersistBlockHeaders(ctx, fts.TipSet().Blocks()...); err != nil {
+	if err := syncer.store.PersistTipsets(ctx, []*types.TipSet{fts.TipSet()}); err != nil {
 		log.Warn("failed to persist incoming block header: ", err)
 		return false
 	}
@@ -1145,7 +1145,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 		}
 	}
 	for _, m := range bst.Secpk {
-		if m.Signature.Type != crypto.SigTypeSecp256k1 {
+		if m.Signature.Type != crypto.SigTypeSecp256k1 && m.Signature.Type != crypto.SigTypeDelegated {
 			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())
@@ -1193,21 +1193,17 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet, hts *t
 	span.AddAttributes(trace.Int64Attribute("syncChainLength", int64(len(headers))))
 
 	if !headers[0].Equals(ts) {
-		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())
+		return xerrors.Errorf("collectChain synced %s, wanted to sync %s", headers[0].Cids(), ts.Cids())
 	}
 
 	ss.SetStage(api.StagePersistHeaders)
 
-	toPersist := make([]*types.BlockHeader, 0, len(headers)*int(build.BlocksPerEpoch))
-	for _, ts := range headers {
-		toPersist = append(toPersist, ts.Blocks()...)
-	}
-	if err := syncer.store.PersistBlockHeaders(ctx, toPersist...); err != nil {
-		err = xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
+	// Write tipsets from oldest to newest.
+	if err := syncer.store.PersistTipsets(ctx, headers); err != nil {
+		err = xerrors.Errorf("failed to persist synced tipset to the chainstore: %w", err)
 		ss.Error(err)
 		return err
 	}
-	toPersist = nil
 
 	ss.SetStage(api.StageMessages)
 

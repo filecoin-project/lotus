@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	nilrouting "github.com/ipfs/go-ipfs-routing/none"
+	nilrouting "github.com/ipfs/boxo/routing/none"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/host/peerstore/pstoremem"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"go.uber.org/fx"
@@ -67,6 +67,13 @@ func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, 
 	})
 
 	return h, nil
+}
+
+func UserAgentOption(agent string) func() (opts Libp2pOpts, err error) {
+	return func() (opts Libp2pOpts, err error) {
+		opts.Opts = append(opts.Opts, libp2p.UserAgent(agent))
+		return
+	}
 }
 
 func MockHost(mn mocknet.Mocknet, id peer.ID, ps peerstore.Peerstore) (RawHost, error) {

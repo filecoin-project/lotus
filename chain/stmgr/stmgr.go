@@ -2,10 +2,16 @@ package stmgr
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strconv"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/ipfs/go-cid"
+	dstore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -22,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -35,6 +42,7 @@ import (
 const LookbackNoLimit = api.LookbackNoLimit
 const ReceiptAmtBitwidth = 3
 
+var execTraceCacheSize = 16
 var log = logging.Logger("statemgr")
 
 type StateManagerAPI interface {
@@ -42,7 +50,7 @@ type StateManagerAPI interface {
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
-	ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
+	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 }
 
 type versionSpec struct {
@@ -51,9 +59,58 @@ type versionSpec struct {
 }
 
 type migration struct {
-	upgrade       MigrationFunc
-	preMigrations []PreMigration
-	cache         *nv16.MemMigrationCache
+	upgrade              MigrationFunc
+	preMigrations        []PreMigration
+	cache                *nv16.MemMigrationCache
+	migrationResultCache *migrationResultCache
+}
+
+type migrationResultCache struct {
+	ds        dstore.Batching
+	keyPrefix string
+}
+
+func (m *migrationResultCache) keyForMigration(root cid.Cid) dstore.Key {
+	kStr := fmt.Sprintf("%s/%s", m.keyPrefix, root)
+	return dstore.NewKey(kStr)
+}
+
+func init() {
+	if s := os.Getenv("LOTUS_EXEC_TRACE_CACHE_SIZE"); s != "" {
+		letc, err := strconv.Atoi(s)
+		if err != nil {
+			log.Errorf("failed to parse 'LOTUS_EXEC_TRACE_CACHE_SIZE' env var: %s", err)
+		} else {
+			execTraceCacheSize = letc
+		}
+	}
+}
+
+func (m *migrationResultCache) Get(ctx context.Context, root cid.Cid) (cid.Cid, bool, error) {
+	k := m.keyForMigration(root)
+
+	bs, err := m.ds.Get(ctx, k)
+	if ipld.IsNotFound(err) {
+		return cid.Undef, false, nil
+	} else if err != nil {
+		return cid.Undef, false, xerrors.Errorf("error loading migration result: %w", err)
+	}
+
+	c, err := cid.Parse(bs)
+	if err != nil {
+		return cid.Undef, false, xerrors.Errorf("error parsing migration result: %w", err)
+	}
+
+	return c, true, nil
+}
+
+func (m *migrationResultCache) Store(ctx context.Context, root cid.Cid, resultCid cid.Cid) error {
+	k := m.keyForMigration(root)
+	if err := m.ds.Put(ctx, k, resultCid.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type Executor interface {
@@ -89,12 +146,20 @@ type StateManager struct {
 	postIgnitionVesting []msig0.State
 	postCalicoVesting   []msig0.State
 
-	genesisPledge      abi.TokenAmount
-	genesisMarketFunds abi.TokenAmount
+	genesisPledge abi.TokenAmount
 
 	tsExec        Executor
 	tsExecMonitor ExecMonitor
 	beacon        beacon.Schedule
+
+	msgIndex index.MsgIndex
+
+	// We keep a small cache for calls to ExecutionTrace which helps improve
+	// performance for node operators like exchanges and block explorers
+	execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	// We need a lock while making the copy as to prevent other callers
+	// overwrite the cache while making the copy
+	execTraceCacheLock sync.Mutex
 }
 
 // Caches a single state tree
@@ -103,7 +168,12 @@ type treeCache struct {
 	tree *state.StateTree
 }
 
-func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule) (*StateManager, error) {
+type tipSetCacheEntry struct {
+	postStateRoot cid.Cid
+	invocTrace    []*api.InvocResult
+}
+
+func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule, metadataDs dstore.Batching, msgIndex index.MsgIndex) (*StateManager, error) {
 	// If we have upgrades, make sure they're in-order and make sense.
 	if err := us.Validate(); err != nil {
 		return nil, err
@@ -122,17 +192,33 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
 					cache:         nv16.NewMemMigrationCache(),
+					migrationResultCache: &migrationResultCache{
+						keyPrefix: fmt.Sprintf("/migration-cache/nv%d", upgrade.Network),
+						ds:        metadataDs,
+					},
 				}
+
 				stateMigrations[upgrade.Height] = migration
 			}
 			if upgrade.Expensive {
 				expensiveUpgrades[upgrade.Height] = struct{}{}
 			}
+
 			networkVersions = append(networkVersions, versionSpec{
 				networkVersion: lastVersion,
 				atOrBelow:      upgrade.Height,
 			})
 			lastVersion = upgrade.Network
+		}
+	}
+
+	log.Debugf("execTraceCache size: %d", execTraceCacheSize)
+	var execTraceCache *lru.ARCCache[types.TipSetKey, tipSetCacheEntry]
+	var err error
+	if execTraceCacheSize > 0 {
+		execTraceCache, err = lru.NewARC[types.TipSetKey, tipSetCacheEntry](execTraceCacheSize)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -151,12 +237,14 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 			root: cid.Undef,
 			tree: nil,
 		},
-		compWait: make(map[string]chan struct{}),
+		compWait:       make(map[string]chan struct{}),
+		msgIndex:       msgIndex,
+		execTraceCache: execTraceCache,
 	}, nil
 }
 
-func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor) (*StateManager, error) {
-	sm, err := NewStateManager(cs, exec, sys, us, b)
+func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor, metadataDs dstore.Batching, msgIndex index.MsgIndex) (*StateManager, error) {
+	sm, err := NewStateManager(cs, exec, sys, us, b, metadataDs, msgIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -207,11 +295,11 @@ func (sm *StateManager) Beacon() beacon.Schedule {
 	return sm.beacon
 }
 
-// ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
+// ResolveToDeterministicAddress is similar to `vm.ResolveToDeterministicAddr` but does not allow `Actor` type of addresses.
 // Uses the `TipSet` `ts` to generate the VM state.
-func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (sm *StateManager) ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
-	case address.BLS, address.SECP256K1:
+	case address.BLS, address.SECP256K1, address.Delegated:
 		return addr, nil
 	case address.Actor:
 		return address.Undef, xerrors.New("cannot resolve actor address to key address")
@@ -230,7 +318,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to load parent state tree at tipset %s: %w", ts.Parents(), err)
 	}
 
-	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
+	resolved, err := vm.ResolveToDeterministicAddr(tree, cst, addr)
 	if err == nil {
 		return resolved, nil
 	}
@@ -246,14 +334,14 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		return address.Undef, xerrors.Errorf("failed to load state tree at tipset %s: %w", ts, err)
 	}
 
-	return vm.ResolveToKeyAddr(tree, cst, addr)
+	return vm.ResolveToDeterministicAddr(tree, cst, addr)
 }
 
-// ResolveToKeyAddressAtFinality is similar to stmgr.ResolveToKeyAddress but fails if the ID address being resolved isn't reorg-stable yet.
+// ResolveToDeterministicAddressAtFinality is similar to stmgr.ResolveToDeterministicAddress but fails if the ID address being resolved isn't reorg-stable yet.
 // It should not be used for consensus-critical subsystems.
-func (sm *StateManager) ResolveToKeyAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (sm *StateManager) ResolveToDeterministicAddressAtFinality(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
-	case address.BLS, address.SECP256K1:
+	case address.BLS, address.SECP256K1, address.Delegated:
 		return addr, nil
 	case address.Actor:
 		return address.Undef, xerrors.New("cannot resolve actor address to key address")
@@ -287,7 +375,7 @@ func (sm *StateManager) ResolveToKeyAddressAtFinality(ctx context.Context, addr 
 		}
 	}
 
-	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
+	resolved, err := vm.ResolveToDeterministicAddr(tree, cst, addr)
 	if err == nil {
 		return resolved, nil
 	}
@@ -296,7 +384,7 @@ func (sm *StateManager) ResolveToKeyAddressAtFinality(ctx context.Context, addr 
 }
 
 func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk []byte, err error) {
-	kaddr, err := sm.ResolveToKeyAddress(ctx, addr, ts)
+	kaddr, err := sm.ResolveToDeterministicAddress(ctx, addr, ts)
 	if err != nil {
 		return pubk, xerrors.Errorf("failed to resolve address to key address: %w", err)
 	}

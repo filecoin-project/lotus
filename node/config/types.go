@@ -27,6 +27,8 @@ type FullNode struct {
 	Fees       FeeConfig
 	Chainstore Chainstore
 	Cluster    UserRaftConfig
+	Fevm       FevmConfig
+	Index      IndexConfig
 }
 
 // // Common
@@ -168,7 +170,6 @@ type DealmakingConfig struct {
 }
 
 type IndexProviderConfig struct {
-
 	// Enable set whether to enable indexing announcement to the network and expose endpoints that
 	// allow indexer nodes to process announcements. Enabled by default.
 	Enable bool
@@ -360,15 +361,7 @@ type SealingConfig struct {
 	// required to have expiration of at least the soonest-ending deal
 	MinUpgradeSectorExpiration uint64
 
-	// When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
-	// be selected based on lowest initial pledge.
-	//
-	// Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
-	// selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
-	// where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
-	//
-	// Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
-	// initial pledge - upgrade sectors will always be chosen based on longest expiration
+	// DEPRECATED: Target expiration is no longer used
 	MinTargetUpgradeSectorExpiration uint64
 
 	// CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
@@ -429,6 +422,13 @@ type SealingConfig struct {
 	// network BaseFee below which to stop doing commit aggregation, instead
 	// submitting proofs to the chain individually
 	AggregateAboveBaseFee types.FIL
+
+	// When submitting several sector prove commit messages simultaneously, this option allows you to
+	// stagger the number of prove commits submitted per epoch
+	// This is done because gas estimates for ProveCommits are non deterministic and increasing as a large
+	// number of sectors get committed within the same epoch resulting in occasionally failed msgs.
+	// Submitting a smaller number of prove commits per epoch would reduce the possibility of failed msgs
+	MaxSectorProveCommitsSubmittedPerEpoch uint64
 
 	TerminateBatchMax  uint64
 	TerminateBatchMin  uint64
@@ -572,6 +572,19 @@ type Pubsub struct {
 	DirectPeers           []string
 	IPColocationWhitelist []string
 	RemoteTracer          string
+	// Path to file that will be used to output tracer content in JSON format.
+	// If present tracer will save data to defined file.
+	// Format: file path
+	JsonTracer string
+	// Connection string for elasticsearch instance.
+	// If present tracer will save data to elasticsearch.
+	// Format: https://<username>:<password>@<elasticsearch_url>:<port>/
+	ElasticSearchTracer string
+	// Name of elasticsearch index that will be used to save tracer data.
+	// This property is used only if ElasticSearchTracer propery is set.
+	ElasticSearchIndex string
+	// Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
+	TracerSourceAuth string
 }
 
 type Chainstore struct {
@@ -597,6 +610,25 @@ type Splitstore struct {
 	// A value of 0 disables, while a value 1 will do full GC in every compaction.
 	// Default is 20 (about once a week).
 	HotStoreFullGCFrequency uint64
+	// HotStoreMaxSpaceTarget sets a target max disk size for the hotstore. Splitstore GC
+	// will run moving GC if disk utilization gets within a threshold (150 GB) of the target.
+	// Splitstore GC will NOT run moving GC if the total size of the move would get
+	// within 50 GB of the target, and instead will run a more aggressive online GC.
+	// If both HotStoreFullGCFrequency and HotStoreMaxSpaceTarget are set then splitstore
+	// GC will trigger moving GC if either configuration condition is met.
+	// A reasonable minimum is 2x fully GCed hotstore size + 50 G buffer.
+	// At this minimum size moving GC happens every time, any smaller and moving GC won't
+	// be able to run. In spring 2023 this minimum is ~550 GB.
+	HotStoreMaxSpaceTarget uint64
+
+	// When HotStoreMaxSpaceTarget is set Moving GC will be triggered when total moving size
+	// exceeds HotstoreMaxSpaceTarget - HotstoreMaxSpaceThreshold
+	HotStoreMaxSpaceThreshold uint64
+
+	// Safety buffer to prevent moving GC from overflowing disk when HotStoreMaxSpaceTarget
+	// is set.  Moving GC will not occur when total moving size exceeds
+	// HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer
+	HotstoreMaxSpaceSafetyBuffer uint64
 }
 
 // // Full Node
@@ -653,4 +685,59 @@ type UserRaftConfig struct {
 	BackupsRotate int
 	// Tracing enables propagation of contexts across binary boundaries.
 	Tracing bool
+}
+
+type FevmConfig struct {
+	// EnableEthRPC enables eth_ rpc, and enables storing a mapping of eth transaction hashes to filecoin message Cids.
+	// This will also enable the RealTimeFilterAPI and HistoricFilterAPI by default, but they can be disabled by config options above.
+	EnableEthRPC bool
+
+	// EthTxHashMappingLifetimeDays the transaction hash lookup database will delete mappings that have been stored for more than x days
+	// Set to 0 to keep all mappings
+	EthTxHashMappingLifetimeDays int
+
+	Events Events
+}
+
+type Events struct {
+	// EnableEthRPC enables APIs that
+	// DisableRealTimeFilterAPI will disable the RealTimeFilterAPI that can create and query filters for actor events as they are emitted.
+	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	DisableRealTimeFilterAPI bool
+
+	// DisableHistoricFilterAPI will disable the HistoricFilterAPI that can create and query filters for actor events
+	// that occurred in the past. HistoricFilterAPI maintains a queryable index of events.
+	// The API is enabled when EnableEthRPC is true, but can be disabled selectively with this flag.
+	DisableHistoricFilterAPI bool
+
+	// FilterTTL specifies the time to live for actor event filters. Filters that haven't been accessed longer than
+	// this time become eligible for automatic deletion.
+	FilterTTL Duration
+
+	// MaxFilters specifies the maximum number of filters that may exist at any one time.
+	MaxFilters int
+
+	// MaxFilterResults specifies the maximum number of results that can be accumulated by an actor event filter.
+	MaxFilterResults int
+
+	// MaxFilterHeightRange specifies the maximum range of heights that can be used in a filter (to avoid querying
+	// the entire chain)
+	MaxFilterHeightRange uint64
+
+	// DatabasePath is the full path to a sqlite database that will be used to index actor events to
+	// support the historic filter APIs. If the database does not exist it will be created. The directory containing
+	// the database must already exist and be writeable. If a relative path is provided here, sqlite treats it as
+	// relative to the CWD (current working directory).
+	DatabasePath string
+
+	// Others, not implemented yet:
+	// Set a limit on the number of active websocket subscriptions (may be zero)
+	// Set a timeout for subscription clients
+	// Set upper bound on index size
+}
+
+type IndexConfig struct {
+	// EXPERIMENTAL FEATURE. USE WITH CAUTION
+	// EnableMsgIndex enables indexing of messages on chain.
+	EnableMsgIndex bool
 }

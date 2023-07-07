@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -97,7 +96,7 @@ var rpcCmd = &cli.Command{
 				return err
 			}
 
-			rb, err := ioutil.ReadAll(resp.Body)
+			rb, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return err
 			}

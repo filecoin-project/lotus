@@ -143,15 +143,31 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		if err != nil {
 			return false, xerrors.Errorf("API error getting head: %w", err)
 		}
+
+		var dealSafeSealEpoch abi.ChainEpoch
 		for _, piece := range sector.Pieces {
 			if piece.DealInfo == nil {
 				continue
 			}
-			dealSafeSealEpoch := piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
-			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-ts.Height()) * blockTime)
-			if dealSafeSealTime.Before(sealTime) {
-				sealTime = dealSafeSealTime
+
+			dealSafeSealEpoch = piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
+
+			alloc, _ := m.Api.StateGetAllocationForPendingDeal(ctx.Context(), piece.DealInfo.DealID, types.EmptyTSK)
+			// alloc is nil if this is not a verified deal in nv17 or later
+			if alloc == nil {
+				continue
 			}
+
+			if alloc.Expiration-cfg.StartEpochSealingBuffer < dealSafeSealEpoch {
+				dealSafeSealEpoch = alloc.Expiration - cfg.StartEpochSealingBuffer
+				log.Debugw("checking safe seal epoch", "dealSafeSealEpoch", dealSafeSealEpoch)
+			}
+		}
+
+		dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-ts.Height()) * blockTime)
+		if dealSafeSealTime.Before(sealTime) {
+			log.Debugw("deal safe time is before seal time", "dealSafeSealTime", dealSafeSealTime, "sealTime", sealTime)
+			sealTime = dealSafeSealTime
 		}
 
 		if now.After(sealTime) {
@@ -401,6 +417,13 @@ func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSiz
 		close(pp.doneCh)
 	}
 
+	log.Debugw("new pending piece", "dealId", deal.DealID,
+		"piece", deal.DealProposal.PieceCID,
+		"size", size,
+		"dealStart", deal.DealSchedule.StartEpoch,
+		"dealEnd", deal.DealSchedule.EndEpoch,
+		"termEnd", ct.claimTermEnd)
+
 	m.pendingPieces[proposalCID(deal)] = pp
 	go func() {
 		defer m.inputLk.Unlock()
@@ -449,6 +472,9 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		if err != nil {
 			return 0, big.Zero(), err
 		}
+		if onChainInfo == nil {
+			return 0, big.Zero(), xerrors.Errorf("sector info for sector %d not found", sn)
+		}
 		memo[sn] = struct {
 			e abi.ChainEpoch
 			p abi.TokenAmount
@@ -494,10 +520,6 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 				continue
 			}
 			if !ok {
-				exp, _, _ := getExpirationCached(sector.number)
-
-				// todo move this log into checkDealAssignable, make more detailed about the reason
-				log.Debugf("CC update sector %d cannot fit deal, expiration %d before deal end epoch %d", id, exp, piece.deal.DealProposal.EndEpoch)
 				continue
 			}
 
@@ -608,6 +630,10 @@ func (m *Sealing) pendingPieceEpochBounds() []pieceBound {
 	boundsByEpoch := map[abi.ChainEpoch]*pieceBound{}
 
 	for ppi, piece := range m.pendingPieces {
+		if piece.assigned {
+			continue
+		}
+
 		// start bound on deal end
 		if boundsByEpoch[piece.deal.DealProposal.EndEpoch] == nil {
 			boundsByEpoch[piece.deal.DealProposal.EndEpoch] = &pieceBound{
@@ -679,7 +705,6 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 		return &pieceBounds[f-1]
 	}
 
-	targetExpirationEpoch := ts.Height() + abi.ChainEpoch(cfg.MinTargetUpgradeSectorExpiration)
 	minExpirationEpoch := ts.Height() + abi.ChainEpoch(cfg.MinUpgradeSectorExpiration)
 
 	var candidate abi.SectorID
@@ -717,33 +742,25 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 			continue
 		}
 
-		// if the sector has less than one sector worth of candidate deals, and
-		// the best candidate has more candidate deals, this sector isn't better
-		if pb.dealBytesInBound.Padded() < abi.PaddedPieceSize(ssize) {
-			if bestDealBytes > pb.dealBytesInBound.Padded() {
-				continue
-			}
-		}
-
-		// if best is below target, we want larger expirations
-		// if best is above target, we want lower pledge, but only if still above target
-
-		// todo: after nv17 "target expiration" doesn't really make that much sense
-		//  (tho to be fair it doesn't make too much sense now either)
-		//  we probably want the lowest expiration that's still above the configured
-		//  minimum, and can fit most candidate deals
-
-		if bestExpiration < targetExpirationEpoch {
-			if expirationEpoch > bestExpiration && slowChecks(s.Number) {
-				bestExpiration = expirationEpoch
-				bestPledge = pledge
-				bestDealBytes = pb.dealBytesInBound.Padded()
-				candidate = s
-			}
+		if pb.dealBytesInBound.Padded() == 0 {
+			log.Debugw("skipping available sector", "sector", s.Number, "reason", "no deals in expiration bounds", "expiration", expirationEpoch)
 			continue
 		}
 
-		if expirationEpoch >= targetExpirationEpoch && pledge.LessThan(bestPledge) && slowChecks(s.Number) {
+		// if the sector has less than one sector worth of candidate deals, and
+		// the best candidate has more candidate deals, this sector isn't better
+
+		lessThanSectorOfData := pb.dealBytesInBound.Padded() < abi.PaddedPieceSize(ssize)
+		moreDealsThanBest := pb.dealBytesInBound.Padded() > bestDealBytes
+
+		// we want lower pledge, but only if we have more than one sector worth of deals
+
+		preferDueToDealSize := lessThanSectorOfData && moreDealsThanBest
+		preferDueToPledge := pledge.LessThan(bestPledge) && !lessThanSectorOfData
+
+		prefer := preferDueToDealSize || preferDueToPledge
+
+		if prefer && slowChecks(s.Number) {
 			bestExpiration = expirationEpoch
 			bestPledge = pledge
 			bestDealBytes = pb.dealBytesInBound.Padded()
@@ -752,12 +769,12 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 	}
 
 	if bestExpiration < minExpirationEpoch {
-		log.Infow("Not upgrading any sectors", "available", len(m.available), "pieces", len(m.pendingPieces), "bestExp", bestExpiration, "target", targetExpirationEpoch, "min", minExpirationEpoch, "candidate", candidate)
+		log.Infow("Not upgrading any sectors", "available", len(m.available), "pieces", len(m.pendingPieces), "bestExp", bestExpiration, "min", minExpirationEpoch, "candidate", candidate)
 		// didn't find a good sector / no sectors were available
 		return false, nil
 	}
 
-	log.Infow("Upgrading sector", "number", candidate.Number, "type", "deal", "proofType", sp, "expiration", bestExpiration, "pledge", types.FIL(bestPledge))
+	log.Infow("Upgrading sector", "number", candidate.Number, "type", "deal", "proofType", sp, "expiration", bestExpiration, "pledge", types.FIL(bestPledge), "pieces", len(m.pendingPieces), "dealBytesAtExp", bestDealBytes)
 	delete(m.available, candidate)
 	m.nextDealSector = &candidate.Number
 	return true, m.sectors.Send(uint64(candidate.Number), SectorStartCCUpdate{})

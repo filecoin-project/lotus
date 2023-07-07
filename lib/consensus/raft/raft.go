@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	hraft "github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/ipfs/go-log/v2"
@@ -80,7 +81,7 @@ func newRaftWrapper(
 	raftW.staging = staging
 	raftW.repo = repo
 	// Set correct LocalID
-	cfg.RaftConfig.LocalID = hraft.ServerID(peer.Encode(host.ID()))
+	cfg.RaftConfig.LocalID = hraft.ServerID(host.ID().String())
 
 	df := cfg.GetDataFolder(repo)
 	err := makeDataFolder(df)
@@ -156,7 +157,7 @@ func (rw *raftWrapper) makeStores() error {
 	snapstore, err := hraft.NewFileSnapshotStoreWithLogger(
 		df,
 		RaftMaxSnapshots,
-		zap.NewStdLog(log.Logger("raft-snapshot").SugaredLogger.Desugar()),
+		hclog.FromStandardLogger(zap.NewStdLog(log.Logger("raft-snapshot").SugaredLogger.Desugar()), hclog.DefaultOptions),
 	)
 	if err != nil {
 		return err
@@ -248,7 +249,7 @@ func makeServerConf(peers []peer.ID) hraft.Configuration {
 
 	// Servers are peers + self. We avoid duplicate entries below
 	for _, pid := range peers {
-		p := peer.Encode(pid)
+		p := pid.String()
 		_, ok := sm[p]
 		if !ok { // avoid dups
 			sm[p] = struct{}{}
@@ -284,7 +285,7 @@ func (rw *raftWrapper) WaitForLeader(ctx context.Context) (string, error) {
 func (rw *raftWrapper) WaitForVoter(ctx context.Context) error {
 	logger.Debug("waiting until we are promoted to a voter")
 
-	pid := hraft.ServerID(peer.Encode(rw.host.ID()))
+	pid := hraft.ServerID(rw.host.ID().String())
 	for {
 		select {
 		case <-ctx.Done():

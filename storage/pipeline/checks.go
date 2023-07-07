@@ -3,7 +3,6 @@ package sealing
 import (
 	"bytes"
 	"context"
-	"time"
 
 	"golang.org/x/xerrors"
 
@@ -133,8 +132,6 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 	if err != nil {
 		return xerrors.Errorf("checking if sector is allocated: %w", err)
 	}
-	// TODO This is a very bad hack!! We are only using this while we investigate the compiler issue here.
-	time.Sleep(time.Nanosecond)
 	if alloc {
 		//committed P2 message  but commit C2 message too late, pci should be null in this case
 		return &ErrSectorNumberAllocated{xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)}
@@ -164,8 +161,6 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		if err != nil {
 			return xerrors.Errorf("checking if sector is allocated: %w", err)
 		}
-		// TODO This is a very bad hack!! We are only using this while we investigate the compiler issue here.
-		time.Sleep(time.Nanosecond)
 		if alloc {
 			// not much more we can check here, basically try to wait for commit,
 			// and hope that this will work

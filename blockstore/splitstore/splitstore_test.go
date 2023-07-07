@@ -429,7 +429,7 @@ func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.
 	}
 	defer ss.Close() //nolint
 
-	ss.warmupEpoch = 1
+	ss.warmupEpoch.Store(1)
 	go ss.reifyOrchestrator()
 
 	waitForReification := func() {
@@ -529,7 +529,7 @@ func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blocks
 	}
 	defer ss.Close() //nolint
 
-	ss.warmupEpoch = 1
+	ss.warmupEpoch.Store(1)
 	go ss.reifyOrchestrator()
 
 	waitForReification := func() {
@@ -756,6 +756,8 @@ func (b *mockStore) DeleteMany(_ context.Context, cids []cid.Cid) error {
 	}
 	return nil
 }
+
+func (b *mockStore) Flush(context.Context) error { return nil }
 
 func (b *mockStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return nil, errors.New("not implemented")
