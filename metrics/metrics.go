@@ -765,6 +765,7 @@ var ChainNodeViews = append([]*view.View{
 	PubsubDeliverMessageView,
 	PubsubRejectMessageView,
 	PubsubDuplicateMessageView,
+	PubsubPruneMessageView,
 	PubsubRecvRPCView,
 	PubsubSendRPCView,
 	PubsubDropRPCView,
