@@ -560,7 +560,6 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 
 	case pubsub_pb.TraceEvent_PRUNE:
 		stats.Record(context.TODO(), metrics.PubsubPruneMessage.M(1))
-		log.Errorf("********************TRACE EVENT PRUNE****************************")
 		if trw.traceMessage(evt.GetPrune().GetTopic()) {
 			if trw.lp2pTracer != nil {
 				trw.lp2pTracer.Trace(evt)
