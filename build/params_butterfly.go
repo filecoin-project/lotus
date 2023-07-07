@@ -57,6 +57,9 @@ const UpgradeLightningHeight = 50
 
 const UpgradeThunderHeight = UpgradeLightningHeight + 360
 
+// ??????????
+const UpgradeWatermelonHeight = 999999999999999
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
