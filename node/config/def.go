@@ -73,6 +73,10 @@ func defCommon() Common {
 			Bootstrapper: false,
 			DirectPeers:  nil,
 		},
+		SturdyDB: SturdyDB{
+			Username: "yugabyte",
+			Password: "yugabyte",
+		},
 	}
 }
 

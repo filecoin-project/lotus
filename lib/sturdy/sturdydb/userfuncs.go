@@ -66,9 +66,10 @@ type Row interface {
 // QueryRow gets 1 row using column order matching.
 // This is a timesaver for the special case of wanting the first row returned only.
 // EX:
-// var name, pet string
-// var ID = 123
-// err := db.QueryRow(ctx, "SELECT name, pet FROM users WHERE ID=?", ID).Scan(&name, &pet)
+//
+//	var name, pet string
+//	var ID = 123
+//	err := db.QueryRow(ctx, "SELECT name, pet FROM users WHERE ID=?", ID).Scan(&name, &pet)
 func (db *DB) QueryRow(ctx context.Context, sql rawStringOnly, arguments ...any) Row {
 	return db.pgx.QueryRow(ctx, string(sql), arguments...)
 }

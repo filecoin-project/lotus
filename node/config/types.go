@@ -12,12 +12,12 @@ import (
 
 // Common is common config between full node and miner
 type Common struct {
-	API     API
-	Backup  Backup
-	Logging Logging
-	Libp2p  Libp2p
-	Pubsub  Pubsub
-	DB      SturdyDB
+	API      API
+	Backup   Backup
+	Logging  Logging
+	Libp2p   Libp2p
+	Pubsub   Pubsub
+	SturdyDB SturdyDB
 }
 
 // FullNode is a full node config
@@ -735,8 +735,23 @@ type IndexConfig struct {
 }
 
 type SturdyDB struct {
-	Hosts    []string
+	// HOSTS is a list of hostnames to nodes running YugabyteDB
+	// in a cluster. Only 1 is required
+	Hosts []string
+
+	// The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.
 	Username string
+
+	// The password for the related username. Blank for default.
 	Password string
+
+	// The database (logical partition) within Yugabyte. Blank for default.
 	Database string
+
+	// The port to find Yugabyte. Blank for default.
+	Port string
+
+	// ITest is for optimized integration testing and not
+	// for production. Blank for default production configuration.
+	ITest string
 }

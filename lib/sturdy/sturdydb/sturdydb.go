@@ -12,30 +12,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/config"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type schema struct {
-	schema string
-}
-
-// DefaultSchema is what production systems use.
-func defaultSchema() schema {
-	return schema{}
-}
-
 // ItestNewID see ITestWithID doc
 func ITestNewID() string {
 	return strconv.Itoa(rand.Intn(99999))
-}
-
-// ITestWithID is for starting or joining an integration test.
-// Usage: New("", "", "", "", ITestWithID(ITestNewID()), log.Error)
-func ITestWithID(id string) schema {
-	return schema{schema: "itest_" + id}
 }
 
 type DB struct {
@@ -48,31 +34,44 @@ type DB struct {
 
 var logger = logging.Logger("sturdydb")
 
-// NewProd is a convenience function for running a production workload.
-func NewProd() (*DB, error) {
-	return New(defaultSchema(), func(s string) { logger.Error(s) })
+// NewFromConfig is a convenience function.
+// In usage:
+//
+//	db, err := NewFromConfig(config.SturdyDB)  // in binary init
+func NewFromConfig(cfg config.SturdyDB) (*DB, error) {
+	return New(
+		cfg.Hosts,
+		cfg.Username,
+		cfg.Password,
+		cfg.Database,
+		cfg.Port,
+		cfg.ITest,
+		func(s string) { logger.Error(s) },
+	)
 }
 
 // New is to be called once per binary to establish the pool.
 // log() is for errors. It returns an upgraded database's connection.
 // This entry point serves both production and integration tests, so it's more DI.
-func New(schema schema, log func(string)) (*DB, error) {
-	// TODO read from config: hosts []string, user, password, database string,
-
+func New(hosts []string, username, password, database, port, itest string, log func(string)) (*DB, error) {
 	connString := ""
 	if len(hosts) > 0 {
 		connString = "host=" + hosts[0] + " "
 	}
-	for k, v := range map[string]string{"user": user, "password": password, "dbname": database} {
+	for k, v := range map[string]string{"user": username, "password": password, "dbname": database, "port": port} {
 		if v != "" {
 			connString += k + "=" + v + " "
 		}
 	}
-	if err := ensureSchemaExists(connString, schema.schema); err != nil {
+
+	schema := "lotus"
+	if itest != "" {
+		schema = "itest_" + itest
+	}
+	if err := ensureSchemaExists(connString, schema); err != nil {
 		return nil, err
 	}
-
-	cfg, err := pgxpool.ParseConfig(connString + "search_schema=" + schema.schema)
+	cfg, err := pgxpool.ParseConfig(connString + "search_schema=" + schema)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +86,7 @@ func New(schema schema, log func(string)) (*DB, error) {
 		DBMeasures.Errors.M(1)
 	}
 
-	db := DB{cfg: cfg, schema: schema.schema, hostnames: hosts, log: log} // pgx populated in AddStatsAndConnect
+	db := DB{cfg: cfg, schema: schema, hostnames: hosts, log: log} // pgx populated in AddStatsAndConnect
 	if err := db.addStatsAndConnect(); err != nil {
 		return nil, err
 	}

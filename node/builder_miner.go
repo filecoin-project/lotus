@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/lib/sturdy/sturdydb"
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"github.com/filecoin-project/lotus/markets/idxprov"
@@ -231,6 +232,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(config.SealerConfig), cfg.Storage),
 		Override(new(config.ProvingConfig), cfg.Proving),
 		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
+		Override(new(config.SturdyDB), func() (*sturdydb.DB, error) { return sturdydb.NewFromConfig(cfg.SturdyDB) }),
 	)
 }
 
