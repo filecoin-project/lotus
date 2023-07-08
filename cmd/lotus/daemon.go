@@ -381,7 +381,12 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
-		if cctx.IsSet("slash-consensus") && cctx.IsSet("slashdb-dir") {
+
+		if cctx.Bool("slash-consensus") {
+			if !cctx.IsSet("slashdb-dir") {
+				return fmt.Errorf("must supply path for slasher database with --slashdb-dir")
+			}
+
 			go func() {
 				err := slashConsensus(api, cctx.String("slashdb-dir"), cctx.String("slasher-sender"))
 				if err != nil {
@@ -617,7 +622,6 @@ func slashConsensus(a lapi.FullNode, p string, from string) error {
 		return xerrors.Errorf("sync incoming blocks failed: %w", err)
 	}
 	for block := range blocks {
-		log.Infof("deal with block: %d, %v, %s", block.Height, block.Miner, block.Cid())
 		otherBlock, extraBlock, fault, err := slashFilterMinedBlock(ctx, sf, a, block)
 		if err != nil {
 			log.Errorf("slash detector errored: %s", err)
