@@ -28,12 +28,17 @@ func TestAPI(t *testing.T) {
 	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
+	ts := apiSuite{}
+	t.Run("testMiningReal", ts.testMiningReal)
+	ts.opts = append(ts.opts, kit.ThroughRPC())
+	t.Run("testMiningReal", ts.testMiningReal)
+
 	//stm: @CHAIN_STATE_MINER_INFO_001
 	t.Run("direct", func(t *testing.T) {
-		runAPITest(t)
+		runAPITest(t, kit.MockProofs())
 	})
 	t.Run("rpc", func(t *testing.T) {
-		runAPITest(t, kit.ThroughRPC())
+		runAPITest(t, kit.MockProofs(), kit.ThroughRPC())
 	})
 }
 
@@ -49,7 +54,6 @@ func runAPITest(t *testing.T, opts ...interface{}) {
 	t.Run("id", ts.testID)
 	t.Run("testConnectTwo", ts.testConnectTwo)
 	t.Run("testMining", ts.testMining)
-	t.Run("testMiningReal", ts.testMiningReal)
 	t.Run("testSlowNotify", ts.testSlowNotify)
 	t.Run("testSearchMsg", ts.testSearchMsg)
 	t.Run("testOutOfGasError", ts.testOutOfGasError)
