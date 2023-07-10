@@ -8,9 +8,8 @@ This is the first candidate for the upcoming feature release v1.23.3 of Lotus. T
 
 ## Highlights
 
-- The Ethereum-like RPC exposed by Lotus is now compatible with EIP-1898: https://github.com/filecoin-project/lotus/pull/10921
+- The Ethereum-like RPC exposed by Lotus is now compatible with EIP-1898: https://github.com/filecoin-project/lotus/pull/10815
 - The lotus-miner PieceReader now supports parallel reads: https://github.com/filecoin-project/lotus/pull/10913
-- The chain tipset cache is now based on a sharded mutex
 - Added new environment variable `LOTUS_EXEC_TRACE_CACHE_SIZE` to configure execution trace cache size ([filecoin-project/lotus#10585](https://github.com/filecoin-project/lotus/pull/10585))
   - If unset, we default to caching 16 most recent execution traces. Storage Providers may want to set this to 0, while exchanges may want to crank it up. 
 
