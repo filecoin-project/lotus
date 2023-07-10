@@ -26,8 +26,8 @@ var cronWcCmd = &cli.Command{
 }
 
 type DeadlineRef struct {
-	Addr   address.Address
-	Height abi.ChainEpoch
+	AddrStr string
+	Height  abi.ChainEpoch
 }
 
 type DeadlineSummary struct {
@@ -89,19 +89,22 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("failed to get tipset at epoch %d: %w", ref.Height, err)
 			}
-			fmt.Printf("ref: %v\n", ref)
-			dline, err := n.StateMinerProvingDeadline(ctx, ref.Addr, tsBefore.Key())
+			addr, err := address.NewFromString(ref.AddrStr)
+			if err != nil {
+				return xerrors.Errorf("faield to get address from input string: %w", err)
+			}
+			dline, err := n.StateMinerProvingDeadline(ctx, addr, tsBefore.Key())
 			if err != nil {
 				return xerrors.Errorf("failed to read proving deadline: %w", err)
 			}
 
 			// iterate through all partitions at epoch of processing
 			var pSummaries []PartitionSummary
-			psBefore, err := n.StateMinerPartitions(ctx, ref.Addr, dline.Index, tsBefore.Key())
+			psBefore, err := n.StateMinerPartitions(ctx, addr, dline.Index, tsBefore.Key())
 			if err != nil {
 				return xerrors.Errorf("failed to get partitions: %w", err)
 			}
-			psAfter, err := n.StateMinerPartitions(ctx, ref.Addr, dline.Index, tsAfter.Key())
+			psAfter, err := n.StateMinerPartitions(ctx, addr, dline.Index, tsAfter.Key())
 			if err != nil {
 				return xerrors.Errorf("failed to get partitions: %w", err)
 			}
