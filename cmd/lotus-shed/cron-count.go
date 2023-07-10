@@ -28,7 +28,7 @@ var cronWcCmd = &cli.Command{
 type DeadlineRef struct {
 	To     string
 	Height abi.ChainEpoch
-	Gas json.RawMessage
+	Gas    json.RawMessage
 }
 
 type DeadlineSummary struct {
@@ -80,7 +80,7 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 		ctx := lcli.ReqContext(c)
 
 		dSummaries := make([]DeadlineSummary, len(refStream))
-		for _, ref := range refStream {
+		for j, ref := range refStream {
 			// get miner's deadline
 			tsBefore, err := n.ChainGetTipSetByHeight(ctx, ref.Height, types.EmptyTSK)
 			if err != nil {
@@ -164,7 +164,7 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 					},
 				})
 			}
-			dSummaries = append(dSummaries, DeadlineSummary{Partitions: pSummaries})
+			dSummaries[j] = DeadlineSummary{Partitions: pSummaries}
 		}
 
 		// output partition info
