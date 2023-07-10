@@ -89,7 +89,7 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("failed to get tipset at epoch %d: %w", ref.Height, err)
 			}
-
+			fmt.Printf("ref: %v\n", ref)
 			dline, err := n.StateMinerProvingDeadline(ctx, ref.Addr, tsBefore.Key())
 			if err != nil {
 				return xerrors.Errorf("failed to read proving deadline: %w", err)
