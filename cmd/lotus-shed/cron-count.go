@@ -26,8 +26,9 @@ var cronWcCmd = &cli.Command{
 }
 
 type DeadlineRef struct {
-	AddrStr string
-	Height  abi.ChainEpoch
+	To     string
+	Height abi.ChainEpoch
+	Gas json.RawMessage
 }
 
 type DeadlineSummary struct {
@@ -89,7 +90,7 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("failed to get tipset at epoch %d: %w", ref.Height, err)
 			}
-			addr, err := address.NewFromString(ref.AddrStr)
+			addr, err := address.NewFromString(ref.To)
 			if err != nil {
 				return xerrors.Errorf("faield to get address from input string: %w", err)
 			}
