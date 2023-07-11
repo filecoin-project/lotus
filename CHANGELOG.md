@@ -2,9 +2,9 @@
 
 # UNRELEASED
 
-# v1.23.3-rc1 / 2023-07-04
+# v1.23.3-rc2 / 2023-07-11
 
-This is the first candidate for the upcoming feature release v1.23.3 of Lotus. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This is the second release candidate for the upcoming feature release v1.23.3 of Lotus. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 ## Highlights
 
@@ -100,6 +100,7 @@ This is the first candidate for the upcoming feature release v1.23.3 of Lotus. T
   - feat: make RunClientTest louder when deals fail ([filecoin-project/lotus#10817](https://github.com/filecoin-project/lotus/pull/10817))
   - fix: cli: Change arg wording in change-beneficiary cmd ([filecoin-project/lotus#10823](https://github.com/filecoin-project/lotus/pull/10823))
   - refactor: streamline error handling in CheckPendingMessages (#10818) ([filecoin-project/lotus#10818](https://github.com/filecoin-project/lotus/pull/10818))
+  - feat: Add tmp indices to events table while performing migration to V2
 
 # v1.23.2 / 2023-06-28
 
