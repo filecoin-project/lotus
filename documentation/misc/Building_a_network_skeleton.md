@@ -65,7 +65,7 @@ Follow these steps to create a skeleton for a network upgrade in Lotus:
 4. Update `chain/consensus/filcns/upgrades.go`.
     - Import `nv(XX+1) "github.com/filecoin-project/go-state-types/builtin/v(XX+1)/migration`.
     - Add Schedule. [^1]
-    - Add Migration.
+    - Add Migration. [^2]
 
 5. Add actorstype to the NewActorRegistry in `/chain/consensus/computestate.go`.
     - Add `inv.Register(actorstypes.Version(XX+1), vm.ActorsVersionPredicate(actorstypes.Version(XX+1)), builtin.MakeRegistry(actorstypes.Version(XX+1))`.
