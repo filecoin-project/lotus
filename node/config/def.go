@@ -269,6 +269,13 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxConcurrentUnseals:       5,
 			GCInterval:                 Duration(1 * time.Minute),
 		},
+		ClusterDB: ClusterDB{
+			Hosts:    []string{"127.0.0.1"},
+			Username: "yugabyte",
+			Password: "yugabyte",
+			Database: "yugabyte",
+			Port:     "5433",
+		},
 	}
 
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

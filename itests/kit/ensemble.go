@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/sturdy/clusterdb"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
@@ -762,6 +763,10 @@ func (n *Ensemble) Start() *Ensemble {
 				node.Unset(new(*sectorstorage.Manager)),
 			)
 		}
+
+		opts = append(opts, node.Override(new(*clusterdb.DB), func(cfg config.ClusterDB) (*clusterdb.DB, error) {
+			return clusterdb.NewFromConfig(cfg)
+		}))
 
 		// start node
 		stop, err := node.New(ctx, opts...)
