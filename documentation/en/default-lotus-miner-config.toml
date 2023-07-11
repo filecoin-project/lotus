@@ -1,3 +1,22 @@
+# env var: LOTUS__HOSTS
+#Hosts = ["127.0.0.1"]
+
+# env var: LOTUS__USERNAME
+#Username = "yugabyte"
+
+# env var: LOTUS__PASSWORD
+#Password = "yugabyte"
+
+# env var: LOTUS__DATABASE
+#Database = "yugabyte"
+
+# env var: LOTUS__PORT
+#Port = "5433"
+
+# env var: LOTUS__ITEST
+#ITest = ""
+
+
 [API]
   # Binding address for the Lotus API
   #

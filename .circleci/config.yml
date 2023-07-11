@@ -967,6 +967,12 @@ workflows:
           suite: itest-splitstore
           target: "./itests/splitstore_test.go"
       - test:
+          name: test-itest-sturdydb
+          requires:
+            - build
+          suite: itest-sturdydb
+          target: "./itests/sturdydb_test.go"
+      - test:
           name: test-itest-tape
           requires:
             - build

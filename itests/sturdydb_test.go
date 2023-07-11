@@ -2,182 +2,187 @@ package itests
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/lib/sturdy/sturdydb"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
-func TestSturdyDB(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	client, miner, ens := kit.EnsembleMinimal(t,
+func staticConfig() config.SturdyDB {
+	return config.SturdyDB{
+		Hosts:    []string{"127.0.0.1"},
+		Username: "yugabyte",
+		Password: "yugabyte",
+		Database: "yugabyte",
+		Port:     "5433",
+		ITest:    sturdydb.ITestNewID(),
+	}
+}
+func withSetup(t *testing.T, f func(*kit.TestMiner)) {
+	_, miner, _ := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
 		kit.ConstructorOpts(
-			node.Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(
-				config.DefaultStorageMiner().Fees,
-				config.ProvingConfig{
-					DisableWDPoStPreChecks: true,
-				},
-			))))
+			node.Override(new(config.SturdyDB), func() config.SturdyDB {
+				return staticConfig()
+			}),
+			node.Override(new(*sturdydb.DB), sturdydb.NewFromConfig), //Why does this not work?
+		),
+	)
 
-	/*
-	   ens.InterconnectAll().BeginMining(2 * time.Millisecond)
+	var err error
+	miner.SturdyDB, err = sturdydb.NewFromConfig(staticConfig())
+	if err != nil {
+		t.Fatal("Yugabyte connection error:", err)
+	}
 
-	   nSectors := 10
+	defer miner.SturdyDB.ITestDeleteAll()
+	f(miner)
+}
 
-	   miner.PledgeSectors(ctx, nSectors, 0, nil)
+func TestCrud(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	   maddr, err := miner.ActorAddress(ctx)
-	   require.NoError(t, err)
-	   di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	   require.NoError(t, err)
+	withSetup(t, func(miner *kit.TestMiner) {
+		err := miner.SturdyDB.Exec(ctx, `
+			INSERT INTO 
+				itest_scratch (some_int, content) 
+			VALUES 
+				(11, 'cows'), 
+				(5, 'cats')
+		`)
+		if err != nil {
+			t.Fatal("Could not insert: ", err)
+		}
+		var ints []struct {
+			Count       int    `db:"some_int"`
+			Animal      string `db:"content"`
+			Unpopulated int
+		}
+		err = miner.SturdyDB.Select(ctx, &ints, "SELECT content, some_int FROM itest_scratch")
+		if err != nil {
+			t.Fatal("Could not select: ", err)
+		}
+		if len(ints) != 2 {
+			t.Fatal("unexpected count of returns. Want 2, Got ", len(ints))
+		}
+		if ints[0].Count != 11 || ints[1].Count != 5 {
+			t.Fatal("expected [11,5] got ", ints)
+		}
+		if ints[0].Animal != "cows" || ints[1].Animal != "cats" {
+			t.Fatal("expected, [cows, cats] ", ints)
+		}
+		fmt.Println("test completed")
+	})
+}
 
-	   mid, err := address.IDFromAddress(maddr)
-	   require.NoError(t, err)
+func TestTransaction(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	   t.Log("Running one proving period")
-	   waitUntil := di.Open + di.WPoStProvingPeriod
-	   t.Logf("End for head.Height > %d", waitUntil)
+	withSetup(t, func(miner *kit.TestMiner) {
+		if err := miner.SturdyDB.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
+			t.Fatal("E0", err)
+		}
+		miner.SturdyDB.BeginTransaction(ctx, func(tx *sturdydb.Transaction) (commit bool) {
+			if err := tx.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
+				t.Fatal("E1", err)
+			}
 
-	   ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
-	   t.Logf("Now head.Height = %d", ts.Height())
+			// sum1 is read from OUTSIDE the transaction so it's the old value
+			var sum1 int
+			if err := miner.SturdyDB.QueryRow(ctx, "SELECT SUM(some_int) FROM itest_scratch").Scan(&sum1); err != nil {
+				t.Fatal("E2", err)
+			}
+			if sum1 != 4+5+6 {
+				t.Fatal("Expected 15, got ", sum1)
+			}
 
-	   p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	   require.NoError(t, err)
+			// sum2 is from INSIDE the transaction, so the updated value.
+			var sum2 int
+			if err := tx.QueryRow(ctx, "SELECT SUM(some_int) FROM itest_scratch").Scan(&sum2); err != nil {
+				t.Fatal("E3", err)
+			}
+			if sum2 != 4+5+6+7+8+9 {
+				t.Fatal("Expected 39, got ", sum2)
+			}
+			return false // rollback
+		})
 
-	   ssz, err := miner.ActorSectorSize(ctx, maddr)
-	   require.NoError(t, err)
+		var sum2 int
+		// Query() example (yes, QueryRow would be preferred here)
+		q, err := miner.SturdyDB.Query(ctx, "SELECT SUM(some_int) FROM itest_scratch")
+		if err != nil {
+			t.Fatal("E4", err)
+		}
+		defer q.Close()
+		var rowCt int
+		for q.Next() {
+			q.Scan(&sum2)
+			rowCt++
+		}
+		if sum2 != 4+5+6 {
+			t.Fatal("Expected 15, got ", sum2)
+		}
+		if rowCt != 1 {
+			t.Fatal("unexpected count of rows")
+		}
+	})
+}
 
-	   require.Equal(t, p.MinerPower, p.TotalPower)
-	   require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors+kit.DefaultPresealsPerBootstrapMiner)))
+func TestPartialWalk(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	   t.Log("Drop some sectors")
+	withSetup(t, func(miner *kit.TestMiner) {
+		if err := miner.SturdyDB.Exec(ctx, `
+			INSERT INTO 
+				itest_scratch (content, some_int) 
+			VALUES 
+				('andy was here', 5), 
+				('lotus is awesome', 6), 
+				('hello world', 7),
+				('3rd integration test', 8),
+				('fiddlesticks', 9)
+			`); err != nil {
+			t.Fatal("e1", err)
+		}
 
-	   // Drop 2 sectors from deadline 2 partition 0 (full partition / deadline)
+		// TASK: FIND THE ID of the string with a specific SHA256
+		needle := "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+		q, err := miner.SturdyDB.Query(ctx, `SELECT id, content FROM itest_scratch`)
+		if err != nil {
+			t.Fatal("e2", err)
+		}
+		defer q.Close()
 
-	   	{
-	   		parts, err := client.StateMinerPartitions(ctx, maddr, 2, types.EmptyTSK)
-	   		require.NoError(t, err)
-	   		require.Greater(t, len(parts), 0)
+		var tmp struct {
+			Src string `db:"content"`
+			ID  int
+		}
 
-	   		secs := parts[0].AllSectors
-	   		n, err := secs.Count()
-	   		require.NoError(t, err)
-	   		require.Equal(t, uint64(2), n)
+		var done bool
+		for q.Next() {
 
-	   		// Drop the partition
-	   		err = secs.ForEach(func(sid uint64) error {
-	   			return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkCorrupted(storiface.SectorRef{
-	   				ID: abi.SectorID{
-	   					Miner:  abi.ActorID(mid),
-	   					Number: abi.SectorNumber(sid),
-	   				},
-	   			}, true)
-	   		})
-	   		require.NoError(t, err)
-	   	}
+			if err := q.StructScan(&tmp); err != nil {
+				t.Fatal("")
+			}
 
-	   var s storiface.SectorRef
-
-	   // Drop 1 sectors from deadline 3 partition 0
-
-	   	{
-	   		parts, err := client.StateMinerPartitions(ctx, maddr, 3, types.EmptyTSK)
-	   		require.NoError(t, err)
-	   		require.Greater(t, len(parts), 0)
-
-	   		secs := parts[0].AllSectors
-	   		n, err := secs.Count()
-	   		require.NoError(t, err)
-	   		require.Equal(t, uint64(2), n)
-
-	   		// Drop the sector
-	   		sn, err := secs.First()
-	   		require.NoError(t, err)
-
-	   		all, err := secs.All(2)
-	   		require.NoError(t, err)
-	   		t.Log("the sectors", all)
-
-	   		s = storiface.SectorRef{
-	   			ID: abi.SectorID{
-	   				Miner:  abi.ActorID(mid),
-	   				Number: abi.SectorNumber(sn),
-	   			},
-	   		}
-
-	   		err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, true)
-	   		require.NoError(t, err)
-	   	}
-
-	   di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	   require.NoError(t, err)
-
-	   t.Log("Go through another PP, wait for sectors to become faulty")
-	   waitUntil = di.Open + di.WPoStProvingPeriod
-	   t.Logf("End for head.Height > %d", waitUntil)
-
-	   ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
-	   t.Logf("Now head.Height = %d", ts.Height())
-
-	   p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	   require.NoError(t, err)
-
-	   require.Equal(t, p.MinerPower, p.TotalPower)
-
-	   sectors := p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	   require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-3, int(sectors)) // -3 just removed sectors
-
-	   t.Log("Recover one sector")
-
-	   err = miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkFailed(s, false)
-	   require.NoError(t, err)
-
-	   di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	   require.NoError(t, err)
-
-	   waitUntil = di.Open + di.WPoStProvingPeriod
-	   t.Logf("End for head.Height > %d", waitUntil)
-
-	   ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
-	   t.Logf("Now head.Height = %d", ts.Height())
-
-	   p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	   require.NoError(t, err)
-
-	   require.Equal(t, p.MinerPower, p.TotalPower)
-
-	   sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	   require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-2, int(sectors)) // -2 not recovered sectors
-
-	   // pledge a sector after recovery
-
-	   miner.PledgeSectors(ctx, 1, nSectors, nil)
-
-	   	{
-	   		// Wait until proven.
-	   		di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
-	   		require.NoError(t, err)
-
-	   		waitUntil := di.Open + di.WPoStProvingPeriod
-	   		t.Logf("End for head.Height > %d\n", waitUntil)
-
-	   		ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
-	   		t.Logf("Now head.Height = %d", ts.Height())
-	   	}
-
-	   p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	   require.NoError(t, err)
-
-	   require.Equal(t, p.MinerPower, p.TotalPower)
-
-	   sectors = p.MinerPower.RawBytePower.Uint64() / uint64(ssz)
-	   require.Equal(t, nSectors+kit.DefaultPresealsPerBootstrapMiner-2+1, int(sectors)) // -2 not recovered sectors + 1 just pledged
-	*/
+			bSha := sha256.Sum256([]byte(tmp.Src))
+			if hex.EncodeToString(bSha[:]) == needle {
+				done = true
+				break
+			}
+		}
+		if !done {
+			t.Fatal("We didn't find it.")
+		}
+		// Answer: tmp.ID
+	})
 }

@@ -398,24 +398,4 @@
   # env var: LOTUS_INDEX_ENABLEMSGINDEX
   #EnableMsgIndex = false
 
-[SturdyDB]
-  # Hosts (1 entry required)
-  # This can point to multiple targets. In this case, the list of Fallbacks
-  # are tried if the first fails.
-  # A cluster of 3 entries (for concensus) enables DB upgrades with 100% uptime.
-  Hosts = ["localhost"]
 
-  # This defaults to the Yugabyte initial "insecure" setup
-  # which is acceptable on networks you trust. 
-  Username = "yugabyte"
-
-  # This defaults to the Yugabyte default "insecure" setup
-  # which is acceptable on networks you trust. 
-  Password = "yugabyte"
-
-  #Database is typically unnecessary as the default one is ok. 
-  #Database = "yugabyte"
-
-  # Port is typically unnecessary, but simplifies having
-  # multiple instances on a node for concensus during a DB upgrade. 
-  #Port = 12345

@@ -7,6 +7,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+type Intf interface {
+	ITestDeleteAll()
+	Exec(ctx context.Context, sql rawStringOnly, arguments ...any) error
+	Query(ctx context.Context, sql rawStringOnly, arguments ...any) (*Query, error)
+	QueryRow(ctx context.Context, sql rawStringOnly, arguments ...any) Row
+	Select(ctx context.Context, sliceOfStructPtr any, sql rawStringOnly, arguments ...any) error
+	BeginTransaction(ctx context.Context, f func(t *Transaction) (commit bool)) (retErr error)
+}
+
 // rawStringOnly is _intentionally_private_ to force only basic strings in SQL queries.
 // In any package, raw strings will satisfy compilation.  Ex:
 //

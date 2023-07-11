@@ -1,11 +1,12 @@
 package sturdydb
 
 import (
-	"github.com/filecoin-project/lotus/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 var (

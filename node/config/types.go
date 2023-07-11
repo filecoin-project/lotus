@@ -12,12 +12,11 @@ import (
 
 // Common is common config between full node and miner
 type Common struct {
-	API      API
-	Backup   Backup
-	Logging  Logging
-	Libp2p   Libp2p
-	Pubsub   Pubsub
-	SturdyDB SturdyDB
+	API     API
+	Backup  Backup
+	Logging Logging
+	Libp2p  Libp2p
+	Pubsub  Pubsub
 }
 
 // FullNode is a full node config
@@ -62,6 +61,8 @@ type StorageMiner struct {
 	Fees          MinerFeeConfig
 	Addresses     MinerAddressConfig
 	DAGStore      DAGStoreConfig
+
+	SturdyDB
 }
 
 type DAGStoreConfig struct {

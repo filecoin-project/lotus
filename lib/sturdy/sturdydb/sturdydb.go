@@ -5,18 +5,21 @@ package sturdydb
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/config"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 // ItestNewID see ITestWithID doc
@@ -59,7 +62,7 @@ func New(hosts []string, username, password, database, port, itest string, log f
 		connString = "host=" + hosts[0] + " "
 	}
 	for k, v := range map[string]string{"user": username, "password": password, "dbname": database, "port": port} {
-		if v != "" {
+		if strings.TrimSpace(v) != "" {
 			connString += k + "=" + v + " "
 		}
 	}
@@ -68,10 +71,11 @@ func New(hosts []string, username, password, database, port, itest string, log f
 	if itest != "" {
 		schema = "itest_" + itest
 	}
+
 	if err := ensureSchemaExists(connString, schema); err != nil {
 		return nil, err
 	}
-	cfg, err := pgxpool.ParseConfig(connString + "search_schema=" + schema)
+	cfg, err := pgxpool.ParseConfig(connString + "search_path=" + schema)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +134,7 @@ func (db *DB) addStatsAndConnect() error {
 		DBMeasures.OpenConnections.M(int64(s.TotalConns()))
 		DBMeasures.WhichHost.Observe(hostnameToIndex[c.Config().Host])
 
-		// Here's where you can do any connection seasoning
+		//FUTURE place for any connection seasoning
 		return nil
 	}
 
@@ -151,12 +155,15 @@ func (db *DB) ITestDeleteAll() {
 		return
 	}
 	defer db.pgx.Close()
-	_, err := db.pgx.Exec(context.Background(), "DROP SCHEMA ?", db.schema)
+	_, err := db.pgx.Exec(context.Background(), "DROP SCHEMA "+db.schema+" CASCADE")
 	if err != nil {
 		fmt.Println("warning: unclean itest shutdown: cannot delete schema: " + err.Error())
 		return
 	}
 }
+
+var schemaREString = "^[A-Za-z0-9_]+$"
+var schemaRE = regexp.MustCompile(schemaREString)
 
 func ensureSchemaExists(connString, schema string) error {
 	// FUTURE allow using fallback DBs for start-up.
@@ -166,9 +173,12 @@ func ensureSchemaExists(connString, schema string) error {
 	}
 	defer p.Close(context.Background())
 
-	_, err = p.Exec(context.Background(), "CREATE SCHEMA IF NOT EXISTS ?", schema)
+	if len(schema) < 5 || !schemaRE.MatchString(schema) {
+		return errors.New("schema must be of the form " + schemaREString + "\n Got: " + schema)
+	}
+	_, err = p.Exec(context.Background(), "CREATE SCHEMA IF NOT EXISTS "+schema)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot create schema: %w", err)
 	}
 	return nil
 }
@@ -180,7 +190,7 @@ func (db *DB) upgrade() error {
 	// Does the version table exist? if not, make it.
 	// NOTE: This cannot change except via the next sql file.
 	err := db.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS base (
-		id INTEGER SERIAL PRIMARY KEY,
+		id SERIAL PRIMARY KEY,
 		entry CHAR(12),
 		applied TIMESTAMP DEFAULT current_timestamp
 	)`)
@@ -203,7 +213,7 @@ func (db *DB) upgrade() error {
 			landed[l.Entry] = true
 		}
 	}
-	dir, err := fs.ReadDir(".")
+	dir, err := fs.ReadDir("sql")
 	if err != nil {
 		db.log("Cannot read fs entries: " + err.Error())
 		return err
@@ -214,7 +224,7 @@ func (db *DB) upgrade() error {
 		if landed[name] || !strings.HasSuffix(name, ".sql") {
 			continue
 		}
-		file, err := fs.ReadFile(name)
+		file, err := fs.ReadFile("sql/" + name)
 		if err != nil {
 			db.log("weird embed file read err")
 			return err
@@ -231,10 +241,10 @@ func (db *DB) upgrade() error {
 		}
 
 		// Mark Completed.
-		err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUE (?)", name)
+		err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUES ($1)", name)
 		if err != nil {
 			db.log("Cannot update base: " + err.Error())
-			return err
+			return fmt.Errorf("cannot insert into base: %w", err)
 		}
 	}
 	return nil

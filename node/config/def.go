@@ -73,10 +73,6 @@ func defCommon() Common {
 			Bootstrapper: false,
 			DirectPeers:  nil,
 		},
-		SturdyDB: SturdyDB{
-			Username: "yugabyte",
-			Password: "yugabyte",
-		},
 	}
 }
 
@@ -272,6 +268,13 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxConcurrencyStorageCalls: 100,
 			MaxConcurrentUnseals:       5,
 			GCInterval:                 Duration(1 * time.Minute),
+		},
+		SturdyDB: SturdyDB{
+			Hosts:    []string{"127.0.0.1"},
+			Username: "yugabyte",
+			Password: "yugabyte",
+			Database: "yugabyte",
+			Port:     "5433",
 		},
 	}
 
