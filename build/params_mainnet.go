@@ -111,7 +111,7 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_Watermelon") == "1" {
+	if os.Getenv("LOTUS_DISABLE_WATERMELON") == "1" {
 		UpgradeWatermelonHeight = math.MaxInt64
 	}
 
