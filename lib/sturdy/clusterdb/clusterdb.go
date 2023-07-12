@@ -1,7 +1,5 @@
 package clusterdb
 
-// TODO 2 - build integration tests
-
 import (
 	"context"
 	"embed"
@@ -22,9 +20,11 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 )
 
+type ITestID string
+
 // ItestNewID see ITestWithID doc
-func ITestNewID() string {
-	return strconv.Itoa(rand.Intn(99999))
+func ITestNewID() ITestID {
+	return ITestID(strconv.Itoa(rand.Intn(99999)))
 }
 
 type DB struct {
@@ -48,15 +48,30 @@ func NewFromConfig(cfg config.ClusterDB) (*DB, error) {
 		cfg.Password,
 		cfg.Database,
 		cfg.Port,
-		cfg.ITest,
+		"",
 		func(s string) { logger.Error(s) },
 	)
+}
+
+func NewFromConfigWithITestID(cfg config.ClusterDB) func(id ITestID) (*DB, error) {
+	return func(id ITestID) (*DB, error) {
+		return New(
+			cfg.Hosts,
+			cfg.Username,
+			cfg.Password,
+			cfg.Database,
+			cfg.Port,
+			id,
+			func(s string) { logger.Error(s) },
+		)
+	}
 }
 
 // New is to be called once per binary to establish the pool.
 // log() is for errors. It returns an upgraded database's connection.
 // This entry point serves both production and integration tests, so it's more DI.
-func New(hosts []string, username, password, database, port, itest string, log func(string)) (*DB, error) {
+func New(hosts []string, username, password, database, port string, itestID ITestID, log func(string)) (*DB, error) {
+	itest := string(itestID)
 	connString := ""
 	if len(hosts) > 0 {
 		connString = "host=" + hosts[0] + " "

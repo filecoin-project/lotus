@@ -10,35 +10,21 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/sturdy/clusterdb"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 )
 
-func staticConfig() config.ClusterDB {
-	return config.ClusterDB{
-		Hosts:    []string{"127.0.0.1"},
-		Username: "yugabyte",
-		Password: "yugabyte",
-		Database: "yugabyte",
-		Port:     "5433",
-		ITest:    clusterdb.ITestNewID(),
-	}
-}
 func withSetup(t *testing.T, f func(*kit.TestMiner)) {
 	_, miner, _ := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
 		kit.ConstructorOpts(
-			node.Override(new(*clusterdb.DB), clusterdb.NewFromConfig), //Why does this not work?
+			node.Override(new(clusterdb.ITestID), func() clusterdb.ITestID {
+				return clusterdb.ITestNewID()
+			}),
 		),
 	)
 
-	var err error
-	miner.ClusterDB, err = clusterdb.NewFromConfig(staticConfig())
-	if err != nil {
-		t.Fatal("Yugabyte connection error:", err)
-	}
-
-	defer miner.ClusterDB.ITestDeleteAll()
+	defer miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB.ITestDeleteAll()
 	f(miner)
 }
 
@@ -47,7 +33,8 @@ func TestCrud(t *testing.T) {
 	defer cancel()
 
 	withSetup(t, func(miner *kit.TestMiner) {
-		err := miner.ClusterDB.Exec(ctx, `
+		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB
+		err := cdb.Exec(ctx, `
 			INSERT INTO 
 				itest_scratch (some_int, content) 
 			VALUES 
@@ -62,7 +49,7 @@ func TestCrud(t *testing.T) {
 			Animal      string `db:"content"`
 			Unpopulated int
 		}
-		err = miner.ClusterDB.Select(ctx, &ints, "SELECT content, some_int FROM itest_scratch")
+		err = cdb.Select(ctx, &ints, "SELECT content, some_int FROM itest_scratch")
 		if err != nil {
 			t.Fatal("Could not select: ", err)
 		}
@@ -84,17 +71,18 @@ func TestTransaction(t *testing.T) {
 	defer cancel()
 
 	withSetup(t, func(miner *kit.TestMiner) {
-		if err := miner.ClusterDB.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
+		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB
+		if err := cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
 			t.Fatal("E0", err)
 		}
-		miner.ClusterDB.BeginTransaction(ctx, func(tx *clusterdb.Transaction) (commit bool) {
+		cdb.BeginTransaction(ctx, func(tx *clusterdb.Transaction) (commit bool) {
 			if err := tx.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
 				t.Fatal("E1", err)
 			}
 
 			// sum1 is read from OUTSIDE the transaction so it's the old value
 			var sum1 int
-			if err := miner.ClusterDB.QueryRow(ctx, "SELECT SUM(some_int) FROM itest_scratch").Scan(&sum1); err != nil {
+			if err := cdb.QueryRow(ctx, "SELECT SUM(some_int) FROM itest_scratch").Scan(&sum1); err != nil {
 				t.Fatal("E2", err)
 			}
 			if sum1 != 4+5+6 {
@@ -114,7 +102,7 @@ func TestTransaction(t *testing.T) {
 
 		var sum2 int
 		// Query() example (yes, QueryRow would be preferred here)
-		q, err := miner.ClusterDB.Query(ctx, "SELECT SUM(some_int) FROM itest_scratch")
+		q, err := cdb.Query(ctx, "SELECT SUM(some_int) FROM itest_scratch")
 		if err != nil {
 			t.Fatal("E4", err)
 		}
@@ -138,7 +126,8 @@ func TestPartialWalk(t *testing.T) {
 	defer cancel()
 
 	withSetup(t, func(miner *kit.TestMiner) {
-		if err := miner.ClusterDB.Exec(ctx, `
+		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB
+		if err := cdb.Exec(ctx, `
 			INSERT INTO 
 				itest_scratch (content, some_int) 
 			VALUES 
@@ -153,7 +142,7 @@ func TestPartialWalk(t *testing.T) {
 
 		// TASK: FIND THE ID of the string with a specific SHA256
 		needle := "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
-		q, err := miner.ClusterDB.Query(ctx, `SELECT id, content FROM itest_scratch`)
+		q, err := cdb.Query(ctx, `SELECT id, content FROM itest_scratch`)
 		if err != nil {
 			t.Fatal("e2", err)
 		}
@@ -168,7 +157,7 @@ func TestPartialWalk(t *testing.T) {
 		for q.Next() {
 
 			if err := q.StructScan(&tmp); err != nil {
-				t.Fatal("")
+				t.Fatal("structscan err " + err.Error())
 			}
 
 			bSha := sha256.Sum256([]byte(tmp.Src))
