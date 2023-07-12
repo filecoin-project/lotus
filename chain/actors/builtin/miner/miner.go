@@ -234,7 +234,7 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 		}
 	}
 
-	if nver < network.SyntheticVersion || !configWantSynthetic {
+	if nver < MinSyntheticPoRepVersion || !configWantSynthetic {
 		switch proof {
 		case abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, abi.RegisteredPoStProof_StackedDrgWindow2KiBV1_1:
 			return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil

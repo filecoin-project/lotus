@@ -8,6 +8,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 )
 
+var MinSyntheticPoRepVersion = network.Version21
+
 func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) (bitfield.BitField, error) {
 	var parts []bitfield.BitField
 
@@ -65,7 +67,7 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version, synth
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
 
-		if nv >= network.SyntheticVersion && synthetic {
+		if nv >= MinSyntheticPoRepVersion && synthetic {
 			return toSynthetic(v)
 		} else {
 			return v, nil
