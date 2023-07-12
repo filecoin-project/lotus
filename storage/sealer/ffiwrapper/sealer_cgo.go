@@ -871,13 +871,13 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storiface.SectorRef
 			[]abi.PieceInfo{{Size: abi.PaddedPieceSize(ssize), PieceCID: unsealedCID}})
 		if err != nil {
 			log.Warn("GenerateSynthProofs() failed: ", err)
-			log.Warnf("num:%d tkt:%v seed:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
-			return storiface.SectorCids{}, xerrors.Errorf("checking PreCommit failed: %w", err)
+			log.Warnf("num:%d tkt:%v, sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
+			return storiface.SectorCids{}, xerrors.Errorf("generate synth proofs: %w", err)
 		}
 
 		if err = ffi.ClearLayerData(ssize, paths.Cache); err != nil {
 			log.Warn("failed to GenerateSynthProofs(): ", err)
-			log.Warnf("num:%d tkt:%v seed:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
+			log.Warnf("num:%d tkt:%v, sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sealedCID, unsealedCID)
 			return storiface.SectorCids{
 				Unsealed: unsealedCID,
 				Sealed:   sealedCID,
@@ -1152,7 +1152,7 @@ func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.Secto
 	}
 
 	if abi.Synthetic[sector.ProofType] {
-		if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
+		if err = ffi.ClearSyntheticProofs(uint64(ssize), dest); err != nil {
 			log.Warn("Unable to delete Synth cache:", err)
 			// Pass-Thru on error.
 		}
@@ -1174,6 +1174,12 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 		}
 		defer done()
 
+		if abi.Synthetic[sector.ProofType] {
+			if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
+				return xerrors.Errorf("clear synth cache: %w", err)
+			}
+		}
+
 		if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
 			return xerrors.Errorf("clear cache: %w", err)
 		}
@@ -1186,12 +1192,7 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 		}
 		defer done()
 
-		if abi.Synthetic[sector.ProofType] {
-			if err = ffi.ClearSyntheticProofs(uint64(ssize), paths.Cache); err != nil {
-				log.Warn("Unable to delete Synth cache:", err)
-				// Pass-Thru on error.
-			}
-		}
+		// note: synth cache is not a thing for snapdeals
 
 		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
 			return xerrors.Errorf("clear cache: %w", err)
