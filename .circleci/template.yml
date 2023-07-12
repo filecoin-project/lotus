@@ -551,7 +551,6 @@ workflows:
           name: test-itest-[[ $name ]]
           requires:
             - build
-            - postgres
           suite: itest-[[ $name ]]
           target: "./itests/[[ $file ]]"
           [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
