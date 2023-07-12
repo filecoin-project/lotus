@@ -55,6 +55,7 @@ import (
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
@@ -773,6 +774,9 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
+		n.t.Cleanup(func() {
+			m.StorageMiner.(*impl.StorageMinerAPI).ClusterDB.ITestDeleteAll()
+		})
 
 		m.BaseAPI = m.StorageMiner
 

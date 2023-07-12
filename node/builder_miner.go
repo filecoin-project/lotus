@@ -233,7 +233,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(config.ProvingConfig), cfg.Proving),
 		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 		Override(new(*clusterdb.DB), clusterdb.NewFromConfigWithITestID(cfg.ClusterDB)),
-		Override(new(clusterdb.ITestID), ""),
+		Override(new(clusterdb.ITestID), clusterdb.ITestID("")),
 	)
 }
 

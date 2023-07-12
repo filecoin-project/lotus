@@ -18,7 +18,6 @@ func withSetup(t *testing.T, f func(*kit.TestMiner)) {
 		kit.MockProofs(),
 	)
 
-	defer miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB.ITestDeleteAll()
 	f(miner)
 }
 
