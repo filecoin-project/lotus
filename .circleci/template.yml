@@ -165,6 +165,14 @@ jobs:
         default: unit
         description: Test suite name to report to CircleCI.
     executor: << parameters.executor >>
+    docker:
+      - image: circleci/postgres:12
+        environment:
+          PGHOST: localhost
+          PGUSER: yugabyte
+          POSTGRES_USER: yugabyte
+          POSTGRES_DB: yugabyte
+          POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -173,6 +181,9 @@ jobs:
           condition: << parameters.get-params >>
           steps:
             - download-params
+      - run:
+          name: Wait for db to run
+          command: dockerize -wait tcp://localhost:5433 -timeout 1m
       - run:
           name: go test
           environment:
@@ -540,6 +551,7 @@ workflows:
           name: test-itest-[[ $name ]]
           requires:
             - build
+            - postgres
           suite: itest-[[ $name ]]
           target: "./itests/[[ $file ]]"
           [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
