@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/lib/sturdy/clusterdb"
-	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -17,11 +16,6 @@ func withSetup(t *testing.T, f func(*kit.TestMiner)) {
 	_, miner, _ := kit.EnsembleMinimal(t,
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
-		kit.ConstructorOpts(
-			node.Override(new(clusterdb.ITestID), func() clusterdb.ITestID {
-				return clusterdb.ITestNewID()
-			}),
-		),
 	)
 
 	defer miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB.ITestDeleteAll()

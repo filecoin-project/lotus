@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/sturdy/clusterdb"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
@@ -356,6 +357,8 @@ func (n *Ensemble) Start() *Ensemble {
 		gtempl = n.generateGenesis()
 		n.mn = mocknet.New()
 	}
+
+	sharedITestID := clusterdb.ITestNewID()
 
 	// ---------------------
 	//  FULL NODES
@@ -722,6 +725,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// upgrades
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
+
+			node.Override(new(clusterdb.ITestID), sharedITestID),
 		}
 
 		if m.options.subsystems.Has(SMarkets) {
@@ -824,6 +829,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		auth := http.Header(nil)
 
+		// FUTURE: Use m.MinerNode.(BaseAPI).(impl.StorageMinerAPI).ClusterDB to setup.
+
 		remote := paths.NewRemote(localStore, m.MinerNode, auth, 20, &paths.DefaultPartialFileHandler{})
 		store := m.options.workerStorageOpt(remote)
 
@@ -853,6 +860,7 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.active.workers = append(n.active.workers, m)
+
 	}
 
 	// If we are here, we have processed all inactive workers and moved them
