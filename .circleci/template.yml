@@ -166,6 +166,7 @@ jobs:
         description: Test suite name to report to CircleCI.
     executor: << parameters.executor >>
     docker:
+      - image: cimg/base
       - image: circleci/postgres:12
         environment:
           PGHOST: localhost
