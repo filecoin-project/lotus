@@ -14,6 +14,7 @@ import (
 	"path"
 	"runtime/pprof"
 	"strings"
+	"time"
 
 	"github.com/DataDog/zstd"
 	levelds "github.com/ipfs/go-ds-leveldb"
@@ -678,6 +679,13 @@ func slashConsensus(a lapi.FullNode, p string, from string) error {
 			if err != nil {
 				log.Errorf("could not serialize declare faults parameters: %s", err)
 				continue
+			}
+			for {
+				head, err := a.ChainHead(ctx)
+				if err != nil || head.Height() > block.Height {
+					break
+				}
+				time.Sleep(time.Second * 10)
 			}
 			message, err := a.MpoolPushMessage(ctx, &types.Message{
 				To:     block.Miner,
