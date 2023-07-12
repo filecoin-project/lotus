@@ -96,8 +96,14 @@ commands:
             git fetch --all
   install-ubuntu-deps:
     steps:
+      - run: sudo apt install curl ca-certificates gnupg
+      - run: curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
       - run: sudo apt-get update
-      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev postgresql-15 postgresql-contrib-15
+      - run: sudo "port = 5433" >>/etc/postgresql/15.0/main/postgresql.conf
+      - run: sudo systemctl start postgresql.service
+      - run: sudo -u postgres createuser yugabyte PASSWORD yugabyte
+      - run: sudo -u postgres createdb yugabyte 
   check-go-version:
     steps:
       - run: |
@@ -165,15 +171,6 @@ jobs:
         default: unit
         description: Test suite name to report to CircleCI.
     executor: << parameters.executor >>
-    docker:
-      - image: ubuntu:20.04
-      - image: circleci/postgres:12
-        environment:
-          PGHOST: localhost
-          PGUSER: yugabyte
-          POSTGRES_USER: yugabyte
-          POSTGRES_DB: yugabyte
-          POSTGRES_HOST_AUTH_METHOD: trust
     steps:
       - install-ubuntu-deps
       - attach_workspace:
