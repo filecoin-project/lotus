@@ -35,12 +35,12 @@ type DB struct {
 	log       func(string)
 }
 
-var logger = logging.Logger("sturdydb")
+var logger = logging.Logger("clusterdb")
 
 // NewFromConfig is a convenience function.
 // In usage:
 //
-//	db, err := NewFromConfig(config.SturdyDB)  // in binary init
+//	db, err := NewFromConfig(config.ClusterDB)  // in binary init
 func NewFromConfig(cfg config.ClusterDB) (*DB, error) {
 	return New(
 		cfg.Hosts,

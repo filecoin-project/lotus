@@ -28,9 +28,6 @@ func withSetup(t *testing.T, f func(*kit.TestMiner)) {
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
 		kit.ConstructorOpts(
-			node.Override(new(config.ClusterDB), func() config.ClusterDB {
-				return staticConfig()
-			}),
 			node.Override(new(*clusterdb.DB), clusterdb.NewFromConfig), //Why does this not work?
 		),
 	)
