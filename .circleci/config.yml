@@ -548,63 +548,54 @@ workflows:
           name: test-itest-api
           requires:
             - build
-            - postgres
           suite: itest-api
           target: "./itests/api_test.go"
       - test:
           name: test-itest-batch_deal
           requires:
             - build
-            - postgres
           suite: itest-batch_deal
           target: "./itests/batch_deal_test.go"
       - test:
           name: test-itest-ccupgrade
           requires:
             - build
-            - postgres
           suite: itest-ccupgrade
           target: "./itests/ccupgrade_test.go"
       - test:
           name: test-itest-cli
           requires:
             - build
-            - postgres
           suite: itest-cli
           target: "./itests/cli_test.go"
       - test:
           name: test-itest-clusterdb
           requires:
             - build
-            - postgres
           suite: itest-clusterdb
           target: "./itests/clusterdb_test.go"
       - test:
           name: test-itest-deadlines
           requires:
             - build
-            - postgres
           suite: itest-deadlines
           target: "./itests/deadlines_test.go"
       - test:
           name: test-itest-deals_512mb
           requires:
             - build
-            - postgres
           suite: itest-deals_512mb
           target: "./itests/deals_512mb_test.go"
       - test:
           name: test-itest-deals_anycid
           requires:
             - build
-            - postgres
           suite: itest-deals_anycid
           target: "./itests/deals_anycid_test.go"
       - test:
           name: test-itest-deals_concurrent
           requires:
             - build
-            - postgres
           suite: itest-deals_concurrent
           target: "./itests/deals_concurrent_test.go"
           executor: golang-2xl
@@ -612,490 +603,420 @@ workflows:
           name: test-itest-deals_invalid_utf8_label
           requires:
             - build
-            - postgres
           suite: itest-deals_invalid_utf8_label
           target: "./itests/deals_invalid_utf8_label_test.go"
       - test:
           name: test-itest-deals_max_staging_deals
           requires:
             - build
-            - postgres
           suite: itest-deals_max_staging_deals
           target: "./itests/deals_max_staging_deals_test.go"
       - test:
           name: test-itest-deals_offline
           requires:
             - build
-            - postgres
           suite: itest-deals_offline
           target: "./itests/deals_offline_test.go"
       - test:
           name: test-itest-deals_padding
           requires:
             - build
-            - postgres
           suite: itest-deals_padding
           target: "./itests/deals_padding_test.go"
       - test:
           name: test-itest-deals_partial_retrieval_dm-level
           requires:
             - build
-            - postgres
           suite: itest-deals_partial_retrieval_dm-level
           target: "./itests/deals_partial_retrieval_dm-level_test.go"
       - test:
           name: test-itest-deals_partial_retrieval
           requires:
             - build
-            - postgres
           suite: itest-deals_partial_retrieval
           target: "./itests/deals_partial_retrieval_test.go"
       - test:
           name: test-itest-deals_power
           requires:
             - build
-            - postgres
           suite: itest-deals_power
           target: "./itests/deals_power_test.go"
       - test:
           name: test-itest-deals_pricing
           requires:
             - build
-            - postgres
           suite: itest-deals_pricing
           target: "./itests/deals_pricing_test.go"
       - test:
           name: test-itest-deals_publish
           requires:
             - build
-            - postgres
           suite: itest-deals_publish
           target: "./itests/deals_publish_test.go"
       - test:
           name: test-itest-deals_remote_retrieval
           requires:
             - build
-            - postgres
           suite: itest-deals_remote_retrieval
           target: "./itests/deals_remote_retrieval_test.go"
       - test:
           name: test-itest-deals_retry_deal_no_funds
           requires:
             - build
-            - postgres
           suite: itest-deals_retry_deal_no_funds
           target: "./itests/deals_retry_deal_no_funds_test.go"
       - test:
           name: test-itest-deals
           requires:
             - build
-            - postgres
           suite: itest-deals
           target: "./itests/deals_test.go"
       - test:
           name: test-itest-decode_params
           requires:
             - build
-            - postgres
           suite: itest-decode_params
           target: "./itests/decode_params_test.go"
       - test:
           name: test-itest-dup_mpool_messages
           requires:
             - build
-            - postgres
           suite: itest-dup_mpool_messages
           target: "./itests/dup_mpool_messages_test.go"
       - test:
           name: test-itest-eth_account_abstraction
           requires:
             - build
-            - postgres
           suite: itest-eth_account_abstraction
           target: "./itests/eth_account_abstraction_test.go"
       - test:
           name: test-itest-eth_api
           requires:
             - build
-            - postgres
           suite: itest-eth_api
           target: "./itests/eth_api_test.go"
       - test:
           name: test-itest-eth_balance
           requires:
             - build
-            - postgres
           suite: itest-eth_balance
           target: "./itests/eth_balance_test.go"
       - test:
           name: test-itest-eth_block_hash
           requires:
             - build
-            - postgres
           suite: itest-eth_block_hash
           target: "./itests/eth_block_hash_test.go"
       - test:
           name: test-itest-eth_bytecode
           requires:
             - build
-            - postgres
           suite: itest-eth_bytecode
           target: "./itests/eth_bytecode_test.go"
       - test:
           name: test-itest-eth_config
           requires:
             - build
-            - postgres
           suite: itest-eth_config
           target: "./itests/eth_config_test.go"
       - test:
           name: test-itest-eth_conformance
           requires:
             - build
-            - postgres
           suite: itest-eth_conformance
           target: "./itests/eth_conformance_test.go"
       - test:
           name: test-itest-eth_deploy
           requires:
             - build
-            - postgres
           suite: itest-eth_deploy
           target: "./itests/eth_deploy_test.go"
       - test:
           name: test-itest-eth_fee_history
           requires:
             - build
-            - postgres
           suite: itest-eth_fee_history
           target: "./itests/eth_fee_history_test.go"
       - test:
           name: test-itest-eth_filter
           requires:
             - build
-            - postgres
           suite: itest-eth_filter
           target: "./itests/eth_filter_test.go"
       - test:
           name: test-itest-eth_hash_lookup
           requires:
             - build
-            - postgres
           suite: itest-eth_hash_lookup
           target: "./itests/eth_hash_lookup_test.go"
       - test:
           name: test-itest-eth_transactions
           requires:
             - build
-            - postgres
           suite: itest-eth_transactions
           target: "./itests/eth_transactions_test.go"
       - test:
           name: test-itest-fevm_address
           requires:
             - build
-            - postgres
           suite: itest-fevm_address
           target: "./itests/fevm_address_test.go"
       - test:
           name: test-itest-fevm_events
           requires:
             - build
-            - postgres
           suite: itest-fevm_events
           target: "./itests/fevm_events_test.go"
       - test:
           name: test-itest-fevm
           requires:
             - build
-            - postgres
           suite: itest-fevm
           target: "./itests/fevm_test.go"
       - test:
           name: test-itest-gas_estimation
           requires:
             - build
-            - postgres
           suite: itest-gas_estimation
           target: "./itests/gas_estimation_test.go"
       - test:
           name: test-itest-gateway
           requires:
             - build
-            - postgres
           suite: itest-gateway
           target: "./itests/gateway_test.go"
       - test:
           name: test-itest-get_messages_in_ts
           requires:
             - build
-            - postgres
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
       - test:
           name: test-itest-lite_migration
           requires:
             - build
-            - postgres
           suite: itest-lite_migration
           target: "./itests/lite_migration_test.go"
       - test:
           name: test-itest-lookup_robust_address
           requires:
             - build
-            - postgres
           suite: itest-lookup_robust_address
           target: "./itests/lookup_robust_address_test.go"
       - test:
           name: test-itest-mempool
           requires:
             - build
-            - postgres
           suite: itest-mempool
           target: "./itests/mempool_test.go"
       - test:
           name: test-itest-migration
           requires:
             - build
-            - postgres
           suite: itest-migration
           target: "./itests/migration_test.go"
       - test:
           name: test-itest-mpool_msg_uuid
           requires:
             - build
-            - postgres
           suite: itest-mpool_msg_uuid
           target: "./itests/mpool_msg_uuid_test.go"
       - test:
           name: test-itest-mpool_push_with_uuid
           requires:
             - build
-            - postgres
           suite: itest-mpool_push_with_uuid
           target: "./itests/mpool_push_with_uuid_test.go"
       - test:
           name: test-itest-msgindex
           requires:
             - build
-            - postgres
           suite: itest-msgindex
           target: "./itests/msgindex_test.go"
       - test:
           name: test-itest-multisig
           requires:
             - build
-            - postgres
           suite: itest-multisig
           target: "./itests/multisig_test.go"
       - test:
           name: test-itest-net
           requires:
             - build
-            - postgres
           suite: itest-net
           target: "./itests/net_test.go"
       - test:
           name: test-itest-nonce
           requires:
             - build
-            - postgres
           suite: itest-nonce
           target: "./itests/nonce_test.go"
       - test:
           name: test-itest-path_detach_redeclare
           requires:
             - build
-            - postgres
           suite: itest-path_detach_redeclare
           target: "./itests/path_detach_redeclare_test.go"
       - test:
           name: test-itest-path_type_filters
           requires:
             - build
-            - postgres
           suite: itest-path_type_filters
           target: "./itests/path_type_filters_test.go"
       - test:
           name: test-itest-paych_api
           requires:
             - build
-            - postgres
           suite: itest-paych_api
           target: "./itests/paych_api_test.go"
       - test:
           name: test-itest-paych_cli
           requires:
             - build
-            - postgres
           suite: itest-paych_cli
           target: "./itests/paych_cli_test.go"
       - test:
           name: test-itest-pending_deal_allocation
           requires:
             - build
-            - postgres
           suite: itest-pending_deal_allocation
           target: "./itests/pending_deal_allocation_test.go"
       - test:
           name: test-itest-raft_messagesigner
           requires:
             - build
-            - postgres
           suite: itest-raft_messagesigner
           target: "./itests/raft_messagesigner_test.go"
       - test:
           name: test-itest-remove_verifreg_datacap
           requires:
             - build
-            - postgres
           suite: itest-remove_verifreg_datacap
           target: "./itests/remove_verifreg_datacap_test.go"
       - test:
           name: test-itest-sdr_upgrade
           requires:
             - build
-            - postgres
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"
       - test:
           name: test-itest-sealing_resources
           requires:
             - build
-            - postgres
           suite: itest-sealing_resources
           target: "./itests/sealing_resources_test.go"
       - test:
           name: test-itest-sector_finalize_early
           requires:
             - build
-            - postgres
           suite: itest-sector_finalize_early
           target: "./itests/sector_finalize_early_test.go"
       - test:
           name: test-itest-sector_import_full
           requires:
             - build
-            - postgres
           suite: itest-sector_import_full
           target: "./itests/sector_import_full_test.go"
       - test:
           name: test-itest-sector_import_simple
           requires:
             - build
-            - postgres
           suite: itest-sector_import_simple
           target: "./itests/sector_import_simple_test.go"
       - test:
           name: test-itest-sector_make_cc_avail
           requires:
             - build
-            - postgres
           suite: itest-sector_make_cc_avail
           target: "./itests/sector_make_cc_avail_test.go"
       - test:
           name: test-itest-sector_miner_collateral
           requires:
             - build
-            - postgres
           suite: itest-sector_miner_collateral
           target: "./itests/sector_miner_collateral_test.go"
       - test:
           name: test-itest-sector_numassign
           requires:
             - build
-            - postgres
           suite: itest-sector_numassign
           target: "./itests/sector_numassign_test.go"
       - test:
           name: test-itest-sector_pledge
           requires:
             - build
-            - postgres
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
       - test:
           name: test-itest-sector_prefer_no_upgrade
           requires:
             - build
-            - postgres
           suite: itest-sector_prefer_no_upgrade
           target: "./itests/sector_prefer_no_upgrade_test.go"
       - test:
           name: test-itest-sector_revert_available
           requires:
             - build
-            - postgres
           suite: itest-sector_revert_available
           target: "./itests/sector_revert_available_test.go"
       - test:
           name: test-itest-sector_terminate
           requires:
             - build
-            - postgres
           suite: itest-sector_terminate
           target: "./itests/sector_terminate_test.go"
       - test:
           name: test-itest-sector_unseal
           requires:
             - build
-            - postgres
           suite: itest-sector_unseal
           target: "./itests/sector_unseal_test.go"
       - test:
           name: test-itest-self_sent_txn
           requires:
             - build
-            - postgres
           suite: itest-self_sent_txn
           target: "./itests/self_sent_txn_test.go"
       - test:
           name: test-itest-splitstore
           requires:
             - build
-            - postgres
           suite: itest-splitstore
           target: "./itests/splitstore_test.go"
       - test:
           name: test-itest-tape
           requires:
             - build
-            - postgres
           suite: itest-tape
           target: "./itests/tape_test.go"
       - test:
           name: test-itest-verifreg
           requires:
             - build
-            - postgres
           suite: itest-verifreg
           target: "./itests/verifreg_test.go"
       - test:
           name: test-itest-wdpost_config
           requires:
             - build
-            - postgres
           suite: itest-wdpost_config
           target: "./itests/wdpost_config_test.go"
       - test:
           name: test-itest-wdpost_dispute
           requires:
             - build
-            - postgres
           suite: itest-wdpost_dispute
           target: "./itests/wdpost_dispute_test.go"
       - test:
           name: test-itest-wdpost_no_miner_storage
           requires:
             - build
-            - postgres
           suite: itest-wdpost_no_miner_storage
           target: "./itests/wdpost_no_miner_storage_test.go"
       - test:
           name: test-itest-wdpost
           requires:
             - build
-            - postgres
           suite: itest-wdpost
           target: "./itests/wdpost_test.go"
           get-params: true
@@ -1104,7 +1025,6 @@ workflows:
           name: test-itest-wdpost_worker_config
           requires:
             - build
-            - postgres
           suite: itest-wdpost_worker_config
           target: "./itests/wdpost_worker_config_test.go"
           executor: golang-2xl
@@ -1112,7 +1032,6 @@ workflows:
           name: test-itest-worker
           requires:
             - build
-            - postgres
           suite: itest-worker
           target: "./itests/worker_test.go"
           executor: golang-2xl
@@ -1120,7 +1039,6 @@ workflows:
           name: test-itest-worker_upgrade
           requires:
             - build
-            - postgres
           suite: itest-worker_upgrade
           target: "./itests/worker_upgrade_test.go"
       - test:
