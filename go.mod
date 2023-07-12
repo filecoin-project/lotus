@@ -45,7 +45,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.3.1
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.4
-	github.com/filecoin-project/go-state-types v0.11.1
+	github.com/filecoin-project/go-state-types v0.11.2-0.20230712101859-8f37624fa540
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -335,10 +335,6 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
-replace github.com/filecoin-project/go-state-types => ./extern/go-state-types
-
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
-
-replace github.com/filecoin-project/go-state-types => /Users/phi/go-state-types
