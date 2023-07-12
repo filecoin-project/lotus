@@ -1269,9 +1269,9 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 			Name: "UseSyntheticPoRep",
 			Type: "bool",
 
-			Comment: `UseSyntheticPoRep will reduce data holdings after PC1 by storing the precomputed responses
-to any challenge. This proof's PC1 step uses a cheaper-to-compute algorithm for the responses,
-but still must do more computation during PC1 in order to create this oracle.`,
+			Comment: `UseSyntheticPoRep will reduce the amout of data held on disk in the WaitSeed phase to 32GiB
+at the cost of having to precompute the synthetic challenges.
+TODO: put estimated costs here`,
 		},
 	},
 	"Splitstore": []DocField{
