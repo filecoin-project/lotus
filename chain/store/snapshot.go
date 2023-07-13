@@ -8,6 +8,7 @@ import (
 	"io"
 	"sync"
 	"time"
+	"unsafe"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -609,14 +610,36 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		ts = cs.GetHeaviestTipSet()
 	}
 
-	seen := cid.NewSet()
+	// seen := cid.NewSet()
 	walked := cid.NewSet()
 
 	blocksToWalk := ts.Cids()
 	currentMinHeight := ts.Height()
 
+	shouldExport := func(c cid.Cid) error {
+		prefix := c.Prefix()
+
+		// Don't include identity CIDs.
+		if prefix.MhType == mh.IDENTITY {
+			return nil
+		}
+
+		// We only include raw and dagcbor, for now.
+		// Raw for "code" CIDs.
+		switch prefix.Codec {
+		case cid.Raw, cid.DagCBOR:
+		default:
+			return nil
+		}
+
+		if err := cb(c); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	walkChain := func(blk cid.Cid) error {
-		if !seen.Visit(blk) {
+		if !walked.Visit(blk) {
 			return nil
 		}
 
@@ -637,18 +660,17 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		if currentMinHeight > b.Height {
 			currentMinHeight = b.Height
 			if currentMinHeight%builtin.EpochsInDay == 0 {
+				log.Infow("export", "walked.size", unsafe.Sizeof(walked))
 				log.Infow("export", "height", currentMinHeight)
 			}
 		}
 
-		var cids []cid.Cid
 		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
 			if walked.Visit(b.Messages) {
-				mcids, err := recurseLinks(ctx, cs.chainBlockstore, walked, b.Messages, []cid.Cid{b.Messages})
+				err := recurseLinks(ctx, cs.chainBlockstore, walked, b.Messages, shouldExport)
 				if err != nil {
 					return xerrors.Errorf("recursing messages failed: %w", err)
 				}
-				cids = mcids
 			}
 		}
 
@@ -658,47 +680,26 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 			}
 		} else {
 			// include the genesis block
-			cids = append(cids, b.Parents...)
+			for _, p := range b.Parents {
+				err := shouldExport(p)
+				if err != nil {
+					return err
+				}
+			}
 		}
-
-		out := cids
-
 		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
 			if walked.Visit(b.ParentStateRoot) {
-				cids, err := recurseLinks(ctx, cs.stateBlockstore, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+				err := recurseLinks(ctx, cs.stateBlockstore, walked, b.ParentStateRoot, shouldExport)
 				if err != nil {
 					return xerrors.Errorf("recursing genesis state failed: %w", err)
 				}
-
-				out = append(out, cids...)
 			}
 
 			if !skipMsgReceipts && walked.Visit(b.ParentMessageReceipts) {
-				out = append(out, b.ParentMessageReceipts)
-			}
-		}
-
-		for _, c := range out {
-			if seen.Visit(c) {
-				prefix := c.Prefix()
-
-				// Don't include identity CIDs.
-				if prefix.MhType == mh.IDENTITY {
-					continue
-				}
-
-				// We only include raw and dagcbor, for now.
-				// Raw for "code" CIDs.
-				switch prefix.Codec {
-				case cid.Raw, cid.DagCBOR:
-				default:
-					continue
-				}
-
-				if err := cb(c); err != nil {
+				err := shouldExport(b.ParentMessageReceipts)
+				if err != nil {
 					return err
 				}
-
 			}
 		}
 
@@ -721,14 +722,14 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 	return nil
 }
 
-func recurseLinks(ctx context.Context, bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(ctx context.Context, bs bstore.Blockstore, walked *cid.Set, root cid.Cid, cb func(cid.Cid) error) error {
 	if root.Prefix().Codec != cid.DagCBOR {
-		return in, nil
+		return nil
 	}
 
 	data, err := bs.Get(ctx, root)
 	if err != nil {
-		return nil, xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
+		return xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
 	}
 
 	var rerr error
@@ -743,16 +744,18 @@ func recurseLinks(ctx context.Context, bs bstore.Blockstore, walked *cid.Set, ro
 			return
 		}
 
-		in = append(in, c)
+		cb(c)
+		// in = append(in, c)
+		// log.Infow("recurseLinks", "in.size", len(in))
 		var err error
-		in, err = recurseLinks(ctx, bs, walked, c, in)
+		err = recurseLinks(ctx, bs, walked, c, cb)
 		if err != nil {
 			rerr = err
 		}
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("scanning for links failed: %w", err)
+		return xerrors.Errorf("scanning for links failed: %w", err)
 	}
 
-	return in, rerr
+	return rerr
 }

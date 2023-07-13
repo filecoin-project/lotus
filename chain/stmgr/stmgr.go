@@ -447,9 +447,10 @@ func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.
 	return robustAddr, nil
 }
 
-func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {
+func (sm *StateManager) ValidateChain(ctx context.Context, chaindepth int64, ts *types.TipSet) error {
 	tschain := []*types.TipSet{ts}
-	for ts.Height() != 0 {
+	epoch_limit := ts.Height() - abi.ChainEpoch(chaindepth)
+	for ts.Height() > epoch_limit {
 		next, err := sm.cs.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return err
