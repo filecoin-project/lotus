@@ -1090,7 +1090,7 @@ func TestSealAndVerifySynth(t *testing.T) {
 	}
 	miner := abi.ActorID(123)
 
-	synthPorRepVProofsName := "SynPoRepVanillaProofs"
+	synthPorRepVProofsName := "syn-porep-vanilla-proofs.dat"
 
 	printFileList := func(stage string, expectSynthPorep bool) {
 		var hasSynthPorep bool
