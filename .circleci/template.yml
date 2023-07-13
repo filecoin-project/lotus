@@ -99,7 +99,7 @@ commands:
       - run: sudo apt install curl ca-certificates gnupg
       - run: sudo apt-get update
       - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev python-is-python3
-  intall-yugabyte:
+  install-yugabyte:
     steps:
       - run: curl https://downloads.yugabyte.com/releases/2.19.0.0/yugabyte-2.19.0.0-b190-linux-x86_64.tar.gz | tar -xz
       - run: yugabytedb/bin/yugabyted start
