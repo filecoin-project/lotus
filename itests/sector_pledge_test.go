@@ -267,6 +267,6 @@ func TestPledgeSynth(t *testing.T) {
 	})
 
 	t.Run("3", func(t *testing.T) {
-		runTest(t, 100)
+		runTest(t, 3)
 	})
 }
