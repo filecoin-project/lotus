@@ -257,7 +257,7 @@ func TestPledgeSynth(t *testing.T) {
 			sc.UseSyntheticPoRep = true
 		})) // no mock proofs
 
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 		miner.PledgeSectors(ctx, nSectors, 0, nil)
 	}
