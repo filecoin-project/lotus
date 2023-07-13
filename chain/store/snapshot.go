@@ -745,8 +745,6 @@ func recurseLinks(ctx context.Context, bs bstore.Blockstore, walked *cid.Set, ro
 		}
 
 		cb(c)
-		// in = append(in, c)
-		// log.Infow("recurseLinks", "in.size", len(in))
 		var err error
 		err = recurseLinks(ctx, bs, walked, c, cb)
 		if err != nil {
