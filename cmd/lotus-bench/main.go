@@ -180,11 +180,11 @@ func (asc *amtStatCollector) record(ctx context.Context, nd format.Node) error {
 
 	if link {
 		asc.totalAMTLinks += len(node.Links)
-		asc.totalAMTLinkNodes += 1
+		asc.totalAMTLinkNodes++
 		asc.totalAMTLinkNodeSize += int(size)
 	} else if value {
 		asc.totalAMTValues += len(node.Values)
-		asc.totalAMTValueNodes += 1
+		asc.totalAMTValueNodes++
 		asc.totalAMTValueNodeSize += int(size)
 	} else {
 		return xerrors.Errorf("unexpected AMT node %x: neither link nor value", nd.RawData())
@@ -230,6 +230,11 @@ var amtBenchCmd = &cli.Command{
 			Usage: "AMT idx interval for churning values",
 			Value: 2880,
 		},
+		&cli.IntFlag{
+			Name:  "bitwidth",
+			Usage: "AMT bitwidth",
+			Value: 6,
+		},
 	},
 	Action: func(c *cli.Context) error {
 		bs := blockstore.NewMemory()
@@ -237,7 +242,7 @@ var amtBenchCmd = &cli.Command{
 		store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 
 		// Setup in memory blockstore
-		const bitwidth = 6
+		bitwidth := c.Int("bitwidth")
 		array, err := adt.MakeEmptyArray(store, bitwidth)
 		if err != nil {
 			return err
@@ -247,12 +252,14 @@ var amtBenchCmd = &cli.Command{
 		// Create 40,000,000 states for realistic workload
 		fmt.Printf("Populating AMT\n")
 		for i := 0; i < 40000000; i++ {
-			array.Set(uint64(i), &market.DealState{
+			if err := array.Set(uint64(i), &market.DealState{
 				SectorStartEpoch: abi.ChainEpoch(2000000 + i),
 				LastUpdatedEpoch: abi.ChainEpoch(-1),
 				SlashEpoch:       -1,
 				VerifiedClaim:    verifreg.AllocationId(i),
-			})
+			}); err != nil {
+				return err
+			}
 		}
 
 		r, err := array.Root()

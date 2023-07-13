@@ -47,13 +47,13 @@ func (t *AMTRoot) MarshalCBOR(w io.Writer) error {
 
 	// t.BitWidth (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.BitWidth)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, t.BitWidth); err != nil {
 		return err
 	}
 
 	// t.Height (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Height)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, t.Height); err != nil {
 		return err
 	}
 
@@ -132,7 +132,7 @@ func (t *AMTRoot) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.Count = uint64(extra)
+		t.Count = extra
 
 	}
 	// t.AMTNode (internal.AMTNode) (struct)
