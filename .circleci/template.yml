@@ -97,13 +97,12 @@ commands:
   install-ubuntu-deps:
     steps:
       - run: sudo apt install curl ca-certificates gnupg
-      - run: curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null
       - run: sudo apt-get update
-      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev postgresql-15 postgresql-contrib-15
-      - run: sudo "port = 5433" >>/etc/postgresql/15.0/main/postgresql.conf
-      - run: sudo systemctl start postgresql.service
-      - run: sudo -u postgres createuser yugabyte PASSWORD yugabyte
-      - run: sudo -u postgres createdb yugabyte 
+      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev python-is-python3
+  intall-yugabyte:
+    steps:
+      - run: curl https://downloads.yugabyte.com/releases/2.19.0.0/yugabyte-2.19.0.0-b190-linux-x86_64.tar.gz | tar -xz
+      - run: yugabytedb/bin/yugabyted start
   check-go-version:
     steps:
       - run: |
@@ -173,15 +172,13 @@ jobs:
     executor: << parameters.executor >>
     steps:
       - install-ubuntu-deps
+      - install-yugabyte
       - attach_workspace:
           at: ~/
       - when:
           condition: << parameters.get-params >>
           steps:
             - download-params
-      - run:
-          name: Wait for db to run
-          command: dockerize -wait tcp://localhost:5433 -timeout 1m
       - run:
           name: go test
           environment:
