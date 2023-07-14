@@ -159,8 +159,8 @@ jobs:
         description: Test suite name to report to CircleCI.
     docker:
       - image: cimg/go:[[ .GoVersion]]
-        resource_class: << parameters.resource_class >>
       - image: yugabytedb/yugabyte:latest
+    resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -208,7 +208,7 @@ jobs:
           submodule is used.
     docker:
       - image: cimg/go:[[ .GoVersion]]
-        resource_class: << parameters.resource_class >>
+    resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -402,7 +402,7 @@ jobs:
           Arguments to pass to golangci-lint
     docker:
       - image: cimg/go:[[ .GoVersion]]
-        resource_class: medium+
+    resource_class: medium+
     steps:
       - install-ubuntu-deps
       - attach_workspace:
