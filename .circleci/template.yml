@@ -161,6 +161,7 @@ jobs:
       - image: cimg/go:[[ .GoVersion]]
       - image: yugabytedb/yugabyte:latest
         command: bin/yugabyted start --daemon=false
+        name: yugabyte
     resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
@@ -177,7 +178,7 @@ jobs:
             SKIP_CONFORMANCE: "1"
             LOTUS_SRC_DIR: /home/circleci/project
           command: |
-            dockerize -wait tcp://localhost:5433 -timeout 1m
+            dockerize -wait tcp://yugabyte:5433 -timeout 1m
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
             gotestsum \
