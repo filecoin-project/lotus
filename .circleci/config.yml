@@ -101,8 +101,10 @@ commands:
       - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev python-is-python3
   install-yugabyte:
     steps:
-      - run: curl https://downloads.yugabyte.com/releases/2.19.0.0/yugabyte-2.19.0.0-b190-linux-x86_64.tar.gz | tar -xz
-      - run: yugabytedb/bin/yugabyted start
+      - run: |
+          curl https://downloads.yugabyte.com/releases/2.19.0.0/yugabyte-2.19.0.0-b190-linux-x86_64.tar.gz | tar -xz
+          yugabyte-2.19.0.0/bin/post_install.sh
+          yugabyte-2.19.0.0/bin/yugabyted start
   check-go-version:
     steps:
       - run: |
