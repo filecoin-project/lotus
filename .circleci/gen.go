@@ -10,6 +10,8 @@ import (
 	"text/template"
 )
 
+const GoVersion = "1.19.7"
+
 //go:generate go run ./gen.go ..
 
 //go:embed template.yml
@@ -109,6 +111,7 @@ func main() {
 		Networks   []string
 		ItestFiles []string
 		UnitSuites map[string]string
+		GoVersion  string
 	}
 	in := data{
 		Networks:   []string{"mainnet", "butterflynet", "calibnet", "debug"},
@@ -123,6 +126,7 @@ func main() {
 			}
 			return ret
 		}(),
+		GoVersion: GoVersion,
 	}
 
 	out, err := os.Create("./config.yml")

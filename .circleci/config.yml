@@ -6,17 +6,9 @@ orbs:
 executors:
   golang:
     docker:
-      # Must match GO_VERSION_MIN in project root
+      # Must match GO_VERSION_MIN in project root. Change in gen.go 
       - image: cimg/go:1.19.7
     resource_class: medium+
-  golang-2xl:
-    docker:
-      # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.7
-    resource_class: 2xlarge
-  ubuntu:
-    docker:
-      - image: ubuntu:20.04
 
 commands:
   build-platform-specific:
@@ -98,13 +90,7 @@ commands:
     steps:
       - run: sudo apt install curl ca-certificates gnupg
       - run: sudo apt-get update
-      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev python-is-python3
-  install-yugabyte:
-    steps:
-      - run: |
-          curl https://downloads.yugabyte.com/releases/2.19.0.0/yugabyte-2.19.0.0-b190-linux-x86_64.tar.gz | tar -xz
-          yugabyte-2.19.0.0/bin/post_install.sh
-          yugabyte-2.19.0.0/bin/yugabyted start
+      - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
   check-go-version:
     steps:
       - run: |
@@ -150,9 +136,9 @@ jobs:
       Run tests with gotestsum.
     working_directory: ~/lotus
     parameters: &test-params
-      executor:
-        type: executor
-        default: golang
+      resource_class:
+        type: resource_class
+        default: medium+
       go-test-flags:
         type: string
         default: "-timeout 20m"
@@ -171,10 +157,12 @@ jobs:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:1.19.7
+        resource_class: << parameters.resource_class >>
+      - image: yugabytedb/yugabyte:latest
     steps:
       - install-ubuntu-deps
-      - install-yugabyte
       - attach_workspace:
           at: ~/
       - when:
@@ -188,6 +176,7 @@ jobs:
             SKIP_CONFORMANCE: "1"
             LOTUS_SRC_DIR: /home/circleci/project
           command: |
+            dockerize -wait tcp://localhost:5433 -timeout 1m
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
             gotestsum \
@@ -217,7 +206,9 @@ jobs:
           Branch on github.com/filecoin-project/test-vectors to checkout and
           test with. If empty (the default) the commit defined by the git
           submodule is used.
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:1.19.7
+        resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -404,15 +395,17 @@ jobs:
       Run golangci-lint.
     working_directory: ~/lotus
     parameters:
-      executor:
-        type: executor
-        default: golang
+      resource_class:
+        type: resource_class
+        default: medium+
       args:
         type: string
         default: ''
         description: |
           Arguments to pass to golangci-lint
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:1.19.7
+        resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -595,7 +588,7 @@ workflows:
             - build
           suite: itest-deals_concurrent
           target: "./itests/deals_concurrent_test.go"
-          executor: golang-2xl
+          resource_class: 2xlarge
       - test:
           name: test-itest-deals_invalid_utf8_label
           requires:
@@ -1024,14 +1017,14 @@ workflows:
             - build
           suite: itest-wdpost_worker_config
           target: "./itests/wdpost_worker_config_test.go"
-          executor: golang-2xl
+          resource_class: 2xlarge
       - test:
           name: test-itest-worker
           requires:
             - build
           suite: itest-worker
           target: "./itests/worker_test.go"
-          executor: golang-2xl
+          resource_class: 2xlarge
       - test:
           name: test-itest-worker_upgrade
           requires:
@@ -1058,7 +1051,7 @@ workflows:
             - build
           suite: utest-unit-rest
           target: "./api/... ./blockstore/... ./build/... ./chain/... ./cli/... ./cmd/... ./conformance/... ./extern/... ./gateway/... ./journal/... ./lib/... ./markets/... ./node/... ./paychmgr/... ./storage/... ./tools/..."
-          executor: golang-2xl
+          resource_class: 2xlarge
       - test:
           name: test-unit-storage
           requires:
