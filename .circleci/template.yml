@@ -395,9 +395,6 @@ jobs:
       Run golangci-lint.
     working_directory: ~/lotus
     parameters:
-      resource_class:
-        type: resource_class
-        default: medium+
       args:
         type: string
         default: ''
@@ -405,7 +402,7 @@ jobs:
           Arguments to pass to golangci-lint
     docker:
       - image: cimg/go:[[ .GoVersion]]
-        resource_class: << parameters.resource_class >>
+        resource_class: medium+
     steps:
       - install-ubuntu-deps
       - attach_workspace:
