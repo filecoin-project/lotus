@@ -137,7 +137,7 @@ jobs:
     working_directory: ~/lotus
     parameters: &test-params
       resource_class:
-        type: resource_class
+        type: string
         default: medium+
       go-test-flags:
         type: string
