@@ -231,9 +231,12 @@ func ConfigStorageMiner(c interface{}) Option {
 
 		Override(new(config.SealerConfig), cfg.Storage),
 		Override(new(config.ProvingConfig), cfg.Proving),
-		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
-		Override(new(*harmonydb.DB), harmonydb.NewFromConfigWithITestID(cfg.HarmonyDB)),
+		Override(new(config.HarmonyDB), cfg.HarmonyDB),
 		Override(new(harmonydb.ITestID), harmonydb.ITestID("")),
+		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
+		Override(new(*harmonydb.DB), func(cfg config.HarmonyDB, id harmonydb.ITestID) (*harmonydb.DB, error) {
+			return harmonydb.NewFromConfigWithITestID(cfg)(id)
+		}),
 	)
 }
 
