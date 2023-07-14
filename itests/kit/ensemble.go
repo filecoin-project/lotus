@@ -785,7 +785,7 @@ func (n *Ensemble) Start() *Ensemble {
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
 		mCopy := m
 		n.t.Cleanup(func() {
-			mCopy.StorageMiner.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
+			mCopy.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
 		})
 
 		m.BaseAPI = m.StorageMiner
