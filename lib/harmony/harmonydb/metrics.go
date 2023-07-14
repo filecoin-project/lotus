@@ -65,6 +65,13 @@ func init() {
 			TagKeys:     []tag.Key{dbTag},
 		},
 	)
-	prometheus.Register(DBMeasures.Waits)
-	prometheus.Register(DBMeasures.WhichHost)
+	err := prometheus.Register(DBMeasures.Waits)
+	if err != nil {
+		panic(err)
+	}
+
+	err = prometheus.Register(DBMeasures.WhichHost)
+	if err != nil {
+		panic(err)
+	}
 }

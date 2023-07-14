@@ -68,7 +68,7 @@ func TestTransaction(t *testing.T) {
 		if err := cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
 			t.Fatal("E0", err)
 		}
-		cdb.BeginTransaction(ctx, func(tx *harmonydb.Transaction) (commit bool) {
+		err := cdb.BeginTransaction(ctx, func(tx *harmonydb.Transaction) (commit bool) {
 			if err := tx.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
 				t.Fatal("E1", err)
 			}
@@ -92,6 +92,9 @@ func TestTransaction(t *testing.T) {
 			}
 			return false // rollback
 		})
+		if err != nil {
+			t.Fatal("ET", err)
+		}
 
 		var sum2 int
 		// Query() example (yes, QueryRow would be preferred here)
@@ -102,7 +105,10 @@ func TestTransaction(t *testing.T) {
 		defer q.Close()
 		var rowCt int
 		for q.Next() {
-			q.Scan(&sum2)
+			err := q.Scan(&sum2)
+			if err != nil {
+				t.Fatal("error scanning ", err)
+			}
 			rowCt++
 		}
 		if sum2 != 4+5+6 {

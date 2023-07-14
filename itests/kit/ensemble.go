@@ -728,6 +728,15 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
 
 			node.Override(new(harmonydb.ITestID), sharedITestID),
+			node.Override(new(config.HarmonyDB), func() config.HarmonyDB {
+				return config.HarmonyDB{
+					Hosts:    []string{envElse("LOTUS_HARMONYDB_HOSTS", "127.0.0.1")},
+					Database: "yugabyte",
+					Username: "yugabyte",
+					Password: "yugabyte",
+					Port:     "5433",
+				}
+			}),
 		}
 
 		if m.options.subsystems.Has(SMarkets) {
@@ -774,8 +783,9 @@ func (n *Ensemble) Start() *Ensemble {
 		require.NoError(n.t, err)
 
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
+		mCopy := m
 		n.t.Cleanup(func() {
-			m.StorageMiner.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
+			mCopy.StorageMiner.(*impl.StorageMinerAPI).HarmonyDB.ITestDeleteAll()
 		})
 
 		m.BaseAPI = m.StorageMiner
@@ -1076,4 +1086,11 @@ func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.Metad
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
 	return mds.Put(ctx, datastore.NewKey(pipeline.StorageCounterDSPrefix), buf[:size])
+}
+
+func envElse(env, els string) string {
+	if v := os.Getenv(env); v != "" {
+		return v
+	}
+	return els
 }

@@ -186,7 +186,7 @@ func ensureSchemaExists(connString, schema string) error {
 	if err != nil {
 		return err
 	}
-	defer p.Close(context.Background())
+	defer func() { _ = p.Close(context.Background()) }()
 
 	if len(schema) < 5 || !schemaRE.MatchString(schema) {
 		return errors.New("schema must be of the form " + schemaREString + "\n Got: " + schema)
