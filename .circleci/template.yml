@@ -6,17 +6,9 @@ orbs:
 executors:
   golang:
     docker:
-      # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.7
+      # Must match GO_VERSION_MIN in project root. Change in gen.go 
+      - image: cimg/go:[[ .GoVersion]]
     resource_class: medium+
-  golang-2xl:
-    docker:
-      # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.7
-    resource_class: 2xlarge
-  ubuntu:
-    docker:
-      - image: ubuntu:20.04
 
 commands:
   build-platform-specific:
@@ -96,6 +88,7 @@ commands:
             git fetch --all
   install-ubuntu-deps:
     steps:
+      - run: sudo apt install curl ca-certificates gnupg
       - run: sudo apt-get update
       - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
   check-go-version:
@@ -143,9 +136,9 @@ jobs:
       Run tests with gotestsum.
     working_directory: ~/lotus
     parameters: &test-params
-      executor:
-        type: executor
-        default: golang
+      resource_class:
+        type: string
+        default: medium+
       go-test-flags:
         type: string
         default: "-timeout 20m"
@@ -164,7 +157,14 @@ jobs:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:[[ .GoVersion]]
+        environment:
+          LOTUS_HARMONYDB_HOSTS: yugabyte
+      - image: yugabytedb/yugabyte:latest
+        command: bin/yugabyted start --daemon=false
+        name: yugabyte
+    resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -182,6 +182,8 @@ jobs:
           command: |
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
+            dockerize -wait tcp://yugabyte:5433 -timeout 3m
+            env
             gotestsum \
               --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
@@ -209,7 +211,9 @@ jobs:
           Branch on github.com/filecoin-project/test-vectors to checkout and
           test with. If empty (the default) the commit defined by the git
           submodule is used.
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:[[ .GoVersion]]
+    resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -396,15 +400,14 @@ jobs:
       Run golangci-lint.
     working_directory: ~/lotus
     parameters:
-      executor:
-        type: executor
-        default: golang
       args:
         type: string
         default: ''
         description: |
           Arguments to pass to golangci-lint
-    executor: << parameters.executor >>
+    docker:
+      - image: cimg/go:[[ .GoVersion]]
+    resource_class: medium+
     steps:
       - install-ubuntu-deps
       - attach_workspace:
@@ -543,7 +546,7 @@ workflows:
           suite: itest-[[ $name ]]
           target: "./itests/[[ $file ]]"
           [[- if or (eq $name "worker") (eq $name "deals_concurrent") (eq $name "wdpost_worker_config")]]
-          executor: golang-2xl
+          resource_class: 2xlarge
           [[- end]]
           [[- if (eq $name "wdpost")]]
           get-params: true
@@ -558,7 +561,7 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
           [[if eq $suite "unit-cli"]]get-params: true[[end]]
-          [[- if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
+          [[- if eq $suite "unit-rest"]]resource_class: 2xlarge[[end]]
       [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
