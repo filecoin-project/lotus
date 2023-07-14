@@ -160,6 +160,7 @@ jobs:
     docker:
       - image: cimg/go:1.19.7
       - image: yugabytedb/yugabyte:latest
+        command: bin/yugabyted start
     resource_class: << parameters.resource_class >>
     steps:
       - install-ubuntu-deps
