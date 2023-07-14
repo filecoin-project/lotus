@@ -159,6 +159,7 @@ jobs:
         description: Test suite name to report to CircleCI.
     docker:
       - image: cimg/go:[[ .GoVersion]]
+        environment:
           LOTUS_HARMONYDB_HOSTS: yugabyte
       - image: yugabytedb/yugabyte:latest
         command: bin/yugabyted start --daemon=false
