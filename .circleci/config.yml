@@ -159,8 +159,7 @@ jobs:
         description: Test suite name to report to CircleCI.
     docker:
       - image: cimg/go:1.19.7
-        environment:
-          LOTUS_HARMONYDB_HOSTS=yugabyte
+          LOTUS_HARMONYDB_HOSTS: yugabyte
       - image: yugabytedb/yugabyte:latest
         command: bin/yugabyted start --daemon=false
         name: yugabyte
@@ -183,6 +182,7 @@ jobs:
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
             dockerize -wait tcp://yugabyte:5433 -timeout 3m
+            env
             gotestsum \
               --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
