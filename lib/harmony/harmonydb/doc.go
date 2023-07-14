@@ -1,5 +1,5 @@
 /*
-# Clusterdb provides database abstractions over SP-wide Postgres-compatible instance(s).
+# HarmonyDB provides database abstractions over SP-wide Postgres-compatible instance(s).
 
 # Features
 
@@ -32,4 +32,4 @@ Write SQL with context, raw strings, and args:
 
 Note: Scan() is column-oriented, while Select() & StructScan() is field name/tag oriented.
 */
-package clusterdb
+package harmonydb

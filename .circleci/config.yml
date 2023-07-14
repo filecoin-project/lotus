@@ -178,9 +178,9 @@ jobs:
             SKIP_CONFORMANCE: "1"
             LOTUS_SRC_DIR: /home/circleci/project
           command: |
-            dockerize -wait tcp://yugabyte:5433 -timeout 1m
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
+            dockerize -wait tcp://yugabyte:5433 -timeout 3m
             gotestsum \
               --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
@@ -558,12 +558,6 @@ workflows:
           suite: itest-cli
           target: "./itests/cli_test.go"
       - test:
-          name: test-itest-clusterdb
-          requires:
-            - build
-          suite: itest-clusterdb
-          target: "./itests/clusterdb_test.go"
-      - test:
           name: test-itest-deadlines
           requires:
             - build
@@ -780,6 +774,12 @@ workflows:
             - build
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
+      - test:
+          name: test-itest-harmonydb
+          requires:
+            - build
+          suite: itest-harmonydb
+          target: "./itests/harmonydb_test.go"
       - test:
           name: test-itest-lite_migration
           requires:

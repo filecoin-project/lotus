@@ -117,46 +117,6 @@ without existing payment channels with available funds will fail instead
 of automatically performing on-chain operations.`,
 		},
 	},
-	"ClusterDB": []DocField{
-		{
-			Name: "Hosts",
-			Type: "[]string",
-
-			Comment: `HOSTS is a list of hostnames to nodes running YugabyteDB
-in a cluster. Only 1 is required`,
-		},
-		{
-			Name: "Username",
-			Type: "string",
-
-			Comment: `The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.`,
-		},
-		{
-			Name: "Password",
-			Type: "string",
-
-			Comment: `The password for the related username. Blank for default.`,
-		},
-		{
-			Name: "Database",
-			Type: "string",
-
-			Comment: `The database (logical partition) within Yugabyte. Blank for default.`,
-		},
-		{
-			Name: "Port",
-			Type: "string",
-
-			Comment: `The port to find Yugabyte. Blank for default.`,
-		},
-		{
-			Name: "ITest",
-			Type: "string",
-
-			Comment: `ITest is for optimized integration testing and not
-for production. Blank for default production configuration.`,
-		},
-	},
 	"Common": []DocField{
 		{
 			Name: "API",
@@ -506,6 +466,46 @@ Set to 0 to keep all mappings`,
 			Type: "IndexConfig",
 
 			Comment: ``,
+		},
+	},
+	"HarmonyDB": []DocField{
+		{
+			Name: "Hosts",
+			Type: "[]string",
+
+			Comment: `HOSTS is a list of hostnames to nodes running YugabyteDB
+in a cluster. Only 1 is required`,
+		},
+		{
+			Name: "Username",
+			Type: "string",
+
+			Comment: `The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.`,
+		},
+		{
+			Name: "Password",
+			Type: "string",
+
+			Comment: `The password for the related username. Blank for default.`,
+		},
+		{
+			Name: "Database",
+			Type: "string",
+
+			Comment: `The database (logical partition) within Yugabyte. Blank for default.`,
+		},
+		{
+			Name: "Port",
+			Type: "string",
+
+			Comment: `The port to find Yugabyte. Blank for default.`,
+		},
+		{
+			Name: "ITest",
+			Type: "string",
+
+			Comment: `ITest is for optimized integration testing and not
+for production. Blank for default production configuration.`,
 		},
 	},
 	"IndexConfig": []DocField{
@@ -1429,8 +1429,8 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 			Comment: ``,
 		},
 		{
-			Name: "ClusterDB",
-			Type: "ClusterDB",
+			Name: "HarmonyDB",
+			Type: "HarmonyDB",
 
 			Comment: ``,
 		},

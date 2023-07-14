@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/lib/sturdy/clusterdb"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
@@ -26,7 +26,7 @@ func TestCrud(t *testing.T) {
 	defer cancel()
 
 	withSetup(t, func(miner *kit.TestMiner) {
-		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB
+		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		err := cdb.Exec(ctx, `
 			INSERT INTO 
 				itest_scratch (some_int, content) 
@@ -64,11 +64,11 @@ func TestTransaction(t *testing.T) {
 	defer cancel()
 
 	withSetup(t, func(miner *kit.TestMiner) {
-		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB
+		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		if err := cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
 			t.Fatal("E0", err)
 		}
-		cdb.BeginTransaction(ctx, func(tx *clusterdb.Transaction) (commit bool) {
+		cdb.BeginTransaction(ctx, func(tx *harmonydb.Transaction) (commit bool) {
 			if err := tx.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
 				t.Fatal("E1", err)
 			}
@@ -119,7 +119,7 @@ func TestPartialWalk(t *testing.T) {
 	defer cancel()
 
 	withSetup(t, func(miner *kit.TestMiner) {
-		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).ClusterDB
+		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		if err := cdb.Exec(ctx, `
 			INSERT INTO 
 				itest_scratch (content, some_int) 

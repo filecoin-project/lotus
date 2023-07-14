@@ -1,4 +1,4 @@
-package clusterdb
+package harmonydb
 
 import (
 	"context"
@@ -35,13 +35,13 @@ type DB struct {
 	log       func(string)
 }
 
-var logger = logging.Logger("clusterdb")
+var logger = logging.Logger("harmonydb")
 
 // NewFromConfig is a convenience function.
 // In usage:
 //
-//	db, err := NewFromConfig(config.ClusterDB)  // in binary init
-func NewFromConfig(cfg config.ClusterDB) (*DB, error) {
+//	db, err := NewFromConfig(config.HarmonyDB)  // in binary init
+func NewFromConfig(cfg config.HarmonyDB) (*DB, error) {
 	return New(
 		cfg.Hosts,
 		cfg.Username,
@@ -53,7 +53,7 @@ func NewFromConfig(cfg config.ClusterDB) (*DB, error) {
 	)
 }
 
-func NewFromConfigWithITestID(cfg config.ClusterDB) func(id ITestID) (*DB, error) {
+func NewFromConfigWithITestID(cfg config.HarmonyDB) func(id ITestID) (*DB, error) {
 	return func(id ITestID) (*DB, error) {
 		return New(
 			cfg.Hosts,

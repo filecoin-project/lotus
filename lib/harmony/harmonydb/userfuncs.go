@@ -1,4 +1,4 @@
-package clusterdb
+package harmonydb
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type Intf interface {
 // rawStringOnly is _intentionally_private_ to force only basic strings in SQL queries.
 // In any package, raw strings will satisfy compilation.  Ex:
 //
-//	clusterDB.Exec("INSERT INTO version (number) VALUES (1)")
+//	harmonydb.Exec("INSERT INTO version (number) VALUES (1)")
 //
 // This prevents SQL injection attacks where the input contains query fragments.
 type rawStringOnly string

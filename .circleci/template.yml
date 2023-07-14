@@ -178,9 +178,9 @@ jobs:
             SKIP_CONFORMANCE: "1"
             LOTUS_SRC_DIR: /home/circleci/project
           command: |
-            dockerize -wait tcp://yugabyte:5433 -timeout 1m
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
+            dockerize -wait tcp://yugabyte:5433 -timeout 3m
             gotestsum \
               --format standard-verbose \
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \

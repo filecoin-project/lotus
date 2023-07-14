@@ -269,7 +269,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxConcurrentUnseals:       5,
 			GCInterval:                 Duration(1 * time.Minute),
 		},
-		ClusterDB: ClusterDB{
+		HarmonyDB: HarmonyDB{
 			Hosts:    []string{"127.0.0.1"},
 			Username: "yugabyte",
 			Password: "yugabyte",

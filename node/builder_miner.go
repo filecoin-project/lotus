@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/filecoin-project/lotus/lib/sturdy/clusterdb"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"github.com/filecoin-project/lotus/markets/idxprov"
@@ -232,8 +232,8 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(config.SealerConfig), cfg.Storage),
 		Override(new(config.ProvingConfig), cfg.Proving),
 		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
-		Override(new(*clusterdb.DB), clusterdb.NewFromConfigWithITestID(cfg.ClusterDB)),
-		Override(new(clusterdb.ITestID), clusterdb.ITestID("")),
+		Override(new(*harmonydb.DB), harmonydb.NewFromConfigWithITestID(cfg.HarmonyDB)),
+		Override(new(harmonydb.ITestID), harmonydb.ITestID("")),
 	)
 }
 

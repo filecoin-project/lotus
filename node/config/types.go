@@ -62,7 +62,7 @@ type StorageMiner struct {
 	Addresses     MinerAddressConfig
 	DAGStore      DAGStoreConfig
 
-	ClusterDB ClusterDB
+	HarmonyDB HarmonyDB
 }
 
 type DAGStoreConfig struct {
@@ -735,7 +735,7 @@ type IndexConfig struct {
 	EnableMsgIndex bool
 }
 
-type ClusterDB struct {
+type HarmonyDB struct {
 	// HOSTS is a list of hostnames to nodes running YugabyteDB
 	// in a cluster. Only 1 is required
 	Hosts []string

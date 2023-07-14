@@ -894,43 +894,43 @@
   #GCInterval = "1m0s"
 
 
-[ClusterDB]
+[HarmonyDB]
   # HOSTS is a list of hostnames to nodes running YugabyteDB
   # in a cluster. Only 1 is required
   #
   # type: []string
-  # env var: LOTUS_CLUSTERDB_HOSTS
+  # env var: LOTUS_HARMONYDB_HOSTS
   #Hosts = ["127.0.0.1"]
 
   # The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.
   #
   # type: string
-  # env var: LOTUS_CLUSTERDB_USERNAME
+  # env var: LOTUS_HARMONYDB_USERNAME
   #Username = "yugabyte"
 
   # The password for the related username. Blank for default.
   #
   # type: string
-  # env var: LOTUS_CLUSTERDB_PASSWORD
+  # env var: LOTUS_HARMONYDB_PASSWORD
   #Password = "yugabyte"
 
   # The database (logical partition) within Yugabyte. Blank for default.
   #
   # type: string
-  # env var: LOTUS_CLUSTERDB_DATABASE
+  # env var: LOTUS_HARMONYDB_DATABASE
   #Database = "yugabyte"
 
   # The port to find Yugabyte. Blank for default.
   #
   # type: string
-  # env var: LOTUS_CLUSTERDB_PORT
+  # env var: LOTUS_HARMONYDB_PORT
   #Port = "5433"
 
   # ITest is for optimized integration testing and not
   # for production. Blank for default production configuration.
   #
   # type: string
-  # env var: LOTUS_CLUSTERDB_ITEST
+  # env var: LOTUS_HARMONYDB_ITEST
   #ITest = ""
 
 
