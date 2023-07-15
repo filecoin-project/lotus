@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -100,15 +99,11 @@ var gasTraceCmd = &cli.Command{
 			return err
 		}
 
-		dcs := build.DrandConfigSchedule()
-		shd := beacon.Schedule{}
-		for _, dc := range dcs {
-			bc, err := drand.NewDrandBeacon(MAINNET_GENESIS_TIME, build.BlockDelaySecs, nil, dc.Config)
-			if err != nil {
-				return xerrors.Errorf("creating drand beacon: %w", err)
-			}
-			shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
+		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), MAINNET_GENESIS_TIME, nil)
+		if err != nil {
+			return err
 		}
+
 		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
@@ -200,14 +195,9 @@ var replayOfflineCmd = &cli.Command{
 			return err
 		}
 
-		dcs := build.DrandConfigSchedule()
-		shd := beacon.Schedule{}
-		for _, dc := range dcs {
-			bc, err := drand.NewDrandBeacon(MAINNET_GENESIS_TIME, build.BlockDelaySecs, nil, dc.Config)
-			if err != nil {
-				return xerrors.Errorf("creating drand beacon: %w", err)
-			}
-			shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
+		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), MAINNET_GENESIS_TIME, nil)
+		if err != nil {
+			return err
 		}
 
 		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
