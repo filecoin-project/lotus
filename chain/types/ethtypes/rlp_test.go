@@ -148,11 +148,12 @@ func TestDecodeNegativeLength(t *testing.T) {
 		mustDecodeHex("0xbfffffffffffffff0041424344"),
 		mustDecodeHex("0xc1bFFF1111111111111111"),
 		mustDecodeHex("0xbFFF11111111111111"),
+		mustDecodeHex("0xbf7fffffffffffffff41424344"),
 	}
 
 	for _, tc := range testcases {
 		_, err := DecodeRLP(tc)
-		require.Error(t, err, "invalid rlp data: negative string length")
+		require.ErrorContains(t, err, "invalid rlp data")
 	}
 }
 
