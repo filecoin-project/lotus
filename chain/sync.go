@@ -160,37 +160,6 @@ func NewSyncer(ds dtypes.MetadataDS,
 	return s, nil
 }
 
-// NewSyncerFollower creates a new Syncer object that the follower node uses
-func NewSyncerFollower(ds dtypes.MetadataDS,
-	sm *stmgr.StateManager,
-	exchange exchange.Client,
-	syncMgrCtor SyncManagerCtor,
-	connmgr connmgr.ConnManager,
-	self peer.ID,
-	beacon beacon.Schedule,
-	gent Genesis,
-	consensus consensus.Consensus) (*Syncer, error) {
-
-	s := &Syncer{
-		ds:             ds,
-		beacon:         beacon,
-		bad:            NewBadBlockCache(),
-		Genesis:        gent,
-		consensus:      consensus,
-		Exchange:       exchange,
-		store:          sm.ChainStore(),
-		sm:             sm,
-		self:           self,
-		receiptTracker: newBlockReceiptTracker(),
-		connmgr:        connmgr,
-
-		incoming: pubsub.New(50),
-	}
-
-	s.syncmgr = syncMgrCtor(s.Sync)
-	return s, nil
-}
-
 func (syncer *Syncer) Start() {
 	tickerCtx, tickerCtxCancel := context.WithCancel(context.Background())
 	syncer.syncmgr.Start()
