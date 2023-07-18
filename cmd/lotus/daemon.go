@@ -571,17 +571,17 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gb.MinTimestamp(), nil)
-	if err != nil {
-		return xerrors.Errorf("failed to construct beacon schedule: %w", err)
-	}
-
-	stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), shd, mds, index.DummyMsgIndex)
-	if err != nil {
-		return err
-	}
-
 	if !snapshot {
+		shd, err := drand.BeaconScheduleFromDrandSchedule(build.DrandConfigSchedule(), gb.MinTimestamp(), nil)
+		if err != nil {
+			return xerrors.Errorf("failed to construct beacon schedule: %w", err)
+		}
+
+		stm, err := stmgr.NewStateManager(cst, consensus.NewTipSetExecutor(filcns.RewardFunc), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), shd, mds, index.DummyMsgIndex)
+		if err != nil {
+			return err
+		}
+
 		log.Infof("validating imported chain...")
 		if err := stm.ValidateChain(ctx, ts); err != nil {
 			return xerrors.Errorf("chain validation failed: %w", err)
