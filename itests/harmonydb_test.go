@@ -27,7 +27,7 @@ func TestCrud(t *testing.T) {
 
 	withSetup(t, func(miner *kit.TestMiner) {
 		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
-		err := cdb.Exec(ctx, `
+		_, err := cdb.Exec(ctx, `
 			INSERT INTO 
 				itest_scratch (some_int, content) 
 			VALUES 
@@ -65,11 +65,11 @@ func TestTransaction(t *testing.T) {
 
 	withSetup(t, func(miner *kit.TestMiner) {
 		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
-		if err := cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
+		if _, err := cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
 			t.Fatal("E0", err)
 		}
-		err := cdb.BeginTransaction(ctx, func(tx *harmonydb.Transaction) (commit bool) {
-			if err := tx.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
+		_, err := cdb.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool) {
+			if _, err := tx.Exec("INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
 				t.Fatal("E1", err)
 			}
 
@@ -84,7 +84,7 @@ func TestTransaction(t *testing.T) {
 
 			// sum2 is from INSIDE the transaction, so the updated value.
 			var sum2 int
-			if err := tx.QueryRow(ctx, "SELECT SUM(some_int) FROM itest_scratch").Scan(&sum2); err != nil {
+			if err := tx.QueryRow("SELECT SUM(some_int) FROM itest_scratch").Scan(&sum2); err != nil {
 				t.Fatal("E3", err)
 			}
 			if sum2 != 4+5+6+7+8+9 {
@@ -126,7 +126,7 @@ func TestPartialWalk(t *testing.T) {
 
 	withSetup(t, func(miner *kit.TestMiner) {
 		cdb := miner.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
-		if err := cdb.Exec(ctx, `
+		if _, err := cdb.Exec(ctx, `
 			INSERT INTO 
 				itest_scratch (content, some_int) 
 			VALUES 

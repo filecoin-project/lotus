@@ -204,7 +204,7 @@ var fs embed.FS
 func (db *DB) upgrade() error {
 	// Does the version table exist? if not, make it.
 	// NOTE: This cannot change except via the next sql file.
-	err := db.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS base (
+	_, err := db.Exec(context.Background(), `CREATE TABLE IF NOT EXISTS base (
 		id SERIAL PRIMARY KEY,
 		entry CHAR(12),
 		applied TIMESTAMP DEFAULT current_timestamp
@@ -256,7 +256,7 @@ func (db *DB) upgrade() error {
 		}
 
 		// Mark Completed.
-		err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUES ($1)", name)
+		_, err = db.Exec(context.Background(), "INSERT INTO base (entry) VALUES ($1)", name)
 		if err != nil {
 			db.log("Cannot update base: " + err.Error())
 			return fmt.Errorf("cannot insert into base: %w", err)
