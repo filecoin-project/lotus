@@ -54,7 +54,13 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 	return info, true
 }
 
+var MaxPreCommit1Retries = uint64(3)
+
 func (m *Sealing) handleSealPrecommit1Failed(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.PreCommit1Fails > MaxPreCommit1Retries {
+		return ctx.Send(SectorRemove{})
+	}
+
 	if err := failedCooldown(ctx, sector); err != nil {
 		return err
 	}
