@@ -50,6 +50,7 @@ func (dp *drandPeer) IsTLS() bool {
 //
 // The root trust for the Drand chain is configured from build.DrandChain.
 type DrandBeacon struct {
+	// Nil for beacons belonging to "retired" networks
 	client dclient.Client
 
 	pubkey kyber.Point
@@ -91,32 +92,35 @@ func NewDrandBeacon(genesisTs, interval uint64, ps *pubsub.PubSub, config dtypes
 		return nil, xerrors.Errorf("unable to unmarshal drand chain info: %w", err)
 	}
 
-	var clients []dclient.Client
-	for _, url := range config.Servers {
-		hc, err := hclient.NewWithInfo(url, drandChain, nil)
-		if err != nil {
-			return nil, xerrors.Errorf("could not create http drand client: %w", err)
+	var client dclient.Client
+	if len(config.Servers) > 0 {
+		var clients []dclient.Client
+		for _, url := range config.Servers {
+			hc, err := hclient.NewWithInfo(url, drandChain, nil)
+			if err != nil {
+				return nil, xerrors.Errorf("could not create http drand client: %w", err)
+			}
+			hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + build.BuildVersion)
+			clients = append(clients, hc)
+
 		}
-		hc.(DrandHTTPClient).SetUserAgent("drand-client-lotus/" + build.BuildVersion)
-		clients = append(clients, hc)
 
-	}
+		opts := []dclient.Option{
+			dclient.WithChainInfo(drandChain),
+			dclient.WithCacheSize(1024),
+			dclient.WithLogger(&logger{&log.SugaredLogger}),
+		}
 
-	opts := []dclient.Option{
-		dclient.WithChainInfo(drandChain),
-		dclient.WithCacheSize(1024),
-		dclient.WithLogger(&logger{&log.SugaredLogger}),
-	}
+		if ps != nil {
+			opts = append(opts, gclient.WithPubsub(ps))
+		} else {
+			log.Info("drand beacon without pubsub")
+		}
 
-	if ps != nil {
-		opts = append(opts, gclient.WithPubsub(ps))
-	} else {
-		log.Info("drand beacon without pubsub")
-	}
-
-	client, err := dclient.Wrap(clients, opts...)
-	if err != nil {
-		return nil, xerrors.Errorf("creating drand client: %w", err)
+		client, err = dclient.Wrap(clients, opts...)
+		if err != nil {
+			return nil, xerrors.Errorf("creating drand client: %w", err)
+		}
 	}
 
 	lc, err := lru.New[uint64, *types.BeaconEntry](1024)
@@ -150,11 +154,17 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 	}
 
 	go func() {
-		start := build.Clock.Now()
+		var br beacon.Response
+		if db.client == nil {
+			br.Err = xerrors.Errorf("DrandBeacon cannot fetch entry, no client setup")
+			out <- br
+			close(out)
+		}
+
 		log.Debugw("start fetching randomness", "round", round)
+		start := build.Clock.Now()
 		resp, err := db.client.Get(ctx, round)
 
-		var br beacon.Response
 		if err != nil {
 			br.Err = xerrors.Errorf("drand failed Get request: %w", err)
 		} else {
