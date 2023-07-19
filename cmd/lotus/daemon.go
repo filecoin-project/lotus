@@ -551,9 +551,9 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
-	//if err := cst.FlushValidationCache(ctx); err != nil {
-	//return xerrors.Errorf("flushing validation cache failed: %w", err)
-	//}
+	if err := cst.FlushValidationCache(ctx); err != nil {
+		return xerrors.Errorf("flushing validation cache failed: %w", err)
+	}
 
 	log.Infof("setting genesis")
 	err = cst.SetGenesis(ctx, gen)
