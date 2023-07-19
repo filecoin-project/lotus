@@ -23,6 +23,33 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+func (gw *Node) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.MpoolPending(ctx, tsk)
+}
+
+func (gw *Node) ChainGetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {
+	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
+		return nil, err
+	}
+	return gw.target.ChainGetBlock(ctx, c)
+}
+
+func (gw *Node) MinerGetBaseInfo(ctx context.Context, addr address.Address, h abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return nil, err
+	}
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return nil, err
+	}
+	return gw.target.MinerGetBaseInfo(ctx, addr, h, tsk)
+}
+
 func (gw *Node) StateReplay(ctx context.Context, tsk types.TipSetKey, c cid.Cid) (*api.InvocResult, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err

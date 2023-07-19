@@ -316,7 +316,7 @@ func TestGetBlockByNumber(t *testing.T) {
 
 	// Fetch balance on a null round; should not fail and should return previous balance.
 	// Should be lower than original balance.
-	bal, err := client.EthGetBalance(ctx, ethAddr, (ethtypes.EthUint64(afterNullHeight - 1)).Hex())
+	bal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(afterNullHeight-1)))
 	require.NoError(t, err)
 	require.NotEqual(t, big.Zero(), bal)
 	require.Equal(t, types.FromFil(10).Int, bal.Int)

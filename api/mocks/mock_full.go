@@ -1012,7 +1012,7 @@ func (mr *MockFullNodeMockRecorder) EthBlockNumber(arg0 interface{}) *gomock.Cal
 }
 
 // EthCall mocks base method.
-func (m *MockFullNode) EthCall(arg0 context.Context, arg1 ethtypes.EthCall, arg2 string) (ethtypes.EthBytes, error) {
+func (m *MockFullNode) EthCall(arg0 context.Context, arg1 ethtypes.EthCall, arg2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthCall", arg0, arg1, arg2)
 	ret0, _ := ret[0].(ethtypes.EthBytes)
@@ -1087,7 +1087,7 @@ func (mr *MockFullNodeMockRecorder) EthGasPrice(arg0 interface{}) *gomock.Call {
 }
 
 // EthGetBalance mocks base method.
-func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 string) (ethtypes.EthBigInt, error) {
+func (m *MockFullNode) EthGetBalance(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetBalance", arg0, arg1, arg2)
 	ret0, _ := ret[0].(ethtypes.EthBigInt)
@@ -1162,7 +1162,7 @@ func (mr *MockFullNodeMockRecorder) EthGetBlockTransactionCountByNumber(arg0, ar
 }
 
 // EthGetCode mocks base method.
-func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 string) (ethtypes.EthBytes, error) {
+func (m *MockFullNode) EthGetCode(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetCode", arg0, arg1, arg2)
 	ret0, _ := ret[0].(ethtypes.EthBytes)
@@ -1237,7 +1237,7 @@ func (mr *MockFullNodeMockRecorder) EthGetMessageCidByTransactionHash(arg0, arg1
 }
 
 // EthGetStorageAt mocks base method.
-func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBytes, arg3 string) (ethtypes.EthBytes, error) {
+func (m *MockFullNode) EthGetStorageAt(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBytes, arg3 ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetStorageAt", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(ethtypes.EthBytes)
@@ -1312,7 +1312,7 @@ func (mr *MockFullNodeMockRecorder) EthGetTransactionByHashLimited(arg0, arg1, a
 }
 
 // EthGetTransactionCount mocks base method.
-func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 string) (ethtypes.EthUint64, error) {
+func (m *MockFullNode) EthGetTransactionCount(arg0 context.Context, arg1 ethtypes.EthAddress, arg2 ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EthGetTransactionCount", arg0, arg1, arg2)
 	ret0, _ := ret[0].(ethtypes.EthUint64)

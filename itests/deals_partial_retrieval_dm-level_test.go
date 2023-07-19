@@ -48,9 +48,9 @@ func TestDMLevelPartialRetrieval(t *testing.T) {
 	ctx := context.Background()
 
 	kit.QuietMiningLogs()
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MockProofs())
+	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
 	dh := kit.NewDealHarness(t, client, miner, miner)
-	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	ens.InterconnectAll().BeginMiningMustPost(50 * time.Millisecond)
 
 	_, err := client.ClientImport(ctx, api.FileRef{Path: adlFixtureCar, IsCAR: true})
 	require.NoError(t, err)

@@ -63,6 +63,9 @@ var MaxNonceGap = uint64(4)
 
 const MaxMessageSize = 64 << 10 // 64KiB
 
+// NOTE: When adding a new error type, please make sure to add the new error type in
+// func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message)
+// in /chain/sub/incoming.go
 var (
 	ErrMessageTooBig = errors.New("message too big")
 

@@ -72,7 +72,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 
 	base, trace, err := sm.ExecutionTrace(ctx, ts)
 	if err != nil {
-		return cid.Undef, nil, err
+		return cid.Undef, nil, xerrors.Errorf("failed to compute base state: %w", err)
 	}
 
 	for i := ts.Height(); i < height; i++ {
@@ -116,6 +116,21 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		if ret.ExitCode != 0 {
 			log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.ExitCode, ret.ActorErr)
 		}
+
+		ir := &api.InvocResult{
+			MsgCid:         msg.Cid(),
+			Msg:            msg,
+			MsgRct:         &ret.MessageReceipt,
+			ExecutionTrace: ret.ExecutionTrace,
+			Duration:       ret.Duration,
+		}
+		if ret.ActorErr != nil {
+			ir.Error = ret.ActorErr.Error()
+		}
+		if ret.GasCosts != nil {
+			ir.GasCost = MakeMsgGasCost(msg, ret)
+		}
+		trace = append(trace, ir)
 	}
 
 	root, err := vmi.Flush(ctx)

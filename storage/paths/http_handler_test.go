@@ -207,8 +207,8 @@ func TestRemoteGetAllocated(t *testing.T) {
 			pfhandler := mocks.NewMockPartialFileHandler(mockCtrl)
 
 			handler := &paths.FetchHandler{
-				lstore,
-				pfhandler,
+				Local:     lstore,
+				PfHandler: pfhandler,
 			}
 
 			// run http server
