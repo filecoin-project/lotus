@@ -2,7 +2,6 @@ package cassbs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/ipfs/go-datastore"
@@ -10,7 +9,7 @@ import (
 )
 
 func ReadonlyError(description string) error {
-	return errors.New("Write protected access attempted on Readonly Blockstore from method " + description)
+	return fmt.Errorf("Write protected access attempted on Readonly Blockstore from method %s", description)
 }
 
 type CassandraDatastoreReadonly struct {
