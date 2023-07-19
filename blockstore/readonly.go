@@ -2,7 +2,7 @@ package blockstore
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -20,7 +20,7 @@ func WithReadonly(base Blockstore) *ReadonlyBlockstore {
 }
 
 func ReadonlyError(description string) error {
-	return errors.New("Write protected access attempted on Readonly Blockstore from method " + description)
+	return fmt.Errorf("Write protected access attempted on Readonly Blockstore from method %s", description)
 }
 
 func (bs *ReadonlyBlockstore) Flush(ctx context.Context) error {
