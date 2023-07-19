@@ -172,6 +172,13 @@ var DaemonCmd = &cli.Command{
 		isLite := cctx.Bool("lite")
 
 		isFollower := cctx.Bool("follower")
+		if isFollower {
+			if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") == "" {
+				return xerrors.Errorf("Follower nodes must have LOTUS_CASSANDRA_UNIVERSAL_STORE set to connect to Cassandra db campatible database.")
+			}
+		}
+
+		//here
 
 		err := runmetrics.Enable(runmetrics.RunMetricOptions{
 			EnableCPU:    true,
