@@ -132,7 +132,7 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "follower",
-			Usage: "start lotus in follower mode",
+			Usage: "start lotus in experimental follower mode",
 		},
 		&cli.StringFlag{
 			Name:  "pprof",
