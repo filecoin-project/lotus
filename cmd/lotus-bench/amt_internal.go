@@ -1,3 +1,6 @@
+// Copied from go-amt-ipld https://github.com/filecoin-project/go-amt-ipld/tree/master/internal
+// which for some reason is a go internal package and therefore cannot be imported
+
 package main
 
 import (
@@ -59,7 +62,7 @@ func (t *AMTRoot) MarshalCBOR(w io.Writer) error {
 
 	// t.Count (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Count)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, t.Count); err != nil {
 		return err
 	}
 
@@ -104,7 +107,7 @@ func (t *AMTRoot) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.BitWidth = uint64(extra)
+		t.BitWidth = extra
 
 	}
 	// t.Height (uint64) (uint64)
@@ -118,7 +121,7 @@ func (t *AMTRoot) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.Height = uint64(extra)
+		t.Height = extra
 
 	}
 	// t.Count (uint64) (uint64)

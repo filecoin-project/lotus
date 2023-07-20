@@ -298,12 +298,14 @@ var amtBenchCmd = &cli.Command{
 			}
 			for i := j; i < 40000000; i += interval {
 				if i%interval == j {
-					array.Set(uint64(i), &market.DealState{
+					if err := array.Set(uint64(i), &market.DealState{
 						SectorStartEpoch: abi.ChainEpoch(2000000 + i),
 						LastUpdatedEpoch: abi.ChainEpoch(1),
 						SlashEpoch:       -1,
 						VerifiedClaim:    verifreg.AllocationId(i),
-					})
+					}); err != nil {
+						return err
+					}
 				}
 			}
 			roots[j], err = array.Root()
