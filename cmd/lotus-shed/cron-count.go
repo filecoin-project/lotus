@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	miner11 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v11/util/adt"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -32,7 +38,25 @@ type DeadlineRef struct {
 }
 
 type DeadlineSummary struct {
-	Partitions []PartitionSummary
+	Partitions       []PartitionSummary
+	PreCommitsBefore PreCommitSummary
+	PreCommitDiff    PreCommitDiff
+	VestingDiff      VestingDiff
+}
+
+type PreCommitDiff struct {
+	ExpiryQueueDelta int
+	PrecommitDelta   int
+}
+
+type PreCommitSummary struct {
+	SizeExpiryQueue int
+	SizePrecommits  int
+}
+
+type VestingDiff struct {
+	PrevTableSize int
+	NewTableSize  int
 }
 
 type PartitionSummary struct {
@@ -78,6 +102,9 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 		}
 		defer acloser()
 		ctx := lcli.ReqContext(c)
+
+		bs := ReadOnlyAPIBlockstore{n}
+		adtStore := adt.WrapStore(ctx, ipldcbor.NewCborStore(&bs))
 
 		dSummaries := make([]DeadlineSummary, len(refStream))
 		for j, ref := range refStream {
@@ -145,6 +172,36 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 				}, nil
 			}
 
+			countPreCommit := func(expiryQ, precommits cid.Cid, store adt.Store) (PreCommitSummary, error) {
+				precommitMap, err := adt.AsMap(store, precommits, builtin.DefaultHamtBitwidth)
+				if err != nil {
+					return PreCommitSummary{}, err
+				}
+				count := 0
+				var empty cbg.Deferred
+				precommitMap.ForEach(&empty, func(_ string) error {
+					count++
+					return nil
+				})
+				expiryQArray, err := adt.AsArray(store, expiryQ, miner11.PrecommitCleanUpAmtBitwidth)
+				if err != nil {
+					return PreCommitSummary{}, err
+				}
+				return PreCommitSummary{
+					SizeExpiryQueue: int(expiryQArray.Length()),
+					SizePrecommits:  count,
+				}, nil
+
+			}
+
+			countVestingTable := func(table cid.Cid) (int, error) {
+				var vestingTable miner11.VestingFunds
+				if err := adtStore.Get(ctx, table, &vestingTable); err != nil {
+					return 0, err
+				}
+				return len(vestingTable.Funds), nil
+			}
+
 			for i := 0; i < len(psBefore); i++ {
 				cntBefore, err := countPartition(psBefore[i])
 				if err != nil {
@@ -164,7 +221,59 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 					},
 				})
 			}
-			dSummaries[j] = DeadlineSummary{Partitions: pSummaries}
+
+			// Precommit and vesting table data
+			// Before
+			aBefore, err := n.StateGetActor(ctx, addr, tsBefore.Key())
+			if err != nil {
+				return err
+			}
+			var st miner11.State
+			err = adtStore.Get(ctx, aBefore.Head, &st)
+			if err != nil {
+				return err
+			}
+			preCommitBefore, err := countPreCommit(st.PreCommittedSectorsCleanUp, st.PreCommittedSectors, adtStore)
+			if err != nil {
+				return err
+			}
+			vestingBefore, err := countVestingTable(st.VestingFunds)
+			if err != nil {
+				return err
+			}
+
+			// After
+			aAfter, err := n.StateGetActor(ctx, addr, tsAfter.Key())
+			if err != nil {
+				return err
+			}
+			var stAfter miner11.State
+			err = adtStore.Get(ctx, aAfter.Head, &stAfter)
+			if err != nil {
+				return err
+			}
+			preCommitAfter, err := countPreCommit(stAfter.PreCommittedSectorsCleanUp, stAfter.PreCommittedSectors, adtStore)
+			if err != nil {
+				return err
+			}
+			vestingAfter, err := countVestingTable(stAfter.VestingFunds)
+			if err != nil {
+				return err
+			}
+
+			dSummaries[j] = DeadlineSummary{
+				Partitions:       pSummaries,
+				PreCommitsBefore: preCommitAfter,
+				PreCommitDiff: PreCommitDiff{
+					ExpiryQueueDelta: preCommitBefore.SizeExpiryQueue - preCommitAfter.SizeExpiryQueue,
+					PrecommitDelta:   preCommitBefore.SizePrecommits - preCommitAfter.SizePrecommits,
+				},
+				VestingDiff: VestingDiff{
+					PrevTableSize: vestingBefore,
+					NewTableSize:  vestingAfter,
+				},
+			}
+
 		}
 
 		// output partition info
