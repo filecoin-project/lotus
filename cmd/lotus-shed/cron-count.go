@@ -52,9 +52,10 @@ type VestingDiff struct {
 }
 
 type PartitionSummary struct {
-	Live int
-	Dead int
-	Diff PartitionDiff
+	Live   int
+	Dead   int
+	Faulty int
+	Diff   PartitionDiff
 }
 
 type PartitionDiff struct {
@@ -182,8 +183,9 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 					return err
 				}
 				pSummaries = append(pSummaries, PartitionSummary{
-					Live: cntBefore.live,
-					Dead: cntBefore.dead,
+					Live:   cntBefore.live,
+					Dead:   cntBefore.dead,
+					Faulty: cntBefore.faulty,
 					Diff: PartitionDiff{
 						Faulted:   cntAfter.faulty - cntBefore.faulty,
 						Recovered: cntBefore.recovering - cntAfter.recovering,
