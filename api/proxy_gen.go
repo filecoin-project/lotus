@@ -596,6 +596,10 @@ type FullNodeMethods struct {
 
 	SyncValidateTipset func(p0 context.Context, p1 types.TipSetKey) (bool, error) `perm:"read"`
 
+	TraceBlock func(p0 context.Context, p1 string) (interface{}, error) `perm:"read"`
+
+	TraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) (interface{}, error) `perm:"read"`
+
 	WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) `perm:"read"`
 
 	WalletDefaultAddress func(p0 context.Context) (address.Address, error) `perm:"write"`
@@ -813,6 +817,10 @@ type GatewayMethods struct {
 	StateVerifierStatus func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) ``
 
 	StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
+
+	TraceBlock func(p0 context.Context, p1 string) (interface{}, error) ``
+
+	TraceReplayBlockTransactions func(p0 context.Context, p1 string, p2 []string) (interface{}, error) ``
 
 	Version func(p0 context.Context) (APIVersion, error) ``
 
@@ -3997,6 +4005,28 @@ func (s *FullNodeStub) SyncValidateTipset(p0 context.Context, p1 types.TipSetKey
 	return false, ErrNotSupported
 }
 
+func (s *FullNodeStruct) TraceBlock(p0 context.Context, p1 string) (interface{}, error) {
+	if s.Internal.TraceBlock == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.TraceBlock(p0, p1)
+}
+
+func (s *FullNodeStub) TraceBlock(p0 context.Context, p1 string) (interface{}, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) TraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) (interface{}, error) {
+	if s.Internal.TraceReplayBlockTransactions == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.TraceReplayBlockTransactions(p0, p1, p2)
+}
+
+func (s *FullNodeStub) TraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) (interface{}, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *FullNodeStruct) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
 	if s.Internal.WalletBalance == nil {
 		return *new(types.BigInt), ErrNotSupported
@@ -5127,6 +5157,28 @@ func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, 
 }
 
 func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) TraceBlock(p0 context.Context, p1 string) (interface{}, error) {
+	if s.Internal.TraceBlock == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.TraceBlock(p0, p1)
+}
+
+func (s *GatewayStub) TraceBlock(p0 context.Context, p1 string) (interface{}, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) TraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) (interface{}, error) {
+	if s.Internal.TraceReplayBlockTransactions == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.TraceReplayBlockTransactions(p0, p1, p2)
+}
+
+func (s *GatewayStub) TraceReplayBlockTransactions(p0 context.Context, p1 string, p2 []string) (interface{}, error) {
 	return nil, ErrNotSupported
 }
 

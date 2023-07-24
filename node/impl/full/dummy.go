@@ -178,5 +178,14 @@ func (e *EthModuleDummy) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubs
 	return false, ErrModuleDisabled
 }
 
+func (e *EthModuleDummy) TraceBlock(ctx context.Context, blkNum string) (interface{}, error) {
+	return nil, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error) {
+	return nil, ErrModuleDisabled
+}
+
 var _ EthModuleAPI = &EthModuleDummy{}
 var _ EthEventAPI = &EthModuleDummy{}
+var _ EthTraceAPI = &EthModuleDummy{}

@@ -21,14 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
-func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
-	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
-		return "", err
-	}
-
-	return gw.target.Web3ClientVersion(ctx)
-}
-
 func (gw *Node) EthAccounts(ctx context.Context) ([]ethtypes.EthAddress, error) {
 	// gateway provides public API, so it can't hold user accounts
 	return []ethtypes.EthAddress{}, nil
@@ -580,6 +572,38 @@ func (gw *Node) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionI
 	}
 
 	return ok, nil
+}
+
+func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
+		return "", err
+	}
+
+	return gw.target.Web3ClientVersion(ctx)
+}
+
+func (gw *Node) TraceBlock(ctx context.Context, blkNum string) (interface{}, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return 0, err
+	}
+
+	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
+		return ethtypes.EthBlock{}, err
+	}
+
+	return gw.target.TraceBlock(ctx, blkNum)
+}
+
+func (gw *Node) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error) {
+	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
+		return 0, err
+	}
+
+	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
+		return ethtypes.EthBlock{}, err
+	}
+
+	return gw.target.TraceReplayBlockTransactions(ctx, blkNum, traceTypes)
 }
 
 var EthMaxFiltersPerConn = 16 // todo make this configurable

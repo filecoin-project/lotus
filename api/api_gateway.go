@@ -127,4 +127,6 @@ type Gateway interface {
 	EthSubscribe(ctx context.Context, params jsonrpc.RawParams) (ethtypes.EthSubscriptionID, error)
 	EthUnsubscribe(ctx context.Context, id ethtypes.EthSubscriptionID) (bool, error)
 	Web3ClientVersion(ctx context.Context) (string, error)
+	TraceBlock(ctx context.Context, blkNum string) (interface{}, error)
+	TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error)
 }
