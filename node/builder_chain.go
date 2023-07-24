@@ -155,6 +155,7 @@ var ChainNode = Options(
 		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
 		Override(new(full.EthModuleAPI), From(new(api.Gateway))),
 		Override(new(full.EthEventAPI), From(new(api.Gateway))),
+		Override(new(full.EthTraceAPI), From(new(api.Gateway))),
 	),
 
 	// Full node API / service startup
@@ -270,10 +271,12 @@ func ConfigFullNode(c interface{}) Option {
 			If(cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), modules.EthModuleAPI(cfg.Fevm)),
 				Override(new(full.EthEventAPI), modules.EthEventAPI(cfg.Fevm)),
+				Override(new(full.EthTraceAPI), modules.EthTraceAPI()),
 			),
 			If(!cfg.Fevm.EnableEthRPC,
 				Override(new(full.EthModuleAPI), &full.EthModuleDummy{}),
 				Override(new(full.EthEventAPI), &full.EthModuleDummy{}),
+				Override(new(full.EthTraceAPI), &full.EthModuleDummy{}),
 			),
 		),
 

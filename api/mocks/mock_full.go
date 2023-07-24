@@ -4023,6 +4023,36 @@ func (mr *MockFullNodeMockRecorder) SyncValidateTipset(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncValidateTipset", reflect.TypeOf((*MockFullNode)(nil).SyncValidateTipset), arg0, arg1)
 }
 
+// TraceBlock mocks base method.
+func (m *MockFullNode) TraceBlock(arg0 context.Context, arg1 string) (interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TraceBlock", arg0, arg1)
+	ret0, _ := ret[0].(interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TraceBlock indicates an expected call of TraceBlock.
+func (mr *MockFullNodeMockRecorder) TraceBlock(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceBlock", reflect.TypeOf((*MockFullNode)(nil).TraceBlock), arg0, arg1)
+}
+
+// TraceReplayBlockTransactions mocks base method.
+func (m *MockFullNode) TraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) (interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TraceReplayBlockTransactions", arg0, arg1, arg2)
+	ret0, _ := ret[0].(interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TraceReplayBlockTransactions indicates an expected call of TraceReplayBlockTransactions.
+func (mr *MockFullNodeMockRecorder) TraceReplayBlockTransactions(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceReplayBlockTransactions", reflect.TypeOf((*MockFullNode)(nil).TraceReplayBlockTransactions), arg0, arg1, arg2)
+}
+
 // Version mocks base method.
 func (m *MockFullNode) Version(arg0 context.Context) (api.APIVersion, error) {
 	m.ctrl.T.Helper()

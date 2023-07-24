@@ -287,6 +287,9 @@
   * [SyncUnmarkAllBad](#SyncUnmarkAllBad)
   * [SyncUnmarkBad](#SyncUnmarkBad)
   * [SyncValidateTipset](#SyncValidateTipset)
+* [Trace](#Trace)
+  * [TraceBlock](#TraceBlock)
+  * [TraceReplayBlockTransactions](#TraceReplayBlockTransactions)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
@@ -8818,6 +8821,44 @@ Inputs:
 ```
 
 Response: `true`
+
+## Trace
+
+
+### TraceBlock
+TraceAPI related methods
+
+Returns traces created at given block
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### TraceReplayBlockTransactions
+Replays all transactions in a block returning the requested traces for each transaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value",
+  [
+    "string value"
+  ]
+]
+```
+
+Response: `{}`
 
 ## Wallet
 
