@@ -6,6 +6,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"os"
 	"sync"
 	"time"
@@ -324,16 +326,9 @@ minerLoop:
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
 
-			if os.Getenv("LOTUS_MINER_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" {
-				witness, fault, err := m.sf.MinedBlock(ctx, b.Header, base.TipSet.Height()+base.NullRounds)
-				if err != nil {
-					log.Errorf("<!!> SLASH FILTER ERRORED: %s", err)
-					// Continue here, because it's _probably_ wiser to not submit this block
-					continue
-				}
-
-				if fault {
-					log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to blocks %s and %s", b.Header.Cid(), witness)
+			if err := m.sf.MinedBlock(ctx, b.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+				log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
+				if os.Getenv("LOTUS_MINER_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" {
 					continue
 				}
 			}
@@ -560,10 +555,28 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
+	var newMsgs []*types.SignedMessage
+
+	for _, msg := range msgs {
+		if msg.Message.Method == market.Methods.PublishStorageDeals {
+			var pubDealsParams market2.PublishStorageDealsParams
+			err = pubDealsParams.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
+		Dealparse:
+			for _, deal := range pubDealsParams.Deals {
+				if deal.Proposal.VerifiedDeal {
+					// exclude this message
+					break Dealparse
+				}
+			}
+		}
+
+		newMsgs = append(newMsgs, msg)
+	}
+
 	tPending := build.Clock.Now()
 
 	// TODO: winning post proof
-	minedBlock, err = m.createBlock(base, m.address, ticket, winner, bvals, postProof, msgs)
+	minedBlock, err = m.createBlock(base, m.address, ticket, winner, bvals, postProof, newMsgs)
 	if err != nil {
 		err = xerrors.Errorf("failed to create block: %w", err)
 		return nil, err
