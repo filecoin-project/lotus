@@ -337,6 +337,7 @@ minerLoop:
 				if fault {
 					log.Errorf("<!!> SLASH FILTER DETECTED FAULT due to blocks %s and %s", b.Header.Cid(), witness)
 				}
+				continue
 			}
 
 			if _, ok := m.minedBlockHeights.Get(b.Header.Height); ok {
