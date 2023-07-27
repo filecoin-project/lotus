@@ -894,3 +894,36 @@
   #GCInterval = "1m0s"
 
 
+[HarmonyDB]
+  # HOSTS is a list of hostnames to nodes running YugabyteDB
+  # in a cluster. Only 1 is required
+  #
+  # type: []string
+  # env var: LOTUS_HARMONYDB_HOSTS
+  #Hosts = ["127.0.0.1"]
+
+  # The Yugabyte server's username with full credentials to operate on Lotus' Database. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_USERNAME
+  #Username = "yugabyte"
+
+  # The password for the related username. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_PASSWORD
+  #Password = "yugabyte"
+
+  # The database (logical partition) within Yugabyte. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_DATABASE
+  #Database = "yugabyte"
+
+  # The port to find Yugabyte. Blank for default.
+  #
+  # type: string
+  # env var: LOTUS_HARMONYDB_PORT
+  #Port = "5433"
+
+
