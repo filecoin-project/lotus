@@ -2,9 +2,9 @@
 
 # UNRELEASED
 
-# v1.23.3-rc2 / 2023-07-11
+# v1.23.3 / 2023-07-27
 
-This is the second release candidate for the upcoming feature release v1.23.3 of Lotus. This feature release includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
+This feature release of Lotus includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
 ## Highlights
 
