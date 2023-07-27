@@ -609,6 +609,7 @@ var runCmd = &cli.Command{
 			if err := srv.Shutdown(context.TODO()); err != nil {
 				log.Errorf("shutting down RPC server failed: %s", err)
 			}
+			//taskManager.GracefullyTerminate(5*time.Hour)
 			log.Warn("Graceful shutdown successful")
 		}()
 
