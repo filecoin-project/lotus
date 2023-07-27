@@ -31,18 +31,6 @@ type FullNode struct {
 	Index      IndexConfig
 }
 
-// Follower is a full node config
-type Follower struct {
-	Common
-	Client     Client
-	Wallet     Wallet
-	Fees       FeeConfig
-	Chainstore Chainstore
-	Cluster    UserRaftConfig
-	Fevm       FevmConfig
-	Index      IndexConfig
-}
-
 // // Common
 
 type Backup struct {
