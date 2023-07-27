@@ -93,9 +93,7 @@ type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) bool)
 type TaskEngine struct {
 	ctx            context.Context
 	handlers       []*taskTypeHandler
-	myTasks        []string
 	db             *harmonydb.DB
-	hostAndPort    string
 	workAdderMutex *notifyingMx
 	reg            *resources.Reg
 	resources      resources.Resources
@@ -132,8 +130,7 @@ func New(
 		grace:          grace,
 		db:             db,
 		resources:      reg.Resources,
-		ownerID:        reg.Resources.MachineID,
-		hostAndPort:    hostnameAndPort,
+		ownerID:        reg.Resources.MachineID, // The current number representing "hostAndPort"
 		workAdderMutex: &notifyingMx{},
 		taskMap:        make(map[string]*taskTypeHandler, len(impls)),
 		tryAllWork:     make(chan bool),
@@ -147,7 +144,6 @@ func New(
 		}
 		h.LastCleanup.Store(time.Now())
 		e.handlers = append(e.handlers, &h)
-		e.myTasks = append(e.myTasks, h.TaskTypeDetails.Name)
 		e.taskMap[h.TaskTypeDetails.Name] = &h
 
 		_, err := db.Exec(e.ctx, `INSERT INTO harmony_task_impl (owner_id, name) 

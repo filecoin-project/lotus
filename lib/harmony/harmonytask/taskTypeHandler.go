@@ -238,12 +238,13 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 
 	// Over HTTP (#2 from Description)
 	var hps []struct {
-		hostAndPort string
-		toType      string
+		HostAndPort string
+		ToType      string
 	}
-	err := h.TaskEngine.db.Select(h.TaskEngine.ctx, &hps, `SELECT host_and_port, to_type
-		FROM harmony_task_follow WHERE from_type=$1 AND to_type NOT IN $2 AND host_and_port != $3`,
-		h.Name, inProcessFollowers, h.TaskEngine.hostAndPort)
+	err := h.TaskEngine.db.Select(h.TaskEngine.ctx, &hps, `SELECT m.host_and_port, to_type
+		FROM harmony_task_follow f JOIN harmony_machines m ON m.id=f.owner_id
+		WHERE from_type=$1 AND to_type NOT IN $2 AND f.owner_id != $3`,
+		h.Name, inProcessFollowers, h.TaskEngine.ownerID)
 	if err != nil {
 		logger.Warn("Could not fast-trigger partner processes.", err)
 		return
@@ -251,10 +252,10 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 	hostsVisited := map[string]bool{}
 	tasksVisited := map[string]bool{}
 	for _, v := range hps {
-		if hostsVisited[v.hostAndPort] || tasksVisited[v.toType] {
+		if hostsVisited[v.HostAndPort] || tasksVisited[v.ToType] {
 			continue
 		}
-		resp, err := hClient.Get(v.hostAndPort + "/scheduler/follows/" + h.Name)
+		resp, err := hClient.Get(v.HostAndPort + "/scheduler/follows/" + h.Name)
 		if err != nil {
 			logger.Warn("Couldn't hit http endpoint: ", err)
 			h.TaskEngine.cleanupDepartedMachines()
@@ -265,7 +266,7 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 			logger.Warn("Couldn't hit http endpoint: ", err)
 			continue
 		}
-		hostsVisited[v.hostAndPort], tasksVisited[v.toType] = true, true
+		hostsVisited[v.HostAndPort], tasksVisited[v.ToType] = true, true
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 			logger.Error("IO failed for fast nudge: ", string(b))
 			continue
