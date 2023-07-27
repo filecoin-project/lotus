@@ -500,13 +500,6 @@ in a cluster. Only 1 is required`,
 
 			Comment: `The port to find Yugabyte. Blank for default.`,
 		},
-		{
-			Name: "ITest",
-			Type: "string",
-
-			Comment: `ITest is for optimized integration testing and not
-for production. Blank for default production configuration.`,
-		},
 	},
 	"IndexConfig": []DocField{
 		{

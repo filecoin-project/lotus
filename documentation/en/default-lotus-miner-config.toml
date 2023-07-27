@@ -926,11 +926,4 @@
   # env var: LOTUS_HARMONYDB_PORT
   #Port = "5433"
 
-  # ITest is for optimized integration testing and not
-  # for production. Blank for default production configuration.
-  #
-  # type: string
-  # env var: LOTUS_HARMONYDB_ITEST
-  #ITest = ""
-
 

@@ -751,8 +751,4 @@ type HarmonyDB struct {
 
 	// The port to find Yugabyte. Blank for default.
 	Port string
-
-	// ITest is for optimized integration testing and not
-	// for production. Blank for default production configuration.
-	ITest string
 }
