@@ -197,7 +197,7 @@ var DaemonCmd = &cli.Command{
 		isFollower := cctx.Bool("follower")
 		if isFollower {
 			if os.Getenv("LOTUS_CASSANDRA_UNIVERSAL_STORE") == "" {
-				return xerrors.Errorf("Follower nodes must have LOTUS_CASSANDRA_UNIVERSAL_STORE set to connect to Cassandra db campatible database.")
+				return xerrors.Errorf("follower nodes must have LOTUS_CASSANDRA_UNIVERSAL_STORE set to connect to Cassandra db campatible database")
 			}
 		}
 
