@@ -153,10 +153,6 @@ func (bs *CachedBlockstore) PutMany(ctx context.Context, blks []block.Block) err
 		return nil
 	}
 
-	//return bs.write.PutMany(ctx, toPut)
-
-	// this part is EXTREMELY aggressive
-
 	bs.writeLk.Lock()
 	for i, blk := range blks {
 		bs.pendingWrites[blk.Cid()] = blks[i]
