@@ -58,5 +58,4 @@ func (bs *ReadonlyBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) 
 	return bs.base.Has(ctx, c)
 }
 func (bs *ReadonlyBlockstore) HashOnRead(hor bool) {
-	log.Warnf("called HashOnRead on Readonly blockstore; function not supported; ignoring")
 }
