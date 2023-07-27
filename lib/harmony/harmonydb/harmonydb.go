@@ -250,8 +250,9 @@ func (db *DB) upgrade() error {
 			}
 			_, err = db.pgx.Exec(context.Background(), s)
 			if err != nil {
-				db.log(fmt.Sprintf("Could not upgrade! File %s, Query: %s, Returned: %s", name, s, err.Error()))
-				return err
+				msg := fmt.Sprintf("Could not upgrade! File %s, Query: %s, Returned: %s", name, s, err.Error())
+				db.log(msg)
+				return errors.New(msg) // makes devs lives easier by placing message at the end.
 			}
 		}
 
