@@ -9,7 +9,7 @@ import (
 )
 
 func ReadonlyError(description string) error {
-	return fmt.Errorf("Write protected access attempted on Readonly Blockstore from method %s", description)
+	return fmt.Errorf("write protected access attempted on Readonly Blockstore from method %s", description)
 }
 
 type CassandraDatastoreReadonly struct {
