@@ -131,12 +131,14 @@ func (bs *CachedBlockstore) HashOnRead(hor bool) {
 
 func (bs *CachedBlockstore) PutMany(ctx context.Context, blks []block.Block) error {
 
+	bs.writeLk.Lock()
 	// Sleep for 50ms when there are more than CacheBstoreSize writes pending
 	// to create backpressure on the database
 	for len(bs.pendingWrites) >= CacheBstoreSize {
 		log.Warn("CachedBlockstore is sleeping for 50ms because pendingWrites > Cache size and we want to create back pressure on writes")
 		time.Sleep(time.Millisecond * 50)
 	}
+	bs.writeLk.Unlock()
 
 	toPut := make([]block.Block, 0, len(blks))
 
