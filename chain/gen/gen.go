@@ -449,18 +449,19 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 }
 
 func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet, miners []address.Address, msgs [][]*types.SignedMessage, nulls abi.ChainEpoch) (*store.FullTipSet, error) {
+	ctx := context.TODO()
 	var blks []*types.FullBlock
 
 	for round := base.Height() + nulls + 1; len(blks) == 0; round++ {
 		for mi, m := range miners {
-			bvals, et, ticket, err := cg.nextBlockProof(context.TODO(), base, m, round)
+			bvals, et, ticket, err := cg.nextBlockProof(ctx, base, m, round)
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
 
 			if et != nil {
 				// TODO: maybe think about passing in more real parameters to this?
-				wpost, err := cg.eppProvs[m].ComputeProof(context.TODO(), nil, nil, round, network.Version0)
+				wpost, err := cg.eppProvs[m].ComputeProof(ctx, nil, nil, round, network.Version0)
 				if err != nil {
 					return nil, err
 				}
@@ -476,8 +477,18 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet,
 	}
 
 	fts := store.NewFullTipSet(blks)
-	if err := cg.cs.PutTipSet(context.TODO(), fts.TipSet()); err != nil {
-		return nil, err
+	if err := cg.cs.PersistTipsets(ctx, []*types.TipSet{fts.TipSet()}); err != nil {
+		return nil, xerrors.Errorf("failed to persist tipset: %w", err)
+	}
+
+	for _, blk := range blks {
+		if err := cg.cs.AddToTipSetTracker(ctx, blk.Header); err != nil {
+			return nil, xerrors.Errorf("failed to add to tipset tracker: %w", err)
+		}
+	}
+
+	if err := cg.cs.RefreshHeaviestTipSet(ctx, fts.TipSet().Height()); err != nil {
+		return nil, xerrors.Errorf("failed to put tipset: %w", err)
 	}
 
 	cg.CurTipset = fts
