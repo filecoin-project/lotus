@@ -1134,7 +1134,7 @@ func TestGenerateSDR(t *testing.T) {
 	_, err = sb.SealPreCommit1(context.TODO(), si, s.ticket, []abi.PieceInfo{s.pi})
 	require.NoError(t, err)
 
-	// sdr for comparasion
+	// sdr for comparison
 
 	sdrCache := filepath.Join(d, "sdrcache")
 
