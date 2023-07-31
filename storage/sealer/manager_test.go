@@ -261,7 +261,7 @@ func TestSnapDeals(t *testing.T) {
 
 	// Precommit and Seal a CC sector
 	fmt.Printf("PC1\n")
-	ticket := abi.SealRandomness{9, 9, 9, 9, 9, 9, 9, 9}
+	ticket := abi.SealRandomness{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9}
 	pc1Out, err := m.SealPreCommit1(ctx, sid, ticket, ccPieces)
 	require.NoError(t, err)
 	fmt.Printf("PC2\n")

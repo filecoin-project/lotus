@@ -520,14 +520,24 @@ func (sb *Sealer) regenerateSectorKey(ctx context.Context, sector storiface.Sect
 		return xerrors.Errorf("getting SDR layer count: %w", err)
 	}
 
-	err = spaths.Move(proofpaths.LayerFileName(layerCount), paths.Sealed)
+	lastLayer := filepath.Join(paths.Cache, proofpaths.LayerFileName(layerCount))
+
+	sealedInCache := filepath.Join(paths.Cache, filepath.Base(paths.Sealed))
+	// rename last layer to sealed sector file name in the cache dir, which is
+	// almost guaranteed to happen on one filesystem
+	err = os.Rename(lastLayer, sealedInCache)
+	if err != nil {
+		return xerrors.Errorf("renaming last layer: %w", err)
+	}
+
+	err = spaths.Move(sealedInCache, paths.Sealed)
 	if err != nil {
 		return xerrors.Errorf("moving sector key: %w", err)
 	}
 
 	// remove other layer files
 	for i := 1; i < layerCount; i++ {
-		err = os.Remove(proofpaths.LayerFileName(i))
+		err = os.Remove(filepath.Join(paths.Cache, proofpaths.LayerFileName(i)))
 		if err != nil {
 			return xerrors.Errorf("removing layer file %d: %w", i, err)
 		}
