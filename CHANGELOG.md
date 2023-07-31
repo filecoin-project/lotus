@@ -12,13 +12,17 @@ This feature release of Lotus includes numerous improvements and enhancements fo
 - The lotus-miner PieceReader now supports parallel reads: https://github.com/filecoin-project/lotus/pull/10913
 - Added new environment variable `LOTUS_EXEC_TRACE_CACHE_SIZE` to configure execution trace cache size ([filecoin-project/lotus#10585](https://github.com/filecoin-project/lotus/pull/10585))
   - If unset, we default to caching 16 most recent execution traces. Storage Providers may want to set this to 0, while exchanges may want to crank it up. 
+- The tracer's Elastic Search transport has been upgraded to support batch traces: [filecoin-project/lotus#10405](https://github.com/filecoin-project/lotus/pull/10405)
+  - This facilitates an experiment being run by ProbeLab [to measure the performance of the Gossipsub protocol in the Filecoin network](https://www.notion.so/pl-strflt/Write-explainer-doc-for-SPs-183a7775406d451a8b19e3cdc2cdf5c3?d=d8df4e142b78427ab470db68877da1ba#abba19208e3b4420a6388df7a3a48b62). 
+  - Users are invited to opt into the experiment by following the instructions [here](https://www.notion.so/pl-strflt/Write-explainer-doc-for-SPs-183a7775406d451a8b19e3cdc2cdf5c3?pvs=4#092a3a68d6734a12961f5c3fe95767e5)
+  - Doing so has negligible impact on memory and CPU usage, but has a 2x impact on incoming and outgoing traffic.
+
 
 ## New features
   - Implement a tooling for slasher  ([filecoin-project/lotus#10928](https://github.com/filecoin-project/lotus/pull/10928))
   - feat: miner cli: sectors list upgrade-bounds tool ([filecoin-project/lotus#10923](https://github.com/filecoin-project/lotus/pull/10923))
   - Add new RPC stress testing tool (lotus-bench rpc) with rich reporting ([filecoin-project/lotus#10761](https://github.com/filecoin-project/lotus/pull/10761))
   - feat: alert: Add FVM_CONCURRENCY alert ([filecoin-project/lotus#10933](https://github.com/filecoin-project/lotus/pull/10933))
-  - feat: tracer: upgrade elastic search transport for pubsub traces  ([filecoin-project/lotus#10405](https://github.com/filecoin-project/lotus/pull/10405))
   - feat: Add eth_syncing RPC method ([filecoin-project/lotus#10719](https://github.com/filecoin-project/lotus/pull/10719))
   - feat: sealing: flag to run data_cid untied from addpiece ([filecoin-project/lotus#10797](https://github.com/filecoin-project/lotus/pull/10797))
   - feat: Lotus Gateway: add MpoolPending, ChainGetBlock and MinerGetBaseInfo ([filecoin-project/lotus#10929](https://github.com/filecoin-project/lotus/pull/10929))
