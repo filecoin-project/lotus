@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"math/bits"
 	"os"
@@ -567,7 +568,14 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 
 	pf, err = partialfile.OpenPartialFile(maxPieceSize, unsealedPath.Unsealed)
 	if err != nil {
-		return xerrors.Errorf("opening partial file: %w", err)
+		if errors.Is(err, os.ErrNotExist) {
+			pf, err = partialfile.CreatePartialFile(maxPieceSize, unsealedPath.Unsealed)
+			if err != nil {
+				return xerrors.Errorf("creating partial file: %w", err)
+			}
+		} else {
+			return xerrors.Errorf("opening partial file: %w", err)
+		}
 	}
 	defer pf.Close() // nolint
 
