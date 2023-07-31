@@ -212,8 +212,9 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 			}
 			var sectorsBf bitfield.BitField
 			var accumulator []uint64
+			h := ref.Height
 			if err := expiryQArray.ForEach(&sectorsBf, func(i int64) error {
-				if abi.ChainEpoch(i) > ref.Height {
+				if abi.ChainEpoch(i) > h {
 					return nil
 				}
 				sns, err := sectorsBf.All(abi.MaxSectorNumber)
@@ -261,7 +262,9 @@ var minerDeadlinePartitionMeasurementCmd = &cli.Command{
 		}
 
 		// output partition info
-		json.NewEncoder(os.Stdout).Encode(dSummaries)
+		if err := json.NewEncoder(os.Stdout).Encode(dSummaries); err != nil {
+			return err
+		}
 		return nil
 	},
 }
