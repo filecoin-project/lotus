@@ -520,10 +520,6 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		}
 	}
 
-	if ret.ExitCode != 0 {
-		return applyRet, fmt.Errorf("implicit message failed with exit code: %d and error: %w", ret.ExitCode, applyRet.ActorErr)
-	}
-
 	return applyRet, nil
 }
 

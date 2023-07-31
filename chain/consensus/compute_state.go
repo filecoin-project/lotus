@@ -135,6 +135,10 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 			return xerrors.Errorf("running cron: %w", err)
 		}
 
+		if !ret.ExitCode.IsSuccess() {
+			return xerrors.Errorf("cron failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
+		}
+
 		cronGas += ret.GasUsed
 
 		if em != nil {
