@@ -13,7 +13,7 @@ This is the second release candidate for the upcoming feature release v1.23.3 of
 - Added new environment variable `LOTUS_EXEC_TRACE_CACHE_SIZE` to configure execution trace cache size ([filecoin-project/lotus#10585](https://github.com/filecoin-project/lotus/pull/10585))
   - If unset, we default to caching 16 most recent execution traces. Storage Providers may want to set this to 0, while exchanges may want to crank it up. 
 - The tracer's Elastic Search transport has been upgraded to support batch traces: [filecoin-project/lotus#10405](https://github.com/filecoin-project/lotus/pull/10405)
-  - This facilitates an experiment being run by ProbeLab [to study the Filecoin PubSub layer](https://www.notion.so/pl-strflt/Write-explainer-doc-for-SPs-183a7775406d451a8b19e3cdc2cdf5c3?d=d8df4e142b78427ab470db68877da1ba#abba19208e3b4420a6388df7a3a48b62). 
+  - This facilitates an experiment being run by ProbeLab [to measure the performance of the Gossipsub protocol in the Filecoin network](https://www.notion.so/pl-strflt/Write-explainer-doc-for-SPs-183a7775406d451a8b19e3cdc2cdf5c3?d=d8df4e142b78427ab470db68877da1ba#abba19208e3b4420a6388df7a3a48b62). 
   - Users are invited to opt into the experiment by following the instructions [here](https://www.notion.so/pl-strflt/Write-explainer-doc-for-SPs-183a7775406d451a8b19e3cdc2cdf5c3?pvs=4#092a3a68d6734a12961f5c3fe95767e5)
   - Doing so has negligible impact on memory and CPU usage, but has a 2x impact on incoming and outgoing traffic.
 
