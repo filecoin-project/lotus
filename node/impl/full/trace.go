@@ -1,14 +1,22 @@
 package full
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/ipfs/go-cid"
+
+	builtin2 "github.com/filecoin-project/go-state-types/builtin"
+	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -69,6 +77,9 @@ type Action struct {
 	Gas      ethtypes.EthUint64 `json:"gas"`
 	Input    string             `json:"input"`
 	Value    ethtypes.EthBigInt `json:"value"`
+
+	Method  abi.MethodNum `json:"method"`
+	CodeCid cid.Cid       `json:"codeCid"`
 }
 
 type Result struct {
@@ -136,7 +147,7 @@ func (e *EthTrace) TraceBlock(ctx context.Context, blkNum string) (interface{}, 
 		}
 
 		traces := []*Trace{}
-		buildTraces(&traces, []int{}, ir.ExecutionTrace)
+		buildTraces(&traces, []int{}, ir.ExecutionTrace, nil, int64(ts.Height()))
 
 		traceBlocks := make([]*TraceBlock, 0, len(trace))
 		for _, trace := range traces {
@@ -193,7 +204,7 @@ func (e *EthTrace) TraceReplayBlockTransactions(ctx context.Context, blkNum stri
 			VmTrace:         nil,
 		}
 
-		buildTraces(&t.Trace, []int{}, ir.ExecutionTrace)
+		buildTraces(&t.Trace, []int{}, ir.ExecutionTrace, nil, int64(ts.Height()))
 
 		allTraces = append(allTraces, &t)
 	}
@@ -201,19 +212,97 @@ func (e *EthTrace) TraceReplayBlockTransactions(ctx context.Context, blkNum stri
 	return allTraces, nil
 }
 
+func write_padded[T any](w io.Writer, data T, size int) error {
+	tmp := &bytes.Buffer{}
+
+	// first write data to tmp buffer to get the size
+	err := binary.Write(tmp, binary.BigEndian, data)
+	if err != nil {
+		return err
+	}
+
+	if tmp.Len() > size {
+		return fmt.Errorf("data is larger than size")
+	}
+
+	// write tailing zeros to pad up to size
+	cnt := size - tmp.Len()
+	for i := 0; i < cnt; i++ {
+		err = binary.Write(w, binary.BigEndian, uint8(0))
+		if err != nil {
+			return err
+		}
+	}
+
+	// finally write the actual value
+	err = binary.Write(w, binary.BigEndian, tmp.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func handle_filecoin_method_input(method abi.MethodNum, codec uint64, params []byte) ([]byte, error) {
+	NATIVE_METHOD_SELECTOR := []byte{0x86, 0x8e, 0x10, 0xc4}
+	EVM_WORD_SIZE := 32
+
+	staticArgs := []uint64{
+		uint64(method),
+		codec,
+		uint64(EVM_WORD_SIZE) * 3,
+		uint64(len(params)),
+	}
+	totalWords := len(staticArgs) + (len(params) / EVM_WORD_SIZE)
+	if len(params)%EVM_WORD_SIZE != 0 {
+		totalWords += 1
+	}
+	len := 4 + totalWords*EVM_WORD_SIZE
+
+	w := &bytes.Buffer{}
+	err := binary.Write(w, binary.BigEndian, NATIVE_METHOD_SELECTOR)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, arg := range staticArgs {
+		err := write_padded(w, arg, 32)
+		if err != nil {
+			return nil, err
+		}
+	}
+	binary.Write(w, binary.BigEndian, params)
+	remain := len - w.Len()
+	for i := 0; i < remain; i++ {
+		binary.Write(w, binary.BigEndian, uint8(0))
+	}
+
+	return w.Bytes(), nil
+}
+
+func handle_filecoin_method_output(exitCode exitcode.ExitCode, codec uint64, data []byte) ([]byte, error) {
+	w := &bytes.Buffer{}
+
+	values := []interface{}{uint32(exitCode), codec, uint32(w.Len()), uint32(len(data))}
+	for _, v := range values {
+		err := write_padded(w, v, 32)
+		if err != nil {
+			return nil, err
+		}
+	}
+	binary.Write(w, binary.BigEndian, []byte(data))
+
+	return w.Bytes(), nil
+}
+
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
-func buildTraces(traces *[]*Trace, addr []int, et types.ExecutionTrace) {
+func buildTraces(traces *[]*Trace, addr []int, et types.ExecutionTrace, parentEt *types.ExecutionTrace, height int64) {
 	callType := "call"
 	if et.Msg.ReadOnly {
 		callType = "staticcall"
 	}
 
-	// TODO: add check for determining if this this should be delegatecall
-	if false {
-		callType = "delegatecall"
-	}
-
-	*traces = append(*traces, &Trace{
+	trace := &Trace{
 		Action: Action{
 			CallType: callType,
 			From:     et.Msg.From.String(),
@@ -221,6 +310,8 @@ func buildTraces(traces *[]*Trace, addr []int, et types.ExecutionTrace) {
 			Gas:      ethtypes.EthUint64(et.Msg.GasLimit),
 			Input:    hex.EncodeToString(et.Msg.Params),
 			Value:    ethtypes.EthBigInt(et.Msg.Value),
+			Method:   et.Msg.Method,
+			CodeCid:  et.Msg.CodeCid,
 		},
 		Result: Result{
 			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
@@ -229,10 +320,69 @@ func buildTraces(traces *[]*Trace, addr []int, et types.ExecutionTrace) {
 		Subtraces:    len(et.Subcalls),
 		TraceAddress: addr,
 		Type:         callType,
-	})
+	}
+
+	// Native calls
+	//
+	// When an EVM actor is invoked with a method number above 1023 that's not frc42(InvokeEVM)
+	// then we need to format native calls in a way that makes sense to Ethereum tooling (convert
+	// the input & output to solidity ABI format).
+	if parentEt != nil {
+		if builtinactors.IsEvmActor(parentEt.Msg.CodeCid) && et.Msg.Method > 1023 && et.Msg.Method != builtin2.MethodsEVM.InvokeContract {
+			log.Infof("found Native call! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+			trace.Action.Input = hex.EncodeToString(input)
+			output, _ := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
+			trace.Result.Output = hex.EncodeToString(output)
+		}
+	}
+
+	// Native actor creation
+	//
+	// TODO...
+
+	// EVM contract creation
+	//
+	// TODO...
+
+	// EVM call special casing
+	//
+	// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
+	// and should be dropped from the trace.
+	if parentEt != nil {
+		if builtinactors.IsEvmActor(parentEt.Msg.CodeCid) && et.Msg.Method > 0 && et.Msg.Method <= 1023 {
+			log.Infof("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+
+			// skip current trace but process subcalls
+			for i, call := range et.Subcalls {
+				buildTraces(traces, append(addr, i), call, &et, height)
+			}
+
+			return
+		}
+	}
+
+	// EVM -> EVM calls
+	//
+	// Check for normal EVM to EVM calls and decode the params and return values
+	if parentEt != nil {
+		if builtinactors.IsEvmActor(parentEt.Msg.CodeCid) && builtinactors.IsEthAccountActor(et.Msg.CodeCid) && et.Msg.Method == builtin2.MethodsEVM.InvokeContract {
+			log.Infof("evm to evm! ! ")
+			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+			trace.Action.Input = hex.EncodeToString(input)
+			output, _ := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
+			trace.Result.Output = hex.EncodeToString(output)
+		}
+	}
+
+	if et.Msg.From == et.Msg.To && et.Msg.Method == builtin2.MethodsEVM.InvokeContractDelegate {
+		log.Info("from and to are the same, and method is InvokeContractDelegate!!!!!!!!, height:%d", height)
+	}
+
+	*traces = append(*traces, trace)
 
 	for i, call := range et.Subcalls {
-		buildTraces(traces, append(addr, i), call)
+		buildTraces(traces, append(addr, i), call, &et, height)
 	}
 }
 
