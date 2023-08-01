@@ -16,12 +16,9 @@ import (
 	"strings"
 
 	"github.com/DataDog/zstd"
-	"github.com/ipfs/go-cid"
-	levelds "github.com/ipfs/go-ds-leveldb"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
-	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/plugin/runmetrics"
 	"go.opencensus.io/stats"
@@ -30,19 +27,13 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 
-	"github.com/filecoin-project/go-address"
-	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/index"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -168,19 +159,6 @@ var DaemonCmd = &cli.Command{
 		&cli.PathFlag{
 			Name:  "restore-config",
 			Usage: "config file to use when restoring from backup",
-		},
-		&cli.BoolFlag{
-			Name:  "slash-consensus",
-			Usage: "Report consensus fault",
-			Value: false,
-		},
-		&cli.StringFlag{
-			Name:  "slasher-sender",
-			Usage: "optionally specify the account to report consensus from",
-		},
-		&cli.StringFlag{
-			Name:  "slashdb-dir",
-			Value: "slash watch db dir path",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -402,14 +380,7 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
-		if cctx.IsSet("slash-consensus") && cctx.IsSet("slashdb-dir") {
-			go func() {
-				err := slashConsensus(api, cctx.String("slashdb-dir"), cctx.String("slasher-sender"))
-				if err != nil {
-					panic("slashConsensus error")
-				}
-			}()
-		}
+
 		// Monitor for shutdown.
 		finishCh := node.MonitorShutdown(shutdownChan,
 			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
@@ -602,123 +573,4 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	return nil
-}
-
-func slashConsensus(a lapi.FullNode, p string, from string) error {
-	ctx := context.Background()
-	var fromAddr address.Address
-
-	ds, err := levelds.NewDatastore(p, &levelds.Options{
-		Compression: ldbopts.NoCompression,
-		NoSync:      false,
-		Strict:      ldbopts.StrictAll,
-		ReadOnly:    false,
-	})
-	if err != nil {
-		return xerrors.Errorf("open leveldb: %w", err)
-	}
-	sf := slashfilter.New(ds)
-	if from == "" {
-		defaddr, err := a.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
-		}
-		fromAddr = defaddr
-	} else {
-		addr, err := address.NewFromString(from)
-		if err != nil {
-			return err
-		}
-
-		fromAddr = addr
-	}
-
-	blocks, err := a.SyncIncomingBlocks(ctx)
-	if err != nil {
-		return xerrors.Errorf("sync incoming blocks failed: %w", err)
-	}
-	for block := range blocks {
-		log.Infof("deal with block: %d, %v, %s", block.Height, block.Miner, block.Cid())
-		if otherBlock, extraBlock, err := slashFilterMinedBlock(ctx, sf, a, block); err != nil {
-			if otherBlock == nil {
-				continue
-			}
-			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
-			bh1, err := cborutil.Dump(otherBlock)
-			if err != nil {
-				log.Errorf("could not dump otherblock:%s, err:%s", otherBlock.Cid(), err)
-				continue
-			}
-
-			bh2, err := cborutil.Dump(block)
-			if err != nil {
-				log.Errorf("could not dump block:%s, err:%s", block.Cid(), err)
-				continue
-			}
-
-			params := miner.ReportConsensusFaultParams{
-				BlockHeader1: bh1,
-				BlockHeader2: bh2,
-			}
-			if extraBlock != nil {
-				be, err := cborutil.Dump(extraBlock)
-				if err != nil {
-					log.Errorf("could not dump block:%s, err:%s", block.Cid(), err)
-					continue
-				}
-				params.BlockHeaderExtra = be
-			}
-
-			enc, err := actors.SerializeParams(&params)
-			if err != nil {
-				log.Errorf("could not serialize declare faults parameters: %s", err)
-				continue
-			}
-			message, err := a.MpoolPushMessage(ctx, &types.Message{
-				To:     block.Miner,
-				From:   fromAddr,
-				Value:  types.NewInt(0),
-				Method: builtin.MethodsMiner.ReportConsensusFault,
-				Params: enc,
-			}, nil)
-			if err != nil {
-				log.Errorf("ReportConsensusFault to messagepool error:%w", err)
-				continue
-			}
-			log.Infof("ReportConsensusFault message CID:%s", message.Cid())
-
-		}
-	}
-	return err
-}
-
-func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a lapi.FullNode, blockB *types.BlockHeader) (*types.BlockHeader, *types.BlockHeader, error) {
-	blockC, err := a.ChainGetBlock(ctx, blockB.Parents[0])
-	if err != nil {
-		return nil, nil, xerrors.Errorf("chain get block error:%s", err)
-	}
-	otherCid, err := sf.MinedBlock(ctx, blockB, blockC.Height)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("slash filter check block error:%s", err)
-	}
-	if otherCid != cid.Undef {
-		otherHeader, err := a.ChainGetBlock(ctx, otherCid)
-		return otherHeader, nil, xerrors.Errorf("chain get other block error:%s", err)
-	}
-	blockA, err := a.ChainGetBlock(ctx, otherCid)
-
-	// (c) parent-grinding fault
-	// Here extra is the "witness", a third block that shows the connection between A and B as
-	// A's sibling and B's parent.
-	// Specifically, since A is of lower height, it must be that B was mined omitting A from its tipset
-	//
-	//      B
-	//      |
-	//  [A, C]
-	if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
-		types.CidArrsContains(blockB.Parents, blockC.Cid()) && !types.CidArrsContains(blockB.Parents, blockA.Cid()) {
-		return blockA, blockC, xerrors.Errorf("chain get other block error:%s", err)
-	}
-
-	return nil, nil, nil
 }
