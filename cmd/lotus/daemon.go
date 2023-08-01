@@ -15,10 +15,8 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 	"strings"
-	"time"
 
 	"github.com/DataDog/zstd"
-	levelds "github.com/ipfs/go-ds-leveldb"
 	metricsprom "github.com/ipfs/go-metrics-prometheus"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
@@ -35,7 +33,6 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -409,19 +406,6 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 		}
-
-		if cctx.Bool("slash-consensus") {
-			if !cctx.IsSet("slashdb-dir") {
-				return fmt.Errorf("must supply path for slasher database with --slashdb-dir")
-			}
-
-			go func() {
-				err := slashConsensus(api, cctx.String("slashdb-dir"), cctx.String("slasher-sender"))
-				if err != nil {
-					panic("slashConsensus error: " + err.Error())
-				}
-			}()
-		}
 		// Monitor for shutdown.
 		finishCh := node.MonitorShutdown(shutdownChan,
 			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
@@ -618,149 +602,6 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	}
 
 	return nil
-}
-
-func slashConsensus(a lapi.FullNode, p string, from string) error {
-	ctx := context.Background()
-	var fromAddr address.Address
-
-	ds, err := levelds.NewDatastore(p, &levelds.Options{
-		Compression: ldbopts.NoCompression,
-		NoSync:      false,
-		Strict:      ldbopts.StrictAll,
-		ReadOnly:    false,
-	})
-	if err != nil {
-		return xerrors.Errorf("open leveldb: %w", err)
-	}
-	sf := slashfilter.New(ds)
-	if from == "" {
-		defaddr, err := a.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
-		}
-		fromAddr = defaddr
-	} else {
-		addr, err := address.NewFromString(from)
-		if err != nil {
-			return err
-		}
-
-		fromAddr = addr
-	}
-
-	blocks, err := a.SyncIncomingBlocks(ctx)
-	if err != nil {
-		return xerrors.Errorf("sync incoming blocks failed: %w", err)
-	}
-	for block := range blocks {
-		otherBlock, extraBlock, fault, err := slashFilterMinedBlock(ctx, sf, a, block)
-		if err != nil {
-			log.Errorf("slash detector errored: %s", err)
-			continue
-		}
-		if fault {
-			log.Errorf("<!!> SLASH FILTER DETECTED FAULT DUE TO BLOCKS %s and %s", otherBlock.Cid(), block.Cid())
-			bh1, err := cborutil.Dump(otherBlock)
-			if err != nil {
-				log.Errorf("could not dump otherblock:%s, err:%s", otherBlock.Cid(), err)
-				continue
-			}
-
-			bh2, err := cborutil.Dump(block)
-			if err != nil {
-				log.Errorf("could not dump block:%s, err:%s", block.Cid(), err)
-				continue
-			}
-
-			params := miner.ReportConsensusFaultParams{
-				BlockHeader1: bh1,
-				BlockHeader2: bh2,
-			}
-			if extraBlock != nil {
-				be, err := cborutil.Dump(extraBlock)
-				if err != nil {
-					log.Errorf("could not dump block:%s, err:%s", block.Cid(), err)
-					continue
-				}
-				params.BlockHeaderExtra = be
-			}
-
-			enc, err := actors.SerializeParams(&params)
-			if err != nil {
-				log.Errorf("could not serialize declare faults parameters: %s", err)
-				continue
-			}
-			for {
-				head, err := a.ChainHead(ctx)
-				if err != nil || head.Height() > block.Height {
-					break
-				}
-				time.Sleep(time.Second * 10)
-			}
-			message, err := a.MpoolPushMessage(ctx, &types.Message{
-				To:     block.Miner,
-				From:   fromAddr,
-				Value:  types.NewInt(0),
-				Method: builtin.MethodsMiner.ReportConsensusFault,
-				Params: enc,
-			}, nil)
-			if err != nil {
-				log.Errorf("ReportConsensusFault to messagepool error:%s", err)
-				continue
-			}
-			log.Infof("ReportConsensusFault message CID:%s", message.Cid())
-
-		}
-	}
-	return err
-}
-
-func slashFilterMinedBlock(ctx context.Context, sf *slashfilter.SlashFilter, a lapi.FullNode, blockB *types.BlockHeader) (*types.BlockHeader, *types.BlockHeader, bool, error) {
-	blockC, err := a.ChainGetBlock(ctx, blockB.Parents[0])
-	if err != nil {
-		return nil, nil, false, xerrors.Errorf("chain get block error:%s", err)
-	}
-
-	blockACid, fault, err := sf.MinedBlock(ctx, blockB, blockC.Height)
-	if err != nil {
-		return nil, nil, false, xerrors.Errorf("slash filter check block error:%s", err)
-	}
-
-	if !fault {
-		return nil, nil, false, nil
-	}
-
-	blockA, err := a.ChainGetBlock(ctx, blockACid)
-	if err != nil {
-		return nil, nil, false, xerrors.Errorf("failed to get blockA: %w", err)
-	}
-
-	// (a) double-fork mining (2 blocks at one epoch)
-	if blockA.Height == blockB.Height {
-		return blockA, nil, true, nil
-	}
-
-	// (b) time-offset mining faults (2 blocks with the same parents)
-	if types.CidArrsEqual(blockB.Parents, blockA.Parents) {
-		return blockA, nil, true, nil
-	}
-
-	// (c) parent-grinding fault
-	// Here extra is the "witness", a third block that shows the connection between A and B as
-	// A's sibling and B's parent.
-	// Specifically, since A is of lower height, it must be that B was mined omitting A from its tipset
-	//
-	//      B
-	//      |
-	//  [A, C]
-	if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
-		types.CidArrsContains(blockB.Parents, blockC.Cid()) && !types.CidArrsContains(blockB.Parents, blockA.Cid()) {
-		return blockA, blockC, true, nil
-	}
-
-	log.Error("unexpectedly reached end of slashFilterMinedBlock despite fault being reported!")
-	return nil, nil, false, nil
 }
 
 func removeExistingChain(cctx *cli.Context, lr repo.Repo) error {
