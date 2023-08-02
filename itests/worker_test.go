@@ -3,7 +3,6 @@ package itests
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync/atomic"

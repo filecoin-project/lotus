@@ -26,18 +26,18 @@ func Collect[T any](ctx context.Context, chans []chan T) []*T {
 	out := make([]*T, len(chans))
 
 	for i := 0; i < len(chans); i++ {
-		chonen, rv, ok := reflect.Select(cases)
+		chosen, rv, ok := reflect.Select(cases)
 
-		if chonen == len(chans) { // ctx.Done
+		if chosen == len(chans) { // ctx.Done
 			return out
 		}
 
 		if ok {
 			val := rv.Interface().(T)
-			out[chonen] = &val
+			out[chosen] = &val
 		}
 
-		cases[chonen].Chan = blocking
+		cases[chosen].Chan = blocking
 	}
 
 	return out

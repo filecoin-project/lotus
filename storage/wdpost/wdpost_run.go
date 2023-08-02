@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -371,36 +370,36 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di dline.Info, ts, headTs *types.TipSet, nv network.Version, batchIdx int, batch []api.Partition, firstBatchPartition int) (*miner.SubmitWindowedPoStParams, error) {
 	log := log.WithOptions(zap.Fields(zap.Int("batch", batchIdx)))
 
+	// Generate randomness
+	randSeed := new(bytes.Buffer)
+	if err := s.actor.MarshalCBOR(randSeed); err != nil {
+		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
+	}
+	rand, err := s.api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, randSeed.Bytes(), headTs.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
+	}
+
 	// postSkipped is a set of sectors skipped during PoSt computation. Those sectors will be
 	// skipped in retries
 	postSkipped := bitfield.New()
 
 	// Retry until we run out of sectors to prove.
 	for retries := 0; ; retries++ {
-		// Generat randomness
-		buf := new(bytes.Buffer)
-		if err := s.actor.MarshalCBOR(buf); err != nil {
-			return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
-		}
-		rand, err := s.api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes(), headTs.Key())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
-		}
-
 		// Compute the set of sectors to prove
 		skipCount := uint64(0)
 		var partitions []miner.PoStPartition
-		var xsinfos []proof7.ExtendedSectorInfo
+		var xsinfos []proof.ExtendedSectorInfo
 		for partIdx, partition := range batch {
 			// TODO: Can do this in parallel
-			toProve, err := bitfield.SubtractBitField(partition.LiveSectors, partition.FaultySectors)
-			if err != nil {
-				return nil, xerrors.Errorf("removing faults from set of sectors to prove: %w", err)
-			}
-			if manual {
-				// this is a check run, we want to prove faulty sectors, even
-				// if they are not declared as recovering.
-				toProve = partition.LiveSectors
+			toProve := partition.LiveSectors
+			if !manual {
+				// this is not a check run, we only want to prove faulty sectors
+				// if they are declared as recovering.
+				toProve, err = bitfield.SubtractBitField(partition.LiveSectors, partition.FaultySectors)
+				if err != nil {
+					return nil, xerrors.Errorf("removing faults from set of sectors to prove: %w", err)
+				}
 			}
 			toProve, err = bitfield.MergeBitFields(toProve, partition.RecoveringSectors)
 			if err != nil {
@@ -496,7 +495,7 @@ func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di 
 				return nil, xerrors.Errorf("getting current head: %w", err)
 			}
 
-			checkRand, err := s.api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, buf.Bytes(), headTs.Key())
+			checkRand, err := s.api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_WindowedPoStChallengeSeed, di.Challenge, randSeed.Bytes(), headTs.Key())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to get chain randomness from beacon for window post (ts=%d; deadline=%d): %w", ts.Height(), di, err)
 			}
@@ -508,9 +507,9 @@ func (s *WindowPoStScheduler) processBatch(ctx context.Context, manual bool, di 
 			}
 
 			// If we generated an incorrect proof, try again.
-			sinfos := make([]proof7.SectorInfo, len(xsinfos))
+			sinfos := make([]proof.SectorInfo, len(xsinfos))
 			for i, xsi := range xsinfos {
-				sinfos[i] = proof7.SectorInfo{
+				sinfos[i] = proof.SectorInfo{
 					SealProof:    xsi.SealProof,
 					SectorNumber: xsi.SectorNumber,
 					SealedCID:    xsi.SealedCID,
@@ -633,7 +632,7 @@ func (s *WindowPoStScheduler) BatchPartitions(partitions []api.Partition, nv net
 	return batches, nil
 }
 
-func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, allSectors bitfield.BitField, ts *types.TipSet) ([]proof7.ExtendedSectorInfo, error) {
+func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, allSectors bitfield.BitField, ts *types.TipSet) ([]proof.ExtendedSectorInfo, error) {
 	sset, err := s.api.StateMinerSectors(ctx, s.actor, &goodSectors, ts.Key())
 	if err != nil {
 		return nil, err
@@ -643,16 +642,16 @@ func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, 
 		return nil, nil
 	}
 
-	substitute := proof7.ExtendedSectorInfo{
+	substitute := proof.ExtendedSectorInfo{
 		SectorNumber: sset[0].SectorNumber,
 		SealedCID:    sset[0].SealedCID,
 		SealProof:    sset[0].SealProof,
 		SectorKey:    sset[0].SectorKeyCID,
 	}
 
-	sectorByID := make(map[uint64]proof7.ExtendedSectorInfo, len(sset))
+	sectorByID := make(map[uint64]proof.ExtendedSectorInfo, len(sset))
 	for _, sector := range sset {
-		sectorByID[uint64(sector.SectorNumber)] = proof7.ExtendedSectorInfo{
+		sectorByID[uint64(sector.SectorNumber)] = proof.ExtendedSectorInfo{
 			SectorNumber: sector.SectorNumber,
 			SealedCID:    sector.SealedCID,
 			SealProof:    sector.SealProof,
@@ -660,7 +659,7 @@ func (s *WindowPoStScheduler) sectorsForProof(ctx context.Context, goodSectors, 
 		}
 	}
 
-	proofSectors := make([]proof7.ExtendedSectorInfo, 0, len(sset))
+	proofSectors := make([]proof.ExtendedSectorInfo, 0, len(sset))
 	if err := allSectors.ForEach(func(sectorNo uint64) error {
 		if info, found := sectorByID[sectorNo]; found {
 			proofSectors = append(proofSectors, info)
