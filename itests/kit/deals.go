@@ -89,8 +89,6 @@ func NewDealHarness(t *testing.T, client *TestFullNode, main *TestMiner, market 
 func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
 	deal, res, path = dh.StartRandomDeal(ctx, params)
 
-	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
-	time.Sleep(time.Second)
 	fmt.Printf("WAIT DEAL SEALEDS START\n")
 	dh.WaitDealSealed(ctx, deal, false, false, nil)
 	fmt.Printf("WAIT DEAL SEALEDS END\n")

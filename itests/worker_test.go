@@ -750,7 +750,7 @@ func TestWorkerPledgeExpireCommit(t *testing.T) {
 		kit.ConstructorOpts(
 			node.Override(new(*sealing.Sealing), modules.SealingPipeline(fc)),
 		),
-		kit.SplitstoreDisable(), // enable splitstore because messages which take a long time may get dropped
+		kit.SplitstoreDisable(), // disable splitstore because messages which take a long time may get dropped
 		tasksNoC2)               // no mock proofs
 
 	ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)
