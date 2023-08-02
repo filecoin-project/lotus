@@ -93,7 +93,7 @@ func testSearchMsgWithIndex(t *testing.T, makeMsgIndex func(cs *store.ChainStore
 	// copy of apiSuite.testSearchMsgWith; needs to be copied or else CI is angry, tests are built individually there
 	ctx := context.Background()
 
-	full, _, ens := kit.EnsembleMinimal(t, kit.ConstructorOpts(node.Override(new(index.MsgIndex), makeMsgIndex)))
+	full, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(node.Override(new(index.MsgIndex), makeMsgIndex)))
 
 	senderAddr, err := full.WalletDefaultAddress(ctx)
 	require.NoError(t, err)

@@ -22,13 +22,14 @@ type Common struct {
 // FullNode is a full node config
 type FullNode struct {
 	Common
-	Client     Client
-	Wallet     Wallet
-	Fees       FeeConfig
-	Chainstore Chainstore
-	Cluster    UserRaftConfig
-	Fevm       FevmConfig
-	Index      IndexConfig
+	Client        Client
+	Wallet        Wallet
+	Fees          FeeConfig
+	Chainstore    Chainstore
+	Cluster       UserRaftConfig
+	Fevm          FevmConfig
+	Index         IndexConfig
+	FaultReporter FaultReporterConfig
 }
 
 // // Common
@@ -740,4 +741,24 @@ type IndexConfig struct {
 	// EXPERIMENTAL FEATURE. USE WITH CAUTION
 	// EnableMsgIndex enables indexing of messages on chain.
 	EnableMsgIndex bool
+}
+
+type FaultReporterConfig struct {
+	// EnableConsensusFaultReporter controls whether the node will monitor and
+	// report consensus faults. When enabled, the node will watch for malicious
+	// behaviors like double-mining and parent grinding, and submit reports to the
+	// network. This can earn reporter rewards, but is not guaranteed. Nodes should
+	// enable fault reporting with care, as it may increase resource usage, and may
+	// generate gas fees without earning rewards.
+	EnableConsensusFaultReporter bool
+
+	// ConsensusFaultReporterDataDir is the path where fault reporter state will be
+	// persisted. This directory should have adequate space and permissions for the
+	// node process.
+	ConsensusFaultReporterDataDir string
+
+	// ConsensusFaultReporterAddress is the wallet address used for submitting
+	// ReportConsensusFault messages. It will pay for gas fees, and receive any
+	// rewards. This address should have adequate funds to cover gas fees.
+	ConsensusFaultReporterAddress string
 }

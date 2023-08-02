@@ -80,6 +80,11 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 	if actErr != nil {
 		return xerrors.Errorf("failed to apply reward message: %w", actErr)
 	}
+
+	if !ret.ExitCode.IsSuccess() {
+		return xerrors.Errorf("reward actor failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
+	}
+
 	if em != nil {
 		if err := em.MessageApplied(ctx, ts, rwMsg.Cid(), rwMsg, ret, true); err != nil {
 			return xerrors.Errorf("callback failed on reward message: %w", err)

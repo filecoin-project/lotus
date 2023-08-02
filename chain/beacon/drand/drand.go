@@ -235,3 +235,16 @@ func (db *DrandBeacon) maxBeaconRoundV2(latestTs uint64) uint64 {
 }
 
 var _ beacon.RandomBeacon = (*DrandBeacon)(nil)
+
+func BeaconScheduleFromDrandSchedule(dcs dtypes.DrandSchedule, genesisTime uint64, ps *pubsub.PubSub) (beacon.Schedule, error) {
+	shd := beacon.Schedule{}
+	for _, dc := range dcs {
+		bc, err := NewDrandBeacon(genesisTime, build.BlockDelaySecs, ps, dc.Config)
+		if err != nil {
+			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+		}
+		shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
+	}
+
+	return shd, nil
+}
