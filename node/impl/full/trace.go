@@ -86,6 +86,7 @@ type Action struct {
 	Input    string             `json:"input"`
 	Value    ethtypes.EthBigInt `json:"value"`
 
+	// TODO: remove these fields from json output
 	Method  abi.MethodNum `json:"method"`
 	CodeCid cid.Cid       `json:"codeCid"`
 }
@@ -326,6 +327,8 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 	}
 
 	trace.setCallType("call")
+
+	// TODO: is it OK to check this here or is this only specific to certain edge case (evm to evm)?
 	if et.Msg.ReadOnly {
 		trace.setCallType("staticcall")
 	}
@@ -398,12 +401,7 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// and should be dropped from the trace.
 		if builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method > 0 && et.Msg.Method <= 1023 {
 			log.Infof("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
-
-			for i, call := range et.Subcalls {
-				buildTraces(traces, trace, append(addr, i), call, height)
-			}
-
-			return
+			// TODO: if I handle this case and drop this call from the trace then I am not able to detect delegate calls
 		}
 
 		// EVM -> EVM calls
@@ -422,7 +420,14 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// 1) Look for from an EVM actor to itself on InvokeContractDelegate, method 6.
 		// 2) Search backwards in the trace for a call to another actor (A) on method 3 (GetBytecode)
 		// 3) Treat this as a delegate call to actor A.
-		// TODO: implement this
+		if trace.Action.From == trace.Action.To && trace.Action.Method == builtin2.MethodsEVM.InvokeContractDelegate && len(*traces) > 0 {
+			// the previous trace should be the GetBytecode call
+			prev := (*traces)[len(*traces)-1]
+			if prev.Action.From == trace.Action.From && prev.Action.Method == builtin2.MethodsEVM.GetBytecode {
+				trace.setCallType("delegatecall")
+				trace.Action.To = prev.Action.To
+			}
+		}
 	}
 
 	*traces = append(*traces, trace)
