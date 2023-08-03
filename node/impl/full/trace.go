@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/ipfs/go-cid"
 
@@ -52,6 +53,13 @@ type Trace struct {
 	Subtraces    int    `json:"subtraces"`
 	TraceAddress []int  `json:"traceAddress"`
 	Type         string `json:"Type"`
+
+	parent *Trace
+}
+
+func (t *Trace) setCallType(callType string) {
+	t.Action.CallType = callType
+	t.Type = callType
 }
 
 type TraceBlock struct {
@@ -147,7 +155,7 @@ func (e *EthTrace) TraceBlock(ctx context.Context, blkNum string) (interface{}, 
 		}
 
 		traces := []*Trace{}
-		buildTraces(&traces, []int{}, ir.ExecutionTrace, nil, int64(ts.Height()))
+		buildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
 
 		traceBlocks := make([]*TraceBlock, 0, len(trace))
 		for _, trace := range traces {
@@ -204,7 +212,7 @@ func (e *EthTrace) TraceReplayBlockTransactions(ctx context.Context, blkNum stri
 			VmTrace:         nil,
 		}
 
-		buildTraces(&t.Trace, []int{}, ir.ExecutionTrace, nil, int64(ts.Height()))
+		buildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
 
 		allTraces = append(allTraces, &t)
 	}
@@ -296,22 +304,16 @@ func handle_filecoin_method_output(exitCode exitcode.ExitCode, codec uint64, dat
 }
 
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
-func buildTraces(traces *[]*Trace, addr []int, et types.ExecutionTrace, parentEt *types.ExecutionTrace, height int64) {
-	callType := "call"
-	if et.Msg.ReadOnly {
-		callType = "staticcall"
-	}
-
+func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.ExecutionTrace, height int64) {
 	trace := &Trace{
 		Action: Action{
-			CallType: callType,
-			From:     et.Msg.From.String(),
-			To:       et.Msg.To.String(),
-			Gas:      ethtypes.EthUint64(et.Msg.GasLimit),
-			Input:    hex.EncodeToString(et.Msg.Params),
-			Value:    ethtypes.EthBigInt(et.Msg.Value),
-			Method:   et.Msg.Method,
-			CodeCid:  et.Msg.CodeCid,
+			From:    et.Msg.From.String(),
+			To:      et.Msg.To.String(),
+			Gas:     ethtypes.EthUint64(et.Msg.GasLimit),
+			Input:   hex.EncodeToString(et.Msg.Params),
+			Value:   ethtypes.EthBigInt(et.Msg.Value),
+			Method:  et.Msg.Method,
+			CodeCid: et.Msg.CodeCid,
 		},
 		Result: Result{
 			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
@@ -319,70 +321,114 @@ func buildTraces(traces *[]*Trace, addr []int, et types.ExecutionTrace, parentEt
 		},
 		Subtraces:    len(et.Subcalls),
 		TraceAddress: addr,
-		Type:         callType,
+
+		parent: parent,
 	}
 
-	// Native calls
-	//
-	// When an EVM actor is invoked with a method number above 1023 that's not frc42(InvokeEVM)
-	// then we need to format native calls in a way that makes sense to Ethereum tooling (convert
-	// the input & output to solidity ABI format).
-	if parentEt != nil {
-		if builtinactors.IsEvmActor(parentEt.Msg.CodeCid) && et.Msg.Method > 1023 && et.Msg.Method != builtin2.MethodsEVM.InvokeContract {
+	trace.setCallType("call")
+	if et.Msg.ReadOnly {
+		trace.setCallType("staticcall")
+	}
+
+	// there are several edge cases thar require special handling when displaying the traces
+	if parent != nil {
+		// Handle Native calls
+		//
+		// When an EVM actor is invoked with a method number above 1023 that's not frc42(InvokeEVM)
+		// then we need to format native calls in a way that makes sense to Ethereum tooling (convert
+		// the input & output to solidity ABI format).
+		if builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method > 1023 && et.Msg.Method != builtin2.MethodsEVM.InvokeContract {
 			log.Infof("found Native call! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
 			trace.Action.Input = hex.EncodeToString(input)
 			output, _ := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
 			trace.Result.Output = hex.EncodeToString(output)
 		}
-	}
 
-	// Native actor creation
-	//
-	// TODO...
+		// Handle Native actor creation
+		//
+		// Actor A calls to the init actor on method 2 and The init actor creates the target actor B then calls it on method 1
+		if parent.Action.To == builtin.InitActorAddr.String() && parent.Action.Method == 2 && et.Msg.Method == 1 {
+			log.Infof("Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+			parent.setCallType("create")
+			parent.Action.To = et.Msg.To.String()
+			parent.Action.Input = hex.EncodeToString([]byte{0x0, 0x0, 0x0, 0xFE})
+			parent.Result.Output = ""
 
-	// EVM contract creation
-	//
-	// TODO...
+			// there should never be any subcalls when creating a native actor
+			return
+		}
 
-	// EVM call special casing
-	//
-	// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
-	// and should be dropped from the trace.
-	if parentEt != nil {
-		if builtinactors.IsEvmActor(parentEt.Msg.CodeCid) && et.Msg.Method > 0 && et.Msg.Method <= 1023 {
+		// Handle EVM contract creation
+		//
+		// To detect EVM contract creation we need to check for the following sequence of events:
+		//
+		// 1) EVM contract A calls the EAM (Ethereum Address Manager) on method 2 (create) or 3 (create2).
+		// 2) The EAM calls the init actor on method 3 (Exec4).
+		// 3) The init actor creates the target actor B then calls it on method 1.
+		if parent.parent != nil {
+			calledCreateOnEAM := parent.parent.Action.To == builtin.EthereumAddressManagerActorAddr.String() && (parent.parent.Action.Method == builtin2.MethodsEAM.Create ||
+				parent.parent.Action.Method == builtin2.MethodsEAM.Create2)
+			eamCalledInitOnExec4 := parent.Action.To == builtin.InitActorAddr.String() && parent.Action.Method == builtin.MethodsInit.Exec4
+			initCreatedActor := trace.Action.Method == builtin.MethodsInit.Constructor
+
+			if calledCreateOnEAM && eamCalledInitOnExec4 && initCreatedActor {
+				log.Infof("EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+
+				if parent.parent.Action.Method == builtin2.MethodsEAM.Create {
+					parent.parent.setCallType("CREATE")
+				} else {
+					parent.parent.setCallType("CREATE2")
+				}
+
+				// update the parent.parent to make this
+				parent.parent.Action.To = trace.Action.To
+				parent.parent.Subtraces = 0
+
+				// delete the parent (the EAM) and skip the current trace (init)
+				*traces = (*traces)[:len(*traces)-1]
+
+				return
+			}
+		}
+
+		// Handle EVM call special casing
+		//
+		// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
+		// and should be dropped from the trace.
+		if builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method > 0 && et.Msg.Method <= 1023 {
 			log.Infof("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 
-			// skip current trace but process subcalls
 			for i, call := range et.Subcalls {
-				buildTraces(traces, append(addr, i), call, &et, height)
+				buildTraces(traces, trace, append(addr, i), call, height)
 			}
 
 			return
 		}
-	}
 
-	// EVM -> EVM calls
-	//
-	// Check for normal EVM to EVM calls and decode the params and return values
-	if parentEt != nil {
-		if builtinactors.IsEvmActor(parentEt.Msg.CodeCid) && builtinactors.IsEthAccountActor(et.Msg.CodeCid) && et.Msg.Method == builtin2.MethodsEVM.InvokeContract {
-			log.Infof("evm to evm! ! ")
+		// EVM -> EVM calls
+		//
+		// Check for normal EVM to EVM calls and decode the params and return values
+		if builtinactors.IsEvmActor(parent.Action.CodeCid) && builtinactors.IsEthAccountActor(et.Msg.CodeCid) && et.Msg.Method == builtin2.MethodsEVM.InvokeContract {
+			log.Infof("found evm to evm! ! height: %d", height)
 			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
 			trace.Action.Input = hex.EncodeToString(input)
 			output, _ := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
 			trace.Result.Output = hex.EncodeToString(output)
 		}
-	}
 
-	if et.Msg.From == et.Msg.To && et.Msg.Method == builtin2.MethodsEVM.InvokeContractDelegate {
-		log.Info("from and to are the same, and method is InvokeContractDelegate!!!!!!!!, height:%d", height)
+		// Handle delegate calls
+		//
+		// 1) Look for from an EVM actor to itself on InvokeContractDelegate, method 6.
+		// 2) Search backwards in the trace for a call to another actor (A) on method 3 (GetBytecode)
+		// 3) Treat this as a delegate call to actor A.
+		// TODO: implement this
 	}
 
 	*traces = append(*traces, trace)
 
 	for i, call := range et.Subcalls {
-		buildTraces(traces, append(addr, i), call, &et, height)
+		buildTraces(traces, trace, append(addr, i), call, height)
 	}
 }
 
