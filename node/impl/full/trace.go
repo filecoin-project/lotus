@@ -8,18 +8,16 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/ipfs/go-cid"
-
-	builtin2 "github.com/filecoin-project/go-state-types/builtin"
-	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
+	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -264,7 +262,7 @@ func handle_filecoin_method_input(method abi.MethodNum, codec uint64, params []b
 	}
 	totalWords := len(staticArgs) + (len(params) / EVM_WORD_SIZE)
 	if len(params)%EVM_WORD_SIZE != 0 {
-		totalWords += 1
+		totalWords++
 	}
 	len := 4 + totalWords*EVM_WORD_SIZE
 
@@ -280,10 +278,16 @@ func handle_filecoin_method_input(method abi.MethodNum, codec uint64, params []b
 			return nil, err
 		}
 	}
-	binary.Write(w, binary.BigEndian, params)
+	err = binary.Write(w, binary.BigEndian, params)
+	if err != nil {
+		return nil, err
+	}
 	remain := len - w.Len()
 	for i := 0; i < remain; i++ {
-		binary.Write(w, binary.BigEndian, uint8(0))
+		err = binary.Write(w, binary.BigEndian, uint8(0))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return w.Bytes(), nil
@@ -299,7 +303,11 @@ func handle_filecoin_method_output(exitCode exitcode.ExitCode, codec uint64, dat
 			return nil, err
 		}
 	}
-	binary.Write(w, binary.BigEndian, []byte(data))
+
+	err := binary.Write(w, binary.BigEndian, []byte(data))
+	if err != nil {
+		return nil, err
+	}
 
 	return w.Bytes(), nil
 }
@@ -340,7 +348,7 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// When an EVM actor is invoked with a method number above 1023 that's not frc42(InvokeEVM)
 		// then we need to format native calls in a way that makes sense to Ethereum tooling (convert
 		// the input & output to solidity ABI format).
-		if builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method > 1023 && et.Msg.Method != builtin2.MethodsEVM.InvokeContract {
+		if builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method > 1023 && et.Msg.Method != builtin.MethodsEVM.InvokeContract {
 			log.Infof("found Native call! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
 			trace.Action.Input = hex.EncodeToString(input)
@@ -370,15 +378,15 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// 2) The EAM calls the init actor on method 3 (Exec4).
 		// 3) The init actor creates the target actor B then calls it on method 1.
 		if parent.parent != nil {
-			calledCreateOnEAM := parent.parent.Action.To == builtin.EthereumAddressManagerActorAddr.String() && (parent.parent.Action.Method == builtin2.MethodsEAM.Create ||
-				parent.parent.Action.Method == builtin2.MethodsEAM.Create2)
+			calledCreateOnEAM := parent.parent.Action.To == builtin.EthereumAddressManagerActorAddr.String() && (parent.parent.Action.Method == builtin.MethodsEAM.Create ||
+				parent.parent.Action.Method == builtin.MethodsEAM.Create2)
 			eamCalledInitOnExec4 := parent.Action.To == builtin.InitActorAddr.String() && parent.Action.Method == builtin.MethodsInit.Exec4
 			initCreatedActor := trace.Action.Method == builtin.MethodsInit.Constructor
 
 			if calledCreateOnEAM && eamCalledInitOnExec4 && initCreatedActor {
 				log.Infof("EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 
-				if parent.parent.Action.Method == builtin2.MethodsEAM.Create {
+				if parent.parent.Action.Method == builtin.MethodsEAM.Create {
 					parent.parent.setCallType("CREATE")
 				} else {
 					parent.parent.setCallType("CREATE2")
@@ -407,7 +415,7 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// EVM -> EVM calls
 		//
 		// Check for normal EVM to EVM calls and decode the params and return values
-		if builtinactors.IsEvmActor(parent.Action.CodeCid) && builtinactors.IsEthAccountActor(et.Msg.CodeCid) && et.Msg.Method == builtin2.MethodsEVM.InvokeContract {
+		if builtinactors.IsEvmActor(parent.Action.CodeCid) && builtinactors.IsEthAccountActor(et.Msg.CodeCid) && et.Msg.Method == builtin.MethodsEVM.InvokeContract {
 			log.Infof("found evm to evm! ! height: %d", height)
 			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
 			trace.Action.Input = hex.EncodeToString(input)
@@ -420,10 +428,10 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// 1) Look for from an EVM actor to itself on InvokeContractDelegate, method 6.
 		// 2) Search backwards in the trace for a call to another actor (A) on method 3 (GetBytecode)
 		// 3) Treat this as a delegate call to actor A.
-		if trace.Action.From == trace.Action.To && trace.Action.Method == builtin2.MethodsEVM.InvokeContractDelegate && len(*traces) > 0 {
+		if trace.Action.From == trace.Action.To && trace.Action.Method == builtin.MethodsEVM.InvokeContractDelegate && len(*traces) > 0 {
 			// the previous trace should be the GetBytecode call
 			prev := (*traces)[len(*traces)-1]
-			if prev.Action.From == trace.Action.From && prev.Action.Method == builtin2.MethodsEVM.GetBytecode {
+			if prev.Action.From == trace.Action.From && prev.Action.Method == builtin.MethodsEVM.GetBytecode {
 				trace.setCallType("delegatecall")
 				trace.Action.To = prev.Action.To
 			}
