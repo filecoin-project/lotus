@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	logging "github.com/ipfs/go-log/v2"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -463,7 +465,10 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			si := paths.NewIndex(nil)
+			harmonyDB, err := harmonydb.New([]string{"127.0.0.1"}, "yugabyte", "yugabyte", "yugabyte", "5433", "",
+				func(s string) { logging.Logger("harmonydb").Error(s) })
+
+			si := paths.NewIndex(nil, harmonyDB)
 
 			lstor, err := paths.NewLocal(ctx, lr, si, nil)
 			if err != nil {

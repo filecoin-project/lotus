@@ -42,7 +42,8 @@ func TestCrud(t *testing.T) {
 			Animal      string `db:"content"`
 			Unpopulated int
 		}
-		err = cdb.Select(ctx, &ints, "SELECT content, some_int FROM itest_scratch")
+		contentfilter := []string{"cows", "cats"}
+		err = cdb.Select(ctx, &ints, "SELECT content, some_int FROM itest_scratch where content = ANY($1)", contentfilter)
 		if err != nil {
 			t.Fatal("Could not select: ", err)
 		}

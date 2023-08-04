@@ -88,7 +88,7 @@ Ex:
 	pet := "cat"
 	err := db.Select(ctx, &users, "SELECT name, id, tel_no FROM customers WHERE pet=?", pet)
 */
-func (db *DB) Select(ctx context.Context, sliceOfStructPtr any, sql rawStringOnly, arguments ...any) error {
+func (db *DB) Select(ctx context.Context, sliceOfStructPtr any, sql string, arguments ...any) error {
 	return pgxscan.Select(ctx, db.pgx, sliceOfStructPtr, string(sql), arguments...)
 }
 
