@@ -55,8 +55,8 @@ const UpgradeHyggeHeight = -21
 const UpgradeLightningHeight = -22
 const UpgradeThunderHeight = -23
 
-// 2023-07-19
-const UpgradeWatermelonHeight = 5760
+// 2023-08-07
+const UpgradeWatermelonHeight = 900
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
