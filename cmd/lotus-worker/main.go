@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats/view"
@@ -530,9 +531,14 @@ var runCmd = &cli.Command{
 
 		log.Info("Opening local storage; connecting to master")
 		const unspecifiedAddress = "0.0.0.0"
+
 		address := cctx.String("listen")
-		addressSlice := strings.Split(address, ":")
-		if ip := net.ParseIP(addressSlice[0]); ip != nil {
+		host, port, err := net.SplitHostPort(address)
+		if err != nil {
+			return err
+		}
+
+		if ip := net.ParseIP(host); ip != nil {
 			if ip.String() == unspecifiedAddress {
 				timeout, err := time.ParseDuration(cctx.String("timeout"))
 				if err != nil {
@@ -542,11 +548,21 @@ var runCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				address = rip + ":" + addressSlice[1]
+				host = rip
 			}
 		}
 
-		localStore, err := paths.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
+		var newAddress string
+
+		// Check if the IP address is IPv6
+		ip := net.ParseIP(host)
+		if ip.To4() == nil && ip.To16() != nil {
+			newAddress = "[" + host + "]:" + port
+		} else {
+			newAddress = host + ":" + port
+		}
+
+		localStore, err := paths.NewLocal(ctx, lr, nodeApi, []string{"http://" + newAddress + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -740,21 +756,35 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	deprecatedMinerMultiAddrKey := "STORAGE_API_INFO"
 	env, ok := os.LookupEnv(minerMultiAddrKey)
 	if !ok {
-		// TODO remove after deprecation period
 		_, ok = os.LookupEnv(deprecatedMinerMultiAddrKey)
 		if ok {
 			log.Warnf("Using a deprecated env(%s) value, please use env(%s) instead.", deprecatedMinerMultiAddrKey, minerMultiAddrKey)
 		}
 		return "", xerrors.New("MINER_API_INFO environment variable required to extract IP")
 	}
-	minerAddr := strings.Split(env, "/")
-	conn, err := net.DialTimeout("tcp", minerAddr[2]+":"+minerAddr[4], timeout)
+
+	// Splitting the env to separate the JWT from the multiaddress
+	splitEnv := strings.SplitN(env, ":", 2)
+	if len(splitEnv) < 2 {
+		return "", xerrors.Errorf("invalid MINER_API_INFO format")
+	}
+	// Only take the multiaddress part
+	maddrStr := splitEnv[1]
+
+	maddr, err := multiaddr.NewMultiaddr(maddrStr)
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close() //nolint:errcheck
+
+	minerIP, _ := maddr.ValueForProtocol(multiaddr.P_IP6)
+	minerPort, _ := maddr.ValueForProtocol(multiaddr.P_TCP)
+
+	conn, err := net.DialTimeout("tcp", "["+minerIP+"]:"+minerPort, timeout) // Enclose IPv6 address in brackets
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
 
 	localAddr := conn.LocalAddr().(*net.TCPAddr)
-
-	return strings.Split(localAddr.IP.String(), ":")[0], nil
+	return localAddr.IP.String(), nil
 }
