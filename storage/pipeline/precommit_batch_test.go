@@ -56,7 +56,6 @@ func TestPrecommitBatcher(t *testing.T) {
 			WaitDealsDelay:            time.Hour * 6,
 			AlwaysKeepUnsealedCopy:    true,
 
-			BatchPreCommits:            true,
 			MaxPreCommitBatch:          maxBatch,
 			PreCommitBatchWait:         24 * time.Hour,
 			PreCommitBatchSlack:        3 * time.Hour,
