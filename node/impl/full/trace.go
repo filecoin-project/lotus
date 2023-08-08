@@ -154,7 +154,10 @@ func (e *EthTrace) TraceBlock(ctx context.Context, blkNum string) (interface{}, 
 		}
 
 		traces := []*Trace{}
-		buildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		err = buildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		if err != nil {
+			return nil, xerrors.Errorf("failed when building traces: %w", err)
+		}
 
 		traceBlocks := make([]*TraceBlock, 0, len(trace))
 		for _, trace := range traces {
@@ -211,7 +214,10 @@ func (e *EthTrace) TraceReplayBlockTransactions(ctx context.Context, blkNum stri
 			VmTrace:         nil,
 		}
 
-		buildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		err = buildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		if err != nil {
+			return nil, xerrors.Errorf("failed when building traces: %w", err)
+		}
 
 		allTraces = append(allTraces, &t)
 	}
@@ -225,11 +231,11 @@ func write_padded[T any](w io.Writer, data T, size int) error {
 	// first write data to tmp buffer to get the size
 	err := binary.Write(tmp, binary.BigEndian, data)
 	if err != nil {
-		return err
+		return fmt.Errorf("write_padded: failed writing tmp data to buffer: %w", err)
 	}
 
 	if tmp.Len() > size {
-		return fmt.Errorf("data is larger than size")
+		return fmt.Errorf("write_padded: data is larger than size")
 	}
 
 	// write tailing zeros to pad up to size
@@ -237,14 +243,14 @@ func write_padded[T any](w io.Writer, data T, size int) error {
 	for i := 0; i < cnt; i++ {
 		err = binary.Write(w, binary.BigEndian, uint8(0))
 		if err != nil {
-			return err
+			return fmt.Errorf("write_padded: failed writing tailing zeros to buffer: %w", err)
 		}
 	}
 
 	// finally write the actual value
 	err = binary.Write(w, binary.BigEndian, tmp.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("write_padded: failed writing data to buffer: %w", err)
 	}
 
 	return nil
@@ -269,24 +275,24 @@ func handle_filecoin_method_input(method abi.MethodNum, codec uint64, params []b
 	w := &bytes.Buffer{}
 	err := binary.Write(w, binary.BigEndian, NATIVE_METHOD_SELECTOR)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("handle_filecoin_method_input: failed writing method selector: %w", err)
 	}
 
 	for _, arg := range staticArgs {
 		err := write_padded(w, arg, 32)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("handle_filecoin_method_input: %w", err)
 		}
 	}
 	err = binary.Write(w, binary.BigEndian, params)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("handle_filecoin_method_input: failed writing params: %w", err)
 	}
 	remain := len - w.Len()
 	for i := 0; i < remain; i++ {
 		err = binary.Write(w, binary.BigEndian, uint8(0))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("handle_filecoin_method_input: failed writing tailing zeros: %w", err)
 		}
 	}
 
@@ -300,20 +306,20 @@ func handle_filecoin_method_output(exitCode exitcode.ExitCode, codec uint64, dat
 	for _, v := range values {
 		err := write_padded(w, v, 32)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("handle_filecoin_method_output: %w", err)
 		}
 	}
 
 	err := binary.Write(w, binary.BigEndian, []byte(data))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("handle_filecoin_method_output: failed writing data: %w", err)
 	}
 
 	return w.Bytes(), nil
 }
 
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
-func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.ExecutionTrace, height int64) {
+func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.ExecutionTrace, height int64) error {
 	trace := &Trace{
 		Action: Action{
 			From:    et.Msg.From.String(),
@@ -349,10 +355,16 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// then we need to format native calls in a way that makes sense to Ethereum tooling (convert
 		// the input & output to solidity ABI format).
 		if builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method > 1023 && et.Msg.Method != builtin.MethodsEVM.InvokeContract {
-			log.Infof("found Native call! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
-			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+			log.Debugf("found Native call! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+			input, err := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+			if err != nil {
+				return err
+			}
 			trace.Action.Input = hex.EncodeToString(input)
-			output, _ := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
+			output, err := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
+			if err != nil {
+				return err
+			}
 			trace.Result.Output = hex.EncodeToString(output)
 		}
 
@@ -360,14 +372,14 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		//
 		// Actor A calls to the init actor on method 2 and The init actor creates the target actor B then calls it on method 1
 		if parent.Action.To == builtin.InitActorAddr.String() && parent.Action.Method == 2 && et.Msg.Method == 1 {
-			log.Infof("Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+			log.Debugf("Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 			parent.setCallType("create")
 			parent.Action.To = et.Msg.To.String()
 			parent.Action.Input = hex.EncodeToString([]byte{0x0, 0x0, 0x0, 0xFE})
 			parent.Result.Output = ""
 
 			// there should never be any subcalls when creating a native actor
-			return
+			return nil
 		}
 
 		// Handle EVM contract creation
@@ -384,12 +396,12 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 			initCreatedActor := trace.Action.Method == builtin.MethodsInit.Constructor
 
 			if calledCreateOnEAM && eamCalledInitOnExec4 && initCreatedActor {
-				log.Infof("EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+				log.Debugf("EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 
 				if parent.parent.Action.Method == builtin.MethodsEAM.Create {
-					parent.parent.setCallType("CREATE")
+					parent.parent.setCallType("create")
 				} else {
-					parent.parent.setCallType("CREATE2")
+					parent.parent.setCallType("create2")
 				}
 
 				// update the parent.parent to make this
@@ -399,7 +411,7 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 				// delete the parent (the EAM) and skip the current trace (init)
 				*traces = (*traces)[:len(*traces)-1]
 
-				return
+				return nil
 			}
 		}
 
@@ -408,7 +420,7 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
 		// and should be dropped from the trace.
 		if builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method > 0 && et.Msg.Method <= 1023 {
-			log.Infof("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+			log.Debugf("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, parent.Action.CodeCid.String(), height)
 			// TODO: if I handle this case and drop this call from the trace then I am not able to detect delegate calls
 		}
 
@@ -416,22 +428,28 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 		//
 		// Check for normal EVM to EVM calls and decode the params and return values
 		if builtinactors.IsEvmActor(parent.Action.CodeCid) && builtinactors.IsEthAccountActor(et.Msg.CodeCid) && et.Msg.Method == builtin.MethodsEVM.InvokeContract {
-			log.Infof("found evm to evm! ! height: %d", height)
-			input, _ := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+			log.Debugf("found evm to evm call, code:%s, height: %d", et.Msg.CodeCid.String(), height)
+			input, err := handle_filecoin_method_input(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+			if err != nil {
+				return err
+			}
 			trace.Action.Input = hex.EncodeToString(input)
-			output, _ := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
+			output, err := handle_filecoin_method_output(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
+			if err != nil {
+				return err
+			}
 			trace.Result.Output = hex.EncodeToString(output)
 		}
 
 		// Handle delegate calls
 		//
-		// 1) Look for from an EVM actor to itself on InvokeContractDelegate, method 6.
-		// 2) Search backwards in the trace for a call to another actor (A) on method 3 (GetBytecode)
+		// 1) Look for trace from an EVM actor to itself on InvokeContractDelegate, method 6.
+		// 2) Check that the previous trace calls another actor on method 3 (GetByteCode) and they are at the same level (same parent)
 		// 3) Treat this as a delegate call to actor A.
 		if trace.Action.From == trace.Action.To && trace.Action.Method == builtin.MethodsEVM.InvokeContractDelegate && len(*traces) > 0 {
-			// the previous trace should be the GetBytecode call
+			log.Debugf("found delegate call, height: %d", height)
 			prev := (*traces)[len(*traces)-1]
-			if prev.Action.From == trace.Action.From && prev.Action.Method == builtin.MethodsEVM.GetBytecode {
+			if prev.Action.From == trace.Action.From && prev.Action.Method == builtin.MethodsEVM.GetBytecode && prev.parent == trace.parent {
 				trace.setCallType("delegatecall")
 				trace.Action.To = prev.Action.To
 			}
@@ -441,8 +459,13 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 	*traces = append(*traces, trace)
 
 	for i, call := range et.Subcalls {
-		buildTraces(traces, trace, append(addr, i), call, height)
+		err := buildTraces(traces, trace, append(addr, i), call, height)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // TODO: refactor this to be shared code
