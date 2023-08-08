@@ -37,6 +37,15 @@ FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
 
 $(FFI_DEPS): build/.filecoin-install ;
 
+ifeq ($(shell uname -s), Darwin)
+export CGO_ENABLED=1
+    ifeq ($(shell uname -m), arm64)
+export GOARCH=arm64
+export LIBRARY_PATH="$(brew --prefix)/lib"
+export FFI_BUILD_FROM_SOURCE=1
+    endif
+endif
+
 build/.filecoin-install: $(FFI_PATH)
 	$(MAKE) -C $(FFI_PATH) $(FFI_DEPS:$(FFI_PATH)%=%)
 	@touch $@
