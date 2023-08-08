@@ -4,7 +4,6 @@ package sealing_test
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-state-types/network"
 	"sort"
 	"sync"
 	"testing"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
+	"github.com/filecoin-project/go-state-types/network"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
