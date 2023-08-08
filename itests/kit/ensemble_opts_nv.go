@@ -23,20 +23,6 @@ func GenesisNetworkVersion(nv network.Version) EnsembleOpt {
 	})
 }
 
-func SDRUpgradeAt(calico, persian abi.ChainEpoch) EnsembleOpt {
-	return UpgradeSchedule(stmgr.Upgrade{
-		Network: network.Version6,
-		Height:  -1,
-	}, stmgr.Upgrade{
-		Network:   network.Version7,
-		Height:    calico,
-		Migration: filcns.UpgradeCalico,
-	}, stmgr.Upgrade{
-		Network: network.Version8,
-		Height:  persian,
-	})
-}
-
 func LatestActorsAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
 	/* inline-gen template
 		return UpgradeSchedule(stmgr.Upgrade{

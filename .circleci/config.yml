@@ -871,12 +871,6 @@ workflows:
           suite: itest-remove_verifreg_datacap
           target: "./itests/remove_verifreg_datacap_test.go"
       - test:
-          name: test-itest-sdr_upgrade
-          requires:
-            - build
-          suite: itest-sdr_upgrade
-          target: "./itests/sdr_upgrade_test.go"
-      - test:
           name: test-itest-sealing_resources
           requires:
             - build
@@ -942,12 +936,6 @@ workflows:
             - build
           suite: itest-splitstore
           target: "./itests/splitstore_test.go"
-      - test:
-          name: test-itest-tape
-          requires:
-            - build
-          suite: itest-tape
-          target: "./itests/tape_test.go"
       - test:
           name: test-itest-verifreg
           requires:
