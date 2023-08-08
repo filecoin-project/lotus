@@ -779,11 +779,16 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	minerIP, _ := maddr.ValueForProtocol(multiaddr.P_IP6)
 	minerPort, _ := maddr.ValueForProtocol(multiaddr.P_TCP)
 
-	conn, err := net.DialTimeout("tcp", "["+minerIP+"]:"+minerPort, timeout) // Enclose IPv6 address in brackets
+	conn, err := net.DialTimeout("tcp", minerIP+":"+minerPort, timeout)
 	if err != nil {
 		return "", err
 	}
-	defer conn.Close()
+
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			log.Errorf("Error closing connection: %v", cerr)
+		}
+	}()
 
 	localAddr := conn.LocalAddr().(*net.TCPAddr)
 	return localAddr.IP.String(), nil
