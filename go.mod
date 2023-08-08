@@ -105,7 +105,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
-	github.com/libp2p/go-libp2p v0.27.6
+	github.com/libp2p/go-libp2p v0.27.8
 	github.com/libp2p/go-libp2p-consensus v0.0.1
 	github.com/libp2p/go-libp2p-gorpc v0.5.0
 	github.com/libp2p/go-libp2p-kad-dht v0.24.0
@@ -294,8 +294,8 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/prometheus/statsd_exporter v0.22.7 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-19 v0.3.2 // indirect
-	github.com/quic-go/qtls-go1-20 v0.2.2 // indirect
+	github.com/quic-go/qtls-go1-19 v0.3.3 // indirect
+	github.com/quic-go/qtls-go1-20 v0.2.3 // indirect
 	github.com/quic-go/quic-go v0.33.0 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/rivo/uniseg v0.1.0 // indirect
