@@ -2,7 +2,6 @@ package itests
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -32,7 +31,7 @@ func TestEthGetBalanceExistingF4address(t *testing.T) {
 	// send some funds to the f410 address
 	kit.SendFunds(ctx, t, client, deployer, fundAmount)
 
-	balance, err := client.EthGetBalance(ctx, ethAddr, "latest")
+	balance, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, balance, ethtypes.EthBigInt{Int: fundAmount.Int})
 }
@@ -47,7 +46,7 @@ func TestEthGetBalanceNonExistentF4address(t *testing.T) {
 
 	_, ethAddr, _ := client.EVM().NewAccount()
 
-	balance, err := client.EthGetBalance(ctx, ethAddr, "latest")
+	balance, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, balance, ethtypes.EthBigIntZero)
 }
@@ -71,7 +70,7 @@ func TestEthGetBalanceExistentIDMaskedAddr(t *testing.T) {
 	balance, err := client.WalletBalance(ctx, fid)
 	require.NoError(t, err)
 
-	ebal, err := client.EthGetBalance(ctx, ethAddr, "latest")
+	ebal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, ebal, ethtypes.EthBigInt{Int: balance.Int})
 }
@@ -93,7 +92,7 @@ func TestEthGetBalanceBuiltinActor(t *testing.T) {
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(fid)
 	require.NoError(t, err)
 
-	ebal, err := client.EthGetBalance(ctx, ethAddr, "latest")
+	ebal, err := client.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, ethtypes.EthBigInt{Int: big.NewInt(10).Int}, ebal)
 }
@@ -121,15 +120,24 @@ func TestEthBalanceCorrectLookup(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ml.Receipt.ExitCode.IsSuccess())
 
-	bal, err := client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(ml.Height-2), 10))
+	execTs, err := client.ChainGetTipSet(ctx, ml.TipSet)
+	require.NoError(t, err)
+
+	inclTs, err := client.ChainGetTipSet(ctx, execTs.Parents())
+	require.NoError(t, err)
+
+	inclTsParents, err := client.ChainGetTipSet(ctx, inclTs.Parents())
+	require.NoError(t, err)
+
+	bal, err := client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(inclTsParents.Height())))
 	require.NoError(t, err)
 	require.Equal(t, int64(0), bal.Int64())
 
-	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(ml.Height-1), 10))
+	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(inclTs.Height())))
 	require.NoError(t, err)
 	require.Equal(t, val, bal.Int64())
 
-	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, strconv.FormatInt(int64(ml.Height), 10))
+	bal, err = client.EVM().EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromNumber(ethtypes.EthUint64(execTs.Height())))
 	require.NoError(t, err)
 	require.Equal(t, val, bal.Int64())
 }

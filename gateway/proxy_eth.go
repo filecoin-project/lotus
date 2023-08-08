@@ -80,6 +80,43 @@ func (gw *Node) checkBlkHash(ctx context.Context, blkHash ethtypes.EthHash) erro
 	return gw.checkTipsetKey(ctx, tsk)
 }
 
+func (gw *Node) checkEthBlockParam(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, lookback ethtypes.EthUint64) error {
+	// first check if its a predefined block or a block number
+	if blkParam.PredefinedBlock != nil || blkParam.BlockNumber != nil {
+		head, err := gw.target.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		var num ethtypes.EthUint64 = 0
+		if blkParam.PredefinedBlock != nil {
+			if *blkParam.PredefinedBlock == "earliest" {
+				return fmt.Errorf("block param \"earliest\" is not supported")
+			} else if *blkParam.PredefinedBlock == "pending" || *blkParam.PredefinedBlock == "latest" {
+				// Head is always ok.
+				if lookback == 0 {
+					return nil
+				}
+
+				if lookback <= ethtypes.EthUint64(head.Height()) {
+					num = ethtypes.EthUint64(head.Height()) - lookback
+				}
+			}
+		} else {
+			num = *blkParam.BlockNumber
+		}
+
+		return gw.checkTipsetHeight(head, abi.ChainEpoch(num))
+	}
+
+	// otherwise its a block hash
+	if blkParam.BlockHash != nil {
+		return gw.checkBlkHash(ctx, *blkParam.BlockHash)
+	}
+
+	return fmt.Errorf("invalid block param")
+}
+
 func (gw *Node) checkBlkParam(ctx context.Context, blkParam string, lookback ethtypes.EthUint64) error {
 	if blkParam == "earliest" {
 		// also not supported in node impl
@@ -178,16 +215,16 @@ func (gw *Node) EthGetMessageCidByTransactionHash(ctx context.Context, txHash *e
 	return gw.target.EthGetMessageCidByTransactionHash(ctx, txHash)
 }
 
-func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error) {
+func (gw *Node) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return 0, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkOpt, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return 0, err
 	}
 
-	return gw.target.EthGetTransactionCount(ctx, sender, blkOpt)
+	return gw.target.EthGetTransactionCount(ctx, sender, blkParam)
 }
 
 func (gw *Node) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
@@ -208,36 +245,36 @@ func (gw *Node) EthGetTransactionReceiptLimited(ctx context.Context, txHash etht
 	return gw.target.EthGetTransactionReceiptLimited(ctx, txHash, limit)
 }
 
-func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {
+func (gw *Node) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkOpt, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
-	return gw.target.EthGetCode(ctx, address, blkOpt)
+	return gw.target.EthGetCode(ctx, address, blkParam)
 }
 
-func (gw *Node) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
+func (gw *Node) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 
 	return gw.target.EthGetStorageAt(ctx, address, position, blkParam)
 }
 
-func (gw *Node) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error) {
+func (gw *Node) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return ethtypes.EthBigInt(big.Zero()), err
 	}
 
@@ -250,6 +287,14 @@ func (gw *Node) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
 	}
 
 	return gw.target.EthChainId(ctx)
+}
+
+func (gw *Node) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
+	if err := gw.limit(ctx, basicRateLimitTokens); err != nil {
+		return ethtypes.EthSyncingResult{}, err
+	}
+
+	return gw.target.EthSyncing(ctx)
 }
 
 func (gw *Node) NetVersion(ctx context.Context) (string, error) {
@@ -324,12 +369,12 @@ func (gw *Node) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall) (ethtyp
 	return gw.target.EthEstimateGas(ctx, tx)
 }
 
-func (gw *Node) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) {
+func (gw *Node) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
 
-	if err := gw.checkBlkParam(ctx, blkParam, 0); err != nil {
+	if err := gw.checkEthBlockParam(ctx, blkParam, 0); err != nil {
 		return nil, err
 	}
 

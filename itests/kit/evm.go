@@ -199,7 +199,7 @@ func (e *EVM) AssertAddressBalanceConsistent(ctx context.Context, addr address.A
 	ethAddr, err := ethtypes.EthAddressFromFilecoinAddress(addr)
 	require.NoError(e.t, err)
 
-	ebal, err := e.EthGetBalance(ctx, ethAddr, "latest")
+	ebal, err := e.EthGetBalance(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(e.t, err)
 
 	require.Equal(e.t, fbal, types.BigInt(ebal))

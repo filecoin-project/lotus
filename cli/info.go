@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal/alerting"
 )
 
 var infoCmd = &cli.Command{
@@ -61,6 +62,21 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Printf(" [epoch %s]\n", color.MagentaString(("%d"), status.SyncStatus.Epoch))
 	fmt.Printf("Peers to: [publish messages %d] [publish blocks %d]\n", status.PeerStatus.PeersToPublishMsgs, status.PeerStatus.PeersToPublishBlocks)
+
+	alerts, err := fullapi.LogAlerts(ctx)
+	if err != nil {
+		fmt.Printf("ERROR: getting alerts: %s\n", err)
+	}
+
+	activeAlerts := make([]alerting.Alert, 0)
+	for _, alert := range alerts {
+		if alert.Active {
+			activeAlerts = append(activeAlerts, alert)
+		}
+	}
+	if len(activeAlerts) > 0 {
+		fmt.Printf("%s (check %s)\n", color.RedString("⚠ %d Active alerts", len(activeAlerts)), color.YellowString("lotus log alerts"))
+	}
 
 	//Chain health calculated as percentage: amount of blocks in last finality / very healthy amount of blocks in a finality (900 epochs * 5 blocks per tipset)
 	health := (100 * (900 * status.ChainStatus.BlocksPerTipsetLastFinality) / (900 * 5))

@@ -61,6 +61,10 @@ const (
 	MaxPreCommitRandomnessLookback = builtin11.EpochsInDay + SealRandomnessLookback
 )
 
+var (
+	MarketDefaultAllocationTermBuffer = market11.MarketDefaultAllocationTermBuffer
+)
+
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
 // This should only be used for testing.
 func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {

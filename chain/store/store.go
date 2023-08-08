@@ -425,6 +425,11 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 	}
 
 	defer cs.heaviestLk.Unlock()
+
+	if ts.Equals(cs.heaviest) {
+		return nil
+	}
+
 	w, err := cs.weight(ctx, cs.StateBlockstore(), ts)
 	if err != nil {
 		return err
