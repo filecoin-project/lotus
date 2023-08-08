@@ -779,7 +779,15 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	minerIP, _ := maddr.ValueForProtocol(multiaddr.P_IP6)
 	minerPort, _ := maddr.ValueForProtocol(multiaddr.P_TCP)
 
-	conn, err := net.DialTimeout("tcp", minerIP+":"+minerPort, timeout)
+	// Check if the IP is IPv6 and format the address appropriately
+	var addressToDial string
+	if ip := net.ParseIP(minerIP); ip.To4() == nil && ip.To16() != nil {
+		addressToDial = "[" + minerIP + "]:" + minerPort
+	} else {
+		addressToDial = minerIP + ":" + minerPort
+	}
+
+	conn, err := net.DialTimeout("tcp", addressToDial, timeout)
 	if err != nil {
 		return "", err
 	}
