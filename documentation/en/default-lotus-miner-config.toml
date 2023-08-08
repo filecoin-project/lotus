@@ -636,7 +636,8 @@
   #CommitBatchSlack = "1h0m0s"
 
   # network BaseFee below which to stop doing precommit batching, instead
-  # sending precommit messages to the chain individually
+  # sending precommit messages to the chain individually. When the basefee is
+  # below this threshold, precommit messages will get sent out immediately.
   #
   # type: types.FIL
   # env var: LOTUS_SEALING_BATCHPRECOMMITABOVEBASEFEE
