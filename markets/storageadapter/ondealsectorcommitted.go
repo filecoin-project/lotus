@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
+	miner2 "github.com/filecoin-project/go-state-types/builtin/v11/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
@@ -107,7 +108,10 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 
 	// Watch for a pre-commit message to the provider.
 	matchEvent := func(msg *types.Message) (bool, error) {
-		matched := msg.To == provider && (msg.Method == builtin.MethodsMiner.PreCommitSector || msg.Method == builtin.MethodsMiner.PreCommitSectorBatch || msg.Method == builtin.MethodsMiner.ProveReplicaUpdates)
+		matched := msg.To == provider && (msg.Method == builtin.MethodsMiner.PreCommitSector ||
+			msg.Method == builtin.MethodsMiner.PreCommitSectorBatch ||
+			msg.Method == builtin.MethodsMiner.PreCommitSectorBatch2 ||
+			msg.Method == builtin.MethodsMiner.ProveReplicaUpdates)
 		return matched, nil
 	}
 
@@ -329,6 +333,21 @@ func dealSectorInPreCommitMsg(msg *types.Message, res pipeline.CurrentDealInfo) 
 		}
 	case builtin.MethodsMiner.PreCommitSectorBatch:
 		var params miner.PreCommitSectorBatchParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return nil, xerrors.Errorf("unmarshal pre commit: %w", err)
+		}
+
+		for _, precommit := range params.Sectors {
+			// Check through the deal IDs associated with this message
+			for _, did := range precommit.DealIDs {
+				if did == res.DealID {
+					// Found the deal ID in this message. Callback with the sector ID.
+					return &precommit.SectorNumber, nil
+				}
+			}
+		}
+	case builtin.MethodsMiner.PreCommitSectorBatch2:
+		var params miner2.PreCommitSectorBatchParams2
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return nil, xerrors.Errorf("unmarshal pre commit: %w", err)
 		}

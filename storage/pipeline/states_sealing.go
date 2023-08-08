@@ -366,6 +366,8 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 		SealedCID:     *sector.CommR,
 		SealRandEpoch: sector.TicketEpoch,
 		DealIDs:       sector.dealIDs(),
+
+		UnsealedCid: sector.CommD,
 	}
 
 	collateral, err := m.Api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, ts.Key())
