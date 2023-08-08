@@ -4,6 +4,7 @@ package sealing_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
 	"sort"
 	"sync"
 	"testing"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	"github.com/filecoin-project/go-state-types/network"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -220,6 +220,13 @@ func TestPrecommitBatcher(t *testing.T) {
 				addSector(0, true),
 				waitPending(1),
 				flush([]abi.SectorNumber{0}),
+			},
+		},
+		"addTwo": {
+			actions: []action{
+				addSectors(getSectors(2), true),
+				waitPending(2),
+				flush(getSectors(2)),
 			},
 		},
 		"addMax": {
