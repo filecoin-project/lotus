@@ -744,7 +744,6 @@ func TestWorkerPledgeExpireCommit(t *testing.T) {
 	ctx := context.Background()
 	client, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
 		kit.MutateSealingConfig(func(sc *config.SealingConfig) {
-			sc.BatchPreCommits = false
 			sc.AggregateCommits = true
 		}),
 		kit.ConstructorOpts(

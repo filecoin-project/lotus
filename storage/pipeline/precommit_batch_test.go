@@ -4,6 +4,7 @@ package sealing_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
 	"sort"
 	"sync"
 	"testing"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	"github.com/filecoin-project/go-state-types/network"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -113,7 +113,7 @@ func TestPrecommitBatcher(t *testing.T) {
 				basefee = big.NewInt(10001)
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, basefee, 1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, basefee, 1), nil).MaxTimes(2) // once in AddPreCommit
 
 			go func() {
 				defer done.Unlock()
@@ -182,28 +182,6 @@ func TestPrecommitBatcher(t *testing.T) {
 	expectInitialCalls := func() action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, big.NewInt(10001), 1), nil)
-			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
-			return nil
-		}
-	}
-
-	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
-	expectSendsSingle := func(expect []abi.SectorNumber) action {
-		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
-			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, big.NewInt(9999), 1), nil)
-			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
-
-			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
-			for _, number := range expect {
-				numClone := number
-				s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
-					b := i.(*types.Message)
-					var params miner6.PreCommitSectorParams
-					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
-					require.Equal(t, numClone, params.SectorNumber)
-					return true
-				}), gomock.Any()).Return(dummySmsg, nil)
-			}
 			return nil
 		}
 	}
@@ -239,14 +217,14 @@ func TestPrecommitBatcher(t *testing.T) {
 	}{
 		"addSingle": {
 			actions: []action{
-				addSector(0, false),
+				addSector(0, true),
 				waitPending(1),
 				flush([]abi.SectorNumber{0}),
 			},
 		},
 		"addTwo": {
 			actions: []action{
-				addSectors(getSectors(2), false),
+				addSectors(getSectors(2), true),
 				waitPending(2),
 				flush(getSectors(2)),
 			},
@@ -267,10 +245,10 @@ func TestPrecommitBatcher(t *testing.T) {
 				addSectors(getSectors(maxBatch), true),
 			},
 		},
-		"addMax-belowBaseFee": {
+		"addOne-belowBaseFee": {
 			actions: []action{
-				expectSendsSingle(getSectors(maxBatch)),
-				addSectors(getSectors(maxBatch), false),
+				expectSend(getSectors(1), false),
+				addSectors(getSectors(1), false),
 			},
 		},
 	}
@@ -286,6 +264,7 @@ func TestPrecommitBatcher(t *testing.T) {
 
 			// create them mocks
 			pcapi := mocks.NewMockPreCommitBatcherApi(mockCtrl)
+			pcapi.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version20, nil).AnyTimes()
 
 			pcb := pipeline.NewPreCommitBatcher(ctx, t0123, pcapi, as, fc, cfg)
 
