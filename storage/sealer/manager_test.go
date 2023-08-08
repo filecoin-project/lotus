@@ -21,8 +21,10 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
@@ -239,6 +241,8 @@ func TestSnapDeals(t *testing.T) {
 	ss, err := proofType.SectorSize()
 	require.NoError(t, err)
 
+	getGrothParamFileAndVerifyingKeys(ss)
+
 	unpaddedSectorSize := abi.PaddedPieceSize(ss).Unpadded()
 
 	// Pack sector with no pieces
@@ -375,6 +379,8 @@ func TestSnarkPackV2(t *testing.T) {
 
 	ss, err := proofType.SectorSize()
 	require.NoError(t, err)
+
+	getGrothParamFileAndVerifyingKeys(ss)
 
 	unpaddedSectorSize := abi.PaddedPieceSize(ss).Unpadded()
 
@@ -880,5 +886,22 @@ l:
 	require.Len(t, st, 1)
 	for _, w := range st {
 		require.Equal(t, uint64(99999), w.MemUsedMax)
+	}
+}
+
+func getGrothParamFileAndVerifyingKeys(s abi.SectorSize) {
+	dat, err := os.ReadFile("../../build/proof-params/parameters.json")
+	if err != nil {
+		panic(err)
+	}
+
+	datSrs, err := os.ReadFile("../../build/proof-params/srs-inner-product.json")
+	if err != nil {
+		panic(err)
+	}
+
+	err = paramfetch.GetParams(context.TODO(), dat, datSrs, uint64(s))
+	if err != nil {
+		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
 	}
 }
