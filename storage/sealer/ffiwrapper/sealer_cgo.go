@@ -192,7 +192,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, exis
 	defer func() {
 		closer, ok := origPieceData.(io.Closer)
 		if !ok {
-			log.Warnf("AddPiece: cannot close pieceData reader %T because it is not an io.Closer", origPieceData)
+			log.Debugf("AddPiece: cannot close pieceData reader %T because it is not an io.Closer", origPieceData)
 			return
 		}
 		if err := closer.Close(); err != nil {
