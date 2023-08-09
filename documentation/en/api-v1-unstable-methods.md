@@ -103,6 +103,7 @@
   * [EthProtocolVersion](#EthProtocolVersion)
   * [EthSendRawTransaction](#EthSendRawTransaction)
   * [EthSubscribe](#EthSubscribe)
+  * [EthSyncing](#EthSyncing)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [Filecoin](#Filecoin)
@@ -2598,7 +2599,7 @@ Polling method for a filter, returns event logs which occurred since last poll.
 (requires write perm since timestamp of last filter execution will be written)
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -2619,7 +2620,7 @@ Returns event logs matching filter with given id.
 (requires write perm since timestamp of last filter execution will be written)
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -2990,7 +2991,7 @@ Response: `"0x0"`
 Installs a persistent filter to notify when a new block arrives.
 
 
-Perms: write
+Perms: read
 
 Inputs: `null`
 
@@ -3000,7 +3001,7 @@ Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 Installs a persistent filter based on given filter spec.
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -3021,7 +3022,7 @@ Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 Installs a persistent filter to notify when new messages arrive in the message pool.
 
 
-Perms: write
+Perms: read
 
 Inputs: `null`
 
@@ -3060,7 +3061,7 @@ params contains additional parameters used with the log event type
 The client will receive a stream of EthSubscriptionResponse values until EthUnsubscribe is called.
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -3071,11 +3072,20 @@ Inputs:
 
 Response: `"0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e"`
 
+### EthSyncing
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `false`
+
 ### EthUninstallFilter
 Uninstalls a filter with given id.
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -3090,7 +3100,7 @@ Response: `true`
 Unsubscribe from a websocket subscription
 
 
-Perms: write
+Perms: read
 
 Inputs:
 ```json
@@ -5566,7 +5576,7 @@ Inputs:
 Response:
 ```json
 {
-  "Channel": "\u003cempty\u003e",
+  "Channel": "f01234",
   "From": "f01234",
   "To": "f01234",
   "ConfirmedAmt": "0",
@@ -5597,7 +5607,7 @@ Inputs:
 Response:
 ```json
 {
-  "Channel": "\u003cempty\u003e",
+  "Channel": "f01234",
   "From": "f01234",
   "To": "f01234",
   "ConfirmedAmt": "0",
@@ -6380,7 +6390,7 @@ Response:
     },
     "Nonce": 42,
     "Balance": "0",
-    "Address": "\u003cempty\u003e"
+    "Address": "f01234"
   }
 }
 ```
@@ -6720,7 +6730,7 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0",
-  "Address": "\u003cempty\u003e"
+  "Address": "f01234"
 }
 ```
 
@@ -6932,7 +6942,6 @@ Response:
     "UpgradeRefuelHeight": 10101,
     "UpgradeTapeHeight": 10101,
     "UpgradeKumquatHeight": 10101,
-    "UpgradePriceListOopsHeight": 10101,
     "BreezeGasTampingDuration": 10101,
     "UpgradeCalicoHeight": 10101,
     "UpgradePersianHeight": 10101,
@@ -7496,6 +7505,7 @@ Response:
   "SectorSize": 34359738368,
   "WindowPoStPartitionSectors": 42,
   "ConsensusFaultElapsed": 10101,
+  "PendingOwnerAddress": "f01234",
   "Beneficiary": "f01234",
   "BeneficiaryTerm": {
     "Quota": "0",

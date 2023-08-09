@@ -11,9 +11,11 @@ import (
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	big2 "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -522,6 +524,36 @@ func TestPruningSimple(t *testing.T) {
 	if len(msgs) != 5 {
 		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
 	}
+}
+
+func TestGasRewardNegative(t *testing.T) {
+	var mp MessagePool
+
+	msg := types.SignedMessage{
+		Message: types.Message{
+			GasLimit:   1000,
+			GasFeeCap:  big2.NewInt(20000),
+			GasPremium: big2.NewInt(15000),
+		},
+	}
+	baseFee := big2.NewInt(30000)
+	// Over the GasPremium, but under the BaseFee
+	gr1 := mp.getGasReward(&msg, baseFee)
+
+	msg.Message.GasFeeCap = big2.NewInt(15000)
+	// Equal to GasPremium, under the BaseFee
+	gr2 := mp.getGasReward(&msg, baseFee)
+
+	msg.Message.GasFeeCap = big2.NewInt(10000)
+	// Under both GasPremium and BaseFee
+	gr3 := mp.getGasReward(&msg, baseFee)
+
+	require.True(t, gr1.Sign() < 0)
+	require.True(t, gr2.Sign() < 0)
+	require.True(t, gr3.Sign() < 0)
+
+	require.True(t, gr1.Cmp(gr2) > 0)
+	require.True(t, gr2.Cmp(gr3) > 0)
 }
 
 func TestLoadLocal(t *testing.T) {

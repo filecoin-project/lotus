@@ -62,7 +62,7 @@ func (e *EthModuleDummy) EthGetTransactionByHashLimited(ctx context.Context, txH
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkOpt string) (ethtypes.EthUint64, error) {
+func (e *EthModuleDummy) EthGetTransactionCount(ctx context.Context, sender ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
 }
 
@@ -82,15 +82,15 @@ func (e *EthModuleDummy) EthGetTransactionByBlockNumberAndIndex(ctx context.Cont
 	return ethtypes.EthTx{}, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkOpt string) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthGetCode(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam string) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthGetStorageAt(ctx context.Context, address ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam string) (ethtypes.EthBigInt, error) {
+func (e *EthModuleDummy) EthGetBalance(ctx context.Context, address ethtypes.EthAddress, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBigInt, error) {
 	return ethtypes.EthBigIntZero, ErrModuleDisabled
 }
 
@@ -100,6 +100,10 @@ func (e *EthModuleDummy) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams)
 
 func (e *EthModuleDummy) EthChainId(ctx context.Context) (ethtypes.EthUint64, error) {
 	return 0, ErrModuleDisabled
+}
+
+func (e *EthModuleDummy) EthSyncing(ctx context.Context) (ethtypes.EthSyncingResult, error) {
+	return ethtypes.EthSyncingResult{}, ErrModuleDisabled
 }
 
 func (e *EthModuleDummy) NetVersion(ctx context.Context) (string, error) {
@@ -122,7 +126,7 @@ func (e *EthModuleDummy) EthEstimateGas(ctx context.Context, tx ethtypes.EthCall
 	return 0, ErrModuleDisabled
 }
 
-func (e *EthModuleDummy) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam string) (ethtypes.EthBytes, error) {
+func (e *EthModuleDummy) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
 	return nil, ErrModuleDisabled
 }
 

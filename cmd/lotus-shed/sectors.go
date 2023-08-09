@@ -653,7 +653,7 @@ fr32 padding is removed from the output.`,
 			return xerrors.Errorf("getting reader: %w", err)
 		}
 
-		rd, err := readStarter(0)
+		rd, err := readStarter(0, storiface.PaddedByteIndex(length))
 		if err != nil {
 			return xerrors.Errorf("starting reader: %w", err)
 		}

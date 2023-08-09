@@ -238,6 +238,30 @@ func (c *EthCall) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type EthSyncingResult struct {
+	DoneSync      bool
+	StartingBlock EthUint64
+	CurrentBlock  EthUint64
+	HighestBlock  EthUint64
+}
+
+func (sr EthSyncingResult) MarshalJSON() ([]byte, error) {
+	if sr.DoneSync {
+		// when done syncing, the json response should be '"result": false'
+		return []byte("false"), nil
+	}
+
+	// need to do an anonymous struct to avoid infinite recursion
+	return json.Marshal(&struct {
+		StartingBlock EthUint64 `json:"startingblock"`
+		CurrentBlock  EthUint64 `json:"currentblock"`
+		HighestBlock  EthUint64 `json:"highestblock"`
+	}{
+		StartingBlock: sr.StartingBlock,
+		CurrentBlock:  sr.CurrentBlock,
+		HighestBlock:  sr.HighestBlock})
+}
+
 const (
 	EthAddressLength = 20
 	EthHashLength    = 32
@@ -548,12 +572,12 @@ func (h EthSubscriptionID) String() string {
 }
 
 type EthFilterSpec struct {
-	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
 	FromBlock *string `json:"fromBlock,omitempty"`
 
-	// Interpreted as an epoch or one of "latest" for last mined block, "earliest" for first,
+	// Interpreted as an epoch (in hex) or one of "latest" for last mined block, "earliest" for first,
 	// "pending" for not yet committed messages.
 	// Optional, default: "latest".
 	ToBlock *string `json:"toBlock,omitempty"`
@@ -814,4 +838,94 @@ func (e EthFeeHistoryParams) MarshalJSON() ([]byte, error) {
 		return json.Marshal([]interface{}{e.BlkCount, e.NewestBlkNum, e.RewardPercentiles})
 	}
 	return json.Marshal([]interface{}{e.BlkCount, e.NewestBlkNum})
+}
+
+type EthBlockNumberOrHash struct {
+	// PredefinedBlock can be one of "earliest", "pending" or "latest". We could merge this
+	// field with BlockNumber if the latter could store negative numbers representing
+	// each predefined value (e.g. -1 for "earliest", -2 for "pending" and -3 for "latest")
+	PredefinedBlock *string `json:"-"`
+
+	BlockNumber      *EthUint64 `json:"blockNumber,omitempty"`
+	BlockHash        *EthHash   `json:"blockHash,omitempty"`
+	RequireCanonical bool       `json:"requireCanonical,omitempty"`
+}
+
+func NewEthBlockNumberOrHashFromPredefined(predefined string) EthBlockNumberOrHash {
+	return EthBlockNumberOrHash{
+		PredefinedBlock:  &predefined,
+		BlockNumber:      nil,
+		BlockHash:        nil,
+		RequireCanonical: false,
+	}
+}
+
+func NewEthBlockNumberOrHashFromNumber(number EthUint64) EthBlockNumberOrHash {
+	return EthBlockNumberOrHash{
+		PredefinedBlock:  nil,
+		BlockNumber:      &number,
+		BlockHash:        nil,
+		RequireCanonical: false,
+	}
+}
+
+func NewEthBlockNumberOrHashFromHexString(str string) (EthBlockNumberOrHash, error) {
+	// check if block param is a number (decimal or hex)
+	var num EthUint64 = 0
+	err := num.UnmarshalJSON([]byte(str))
+	if err != nil {
+		return NewEthBlockNumberOrHashFromNumber(0), err
+	}
+
+	return EthBlockNumberOrHash{
+		PredefinedBlock:  nil,
+		BlockNumber:      &num,
+		BlockHash:        nil,
+		RequireCanonical: false,
+	}, nil
+}
+
+func (e EthBlockNumberOrHash) MarshalJSON() ([]byte, error) {
+	if e.PredefinedBlock != nil {
+		return json.Marshal(*e.PredefinedBlock)
+	}
+
+	type tmpStruct EthBlockNumberOrHash
+	return json.Marshal(tmpStruct(e))
+}
+
+func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
+	// we first try to unmarshal into a EthBlockNumberOrHash struct to check
+	// if the block param is a block hash or block number (see EIP-1898). We use
+	// a temporary struct to avoid infinite recursion.
+	type tmpStruct EthBlockNumberOrHash
+	var tmp tmpStruct
+	if err := json.Unmarshal(b, &tmp); err == nil {
+		if tmp.BlockNumber != nil && tmp.BlockHash != nil {
+			return errors.New("cannot specify both blockNumber and blockHash")
+		}
+
+		*e = EthBlockNumberOrHash(tmp)
+		return nil
+	}
+
+	// check if block param is once of the special strings
+	var str string
+	err := json.Unmarshal(b, &str)
+	if err != nil {
+		return err
+	}
+	if str == "earliest" || str == "pending" || str == "latest" {
+		e.PredefinedBlock = &str
+		return nil
+	}
+
+	// check if block param is a number (decimal or hex)
+	var num EthUint64
+	if err := num.UnmarshalJSON(b); err == nil {
+		e.BlockNumber = &num
+		return nil
+	}
+
+	return errors.New("invalid block param")
 }

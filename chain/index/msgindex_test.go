@@ -39,9 +39,9 @@ func TestBasicMsgIndex(t *testing.T) {
 		t.Logf("advance to epoch %d", i+1)
 		err := cs.advance()
 		require.NoError(t, err)
-		// wait for the coalescer to notify
-		time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
 	}
+
+	waitForCoalescerAfterLastEvent()
 
 	t.Log("verifying index")
 	verifyIndex(t, cs, msgIndex)
@@ -51,7 +51,7 @@ func TestReorgMsgIndex(t *testing.T) {
 	// slightly more nuanced test that includes reorgs
 	// 1. Create an index with mock chain store
 	// 2. Advance/Reorg the chain for a few tipsets
-	// 3. Verify that the index contains all messages with the correct tipst/epoch
+	// 3. Verify that the index contains all messages with the correct tipset/epoch
 	cs := newMockChainStore()
 	cs.genesis()
 
@@ -67,9 +67,9 @@ func TestReorgMsgIndex(t *testing.T) {
 		t.Logf("advance to epoch %d", i+1)
 		err := cs.advance()
 		require.NoError(t, err)
-		// wait for the coalescer to notify
-		time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
 	}
+
+	waitForCoalescerAfterLastEvent()
 
 	// a simple reorg
 	t.Log("doing reorg")
@@ -80,7 +80,8 @@ func TestReorgMsgIndex(t *testing.T) {
 	reorgmeChild := cs.makeBlk()
 	err = cs.reorg([]*types.TipSet{reorgme}, []*types.TipSet{reorgmeChild})
 	require.NoError(t, err)
-	time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
+
+	waitForCoalescerAfterLastEvent()
 
 	t.Log("verifying index")
 	verifyIndex(t, cs, msgIndex)
@@ -109,9 +110,9 @@ func TestReconcileMsgIndex(t *testing.T) {
 		t.Logf("advance to epoch %d", i+1)
 		err := cs.advance()
 		require.NoError(t, err)
-		// wait for the coalescer to notify
-		time.Sleep(CoalesceMinDelay + 10*time.Millisecond)
 	}
+
+	waitForCoalescerAfterLastEvent()
 
 	// Close it and reorg
 	err = msgIndex.Close()
@@ -295,4 +296,12 @@ func (cs *mockChainStore) GetTipSetFromKey(ctx context.Context, tsk types.TipSet
 		return nil, errors.New("unknown tipset")
 	}
 	return ts, nil
+}
+
+func waitForCoalescerAfterLastEvent() {
+	// It can take up to CoalesceMinDelay for the coalescer timer to fire after the last event.
+	// When the timer fires, it can wait up to CoalesceMinDelay again for more events.
+	// Therefore the total wait is 2 * CoalesceMinDelay.
+	// Then we wait another second for the listener (the index) to actually process events.
+	time.Sleep(2*CoalesceMinDelay + time.Second)
 }

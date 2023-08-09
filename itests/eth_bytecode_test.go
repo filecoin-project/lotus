@@ -33,12 +33,12 @@ func TestGetCodeAndNonce(t *testing.T) {
 	{
 		// A random eth address should have no code.
 		_, ethAddr, filAddr := client.EVM().NewAccount()
-		bytecode, err := client.EVM().EthGetCode(ctx, ethAddr, "latest")
+		bytecode, err := client.EVM().EthGetCode(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.Empty(t, bytecode)
 
 		// Nonce should also be zero
-		nonce, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, "latest")
+		nonce, err := client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.Zero(t, nonce)
 
@@ -46,12 +46,12 @@ func TestGetCodeAndNonce(t *testing.T) {
 		kit.SendFunds(ctx, t, client, filAddr, types.FromFil(10))
 
 		// The code should still be empty, target is now a placeholder.
-		bytecode, err = client.EVM().EthGetCode(ctx, ethAddr, "latest")
+		bytecode, err = client.EVM().EthGetCode(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.Empty(t, bytecode)
 
 		// Nonce should still be zero.
-		nonce, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, "latest")
+		nonce, err = client.EVM().EthGetTransactionCount(ctx, ethAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.Zero(t, nonce)
 	}
@@ -68,12 +68,12 @@ func TestGetCodeAndNonce(t *testing.T) {
 		contractFilAddr := *createReturn.RobustAddress
 
 		// The newly deployed contract should not be empty.
-		bytecode, err := client.EVM().EthGetCode(ctx, contractAddr, "latest")
+		bytecode, err := client.EVM().EthGetCode(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.NotEmpty(t, bytecode)
 
 		// Nonce should be one.
-		nonce, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, "latest")
+		nonce, err := client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.Equal(t, ethtypes.EthUint64(1), nonce)
 
@@ -82,12 +82,12 @@ func TestGetCodeAndNonce(t *testing.T) {
 		require.NoError(t, err)
 
 		// The code should be empty again.
-		bytecode, err = client.EVM().EthGetCode(ctx, contractAddr, "latest")
+		bytecode, err = client.EVM().EthGetCode(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.Empty(t, bytecode)
 
 		// Nonce should go back to zero
-		nonce, err = client.EVM().EthGetTransactionCount(ctx, contractAddr, "latest")
+		nonce, err = client.EVM().EthGetTransactionCount(ctx, contractAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 		require.NoError(t, err)
 		require.Zero(t, nonce)
 	}

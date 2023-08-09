@@ -79,7 +79,7 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 			}
 
 			var err error
-			eventIndex, err = filter.NewEventIndex(dbPath)
+			eventIndex, err = filter.NewEventIndex(ctx, dbPath, chainapi.Chain)
 			if err != nil {
 				return nil, err
 			}

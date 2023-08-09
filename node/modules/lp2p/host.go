@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	nilrouting "github.com/ipfs/go-ipfs-routing/none"
+	nilrouting "github.com/ipfs/boxo/routing/none"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"

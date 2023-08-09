@@ -268,14 +268,14 @@ func TestFEVMDelegateCall(t *testing.T) {
 	// The implementation's storage should not have been updated.
 	actorAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(actorAddr)
 	require.NoError(t, err)
-	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, "latest")
+	value, err := client.EVM().EthGetStorageAt(ctx, actorAddrEth, nil, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, ethtypes.EthBytes(make([]byte, 32)), value)
 
 	// The storage actor's storage _should_ have been updated
 	storageAddrEth, err := ethtypes.EthAddressFromFilecoinAddress(storageAddr)
 	require.NoError(t, err)
-	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, "latest")
+	value, err = client.EVM().EthGetStorageAt(ctx, storageAddrEth, nil, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, ethtypes.EthBytes(expectedResult), value)
 }
@@ -881,7 +881,7 @@ func TestFEVMTestDeployOnTransfer(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, ret.Receipt.ExitCode.IsSuccess())
 
-	balance, err := client.EVM().EthGetBalance(ctx, randomAddr, "latest")
+	balance, err := client.EVM().EthGetBalance(ctx, randomAddr, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 	require.NoError(t, err)
 	require.Equal(t, value.Int, balance.Int)
 
@@ -1030,7 +1030,7 @@ func TestFEVMErrorParsing(t *testing.T) {
 				_, err := e.EthCall(ctx, ethtypes.EthCall{
 					To:   &contractAddrEth,
 					Data: entryPoint,
-				}, "latest")
+				}, ethtypes.NewEthBlockNumberOrHashFromPredefined("latest"))
 				require.ErrorContains(t, err, expected)
 			})
 			t.Run("EthEstimateGas", func(t *testing.T) {

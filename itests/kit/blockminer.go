@@ -184,7 +184,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 
 			dlinfo, err := bm.miner.FullNode.StateMinerProvingDeadline(ctx, bm.miner.ActorAddr, ts.Key())
 			require.NoError(bm.t, err)
-			if ts.Height()+1+abi.ChainEpoch(nulls) >= dlinfo.Last() { // Next block brings us past the last epoch in dline, we need to wait for miner to post
+			if ts.Height()+5+abi.ChainEpoch(nulls) >= dlinfo.Last() { // Next block brings us past the last epoch in dline, we need to wait for miner to post
+				bm.t.Logf("forcing post to get in before deadline closes at %d", dlinfo.Last())
 				bm.forcePoSt(ctx, ts, dlinfo)
 			}
 
@@ -216,7 +217,8 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 				}
 				if !success {
 					// if we are mining a new null block and it brings us past deadline boundary we need to wait for miner to post
-					if ts.Height()+1+abi.ChainEpoch(nulls+i) >= dlinfo.Last() {
+					if ts.Height()+5+abi.ChainEpoch(nulls+i) >= dlinfo.Last() {
+						bm.t.Logf("forcing post to get in before deadline closes at %d", dlinfo.Last())
 						bm.forcePoSt(ctx, ts, dlinfo)
 					}
 				}
@@ -236,7 +238,7 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					break
 				}
 
-				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
+				require.NotEqual(bm.t, i, nloops-1, "block at height %d never managed to sync to node, which is at height %d", target, ts.Height())
 				time.Sleep(time.Millisecond * 10)
 			}
 
@@ -348,7 +350,7 @@ func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn *TestFullNode, cb f
 					break
 				}
 
-				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
+				require.NotEqual(bm.t, i, nloops-1, "block at height %d never managed to sync to node, which is at height %d", epoch, ts.Height())
 				time.Sleep(time.Millisecond * 10)
 			}
 

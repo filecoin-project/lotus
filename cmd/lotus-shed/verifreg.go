@@ -474,7 +474,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 
 		st, err := multisig.Load(store, vrkState)
 		if err != nil {
-			return err
+			return fmt.Errorf("load vrk failed: %w ", err)
 		}
 
 		signers, err := st.Signers()
@@ -508,14 +508,13 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 			return err
 		}
 
-		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		sm, err := lcli.InteractiveSend(ctx, cctx, srv, proto)
 		if err != nil {
 			return err
 		}
 
 		msgCid := sm.Cid()
-
-		fmt.Printf("message sent, now waiting on cid: %s\n", msgCid)
+		fmt.Println("sending msg: ", msgCid)
 
 		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {

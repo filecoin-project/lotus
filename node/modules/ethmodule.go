@@ -4,8 +4,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"go.uber.org/fx"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -18,8 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI) (*full.EthModule, error) {
-	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI) (*full.EthModule, error) {
+func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo, fx.Lifecycle, *store.ChainStore, *stmgr.StateManager, EventAPI, *messagepool.MessagePool, full.StateAPI, full.ChainAPI, full.MpoolAPI, full.SyncAPI) (*full.EthModule, error) {
+	return func(mctx helpers.MetricsCtx, r repo.LockedRepo, lc fx.Lifecycle, cs *store.ChainStore, sm *stmgr.StateManager, evapi EventAPI, mp *messagepool.MessagePool, stateapi full.StateAPI, chainapi full.ChainAPI, mpoolapi full.MpoolAPI, syncapi full.SyncAPI) (*full.EthModule, error) {
 		sqlitePath, err := r.SqlitePath()
 		if err != nil {
 			return nil, err
@@ -54,6 +57,17 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			}
 		}
 
+		// prefill the whole skiplist cache maintained internally by the GetTipsetByHeight
+		go func() {
+			start := time.Now()
+			log.Infoln("Start prefilling GetTipsetByHeight cache")
+			_, err := cs.GetTipsetByHeight(mctx, abi.ChainEpoch(0), cs.GetHeaviestTipSet(), false)
+			if err != nil {
+				log.Warnf("error when prefilling GetTipsetByHeight cache: %w", err)
+			}
+			log.Infof("Prefilling GetTipsetByHeight done in %s", time.Since(start))
+		}()
+
 		ctx := helpers.LifecycleCtx(mctx, lc)
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
@@ -84,6 +98,7 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			ChainAPI: chainapi,
 			MpoolAPI: mpoolapi,
 			StateAPI: stateapi,
+			SyncAPI:  syncapi,
 
 			EthTxHashManager: &ethTxHashManager,
 		}, nil
