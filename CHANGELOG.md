@@ -6,6 +6,8 @@
 
 This feature release of Lotus includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
 
+This feature release requires a **minimum Go version of v1.19.12 or higher to successfully build Lotus**. Go version 1.20 is also supported, but 1.21 is NOT.
+
 ## Highlights
 
 - [Lotus now includes a Slasher tool](https://github.com/filecoin-project/lotus/pull/10928) to monitor the network for Consensus Faults, and report them as appropriate
