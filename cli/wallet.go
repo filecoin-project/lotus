@@ -3,13 +3,11 @@ package cli
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
@@ -21,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
@@ -209,12 +206,12 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		behindSync, err := isSyncBehind(ctx, api)
+		inSync, err := IsSyncDone(ctx, api)
 		if err != nil {
 			return err
 		}
 
-		if balance.Equals(types.NewInt(0)) && behindSync {
+		if balance.Equals(types.NewInt(0)) && !inSync {
 			afmt.Printf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
 		} else {
 			afmt.Printf("%s\n", types.FIL(balance))
@@ -761,17 +758,4 @@ var walletMarketAdd = &cli.Command{
 
 		return nil
 	},
-}
-
-func isSyncBehind(ctx context.Context, fullapi v0api.FullNode) (bool, error) {
-	head, err := fullapi.ChainHead(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if time.Now().Unix()-int64(head.MinTimestamp()) >= int64(build.BlockDelaySecs*5) { // if more than 5 epochs
-		return true, nil
-	}
-
-	return false, nil
 }
