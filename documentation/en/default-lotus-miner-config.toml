@@ -145,6 +145,10 @@
   # env var: LOTUS_SUBSYSTEMS_ENABLEMARKETS
   #EnableMarkets = false
 
+  # type: bool
+  # env var: LOTUS_SUBSYSTEMS_ENABLESECTORINDEXDB
+  #EnableSectorIndexDB = false
+
   # type: string
   # env var: LOTUS_SUBSYSTEMS_SEALERAPIINFO
   #SealerApiInfo = ""

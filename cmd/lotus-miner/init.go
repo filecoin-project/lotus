@@ -7,8 +7,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	logging "github.com/ipfs/go-log/v2"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -49,6 +48,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	storageminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -468,7 +468,10 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			harmonyDB, err := harmonydb.New([]string{"127.0.0.1"}, "yugabyte", "yugabyte", "yugabyte", "5433", "",
 				func(s string) { logging.Logger("harmonydb").Error(s) })
 
-			si := paths.NewIndex(nil, harmonyDB)
+			// TODO: get this bool from miner init cmd line
+			enableSectorIndexDB := true
+
+			si := paths.NewIndexProxy(nil, harmonyDB, enableSectorIndexDB)
 
 			lstor, err := paths.NewLocal(ctx, lr, si, nil)
 			if err != nil {

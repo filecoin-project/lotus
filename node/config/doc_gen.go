@@ -748,6 +748,12 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 		{
+			Name: "EnableSectorIndexDB",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
 			Name: "SealerApiInfo",
 			Type: "string",
 

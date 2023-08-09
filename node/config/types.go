@@ -109,6 +109,7 @@ type MinerSubsystemConfig struct {
 	EnableSealing       bool
 	EnableSectorStorage bool
 	EnableMarkets       bool
+	EnableSectorIndexDB bool
 
 	SealerApiInfo      string // if EnableSealing == false
 	SectorIndexApiInfo string // if EnableSectorStorage == false
