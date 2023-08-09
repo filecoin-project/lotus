@@ -329,6 +329,10 @@ type ProvingConfig struct {
 	//
 	// Note that this is only really useful when multiple PoSt workers are connected and available. If there are no or
 	// only one PoSt workers the effect will be limited, and performance may even degrade.
+	//------------------------
+	// Experimental feature:
+	// Please be cautious while using this feature as it's still under testing.
+	//------------------------
 	MaxBatchParallelism int
 }
 
