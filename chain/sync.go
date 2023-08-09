@@ -247,7 +247,6 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 		return false
 	}
 
-	// TODO: this method name is a lie
 	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
 	return true
 }
