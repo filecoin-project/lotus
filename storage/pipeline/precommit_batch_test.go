@@ -222,13 +222,6 @@ func TestPrecommitBatcher(t *testing.T) {
 				flush([]abi.SectorNumber{0}),
 			},
 		},
-		"addTwo": {
-			actions: []action{
-				addSectors(getSectors(2), true),
-				waitPending(2),
-				flush(getSectors(2)),
-			},
-		},
 		"addMax": {
 			actions: []action{
 				expectInitialCalls(),
