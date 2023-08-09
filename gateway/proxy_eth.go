@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
@@ -427,7 +428,7 @@ func (gw *Node) EthGetFilterChanges(ctx context.Context, id ethtypes.EthFilterID
 	ft.lk.Unlock()
 
 	if !ok {
-		return nil, nil
+		return nil, filter.ErrFilterNotFound
 	}
 
 	return gw.target.EthGetFilterChanges(ctx, id)
