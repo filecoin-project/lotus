@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/network"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -34,28 +33,6 @@ import (
 )
 
 // TestDeadlineToggling:
-// * spins up a v3 network (miner A)
-// * creates an inactive miner (miner B)
-// * creates another miner, pledges a sector, waits for power (miner C)
-//
-// * goes through v4 upgrade
-// * goes through PP
-// * creates minerD, minerE
-// * makes sure that miner B/D are inactive, A/C still are
-// * pledges sectors on miner B/D
-// * precommits a sector on minerE
-// * disables post on miner C
-// * goes through PP 0.5PP
-// * asserts that minerE is active
-// * goes through rest of PP (1.5)
-// * asserts that miner C loses power
-// * asserts that miner B/D is active and has power
-// * asserts that minerE is inactive
-// * disables post on miner B
-// * terminates sectors on miner D
-// * goes through another PP
-// * asserts that miner B loses power
-// * asserts that miner D loses power, is inactive
 func TestDeadlineToggling(t *testing.T) {
 	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
 	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
@@ -71,7 +48,6 @@ func TestDeadlineToggling(t *testing.T) {
 	const sectorsC, sectorsD, sectorsB = 10, 9, 8
 
 	var (
-		upgradeH      abi.ChainEpoch = 4000
 		provingPeriod abi.ChainEpoch = 2880
 		blocktime                    = 2 * time.Millisecond
 	)
@@ -81,14 +57,14 @@ func TestDeadlineToggling(t *testing.T) {
 
 	var (
 		client kit.TestFullNode
-		minerA kit.TestMiner
-		minerB kit.TestMiner
-		minerC kit.TestMiner
-		minerD kit.TestMiner
-		minerE kit.TestMiner
+		minerA kit.TestMiner // A has some genesis sector, just keeps power
+		minerB kit.TestMiner // B pledges some sector, later fails some posts but stays alive
+		minerC kit.TestMiner // C pledges sectors, gains power, and later stops its PoSTs, but stays alive
+		minerD kit.TestMiner // D pledges sectors and later terminates them, losing all power, eventually deactivates cron
+		minerE kit.TestMiner // E pre-commits a sector but doesn't advance beyond that, cron should become inactive
 	)
 	opts := []kit.NodeOpt{kit.WithAllSubsystems()}
-	ens := kit.NewEnsemble(t, kit.MockProofs(), kit.TurboUpgradeAt(upgradeH)).
+	ens := kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(&client, opts...).
 		Miner(&minerA, &client, opts...).
 		Start().
@@ -116,6 +92,8 @@ func TestDeadlineToggling(t *testing.T) {
 	ssz, err := minerC.ActorSectorSize(ctx, maddrC)
 	require.NoError(t, err)
 
+	targetHeight := abi.ChainEpoch(0)
+
 	// pledge sectors on C, go through a PP, check for power
 	{
 		minerC.PledgeSectors(ctx, sectorsC, 0, nil)
@@ -127,11 +105,13 @@ func TestDeadlineToggling(t *testing.T) {
 		t.Log("Running one proving period (miner C)")
 		t.Logf("End for head.Height > %d", di.PeriodStart+di.WPoStProvingPeriod*2)
 
+		targetHeight = di.PeriodStart + provingPeriod*2
+
 		for {
 			head, err := client.ChainHead(ctx)
 			require.NoError(t, err)
 
-			if head.Height() > di.PeriodStart+provingPeriod*2 {
+			if head.Height() > targetHeight {
 				t.Logf("Now head.Height = %d", head.Height())
 				break
 			}
@@ -146,18 +126,6 @@ func TestDeadlineToggling(t *testing.T) {
 
 		// make sure it has gained power.
 		require.Equal(t, p.MinerPower.RawBytePower, expectedPower)
-	}
-
-	// go through upgrade + PP
-	for {
-		head, err := client.ChainHead(ctx)
-		require.NoError(t, err)
-
-		if head.Height() > upgradeH+provingPeriod {
-			t.Logf("Now head.Height = %d", head.Height())
-			break
-		}
-		build.Clock.Sleep(blocktime)
 	}
 
 	checkMiner := func(ma address.Address, power abi.StoragePower, active bool, tsk types.TipSetKey) {
@@ -180,18 +148,6 @@ func TestDeadlineToggling(t *testing.T) {
 
 		require.Equal(t, active, act)
 	}
-
-	// check that just after the upgrade minerB was still active
-	{
-		uts, err := client.ChainGetTipSetByHeight(ctx, upgradeH+2, types.EmptyTSK)
-		require.NoError(t, err)
-		checkMiner(maddrB, types.NewInt(0), true, uts.Key())
-	}
-
-	//stm: @CHAIN_STATE_NETWORK_VERSION_001
-	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, nv, network.Version12)
 
 	ens.Miner(&minerD, &client, opts...).
 		Miner(&minerE, &client, opts...).
@@ -254,12 +210,14 @@ func TestDeadlineToggling(t *testing.T) {
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
 	}
 
+	targetHeight = targetHeight + (provingPeriod / 2)
+
 	// go through 0.5 PP
 	for {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > upgradeH+provingPeriod+(provingPeriod/2) {
+		if head.Height() > targetHeight {
 			t.Logf("Now head.Height = %d", head.Height())
 			break
 		}
@@ -268,12 +226,14 @@ func TestDeadlineToggling(t *testing.T) {
 
 	checkMiner(maddrE, types.NewInt(0), true, types.EmptyTSK)
 
+	targetHeight = targetHeight + (provingPeriod/2)*5
+
 	// go through rest of the PP
 	for {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > upgradeH+(provingPeriod*3) {
+		if head.Height() > targetHeight {
 			t.Logf("Now head.Height = %d", head.Height())
 			break
 		}
@@ -285,7 +245,12 @@ func TestDeadlineToggling(t *testing.T) {
 	checkMiner(maddrC, types.NewInt(0), true, types.EmptyTSK)
 	checkMiner(maddrB, types.NewInt(uint64(ssz)*sectorsB), true, types.EmptyTSK)
 	checkMiner(maddrD, types.NewInt(uint64(ssz)*sectorsD), true, types.EmptyTSK)
-	checkMiner(maddrE, types.NewInt(0), false, types.EmptyTSK)
+
+	// Note: in the older version of this test `active` would be set to false
+	// this is now true because the time to commit a precommit a sector has
+	// increased to 30 days. We could keep the original assert and increase the
+	// wait above to 30 days, but that makes the test take 14 minutes to run..
+	checkMiner(maddrE, types.NewInt(0), true, types.EmptyTSK)
 
 	// disable post on minerB
 	minerB.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).Fail()
@@ -344,12 +309,14 @@ func TestDeadlineToggling(t *testing.T) {
 		require.True(t, p.MinerPower.RawBytePower.IsZero())
 	}
 
+	targetHeight = targetHeight + provingPeriod*2
+
 	// go through another PP
 	for {
 		head, err := client.ChainHead(ctx)
 		require.NoError(t, err)
 
-		if head.Height() > upgradeH+(provingPeriod*5) {
+		if head.Height() > targetHeight {
 			t.Logf("Now head.Height = %d", head.Height())
 			break
 		}
