@@ -428,8 +428,12 @@ func (cs *ChainStore) RefreshHeaviestTipSet(ctx context.Context, newTsHeight abi
 	// Equivocation has occurred! We need a new head NOW!
 	if newHeaviest == nil || newHeaviestWeight.LessThan(heaviestWeight) {
 		log.Warnf("chainstore heaviest tipset's weight SHRANK from %d (%s) to %d (%s) due to equivocation", heaviestWeight, cs.heaviest, newHeaviestWeight, newHeaviest)
-		// refresh heaviestWeight 10 times moving up and down
-
+		// Unfortunately, we don't know what the right height to form a new heaviest tipset is.
+		// It is _probably_, but not _necessarily_, heaviestHeight.
+		// So, we need to explore a range of epochs, finding the heaviest tipset in that range.
+		// We thus try to form the heaviest tipset for 5 epochs above heaviestHeight (most of which will likely not exist),
+		// as well as for 5 below.
+		// This is slow, but we expect to almost-never be here (only if miners are equivocating, which carries a hefty penalty).
 		for i := heaviestHeight + 5; i > heaviestHeight-5; i-- {
 			possibleHeaviestTs, possibleHeaviestWeight, err := cs.FormHeaviestTipSetForHeight(ctx, i)
 			if err != nil {
