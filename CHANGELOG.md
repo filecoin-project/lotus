@@ -11,16 +11,11 @@ This feature release of Lotus includes numerous improvements and enhancements fo
 - [Lotus now includes a Slasher tool](https://github.com/filecoin-project/lotus/pull/10928) to monitor the network for Consensus Faults, and report them as appropriate
   - The Slasher investigates all incoming blocks, and assesses whether they trigger any of the three Consensus Faults defined in the Filecoin protocol
   - If any faults are detected, the Slasher sends a `ReportConsensusFault` message to the faulty miner
-  - For more information on the Slasher, including how to run it, please see LINK
+  - For more information on the Slasher, including how to run it, please find the documentation [here](https://lotus.filecoin.io/lotus/manage/slasher-and-disputer/)
 - The Ethereum-like RPC exposed by Lotus is now compatible with EIP-1898: https://github.com/filecoin-project/lotus/pull/10815
 - The lotus-miner PieceReader now supports parallel reads: https://github.com/filecoin-project/lotus/pull/10913
 - Added new environment variable `LOTUS_EXEC_TRACE_CACHE_SIZE` to configure execution trace cache size ([filecoin-project/lotus#10585](https://github.com/filecoin-project/lotus/pull/10585))
-  - If unset, we default to caching 16 most recent execution traces. Storage Providers may want to set this to 0, while exchanges may want to crank it up. 
-- The tracer's Elastic Search transport has been upgraded to support batch traces: [filecoin-project/lotus#10405](https://github.com/filecoin-project/lotus/pull/10405)
-  - This facilitates an experiment being run by ProbeLab [to measure the performance of the Gossipsub protocol in the Filecoin network](https://www.notion.so/pl-strflt/Write-explainer-doc-for-SPs-183a7775406d451a8b19e3cdc2cdf5c3?d=d8df4e142b78427ab470db68877da1ba#abba19208e3b4420a6388df7a3a48b62). 
-  - Users are invited to opt into the experiment by following the instructions [here](https://www.notion.so/pl-strflt/Write-explainer-doc-for-SPs-183a7775406d451a8b19e3cdc2cdf5c3?pvs=4#092a3a68d6734a12961f5c3fe95767e5)
-  - Doing so has negligible impact on memory and CPU usage, but has a 2x impact on incoming and outgoing traffic.
-
+  - If unset, we default to caching 16 most recent execution traces. Storage Providers may want to set this to 0, while exchanges may want to crank it up.
 
 ## New features
   - feat: miner cli: sectors list upgrade-bounds tool ([filecoin-project/lotus#10923](https://github.com/filecoin-project/lotus/pull/10923))
