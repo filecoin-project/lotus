@@ -240,7 +240,7 @@ func TestChainExportImportFull(t *testing.T) {
 	}
 }
 
-func TestFormTipsetByHeight(t *testing.T) {
+func TestEquivocations(t *testing.T) {
 	ctx := context.Background()
 	cg, err := gen.NewGenerator()
 	if err != nil {
@@ -322,6 +322,23 @@ func TestFormTipsetByHeight(t *testing.T) {
 	expectedWeight, err = cg.ChainStore().Weight(ctx, bestHead)
 	require.NoError(t, err)
 	require.Equal(t, expectedWeight, bestHeadWeight)
+
+	// check that after all of that, the chainstore's head has NOT changed
+	require.Equal(t, last.Key(), cg.ChainStore().GetHeaviestTipSet().Key())
+
+	// NOW, after all that, notify the chainstore to refresh its head
+	require.NoError(t, cg.ChainStore().RefreshHeaviestTipSet(ctx, blk1.Height+1))
+
+	previousHead := last
+	newHead := cg.ChainStore().GetHeaviestTipSet()
+	// the newHead should be at the same height as the previousHead
+	require.Equal(t, previousHead.Height(), newHead.Height())
+	// the newHead should NOT be the same as the previousHead
+	require.NotEqual(t, previousHead.Key(), newHead.Key())
+	// specifically, it should not contain any blocks by blk1Miner
+	for _, b := range newHead.Blocks() {
+		require.NotEqual(t, blk1.Miner, b.Miner)
+	}
 }
 
 func addBlockToTracker(t *testing.T, cs *store.ChainStore, blk *types.BlockHeader) {
