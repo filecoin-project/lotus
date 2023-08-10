@@ -787,7 +787,7 @@ func TestMigrationNV21(t *testing.T) {
 	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv21epoch+5))
 
 	// Now that we have upgraded, we need to verify:
-	// - Sector info changes executed succesfully
+	// - Sector info changes executed successfully
 	// - Direct data onboarding correct
 
 	bs := blockstore.NewAPIBlockstore(testClient)
