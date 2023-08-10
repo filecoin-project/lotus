@@ -115,9 +115,6 @@ type Miner struct {
 
 	waitFunc waitFunc
 
-	// lastWork holds the last MiningBase we built upon.
-	lastWork *MiningBase
-
 	sf *slashfilter.SlashFilter
 	// minedBlockHeights is a safeguard that caches the last heights we mined.
 	// It is consulted before publishing a newly mined block, for a sanity check
@@ -377,43 +374,15 @@ type MiningBase struct {
 	NullRounds abi.ChainEpoch
 }
 
-// GetBestMiningCandidate implements the fork choice rule from a miner's
-// perspective.
-//
-// It obtains the current chain head (HEAD), and compares it to the last tipset
-// we selected as our mining base (LAST). If HEAD's weight is larger than
-// LAST's weight, it selects HEAD to build on. Else, it selects LAST.
+// GetBestMiningCandidate queries the Lotus node for its current head,
+// and returns that as the best base to mine on
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
 	bts, err := m.api.ChainHead(ctx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to look up chain head: %w", err)
 	}
 
-	if m.lastWork != nil {
-		if m.lastWork.TipSet.Equals(bts) {
-			return m.lastWork, nil
-		}
-
-		btsw, err := m.api.ChainTipSetWeight(ctx, bts.Key())
-		if err != nil {
-			return nil, err
-		}
-		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.TipSet.Key())
-		if err != nil {
-			m.lastWork = nil
-			return nil, err
-		}
-
-		if types.BigCmp(btsw, ltsw) <= 0 {
-			return m.lastWork, nil
-		}
-	}
-
-	m.lastWork = &MiningBase{TipSet: bts}
-	return m.lastWork, nil
+	return &MiningBase{TipSet: bts}, nil
 }
 
 // mineOne attempts to mine a single block, and does so synchronously, if and
