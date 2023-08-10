@@ -312,6 +312,7 @@ type NetworkParams struct {
 	SupportedProofTypes     []abi.RegisteredSealProof
 	PreCommitChallengeDelay abi.ChainEpoch
 	ForkUpgradeParams       ForkUpgradeParams
+	Eip155ChainID           int
 }
 
 type ForkUpgradeParams struct {
