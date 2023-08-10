@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/golang-lru/arc/v2"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -373,8 +373,9 @@ minerLoop:
 // MiningBase is the tipset on top of which we plan to construct our next block.
 // Refer to godocs on GetBestMiningCandidate.
 type MiningBase struct {
-	TipSet     *types.TipSet
-	NullRounds abi.ChainEpoch
+	TipSet      *types.TipSet
+	ComputeTime time.Time
+	NullRounds  abi.ChainEpoch
 }
 
 // GetBestMiningCandidate implements the fork choice rule from a miner's
@@ -412,7 +413,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 		}
 	}
 
-	m.lastWork = &MiningBase{TipSet: bts}
+	m.lastWork = &MiningBase{TipSet: bts, ComputeTime: time.Now()}
 	return m.lastWork, nil
 }
 
@@ -560,6 +561,37 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
+	tEquivocateWait := build.Clock.Now()
+
+	// TODO: make param
+	m.niceSleep(time.Until(base.ComputeTime.Add(2 * time.Second)))
+	newBase, err := m.GetBestMiningCandidate(ctx)
+	if err != nil {
+		err = xerrors.Errorf("failed to refresh best mining candidate: %w", err)
+		return nil, err
+	}
+
+	// Only factor in equivocated blocks if doing so will not risk us missing a block
+	if newBase.TipSet.Height() == base.TipSet.Height() && newBase.TipSet.MinTicket().Equals(base.TipSet.MinTicket()) {
+		newBaseMap := map[cid.Cid]struct{}{}
+		for _, newBaseBlk := range newBase.TipSet.Cids() {
+			newBaseMap[newBaseBlk] = struct{}{}
+		}
+
+		refreshedBase := make([]*types.BlockHeader, 0, len(base.TipSet.Cids()))
+		for _, baseBlk := range base.TipSet.Blocks() {
+			if _, ok := newBaseMap[baseBlk.Cid()]; ok {
+				refreshedBase = append(refreshedBase, baseBlk)
+			}
+		}
+
+		base.TipSet, err = types.NewTipSet(refreshedBase)
+		if err != nil {
+			err = xerrors.Errorf("failed to create new tipset when refreshing: %w", err)
+			return nil, err
+		}
+	}
+
 	tPending := build.Clock.Now()
 
 	// TODO: winning post proof
@@ -582,7 +614,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			"tTicket ", tTicket.Sub(tPowercheck),
 			"tSeed ", tSeed.Sub(tTicket),
 			"tProof ", tProof.Sub(tSeed),
-			"tPending ", tPending.Sub(tProof),
+			"tEquivocateWait ", tEquivocateWait.Sub(tProof),
+			"tPending ", tPending.Sub(tEquivocateWait),
 			"tCreateBlock ", tCreateBlock.Sub(tPending))
 	}
 
