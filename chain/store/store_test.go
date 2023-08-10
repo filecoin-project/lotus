@@ -257,6 +257,11 @@ func TestEquivocations(t *testing.T) {
 		last = ts.TipSet.TipSet()
 	}
 
+	mTs, err := cg.NextTipSetFromMiners(last, []address.Address{last.Blocks()[0].Miner}, 0)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(mTs.TipSet.TipSet().Cids()))
+	last = mTs.TipSet.TipSet()
+
 	require.NotEmpty(t, last.Blocks())
 	blk1 := *last.Blocks()[0]
 
@@ -291,7 +296,9 @@ func TestEquivocations(t *testing.T) {
 	blk3 := blk1
 	blk3.Miner, err = address.NewIDAddress(blk1Miner + 100)
 	require.NoError(t, err)
-	blk3.Parents = append(blk3.Parents, blk1.Cid())
+	blk1Parent, err := cg.ChainStore().GetBlock(ctx, blk3.Parents[0])
+	require.NoError(t, err)
+	blk3.Parents = blk1Parent.Parents
 	addBlockToTracker(t, cg.ChainStore(), &blk3)
 
 	bestHead, bestHeadWeight, err = cg.ChainStore().FormHeaviestTipSetForHeight(ctx, last.Height())
@@ -329,16 +336,68 @@ func TestEquivocations(t *testing.T) {
 	// NOW, after all that, notify the chainstore to refresh its head
 	require.NoError(t, cg.ChainStore().RefreshHeaviestTipSet(ctx, blk1.Height+1))
 
-	previousHead := last
+	originalHead := *last
 	newHead := cg.ChainStore().GetHeaviestTipSet()
-	// the newHead should be at the same height as the previousHead
-	require.Equal(t, previousHead.Height(), newHead.Height())
-	// the newHead should NOT be the same as the previousHead
-	require.NotEqual(t, previousHead.Key(), newHead.Key())
+	// the newHead should be at the same height as the originalHead
+	require.Equal(t, originalHead.Height(), newHead.Height())
+	// the newHead should NOT be the same as the originalHead
+	require.NotEqual(t, originalHead.Key(), newHead.Key())
 	// specifically, it should not contain any blocks by blk1Miner
 	for _, b := range newHead.Blocks() {
 		require.NotEqual(t, blk1.Miner, b.Miner)
 	}
+
+	// now have blk2's Miner equivocate too! this causes us to switch to a tipset with a different parent!
+	blk5 := blk2
+	blk5.Timestamp = blk5.Timestamp + 1
+	addBlockToTracker(t, cg.ChainStore(), &blk5)
+
+	// notify the chainstore to refresh its head
+	require.NoError(t, cg.ChainStore().RefreshHeaviestTipSet(ctx, blk1.Height+1))
+	newHead = cg.ChainStore().GetHeaviestTipSet()
+	// the newHead should still be at the same height as the originalHead
+	require.Equal(t, originalHead.Height(), newHead.Height())
+	// BUT it should no longer have the same parents -- only blk3's miner is good, and they mined on a different tipset
+	require.Equal(t, 1, len(newHead.Blocks()))
+	require.Equal(t, blk3.Cid(), newHead.Cids()[0])
+	require.NotEqual(t, originalHead.Parents(), newHead.Parents())
+
+	// now have blk3's Miner equivocate too! this causes us to switch to a previous epoch entirely :(
+	blk6 := blk3
+	blk6.Timestamp = blk6.Timestamp + 1
+	addBlockToTracker(t, cg.ChainStore(), &blk6)
+
+	// trying to form a tipset at our previous height leads to emptiness
+	tryTs, tryTsWeight, err := cg.ChainStore().FormHeaviestTipSetForHeight(ctx, blk1.Height)
+	require.NoError(t, err)
+	require.Nil(t, tryTs)
+	require.True(t, tryTsWeight.IsZero())
+
+	// notify the chainstore to refresh its head
+	require.NoError(t, cg.ChainStore().RefreshHeaviestTipSet(ctx, blk1.Height+1))
+	newHead = cg.ChainStore().GetHeaviestTipSet()
+	// the newHead should now be one epoch behind originalHead
+	require.Greater(t, originalHead.Height(), newHead.Height())
+
+	// next, we create a new tipset with only one block after many null rounds
+	headAfterNulls, err := cg.NextTipSetFromMiners(newHead, []address.Address{newHead.Blocks()[0].Miner}, 15)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(headAfterNulls.TipSet.Blocks))
+
+	// now, we disqualify the block in this tipset because of equivocation
+	blkAfterNulls := headAfterNulls.TipSet.TipSet().Blocks()[0]
+	equivocatedBlkAfterNulls := *blkAfterNulls
+	equivocatedBlkAfterNulls.Timestamp = blkAfterNulls.Timestamp + 1
+	addBlockToTracker(t, cg.ChainStore(), &equivocatedBlkAfterNulls)
+
+	// try to form a tipset at this height -- it should be empty
+	tryTs2, tryTsWeight2, err := cg.ChainStore().FormHeaviestTipSetForHeight(ctx, blkAfterNulls.Height)
+	require.NoError(t, err)
+	require.Nil(t, tryTs2)
+	require.True(t, tryTsWeight2.IsZero())
+
+	// now we "notify" at this height -- it should fail, because we cannot refresh our head due to equivocation and nulls
+	require.ErrorContains(t, cg.ChainStore().RefreshHeaviestTipSet(ctx, blkAfterNulls.Height), "failed to refresh to a new valid tipset")
 }
 
 func addBlockToTracker(t *testing.T, cs *store.ChainStore, blk *types.BlockHeader) {
