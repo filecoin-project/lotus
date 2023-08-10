@@ -100,7 +100,7 @@ type Tx struct {
 // BeginTransaction is how you can access transactions using this library.
 // The entire transaction happens in the function passed in.
 // The return must be true or a rollback will occur.
-func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool)) (didCommit bool, retErr error) {
+func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool, err error)) (didCommit bool, retErr error) {
 	tx, err := db.pgx.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return false, err
@@ -111,7 +111,10 @@ func (db *DB) BeginTransaction(ctx context.Context, f func(*Tx) (commit bool)) (
 			retErr = tx.Rollback(ctx)
 		}
 	}()
-	commit = f(&Tx{tx, ctx})
+	commit, err = f(&Tx{tx, ctx})
+	if err != nil {
+		return false, err
+	}
 	if commit {
 		err := tx.Commit(ctx)
 		if err != nil {

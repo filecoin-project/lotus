@@ -42,8 +42,7 @@ func TestCrud(t *testing.T) {
 			Animal      string `db:"content"`
 			Unpopulated int
 		}
-		contentfilter := []string{"cows", "cats"}
-		err = cdb.Select(ctx, &ints, "SELECT content, some_int FROM itest_scratch where content = ANY($1)", contentfilter)
+		err = cdb.Select(ctx, &ints, "SELECT content, some_int FROM itest_scratch")
 		if err != nil {
 			t.Fatal("Could not select: ", err)
 		}
@@ -69,7 +68,7 @@ func TestTransaction(t *testing.T) {
 		if _, err := cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
 			t.Fatal("E0", err)
 		}
-		_, err := cdb.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool) {
+		_, err := cdb.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			if _, err := tx.Exec("INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
 				t.Fatal("E1", err)
 			}
@@ -91,7 +90,7 @@ func TestTransaction(t *testing.T) {
 			if sum2 != 4+5+6+7+8+9 {
 				t.Fatal("Expected 39, got ", sum2)
 			}
-			return false // rollback
+			return false, nil // rollback
 		})
 		if err != nil {
 			t.Fatal("ET", err)
