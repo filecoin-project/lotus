@@ -396,8 +396,9 @@ func TestEquivocations(t *testing.T) {
 	require.Nil(t, tryTs2)
 	require.True(t, tryTsWeight2.IsZero())
 
-	// now we "notify" at this height -- it should fail, because we cannot refresh our head due to equivocation and nulls
-	require.ErrorContains(t, cg.ChainStore().RefreshHeaviestTipSet(ctx, blkAfterNulls.Height), "failed to refresh to a new valid tipset")
+	// now we "notify" at this height -- it should lead to no head change because there's no formable head in near epochs
+	require.NoError(t, cg.ChainStore().RefreshHeaviestTipSet(ctx, blkAfterNulls.Height))
+	require.True(t, headAfterNulls.TipSet.TipSet().Equals(cg.ChainStore().GetHeaviestTipSet()))
 }
 
 func addBlockToTracker(t *testing.T, cs *store.ChainStore, blk *types.BlockHeader) {

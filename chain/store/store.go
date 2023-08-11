@@ -446,13 +446,15 @@ func (cs *ChainStore) RefreshHeaviestTipSet(ctx context.Context, newTsHeight abi
 			}
 		}
 
-		if newHeaviest == nil {
-			return xerrors.Errorf("failed to refresh to a new valid tipset")
-		}
-
-		errTake := cs.takeHeaviestTipSet(ctx, newHeaviest)
-		if errTake != nil {
-			return xerrors.Errorf("failed to take newHeaviest tipset as head: %w", err)
+		// if we've found something, we know it's the heaviest equivocation-free head, take it IMMEDIATELY
+		if newHeaviest != nil {
+			errTake := cs.takeHeaviestTipSet(ctx, newHeaviest)
+			if errTake != nil {
+				return xerrors.Errorf("failed to take newHeaviest tipset as head: %w", err)
+			}
+		} else {
+			// if we haven't found something, just stay with our equivocation-y head
+			newHeaviest = cs.heaviest
 		}
 	}
 
