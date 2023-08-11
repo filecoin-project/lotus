@@ -362,7 +362,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		rbase = entries[len(entries)-1]
 	}
 
-	eproof, err := IsRoundWinner(ctx, pts, round, m, rbase, mbi, mc)
+	eproof, err := IsRoundWinner(ctx, round, m, rbase, mbi, mc)
 	if err != nil {
 		return nil, nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -639,7 +639,7 @@ func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInf
 	return ValidWpostForTesting, nil
 }
 
-func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
+func IsRoundWinner(ctx context.Context, round abi.ChainEpoch,
 	miner address.Address, brand types.BeaconEntry, mbi *api.MiningBaseInfo, a MiningCheckAPI) (*types.ElectionProof, error) {
 
 	buf := new(bytes.Buffer)
