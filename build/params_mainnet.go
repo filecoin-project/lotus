@@ -105,6 +105,7 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 var PropagationDelaySecs = uint64(10)
+
 var EquivocationDelaySecs = uint64(2)
 
 func init() {
