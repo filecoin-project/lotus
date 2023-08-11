@@ -568,19 +568,16 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	// To safeguard against this, we make sure it's been EquivocationDelaySecs since our base was calculated,
 	// then re-calculate it.
 	// If the daemon detected equivocated blocks, those blocks will no longer be in the new base.
-	// TODO: make param
-	m.niceSleep(time.Until(base.ComputeTime.Add(2 * time.Second)))
+	m.niceSleep(time.Until(base.ComputeTime.Add(time.Duration(build.EquivocationDelaySecs) * time.Second)))
 	newBase, err := m.GetBestMiningCandidate(ctx)
 	if err != nil {
 		err = xerrors.Errorf("failed to refresh best mining candidate: %w", err)
 		return nil, err
 	}
 
-	// If the MinTicket is still the same, we take the _intersection_ of our old base and new base,
+	// If the base has changed, we take the _intersection_ of our old base and new base,
 	// thus ejecting blocks from any equivocating miners, without taking any new blocks.
-	// If the MinTicket is not the same, then the work we've done so far is no longer valid.
-	// Instead of choosing to miss a block, we submit our best-effort block anyway.
-	if !newBase.TipSet.Equals(base.TipSet) && newBase.TipSet.MinTicket().Equals(base.TipSet.MinTicket()) {
+	if !newBase.TipSet.Equals(base.TipSet) {
 		newBaseMap := map[cid.Cid]struct{}{}
 		for _, newBaseBlk := range newBase.TipSet.Cids() {
 			newBaseMap[newBaseBlk] = struct{}{}
@@ -600,14 +597,22 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 				return nil, err
 			}
 
-			base.TipSet = refreshedBase
+			if !base.TipSet.MinTicket().Equals(refreshedBase.MinTicket()) {
+				ticket, err = m.computeTicket(ctx, &rbase, round, refreshedBase.MinTicket(), mbi)
+				if err != nil {
+					err = xerrors.Errorf("failed to refresh ticket: %w", err)
+					return nil, err
+				}
+			}
 
 			// refresh messages, as the selected messages may no longer be valid
-			msgs, err = m.api.MpoolSelect(ctx, base.TipSet.Key(), ticket.Quality())
+			msgs, err = m.api.MpoolSelect(ctx, refreshedBase.Key(), ticket.Quality())
 			if err != nil {
 				err = xerrors.Errorf("failed to re-select messages for block: %w", err)
 				return nil, err
 			}
+
+			base.TipSet = refreshedBase
 		}
 	}
 
