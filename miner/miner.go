@@ -513,7 +513,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
-	winner, err = gen.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
+	winner, err = gen.IsRoundWinner(ctx, round, m.address, rbase, mbi, m.api)
 	if err != nil {
 		err = xerrors.Errorf("failed to check if we win next round: %w", err)
 		return nil, err
