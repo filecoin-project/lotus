@@ -507,13 +507,13 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		rbase = bvals[len(bvals)-1]
 	}
 
-	ticket, err := m.computeTicket(ctx, &rbase, base, mbi)
+	ticket, err := m.computeTicket(ctx, &rbase, round, base.TipSet.MinTicket(), mbi)
 	if err != nil {
 		err = xerrors.Errorf("scratching ticket failed: %w", err)
 		return nil, err
 	}
 
-	winner, err = gen.IsRoundWinner(ctx, base.TipSet, round, m.address, rbase, mbi, m.api)
+	winner, err = gen.IsRoundWinner(ctx, round, m.address, rbase, mbi, m.api)
 	if err != nil {
 		err = xerrors.Errorf("failed to check if we win next round: %w", err)
 		return nil, err
@@ -589,15 +589,14 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	return minedBlock, nil
 }
 
-func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, base *MiningBase, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
+func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, round abi.ChainEpoch, chainRand *types.Ticket, mbi *api.MiningBaseInfo) (*types.Ticket, error) {
 	buf := new(bytes.Buffer)
 	if err := m.address.MarshalCBOR(buf); err != nil {
 		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
 	}
 
-	round := base.TipSet.Height() + base.NullRounds + 1
 	if round > build.UpgradeSmokeHeight {
-		buf.Write(base.TipSet.MinTicket().VRFProof)
+		buf.Write(chainRand.VRFProof)
 	}
 
 	input, err := lrand.DrawRandomness(brand.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
