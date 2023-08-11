@@ -555,7 +555,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	tProof := build.Clock.Now()
 
 	// get pending messages early,
-	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
+	msgs, err := m.api.MpoolSelect(ctx, base.TipSet.Key(), ticket.Quality())
 	if err != nil {
 		err = xerrors.Errorf("failed to select messages for block: %w", err)
 		return nil, err
@@ -563,6 +563,11 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 
 	tEquivocateWait := build.Clock.Now()
 
+	// This next block exists to "catch" equivocating miners,
+	// who submit 2 blocks at the same height at different times in order to split the network.
+	// To safeguard against this, we make sure it's been EquivocationDelaySecs since our base was calculated,
+	// then re-calculate it.
+	// If the daemon detected equivocated blocks, those blocks will no longer be in the new base.
 	// TODO: make param
 	m.niceSleep(time.Until(base.ComputeTime.Add(2 * time.Second)))
 	newBase, err := m.GetBestMiningCandidate(ctx)
@@ -571,24 +576,38 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 		return nil, err
 	}
 
-	// Only factor in equivocated blocks if doing so will not risk us missing a block
-	if newBase.TipSet.Height() == base.TipSet.Height() && newBase.TipSet.MinTicket().Equals(base.TipSet.MinTicket()) {
+	// If the MinTicket is still the same, we take the _intersection_ of our old base and new base,
+	// thus ejecting blocks from any equivocating miners, without taking any new blocks.
+	// If the MinTicket is not the same, then the work we've done so far is no longer valid.
+	// Instead of choosing to miss a block, we submit our best-effort block anyway.
+	if !newBase.TipSet.Equals(base.TipSet) && newBase.TipSet.MinTicket().Equals(base.TipSet.MinTicket()) {
 		newBaseMap := map[cid.Cid]struct{}{}
 		for _, newBaseBlk := range newBase.TipSet.Cids() {
 			newBaseMap[newBaseBlk] = struct{}{}
 		}
 
-		refreshedBase := make([]*types.BlockHeader, 0, len(base.TipSet.Cids()))
+		refreshedBaseBlocks := make([]*types.BlockHeader, 0, len(base.TipSet.Cids()))
 		for _, baseBlk := range base.TipSet.Blocks() {
 			if _, ok := newBaseMap[baseBlk.Cid()]; ok {
-				refreshedBase = append(refreshedBase, baseBlk)
+				refreshedBaseBlocks = append(refreshedBaseBlocks, baseBlk)
 			}
 		}
 
-		base.TipSet, err = types.NewTipSet(refreshedBase)
-		if err != nil {
-			err = xerrors.Errorf("failed to create new tipset when refreshing: %w", err)
-			return nil, err
+		if len(refreshedBaseBlocks) != len(base.TipSet.Blocks()) {
+			refreshedBase, err := types.NewTipSet(refreshedBaseBlocks)
+			if err != nil {
+				err = xerrors.Errorf("failed to create new tipset when refreshing: %w", err)
+				return nil, err
+			}
+
+			base.TipSet = refreshedBase
+
+			// refresh messages, as the selected messages may no longer be valid
+			msgs, err = m.api.MpoolSelect(ctx, base.TipSet.Key(), ticket.Quality())
+			if err != nil {
+				err = xerrors.Errorf("failed to re-select messages for block: %w", err)
+				return nil, err
+			}
 		}
 	}
 
