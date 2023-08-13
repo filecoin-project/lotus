@@ -13,13 +13,13 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var logger = logging.Logger("harmonytask")
+var log = logging.Logger("harmonytask")
 
 type taskTypeHandler struct {
 	TaskInterface
 	TaskTypeDetails
 	TaskEngine *TaskEngine
-	Count      int /// locked by TaskEngine's mutex
+	Count      atomic.Int32 /// locked by TaskEngine's mutex
 
 	LastCleanup atomic.Value
 }
@@ -31,17 +31,17 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) bool) {
 		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
 			VALUES ($1, $2, CURRENT_TIMESTAMP) `, h.Name, h.TaskEngine.ownerID)
 		if err != nil {
-			logger.Error("Could not insert into harmonyTask", err)
+			log.Error("Could not insert into harmonyTask", err)
 			return false
 		}
 		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
 		if err != nil {
-			logger.Error("Could not select ID: ", err)
+			log.Error("Could not select ID: ", err)
 		}
 		return extra(tID, tx)
 	})
 	if err != nil {
-		logger.Error(err)
+		log.Error(err)
 	}
 	if !did {
 		return
@@ -57,48 +57,46 @@ func (h *taskTypeHandler) considerWork(ids []TaskID) (workAccepted bool) {
 		return true // stop looking for takers
 	}
 
-	h.TaskEngine.workAdderMutex.Lock()
-	defer h.TaskEngine.workAdderMutex.Unlock()
-
 	// 1. Can we do any more of this task type?
-	if h.Max > -1 && h.Count == h.Max {
-		logger.Info("Did not accept " + h.Name + " task: at max already.")
+	if h.Max > -1 && int(h.Count.Load()) == h.Max {
+		log.Infow("did not accept task", "name", h.Name, "reason", "at max already")
 		return false
 	}
+
+	h.TaskEngine.workAdderMutex.Lock()
+	defer h.TaskEngine.workAdderMutex.Unlock()
 
 	// 2. Can we do any more work?
 	err := h.AssertMachineHasCapacity()
 	if err != nil {
-		logger.Info(err)
+		log.Info(err)
 		return false
 	}
 
 	// 3. What does the impl say?
 	tID, err := h.CanAccept(ids)
 	if err != nil {
-		logger.Error(err)
+		log.Error(err)
 		return false
 	}
 	if tID == nil {
-		logger.Info("Did not accept task " + strconv.Itoa(int(*tID)) + ": CanAccept() refused")
+		log.Infow("did not accept task", "task_id", ids[0], "reason", "CanAccept() refused")
 		return false
 	}
 
 	// 4. Can we claim the work for our hostname?
 	ct, err := h.TaskEngine.db.Exec(h.TaskEngine.ctx, "UPDATE harmony_task SET owner_id=$1 WHERE id=$2 AND owner_id IS NULL", h.TaskEngine.ownerID, *tID)
 	if err != nil {
-		logger.Error(err)
+		log.Error(err)
 		return false
 	}
 	if ct == 0 {
-		logger.Info("Did not accept task " + strconv.Itoa(int(*tID)) + ": Already Taken")
+		log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken")
 		return false
 	}
 
 	go func() {
-		h.TaskEngine.workAdderMutex.Lock()
-		h.Count++
-		h.TaskEngine.workAdderMutex.Unlock()
+		h.Count.Add(1)
 
 		var done bool
 		var doErr error
@@ -106,12 +104,10 @@ func (h *taskTypeHandler) considerWork(ids []TaskID) (workAccepted bool) {
 
 		defer func() {
 			if r := recover(); r != nil {
-				logger.Error("Recovered from a serious error "+
+				log.Error("Recovered from a serious error "+
 					"while processing "+h.Name+" task "+strconv.Itoa(int(*tID))+": ", r)
 			}
-			h.TaskEngine.workAdderMutex.Lock()
-			h.Count--
-			h.TaskEngine.workAdderMutex.Unlock()
+			h.Count.Add(-1)
 
 			h.recordCompletion(*tID, workStart, done, doErr)
 			if done {
@@ -127,13 +123,13 @@ func (h *taskTypeHandler) considerWork(ids []TaskID) (workAccepted bool) {
 			err := h.TaskEngine.db.QueryRow(context.Background(),
 				`SELECT owner_id FROM harmony_task WHERE id=$1`, *tID).Scan(&owner)
 			if err != nil {
-				logger.Error("Cannot determine ownership: ", err)
+				log.Error("Cannot determine ownership: ", err)
 				return false
 			}
 			return owner == h.TaskEngine.ownerID
 		})
 		if doErr != nil {
-			logger.Error("Do("+h.Name+", taskID="+strconv.Itoa(int(*tID))+") returned error: ", doErr)
+			log.Error("Do("+h.Name+", taskID="+strconv.Itoa(int(*tID))+") returned error: ", doErr)
 		}
 	}()
 	return true
@@ -146,14 +142,14 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
 		if err != nil {
-			logger.Error("Could not log completion: ", err)
+			log.Error("Could not log completion: ", err)
 			return false
 		}
 		result := "unspecified error"
 		if done {
 			_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
 			if err != nil {
-				logger.Error("Could not log completion: ", err)
+				log.Error("Could not log completion: ", err)
 				return false
 			}
 			result = ""
@@ -166,13 +162,13 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 				err = tx.QueryRow(`SELECT count(*) FROM harmony_task_history 
 				WHERE task_id=$1 AND result=FALSE`, tID).Scan(&ct)
 				if err != nil {
-					logger.Error("Could not read task history:", err)
+					log.Error("Could not read task history:", err)
 					return false
 				}
 				if ct > h.MaxFailures {
 					_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
 					if err != nil {
-						logger.Error("Could not delete failed job: ", err)
+						log.Error("Could not delete failed job: ", err)
 						return false
 					}
 					// Note: Extra Info is left laying around for later review & clean-up
@@ -183,17 +179,17 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 												(task_id, name, posted,    work_start, work_end, result, err)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7)`, tID, h.Name, postedTime, workStart, workEnd, done, result)
 		if err != nil {
-			logger.Error("Could not write history: ", err)
+			log.Error("Could not write history: ", err)
 			return false
 		}
 		return true
 	})
 	if err != nil {
-		logger.Error("Could not record transaction: ", err)
+		log.Error("Could not record transaction: ", err)
 		return
 	}
 	if !cm {
-		logger.Error("Committing the task records failed")
+		log.Error("Committing the task records failed")
 	}
 }
 
@@ -208,9 +204,6 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	}
 	if r.Gpu-h.Cost.Gpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
-	}
-	if h.Cost.Scratch > r.Scratch {
-		return errors.New("Did not accept " + h.Name + " task: out of scratch space")
 	}
 	return nil
 }
@@ -246,7 +239,7 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 		WHERE from_type=$1 AND to_type NOT IN $2 AND f.owner_id != $3`,
 		h.Name, inProcessFollowers, h.TaskEngine.ownerID)
 	if err != nil {
-		logger.Warn("Could not fast-trigger partner processes.", err)
+		log.Warn("Could not fast-trigger partner processes.", err)
 		return
 	}
 	hostsVisited := map[string]bool{}
@@ -257,18 +250,18 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 		}
 		resp, err := hClient.Get(v.HostAndPort + "/scheduler/follows/" + h.Name)
 		if err != nil {
-			logger.Warn("Couldn't hit http endpoint: ", err)
+			log.Warn("Couldn't hit http endpoint: ", err)
 			h.TaskEngine.cleanupDepartedMachines()
 			continue
 		}
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
-			logger.Warn("Couldn't hit http endpoint: ", err)
+			log.Warn("Couldn't hit http endpoint: ", err)
 			continue
 		}
 		hostsVisited[v.HostAndPort], tasksVisited[v.ToType] = true, true
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-			logger.Error("IO failed for fast nudge: ", string(b))
+			log.Error("IO failed for fast nudge: ", string(b))
 			continue
 		}
 	}

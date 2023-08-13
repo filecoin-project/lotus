@@ -27,7 +27,6 @@ type Resources struct {
 	Gpu       float64
 	GpuRam    uint64
 	Ram       uint64
-	Scratch   uint64
 	MachineID int
 }
 type Reg struct {
@@ -39,43 +38,43 @@ var logger = logging.Logger("harmonytask")
 
 var lotusRE = regexp.MustCompile("lotus-worker|lotus-harmony|yugabyted")
 
-func Register(db *harmonydb.DB, hostnameAndPort, path string) (res *Reg, err error) {
+func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 	var reg Reg
-	reg.Resources, err = getResources(path)
+	var err error
+	reg.Resources, err = getResources()
 	if err != nil {
-		return res, err
+		return nil, err
 	}
 	ctx := context.Background()
 	{ // Learn our owner_id while updating harmony_machines
 		var ownerID []int
 		err := db.Select(ctx, &ownerID, `SELECT id FROM harmony_machines WHERE host_and_port=$1`, hostnameAndPort)
 		if err != nil {
-			return res, fmt.Errorf("could not read from harmony_machines: %w", err)
+			return nil, fmt.Errorf("could not read from harmony_machines: %w", err)
 		}
 		if len(ownerID) == 0 {
 			err = db.QueryRow(ctx, `INSERT INTO harmony_machines 
-		(host_and_port, cpu, ram, gpu, gpuram, scratch) VALUES
-		($1,$2,$3,$4,$5,$6) RETURNING id`,
-				hostnameAndPort, res.Cpu, res.Ram, res.Gpu, res.GpuRam, res.Scratch).Scan(&reg.Resources.MachineID)
+		(host_and_port, cpu, ram, gpu, gpuram) VALUES
+		($1,$2,$3,$4,$5) RETURNING id`,
+				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu, reg.GpuRam).Scan(&reg.Resources.MachineID)
 			if err != nil {
-				return res, err
+				return nil, err
 			}
 
 		} else {
-			res.MachineID = ownerID[0]
+			reg.MachineID = ownerID[0]
 			_, err := db.Exec(ctx, `UPDATE harmony_machines SET
-		   cpu=$1, ram=$2, gpu=$3, gpuram=$4, scratch=$5 WHERE id=$6`,
-				res.Cpu, res.Ram, res.Gpu, res.GpuRam, res.Scratch, reg.Resources.MachineID)
+		   cpu=$1, ram=$2, gpu=$3, gpuram=$4 WHERE id=$6`,
+				reg.Cpu, reg.Ram, reg.Gpu, reg.GpuRam, reg.Resources.MachineID)
 			if err != nil {
-				return res, err
+				return nil, err
 			}
 		}
 	}
-	res.shutdown = atomic.Bool{}
 	go func() {
 		for {
 			time.Sleep(time.Minute)
-			if res.shutdown.Load() {
+			if reg.shutdown.Load() {
 				return
 			}
 			_, err := db.Exec(ctx, `UPDATE harmony_machines SET last_contact=CURRENT_TIMESTAMP`)
@@ -92,7 +91,7 @@ func (res *Reg) Shutdown() {
 	res.shutdown.Store(true)
 }
 
-func getResources(path string) (res Resources, err error) {
+func getResources() (res Resources, err error) {
 	b, err := exec.Command(`ps`, `-ef`).CombinedOutput()
 	if err != nil {
 		logger.Warn("Could not safety check for 2+ processes: ", err)
@@ -112,17 +111,6 @@ func getResources(path string) (res Resources, err error) {
 		Cpu:    runtime.NumCPU(),
 		Ram:    memory.FreeMemory(),
 		GpuRam: getGpuRam(),
-	}
-
-	{ // Scratch size
-		var stat unix.Statfs_t
-		err = unix.Statfs(path, &stat)
-		if err != nil {
-			logger.Warn("statfs returned ", err, ". Using max.")
-			res.Scratch = 1 << 63
-		} else {
-			res.Scratch = stat.Bavail * uint64(stat.Bsize)
-		}
 	}
 
 	{ // GPU boolean

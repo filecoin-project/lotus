@@ -1,6 +1,7 @@
 package itests
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/stretchr/testify/require"
 )
 
 type task1 struct {
@@ -65,7 +67,7 @@ func TestHarmonyTasks(t *testing.T) {
 			toAdd:           []int{56, 73},
 			myPersonalTable: map[harmonytask.TaskID]int{},
 		}
-		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1", "/tmp")
+		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1")
 		if err != nil {
 			t.Fatal("Did not initialize:" + err.Error())
 		}
@@ -84,8 +86,92 @@ func TestHarmonyTasks(t *testing.T) {
 	})
 }
 
-/* TODO tests must include cases like:
-   2 or more parties
-   work added before 2nd party joins
-   work picked-up after other work completes (in-party and across-parties)
+type passthru struct {
+	dtl       harmonytask.TaskTypeDetails
+	do        func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error)
+	canAccept func(list []harmonytask.TaskID) (*harmonytask.TaskID, error)
+	adder     func(add harmonytask.AddTaskFunc)
+}
+
+func (t *passthru) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+	return t.do(tID, stillOwned)
+}
+func (t *passthru) CanAccept(list []harmonytask.TaskID) (*harmonytask.TaskID, error) {
+	return t.canAccept(list)
+}
+func (t *passthru) TypeDetails() harmonytask.TaskTypeDetails {
+	return t.dtl
+}
+func (t *passthru) Adder(add harmonytask.AddTaskFunc) {
+	if t.adder != nil {
+		t.adder(add)
+	}
+}
+
+func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
+	withSetup(t, func(m *kit.TestMiner) {
+		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
+		dtl := harmonytask.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Resources{}}
+		senderParty := &passthru{
+			dtl:       dtl,
+			canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return nil, nil },
+			adder: func(add harmonytask.AddTaskFunc) {
+				for _, v := range []string{"A", "B"} {
+					add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
+						_, err := tx.Exec("INSERT INTO itest_scratch (some_int, content) VALUES ($1,$2)", tID, v)
+						if err != nil {
+							t.Fatal("Err inserting: ", err)
+						}
+						return true
+					})
+				}
+			},
+		}
+		letters := []string{}
+		var lettersMutex sync.Mutex
+		workerParty := &passthru{
+			dtl:       dtl,
+			canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return &list[0], nil },
+			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+				var content string
+				err = cdb.QueryRow(context.Background(),
+					"SELECT content FROM itest_scratch WHERE some_int=$1", tID).Scan(&content)
+				if err != nil {
+					t.Fatal("Error reading content:", err)
+				}
+				lettersMutex.Lock()
+				defer lettersMutex.Unlock()
+				letters = append(letters, content)
+				return true, nil
+			},
+		}
+		harmonytask.POLL_DURATION = time.Millisecond * 100
+		sender, err := harmonytask.New(cdb, []harmonytask.TaskInterface{senderParty}, "test:1")
+		if err != nil {
+			t.Fatal("Did not initialize:" + err.Error())
+		}
+		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{workerParty}, "test:2")
+		if err != nil {
+			t.Fatal("Did not initialize:" + err.Error())
+		}
+		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
+		sender.GracefullyTerminate(time.Second * 5)
+		worker.GracefullyTerminate(time.Second * 5)
+		sort.Strings(letters)
+		require.Equal(t, letters, []string{"A", "B"})
+	})
+}
+
+/*
+TODO BEFORE PR DONE tests to write: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	worker stealing (when worker) died
+	    ---> push db entry with owner
+	retry flow once do() fails
+*/
+
+/*
+FUTURE test fast-pass round-robin via http calls once the API for that is set
+It's necessary for WinningPoSt.
+
+FUTURE test follows. It's needed for sealing work.
 */

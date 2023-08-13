@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
@@ -55,6 +54,7 @@ type TaskInterface interface {
 	// CanAccept should return if the task can run on this machine. It should
 	// return null if the task type is not allowed on this machine.
 	// It should select the task it most wants to accomplish.
+	// It is also responsible for determining disk space (including scratch).
 	CanAccept([]TaskID) (*TaskID, error)
 
 	// TypeDetails() returns static details about how this task behaves and
@@ -96,7 +96,6 @@ type TaskEngine struct {
 	db             *harmonydb.DB
 	workAdderMutex *notifyingMx
 	reg            *resources.Reg
-	resources      resources.Resources
 	grace          context.CancelFunc
 	taskMap        map[string]*taskTypeHandler
 	ownerID        int
@@ -117,10 +116,9 @@ type TaskID int
 func New(
 	db *harmonydb.DB,
 	impls []TaskInterface,
-	hostnameAndPort string,
-	scratchPath string) (*TaskEngine, error) {
+	hostnameAndPort string) (*TaskEngine, error) {
 
-	reg, err := resources.Register(db, hostnameAndPort, scratchPath)
+	reg, err := resources.Register(db, hostnameAndPort)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get resources: %w", err)
 	}
@@ -129,7 +127,7 @@ func New(
 		ctx:            ctx,
 		grace:          grace,
 		db:             db,
-		resources:      reg.Resources,
+		reg:            reg,
 		ownerID:        reg.Resources.MachineID, // The current number representing "hostAndPort"
 		workAdderMutex: &notifyingMx{},
 		taskMap:        make(map[string]*taskTypeHandler, len(impls)),
@@ -181,12 +179,12 @@ func New(
 			if h == nil {
 				_, err := db.Exec(e.ctx, `UPDATE harmony_task SET owner=NULL WHERE id=$1`, w.ID)
 				if err != nil {
-					logger.Error("Cannot remove self from owner field: ", err)
+					log.Error("Cannot remove self from owner field: ", err)
 					continue // not really fatal, but not great
 				}
 			}
 			if !h.considerWork([]TaskID{TaskID(w.ID)}) {
-				logger.Error("Strange: Unable to accept previously owned task: ", w.ID, w.Name)
+				log.Error("Strange: Unable to accept previously owned task: ", w.ID, w.Name)
 			}
 		}
 	}
@@ -206,38 +204,25 @@ func (e *TaskEngine) GracefullyTerminate(deadline time.Duration) {
 	e.reg.Shutdown()
 	deadlineChan := time.NewTimer(deadline).C
 
-	// TODO block bumps & follows by unreg from DBs.
+	// block bumps & follows by unreg from DBs.
 	_, err := e.db.Exec(context.Background(), `DELETE FROM harmony_task_impl WHERE owner_id=$1`, e.ownerID)
 	if err != nil {
-		logger.Warn("Could not clean-up impl table: %w", err)
+		log.Warn("Could not clean-up impl table: %w", err)
 	}
 	_, err = e.db.Exec(context.Background(), `DELETE FROM harmony_task_follow WHERE owner_id=$1`, e.ownerID)
 	if err != nil {
-		logger.Warn("Could not clean-up impl table: %w", err)
+		log.Warn("Could not clean-up impl table: %w", err)
 	}
-	for {
-		e.workAdderMutex.Lock()
-		for _, h := range e.handlers {
-			if h.Count > 0 {
-				goto busy
+top:
+	for _, h := range e.handlers {
+		if h.Count.Load() > 0 {
+			select {
+			case <-deadlineChan:
+				return
+			default:
+				time.Sleep(time.Millisecond)
+				goto top
 			}
-		}
-		e.workAdderMutex.Unlock()
-		return
-	busy:
-		ch := make(chan bool)
-		var once sync.Once
-		e.workAdderMutex.UnlockNotify = func() {
-			once.Do(func() {
-				close(ch)
-			})
-		}
-		e.workAdderMutex.Unlock()
-		select {
-		case <-ch:
-			continue
-		case <-deadlineChan:
-			return
 		}
 	}
 }
@@ -251,7 +236,7 @@ func (e *TaskEngine) poller() {
 			return
 		}
 		e.followWorkInDB()   // "Follows" the slow way
-		e.pollerTryAllWork() // "Bumps" (next task) the slow way
+		e.pollerTryAllWork() // "Bumps" (round robin tasks) the slow way
 	}
 }
 
@@ -266,7 +251,7 @@ func (e *TaskEngine) followWorkInDB() {
 		err := e.db.Select(e.ctx, &cList, `SELECT h.task_id FROM harmony_task_history 
    		WHERE h.work_end>$1 AND h.name=$2`, lastFollowTime, from_name)
 		if err != nil {
-			logger.Error("Could not query DB: ", err)
+			log.Error("Could not query DB: ", err)
 			return
 		}
 		for _, src := range srcs {
@@ -275,7 +260,7 @@ func (e *TaskEngine) followWorkInDB() {
 				err := e.db.QueryRow(e.ctx, `SELECT COUNT(*) FROM harmony_task 
 					WHERE name=$1 AND previous_task=$2`, src.h.Name, workAlreadyDone).Scan(&ct)
 				if err != nil {
-					logger.Error("Could not query harmony_task: ", err)
+					log.Error("Could not query harmony_task: ", err)
 					return // not recoverable here
 				}
 				if ct > 0 {
@@ -284,7 +269,7 @@ func (e *TaskEngine) followWorkInDB() {
 				// we need to create this task
 				if !src.h.Follows[from_name](TaskID(workAlreadyDone), src.h.AddTask) {
 					// But someone may have beaten us to it.
-					logger.Infof("Unable to add task %s following Task(%d, %s)", src.h.Name, workAlreadyDone, from_name)
+					log.Infof("Unable to add task %s following Task(%d, %s)", src.h.Name, workAlreadyDone, from_name)
 				}
 			}
 		}
@@ -293,67 +278,65 @@ func (e *TaskEngine) followWorkInDB() {
 
 // pollerTryAllWork implements "Bumps" (next task) the slow way
 func (e *TaskEngine) pollerTryAllWork() {
-	for {
-		cleanTime := time.Now().Add(-1 * CLEANUP_FREQUENCY)
-		for _, v := range e.handlers {
-		rerun:
-			if v.AssertMachineHasCapacity() != nil {
-				continue
-			}
-			var unownedTasks []TaskID
-			err := e.db.Select(e.ctx, &unownedTasks, `SELECT id 
+	cleanTime := time.Now().Add(-1 * CLEANUP_FREQUENCY)
+	for _, v := range e.handlers {
+	rerun:
+		if v.AssertMachineHasCapacity() != nil {
+			continue
+		}
+		var unownedTasks []TaskID
+		err := e.db.Select(e.ctx, &unownedTasks, `SELECT id 
 			FROM harmony_task
 			WHERE owner_id IS NULL AND name=$1
 			ORDER BY update_time`, v.Name)
-			if err != nil {
-				logger.Error("Unable to read work", err)
-				continue
-			}
-			if len(unownedTasks) == 0 && v.LastCleanup.Load().(time.Time).Before(cleanTime) {
-				v.LastCleanup.Store(time.Now())
-				var shouldRerun bool
-				_, err := e.db.BeginTransaction(e.ctx, func(tx *harmonydb.Tx) bool {
-					var ms []int
-					err := tx.Select(&ms, `SELECT m.id FROM harmony_machines m
+		if err != nil {
+			log.Error("Unable to read work ", err)
+			continue
+		}
+		if len(unownedTasks) == 0 && v.LastCleanup.Load().(time.Time).Before(cleanTime) {
+			v.LastCleanup.Store(time.Now())
+			var shouldRerun bool
+			_, err := e.db.BeginTransaction(e.ctx, func(tx *harmonydb.Tx) bool {
+				var ms []int
+				err := tx.Select(&ms, `SELECT m.id FROM harmony_machines m
 					JOIN harmony_tasks t ON m.id=t.owner_id
 					WHERE m.last_contact < $1 RETURNING id`, time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
-					if err != nil {
-						logger.Error("Deleting dead machines' workloads failed: ", err)
-						return true
-					}
-					if len(ms) == 0 {
-						return true
-					}
-					ct, err := tx.Exec(`UPDATE harmony_tasks SET owner_id=NULL
-					WHERE owner_id IN $1`, ms)
-					if err != nil {
-						logger.Error("cannot update harmony_task for cleanup", err)
-						return true
-					}
-
-					// DO abandoned tasks
-					if ct > 0 {
-						shouldRerun = true
-					}
-					return true
-				})
 				if err != nil {
-					logger.Error("Cleanup Txn failed: ", err)
+					log.Error("Deleting dead machines' workloads failed: ", err)
+					return true
 				}
-				if !shouldRerun {
-					return
+				if len(ms) == 0 {
+					return true
 				}
-				continue
+				ct, err := tx.Exec(`UPDATE harmony_tasks SET owner_id=NULL
+					WHERE owner_id IN $1`, ms)
+				if err != nil {
+					log.Error("cannot update harmony_task for cleanup", err)
+					return true
+				}
+
+				// DO abandoned tasks
+				if ct > 0 {
+					shouldRerun = true
+				}
+				return true
+			})
+			if err != nil {
+				log.Error("Cleanup Txn failed: ", err)
 			}
-			accepted := v.considerWork(unownedTasks)
-			if !accepted {
-				logger.Warn("Work not accepted")
-				continue
+			if !shouldRerun {
+				return
 			}
-			if len(unownedTasks) > 1 {
-				e.bump(v.Name) // wait for others before trying again to add work.
-				goto rerun
-			}
+			continue
+		}
+		accepted := v.considerWork(unownedTasks)
+		if !accepted {
+			log.Warn("Work not accepted")
+			continue
+		}
+		if len(unownedTasks) > 1 {
+			e.bump(v.Name) // wait for others before trying again to add work.
+			goto rerun
 		}
 	}
 }
@@ -407,13 +390,13 @@ func (e *TaskEngine) bump(taskType string) {
 	JOIN harmony_task_impl i ON i.owner_id=m.id
 	WHERE i.name=$1`, taskType)
 	if err != nil {
-		logger.Error("Could not read db for bump: ", err)
+		log.Error("Could not read db for bump: ", err)
 		return
 	}
 	for _, url := range res {
 		resp, err := hClient.Get(url + "/scheduler/bump/" + taskType)
 		if err != nil {
-			logger.Info("Server unreachable to bump: ", err)
+			log.Info("Server unreachable to bump: ", err)
 			e.cleanupDepartedMachines()
 			continue
 		}
@@ -425,12 +408,12 @@ func (e *TaskEngine) bump(taskType string) {
 
 // resourcesInUse requires workListsMutex to be already locked.
 func (e *TaskEngine) resourcesInUse() resources.Resources {
-	tmp := e.resources
+	tmp := e.reg.Resources
 	for _, t := range e.handlers {
-		tmp.Cpu -= t.Count * t.Cost.Cpu
-		tmp.Gpu -= float64(t.Count) * t.Cost.Gpu
-		tmp.Ram -= uint64(t.Count) * t.Cost.Ram
-		tmp.Scratch -= uint64(t.Count) * t.Cost.Scratch
+		ct := t.Count.Load()
+		tmp.Cpu -= int(ct) * t.Cost.Cpu
+		tmp.Gpu -= float64(ct) * t.Cost.Gpu
+		tmp.Ram -= uint64(ct) * t.Cost.Ram
 	}
 	return tmp
 }
@@ -438,19 +421,19 @@ func (e *TaskEngine) resourcesInUse() resources.Resources {
 func (e *TaskEngine) cleanupDepartedMachines() {
 	e.db.BeginTransaction(e.ctx, func(tx *harmonydb.Tx) bool {
 		var goners []int
-		err := tx.Select(&goners, `SELECT owner_id FROM harmony_machines WHERE last_contact<$1`, time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
+		err := tx.Select(&goners, `SELECT id FROM harmony_machines WHERE last_contact<$1`, time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
 		if err != nil {
-			logger.Error("Could not query for goners: ", err)
+			log.Error("Could not query for goners: ", err)
 			return false
 		}
-		_, err = tx.Exec(`DELETE FROM harmony_task_impl WHERE owner_id IN $1`, goners)
+		_, err = tx.Exec(`DELETE FROM harmony_task_impl WHERE owner_id = ANY($1)`, goners)
 		if err != nil {
-			logger.Error("Could not delete impls for goners: ", err)
+			log.Error("Could not delete impls for goners: ", err)
 			return false
 		}
-		_, err = tx.Exec(`DELETE FROM harmony_task_follow WHERE owner_id IN $1`, goners)
+		_, err = tx.Exec(`DELETE FROM harmony_task_follow WHERE owner_id = ANY($1)`, goners)
 		if err != nil {
-			logger.Error("Could not delete impls for goners: ", err)
+			log.Error("Could not delete impls for goners: ", err)
 			return false
 		}
 		return true

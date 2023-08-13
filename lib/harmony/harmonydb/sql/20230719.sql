@@ -21,8 +21,7 @@ CREATE TABLE harmony_machines (
     cpu INTEGER NOT NULL, 
     ram BIGINT NOT NULL, 
     gpu FLOAT NOT NULL, 
-    gpuram BIGINT NOT NULL, 
-    scratch BIGINT NOT NULL
+    gpuram BIGINT NOT NULL
 );
 
 CREATE TABLE harmony_task_history (

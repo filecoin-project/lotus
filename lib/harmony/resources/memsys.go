@@ -4,8 +4,8 @@
 package resources
 
 import (
+	"encoding/binary"
 	"syscall"
-	"unsafe"
 )
 
 func sysctlUint64(name string) (uint64, error) {
@@ -18,5 +18,5 @@ func sysctlUint64(name string) (uint64, error) {
 	if len(b) < 8 {
 		b = append(b, 0)
 	}
-	return *(*uint64)(unsafe.Pointer(&b[0])), nil
+	return binary.LittleEndian.Uint64(b), nil
 }

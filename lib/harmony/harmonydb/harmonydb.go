@@ -118,21 +118,25 @@ type tracer struct {
 
 type ctxkey string
 
-var sqlStart = ctxkey("sqlStart")
+const SQL_START = ctxkey("sqlStart")
+const SQL_STRING = ctxkey("sqlString")
 
 func (t tracer) TraceQueryStart(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
-	return context.WithValue(ctx, sqlStart, time.Now())
+	return context.WithValue(context.WithValue(ctx, SQL_START, time.Now()), SQL_STRING, data.SQL)
 }
 func (t tracer) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.TraceQueryEndData) {
 	DBMeasures.Hits.M(1)
-	ms := time.Since(ctx.Value(sqlStart).(time.Time)).Milliseconds()
+	ms := time.Since(ctx.Value(SQL_START).(time.Time)).Milliseconds()
 	DBMeasures.TotalWait.M(ms)
 	DBMeasures.Waits.Observe(float64(ms))
 	if data.Err != nil {
 		DBMeasures.Errors.M(1)
 	}
-	// Can log what type of query it is, but not what tables
-	// Can log rows affected.
+	logger.Debugw("SQL run",
+		"query", ctx.Value(SQL_STRING).(string),
+		"err", data.Err,
+		"rowCt", data.CommandTag.RowsAffected(),
+		"milliseconds", ms)
 }
 
 // addStatsAndConnect connects a prometheus logger. Be sure to run this before using the DB.
