@@ -51,7 +51,7 @@ func (dbi *DBIndex) StorageList(ctx context.Context) (map[storiface.ID][]storifa
 	err := dbi.harmonyDB.Select(ctx, &sectorEntries,
 		"SELECT stor.storage_id, miner_id, sector_num, sector_filetype, is_primary FROM storagelocation stor LEFT JOIN sectorlocation sec on stor.storage_id=sec.storage_id")
 	if err != nil {
-		return nil, xerrors.Errorf("StorageList DB query fails: ", err)
+		return nil, xerrors.Errorf("StorageList DB query fails: %v", err)
 	}
 
 	byID := map[storiface.ID]map[abi.SectorID]storiface.SectorFileType{}
@@ -311,7 +311,7 @@ func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, re
 	err := dbi.harmonyDB.QueryRow(ctx,
 		"SELECT can_seal, can_store FROM storagelocation WHERE storage_id=$1", id).Scan(&canSeal, &canStore)
 	if err != nil {
-		return xerrors.Errorf("Querying for storage id %d fails with err %w", id, err)
+		return xerrors.Errorf("Querying for storage id %s fails with err %v", id, err)
 	}
 
 	_, err = dbi.harmonyDB.Exec(ctx,
@@ -323,7 +323,7 @@ func (dbi *DBIndex) StorageReportHealth(ctx context.Context, id storiface.ID, re
 		report.Stat.Used,
 		time.Now())
 	if err != nil {
-		return xerrors.Errorf("updating storage health in DB fails with err: ", err)
+		return xerrors.Errorf("updating storage health in DB fails with err: %v", err)
 	}
 
 	if report.Stat.Capacity > 0 {
@@ -422,7 +422,7 @@ func (dbi *DBIndex) StorageDropSector(ctx context.Context, storageID storiface.I
 		"DELETE FROM sectorlocation WHERE miner_id=$1 and sector_num=$2 and sector_filetype=$3 and storage_id=$4",
 		int(s.Miner), int(s.Number), int(ft), string(storageID))
 	if err != nil {
-		return xerrors.Errorf("StorageDropSector DELETE query fails: ", err)
+		return xerrors.Errorf("StorageDropSector DELETE query fails: %v", err)
 	}
 
 	return nil

@@ -89,7 +89,7 @@ Ex:
 	err := db.Select(ctx, &users, "SELECT name, id, tel_no FROM customers WHERE pet=?", pet)
 */
 func (db *DB) Select(ctx context.Context, sliceOfStructPtr any, sql string, arguments ...any) error {
-	return pgxscan.Select(ctx, db.pgx, sliceOfStructPtr, string(sql), arguments...)
+	return pgxscan.Select(ctx, db.pgx, sliceOfStructPtr, sql, arguments...)
 }
 
 type Tx struct {
