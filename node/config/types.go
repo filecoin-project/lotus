@@ -387,8 +387,6 @@ type SealingConfig struct {
 	// Don't send collateral with messages even if there is no available balance in the miner actor
 	DisableCollateralFallback bool
 
-	// enable / disable precommit batching (takes effect after nv13)
-	BatchPreCommits bool
 	// maximum precommit batch size - batches will be sent immediately above this size
 	MaxPreCommitBatch int
 	// how long to wait before submitting a batch after crossing the minimum batch size
@@ -408,7 +406,8 @@ type SealingConfig struct {
 	CommitBatchSlack Duration
 
 	// network BaseFee below which to stop doing precommit batching, instead
-	// sending precommit messages to the chain individually
+	// sending precommit messages to the chain individually. When the basefee is
+	// below this threshold, precommit messages will get sent out immediately.
 	BatchPreCommitAboveBaseFee types.FIL
 
 	// network BaseFee below which to stop doing commit aggregation, instead
