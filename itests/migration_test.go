@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -800,6 +801,25 @@ func TestMigrationNV21(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, types.StateTreeVersion5, newStateTree.Version())
+
+	// check the system actor
+	systemAct, err := newStateTree.GetActor(builtin.SystemActorAddr)
+	require.NoError(t, err)
+
+	systemCode, ok := actors.GetActorCodeID(actorstypes.Version12, manifest.SystemKey)
+	require.True(t, ok)
+
+	require.Equal(t, systemCode, systemAct.Code)
+
+	systemSt, err := system.Load(ctxStore, systemAct)
+	require.NoError(t, err)
+
+	manifest12Cid, ok := actors.GetManifest(actorstypes.Version12)
+	require.True(t, ok)
+
+	manifest12, err := actors.LoadManifest(ctx, manifest12Cid, ctxStore)
+	require.NoError(t, err)
+	require.Equal(t, manifest12.Data, systemSt.GetBuiltinActors())
 
 	// start post migration checks
 
