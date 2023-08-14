@@ -156,6 +156,7 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 			if doErr != nil {
 				result = "error: " + doErr.Error()
 			}
+			var deleteTask bool
 			if h.MaxFailures > 0 {
 				ct := uint(0)
 				err = tx.QueryRow(`SELECT count(*) FROM harmony_task_history 
@@ -164,13 +165,22 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 					log.Error("Could not read task history:", err)
 					return false
 				}
-				if ct > h.MaxFailures {
-					_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
-					if err != nil {
-						log.Error("Could not delete failed job: ", err)
-						return false
-					}
-					// Note: Extra Info is left laying around for later review & clean-up
+				if ct >= h.MaxFailures {
+					deleteTask = true
+				}
+			}
+			if deleteTask {
+				_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
+				if err != nil {
+					log.Error("Could not delete failed job: ", err)
+					return false
+				}
+				// Note: Extra Info is left laying around for later review & clean-up
+			} else {
+				tx.Exec(`UPDATE harmony_task SET owner_id=NULL WHERE id=$1`, tID)
+				if err != nil {
+					log.Error("Could not disown failed task: ", tID, err)
+					return false
 				}
 			}
 		}

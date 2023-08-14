@@ -68,14 +68,10 @@ func TestHarmonyTasks(t *testing.T) {
 			myPersonalTable: map[harmonytask.TaskID]int{},
 		}
 		e, err := harmonytask.New(cdb, []harmonytask.TaskInterface{t1}, "test:1")
-		if err != nil {
-			t.Fatal("Did not initialize:" + err.Error())
-		}
+		require.NoError(t, err)
 		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
 		e.GracefullyTerminate(time.Minute)
-		if len(t1.WorkCompleted) != 2 {
-			t.Fatal("wrong amount of work complete: expected 2 got: ", t1.WorkCompleted)
-		}
+		require.Equal(t, t1.WorkCompleted, 2, "wrong amount of work complete: expected 2 got:")
 		sort.Strings(t1.WorkCompleted)
 		got := strings.Join(t1.WorkCompleted, ",")
 		expected := "taskResult56,taskResult73"
@@ -113,6 +109,21 @@ var dtl = harmonytask.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Reso
 var letters []string
 var lettersMutex sync.Mutex
 
+func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
+	return &passthru{
+		dtl:       dtl,
+		canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return nil, nil },
+		adder: func(add harmonytask.AddTaskFunc) {
+			for _, v := range []string{"A", "B"} {
+				add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
+					_, err := tx.Exec("INSERT INTO itest_scratch (some_int, content) VALUES ($1,$2)", tID, v)
+					require.NoError(t, err)
+					return true
+				})
+			}
+		},
+	}
+}
 func fooLetterSaver(t *testing.T, cdb *harmonydb.DB) *passthru {
 	return &passthru{
 		dtl:       dtl,
@@ -121,9 +132,7 @@ func fooLetterSaver(t *testing.T, cdb *harmonydb.DB) *passthru {
 			var content string
 			err = cdb.QueryRow(context.Background(),
 				"SELECT content FROM itest_scratch WHERE some_int=$1", tID).Scan(&content)
-			if err != nil {
-				t.Fatal("Error reading content:", err)
-			}
+			require.NoError(t, err)
 			lettersMutex.Lock()
 			defer lettersMutex.Unlock()
 			letters = append(letters, content)
@@ -135,31 +144,13 @@ func fooLetterSaver(t *testing.T, cdb *harmonydb.DB) *passthru {
 func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 	withSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
-		senderParty := &passthru{
-			dtl:       dtl,
-			canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return nil, nil },
-			adder: func(add harmonytask.AddTaskFunc) {
-				for _, v := range []string{"A", "B"} {
-					add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
-						_, err := tx.Exec("INSERT INTO itest_scratch (some_int, content) VALUES ($1,$2)", tID, v)
-						if err != nil {
-							t.Fatal("Err inserting: ", err)
-						}
-						return true
-					})
-				}
-			},
-		}
+		senderParty := fooLetterAdder(t, cdb)
 		workerParty := fooLetterSaver(t, cdb)
 		harmonytask.POLL_DURATION = time.Millisecond * 100
 		sender, err := harmonytask.New(cdb, []harmonytask.TaskInterface{senderParty}, "test:1")
-		if err != nil {
-			t.Fatal("Did not initialize:" + err.Error())
-		}
+		require.NoError(t, err)
 		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{workerParty}, "test:2")
-		if err != nil {
-			t.Fatal("Did not initialize:" + err.Error())
-		}
+		require.NoError(t, err)
 		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
 		sender.GracefullyTerminate(time.Second * 5)
 		worker.GracefullyTerminate(time.Second * 5)
@@ -191,14 +182,61 @@ func TestWorkStealing(t *testing.T) {
 		require.ErrorIs(t, err, nil)
 		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
 		worker.GracefullyTerminate(time.Second * 5)
-		require.Equal(t, letters, []string{"M"})
+		require.Equal(t, []string{"M"}, letters)
 	})
 }
 
-/*
-TODO BEFORE PR DONE tests to write: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	retry_flow whenever do() fails
-*/
+func TestTaskRetry(t *testing.T) {
+	withSetup(t, func(m *kit.TestMiner) {
+		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
+		senderParty := fooLetterAdder(t, cdb)
+		harmonytask.POLL_DURATION = time.Millisecond * 100
+		sender, err := harmonytask.New(cdb, []harmonytask.TaskInterface{senderParty}, "test:1")
+		require.NoError(t, err)
+
+		alreadyFailed := map[string]bool{}
+		fails2xPerMsg := &passthru{
+			dtl:       dtl,
+			canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return &list[0], nil },
+			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+				var content string
+				err = cdb.QueryRow(context.Background(),
+					"SELECT content FROM itest_scratch WHERE some_int=$1", tID).Scan(&content)
+				require.NoError(t, err)
+				lettersMutex.Lock()
+				defer lettersMutex.Unlock()
+				if !alreadyFailed[content] {
+					alreadyFailed[content] = true
+					return false, errors.New("intentional 'error'")
+				}
+				letters = append(letters, content)
+				return true, nil
+			},
+		}
+		rcv, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fails2xPerMsg}, "test:2")
+		require.NoError(t, err)
+		time.Sleep(3 * time.Second)
+		sender.GracefullyTerminate(time.Hour)
+		rcv.GracefullyTerminate(time.Hour)
+		sort.Strings(letters)
+		require.Equal(t, []string{"A", "B"}, letters)
+		type hist struct {
+			TaskID int
+			Result bool
+			Err    string
+		}
+		var res []hist
+		require.NoError(t, cdb.Select(context.Background(), &res,
+			`SELECT task_id, result, err FROM harmony_task_history
+			 ORDER BY result DESC, task_id`))
+
+		require.Equal(t, []hist{
+			{1, true, ""},
+			{2, true, ""},
+			{1, false, "error: intentional 'error'"},
+			{2, false, "error: intentional 'error'"}}, res)
+	})
+}
 
 /*
 FUTURE test fast-pass round-robin via http calls (3party) once the API for that is set
