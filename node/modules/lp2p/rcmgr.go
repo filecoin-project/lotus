@@ -15,7 +15,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p/p2p/host/resource-manager"
-	rcmgrObs "github.com/libp2p/go-libp2p/p2p/host/resource-manager/obs"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -113,13 +112,13 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 			return nil, err
 		}
 
-		str, err := rcmgrObs.NewStatsTraceReporter()
+		str, err := rcmgr.NewStatsTraceReporter()
 		if err != nil {
 			return nil, fmt.Errorf("error creating resource manager stats reporter: %w", err)
 		}
 
 		rcmgrMetricsOnce.Do(func() {
-			rcmgrObs.MustRegisterWith(prometheus.DefaultRegisterer)
+			rcmgr.MustRegisterWith(prometheus.DefaultRegisterer)
 		})
 
 		// Metrics
