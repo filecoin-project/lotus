@@ -465,10 +465,13 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
+			// TODO: run sector index init only for devnets. This is not needed for longer running networks
 			harmonyDB, err := harmonydb.New([]string{"127.0.0.1"}, "yugabyte", "yugabyte", "yugabyte", "5433", "",
 				func(s string) { logging.Logger("harmonydb").Error(s) })
+			if err != nil {
+				return err
+			}
 
-			// TODO: get this bool from miner init cmd line
 			enableSectorIndexDB := true
 
 			si := paths.NewIndexProxy(nil, harmonyDB, enableSectorIndexDB)

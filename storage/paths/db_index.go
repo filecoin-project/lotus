@@ -474,7 +474,7 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 						ORDER BY stor.storage_id`,
 		s.Miner, s.Number, fts)
 	if err != nil {
-		return nil, xerrors.Errorf("Finding sector storage from DB fails with err: ", err)
+		return nil, xerrors.Errorf("Finding sector storage from DB fails with err: %v", err)
 	}
 
 	for _, row := range rows {
@@ -557,7 +557,7 @@ func (dbi *DBIndex) StorageFindSector(ctx context.Context, s abi.SectorID, ft st
 				  and heartbeat_err is null`,
 			spaceReq, SkippedHeartbeatThresh)
 		if err != nil {
-			return nil, xerrors.Errorf("Selecting allowfetch storage paths from DB fails err: ", err)
+			return nil, xerrors.Errorf("Selecting allowfetch storage paths from DB fails err: %v", err)
 		}
 
 		for _, row := range rows {
@@ -633,7 +633,7 @@ func (dbi *DBIndex) StorageInfo(ctx context.Context, id storiface.ID) (storiface
 		"SELECT urls, weight, max_storage, can_seal, can_store, groups, allow_to, allow_types, deny_types "+
 			"FROM StorageLocation WHERE storage_id=$1", string(id))
 	if err != nil {
-		return storiface.StorageInfo{}, xerrors.Errorf("StorageInfo query fails: ", err)
+		return storiface.StorageInfo{}, xerrors.Errorf("StorageInfo query fails: %v", err)
 	}
 
 	var sinfo storiface.StorageInfo
