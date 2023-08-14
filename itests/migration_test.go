@@ -762,3 +762,49 @@ waitForProof20:
 	require.Equal(t, v1proof, minerInfo.WindowPoStProofType)
 
 }
+
+func TestMigrationNV21(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	nv21epoch := abi.ChainEpoch(100)
+	testClient, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version20,
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version21,
+			Height:    nv21epoch,
+			Migration: filcns.UpgradeActorsV12,
+		},
+		))
+
+	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+
+	clientApi := testClient.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testClient.WaitTillChain(ctx, kit.HeightAtLeast(nv21epoch+5))
+
+	// Now that we have upgraded, we need to verify:
+	// - Sector info changes executed successfully
+	// - Direct data onboarding correct
+
+	bs := blockstore.NewAPIBlockstore(testClient)
+	ctxStore := gstStore.WrapBlockStore(ctx, bs)
+
+	currTs, err := clientApi.ChainHead(ctx)
+	require.NoError(t, err)
+
+	newStateTree, err := state.LoadStateTree(ctxStore, currTs.Blocks()[0].ParentStateRoot)
+	require.NoError(t, err)
+
+	require.Equal(t, types.StateTreeVersion5, newStateTree.Version())
+
+	// start post migration checks
+
+	//todo @aayush sector info changes
+
+	//todo @zen Direct data onboarding tests
+
+}
