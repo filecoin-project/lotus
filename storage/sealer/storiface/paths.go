@@ -16,9 +16,9 @@ const (
 	AcquireCopy AcquireMode = "copy"
 )
 
-type Refs struct {
-	RefCount [FileTypes]uint
-}
+//type Refs struct {
+//	RefCount [FileTypes]uint
+//}
 
 type SectorLock struct {
 	Sector abi.SectorID
