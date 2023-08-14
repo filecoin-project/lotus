@@ -1,18 +1,4 @@
 /* For HarmonyTask base implementation. */
-CREATE TABLE harmony_task (
-    id SERIAL PRIMARY KEY NOT NULL,
-    initiated_by INTEGER,     
-    update_time TIMESTAMP NOT NULL DEFAULT current_timestamp,
-    posted_time TIMESTAMP NOT NULL,
-    owner_id INTEGER, 
-    added_by INTEGER NOT NULL,
-    previous_task INTEGER,
-    name varchar(8) NOT NULL
-);
-COMMENT ON COLUMN harmony_task.initiated_by IS 'The task ID whose completion occasioned this task.';
-COMMENT ON COLUMN harmony_task.owner_id IS 'The foreign key to harmony_machines.';
-COMMENT ON COLUMN harmony_task.name IS 'The name of the task type.';
-COMMENT ON COLUMN harmony_task.owner_id IS 'may be null if between owners or not yet taken';
 
 CREATE TABLE harmony_machines (
     id SERIAL PRIMARY KEY NOT NULL,
@@ -23,6 +9,22 @@ CREATE TABLE harmony_machines (
     gpu FLOAT NOT NULL, 
     gpuram BIGINT NOT NULL
 );
+
+CREATE TABLE harmony_task (
+    id SERIAL PRIMARY KEY NOT NULL,
+    initiated_by INTEGER,     
+    update_time TIMESTAMP NOT NULL DEFAULT current_timestamp,
+    posted_time TIMESTAMP NOT NULL,
+    owner_id INTEGER REFERENCES harmony_machines (id) ON DELETE SET NULL, 
+    added_by INTEGER NOT NULL,
+    previous_task INTEGER,
+    name varchar(8) NOT NULL
+);
+COMMENT ON COLUMN harmony_task.initiated_by IS 'The task ID whose completion occasioned this task.';
+COMMENT ON COLUMN harmony_task.owner_id IS 'The foreign key to harmony_machines.';
+COMMENT ON COLUMN harmony_task.name IS 'The name of the task type.';
+COMMENT ON COLUMN harmony_task.owner_id IS 'may be null if between owners or not yet taken';
+COMMENT ON COLUMN harmony_task.update_time IS 'When it was last modified. not a heartbeat';
 
 CREATE TABLE harmony_task_history (
     id SERIAL PRIMARY KEY NOT NULL,  
@@ -38,13 +40,13 @@ COMMENT ON COLUMN harmony_task_history.result IS 'Use to detemine if this was a 
 
 CREATE TABLE harmony_task_follow (
     id SERIAL PRIMARY KEY NOT NULL,  
-    owner_id INTEGER NOT NULL,
+    owner_id INTEGER NOT NULL REFERENCES harmony_machines (id) ON DELETE CASCADE,
     to_type VARCHAR(8) NOT NULL,
     from_type VARCHAR(8) NOT NULL
 );
 
 CREATE TABLE harmony_task_impl (
     id SERIAL PRIMARY KEY NOT NULL,  
-    owner_id INTEGER NOT NULL,
+    owner_id INTEGER NOT NULL REFERENCES harmony_machines (id) ON DELETE CASCADE,
     name VARCHAR(8) NOT NULL
 );

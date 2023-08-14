@@ -22,6 +22,8 @@ import (
 	"github.com/samber/lo"
 )
 
+var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats
+
 type Resources struct {
 	Cpu       int
 	Gpu       float64
@@ -70,6 +72,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 				return nil, err
 			}
 		}
+		CleanupMachines(context.Background(), db)
 	}
 	go func() {
 		for {
@@ -85,6 +88,14 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 	}()
 
 	return &reg, nil
+}
+func CleanupMachines(ctx context.Context, db *harmonydb.DB) int {
+	ct, err := db.Exec(ctx, `DELETE FROM harmony_machines WHERE last_contact < $1`,
+		time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
+	if err != nil {
+		logger.Warn("unable to delete old machines: ", err)
+	}
+	return ct
 }
 
 func (res *Reg) Shutdown() {

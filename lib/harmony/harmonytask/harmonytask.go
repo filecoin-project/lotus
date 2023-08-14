@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
@@ -13,9 +14,8 @@ import (
 )
 
 // Consts (except for unit test)
-var POLL_DURATION = time.Minute           // Poll for Work this frequently
-var CLEANUP_FREQUENCY = 5 * time.Minute   // Check for dead workers this often * everyone
-var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats
+var POLL_DURATION = time.Minute         // Poll for Work this frequently
+var CLEANUP_FREQUENCY = 5 * time.Minute // Check for dead workers this often * everyone
 
 type TaskTypeDetails struct {
 	// Max returns how many tasks this machine can run of this type.
@@ -102,6 +102,7 @@ type TaskEngine struct {
 	tryAllWork     chan bool // notify if work completed
 	follows        map[string][]followStruct
 	lastFollowTime time.Time
+	lastCleanup    atomic.Value
 }
 type followStruct struct {
 	f func(TaskID, AddTaskFunc) bool
@@ -134,13 +135,13 @@ func New(
 		tryAllWork:     make(chan bool),
 		follows:        make(map[string][]followStruct),
 	}
+	e.lastCleanup.Store(time.Now())
 	for _, c := range impls {
 		h := taskTypeHandler{
 			TaskInterface:   c,
 			TaskTypeDetails: c.TypeDetails(),
 			TaskEngine:      e,
 		}
-		h.LastCleanup.Store(time.Now())
 		e.handlers = append(e.handlers, &h)
 		e.taskMap[h.TaskTypeDetails.Name] = &h
 
@@ -278,7 +279,10 @@ func (e *TaskEngine) followWorkInDB() {
 
 // pollerTryAllWork implements "Bumps" (next task) the slow way
 func (e *TaskEngine) pollerTryAllWork() {
-	cleanTime := time.Now().Add(-1 * CLEANUP_FREQUENCY)
+	if time.Since(e.lastCleanup.Load().(time.Time)) > CLEANUP_FREQUENCY {
+		e.lastCleanup.Store(time.Now())
+		resources.CleanupMachines(e.ctx, e.db)
+	}
 	for _, v := range e.handlers {
 	rerun:
 		if v.AssertMachineHasCapacity() != nil {
@@ -291,42 +295,6 @@ func (e *TaskEngine) pollerTryAllWork() {
 			ORDER BY update_time`, v.Name)
 		if err != nil {
 			log.Error("Unable to read work ", err)
-			continue
-		}
-		if len(unownedTasks) == 0 && v.LastCleanup.Load().(time.Time).Before(cleanTime) {
-			v.LastCleanup.Store(time.Now())
-			var shouldRerun bool
-			_, err := e.db.BeginTransaction(e.ctx, func(tx *harmonydb.Tx) bool {
-				var ms []int
-				err := tx.Select(&ms, `SELECT m.id FROM harmony_machines m
-					JOIN harmony_tasks t ON m.id=t.owner_id
-					WHERE m.last_contact < $1 RETURNING id`, time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
-				if err != nil {
-					log.Error("Deleting dead machines' workloads failed: ", err)
-					return true
-				}
-				if len(ms) == 0 {
-					return true
-				}
-				ct, err := tx.Exec(`UPDATE harmony_tasks SET owner_id=NULL
-					WHERE owner_id IN $1`, ms)
-				if err != nil {
-					log.Error("cannot update harmony_task for cleanup", err)
-					return true
-				}
-
-				// DO abandoned tasks
-				if ct > 0 {
-					shouldRerun = true
-				}
-				return true
-			})
-			if err != nil {
-				log.Error("Cleanup Txn failed: ", err)
-			}
-			if !shouldRerun {
-				return
-			}
 			continue
 		}
 		accepted := v.considerWork(unownedTasks)
@@ -397,7 +365,6 @@ func (e *TaskEngine) bump(taskType string) {
 		resp, err := hClient.Get(url + "/scheduler/bump/" + taskType)
 		if err != nil {
 			log.Info("Server unreachable to bump: ", err)
-			e.cleanupDepartedMachines()
 			continue
 		}
 		if resp.StatusCode == 200 {
@@ -416,26 +383,4 @@ func (e *TaskEngine) resourcesInUse() resources.Resources {
 		tmp.Ram -= uint64(ct) * t.Cost.Ram
 	}
 	return tmp
-}
-
-func (e *TaskEngine) cleanupDepartedMachines() {
-	e.db.BeginTransaction(e.ctx, func(tx *harmonydb.Tx) bool {
-		var goners []int
-		err := tx.Select(&goners, `SELECT id FROM harmony_machines WHERE last_contact<$1`, time.Now().Add(-1*LOOKS_DEAD_TIMEOUT))
-		if err != nil {
-			log.Error("Could not query for goners: ", err)
-			return false
-		}
-		_, err = tx.Exec(`DELETE FROM harmony_task_impl WHERE owner_id = ANY($1)`, goners)
-		if err != nil {
-			log.Error("Could not delete impls for goners: ", err)
-			return false
-		}
-		_, err = tx.Exec(`DELETE FROM harmony_task_follow WHERE owner_id = ANY($1)`, goners)
-		if err != nil {
-			log.Error("Could not delete impls for goners: ", err)
-			return false
-		}
-		return true
-	})
 }

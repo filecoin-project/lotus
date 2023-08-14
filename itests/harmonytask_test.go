@@ -108,10 +108,33 @@ func (t *passthru) Adder(add harmonytask.AddTaskFunc) {
 	}
 }
 
+// Common stuff
+var dtl = harmonytask.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Resources{}}
+var letters []string
+var lettersMutex sync.Mutex
+
+func fooLetterSaver(t *testing.T, cdb *harmonydb.DB) *passthru {
+	return &passthru{
+		dtl:       dtl,
+		canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return &list[0], nil },
+		do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
+			var content string
+			err = cdb.QueryRow(context.Background(),
+				"SELECT content FROM itest_scratch WHERE some_int=$1", tID).Scan(&content)
+			if err != nil {
+				t.Fatal("Error reading content:", err)
+			}
+			lettersMutex.Lock()
+			defer lettersMutex.Unlock()
+			letters = append(letters, content)
+			return true, nil
+		},
+	}
+}
+
 func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 	withSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
-		dtl := harmonytask.TaskTypeDetails{Name: "foo", Max: -1, Cost: resources.Resources{}}
 		senderParty := &passthru{
 			dtl:       dtl,
 			canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return nil, nil },
@@ -127,24 +150,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 				}
 			},
 		}
-		letters := []string{}
-		var lettersMutex sync.Mutex
-		workerParty := &passthru{
-			dtl:       dtl,
-			canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return &list[0], nil },
-			do: func(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
-				var content string
-				err = cdb.QueryRow(context.Background(),
-					"SELECT content FROM itest_scratch WHERE some_int=$1", tID).Scan(&content)
-				if err != nil {
-					t.Fatal("Error reading content:", err)
-				}
-				lettersMutex.Lock()
-				defer lettersMutex.Unlock()
-				letters = append(letters, content)
-				return true, nil
-			},
-		}
+		workerParty := fooLetterSaver(t, cdb)
 		harmonytask.POLL_DURATION = time.Millisecond * 100
 		sender, err := harmonytask.New(cdb, []harmonytask.TaskInterface{senderParty}, "test:1")
 		if err != nil {
@@ -162,16 +168,42 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 	})
 }
 
+func TestWorkStealing(t *testing.T) {
+	withSetup(t, func(m *kit.TestMiner) {
+		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
+		ctx := context.Background()
+
+		// The dead worker will be played by a few SQL INSERTS.
+		_, err := cdb.Exec(ctx, `INSERT INTO harmony_machines
+		(id, last_contact,host_and_port, cpu, ram, gpu, gpuram)
+		VALUES (300, DATE '2000-01-01', 'test:1', 4, 400000, 1, 1000000)`)
+		require.ErrorIs(t, err, nil)
+		_, err = cdb.Exec(ctx, `INSERT INTO harmony_task 
+		(id, name, owner_id, posted_time, added_by) 
+		VALUES (1234, 'foo', 300, DATE '2000-01-01', 300)`)
+		require.ErrorIs(t, err, nil)
+		_, err = cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int, content) VALUES (1234, 'M')")
+		require.ErrorIs(t, err, nil)
+
+		harmonytask.POLL_DURATION = time.Millisecond * 100
+		harmonytask.CLEANUP_FREQUENCY = time.Millisecond * 100
+		worker, err := harmonytask.New(cdb, []harmonytask.TaskInterface{fooLetterSaver(t, cdb)}, "test:2")
+		require.ErrorIs(t, err, nil)
+		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
+		worker.GracefullyTerminate(time.Second * 5)
+		require.Equal(t, letters, []string{"M"})
+	})
+}
+
 /*
 TODO BEFORE PR DONE tests to write: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	worker stealing (when worker) died
-	    ---> push db entry with owner
-	retry flow once do() fails
+	retry_flow whenever do() fails
 */
 
 /*
-FUTURE test fast-pass round-robin via http calls once the API for that is set
+FUTURE test fast-pass round-robin via http calls (3party) once the API for that is set
 It's necessary for WinningPoSt.
 
-FUTURE test follows. It's needed for sealing work.
+FUTURE test follows.
+It's necessary for sealing work.
 */

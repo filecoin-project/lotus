@@ -21,7 +21,6 @@ type taskTypeHandler struct {
 	TaskEngine *TaskEngine
 	Count      atomic.Int32 /// locked by TaskEngine's mutex
 
-	LastCleanup atomic.Value
 }
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) bool) {
@@ -251,7 +250,6 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 		resp, err := hClient.Get(v.HostAndPort + "/scheduler/follows/" + h.Name)
 		if err != nil {
 			log.Warn("Couldn't hit http endpoint: ", err)
-			h.TaskEngine.cleanupDepartedMachines()
 			continue
 		}
 		b, err := io.ReadAll(resp.Body)
