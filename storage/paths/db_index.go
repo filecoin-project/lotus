@@ -184,7 +184,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 		err = dbi.harmonyDB.QueryRow(ctx,
 			"Select storage_id, urls FROM storagelocation WHERE storage_id = $1", string(si.ID)).Scan(&storageId, &urls)
 		if err != nil && !strings.Contains(err.Error(), "no rows in result set") {
-			return false, xerrors.Errorf("storage attach select fails: ", err)
+			return false, xerrors.Errorf("storage attach select fails: %v", err)
 		}
 
 		// Storage ID entry exists
@@ -209,7 +209,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 				strings.Join(si.DenyTypes, ","),
 				si.ID)
 			if err != nil {
-				return false, xerrors.Errorf("storage attach UPDATE fails: ", err)
+				return false, xerrors.Errorf("storage attach UPDATE fails: %v", err)
 			}
 
 			return true, nil
@@ -236,8 +236,7 @@ func (dbi *DBIndex) StorageAttach(ctx context.Context, si storiface.StorageInfo,
 			st.Used,
 			time.Now())
 		if err != nil {
-			log.Errorf("StorageAttach insert fails: ", err)
-			return false, xerrors.Errorf("StorageAttach insert fails: ", err)
+			return false, xerrors.Errorf("StorageAttach insert fails: %v", err)
 		}
 		return true, nil
 	})
@@ -371,7 +370,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 			"SELECT is_primary FROM SectorLocation WHERE miner_id=$1 and sector_num=$2 and sector_filetype=$3 and storage_id=$4",
 			uint64(s.Miner), uint64(s.Number), int(ft), string(storageID)).Scan(&currPrimary)
 		if err != nil && !strings.Contains(err.Error(), "no rows in result set") {
-			return false, xerrors.Errorf("DB SELECT fails: ", err)
+			return false, xerrors.Errorf("DB SELECT fails: %v", err)
 		}
 
 		// If storage id already exists for this sector, update primary if need be
@@ -381,7 +380,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 					"UPDATE SectorLocation set is_primary = TRUE WHERE miner_id=$1 and sector_num=$2 and sector_filetype=$3 and storage_id=$4",
 					s.Miner, s.Number, ft, storageID)
 				if err != nil {
-					return false, xerrors.Errorf("DB update fails: ", err)
+					return false, xerrors.Errorf("DB update fails: %v", err)
 				}
 			} else {
 				log.Warnf("sector %v redeclared in %s", s, storageID)
@@ -392,7 +391,7 @@ func (dbi *DBIndex) StorageDeclareSector(ctx context.Context, storageID storifac
 					"values($1, $2, $3, $4, $5)",
 				s.Miner, s.Number, ft, storageID, primary)
 			if err != nil {
-				return false, xerrors.Errorf("DB insert fails: ", err)
+				return false, xerrors.Errorf("DB insert fails: %v", err)
 			}
 		}
 
