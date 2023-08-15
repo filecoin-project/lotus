@@ -725,6 +725,9 @@ func (dbi *DBIndex) StorageBestAlloc(ctx context.Context, allocate storiface.Sec
 	return result, nil
 }
 
+// timeout after which we consider a lock to be stale
+const LockTimeOut = 300 * time.Second
+
 func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error) {
 	if read|write == 0 {
 		return false, nil
@@ -769,15 +772,21 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		}
 
 		// Check if we can acquire write locks
+		// Conditions: No write lock or write lock is stale, No read lock or read lock is stale
 		for wft := range write.AllSet() {
-			if lockMap[storiface.SectorFileType(wft)].writeTs.Valid || lockMap[storiface.SectorFileType(wft)].readTs.Valid {
+			if (lockMap[storiface.SectorFileType(wft)].writeTs.Valid &&
+				lockMap[storiface.SectorFileType(wft)].writeTs.Time.After(time.Now().Add(LockTimeOut))) ||
+				(lockMap[storiface.SectorFileType(wft)].readTs.Valid &&
+					lockMap[storiface.SectorFileType(wft)].writeTs.Time.After(time.Now().Add(LockTimeOut))) {
 				return false, xerrors.Errorf("Cannot acquire writelock for sector %v filetype %d already locked", sector, wft)
 			}
 		}
 
 		// Check if we can acquire read locks
+		// Conditions: No write lock or write lock is stale
 		for rft := range read.AllSet() {
-			if lockMap[storiface.SectorFileType(rft)].writeTs.Valid {
+			if lockMap[storiface.SectorFileType(rft)].writeTs.Valid &&
+				lockMap[storiface.SectorFileType(rft)].writeTs.Time.After(time.Now().Add(LockTimeOut)) {
 				return false, xerrors.Errorf("Cannot acquire read lock for sector %v filetype %d already locked for writing", sector, rft)
 			}
 		}
