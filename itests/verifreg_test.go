@@ -9,16 +9,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
 	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/datacap"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -225,36 +229,8 @@ func TestRemoveDataCap(t *testing.T) {
 
 	// make the 2 verifiers
 
-	makeVerifier := func(addr address.Address) error {
-		allowance := big.NewInt(100000000000)
-		params, aerr := actors.SerializeParams(&verifregst.AddVerifierParams{Address: addr, Allowance: allowance})
-		require.NoError(t, aerr)
-
-		msg := &types.Message{
-			From:   rootAddr,
-			To:     verifreg.Address,
-			Method: verifreg.Methods.AddVerifier,
-			Params: params,
-			Value:  big.Zero(),
-		}
-
-		sm, err := api.MpoolPushMessage(ctx, msg, nil)
-		require.NoError(t, err, "AddVerifier failed")
-
-		//stm: @CHAIN_STATE_WAIT_MSG_001
-		res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
-		require.NoError(t, err)
-		require.EqualValues(t, 0, res.Receipt.ExitCode)
-
-		verifierAllowance, err := api.StateVerifierStatus(ctx, addr, types.EmptyTSK)
-		require.NoError(t, err)
-		require.Equal(t, allowance, *verifierAllowance)
-
-		return nil
-	}
-
-	require.NoError(t, makeVerifier(verifier1Addr))
-	require.NoError(t, makeVerifier(verifier2Addr))
+	makeVerifier(ctx, t, api, rootAddr, verifier1Addr)
+	makeVerifier(ctx, t, api, rootAddr, verifier2Addr)
 
 	// assign datacap to a client
 	datacap := big.NewInt(10000)
@@ -373,4 +349,157 @@ func TestRemoveDataCap(t *testing.T) {
 	dcap, err = api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Nil(t, dcap, "expected datacap to be nil")
+}
+
+func TestVerifiedClientCanCreateAllocation(t *testing.T) {
+	blockTime := 100 * time.Millisecond
+
+	rootKey, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+
+	verifier1Key, err := key.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+
+	verifiedClientKey, err := key.GenerateKey(types.KTBLS)
+	require.NoError(t, err)
+
+	bal, err := types.ParseFIL("100fil")
+	require.NoError(t, err)
+
+	node, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+		kit.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
+		kit.Account(verifier1Key, abi.NewTokenAmount(bal.Int64())),
+		kit.Account(verifiedClientKey, abi.NewTokenAmount(bal.Int64())),
+	)
+
+	ens.InterconnectAll().BeginMining(blockTime)
+
+	api := node.FullNode.(*impl.FullNodeAPI)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// get VRH
+	vrh, err := api.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
+	fmt.Println(vrh.String())
+	require.NoError(t, err)
+
+	// import the root key.
+	rootAddr, err := api.WalletImport(ctx, &rootKey.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verifiers' keys.
+	verifier1Addr, err := api.WalletImport(ctx, &verifier1Key.KeyInfo)
+	require.NoError(t, err)
+
+	// import the verified client's key.
+	verifiedClientAddr, err := api.WalletImport(ctx, &verifiedClientKey.KeyInfo)
+	require.NoError(t, err)
+
+	// resolve all keys
+
+	// make the 2 verifiers
+
+	makeVerifier(ctx, t, api, rootAddr, verifier1Addr)
+
+	// assign datacap to a client
+	initialDatacap := big.NewInt(10000)
+
+	params, err := actors.SerializeParams(&verifregst.AddVerifiedClientParams{Address: verifiedClientAddr, Allowance: initialDatacap})
+	require.NoError(t, err)
+
+	msg := &types.Message{
+		From:   verifier1Addr,
+		To:     verifreg.Address,
+		Method: verifreg.Methods.AddVerifiedClient,
+		Params: params,
+		Value:  big.Zero(),
+	}
+
+	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	// check datacap balance
+	dcap, err := api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, *dcap, initialDatacap)
+
+	minerId, err := address.IDFromAddress(miner.ActorAddr)
+	require.NoError(t, err)
+
+	allocationRequest := verifregst.AllocationRequest{
+		Provider:   abi.ActorID(minerId),
+		Data:       cid.MustParse("bafkqaaa"),
+		Size:       abi.PaddedPieceSize(initialDatacap.Uint64()),
+		TermMin:    verifregst.MinimumVerifiedAllocationTerm,
+		TermMax:    verifregst.MinimumVerifiedAllocationTerm,
+		Expiration: verifregst.MaximumVerifiedAllocationExpiration,
+	}
+
+	allocationRequests := verifregst.AllocationRequests{
+		Allocations: []verifregst.AllocationRequest{allocationRequest},
+	}
+
+	receiverParams, err := actors.SerializeParams(&allocationRequests)
+	require.NoError(t, err)
+
+	transferParams, err := actors.SerializeParams(&datacap2.TransferParams{
+		To:           builtin.VerifiedRegistryActorAddr,
+		Amount:       big.Mul(initialDatacap, builtin.TokenPrecision),
+		OperatorData: receiverParams,
+	})
+	require.NoError(t, err)
+
+	msg = &types.Message{
+		To:     builtin.DatacapActorAddr,
+		From:   verifiedClientAddr,
+		Method: datacap.Methods.TransferExported,
+		Params: transferParams,
+		Value:  big.Zero(),
+	}
+
+	sm, err = api.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err)
+
+	res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	// check datacap balance
+	dcap, err = api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Nil(t, dcap)
+
+	allocations, err := api.StateGetAllocations(ctx, verifiedClientAddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(allocations))
+}
+
+func makeVerifier(ctx context.Context, t *testing.T, api *impl.FullNodeAPI, rootAddr address.Address, addr address.Address) {
+	allowance := big.NewInt(100000000000)
+	params, aerr := actors.SerializeParams(&verifregst.AddVerifierParams{Address: addr, Allowance: allowance})
+	require.NoError(t, aerr)
+
+	msg := &types.Message{
+		From:   rootAddr,
+		To:     verifreg.Address,
+		Method: verifreg.Methods.AddVerifier,
+		Params: params,
+		Value:  big.Zero(),
+	}
+
+	sm, err := api.MpoolPushMessage(ctx, msg, nil)
+	require.NoError(t, err, "AddVerifier failed")
+
+	res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 0, res.Receipt.ExitCode)
+
+	verifierAllowance, err := api.StateVerifierStatus(ctx, addr, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Equal(t, allowance, *verifierAllowance)
 }
