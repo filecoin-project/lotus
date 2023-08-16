@@ -188,4 +188,3 @@ func (e *EthModuleDummy) TraceReplayBlockTransactions(ctx context.Context, blkNu
 
 var _ EthModuleAPI = &EthModuleDummy{}
 var _ EthEventAPI = &EthModuleDummy{}
-var _ EthTraceAPI = &EthModuleDummy{}
