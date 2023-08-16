@@ -206,7 +206,12 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		if balance.Equals(types.NewInt(0)) {
+		inSync, err := IsSyncDone(ctx, api)
+		if err != nil {
+			return err
+		}
+
+		if balance.Equals(types.NewInt(0)) && !inSync {
 			afmt.Printf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
 		} else {
 			afmt.Printf("%s\n", types.FIL(balance))
