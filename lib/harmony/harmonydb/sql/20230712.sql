@@ -7,8 +7,6 @@ create table SectorLocation
     "is_primary"      bool,
     constraint SectorLocation_pk
         primary key ("miner_id", "sector_num", "sector_filetype", "storage_id")
-
-    -- TODO: Maybe add index on above PK fields
 );
 
 
