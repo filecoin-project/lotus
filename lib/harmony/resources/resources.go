@@ -16,10 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pbnjay/memory"
-
-	"golang.org/x/sys/unix"
-
 	"github.com/samber/lo"
+	"golang.org/x/sys/unix"
 )
 
 var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats
