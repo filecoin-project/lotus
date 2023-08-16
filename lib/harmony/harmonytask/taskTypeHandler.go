@@ -52,6 +52,7 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) bool) {
 }
 
 func (h *taskTypeHandler) considerWork(ids []TaskID) (workAccepted bool) {
+top:
 	if len(ids) == 0 {
 		return true // stop looking for takers
 	}
@@ -91,7 +92,14 @@ func (h *taskTypeHandler) considerWork(ids []TaskID) (workAccepted bool) {
 	}
 	if ct == 0 {
 		log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken")
-		return false
+		var tryAgain = make([]TaskID, 0, len(ids)-1)
+		for _, id := range ids {
+			if id != *tID {
+				tryAgain = append(tryAgain, id)
+			}
+		}
+		ids = tryAgain
+		goto top
 	}
 
 	go func() {
