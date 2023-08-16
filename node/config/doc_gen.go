@@ -751,7 +751,9 @@ over the worker address if this flag is set.`,
 			Name: "EnableSectorIndexDB",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `When enabled, the sector index will reside in an external database
+as opposed to the local KV store in the miner process
+This is useful to allow workers to bypass the lotus miner to access sector information`,
 		},
 		{
 			Name: "SealerApiInfo",
