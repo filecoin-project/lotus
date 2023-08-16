@@ -1,13 +1,18 @@
-create table SectorLocation
+create table sectorlocation
 (
-    "miner_id"        bigint,
-    "sector_num"   bigint,
-    "sector_filetype" int,
-    "storage_id"      varchar,
-    "is_primary"      bool,
-    constraint SectorLocation_pk
-        primary key ("miner_id", "sector_num", "sector_filetype", "storage_id")
+    miner_id         bigint    not null,
+    sector_num       bigint    not null,
+    sector_filetype  int   not null,
+    storage_id       varchar not null,
+    is_primary       bool,
+    read_ts          timestamp(6),
+    read_refs        int,
+    write_ts         timestamp(6),
+    write_lock_owner varchar,
+    constraint sectorlocation_pk
+        primary key (miner_id, sector_num, sector_filetype, storage_id)
 );
+
 
 
 create table StorageLocation
