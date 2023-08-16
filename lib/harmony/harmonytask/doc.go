@@ -11,23 +11,23 @@ machines to accept work (round robin) before trying again to accept.
 *
 Mental Model:
 
-	  Things that block tasks:
-	   - task not registered for any running server
-	   - max was specified and reached
-	   - resource exhaustion
-	   - CanAccept() interface (per-task implmentation) does not accept it.
-	  Ways tasks start: (slowest first)
-	     - DB Read every 1 minute
-		 - Bump via HTTP if registered in DB
-		 - Task was added (to db) by this process
-	  Ways tasks get added:
-	     - Async Listener task (for chain, etc)
-		 - Followers: Tasks get added because another task completed
-	  When Follower collectors run:
-	     - If both sides are process-local, then
-		 - Otherwise, at the listen interval during db scrape
-	  How duplicate tasks are avoided:
-	     - that's up to the task definition, but probably a unique key
+	Things that block tasks:
+		- task not registered for any running server
+		- max was specified and reached
+		- resource exhaustion
+		- CanAccept() interface (per-task implmentation) does not accept it.
+	Ways tasks start: (slowest first)
+		- DB Read every 1 minute
+		- Bump via HTTP if registered in DB
+		- Task was added (to db) by this process
+	Ways tasks get added:
+	    - Async Listener task (for chain, etc)
+		- Followers: Tasks get added because another task completed
+	When Follower collectors run:
+	    - If both sides are process-local, then
+		- Otherwise, at the listen interval during db scrape
+	How duplicate tasks are avoided:
+	    - that's up to the task definition, but probably a unique key
 
 *
 To use:

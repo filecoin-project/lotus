@@ -3,12 +3,14 @@ package harmonytask
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/gin-gonic/gin"
+	"github.com/gorilla/mux"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
@@ -94,7 +96,7 @@ type TaskEngine struct {
 	ctx            context.Context
 	handlers       []*taskTypeHandler
 	db             *harmonydb.DB
-	workAdderMutex *notifyingMx
+	workAdderMutex sync.Mutex
 	reg            *resources.Reg
 	grace          context.CancelFunc
 	taskMap        map[string]*taskTypeHandler
@@ -125,15 +127,14 @@ func New(
 	}
 	ctx, grace := context.WithCancel(context.Background())
 	e := &TaskEngine{
-		ctx:            ctx,
-		grace:          grace,
-		db:             db,
-		reg:            reg,
-		ownerID:        reg.Resources.MachineID, // The current number representing "hostAndPort"
-		workAdderMutex: &notifyingMx{},
-		taskMap:        make(map[string]*taskTypeHandler, len(impls)),
-		tryAllWork:     make(chan bool),
-		follows:        make(map[string][]followStruct),
+		ctx:        ctx,
+		grace:      grace,
+		db:         db,
+		reg:        reg,
+		ownerID:    reg.Resources.MachineID, // The current number representing "hostAndPort"
+		taskMap:    make(map[string]*taskTypeHandler, len(impls)),
+		tryAllWork: make(chan bool),
+		follows:    make(map[string][]followStruct),
 	}
 	e.lastCleanup.Store(time.Now())
 	for _, c := range impls {
@@ -184,7 +185,7 @@ func New(
 					continue // not really fatal, but not great
 				}
 			}
-			if !h.considerWork([]TaskID{TaskID(w.ID)}) {
+			if !h.considerWork("recovered", []TaskID{TaskID(w.ID)}) {
 				log.Error("Strange: Unable to accept previously owned task: ", w.ID, w.Name)
 			}
 		}
@@ -297,7 +298,7 @@ func (e *TaskEngine) pollerTryAllWork() {
 			log.Error("Unable to read work ", err)
 			continue
 		}
-		accepted := v.considerWork(unownedTasks)
+		accepted := v.considerWork("poller", unownedTasks)
 		if !accepted {
 			log.Warn("Work not accepted")
 			continue
@@ -309,17 +310,20 @@ func (e *TaskEngine) pollerTryAllWork() {
 	}
 }
 
-// AddHttpHandlers TODO this needs to be called by the http server to register routes.
+// GetHttpHandlers needs to be used by the http server to register routes.
 // This implements the receiver-side of "follows" and "bumps" the fast way.
-func (e *TaskEngine) AddHttpHandlers(root gin.IRouter) {
-	s := root.Group("/scheduler/")
-	f := s.Group("/follows")
+func (e *TaskEngine) GetHttpHandlers() http.Handler {
+	root := mux.NewRouter()
+	s := root.PathPrefix("/scheduler")
+	f := s.PathPrefix("/follows")
+	b := s.PathPrefix("/bump")
 	for name, v := range e.follows {
-		f.GET("/"+name+"/:tID", func(c *gin.Context) {
-			tIDString := c.Param("tID")
+		f.Path("/" + name + "/{tID}").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tIDString := mux.Vars(r)["tID"]
 			tID, err := strconv.Atoi(tIDString)
 			if err != nil {
-				c.AbortWithError(401, err)
+				w.WriteHeader(401)
+				fmt.Fprint(w, err.Error())
 				return
 			}
 			taskAdded := false
@@ -328,28 +332,31 @@ func (e *TaskEngine) AddHttpHandlers(root gin.IRouter) {
 			}
 			if taskAdded {
 				e.tryAllWork <- true
-				c.Status(200)
+				w.WriteHeader(200)
+				return
 			}
-			c.Status(202) // NOTE: 202 for "accepted" but not worked.
+			w.WriteHeader(202) // NOTE: 202 for "accepted" but not worked.
 		})
 	}
-	b := s.Group("/bump")
 	for _, h := range e.handlers {
-		b.GET("/"+h.Name+"/:tID", func(c *gin.Context) {
-			tIDString := c.Param("tID")
+		b.Path("/" + h.Name + "/{tID}").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tIDString := mux.Vars(r)["tID"]
 			tID, err := strconv.Atoi(tIDString)
 			if err != nil {
-				c.AbortWithError(401, err)
+				w.WriteHeader(401)
+				fmt.Fprint(w, err.Error())
 				return
 			}
 			// We NEED to block while trying to deliver
 			// this work to ease the network impact.
-			if h.considerWork([]TaskID{TaskID(tID)}) {
-				c.Status(200)
+			if h.considerWork("bump", []TaskID{TaskID(tID)}) {
+				w.WriteHeader(200)
+				return
 			}
-			c.Status(202) // NOTE: 202 for "accepted" but not worked.
+			w.WriteHeader(202) // NOTE: 202 for "accepted" but not worked.
 		})
 	}
+	return root
 }
 
 func (e *TaskEngine) bump(taskType string) {

@@ -19,8 +19,7 @@ type taskTypeHandler struct {
 	TaskInterface
 	TaskTypeDetails
 	TaskEngine *TaskEngine
-	Count      atomic.Int32 /// locked by TaskEngine's mutex
-
+	Count      atomic.Int32
 }
 
 func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) bool) {
@@ -46,12 +45,12 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) bool) {
 		return
 	}
 
-	if !h.considerWork([]TaskID{tID}) {
+	if !h.considerWork("adder", []TaskID{tID}) {
 		h.TaskEngine.bump(h.Name) // We can't do it. How about someone else.
 	}
 }
 
-func (h *taskTypeHandler) considerWork(ids []TaskID) (workAccepted bool) {
+func (h *taskTypeHandler) considerWork(from string, ids []TaskID) (workAccepted bool) {
 top:
 	if len(ids) == 0 {
 		return true // stop looking for takers
@@ -104,6 +103,7 @@ top:
 
 	go func() {
 		h.Count.Add(1)
+		log.Infow("Beginning work on Task", "id", *tID, "from", from, "type", h.Name)
 
 		var done bool
 		var doErr error
@@ -136,7 +136,7 @@ top:
 			return owner == h.TaskEngine.ownerID
 		})
 		if doErr != nil {
-			log.Error("Do("+h.Name+", taskID="+strconv.Itoa(int(*tID))+") returned error: ", doErr)
+			log.Errorw("Do() returned error", "type", h.Name, "id", strconv.Itoa(int(*tID)), "error", doErr)
 		}
 	}()
 	return true

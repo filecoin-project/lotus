@@ -38,7 +38,7 @@ type Reg struct {
 
 var logger = logging.Logger("harmonytask")
 
-var lotusRE = regexp.MustCompile("lotus-worker|lotus-harmony|yugabyted")
+var lotusRE = regexp.MustCompile("lotus-worker|lotus-harmony|yugabyted|yb-master|yb-tserver")
 
 func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 	var reg Reg
@@ -114,7 +114,7 @@ func getResources() (res Resources, err error) {
 			}
 		}
 		if found > 1 {
-			logger.Error("This Lotus process should run alone on a machine. Use CGroup.")
+			logger.Warn("lotus-provider's defaults are for running alone. Use task maximums or CGroups.")
 		}
 	}
 
