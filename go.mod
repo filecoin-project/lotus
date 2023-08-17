@@ -106,6 +106,7 @@ require (
 	github.com/ipni/index-provider v0.12.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/koalacxr/quantile v0.0.1
+	github.com/kr/pretty v0.3.1
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.31.0
 	github.com/libp2p/go-libp2p-consensus v0.0.1
@@ -136,6 +137,7 @@ require (
 	github.com/raulk/go-watchdog v1.3.0
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
+	github.com/triplewz/poseidon v0.0.0-20220525065023-a7cdb0e183e7
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20230923211252-36a87e1ba72f
@@ -258,6 +260,7 @@ require (
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.3.0 // indirect
@@ -300,6 +303,7 @@ require (
 	github.com/quic-go/quic-go v0.38.1 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/rivo/uniseg v0.1.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v2.18.12+incompatible // indirect
@@ -338,3 +342,5 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/triplewz/poseidon => github.com/magik6k/poseidon v0.0.0-neptune
