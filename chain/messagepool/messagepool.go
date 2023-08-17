@@ -47,17 +47,23 @@ var log = logging.Logger("messagepool")
 
 var futureDebug = false
 
-var rbfNumBig = types.NewInt(uint64(ReplaceByFeePercentageMinimum))
-var rbfDenomBig = types.NewInt(100)
+var (
+	rbfNumBig   = types.NewInt(uint64(ReplaceByFeePercentageMinimum))
+	rbfDenomBig = types.NewInt(100)
+)
 
 var RepublishInterval = time.Duration(10*build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
 
-var minimumBaseFee = types.NewInt(uint64(build.MinimumBaseFee))
-var baseFeeLowerBoundFactor = types.NewInt(10)
-var baseFeeLowerBoundFactorConservative = types.NewInt(100)
+var (
+	minimumBaseFee                      = types.NewInt(uint64(build.MinimumBaseFee))
+	baseFeeLowerBoundFactor             = types.NewInt(10)
+	baseFeeLowerBoundFactorConservative = types.NewInt(100)
+)
 
-var MaxActorPendingMessages = 1000
-var MaxUntrustedActorPendingMessages = 10
+var (
+	MaxActorPendingMessages          = 1000
+	MaxUntrustedActorPendingMessages = 10
+)
 
 var MaxNonceGap = uint64(4)
 
@@ -473,7 +479,7 @@ func (mp *MessagePool) ForEachPendingMessage(f func(cid.Cid) error) error {
 }
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
-	//if addr is not an ID addr, then it is already resolved to a key
+	// if addr is not an ID addr, then it is already resolved to a key
 	if addr.Protocol() != address.ID {
 		return addr, nil
 	}
@@ -481,7 +487,6 @@ func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (
 }
 
 func (mp *MessagePool) resolveToKeyFromID(ctx context.Context, addr address.Address) (address.Address, error) {
-
 	// check the cache
 	a, ok := mp.keyCache.Get(addr)
 	if ok {
@@ -773,22 +778,22 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 	tmpCurTs := mp.curTs
 	mp.curTsLk.RUnlock()
 
-	//ensures computations are cached without holding lock
+	// ensures computations are cached without holding lock
 	_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
 	_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 
 	mp.curTsLk.Lock()
 	if tmpCurTs == mp.curTs {
-		//with the lock enabled, mp.curTs is the same Ts as we just had, so we know that our computations are cached
+		// with the lock enabled, mp.curTs is the same Ts as we just had, so we know that our computations are cached
 	} else {
-		//curTs has been updated so we want to cache the new one:
+		// curTs has been updated so we want to cache the new one:
 		tmpCurTs = mp.curTs
-		//we want to release the lock, cache the computations then grab it again
+		// we want to release the lock, cache the computations then grab it again
 		mp.curTsLk.Unlock()
 		_, _ = mp.api.GetActorAfter(m.Message.From, tmpCurTs)
 		_, _ = mp.getStateNonce(ctx, m.Message.From, tmpCurTs)
 		mp.curTsLk.Lock()
-		//now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
+		// now that we have the lock, we continue, we could do this as a loop forever, but that's bad to loop forever, and this was added as an optimization and it seems once is enough because the computation < block time
 	}
 
 	defer mp.curTsLk.Unlock()
@@ -1198,7 +1203,8 @@ func (mp *MessagePool) remove(ctx context.Context, from address.Address, nonce u
 		mp.journal.RecordEvent(mp.evtTypes[evtTypeMpoolRemove], func() interface{} {
 			return MessagePoolEvt{
 				Action:   "remove",
-				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}}}
+				Messages: []MessagePoolEvtMessage{{Message: m.Message, CID: m.Cid()}},
+			}
 		})
 
 		mp.currentSize--
@@ -1452,7 +1458,6 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 			delete(s, nonce)
 			return
 		}
-
 	}
 
 	revert, apply, err := store.ReorgOps(ctx, mp.api.LoadTipSet, from, to)

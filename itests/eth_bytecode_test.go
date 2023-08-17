@@ -91,5 +91,4 @@ func TestGetCodeAndNonce(t *testing.T) {
 		require.NoError(t, err)
 		require.Zero(t, nonce)
 	}
-
 }

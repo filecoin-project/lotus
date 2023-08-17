@@ -53,9 +53,7 @@ func (s *state4) RootKey() (address.Address, error) {
 }
 
 func (s *state4) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-
 	return getDataCap(s.store, actors.Version4, s.verifiedClients, addr)
-
 }
 
 func (s *state4) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -71,15 +69,11 @@ func (s *state4) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state4) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-
 	return forEachCap(s.store, actors.Version4, s.verifiedClients, cb)
-
 }
 
 func (s *state4) verifiedClients() (adt.Map, error) {
-
 	return adt4.AsMap(s.store, s.VerifiedClients, builtin4.DefaultHamtBitwidth)
-
 }
 
 func (s *state4) verifiers() (adt.Map, error) {
@@ -88,7 +82,6 @@ func (s *state4) verifiers() (adt.Map, error) {
 
 func (s *state4) removeDataCapProposalIDs() (adt.Map, error) {
 	return nil, nil
-
 }
 
 func (s *state4) GetState() interface{} {
@@ -96,33 +89,23 @@ func (s *state4) GetState() interface{} {
 }
 
 func (s *state4) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
-
 	return nil, false, xerrors.Errorf("unsupported in actors v4")
-
 }
 
 func (s *state4) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v4")
-
 }
 
 func (s *state4) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
-
 	return nil, false, xerrors.Errorf("unsupported in actors v4")
-
 }
 
 func (s *state4) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v4")
-
 }
 
 func (s *state4) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v4")
-
 }
 
 func (s *state4) ActorKey() string {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	// must be imported to init() raw-codec support
+	// must be imported to init() raw-codec support.
 	_ "github.com/ipld/go-ipld-prime/codec/raw"
 
 	"github.com/ipfs/go-cid"
@@ -29,7 +29,6 @@ func TraverseDag(
 	onOpen func(node mdagipld.Node) error,
 	visitCallback traversal.AdvVisitFn,
 ) error {
-
 	if optionalSelector == nil {
 		optionalSelector = selectorparse.CommonSelector_MatchAllRecursively
 	}

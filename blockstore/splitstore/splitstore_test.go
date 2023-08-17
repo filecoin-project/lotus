@@ -223,16 +223,16 @@ func testSplitStore(t *testing.T, cfg *Config) {
 }
 
 func TestSplitStoreCompaction(t *testing.T) {
-	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
-	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
-	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
+	// stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
+	// stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	// stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	testSplitStore(t, &Config{MarkSetType: "map", UniversalColdBlocks: true})
 }
 
 func TestSplitStoreCompactionWithBadger(t *testing.T) {
-	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
-	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
-	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
+	// stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
+	// stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	// stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	bs := badgerMarkSetBatchSize
 	badgerMarkSetBatchSize = 1
 	t.Cleanup(func() {
@@ -242,9 +242,9 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 }
 
 func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
-	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
-	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
-	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
+	// stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
+	// stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	// stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	ctx := context.Background()
 	chain := &mockChain{t: t}
 
@@ -570,7 +570,6 @@ func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blocks
 			t.Fatal("block unexpectedly reified")
 		}
 	}
-
 }
 
 func TestSplitStoreReification(t *testing.T) {

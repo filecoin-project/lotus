@@ -20,7 +20,7 @@ import (
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the
-// channel to create a voucher
+// channel to create a voucher.
 type insufficientFundsErr interface {
 	Shortfall() types.BigInt
 }
@@ -54,7 +54,7 @@ func (ls laneState) Nonce() (uint64, error) {
 	return ls.nonce, nil
 }
 
-// channelAccessor is used to simplify locking when accessing a channel
+// channelAccessor is used to simplify locking when accessing a channel.
 type channelAccessor struct {
 	from address.Address
 	to   address.Address
@@ -479,7 +479,7 @@ func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address)
 }
 
 // laneState gets the LaneStates from chain, then applies all vouchers in
-// the data store over the chain state
+// the data store over the chain state.
 func (ca *channelAccessor) laneState(ctx context.Context, state lpaych.State, ch address.Address) (map[uint64]lpaych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
@@ -535,7 +535,7 @@ func (ca *channelAccessor) laneState(ctx context.Context, state lpaych.State, ch
 	return laneStates, nil
 }
 
-// Get the total redeemed amount across all lanes, after applying the voucher
+// Get the total redeemed amount across all lanes, after applying the voucher.
 func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]lpaych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
 	// TODO: merges
 	if len(sv.Merges) != 0 {

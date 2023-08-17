@@ -53,8 +53,7 @@ func init() {
 
 const testForkHeight = 40
 
-type testActor struct {
-}
+type testActor struct{}
 
 // must use existing actor that an account is allowed to exec.
 func (testActor) Code() cid.Cid  { return builtin0.PaymentChannelActorCodeID }
@@ -90,7 +89,7 @@ func (ta testActor) Exports() []interface{} {
 func (ta *testActor) Constructor(rt rt2.Runtime, params *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	rt.StateCreate(&testActorState{11})
-	//fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Receiver())
+	// fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Receiver())
 
 	return abi.Empty
 }
@@ -114,9 +113,9 @@ func (ta *testActor) TestMethod(rt rt2.Runtime, params *abi.EmptyValue) *abi.Emp
 }
 
 func TestForkHeightTriggers(t *testing.T) {
-	//stm: @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_FLUSH_001, @TOKEN_WALLET_SIGN_001
-	//stm: @CHAIN_GEN_NEXT_TIPSET_001
-	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
+	// stm: @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_FLUSH_001, @TOKEN_WALLET_SIGN_001
+	// stm: @CHAIN_GEN_NEXT_TIPSET_001
+	// stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	ctx := context.TODO()
@@ -137,7 +136,8 @@ func TestForkHeightTriggers(t *testing.T) {
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet,
+			) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().StateBlockstore())
 
 				st, err := sm.StateTree(root)
@@ -169,7 +169,8 @@ func TestForkHeightTriggers(t *testing.T) {
 				}
 
 				return st.Flush(ctx)
-			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
+			},
+		}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,8 +254,8 @@ func TestForkHeightTriggers(t *testing.T) {
 }
 
 func TestForkRefuseCall(t *testing.T) {
-	//stm: @CHAIN_GEN_NEXT_TIPSET_001, @CHAIN_GEN_NEXT_TIPSET_FROM_MINERS_001
-	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001, @CHAIN_STATE_CALL_001
+	// stm: @CHAIN_GEN_NEXT_TIPSET_001, @CHAIN_GEN_NEXT_TIPSET_FROM_MINERS_001
+	// stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001, @CHAIN_STATE_CALL_001
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	for after := 0; after < 3; after++ {
@@ -267,8 +268,8 @@ func TestForkRefuseCall(t *testing.T) {
 			})
 		}
 	}
-
 }
+
 func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	ctx := context.TODO()
 
@@ -284,10 +285,12 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 			Expensive: true,
 			Height:    testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet,
+			) (cid.Cid, error) {
 				migrationCount++
 				return root, nil
-			}}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
+			},
+		}}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,8 +378,8 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 }
 
 func TestForkPreMigration(t *testing.T) {
-	//stm: @CHAIN_GEN_NEXT_TIPSET_001,
-	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
+	// stm: @CHAIN_GEN_NEXT_TIPSET_001,
+	// stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	cg, err := gen.NewGenerator()
@@ -417,94 +420,99 @@ func TestForkPreMigration(t *testing.T) {
 	counter := make(chan struct{}, 10)
 
 	sm, err := NewStateManager(
-		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{{
-			Network: network.Version1,
-			Height:  testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+		cg.ChainStore(), consensus.NewTipSetExecutor(filcns.RewardFunc), cg.StateManager().VMSys(), UpgradeSchedule{
+			{
+				Network: network.Version1,
+				Height:  testForkHeight,
+				Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
+					root cid.Cid, height abi.ChainEpoch, ts *types.TipSet,
+				) (cid.Cid, error) {
+					// Make sure the test that should be canceled, is canceled.
+					select {
+					case <-wasCanceled:
+					case <-ctx.Done():
+						return cid.Undef, ctx.Err()
+					}
 
-				// Make sure the test that should be canceled, is canceled.
-				select {
-				case <-wasCanceled:
-				case <-ctx.Done():
-					return cid.Undef, ctx.Err()
-				}
-
-				// the cache should be setup correctly.
-				checkCache(t, cache)
-
-				counter <- struct{}{}
-
-				return root, nil
-			},
-			PreMigrations: []PreMigration{{
-				StartWithin: 20,
-				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
-					wait20.Done()
-					wait20.Wait()
-
-					err := cache.Write("foo", fooCid)
-					require.NoError(t, err)
-
-					counter <- struct{}{}
-
-					return nil
-				},
-			}, {
-				StartWithin: 20,
-				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
-					wait20.Done()
-					wait20.Wait()
-
-					err := cache.Write("bar", barCid)
-					require.NoError(t, err)
-
-					counter <- struct{}{}
-
-					return nil
-				},
-			}, {
-				StartWithin: 20,
-				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
-					wait20.Done()
-					wait20.Wait()
-
-					err := cache.Write("fail", failCid)
-					require.NoError(t, err)
-
-					counter <- struct{}{}
-
-					// Fail this migration. The cached entry should not be persisted.
-					return fmt.Errorf("failed")
-				},
-			}, {
-				StartWithin: 15,
-				StopWithin:  5,
-				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
-
-					<-ctx.Done()
-					close(wasCanceled)
-
-					counter <- struct{}{}
-
-					return nil
-				},
-			}, {
-				StartWithin: 10,
-				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
-
+					// the cache should be setup correctly.
 					checkCache(t, cache)
 
 					counter <- struct{}{}
 
-					return nil
+					return root, nil
 				},
-			}}},
+				PreMigrations: []PreMigration{{
+					StartWithin: 20,
+					PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
+						_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+					) error {
+						wait20.Done()
+						wait20.Wait()
+
+						err := cache.Write("foo", fooCid)
+						require.NoError(t, err)
+
+						counter <- struct{}{}
+
+						return nil
+					},
+				}, {
+					StartWithin: 20,
+					PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
+						_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+					) error {
+						wait20.Done()
+						wait20.Wait()
+
+						err := cache.Write("bar", barCid)
+						require.NoError(t, err)
+
+						counter <- struct{}{}
+
+						return nil
+					},
+				}, {
+					StartWithin: 20,
+					PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
+						_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+					) error {
+						wait20.Done()
+						wait20.Wait()
+
+						err := cache.Write("fail", failCid)
+						require.NoError(t, err)
+
+						counter <- struct{}{}
+
+						// Fail this migration. The cached entry should not be persisted.
+						return fmt.Errorf("failed")
+					},
+				}, {
+					StartWithin: 15,
+					StopWithin:  5,
+					PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
+						_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+					) error {
+						<-ctx.Done()
+						close(wasCanceled)
+
+						counter <- struct{}{}
+
+						return nil
+					},
+				}, {
+					StartWithin: 10,
+					PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
+						_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+					) error {
+						checkCache(t, cache)
+
+						counter <- struct{}{}
+
+						return nil
+					},
+				}},
+			},
 		}, cg.BeaconSchedule(), datastore.NewMapDatastore(), index.DummyMsgIndex)
 	if err != nil {
 		t.Fatal(err)
@@ -560,23 +568,26 @@ func TestDisablePreMigration(t *testing.T) {
 		cg.ChainStore(),
 		consensus.NewTipSetExecutor(filcns.RewardFunc),
 		cg.StateManager().VMSys(),
-		UpgradeSchedule{{
-			Network: network.Version1,
-			Height:  testForkHeight,
-			Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
-				root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+		UpgradeSchedule{
+			{
+				Network: network.Version1,
+				Height:  testForkHeight,
+				Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
+					root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+				) (cid.Cid, error) {
+					counter <- struct{}{}
 
-				counter <- struct{}{}
-
-				return root, nil
-			},
-			PreMigrations: []PreMigration{{
-				StartWithin: 20,
-				PreMigration: func(ctx context.Context, _ *StateManager, _ MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
-					panic("should be skipped")
+					return root, nil
 				},
-			}}},
+				PreMigrations: []PreMigration{{
+					StartWithin: 20,
+					PreMigration: func(ctx context.Context, _ *StateManager, _ MigrationCache,
+						_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+					) error {
+						panic("should be skipped")
+					},
+				}},
+			},
 		},
 		cg.BeaconSchedule(),
 		datastore.NewMapDatastore(),
@@ -622,16 +633,18 @@ func TestMigrtionCache(t *testing.T) {
 		cg.ChainStore(),
 		consensus.NewTipSetExecutor(filcns.RewardFunc),
 		cg.StateManager().VMSys(),
-		UpgradeSchedule{{
-			Network: network.Version1,
-			Height:  testForkHeight,
-			Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
-				root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+		UpgradeSchedule{
+			{
+				Network: network.Version1,
+				Height:  testForkHeight,
+				Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
+					root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+				) (cid.Cid, error) {
+					counter <- struct{}{}
 
-				counter <- struct{}{}
-
-				return root, nil
-			}},
+					return root, nil
+				},
+			},
 		},
 		cg.BeaconSchedule(),
 		metadataDs,
@@ -675,16 +688,18 @@ func TestMigrtionCache(t *testing.T) {
 			cg.ChainStore(),
 			consensus.NewTipSetExecutor(filcns.RewardFunc),
 			cg.StateManager().VMSys(),
-			UpgradeSchedule{{
-				Network: network.Version1,
-				Height:  testForkHeight,
-				Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
-					root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+			UpgradeSchedule{
+				{
+					Network: network.Version1,
+					Height:  testForkHeight,
+					Migration: func(_ context.Context, _ *StateManager, _ MigrationCache, _ ExecMonitor,
+						root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet,
+					) (cid.Cid, error) {
+						counter <- struct{}{}
 
-					counter <- struct{}{}
-
-					return root, nil
-				}},
+						return root, nil
+					},
+				},
 			},
 			cg.BeaconSchedule(),
 			metadataDs,

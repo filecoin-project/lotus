@@ -44,7 +44,6 @@ func NewRPCClient(host host.Host) *rpc.Client {
 }
 
 func NewRPCServer(ctx context.Context, host host.Host, rpcHandler *RPCHandler) error {
-
 	authF := func(pid peer.ID, svc, method string) bool {
 		return rpcHandler.cons.IsTrustedPeer(ctx, pid)
 	}

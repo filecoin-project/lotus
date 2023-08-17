@@ -290,7 +290,8 @@ func doExtractMessage(opts extractOpts) error {
 				{Source: fmt.Sprintf("message:%s", msg.Cid().String())},
 				{Source: fmt.Sprintf("inclusion_tipset:%s", incTs.Key().String())},
 				{Source: fmt.Sprintf("execution_tipset:%s", execTs.Key().String())},
-				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
+				{Source: "github.com/filecoin-project/lotus", Version: version.String()},
+			},
 		},
 		Selector: schema.Selector{
 			schema.SelectorMinProtocolVersion: codename,

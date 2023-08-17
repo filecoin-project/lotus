@@ -74,9 +74,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
-var (
-	StagingAreaDirName = "deal-staging"
-)
+var StagingAreaDirName = "deal-staging"
 
 type UuidWrapper struct {
 	v1api.FullNode
@@ -316,7 +314,6 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr)
-
 		if err != nil {
 			return nil, err
 		}
@@ -335,7 +332,6 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider, j journal.Journal) {
 	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
-
 		OnStart: func(ctx context.Context) error {
 			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
 
@@ -513,7 +509,6 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api v1api.FullNod
 }
 
 func NewStorageAsk(ctx helpers.MetricsCtx, fapi v1api.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
-
 	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -549,7 +544,6 @@ func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter)
 		spn storagemarket.StorageProviderNode,
 		r repo.LockedRepo,
 	) dtypes.StorageDealFilter {
-
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 			b, err := onlineOk()
 			if err != nil {
@@ -700,7 +694,8 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-		offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
+		offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
+	) dtypes.RetrievalDealFilter {
 		return func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
 			b, err := onlineOk()
 			if err != nil {
@@ -737,9 +732,9 @@ func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
 func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
 	_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
-
 	return func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-		_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
+		_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
+	) dtypes.RetrievalPricingFunc {
 		if cfg.RetrievalPricing.Strategy == config.RetrievalPricingExternalMode {
 			return pricing.ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
 		}
@@ -779,8 +774,10 @@ func RetrievalProvider(
 	)
 }
 
-var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
-var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
+var (
+	WorkerCallsPrefix = datastore.NewKey("/worker/calls")
+	ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
+)
 
 func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls paths.LocalStorage, si paths.SectorIndex, urls paths.URLs) (*paths.Local, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
@@ -1197,7 +1194,7 @@ func migrateDealStaging(oldPath, newPath string) error {
 
 	// if the directory doesn't exist, create it
 	if os.IsNotExist(err) {
-		if err := os.MkdirAll(newPath, 0755); err != nil {
+		if err := os.MkdirAll(newPath, 0o755); err != nil {
 			return xerrors.Errorf("failed to mk directory %s for deal staging: %w", newPath, err)
 		}
 	} else { // if we failed for other reasons, abort.

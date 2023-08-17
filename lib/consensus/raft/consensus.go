@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/addrutil"
 	"github.com/filecoin-project/lotus/node/repo"
 
-	//ds "github.com/ipfs/go-datastore"
+	// ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	consensus "github.com/libp2p/go-libp2p-consensus"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
@@ -182,7 +182,6 @@ func NewConsensus(host host.Host, cfg *ClusterRaftConfig, mpool *messagepool.Mes
 
 	go cc.finishBootstrap()
 	return cc, nil
-
 }
 
 // TODO: Merge with NewConsensus and remove the rpcReady chan
@@ -192,7 +191,6 @@ func NewConsensusWithRPCClient(staging bool) func(host host.Host,
 	mpool *messagepool.MessagePool,
 	repo repo.LockedRepo,
 ) (*Consensus, error) {
-
 	return func(host host.Host, cfg *ClusterRaftConfig, rpcClient *rpc.Client, mpool *messagepool.MessagePool, repo repo.LockedRepo) (*Consensus, error) {
 		cc, err := NewConsensus(host, cfg, mpool, repo, staging)
 		if err != nil {
@@ -206,7 +204,6 @@ func NewConsensusWithRPCClient(staging bool) func(host host.Host,
 
 // WaitForSync waits for a leader and for the state to be up to date, then returns.
 func (cc *Consensus) WaitForSync(ctx context.Context) error {
-
 	leaderCtx, cancel := context.WithTimeout(ctx, cc.config.WaitForLeaderTimeout)
 	defer cancel()
 
@@ -273,7 +270,6 @@ func (cc *Consensus) finishBootstrap() {
 // more updates. The underlying consensus is permanently
 // shutdown, along with the libp2p transport.
 func (cc *Consensus) Shutdown(ctx context.Context) error {
-
 	logger.Info("stopping Consensus component")
 
 	// Raft Shutdown
@@ -316,14 +312,12 @@ func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interf
 	for i := 0; i <= cc.config.CommitRetries; i++ {
 		logger.Debugf("redirect try %d", i)
 		leader, err := cc.Leader(ctx)
-
 		// No leader, wait for one
 		if err != nil {
 			logger.Warn("there seems to be no leader. Waiting for one")
 			rctx, cancel := context.WithTimeout(ctx, cc.config.WaitForLeaderTimeout)
 			defer cancel()
 			pidstr, err := cc.raft.WaitForLeader(rctx)
-
 			// means we timed out waiting for a leader
 			// we don't retry in this case
 			if err != nil {
@@ -365,7 +359,6 @@ func (cc *Consensus) RedirectToLeader(method string, arg interface{}, ret interf
 
 // commit submits a cc.consensus commit. It retries upon failures.
 func (cc *Consensus) Commit(ctx context.Context, op *ConsensusOp) error {
-
 	var finalErr error
 	for i := 0; i <= cc.config.CommitRetries; i++ {
 		logger.Debugf("attempt #%d: committing %+v", i, op)
@@ -470,7 +463,7 @@ func (cc *Consensus) Leader(ctx context.Context) (peer.ID, error) {
 
 // Clean removes the Raft persisted state.
 func (cc *Consensus) Clean(ctx context.Context) error {
-	//return CleanupRaft(cc.config)
+	// return CleanupRaft(cc.config)
 	return nil
 }
 
@@ -487,7 +480,6 @@ func (cc *Consensus) Clean(ctx context.Context) error {
 // Peers return the current list of peers in the consensus.
 // The list will be sorted alphabetically.
 func (cc *Consensus) Peers(ctx context.Context) ([]peer.ID, error) {
-
 	peers := []peer.ID{}
 	raftPeers, err := cc.raft.Peers(ctx)
 	if err != nil {

@@ -61,14 +61,11 @@ const (
 	MaxPreCommitRandomnessLookback = builtin11.EpochsInDay + SealRandomnessLookback
 )
 
-var (
-	MarketDefaultAllocationTermBuffer = market11.MarketDefaultAllocationTermBuffer
-)
+var MarketDefaultAllocationTermBuffer = market11.MarketDefaultAllocationTermBuffer
 
 // SetSupportedProofTypes sets supported proof types, across all actor versions.
 // This should only be used for testing.
 func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
-
 	miner0.SupportedProofTypes = make(map[abi.RegisteredSealProof]struct{}, len(types))
 
 	miner2.PreCommitSealProofTypesV0 = make(map[abi.RegisteredSealProof]struct{}, len(types))
@@ -174,7 +171,6 @@ func SetPreCommitChallengeDelay(delay abi.ChainEpoch) {
 	miner10.PreCommitChallengeDelay = delay
 
 	miner11.PreCommitChallengeDelay = delay
-
 }
 
 // TODO: this function shouldn't really exist. Instead, the API should expose the precommit delay.
@@ -186,7 +182,6 @@ func GetPreCommitChallengeDelay() abi.ChainEpoch {
 // meet for leader election, across all actor versions. This should only be used
 // for testing.
 func SetConsensusMinerMinPower(p abi.StoragePower) {
-
 	power0.ConsensusMinerMinPower = p
 
 	for _, policy := range builtin2.SealProofPolicies {
@@ -228,13 +223,11 @@ func SetConsensusMinerMinPower(p abi.StoragePower) {
 	for _, policy := range builtin11.PoStProofPolicies {
 		policy.ConsensusMinerMinPower = p
 	}
-
 }
 
 // SetMinVerifiedDealSize sets the minimum size of a verified deal. This should
 // only be used for testing.
 func SetMinVerifiedDealSize(size abi.StoragePower) {
-
 	verifreg0.MinVerifiedDealSize = size
 
 	verifreg2.MinVerifiedDealSize = size
@@ -256,7 +249,6 @@ func SetMinVerifiedDealSize(size abi.StoragePower) {
 	verifreg10.MinVerifiedDealSize = size
 
 	verifreg11.MinVerifiedDealSize = size
-
 }
 
 func GetMaxProveCommitDuration(ver actorstypes.Version, t abi.RegisteredSealProof) (abi.ChainEpoch, error) {
@@ -315,7 +307,6 @@ func GetMaxProveCommitDuration(ver actorstypes.Version, t abi.RegisteredSealProo
 // supply that must be covered by provider collateral in a deal. This should
 // only be used for testing.
 func SetProviderCollateralSupplyTarget(num, denom big.Int) {
-
 	market2.ProviderCollateralSupplyTarget = builtin2.BigFrac{
 		Numerator:   num,
 		Denominator: denom,
@@ -365,7 +356,6 @@ func SetProviderCollateralSupplyTarget(num, denom big.Int) {
 		Numerator:   num,
 		Denominator: denom,
 	}
-
 }
 
 func DealProviderCollateralBounds(
@@ -446,7 +436,6 @@ func DealDurationBounds(pieceSize abi.PaddedPieceSize) (min, max abi.ChainEpoch)
 // Sets the challenge window and scales the proving period to match (such that
 // there are always 48 challenge windows in a proving period).
 func SetWPoStChallengeWindow(period abi.ChainEpoch) {
-
 	miner0.WPoStChallengeWindow = period
 	miner0.WPoStProvingPeriod = period * abi.ChainEpoch(miner0.WPoStPeriodDeadlines)
 
@@ -515,7 +504,6 @@ func SetWPoStChallengeWindow(period abi.ChainEpoch) {
 	// by default, this is 2x finality which is 30 periods.
 	// scale it if we're scaling the challenge period.
 	miner11.WPoStDisputeWindow = period * 30
-
 }
 
 func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {

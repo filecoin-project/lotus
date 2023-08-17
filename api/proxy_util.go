@@ -4,7 +4,7 @@ import "reflect"
 
 var _internalField = "Internal"
 
-// GetInternalStructs extracts all pointers to 'Internal' sub-structs from the provided pointer to a proxy struct
+// GetInternalStructs extracts all pointers to 'Internal' sub-structs from the provided pointer to a proxy struct.
 func GetInternalStructs(in interface{}) []interface{} {
 	return getInternalStructs(reflect.ValueOf(in).Elem())
 }

@@ -94,7 +94,6 @@ func NewClusterRaftConfig(userRaftConfig *config.UserRaftConfig) *ClusterRaftCon
 	cfg.RaftConfig.LogOutput = io.Discard
 
 	return &cfg
-
 }
 
 // Validate checks that this configuration has working values,

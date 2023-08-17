@@ -361,7 +361,6 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 // If a declaration is made, it awaits for build.MessageConfidence confirmations
 // on chain before returning.
 func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber, tsk types.TipSetKey) ([]cid.Cid, error) {
-
 	var RecoveryDecls []miner.RecoveryDeclaration
 	var RecoveryBatches [][]miner.RecoveryDeclaration
 

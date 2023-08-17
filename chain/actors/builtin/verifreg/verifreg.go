@@ -157,7 +157,9 @@ func AllCodes() []cid.Cid {
 	}
 }
 
-type Allocation = verifregtypes.Allocation
-type AllocationId = verifregtypes.AllocationId
-type Claim = verifregtypes.Claim
-type ClaimId = verifregtypes.ClaimId
+type (
+	Allocation   = verifregtypes.Allocation
+	AllocationId = verifregtypes.AllocationId
+	Claim        = verifregtypes.Claim
+	ClaimId      = verifregtypes.ClaimId
+)

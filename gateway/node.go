@@ -41,7 +41,7 @@ const (
 )
 
 // TargetAPI defines the API methods that the Node depends on
-// (to make it easy to mock for tests)
+// (to make it easy to mock for tests).
 type TargetAPI interface {
 	MpoolPending(context.Context, types.TipSetKey) ([]*types.SignedMessage, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)

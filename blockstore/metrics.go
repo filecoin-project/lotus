@@ -18,9 +18,7 @@ import (
 // OpenCensus.
 var CacheMetricsEmitInterval = 5 * time.Second
 
-var (
-	CacheName, _ = tag.NewKey("cache_name")
-)
+var CacheName, _ = tag.NewKey("cache_name")
 
 // CacheMeasures groups all metrics emitted by the blockstore caches.
 var CacheMeasures = struct {

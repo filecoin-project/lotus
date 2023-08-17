@@ -30,8 +30,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var DealSectorPriority = 1024
-var MaxTicketAge = policy.MaxPreCommitRandomnessLookback
+var (
+	DealSectorPriority = 1024
+	MaxTicketAge       = policy.MaxPreCommitRandomnessLookback
+)
 
 func (m *Sealing) cleanupAssignedDeals(sector SectorInfo) {
 	m.inputLk.Lock()

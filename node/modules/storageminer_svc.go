@@ -13,8 +13,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
-type MinerSealingService api.StorageMiner
-type MinerStorageService api.StorageMiner
+type (
+	MinerSealingService api.StorageMiner
+	MinerStorageService api.StorageMiner
+)
 
 var _ sectorblocks.SectorBuilder = *new(MinerSealingService)
 
@@ -49,7 +51,8 @@ func connectMinerService(apiInfo string) func(mctx helpers.MetricsCtx, lc fx.Lif
 			OnStop: func(context.Context) error {
 				closer()
 				return nil
-			}})
+			},
+		})
 
 		return mapi, nil
 	}

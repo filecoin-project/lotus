@@ -2,8 +2,10 @@ package build
 
 import "os"
 
-var CurrentCommit string
-var BuildType int
+var (
+	CurrentCommit string
+	BuildType     int
+)
 
 const (
 	BuildDefault      = 0
@@ -36,7 +38,7 @@ func BuildTypeString() string {
 	}
 }
 
-// BuildVersion is the local build version
+// BuildVersion is the local build version.
 const BuildVersion = "1.23.4-dev"
 
 func UserVersion() string {

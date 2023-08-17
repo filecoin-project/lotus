@@ -34,7 +34,7 @@ func newMsgListeners() msgListeners {
 }
 
 // onMsgComplete registers a callback for when the message with the given cid
-// completes
+// completes.
 func (ml *msgListeners) onMsgComplete(mcid cid.Cid, cb func(error)) pubsub.Unsubscribe {
 	var fn subscriberFn = func(evt msgCompleteEvt) {
 		if mcid.Equals(evt.mcid) {
@@ -44,7 +44,7 @@ func (ml *msgListeners) onMsgComplete(mcid cid.Cid, cb func(error)) pubsub.Unsub
 	return ml.ps.Subscribe(fn)
 }
 
-// fireMsgComplete is called when a message completes
+// fireMsgComplete is called when a message completes.
 func (ml *msgListeners) fireMsgComplete(mcid cid.Cid, err error) {
 	e := ml.ps.Publish(msgCompleteEvt{mcid: mcid, err: err})
 	if e != nil {

@@ -203,7 +203,7 @@ func tempFetchDest(spath string, create bool) (string, error) {
 	st, b := filepath.Split(spath)
 	tempdir := filepath.Join(st, FetchTempSubdir)
 	if create {
-		if err := os.MkdirAll(tempdir, 0755); err != nil { // nolint
+		if err := os.MkdirAll(tempdir, 0o755); err != nil { // nolint
 			return "", xerrors.Errorf("creating temp fetch dir: %w", err)
 		}
 	}
@@ -747,7 +747,6 @@ func (r *Remote) Reader(ctx context.Context, s storiface.SectorRef, offset, size
 func (r *Remote) Reserve(ctx context.Context, sid storiface.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
 	log.Warnf("reserve called on remote store, sectorID: %v", sid.ID)
 	return func() {
-
 	}, nil
 }
 

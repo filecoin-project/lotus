@@ -26,14 +26,14 @@ var log = logging.Logger("paych")
 
 var errProofNotSupported = errors.New("payment channel proof parameter is not supported")
 
-// stateManagerAPI defines the methods needed from StateManager
+// stateManagerAPI defines the methods needed from StateManager.
 type stateManagerAPI interface {
 	ResolveToDeterministicAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)
 	GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error)
 	Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error)
 }
 
-// paychAPI defines the API methods needed by the payment channel manager
+// paychAPI defines the API methods needed by the payment channel manager.
 type PaychAPI interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
@@ -43,13 +43,13 @@ type PaychAPI interface {
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 }
 
-// managerAPI defines all methods needed by the manager
+// managerAPI defines all methods needed by the manager.
 type managerAPI interface {
 	stateManagerAPI
 	PaychAPI
 }
 
-// managerAPIImpl is used to create a composite that implements managerAPI
+// managerAPIImpl is used to create a composite that implements managerAPI.
 type managerAPIImpl struct {
 	stmgr.StateManagerAPI
 	PaychAPI
@@ -80,7 +80,7 @@ func NewManager(ctx context.Context, shutdown func(), sm stmgr.StateManagerAPI, 
 	}
 }
 
-// newManager is used by the tests to supply mocks
+// newManager is used by the tests to supply mocks.
 func newManager(pchstore *Store, pchapi managerAPI) (*Manager, error) {
 	pm := &Manager{
 		store:    pchstore,
@@ -97,7 +97,7 @@ func (pm *Manager) Start() error {
 	return pm.restartPending(pm.ctx)
 }
 
-// Stop shuts down any processes used by the manager
+// Stop shuts down any processes used by the manager.
 func (pm *Manager) Stop() error {
 	pm.shutdown()
 	return nil
@@ -231,7 +231,7 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 	return err
 }
 
-// CheckVoucherSpendable checks if the given voucher is currently spendable
+// CheckVoucherSpendable checks if the given voucher is currently spendable.
 func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paychtypes.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	if len(proof) > 0 {
 		return false, errProofNotSupported
@@ -332,7 +332,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	return pm.store.TrackChannel(ctx, stateCi)
 }
 
-// TODO: secret vs proof doesn't make sense, there is only one, not two
+// TODO: secret vs proof doesn't make sense, there is only one, not two.
 func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *paychtypes.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	if len(proof) > 0 {
 		return cid.Undef, errProofNotSupported

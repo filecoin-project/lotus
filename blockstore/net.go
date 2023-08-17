@@ -25,7 +25,7 @@ const (
 	NRpcPut
 	NRpcDelete
 
-	// todo cancel req
+	// todo cancel req.
 )
 
 type NetRPCRespType byte

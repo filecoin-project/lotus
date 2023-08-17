@@ -59,5 +59,4 @@ func BadgerBlockstoreOptions(domain BlockstoreDomain, path string, readonly bool
 	}
 
 	return opts, nil
-
 }

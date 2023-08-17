@@ -124,7 +124,6 @@ type poiss struct {
 // returns (instance, `1-poisscdf(0, lambda)`)
 // CDF value returend is reused when calling `next`
 func newPoiss(lambda *big.Int) (*poiss, *big.Int) {
-
 	// pmf(k) = (lambda^k)*(e^lambda) / k!
 	// k = 0 here, so it simplifies to just e^-lambda
 	elam := expneg(lambda) // Q.256

@@ -82,8 +82,8 @@ func ChainStore(lc fx.Lifecycle,
 	basebs dtypes.BaseBlockstore,
 	weight store.WeightFunc,
 	us stmgr.UpgradeSchedule,
-	j journal.Journal) *store.ChainStore {
-
+	j journal.Journal,
+) *store.ChainStore {
 	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
 
 	if err := chain.Load(helpers.LifecycleCtx(mctx, lc)); err != nil {
@@ -117,7 +117,8 @@ func NetworkName(mctx helpers.MetricsCtx,
 	tsexec stmgr.Executor,
 	syscalls vm.SyscallBuilder,
 	us stmgr.UpgradeSchedule,
-	_ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+	_ dtypes.AfterGenesisSet,
+) (dtypes.NetworkName, error) {
 	if !build.Devnet {
 		return "testnetnet", nil
 	}

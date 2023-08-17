@@ -172,7 +172,8 @@ func runSimulateCmd(_ *cli.Context) error {
 		Meta: &schema.Metadata{
 			ID: fmt.Sprintf("simulated-%s", msg.Cid()),
 			Gen: []schema.GenerationData{
-				{Source: "github.com/filecoin-project/lotus", Version: version.String()}},
+				{Source: "github.com/filecoin-project/lotus", Version: version.String()},
+			},
 		},
 		Selector: schema.Selector{
 			schema.SelectorMinProtocolVersion: codename,

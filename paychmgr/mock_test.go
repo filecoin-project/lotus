@@ -178,7 +178,7 @@ func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.Messa
 	<-done
 }
 
-// Send success response for any waiting calls
+// Send success response for any waiting calls.
 func (pchapi *mockPaychAPI) close() {
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()

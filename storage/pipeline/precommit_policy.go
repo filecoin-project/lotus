@@ -111,7 +111,7 @@ func (p *BasicPreCommitPolicy) getCCSectorLifetime() (abi.ChainEpoch, error) {
 		return 0, xerrors.Errorf("sealing config load error: %w", err)
 	}
 
-	var ccLifetimeEpochs = abi.ChainEpoch(uint64(c.CommittedCapacitySectorLifetime.Seconds()) / builtin.EpochDurationSeconds)
+	ccLifetimeEpochs := abi.ChainEpoch(uint64(c.CommittedCapacitySectorLifetime.Seconds()) / builtin.EpochDurationSeconds)
 	// if zero value in config, assume default sector extension
 	if ccLifetimeEpochs == 0 {
 		ccLifetimeEpochs = policy.GetMaxSectorExpirationExtension()

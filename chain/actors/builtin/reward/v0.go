@@ -44,9 +44,7 @@ func (s *state0) ThisEpochReward() (abi.TokenAmount, error) {
 }
 
 func (s *state0) ThisEpochRewardSmoothed() (builtin.FilterEstimate, error) {
-
 	return builtin.FilterEstimate(*s.State.ThisEpochRewardSmoothed), nil
-
 }
 
 func (s *state0) ThisEpochBaselinePower() (abi.StoragePower, error) {

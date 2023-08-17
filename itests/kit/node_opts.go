@@ -167,7 +167,7 @@ func PresealSectors(sectors int) NodeOpt {
 	}
 }
 
-// NoStorage initializes miners with no writable storage paths (just read-only preseal paths)
+// NoStorage initializes miners with no writable storage paths (just read-only preseal paths).
 func NoStorage() NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.noStorage = true

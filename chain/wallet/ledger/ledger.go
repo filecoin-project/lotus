@@ -166,8 +166,10 @@ func (lw LedgerWallet) WalletList(ctx context.Context) ([]address.Address, error
 
 const hdHard = 0x80000000
 
-var filHDBasePath = []uint32{hdHard | 44, hdHard | 461, hdHard, 0}
-var filHdPathLen = 5
+var (
+	filHDBasePath = []uint32{hdHard | 44, hdHard | 461, hdHard, 0}
+	filHdPathLen  = 5
+)
 
 func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.Address, error) {
 	if t != types.KTSecp256k1Ledger {

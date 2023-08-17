@@ -127,7 +127,7 @@ func writeVector(vector *schema.TestVector, file string) (err error) {
 	output := io.WriteCloser(os.Stdout)
 	if file := file; file != "" {
 		dir := filepath.Dir(file)
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("unable to create directory %s: %w", dir, err)
 		}
 		output, err = os.Create(file)

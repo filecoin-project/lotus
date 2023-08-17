@@ -34,7 +34,7 @@ func getCheckMessageStatus(statusCode api.CheckStatusCode, msgStatuses []api.Mes
 }
 
 func TestCheckMessages(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CHECK_MESSAGES_001
+	// stm: @CHAIN_MEMPOOL_CHECK_MESSAGES_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -88,7 +88,7 @@ func TestCheckMessages(t *testing.T) {
 }
 
 func TestCheckPendingMessages(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001
+	// stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -145,7 +145,7 @@ func TestCheckPendingMessages(t *testing.T) {
 }
 
 func TestCheckReplaceMessages(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CHECK_REPLACE_MESSAGES_001
+	// stm: @CHAIN_MEMPOOL_CHECK_REPLACE_MESSAGES_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -220,5 +220,4 @@ func TestCheckReplaceMessages(t *testing.T) {
 			assert.False(t, status.OK)
 		}
 	}
-
 }

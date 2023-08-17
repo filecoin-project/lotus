@@ -12,7 +12,7 @@ func newVer(major, minor, patch uint8) Version {
 	return Version(uint32(major)<<16 | uint32(minor)<<8 | uint32(patch))
 }
 
-// Ints returns (major, minor, patch) versions
+// Ints returns (major, minor, patch) versions.
 func (ve Version) Ints() (uint32, uint32, uint32) {
 	v := uint32(ve)
 	return (v & majorOnlyMask) >> 16, (v & minorOnlyMask) >> 8, v & patchOnlyMask
@@ -52,7 +52,7 @@ func VersionForType(nodeType NodeType) (Version, error) {
 	}
 }
 
-// semver versions of the rpc api exposed
+// semver versions of the rpc api exposed.
 var (
 	FullAPIVersion0 = newVer(1, 5, 0)
 	FullAPIVersion1 = newVer(2, 3, 0)

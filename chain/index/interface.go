@@ -9,8 +9,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-var ErrNotFound = errors.New("message not found")
-var ErrClosed = errors.New("index closed")
+var (
+	ErrNotFound = errors.New("message not found")
+	ErrClosed   = errors.New("index closed")
+)
 
 // MsgInfo is the Message metadata the index tracks.
 type MsgInfo struct {

@@ -53,9 +53,7 @@ func (s *state6) RootKey() (address.Address, error) {
 }
 
 func (s *state6) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-
 	return getDataCap(s.store, actors.Version6, s.verifiedClients, addr)
-
 }
 
 func (s *state6) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -71,15 +69,11 @@ func (s *state6) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state6) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-
 	return forEachCap(s.store, actors.Version6, s.verifiedClients, cb)
-
 }
 
 func (s *state6) verifiedClients() (adt.Map, error) {
-
 	return adt6.AsMap(s.store, s.VerifiedClients, builtin6.DefaultHamtBitwidth)
-
 }
 
 func (s *state6) verifiers() (adt.Map, error) {
@@ -88,7 +82,6 @@ func (s *state6) verifiers() (adt.Map, error) {
 
 func (s *state6) removeDataCapProposalIDs() (adt.Map, error) {
 	return nil, nil
-
 }
 
 func (s *state6) GetState() interface{} {
@@ -96,33 +89,23 @@ func (s *state6) GetState() interface{} {
 }
 
 func (s *state6) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
-
 	return nil, false, xerrors.Errorf("unsupported in actors v6")
-
 }
 
 func (s *state6) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v6")
-
 }
 
 func (s *state6) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
-
 	return nil, false, xerrors.Errorf("unsupported in actors v6")
-
 }
 
 func (s *state6) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v6")
-
 }
 
 func (s *state6) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v6")
-
 }
 
 func (s *state6) ActorKey() string {

@@ -19,7 +19,6 @@ import (
 type message10 struct{ from address.Address }
 
 func (m message10) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
-
 	actorCodeID, ok := actors.GetActorCodeID(actorstypes.Version10, "paymentchannel")
 	if !ok {
 		return nil, xerrors.Errorf("error getting actor paymentchannel code id for actor version %d", 10)
@@ -48,7 +47,6 @@ func (m message10) Create(to address.Address, initialAmount abi.TokenAmount) (*t
 
 func (m message10) Update(paych address.Address, sv *paychtypes.SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych10.UpdateChannelStateParams{
-
 		Sv: toV10SignedVoucher(*sv),
 
 		Secret: secret,

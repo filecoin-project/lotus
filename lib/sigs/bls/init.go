@@ -13,10 +13,12 @@ import (
 
 const DST = string("BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
 
-type SecretKey = ffi.PrivateKey
-type PublicKey = ffi.PublicKey
-type Signature = ffi.Signature
-type AggregateSignature = ffi.Signature
+type (
+	SecretKey          = ffi.PrivateKey
+	PublicKey          = ffi.PublicKey
+	Signature          = ffi.Signature
+	AggregateSignature = ffi.Signature
+)
 
 type blsSigner struct{}
 

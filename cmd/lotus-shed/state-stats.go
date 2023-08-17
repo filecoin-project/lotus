@@ -170,6 +170,7 @@ func (tsr *ChainStoreTipSetResolver) ChainGetTipSetByHeight(ctx context.Context,
 	}
 	return tsr.Chain.GetTipsetByHeight(ctx, h, ts, true)
 }
+
 func (tsr *ChainStoreTipSetResolver) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	return tsr.Chain.LoadTipSet(ctx, tsk)
 }
@@ -275,8 +276,8 @@ func loadChainStore(ctx context.Context, repoPath string) (*StoreHandle, error) 
 
 func pipeline(ctx context.Context, name string, numWorkers int, createJobs func(ctx context.Context, jobCh chan job, resultCh chan result) error,
 	worker func(ctx context.Context, id int, jobCh chan job, resultCh chan result) error,
-	processResults func(ctx context.Context, resultCh chan result) error) error {
-
+	processResults func(ctx context.Context, resultCh chan result) error,
+) error {
 	eg, egctx := errgroup.WithContext(ctx)
 	jobCh := make(chan job, numWorkers)
 	resultCh := make(chan result)
@@ -447,7 +448,6 @@ var statSnapshotCmd = &cli.Command{
 			for result := range resultCh {
 				if stat, ok := summary[result.key]; ok {
 					summary[result.key] = combine(stat, result.stats)
-
 				} else {
 					summary[result.key] = result.stats
 				}

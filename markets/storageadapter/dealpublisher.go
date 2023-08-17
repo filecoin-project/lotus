@@ -64,14 +64,14 @@ type DealPublisher struct {
 	startEpochSealingBuffer abi.ChainEpoch
 }
 
-// A deal that is queued to be published
+// A deal that is queued to be published.
 type pendingDeal struct {
 	ctx    context.Context
 	deal   market.ClientDealProposal
 	Result chan publishResult
 }
 
-// The result of publishing a deal
+// The result of publishing a deal.
 type publishResult struct {
 	msgCid cid.Cid
 	err    error
@@ -136,7 +136,7 @@ func newDealPublisher(
 	}
 }
 
-// PendingDeals returns the list of deals that are queued up to be published
+// PendingDeals returns the list of deals that are queued up to be published.
 func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
 	p.lk.Lock()
 	defer p.lk.Unlock()
@@ -162,7 +162,7 @@ func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
 }
 
 // ForcePublishPendingDeals publishes all pending deals without waiting for
-// the publish period to elapse
+// the publish period to elapse.
 func (p *DealPublisher) ForcePublishPendingDeals() {
 	p.lk.Lock()
 	defer p.lk.Unlock()
@@ -338,7 +338,7 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 }
 
 // validateDeal checks that the deal proposal start epoch hasn't already
-// elapsed
+// elapsed.
 func (p *DealPublisher) validateDeal(deal market.ClientDealProposal) error {
 	start := time.Now()
 
@@ -394,7 +394,7 @@ func (p *DealPublisher) validateDeal(deal market.ClientDealProposal) error {
 	return nil
 }
 
-// Sends the publish message
+// Sends the publish message.
 func (p *DealPublisher) publishDealProposals(deals []market.ClientDealProposal) (cid.Cid, error) {
 	if len(deals) == 0 {
 		return cid.Undef, nil
@@ -421,7 +421,6 @@ func (p *DealPublisher) publishDealProposals(deals []market.ClientDealProposal) 
 	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
 		Deals: deals,
 	})
-
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
@@ -438,7 +437,6 @@ func (p *DealPublisher) publishDealProposals(deals []market.ClientDealProposal) 
 		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
 	}, p.publishSpec)
-
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -453,7 +451,7 @@ func pieceCids(deals []market.ClientDealProposal) string {
 	return strings.Join(cids, ", ")
 }
 
-// filter out deals that have been cancelled
+// filter out deals that have been cancelled.
 func (p *DealPublisher) filterCancelledDeals() {
 	filtered := p.pending[:0]
 	for _, pd := range p.pending {

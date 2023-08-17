@@ -58,7 +58,7 @@ func main() {
 
 	// calculate the exclusion set of unit test directories to exclude because
 	// they are already included in a grouped suite.
-	var excluded = map[string]struct{}{}
+	excluded := map[string]struct{}{}
 	for _, ss := range groupedUnitTests {
 		for _, s := range ss {
 			e, err := filepath.Abs(filepath.Join(repo, s))
@@ -72,7 +72,7 @@ func main() {
 	}
 
 	// all unit tests top-level dirs that are not itests, nor included in other suites.
-	var rest = map[string]struct{}{}
+	rest := map[string]struct{}{}
 	err = filepath.Walk(repo, func(path string, f os.FileInfo, err error) error {
 		// include all tests that aren't in the itests directory.
 		if strings.Contains(path, "itests") {

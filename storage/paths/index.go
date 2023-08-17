@@ -23,8 +23,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var HeartbeatInterval = 10 * time.Second
-var SkippedHeartbeatThresh = HeartbeatInterval * 5
+var (
+	HeartbeatInterval      = 10 * time.Second
+	SkippedHeartbeatThresh = HeartbeatInterval * 5
+)
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/index.go -package=mocks . SectorIndex
 
@@ -117,7 +119,7 @@ func (i *Index) StorageList(ctx context.Context) (map[storiface.ID][]storiface.D
 }
 
 func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
-	var allow, deny = make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
+	allow, deny := make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
 
 	if _, hasAlert := i.pathAlerts[si.ID]; i.alerting != nil && !hasAlert {
 		i.pathAlerts[si.ID] = i.alerting.AddAlertType("sector-index", "pathconf-"+string(si.ID))

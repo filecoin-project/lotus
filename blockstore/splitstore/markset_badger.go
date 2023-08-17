@@ -41,7 +41,7 @@ var badgerMarkSetBatchSize = 16384
 
 func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 	msPath := filepath.Join(path, "markset.badger")
-	err := os.MkdirAll(msPath, 0755) //nolint:gosec
+	err := os.MkdirAll(msPath, 0o755) //nolint:gosec
 	if err != nil {
 		return nil, xerrors.Errorf("error creating markset directory: %w", err)
 	}
@@ -235,7 +235,7 @@ func (s *BadgerMarkSet) Visit(c cid.Cid) (bool, error) {
 	return true, err
 }
 
-// reader holds the (r)lock
+// reader holds the (r)lock.
 func (s *BadgerMarkSet) tryPending(key string) (has bool, err error) {
 	if s.pend == nil {
 		return false, errMarkSetClosed
@@ -272,7 +272,7 @@ func (s *BadgerMarkSet) tryDB(key []byte) (has bool, err error) {
 	}
 }
 
-// writer holds the exclusive lock
+// writer holds the exclusive lock.
 func (s *BadgerMarkSet) put(key string) (write bool, seqno int) {
 	s.pend[key] = struct{}{}
 	if !s.persist && len(s.pend) < badgerMarkSetBatchSize {
@@ -385,7 +385,7 @@ func openBadgerDB(path string, recover bool) (*badger.DB, error) {
 			return nil, xerrors.Errorf("error clearing markset directory: %w", err)
 		}
 
-		err = os.MkdirAll(path, 0755) //nolint:gosec
+		err = os.MkdirAll(path, 0o755) //nolint:gosec
 		if err != nil {
 			return nil, xerrors.Errorf("error creating markset directory: %w", err)
 		}
@@ -440,7 +440,7 @@ func closeBadgerDB(db *badger.DB, path string, persist bool) error {
 	return nil
 }
 
-// badger logging through go-log
+// badger logging through go-log.
 type badgerLogger struct {
 	*zap.SugaredLogger
 	skip2 *zap.SugaredLogger

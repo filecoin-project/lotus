@@ -51,6 +51,7 @@ func (h *Histogram) Get(i int) uint64 {
 	}
 	return h.Counts[i+1] - h.Counts[i+2]
 }
+
 func (h *Histogram) GetRatio(i int) float64 {
 	return float64(h.Get(i)) / float64(h.Total())
 }

@@ -729,7 +729,7 @@ var sectorsListUpgradeBoundsCmd = &cli.Command{
 			tablewriter.Col("Bar"),
 		)
 
-		var barCols = 40
+		barCols := 40
 		var maxCount int
 
 		for _, c := range bucketCounts {
@@ -790,7 +790,6 @@ var sectorsCheckExpireCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-
 		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -1717,7 +1716,6 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-
 		nApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -2389,7 +2387,6 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		}
 
 		return nil
-
 	},
 }
 

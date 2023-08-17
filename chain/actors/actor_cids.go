@@ -17,7 +17,6 @@ import (
 
 // GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name.
 func GetActorCodeID(av actorstypes.Version, name string) (cid.Cid, bool) {
-
 	// Actors V8 and above
 	if av >= actorstypes.Version8 {
 		if cids, ok := GetActorCodeIDsFromManifest(av); ok {

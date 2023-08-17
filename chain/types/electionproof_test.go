@@ -12,7 +12,7 @@ import (
 )
 
 func TestPoissonFunction(t *testing.T) {
-	//stm: @CHAIN_TYPES_POISSON_001
+	// stm: @CHAIN_TYPES_POISSON_001
 	tests := []struct {
 		lambdaBase  uint64
 		lambdaShift uint
@@ -22,7 +22,7 @@ func TestPoissonFunction(t *testing.T) {
 		{1036915, 20}, // 0.9888792038
 		{1706, 10},    // 1.6660
 		{2, 0},        // 2
-		{5242879, 20}, //4.9999990
+		{5242879, 20}, // 4.9999990
 		{5, 0},        // 5
 	}
 
@@ -49,7 +49,7 @@ func TestPoissonFunction(t *testing.T) {
 }
 
 func TestLambdaFunction(t *testing.T) {
-	//stm: @CHAIN_TYPES_LAMBDA_001
+	// stm: @CHAIN_TYPES_LAMBDA_001
 	tests := []struct {
 		power      string
 		totalPower string
@@ -75,7 +75,7 @@ func TestLambdaFunction(t *testing.T) {
 }
 
 func TestExpFunction(t *testing.T) {
-	//stm: @CHAIN_TYPES_NEGATIVE_EXP_001
+	// stm: @CHAIN_TYPES_NEGATIVE_EXP_001
 	const N = 256
 
 	step := big.NewInt(5)
@@ -104,7 +104,7 @@ func q256ToF(x *big.Int) float64 {
 }
 
 func TestElectionLam(t *testing.T) {
-	//stm: @CHAIN_TYPES_LAMBDA_001
+	// stm: @CHAIN_TYPES_LAMBDA_001
 	p := big.NewInt(64)
 	tot := big.NewInt(128)
 	lam := lambda(p, tot)
@@ -133,7 +133,7 @@ func BenchmarkWinCounts(b *testing.B) {
 }
 
 func TestWinCounts(t *testing.T) {
-	//stm: @TYPES_ELECTION_PROOF_COMPUTE_WIN_COUNT_001
+	// stm: @TYPES_ELECTION_PROOF_COMPUTE_WIN_COUNT_001
 	totalPower := NewInt(100)
 	power := NewInt(20)
 

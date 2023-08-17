@@ -93,7 +93,6 @@ func (m *minerAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, erro
 			}
 			return nil
 		})
-
 		if err != nil {
 			log.Warnf("failed to check/retrieve unsealed sector: %s", err)
 			continue // move on to the next match.
@@ -147,7 +146,6 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mo
 			reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			return err
 		})
-
 		if err != nil {
 			log.Warnf("failed to check/retrieve unsealed sector: %s", err)
 			continue // move on to the next match.
@@ -172,7 +170,6 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mo
 			reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			return err
 		})
-
 		if err != nil {
 			lastErr = xerrors.Errorf("failed to unseal deal %d: %w", deal.DealID, err)
 			log.Warn(lastErr.Error())

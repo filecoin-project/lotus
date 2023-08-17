@@ -17,14 +17,14 @@ import (
 
 type schedPrioCtxKey int
 
-var SchedPriorityKey schedPrioCtxKey
-var DefaultSchedPriority = 0
-var SelectorTimeout = 5 * time.Second
-var InitWait = 3 * time.Second
-
 var (
-	SchedWindows = 2
+	SchedPriorityKey     schedPrioCtxKey
+	DefaultSchedPriority = 0
+	SelectorTimeout      = 5 * time.Second
+	InitWait             = 3 * time.Second
 )
+
+var SchedWindows = 2
 
 func getPriority(ctx context.Context) int {
 	sp := ctx.Value(SchedPriorityKey)
@@ -41,11 +41,13 @@ func WithPriority(ctx context.Context, priority int) context.Context {
 
 const mib = 1 << 20
 
-type WorkerAction func(ctx context.Context, w Worker) error
-type PrepareAction struct {
-	Action   WorkerAction
-	PrepType sealtasks.TaskType
-}
+type (
+	WorkerAction  func(ctx context.Context, w Worker) error
+	PrepareAction struct {
+		Action   WorkerAction
+		PrepType sealtasks.TaskType
+	}
+)
 
 type SchedWorker interface {
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
@@ -423,7 +425,6 @@ func (sh *Scheduler) Info(ctx context.Context) (interface{}, error) {
 }
 
 func (sh *Scheduler) removeRequest(rmrequest *rmRequest) {
-
 	if sh.SchedQueue.Len() < 0 {
 		rmrequest.res <- xerrors.New("No requests in the scheduler")
 		return

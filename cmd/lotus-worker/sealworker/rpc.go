@@ -150,7 +150,6 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 }
 
 func (w *Worker) StorageDetachAll(ctx context.Context) error {
-
 	lps, err := w.LocalStore.Local(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting local path list: %w", err)
@@ -208,5 +207,7 @@ func (w *Worker) Shutdown(ctx context.Context) error {
 	return w.LocalWorker.Close()
 }
 
-var _ storiface.WorkerCalls = &Worker{}
-var _ api.Worker = &Worker{}
+var (
+	_ storiface.WorkerCalls = &Worker{}
+	_ api.Worker            = &Worker{}
+)

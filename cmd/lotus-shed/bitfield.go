@@ -296,8 +296,8 @@ func encode(cctx *cli.Context, field bitfield.BitField) (string, error) {
 	}
 
 	return str, nil
-
 }
+
 func decode(cctx *cli.Context, i int) (bitfield.BitField, error) {
 	b, err := decodeToByte(cctx, i)
 	if err != nil {

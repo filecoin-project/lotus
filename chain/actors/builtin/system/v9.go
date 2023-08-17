@@ -42,16 +42,12 @@ func (s *state9) GetState() interface{} {
 }
 
 func (s *state9) GetBuiltinActors() cid.Cid {
-
 	return s.State.BuiltinActors
-
 }
 
 func (s *state9) SetBuiltinActors(c cid.Cid) error {
-
 	s.State.BuiltinActors = c
 	return nil
-
 }
 
 func (s *state9) ActorKey() string {

@@ -22,9 +22,9 @@ import (
 
 // TestPaychAddVoucherAfterAddFunds tests adding a voucher to a channel with
 // insufficient funds, then adding funds to the channel, then adding the
-// voucher again
+// voucher again.
 func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
-	//stm: @TOKEN_PAYCH_WAIT_READY_001
+	// stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 

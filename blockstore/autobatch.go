@@ -15,7 +15,7 @@ import (
 // blockstore logger.
 var autolog = log.Named("auto")
 
-// contains the same set of blocks twice, once as an ordered list for flushing, and as a map for fast access
+// contains the same set of blocks twice, once as an ordered list for flushing, and as a map for fast access.
 type blockBatch struct {
 	blockList []block.Block
 	blockMap  map[cid.Cid]block.Block
@@ -149,7 +149,7 @@ func (bs *AutobatchBlockstore) doFlush(ctx context.Context, retryOnly bool) erro
 	return bs.flushErr
 }
 
-// caller must NOT hold stateLock
+// caller must NOT hold stateLock.
 func (bs *AutobatchBlockstore) Flush(ctx context.Context) error {
 	return bs.doFlush(ctx, false)
 }

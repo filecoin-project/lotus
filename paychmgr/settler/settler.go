@@ -25,7 +25,7 @@ import (
 
 var log = logging.Logger("payment-channel-settler")
 
-// API are the dependencies need to run the payment channel settler
+// API are the dependencies need to run the payment channel settler.
 type API struct {
 	fx.In
 
@@ -49,7 +49,7 @@ type paymentChannelSettler struct {
 }
 
 // SettlePaymentChannels checks the chain for events related to payment channels settling and
-// submits any vouchers for inbound channels tracked for this node
+// submits any vouchers for inbound channels tracked for this node.
 func SettlePaymentChannels(mctx helpers.MetricsCtx, lc fx.Lifecycle, papi API) error {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	lc.Append(fx.Hook{

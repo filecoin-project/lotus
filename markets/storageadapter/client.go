@@ -143,7 +143,7 @@ func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 
 // ValidatePublishedDeal validates that the provided deal has appeared on chain and references the same ClientDeal
 // returns the Deal id if there is no error
-// TODO: Don't return deal ID
+// TODO: Don't return deal ID.
 func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (abi.DealID, error) {
 	log.Infow("DEAL ACCEPTED!")
 
@@ -267,17 +267,17 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 	return min, bounds.Max, nil
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
+// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer).
 func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal markettypes.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
 	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, proposal, *publishCid, cb)
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
+// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer).
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal markettypes.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, proposal, *publishCid, cb)
 }
 
-// TODO: Replace dealID parameter with DealProposal
+// TODO: Replace dealID parameter with DealProposal.
 func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
 	head, err := c.ChainHead(ctx)
 	if err != nil {

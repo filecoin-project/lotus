@@ -168,6 +168,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 
 	return out
 }
+
 func (db *DrandBeacon) cacheValue(e types.BeaconEntry) {
 	db.localCache.Add(e.Round, &e)
 }

@@ -93,11 +93,10 @@ func (p *partitionTracker) recordIfPost(t *testing.T, bm *BlockMiner, msg *types
 }
 
 func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, dlinfo *dline.Info) {
-
 	tracker := newPartitionTracker(ctx, dlinfo.Index, bm)
 	if !tracker.done(bm.t) { // need to wait for post
 		bm.t.Logf("expect %d partitions proved but only see %d", len(tracker.partitions), tracker.count(bm.t))
-		poolEvts, err := bm.miner.FullNode.MpoolSub(ctx) //subscribe before checking pending so we don't miss any events
+		poolEvts, err := bm.miner.FullNode.MpoolSub(ctx) // subscribe before checking pending so we don't miss any events
 		require.NoError(bm.t, err)
 
 		// First check pending messages we'll mine this epoch
@@ -117,7 +116,6 @@ func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, dlinfo *d
 				if tracker.recordIfPost(bm.t, bm, msg) {
 					fmt.Printf("found post in message of prev tipset\n")
 				}
-
 			}
 			for _, msg := range msgs.SecpkMessages {
 				if tracker.recordIfPost(bm.t, bm, &msg.Message) {
@@ -152,7 +150,7 @@ func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, dlinfo *d
 }
 
 // Like MineBlocks but refuses to mine until the window post scheduler has wdpost messages in the mempool
-// and everything shuts down if a post fails.  It also enforces that every block mined succeeds
+// and everything shuts down if a post fails.  It also enforces that every block mined succeeds.
 func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Duration) {
 	time.Sleep(time.Second)
 
@@ -252,7 +250,6 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			}
 		}
 	}()
-
 }
 
 func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
@@ -307,12 +304,12 @@ func (bm *BlockMiner) InjectNulls(rounds abi.ChainEpoch) {
 	atomic.AddInt64(&bm.nextNulls, int64(rounds))
 }
 
-// Pause compels the miner to wait for a signal to restart
+// Pause compels the miner to wait for a signal to restart.
 func (bm *BlockMiner) Pause() {
 	bm.pause <- struct{}{}
 }
 
-// Restart continues mining after a pause. This will hang if called before pause
+// Restart continues mining after a pause. This will hang if called before pause.
 func (bm *BlockMiner) Restart() {
 	bm.unpause <- struct{}{}
 }

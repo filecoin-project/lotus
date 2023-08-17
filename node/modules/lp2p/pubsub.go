@@ -88,7 +88,7 @@ type GossipIn struct {
 }
 
 func getDrandTopic(chainInfoJSON string) (string, error) {
-	var drandInfo = struct {
+	drandInfo := struct {
 		Hash string `json:"hash"`
 	}{}
 	err := json.Unmarshal([]byte(chainInfoJSON), &drandInfo)

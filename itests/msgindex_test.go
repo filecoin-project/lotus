@@ -33,7 +33,6 @@ func testMsgIndex(
 	run func(t *testing.T, makeMsgIndex func(cs *store.ChainStore) (index.MsgIndex, error)),
 	check func(t *testing.T, i int, msgIndex index.MsgIndex),
 ) {
-
 	// create the message indices in the test context
 	var mx sync.Mutex
 	var tmpDirs []string
@@ -109,13 +108,13 @@ func testSearchMsgWithIndex(t *testing.T, makeMsgIndex func(cs *store.ChainStore
 	sm, err := full.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
-	//stm: @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err := full.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 	require.NoError(t, err)
 
 	require.Equal(t, exitcode.Ok, res.Receipt.ExitCode, "message not successful")
 
-	//stm: @CHAIN_STATE_SEARCH_MSG_001
+	// stm: @CHAIN_STATE_SEARCH_MSG_001
 	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.NotNil(t, searchRes)

@@ -70,8 +70,10 @@ func TestDecodeString(t *testing.T) {
 		{"0x0f", "0x0f"},
 		{"0x81aa", "0xaa"},
 		{"0x820400", "0x0400"},
-		{"0xb83cabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
-			"0xabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd"},
+		{
+			"0xb83cabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
+			"0xabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd",
+		},
 	}
 
 	for _, tc := range testcases {
@@ -102,7 +104,8 @@ func TestDecodeList(t *testing.T) {
 		{"0xc3000102", []interface{}{[]byte{0}, []byte{1}, []byte{2}}},
 		{"0xc4000181aa", []interface{}{[]byte{0}, []byte{1}, []byte{0xaa}}},
 		{"0xc6000181aa81ff", []interface{}{[]byte{0}, []byte{1}, []byte{0xaa}, []byte{0xff}}},
-		{"0xf8428aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd",
+		{
+			"0xf8428aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd8aabcdabcdabcdabcdabcd",
 			[]interface{}{
 				mustDecodeHex("0xabcdabcdabcdabcdabcd"),
 				mustDecodeHex("0xabcdabcdabcdabcdabcd"),
@@ -112,7 +115,8 @@ func TestDecodeList(t *testing.T) {
 				mustDecodeHex("0xabcdabcdabcdabcdabcd"),
 			},
 		},
-		{"0xf1030185012a05f2008504a817c800825208942b87d1cb599bc2a606db9a0169fcec96af04ad3a880de0b6b3a764000080c0",
+		{
+			"0xf1030185012a05f2008504a817c800825208942b87d1cb599bc2a606db9a0169fcec96af04ad3a880de0b6b3a764000080c0",
 			[]interface{}{
 				[]byte{3},
 				[]byte{1},
@@ -123,7 +127,8 @@ func TestDecodeList(t *testing.T) {
 				mustDecodeHex("0x0de0b6b3a7640000"),
 				[]byte{},
 				[]interface{}{},
-			}},
+			},
+		},
 	}
 
 	for _, tc := range testcases {

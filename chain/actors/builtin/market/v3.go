@@ -246,9 +246,7 @@ func (s *dealProposals3) array() adt.Array {
 }
 
 func fromV3DealProposal(v3 market3.DealProposal) (DealProposal, error) {
-
 	label, err := labelFromGoString(v3.Label)
-
 	if err != nil {
 		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
 	}
@@ -291,10 +289,8 @@ type publishStorageDealsReturn3 struct {
 }
 
 func (r *publishStorageDealsReturn3) IsDealValid(index uint64) (bool, int, error) {
-
 	// PublishStorageDeals only succeeded if all deals were valid in this version of actors
 	return true, int(index), nil
-
 }
 
 func (r *publishStorageDealsReturn3) DealIDs() ([]abi.DealID, error) {
@@ -302,9 +298,7 @@ func (r *publishStorageDealsReturn3) DealIDs() ([]abi.DealID, error) {
 }
 
 func (s *state3) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
-
 	return verifregtypes.NoAllocationID, xerrors.Errorf("unsupported before actors v9")
-
 }
 
 func (s *state3) ActorKey() string {

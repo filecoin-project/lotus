@@ -59,7 +59,6 @@ var chainwatchDotCmd = &cli.Command{
     inner join blocks b on block_parents.block = b.cid
     inner join blocks p on block_parents.parent = p.cid
 where b.height > ? and b.height < ?`, minH, maxH)
-
 		if err != nil {
 			return err
 		}
@@ -84,7 +83,7 @@ where b.height > ? and b.height < ?`, minH, maxH)
 
 			hasstr := ""
 			if !has {
-				//col = 0xffffffff
+				// col = 0xffffffff
 				hasstr = " UNSYNCED"
 			}
 

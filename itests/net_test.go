@@ -92,11 +92,9 @@ func TestNetConn(t *testing.T) {
 	if len(addrs) > 0 {
 		t.Errorf("there should be no peers in network after disconnecting node")
 	}
-
 }
 
 func TestNetStat(t *testing.T) {
-
 	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
 	ctx := context.Background()
 
@@ -105,7 +103,6 @@ func TestNetStat(t *testing.T) {
 
 	withScope := func(api interface{}, scope string) func(t *testing.T) {
 		return func(t *testing.T) {
-
 			stat, err := firstNode.NetStat(ctx, scope)
 			require.NoError(t, err)
 
@@ -132,7 +129,6 @@ func TestNetStat(t *testing.T) {
 }
 
 func TestNetLimit(t *testing.T) {
-
 	firstNode, secondNode, _, _ := kit.EnsembleTwoOne(t)
 	ctx := context.Background()
 
@@ -241,7 +237,8 @@ func TestNetBlockIPAddr(t *testing.T) {
 
 	// stm: @NETWORK_COMMON_BLOCK_ADD_001
 	require.NoError(t, firstNode.NetBlockAdd(ctx, api.NetBlockList{
-		IPAddrs: secondNodeIPs}), "failed to add blocked IPs")
+		IPAddrs: secondNodeIPs,
+	}), "failed to add blocked IPs")
 
 	// stm: @NETWORK_COMMON_BLOCK_LIST_001
 	list, err := firstNode.NetBlockList(ctx)

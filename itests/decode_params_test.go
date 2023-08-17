@@ -78,8 +78,8 @@ func TestDecodeReturn(t *testing.T) {
 	robustAddr, err := address.NewIDAddress(12345)
 	require.NoError(t, err)
 
-	//ethAddr, err := ethtypes.ParseEthAddress("d4c5fb16488Aa48081296299d54b0c648C9333dA")
-	//require.NoError(t, err)
+	// ethAddr, err := ethtypes.ParseEthAddress("d4c5fb16488Aa48081296299d54b0c648C9333dA")
+	// require.NoError(t, err)
 
 	testReturn := eam.CreateExternalReturn{
 		ActorID:       12345,

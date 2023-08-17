@@ -88,18 +88,19 @@ func DHTRouting(mode dht.ModeOpt) interface{} {
 			mode = dht.ModeServer
 		}
 
-		opts := []dht.Option{dht.Mode(mode),
+		opts := []dht.Option{
+			dht.Mode(mode),
 			dht.Datastore(dstore),
 			dht.Validator(validator),
 			dht.ProtocolPrefix(build.DhtProtocolName(nn)),
 			dht.QueryFilter(dht.PublicQueryFilter),
 			dht.RoutingTableFilter(dht.PublicRoutingTableFilter),
 			dht.DisableProviders(),
-			dht.DisableValues()}
+			dht.DisableValues(),
+		}
 		d, err := dht.New(
 			ctx, host, opts...,
 		)
-
 		if err != nil {
 			return nil, err
 		}

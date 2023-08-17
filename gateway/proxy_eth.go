@@ -614,7 +614,7 @@ type statefulCallTracker struct {
 	userSubscriptions map[ethtypes.EthSubscriptionID]time.Time
 }
 
-// called per request (ws connection)
+// called per request (ws connection).
 func newStatefulCallTracker() *statefulCallTracker {
 	return &statefulCallTracker{
 		userFilters:       make(map[ethtypes.EthFilterID]time.Time),

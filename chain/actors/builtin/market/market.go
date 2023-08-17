@@ -221,8 +221,10 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
-type DealProposal = markettypes.DealProposal
-type DealLabel = markettypes.DealLabel
+type (
+	DealProposal = markettypes.DealProposal
+	DealLabel    = markettypes.DealLabel
+)
 
 type DealState = markettypes.DealState
 

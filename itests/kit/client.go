@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-// RunClientTest exercises some of the Client CLI commands
+// RunClientTest exercises some of the Client CLI commands.
 func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -149,7 +149,7 @@ func createRandomFile(rseed, size int) ([]byte, string, error) {
 	}
 
 	path := filepath.Join(dir, "sourcefile.dat")
-	err = os.WriteFile(path, data, 0644)
+	err = os.WriteFile(path, data, 0o644)
 	if err != nil {
 		return nil, "", err
 	}

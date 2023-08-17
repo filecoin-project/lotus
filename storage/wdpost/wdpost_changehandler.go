@@ -17,8 +17,10 @@ const (
 	ChallengeConfidence = 1
 )
 
-type CompleteGeneratePoSTCb func(posts []miner.SubmitWindowedPoStParams, err error)
-type CompleteSubmitPoSTCb func(err error)
+type (
+	CompleteGeneratePoSTCb func(posts []miner.SubmitWindowedPoStParams, err error)
+	CompleteSubmitPoSTCb   func(err error)
+)
 
 // wdPoStCommands is the subset of the WindowPoStScheduler + full node APIs used
 // by the changeHandler to execute actions and query state.

@@ -18,12 +18,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
-var NetworkBundle = "caterpillarnet"
-var BundleOverrides map[actorstypes.Version]string
-var ActorDebugging = false
+var (
+	NetworkBundle   = "caterpillarnet"
+	BundleOverrides map[actorstypes.Version]string
+	ActorDebugging  = false
+)
 
-const BootstrappersFile = "interopnet.pi"
-const GenesisFile = "interopnet.car"
+const (
+	BootstrappersFile = "interopnet.pi"
+	GenesisFile       = "interopnet.car"
+)
 
 const GenesisNetworkVersion = network.Version16
 
@@ -31,27 +35,29 @@ var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
 const BreezeGasTampingDuration = 0
 
-var UpgradeSmokeHeight = abi.ChainEpoch(-1)
-var UpgradeIgnitionHeight = abi.ChainEpoch(-2)
-var UpgradeRefuelHeight = abi.ChainEpoch(-3)
-var UpgradeTapeHeight = abi.ChainEpoch(-4)
-var UpgradeAssemblyHeight = abi.ChainEpoch(-5)
-var UpgradeLiftoffHeight = abi.ChainEpoch(-6)
-var UpgradeKumquatHeight = abi.ChainEpoch(-7)
-var UpgradeCalicoHeight = abi.ChainEpoch(-9)
-var UpgradePersianHeight = abi.ChainEpoch(-10)
-var UpgradeOrangeHeight = abi.ChainEpoch(-11)
-var UpgradeClausHeight = abi.ChainEpoch(-12)
-var UpgradeTrustHeight = abi.ChainEpoch(-13)
-var UpgradeNorwegianHeight = abi.ChainEpoch(-14)
-var UpgradeTurboHeight = abi.ChainEpoch(-15)
-var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
-var UpgradeChocolateHeight = abi.ChainEpoch(-17)
-var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
-var UpgradeSkyrHeight = abi.ChainEpoch(-19)
-var UpgradeSharkHeight = abi.ChainEpoch(-20)
-var UpgradeHyggeHeight = abi.ChainEpoch(-21)
-var UpgradeLightningHeight = abi.ChainEpoch(-22)
+var (
+	UpgradeSmokeHeight      = abi.ChainEpoch(-1)
+	UpgradeIgnitionHeight   = abi.ChainEpoch(-2)
+	UpgradeRefuelHeight     = abi.ChainEpoch(-3)
+	UpgradeTapeHeight       = abi.ChainEpoch(-4)
+	UpgradeAssemblyHeight   = abi.ChainEpoch(-5)
+	UpgradeLiftoffHeight    = abi.ChainEpoch(-6)
+	UpgradeKumquatHeight    = abi.ChainEpoch(-7)
+	UpgradeCalicoHeight     = abi.ChainEpoch(-9)
+	UpgradePersianHeight    = abi.ChainEpoch(-10)
+	UpgradeOrangeHeight     = abi.ChainEpoch(-11)
+	UpgradeClausHeight      = abi.ChainEpoch(-12)
+	UpgradeTrustHeight      = abi.ChainEpoch(-13)
+	UpgradeNorwegianHeight  = abi.ChainEpoch(-14)
+	UpgradeTurboHeight      = abi.ChainEpoch(-15)
+	UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
+	UpgradeChocolateHeight  = abi.ChainEpoch(-17)
+	UpgradeOhSnapHeight     = abi.ChainEpoch(-18)
+	UpgradeSkyrHeight       = abi.ChainEpoch(-19)
+	UpgradeSharkHeight      = abi.ChainEpoch(-20)
+	UpgradeHyggeHeight      = abi.ChainEpoch(-21)
+	UpgradeLightningHeight  = abi.ChainEpoch(-22)
+)
 
 const UpgradeThunderHeight = 50
 
@@ -64,9 +70,12 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg8MiBV1,
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
 }
-var ConsensusMinerMinPower = abi.NewStoragePower(2048)
-var MinVerifiedDealSize = abi.NewStoragePower(256)
-var PreCommitChallengeDelay = abi.ChainEpoch(10)
+
+var (
+	ConsensusMinerMinPower  = abi.NewStoragePower(2048)
+	MinVerifiedDealSize     = abi.NewStoragePower(256)
+	PreCommitChallengeDelay = abi.ChainEpoch(10)
+)
 
 func init() {
 	policy.SetSupportedProofTypes(SupportedProofTypes...)
@@ -113,14 +122,13 @@ func init() {
 	BuildType |= BuildInteropnet
 	SetAddressNetwork(address.Testnet)
 	Devnet = true
-
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
 
-// BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
+// BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start.
 const BootstrapPeerThreshold = 2
 
 // ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.

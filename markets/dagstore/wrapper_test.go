@@ -23,7 +23,7 @@ import (
 )
 
 // TestWrapperAcquireRecovery verifies that if acquire shard returns a "not found"
-// error, the wrapper will attempt to register the shard then reacquire
+// error, the wrapper will attempt to register the shard then reacquire.
 func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
 	ctx := context.Background()
 	pieceCid, err := cid.Parse("bafkqaaa")
@@ -55,7 +55,7 @@ func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
 	}
 	w.dagst = mock
 
-	//stm: @MARKET_DAGSTORE_ACQUIRE_SHARD_002
+	// stm: @MARKET_DAGSTORE_ACQUIRE_SHARD_002
 	mybs, err := w.LoadShard(ctx, pieceCid)
 	require.NoError(t, err)
 
@@ -102,7 +102,7 @@ func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
 	require.Equal(t, dcount, 0)
 }
 
-// TestWrapperBackground verifies the behaviour of the background go routine
+// TestWrapperBackground verifies the behaviour of the background go routine.
 func TestWrapperBackground(t *testing.T) {
 	ctx := context.Background()
 	h, err := mocknet.New().GenPeer()
@@ -126,12 +126,12 @@ func TestWrapperBackground(t *testing.T) {
 	w.dagst = mock
 
 	// Start up the wrapper
-	//stm: @MARKET_DAGSTORE_START_001
+	// stm: @MARKET_DAGSTORE_START_001
 	err = w.Start(ctx)
 	require.NoError(t, err)
 
 	// Expect GC to be called automatically
-	//stm: @MARKET_DAGSTORE_START_002
+	// stm: @MARKET_DAGSTORE_START_002
 	tctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	select {
@@ -142,7 +142,7 @@ func TestWrapperBackground(t *testing.T) {
 
 	// Expect that when the wrapper is closed it will call close on the
 	// DAG store
-	//stm: @MARKET_DAGSTORE_CLOSE_001
+	// stm: @MARKET_DAGSTORE_CLOSE_001
 	err = w.Close()
 	require.NoError(t, err)
 
@@ -232,8 +232,7 @@ func (m *mockDagStore) Close() error {
 	return nil
 }
 
-type mockLotusMount struct {
-}
+type mockLotusMount struct{}
 
 func (m mockLotusMount) Start(ctx context.Context) error {
 	return nil

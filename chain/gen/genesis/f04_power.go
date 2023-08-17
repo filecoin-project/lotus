@@ -18,7 +18,6 @@ import (
 )
 
 func SetupStoragePowerActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
-
 	cst := cbor.NewCborStore(bs)
 	pst, err := power.MakeState(adt.WrapStore(ctx, cbor.NewCborStore(bs)), av)
 	if err != nil {

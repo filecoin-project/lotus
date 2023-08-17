@@ -19,7 +19,7 @@ import (
 )
 
 // TestTransactionHashLookup tests to see if lotus correctly stores a mapping from ethereum transaction hash to
-// Filecoin Message Cid
+// Filecoin Message Cid.
 func TestTransactionHashLookup(t *testing.T) {
 	kit.QuietMiningLogs()
 
@@ -110,7 +110,7 @@ func TestTransactionHashLookup(t *testing.T) {
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
 }
 
-// TestTransactionHashLookupBlsFilecoinMessage tests to see if lotus can find a BLS Filecoin Message using the transaction hash
+// TestTransactionHashLookupBlsFilecoinMessage tests to see if lotus can find a BLS Filecoin Message using the transaction hash.
 func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	kit.QuietMiningLogs()
 
@@ -179,7 +179,7 @@ func TestTransactionHashLookupBlsFilecoinMessage(t *testing.T) {
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
 }
 
-// TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
+// TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash.
 func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	kit.QuietMiningLogs()
 
@@ -255,7 +255,7 @@ func TestTransactionHashLookupSecpFilecoinMessage(t *testing.T) {
 	require.Equal(t, uint64(*chainTx.TransactionIndex), uint64(0)) // only transaction
 }
 
-// TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash
+// TestTransactionHashLookupSecpFilecoinMessage tests to see if lotus can find a Secp Filecoin Message using the transaction hash.
 func TestTransactionHashLookupNonexistentMessage(t *testing.T) {
 	kit.QuietMiningLogs()
 

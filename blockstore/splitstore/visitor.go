@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-// ObjectVisitor is an interface for deduplicating objects during walks
+// ObjectVisitor is an interface for deduplicating objects during walks.
 type ObjectVisitor interface {
 	Visit(cid.Cid) (bool, error)
 }

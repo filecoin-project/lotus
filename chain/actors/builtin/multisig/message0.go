@@ -22,7 +22,6 @@ func (m message0) Create(
 	unlockStart, unlockDuration abi.ChainEpoch,
 	initialAmount abi.TokenAmount,
 ) (*types.Message, error) {
-
 	lenAddrs := uint64(len(signers))
 
 	if lenAddrs < threshold {
@@ -74,8 +73,8 @@ func (m message0) Create(
 }
 
 func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
-	method abi.MethodNum, params []byte) (*types.Message, error) {
-
+	method abi.MethodNum, params []byte,
+) (*types.Message, error) {
 	if msig == address.Undef {
 		return nil, xerrors.Errorf("must provide a multisig address for proposal")
 	}

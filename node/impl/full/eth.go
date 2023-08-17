@@ -344,7 +344,6 @@ func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fu
 
 func (a *EthModule) EthGetTransactionByHash(ctx context.Context, txHash *ethtypes.EthHash) (*ethtypes.EthTx, error) {
 	return a.EthGetTransactionByHashLimited(ctx, txHash, api.LookbackNoLimit)
-
 }
 
 func (a *EthModule) EthGetTransactionByHashLimited(ctx context.Context, txHash *ethtypes.EthHash, limit abi.ChainEpoch) (*ethtypes.EthTx, error) {
@@ -2469,8 +2468,11 @@ func parseEthTopics(topics ethtypes.EthTopicSpec) (map[string][][]byte, error) {
 	return keys, nil
 }
 
-const errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
-const panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
+const (
+	errorFunctionSelector = "\x08\xc3\x79\xa0" // Error(string)
+	panicFunctionSelector = "\x4e\x48\x7b\x71" // Panic(uint256)
+)
+
 // Eth ABI (solidity) panic codes.
 var panicErrorCodes map[uint64]string = map[uint64]string{
 	0x00: "Panic()",
@@ -2610,6 +2612,7 @@ func (g gasRewardSorter) Len() int { return len(g) }
 func (g gasRewardSorter) Swap(i, j int) {
 	g[i], g[j] = g[j], g[i]
 }
+
 func (g gasRewardSorter) Less(i, j int) bool {
 	return g[i].premium.Int.Cmp(g[j].premium.Int) == -1
 }

@@ -712,7 +712,6 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	}
 
 	err = escrow.ForEach(func(a address.Address, es abi.TokenAmount) error {
-
 		lk, err := locked.Get(a)
 		if err != nil {
 			return err
@@ -1293,7 +1292,7 @@ func (m *StateModule) MsigGetPending(ctx context.Context, addr address.Address, 
 		return nil, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
 
-	var out = []*api.MsigTransaction{}
+	out := []*api.MsigTransaction{}
 	if err := msas.ForEachPendingTxn(func(id int64, txn multisig.Transaction) error {
 		out = append(out, &api.MsigTransaction{
 			ID:     id,
@@ -1312,8 +1311,10 @@ func (m *StateModule) MsigGetPending(ctx context.Context, addr address.Address, 
 	return out, nil
 }
 
-var initialPledgeNum = types.NewInt(110)
-var initialPledgeDen = types.NewInt(100)
+var (
+	initialPledgeNum = types.NewInt(110)
+	initialPledgeDen = types.NewInt(100)
+)
 
 func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
@@ -1610,8 +1611,10 @@ func (a *StateAPI) StateVerifiedRegistryRootKey(ctx context.Context, tsk types.T
 	return vst.RootKey()
 }
 
-var dealProviderCollateralNum = types.NewInt(110)
-var dealProviderCollateralDen = types.NewInt(100)
+var (
+	dealProviderCollateralNum = types.NewInt(110)
+	dealProviderCollateralDen = types.NewInt(100)
+)
 
 // StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 // can issue. It takes the deal size and verified status as parameters.
@@ -1688,6 +1691,7 @@ func (a *StateAPI) StateCirculatingSupply(ctx context.Context, tsk types.TipSetK
 func (a *StateAPI) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (api.CirculatingSupply, error) {
 	return stateVMCirculatingSupplyInternal(ctx, tsk, a.Chain, a.StateManager)
 }
+
 func stateVMCirculatingSupplyInternal(
 	ctx context.Context,
 	tsk types.TipSetKey,
@@ -1752,7 +1756,6 @@ func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personaliz
 
 func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
-
 }
 
 func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {

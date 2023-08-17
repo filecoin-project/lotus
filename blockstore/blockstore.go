@@ -35,25 +35,25 @@ type BatchDeleter interface {
 	DeleteMany(ctx context.Context, cids []cid.Cid) error
 }
 
-// BlockstoreIterator is a trait for efficient iteration
+// BlockstoreIterator is a trait for efficient iteration.
 type BlockstoreIterator interface {
 	ForEachKey(func(cid.Cid) error) error
 }
 
-// BlockstoreGC is a trait for blockstores that support online garbage collection
+// BlockstoreGC is a trait for blockstores that support online garbage collection.
 type BlockstoreGC interface {
 	CollectGarbage(ctx context.Context, options ...BlockstoreGCOption) error
 }
 
-// BlockstoreGCOnce is a trait for a blockstore that supports incremental online garbage collection
+// BlockstoreGCOnce is a trait for a blockstore that supports incremental online garbage collection.
 type BlockstoreGCOnce interface {
 	GCOnce(ctx context.Context, options ...BlockstoreGCOption) error
 }
 
-// BlockstoreGCOption is a functional interface for controlling blockstore GC options
+// BlockstoreGCOption is a functional interface for controlling blockstore GC options.
 type BlockstoreGCOption = func(*BlockstoreGCOptions) error
 
-// BlockstoreGCOptions is a struct with GC options
+// BlockstoreGCOptions is a struct with GC options.
 type BlockstoreGCOptions struct {
 	FullGC bool
 	// fraction of garbage in badger vlog before its worth processing in online GC
@@ -92,7 +92,7 @@ func WithCheck(check func() error) BlockstoreGCOption {
 	}
 }
 
-// BlockstoreSize is a trait for on-disk blockstores that can report their size
+// BlockstoreSize is a trait for on-disk blockstores that can report their size.
 type BlockstoreSize interface {
 	Size() (int64, error)
 }

@@ -7,7 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-// moved from now-defunct build/paramfetch.go
+// moved from now-defunct build/paramfetch.go.
 var log = logging.Logger("build")
 
 //go:embed genesis

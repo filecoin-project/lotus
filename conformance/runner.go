@@ -63,7 +63,7 @@ func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version) GasP
 	// Stash the current pricing mapping.
 	// Ok to take a reference instead of a copy, because we override the map
 	// with a new one below.
-	var old = vm.Prices
+	old := vm.Prices
 
 	// Resolve the epoch at which the vector network version kicks in.
 	var epoch abi.ChainEpoch = math.MaxInt64
@@ -183,7 +183,7 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 
 	// Apply every tipset.
 	var receiptsIdx int
-	var prevEpoch = baseEpoch
+	prevEpoch := baseEpoch
 	for i, ts := range vector.ApplyTipsets {
 		ts := ts // capture
 		execEpoch := baseEpoch + abi.ChainEpoch(ts.EpochOffset)

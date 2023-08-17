@@ -46,7 +46,6 @@ func TestEthAddressToFilecoinAddress(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, filecoinIdArr, apiFilAddr)
-
 }
 
 func TestFilecoinAddressToEthAddress(t *testing.T) {

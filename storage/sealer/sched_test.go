@@ -237,7 +237,7 @@ func TestSchedStartStop(t *testing.T) {
 }
 
 func TestSched(t *testing.T) {
-	//stm: @WORKER_JOBS_001
+	// stm: @WORKER_JOBS_001
 	storiface.ParallelNum = 1
 	storiface.ParallelDenom = 1
 
@@ -725,7 +725,6 @@ func TestWindowCompact(t *testing.T) {
 				require.Equal(t, expectRes.memUsedMin, wh.activeWindows[wi].Allocated.memUsedMin, "%d", wi)
 				require.Equal(t, expectRes.memUsedMax, wh.activeWindows[wi].Allocated.memUsedMax, "%d", wi)
 			}
-
 		}
 	}
 

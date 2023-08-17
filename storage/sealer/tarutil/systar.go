@@ -71,7 +71,7 @@ var CacheFileConstraints = map[string]int64{
 }
 
 func ExtractTar(body io.Reader, dir string, buf []byte) (int64, error) {
-	if err := os.MkdirAll(dir, 0755); err != nil { // nolint
+	if err := os.MkdirAll(dir, 0o755); err != nil { // nolint
 		return 0, xerrors.Errorf("mkdir: %w", err)
 	}
 

@@ -22,8 +22,8 @@ import (
 )
 
 func InteractiveSend(ctx context.Context, cctx *cli.Context, srv ServicesAPI,
-	proto *api.MessagePrototype) (*types.SignedMessage, error) {
-
+	proto *api.MessagePrototype,
+) (*types.SignedMessage, error) {
 	msg, checks, err := srv.PublishMessage(ctx, proto, cctx.Bool("force") || cctx.Bool("force-send"))
 	printer := cctx.App.Writer
 	if xerrors.Is(err, ErrCheckFailed) {
@@ -74,7 +74,6 @@ func baseFeeFromHints(hint map[string]interface{}) big.Int {
 func resolveChecks(ctx context.Context, s ServicesAPI, printer io.Writer,
 	proto *api.MessagePrototype, checkGroups [][]api.MessageCheckStatus,
 ) (*api.MessagePrototype, error) {
-
 	fmt.Fprintf(printer, "Following checks have failed:\n")
 	printChecks(printer, checkGroups, proto.Message.Cid())
 

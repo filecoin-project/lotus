@@ -49,7 +49,7 @@ import (
 //  * Generate markdown docs
 //  * Generate openrpc blobs
 
-// FullNode API is a low-level interface to the Filecoin network full node
+// FullNode API is a low-level interface to the Filecoin network full node.
 type FullNode interface {
 	Common
 	Net

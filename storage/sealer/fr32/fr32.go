@@ -131,7 +131,7 @@ func unpad(out, in []byte) {
 			next := in[i+inOffNext]
 
 			out[outOff+i] = at
-			//out[i] |= next << 8
+			// out[i] |= next << 8
 
 			at = next
 		}

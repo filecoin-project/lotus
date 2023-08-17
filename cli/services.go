@@ -136,8 +136,8 @@ func (s *ServicesImpl) RunChecksForPrototype(ctx context.Context, prototype *api
 // Errors with ErrCheckFailed if any of the checks fail
 // First group of checks is related to the message prototype
 func (s *ServicesImpl) PublishMessage(ctx context.Context,
-	prototype *api.MessagePrototype, force bool) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
-
+	prototype *api.MessagePrototype, force bool,
+) (*types.SignedMessage, [][]api.MessageCheckStatus, error) {
 	gasedMsg, err := s.api.GasEstimateMessageGas(ctx, &prototype.Message, nil, types.EmptyTSK)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("estimating gas: %w", err)
@@ -240,7 +240,8 @@ func (s *ServicesImpl) MessageForSend(ctx context.Context, params SendParams) (*
 }
 
 func (s *ServicesImpl) MpoolPendingFilter(ctx context.Context, filter func(*types.SignedMessage) bool,
-	tsk types.TipSetKey) ([]*types.SignedMessage, error) {
+	tsk types.TipSetKey,
+) ([]*types.SignedMessage, error) {
 	msgs, err := s.api.MpoolPending(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting pending messages: %w", err)

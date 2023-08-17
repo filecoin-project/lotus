@@ -38,7 +38,7 @@ var (
 	//
 	// === :: cold (already archived)
 	// ≡≡≡ :: to be archived in this compaction
-	// --- :: hot
+	// --- :: hot.
 	CompactionThreshold = 5 * build.Finality
 
 	// CompactionBoundary is the number of epochs from the current epoch at which
@@ -46,7 +46,7 @@ var (
 	CompactionBoundary = 4 * build.Finality
 
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
-	// there is a sync gap
+	// there is a sync gap.
 	SyncGapTime = time.Minute
 
 	// SyncWaitTime is the time delay from a tipset's min timestamp before we decide
@@ -60,10 +60,8 @@ var (
 	CheckSyncGap = true
 )
 
-var (
-	// used to signal end of walk
-	errStopWalk = errors.New("stop walk")
-)
+// used to signal end of walk.
+var errStopWalk = errors.New("stop walk")
 
 const (
 	batchSize  = 16384
@@ -103,7 +101,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 				s.chainSyncMx.Unlock()
 			}
 			// already out of sync, no signaling necessary
-
 		}
 		// TODO: ok to use hysteresis with no transitions between 30s and 1m?
 		if time.Since(timestamp) < SyncWaitTime {
@@ -117,7 +114,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 				s.chainSyncCond.Broadcast()
 				s.chainSyncMx.Unlock()
 			}
-
 		}
 		// 2. protect the new tipset(s)
 		s.protectTipSets(apply)
@@ -178,7 +174,7 @@ func (s *SplitStore) isNearUpgrade(epoch abi.ChainEpoch) bool {
 	return false
 }
 
-// transactionally protect incoming tipsets
+// transactionally protect incoming tipsets.
 func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 	s.txnLk.RLock()
 
@@ -215,7 +211,6 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 			}
 			defer s.txnLk.RUnlock()
 			s.markLiveRefs(cids)
-
 		}()
 		return
 	}
@@ -307,7 +302,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 	s.szMarkedLiveRefs += atomic.LoadInt64(szMarked)
 }
 
-// transactionally protect a view
+// transactionally protect a view.
 func (s *SplitStore) protectView(c cid.Cid) {
 	//  the txnLk is held for read
 	defer s.txnLk.RUnlock()
@@ -342,7 +337,7 @@ func (s *SplitStore) viewWait() {
 	s.txnViewsWaiting = false
 }
 
-// transactionally protect a reference to an object
+// transactionally protect a reference to an object.
 func (s *SplitStore) trackTxnRef(c cid.Cid) {
 	if !s.txnActive {
 		// not compacting
@@ -358,7 +353,7 @@ func (s *SplitStore) trackTxnRef(c cid.Cid) {
 	s.txnRefsMx.Unlock()
 }
 
-// transactionally protect a batch of references
+// transactionally protect a batch of references.
 func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 	if !s.txnActive {
 		// not compacting
@@ -379,7 +374,7 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 	return
 }
 
-// protect all pending transactional references
+// protect all pending transactional references.
 func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 	for {
 		var txnRefs map[cid.Cid]struct{}
@@ -500,7 +495,6 @@ func (s *SplitStore) applyProtectors() error {
 			count++
 			return nil
 		})
-
 		if err != nil {
 			return xerrors.Errorf("error applynig protector: %w", err)
 		}
@@ -912,7 +906,7 @@ func (s *SplitStore) waitForTxnSync() {
 	}
 }
 
-// Block compaction operations if chain sync has fallen behind
+// Block compaction operations if chain sync has fallen behind.
 func (s *SplitStore) waitForSync() {
 	if atomic.LoadInt32(&s.outOfSync) == 0 {
 		return
@@ -925,7 +919,7 @@ func (s *SplitStore) waitForSync() {
 	}
 }
 
-// Combined sync and closing check
+// Combined sync and closing check.
 func (s *SplitStore) checkYield() error {
 	s.waitForSync()
 	return s.checkClosing()
@@ -957,7 +951,8 @@ func (s *SplitStore) endCriticalSection() {
 }
 
 func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEpoch,
-	visitor ObjectVisitor, fHot, fCold func(cid.Cid) error) error {
+	visitor ObjectVisitor, fHot, fCold func(cid.Cid) error,
+) error {
 	var walked ObjectVisitor
 	var mx sync.Mutex
 	// we copy the tipset first into a new slice, which allows us to reuse it in every epoch.
@@ -1184,7 +1179,7 @@ func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid
 	return sz, nil
 }
 
-// like walkObject, but the object may be potentially incomplete (references missing)
+// like walkObject, but the object may be potentially incomplete (references missing).
 func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) (int64, error) {
 	var sz int64
 	visit, err := visitor.Visit(c)
@@ -1253,7 +1248,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 	return sz, nil
 }
 
-// internal version used during compaction and related operations
+// internal version used during compaction and related operations.
 func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
 	if isIdentiyCid(c) {
 		data, err := decodeIdentityCid(c)
@@ -1338,7 +1333,6 @@ func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return xerrors.Errorf("error iterating coldset: %w", err)
 	}
@@ -1380,7 +1374,6 @@ func (s *SplitStore) purge(coldr *ColdSetReader, checkpoint *Checkpoint, markSet
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -1564,7 +1557,6 @@ func (s *SplitStore) completePurge(coldr *ColdSetReader, checkpoint *Checkpoint,
 
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
@@ -1645,7 +1637,6 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 					missing[c] = struct{}{}
 					return errStopWalk
 				})
-
 			if err != nil {
 				log.Warnf("error marking: %s", err)
 			}

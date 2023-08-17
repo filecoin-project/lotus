@@ -44,8 +44,10 @@ type Range struct {
 	Size   abi.UnpaddedPieceSize
 }
 
-type ReplicaUpdateProof []byte
-type ReplicaVanillaProofs [][]byte
+type (
+	ReplicaUpdateProof   []byte
+	ReplicaVanillaProofs [][]byte
+)
 
 type ReplicaUpdateOut struct {
 	NewSealed   cid.Cid

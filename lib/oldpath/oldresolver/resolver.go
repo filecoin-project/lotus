@@ -146,7 +146,6 @@ func ResolveSingle(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names 
 // It uses the first path component as a hash (key) of the first node, then
 // resolves all other components walking the links, with ResolveLinks.
 func (r *Resolver) ResolvePathComponents(ctx context.Context, fpath path.Path) ([]ipld.Node, error) {
-
 	h, parts, err := path.SplitAbsPath(fpath)
 	if err != nil {
 		return nil, err

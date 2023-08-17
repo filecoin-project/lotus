@@ -35,10 +35,12 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
-var addPieceRetryWait = 5 * time.Minute
-var addPieceRetryTimeout = 6 * time.Hour
-var defaultMaxProviderCollateralMultiplier = uint64(2)
-var log = logging.Logger("storageadapter")
+var (
+	addPieceRetryWait                      = 5 * time.Minute
+	addPieceRetryTimeout                   = 6 * time.Hour
+	defaultMaxProviderCollateralMultiplier = uint64(2)
+	log                                    = logging.Logger("storageadapter")
+)
 
 type ProviderNodeAdapter struct {
 	v1api.FullNode
@@ -283,12 +285,12 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 	return bounds.Min, max, nil
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
+// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer).
 func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal markettypes.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
 	return n.scMgr.OnDealSectorPreCommitted(ctx, provider, proposal, *publishCid, cb)
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
+// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer).
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal markettypes.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, proposal, *publishCid, cb)
 }

@@ -49,7 +49,7 @@ func (c *MockCLI) Client(addr multiaddr.Multiaddr) *MockCLIClient {
 	return &MockCLIClient{t: c.t, cmds: c.cmds, addr: addr, cctx: c.cctx, out: c.out}
 }
 
-// MockCLIClient runs commands against a particular node
+// MockCLIClient runs commands against a particular node.
 type MockCLIClient struct {
 	t    *testing.T
 	cmds []*lcli.Command
@@ -66,7 +66,7 @@ func (c *MockCLIClient) RunCmd(input ...string) string {
 }
 
 // Given an input, find the corresponding command or sub-command.
-// eg "paych add-funds"
+// eg "paych add-funds".
 func (c *MockCLIClient) cmdByNameSub(input []string) (*lcli.Command, []string) {
 	name := input[0]
 	for _, cmd := range c.cmds {

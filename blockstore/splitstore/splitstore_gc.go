@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// Fraction of garbage in badger vlog for online GC traversal to collect garbage
+	// Fraction of garbage in badger vlog for online GC traversal to collect garbage.
 	AggressiveOnlineGCThreshold = 0.0001
 )
 

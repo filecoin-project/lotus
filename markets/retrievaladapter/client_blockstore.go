@@ -44,7 +44,7 @@ func NewAPIBlockstoreAdapter(sub retrievalmarket.BlockstoreAccessor) *APIBlockst
 	}
 }
 
-// APIBlockstoreAccessor adds support to API-specified remote blockstores
+// APIBlockstoreAccessor adds support to API-specified remote blockstores.
 type APIBlockstoreAccessor struct {
 	sub retrievalmarket.BlockstoreAccessor
 

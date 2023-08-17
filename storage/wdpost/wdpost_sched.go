@@ -96,7 +96,8 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
-	actor address.Address) (*WindowPoStScheduler, error) {
+	actor address.Address,
+) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)

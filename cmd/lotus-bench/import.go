@@ -479,7 +479,7 @@ var importBenchCmd = &cli.Command{
 				}
 				fmt.Println("TRACE")
 				fmt.Println(string(d))
-				//fmt.Println(statediff.Diff(context.Background(), bs, tschain[i-1].ParentState(), st, statediff.ExpandActors))
+				// fmt.Println(statediff.Diff(context.Background(), bs, tschain[i-1].ParentState(), st, statediff.ExpandActors))
 				return xerrors.Errorf("tipset chain had state mismatch at height %d (%s != %s)", cur.Height(), cur.ParentState(), st)
 			}
 		}
@@ -599,9 +599,11 @@ func (cov1 *covar) Combine(cov2 *covar) {
 func (cov1 *covar) A() float64 {
 	return cov1.Covariance() / cov1.VarianceX()
 }
+
 func (cov1 *covar) B() float64 {
 	return cov1.meanY - cov1.meanX*cov1.A()
 }
+
 func (cov1 *covar) Correl() float64 {
 	return cov1.Covariance() / cov1.StddevX() / cov1.StddevY()
 }
@@ -624,9 +626,11 @@ func (v1 *meanVar) AddPoint(value float64) {
 func (v1 *meanVar) Variance() float64 {
 	return v1.m2 / (v1.n - 1)
 }
+
 func (v1 *meanVar) Mean() float64 {
 	return v1.mean
 }
+
 func (v1 *meanVar) Stddev() float64 {
 	return math.Sqrt(v1.Variance())
 }
@@ -724,8 +728,8 @@ var importAnalyzeCmd = &cli.Command{
 				chargeStats := make(map[string]*stats)
 				var totalTime time.Duration
 				const invocsKeep = 32
-				var expensiveInvocs = make([]Invocation, 0, 8*invocsKeep)
-				var leastExpensiveInvoc = time.Duration(0)
+				expensiveInvocs := make([]Invocation, 0, 8*invocsKeep)
+				leastExpensiveInvoc := time.Duration(0)
 
 				for {
 					b, ok := <-jsonIn
@@ -795,7 +799,7 @@ var importAnalyzeCmd = &cli.Command{
 		var invocs []Invocation
 		var totalTime time.Duration
 		var keys []string
-		var charges = make(map[string]*stats)
+		charges := make(map[string]*stats)
 		for i := 0; i < nWorkers; i++ {
 			fmt.Fprintf(os.Stderr, "\rProcessing results from worker %d/%d", i+1, nWorkers)
 			res := <-results

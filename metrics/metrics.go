@@ -13,20 +13,22 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 )
 
-// Distribution
-var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100_000, 250_000, 500_000, 1000_000)
-var workMillisecondsDistribution = view.Distribution(
-	250, 500, 1000, 2000, 5000, 10_000, 30_000, 60_000, 2*60_000, 5*60_000, 10*60_000, 15*60_000, 30*60_000, // short sealing tasks
-	40*60_000, 45*60_000, 50*60_000, 55*60_000, 60*60_000, 65*60_000, 70*60_000, 75*60_000, 80*60_000, 85*60_000, 100*60_000, 120*60_000, // PC2 / C2 range
-	130*60_000, 140*60_000, 150*60_000, 160*60_000, 180*60_000, 200*60_000, 220*60_000, 260*60_000, 300*60_000, // PC1 range
-	350*60_000, 400*60_000, 600*60_000, 800*60_000, 1000*60_000, 1300*60_000, 1800*60_000, 4000*60_000, 10000*60_000, // intel PC1 range
+// Distribution.
+var (
+	defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 3000, 4000, 5000, 7500, 10000, 20000, 50000, 100_000, 250_000, 500_000, 1000_000)
+	workMillisecondsDistribution    = view.Distribution(
+		250, 500, 1000, 2000, 5000, 10_000, 30_000, 60_000, 2*60_000, 5*60_000, 10*60_000, 15*60_000, 30*60_000, // short sealing tasks
+		40*60_000, 45*60_000, 50*60_000, 55*60_000, 60*60_000, 65*60_000, 70*60_000, 75*60_000, 80*60_000, 85*60_000, 100*60_000, 120*60_000, // PC2 / C2 range
+		130*60_000, 140*60_000, 150*60_000, 160*60_000, 180*60_000, 200*60_000, 220*60_000, 260*60_000, 300*60_000, // PC1 range
+		350*60_000, 400*60_000, 600*60_000, 800*60_000, 1000*60_000, 1300*60_000, 1800*60_000, 4000*60_000, 10000*60_000, // intel PC1 range
+	)
 )
 
 var queueSizeDistribution = view.Distribution(0, 1, 2, 3, 5, 7, 10, 15, 25, 35, 50, 70, 90, 130, 200, 300, 500, 1000, 2000, 5000, 10000)
 
-// Global Tags
+// Global Tags.
 var (
-	// common
+	// common.
 	Version, _     = tag.NewKey("version")
 	Commit, _      = tag.NewKey("commit")
 	NodeType, _    = tag.NewKey("node_type")
@@ -34,7 +36,7 @@ var (
 	MinerID, _     = tag.NewKey("miner_id")
 	FailureType, _ = tag.NewKey("failure_type")
 
-	// chain
+	// chain.
 	Local, _        = tag.NewKey("local")
 	MessageFrom, _  = tag.NewKey("message_from")
 	MessageTo, _    = tag.NewKey("message_to")
@@ -44,7 +46,7 @@ var (
 	Endpoint, _     = tag.NewKey("endpoint")
 	APIInterface, _ = tag.NewKey("api") // to distinguish between gateway api and full node api endpoint calls
 
-	// miner
+	// miner.
 	TaskType, _       = tag.NewKey("task_type")
 	WorkerHostname, _ = tag.NewKey("worker_hostname")
 	StorageID, _      = tag.NewKey("storage_id")
@@ -53,28 +55,28 @@ var (
 	PathSeal, _    = tag.NewKey("path_seal")
 	PathStorage, _ = tag.NewKey("path_storage")
 
-	// rcmgr
+	// rcmgr.
 	ServiceID, _  = tag.NewKey("svc")
 	ProtocolID, _ = tag.NewKey("proto")
 	Direction, _  = tag.NewKey("direction")
 	UseFD, _      = tag.NewKey("use_fd")
 
-	// vm execution
+	// vm execution.
 	ExecutionLane, _ = tag.NewKey("lane")
 
-	// piecereader
+	// piecereader.
 	PRReadType, _ = tag.NewKey("pr_type") // seq / rand
 	PRReadSize, _ = tag.NewKey("pr_size") // small / big
 )
 
-// Measures
+// Measures.
 var (
-	// common
+	// common.
 	LotusInfo          = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
 	PeerCount          = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
 	APIRequestDuration = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
 
-	// graphsync
+	// graphsync.
 
 	GraphsyncReceivingPeersCount              = stats.Int64("graphsync/receiving_peers", "number of peers we are receiving graphsync data from", stats.UnitDimensionless)
 	GraphsyncReceivingActiveCount             = stats.Int64("graphsync/receiving_active", "number of active receiving graphsync transfers", stats.UnitDimensionless)
@@ -90,7 +92,7 @@ var (
 	GraphsyncSendingTotalPendingAllocations = stats.Int64("graphsync/sending_pending_allocations", "amount of block memory on hold from sending pending allocation", stats.UnitBytes)
 	GraphsyncSendingPeersPending            = stats.Int64("graphsync/sending_peers_pending", "number of peers we can't send more data to cause of pending allocations", stats.UnitDimensionless)
 
-	// chain
+	// chain.
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
 	ChainNodeHeightExpected             = stats.Int64("chain/node_height_expected", "Expected Height of the node", stats.UnitDimensionless)
 	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
@@ -132,7 +134,7 @@ var (
 	VMExecutionWaiting                  = stats.Int64("vm/execution_waiting", "Counter for VM executions waiting to be assigned to a lane", stats.UnitDimensionless)
 	VMExecutionRunning                  = stats.Int64("vm/execution_running", "Counter for running VM executions", stats.UnitDimensionless)
 
-	// miner
+	// miner.
 	WorkerCallsStarted           = stats.Int64("sealing/worker_calls_started", "Counter of started worker tasks", stats.UnitDimensionless)
 	WorkerCallsReturnedCount     = stats.Int64("sealing/worker_calls_returned_count", "Counter of returned worker tasks", stats.UnitDimensionless)
 	WorkerCallsReturnedDuration  = stats.Float64("sealing/worker_calls_returned_ms", "Counter of returned worker tasks", stats.UnitMilliseconds)
@@ -174,14 +176,14 @@ var (
 	DagStorePRAtReadBytes      = stats.Int64("dagstore/pr_at_read_bytes", "PieceReader ReadAt bytes read from source", stats.UnitBytes)    // PRReadSize tag
 	DagStorePRAtReadCount      = stats.Int64("dagstore/pr_at_read_count", "PieceReader ReadAt reads from source", stats.UnitDimensionless) // PRReadSize tag
 
-	// splitstore
+	// splitstore.
 	SplitstoreMiss                  = stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless)
 	SplitstoreCompactionTimeSeconds = stats.Float64("splitstore/compaction_time", "Compaction time in seconds", stats.UnitSeconds)
 	SplitstoreCompactionHot         = stats.Int64("splitstore/hot", "Number of hot blocks in last compaction", stats.UnitDimensionless)
 	SplitstoreCompactionCold        = stats.Int64("splitstore/cold", "Number of cold blocks in last compaction", stats.UnitDimensionless)
 	SplitstoreCompactionDead        = stats.Int64("splitstore/dead", "Number of dead blocks in last compaction", stats.UnitDimensionless)
 
-	// rcmgr
+	// rcmgr.
 	RcmgrAllowConn      = stats.Int64("rcmgr/allow_conn", "Number of allowed connections", stats.UnitDimensionless)
 	RcmgrBlockConn      = stats.Int64("rcmgr/block_conn", "Number of blocked connections", stats.UnitDimensionless)
 	RcmgrAllowStream    = stats.Int64("rcmgr/allow_stream", "Number of allowed streams", stats.UnitDimensionless)
@@ -197,7 +199,7 @@ var (
 	RcmgrAllowMem       = stats.Int64("rcmgr/allow_mem", "Number of allowed memory reservations", stats.UnitDimensionless)
 	RcmgrBlockMem       = stats.Int64("rcmgr/block_mem", "Number of blocked memory reservations", stats.UnitDimensionless)
 
-	// gateway rate limit
+	// gateway rate limit.
 	RateLimitCount = stats.Int64("ratelimit/limited", "rate limited connections", stats.UnitDimensionless)
 )
 
@@ -395,7 +397,7 @@ var (
 		TagKeys:     []tag.Key{ExecutionLane},
 	}
 
-	// miner
+	// miner.
 	WorkerCallsStartedView = &view.View{
 		Measure:     WorkerCallsStarted,
 		Aggregation: view.Count(),
@@ -553,7 +555,7 @@ var (
 		TagKeys:     []tag.Key{PRReadSize},
 	}
 
-	// splitstore
+	// splitstore.
 	SplitstoreMissView = &view.View{
 		Measure:     SplitstoreMiss,
 		Aggregation: view.Count(),
@@ -575,7 +577,7 @@ var (
 		Aggregation: view.Sum(),
 	}
 
-	// graphsync
+	// graphsync.
 	GraphsyncReceivingPeersCountView = &view.View{
 		Measure:     GraphsyncReceivingPeersCount,
 		Aggregation: view.LastValue(),
@@ -625,7 +627,7 @@ var (
 		Aggregation: view.LastValue(),
 	}
 
-	// rcmgr
+	// rcmgr.
 	RcmgrAllowConnView = &view.View{
 		Measure:     RcmgrAllowConn,
 		Aggregation: view.Count(),
@@ -700,7 +702,7 @@ var (
 	}
 )
 
-// DefaultViews is an array of OpenCensus views for metric gathering purposes
+// DefaultViews is an array of OpenCensus views for metric gathering purposes.
 var DefaultViews = func() []*view.View {
 	views := []*view.View{
 		InfoView,

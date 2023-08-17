@@ -20,9 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var (
-	Address = builtin11.SystemActorAddr
-)
+var Address = builtin11.SystemActorAddr
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {

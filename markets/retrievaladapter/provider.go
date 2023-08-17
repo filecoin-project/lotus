@@ -27,7 +27,7 @@ type retrievalProviderNode struct {
 var _ retrievalmarket.RetrievalProviderNode = (*retrievalProviderNode)(nil)
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
-// Lotus Node
+// Lotus Node.
 func NewRetrievalProviderNode(full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{full: full}
 }

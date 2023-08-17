@@ -1,5 +1,4 @@
-//stm: #unit
-
+// stm: #unit
 package store
 
 import (
@@ -13,7 +12,7 @@ import (
 )
 
 func TestBaseFee(t *testing.T) {
-	//stm: @CHAIN_STORE_COMPUTE_NEXT_BASE_FEE_001
+	// stm: @CHAIN_STORE_COMPUTE_NEXT_BASE_FEE_001
 	tests := []struct {
 		basefee             uint64
 		limitUsed           int64

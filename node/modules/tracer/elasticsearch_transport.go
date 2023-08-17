@@ -22,7 +22,6 @@ const (
 
 func NewElasticSearchTransport(connectionString string, elasticsearchIndex string) (TracerTransport, error) {
 	conUrl, err := url.Parse(connectionString)
-
 	if err != nil {
 		return nil, err
 	}

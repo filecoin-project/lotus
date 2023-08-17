@@ -443,7 +443,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTPreCommit1})) // no mock proofs
 
-	//ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+	// ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
@@ -506,7 +506,7 @@ func TestWorkerName(t *testing.T) {
 	require.True(t, found)
 }
 
-// Tests that V1_1 proofs on post workers with faults
+// Tests that V1_1 proofs on post workers with faults.
 func TestWindowPostV1P1NV20WorkerFault(t *testing.T) {
 	kit.QuietMiningLogs()
 
@@ -619,7 +619,7 @@ func TestWindowPostV1P1NV20WorkerFault(t *testing.T) {
 
 waitForProof:
 	for {
-		//stm: @CHAIN_STATE_GET_ACTOR_001
+		// stm: @CHAIN_STATE_GET_ACTOR_001
 		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 		require.NoError(t, err)
 		if wact.Nonce > en {
@@ -657,7 +657,7 @@ waitForProof:
 	require.Equal(t, uint64(0), sc1)
 }
 
-// Tests that V1_1 proofs on post worker
+// Tests that V1_1 proofs on post worker.
 func TestWindowPostV1P1NV20Worker(t *testing.T) {
 	kit.QuietMiningLogs()
 
@@ -701,7 +701,7 @@ func TestWindowPostV1P1NV20Worker(t *testing.T) {
 
 waitForProof:
 	for {
-		//stm: @CHAIN_STATE_GET_ACTOR_001
+		// stm: @CHAIN_STATE_GET_ACTOR_001
 		wact, err := client.StateGetActor(ctx, mi.Worker, types.EmptyTSK)
 		require.NoError(t, err)
 		if wact.Nonce > en {
@@ -735,8 +735,10 @@ func TestWorkerPledgeExpireCommit(t *testing.T) {
 	kit.QuietMiningLogs()
 	_ = logging.SetLogLevel("sectors", "debug")
 
-	var tasksNoC2 = kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTAddPiece, sealtasks.TTDataCid, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2,
-		sealtasks.TTUnseal, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed})
+	tasksNoC2 := kit.WithTaskTypes([]sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTDataCid, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2,
+		sealtasks.TTUnseal, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFinalizeUnsealed,
+	})
 
 	fc := config.DefaultStorageMiner().Fees
 	fc.MaxCommitGasFee = types.FIL(abi.NewTokenAmount(10000)) // 10000 attofil, way too low for anything to land

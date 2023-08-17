@@ -261,13 +261,15 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 	}
 }
 
-type MinerInfo = minertypes.MinerInfo
-type BeneficiaryTerm = minertypes.BeneficiaryTerm
-type PendingBeneficiaryChange = minertypes.PendingBeneficiaryChange
-type WorkerKeyChange = minertypes.WorkerKeyChange
-type SectorPreCommitOnChainInfo = minertypes.SectorPreCommitOnChainInfo
-type SectorPreCommitInfo = minertypes.SectorPreCommitInfo
-type WindowPostVerifyInfo = proof.WindowPoStVerifyInfo
+type (
+	MinerInfo                  = minertypes.MinerInfo
+	BeneficiaryTerm            = minertypes.BeneficiaryTerm
+	PendingBeneficiaryChange   = minertypes.PendingBeneficiaryChange
+	WorkerKeyChange            = minertypes.WorkerKeyChange
+	SectorPreCommitOnChainInfo = minertypes.SectorPreCommitOnChainInfo
+	SectorPreCommitInfo        = minertypes.SectorPreCommitInfo
+	WindowPostVerifyInfo       = proof.WindowPoStVerifyInfo
+)
 
 type SectorExpiration struct {
 	OnTime abi.ChainEpoch

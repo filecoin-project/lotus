@@ -23,7 +23,7 @@ import (
 )
 
 func TestBatchDealInput(t *testing.T) {
-	//stm: @MINER_SECTOR_STATUS_001, @MINER_SECTOR_LIST_001
+	// stm: @MINER_SECTOR_STATUS_001, @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
 	var (

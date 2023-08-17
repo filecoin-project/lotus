@@ -140,7 +140,7 @@ var inspectBundleCmd = &cli.Command{
 		ctx := cctx.Context
 
 		cf := cctx.Args().Get(0)
-		f, err := os.OpenFile(cf, os.O_RDONLY, 0664)
+		f, err := os.OpenFile(cf, os.O_RDONLY, 0o664)
 		if err != nil {
 			return xerrors.Errorf("opening the car file: %w", err)
 		}
@@ -167,7 +167,6 @@ var inspectBundleCmd = &cli.Command{
 
 		for name, cid := range entries {
 			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, cid)
-
 		}
 
 		return tw.Flush()

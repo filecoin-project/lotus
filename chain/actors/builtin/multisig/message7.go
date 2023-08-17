@@ -22,7 +22,6 @@ func (m message7) Create(
 	unlockStart, unlockDuration abi.ChainEpoch,
 	initialAmount abi.TokenAmount,
 ) (*types.Message, error) {
-
 	lenAddrs := uint64(len(signers))
 
 	if lenAddrs < threshold {

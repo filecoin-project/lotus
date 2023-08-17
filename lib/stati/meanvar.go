@@ -23,12 +23,15 @@ func (v1 *MeanVar) AddPoint(value float64) {
 func (v1 *MeanVar) Mean() float64 {
 	return v1.mean
 }
+
 func (v1 *MeanVar) N() float64 {
 	return v1.n
 }
+
 func (v1 *MeanVar) Variance() float64 {
 	return v1.m2 / (v1.n - 1)
 }
+
 func (v1 *MeanVar) Stddev() float64 {
 	return math.Sqrt(v1.Variance())
 }

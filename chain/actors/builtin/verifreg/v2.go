@@ -52,9 +52,7 @@ func (s *state2) RootKey() (address.Address, error) {
 }
 
 func (s *state2) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-
 	return getDataCap(s.store, actors.Version2, s.verifiedClients, addr)
-
 }
 
 func (s *state2) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -70,15 +68,11 @@ func (s *state2) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state2) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-
 	return forEachCap(s.store, actors.Version2, s.verifiedClients, cb)
-
 }
 
 func (s *state2) verifiedClients() (adt.Map, error) {
-
 	return adt2.AsMap(s.store, s.VerifiedClients)
-
 }
 
 func (s *state2) verifiers() (adt.Map, error) {
@@ -87,7 +81,6 @@ func (s *state2) verifiers() (adt.Map, error) {
 
 func (s *state2) removeDataCapProposalIDs() (adt.Map, error) {
 	return nil, nil
-
 }
 
 func (s *state2) GetState() interface{} {
@@ -95,33 +88,23 @@ func (s *state2) GetState() interface{} {
 }
 
 func (s *state2) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
-
 	return nil, false, xerrors.Errorf("unsupported in actors v2")
-
 }
 
 func (s *state2) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v2")
-
 }
 
 func (s *state2) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
-
 	return nil, false, xerrors.Errorf("unsupported in actors v2")
-
 }
 
 func (s *state2) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v2")
-
 }
 
 func (s *state2) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v2")
-
 }
 
 func (s *state2) ActorKey() string {

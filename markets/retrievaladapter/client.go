@@ -27,7 +27,7 @@ type retrievalClientNode struct {
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
-// Lotus Node
+// Lotus Node.
 func NewRetrievalClientNode(forceOffChain bool, payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
 	return &retrievalClientNode{
 		forceOffChain: forceOffChain,
@@ -56,14 +56,14 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 
 // Allocate late creates a lane within a payment channel so that calls to
 // CreatePaymentVoucher will automatically make vouchers only for the difference
-// in total
+// in total.
 func (rcn *retrievalClientNode) AllocateLane(ctx context.Context, paymentChannel address.Address) (uint64, error) {
 	return rcn.payAPI.PaychAllocateLane(ctx, paymentChannel)
 }
 
 // CreatePaymentVoucher creates a new payment voucher in the given lane for a
 // given payment channel so that all the payment vouchers in the lane add up
-// to the given amount (so the payment voucher will be for the difference)
+// to the given amount (so the payment voucher will be for the difference).
 func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount abi.TokenAmount, lane uint64, tok shared.TipSetToken) (*paychtypes.SignedVoucher, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
@@ -91,7 +91,6 @@ func (rcn *retrievalClientNode) WaitForPaymentChannelReady(ctx context.Context, 
 }
 
 func (rcn *retrievalClientNode) CheckAvailableFunds(ctx context.Context, paymentChannel address.Address) (retrievalmarket.ChannelAvailableFunds, error) {
-
 	channelAvailableFunds, err := rcn.payAPI.PaychAvailableFunds(ctx, paymentChannel)
 	if err != nil {
 		return retrievalmarket.ChannelAvailableFunds{}, err

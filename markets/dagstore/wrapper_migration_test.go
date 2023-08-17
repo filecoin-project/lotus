@@ -57,7 +57,7 @@ func TestShardRegistration(t *testing.T) {
 
 	deals := []storagemarket.MinerDeal{{
 		// Should be registered
-		//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_001
+		// stm: @MARKET_DAGSTORE_MIGRATE_DEALS_001
 		State:        storagemarket.StorageDealSealing,
 		SectorNumber: unsealedSector1,
 		ClientDealProposal: markettypes.ClientDealProposal{
@@ -76,7 +76,7 @@ func TestShardRegistration(t *testing.T) {
 		},
 	}, {
 		// Should be ignored because deal is no longer active
-		//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_003
+		// stm: @MARKET_DAGSTORE_MIGRATE_DEALS_003
 		State:        storagemarket.StorageDealError,
 		SectorNumber: unsealedSector2,
 		ClientDealProposal: markettypes.ClientDealProposal{
@@ -114,7 +114,7 @@ func TestShardRegistration(t *testing.T) {
 	require.True(t, migrated)
 	require.NoError(t, err)
 
-	//stm: @MARKET_DAGSTORE_GET_ALL_SHARDS_001
+	// stm: @MARKET_DAGSTORE_GET_ALL_SHARDS_001
 	info := dagst.AllShardsInfo()
 	require.Len(t, info, 2)
 	for _, i := range info {
@@ -122,7 +122,7 @@ func TestShardRegistration(t *testing.T) {
 	}
 
 	// Run register shard migration again
-	//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_002
+	// stm: @MARKET_DAGSTORE_MIGRATE_DEALS_002
 	migrated, err = w.MigrateDeals(ctx, deals)
 	require.False(t, migrated)
 	require.NoError(t, err)

@@ -28,7 +28,7 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 		return nil, xerrors.Errorf("rg is nil")
 	}
 
-	var bad = make(map[abi.SectorID]string)
+	bad := make(map[abi.SectorID]string)
 	var badLk sync.Mutex
 
 	var postRand abi.PoStRandomness = make([]byte, abi.RandomnessLength)

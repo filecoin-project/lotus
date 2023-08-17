@@ -15,13 +15,15 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-const mPoolThrottle = time.Millisecond * 100
-const mPoolTimeout = time.Second * 10
+const (
+	mPoolThrottle = time.Millisecond * 100
+	mPoolTimeout  = time.Second * 10
+)
 
 func TestMemPoolPushSingleNode(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001
-	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
-	//stm: @CHAIN_MEMPOOL_PUSH_002
+	// stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
+	// stm: @CHAIN_MEMPOOL_PUSH_002
 	ctx := context.Background()
 	const blockTime = 100 * time.Millisecond
 	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
@@ -104,9 +106,9 @@ func TestMemPoolPushSingleNode(t *testing.T) {
 }
 
 func TestMemPoolPushTwoNodes(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001
-	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
-	//stm: @CHAIN_MEMPOOL_PUSH_002
+	// stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
+	// stm: @CHAIN_MEMPOOL_PUSH_002
 	ctx := context.Background()
 	const blockTime = 100 * time.Millisecond
 	firstNode, secondNode, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
@@ -182,8 +184,8 @@ func TestMemPoolPushTwoNodes(t *testing.T) {
 }
 
 func TestMemPoolClearPending(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_PUSH_001, @CHAIN_MEMPOOL_PENDING_001
-	//stm: @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CLEAR_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
+	// stm: @CHAIN_MEMPOOL_PUSH_001, @CHAIN_MEMPOOL_PENDING_001
+	// stm: @CHAIN_STATE_WAIT_MSG_001, @CHAIN_MEMPOOL_CLEAR_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
 	ctx := context.Background()
 	const blockTime = 100 * time.Millisecond
 	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
@@ -239,10 +241,10 @@ func TestMemPoolClearPending(t *testing.T) {
 }
 
 func TestMemPoolBatchPush(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
-	//stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001, @CHAIN_MEMPOOL_SELECT_001
-	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001
-	//stm: @CHAIN_MEMPOOL_BATCH_PUSH_001
+	// stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
+	// stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_MEMPOOL_BATCH_PUSH_001
 	ctx := context.Background()
 	const blockTime = 100 * time.Millisecond
 	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
@@ -333,10 +335,10 @@ func TestMemPoolBatchPush(t *testing.T) {
 }
 
 func TestMemPoolPushSingleNodeUntrusted(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
-	//stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001, @CHAIN_MEMPOOL_SELECT_001
-	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001
-	//stm: @CHAIN_MEMPOOL_PUSH_003
+	// stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
+	// stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_MEMPOOL_PUSH_003
 	ctx := context.Background()
 	const blockTime = 100 * time.Millisecond
 	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
@@ -424,14 +426,13 @@ func TestMemPoolPushSingleNodeUntrusted(t *testing.T) {
 		}
 		return false
 	})
-
 }
 
 func TestMemPoolBatchPushUntrusted(t *testing.T) {
-	//stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
-	//stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001, @CHAIN_MEMPOOL_SELECT_001
-	//stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001
-	//stm: @CHAIN_MEMPOOL_BATCH_PUSH_002
+	// stm: @CHAIN_MEMPOOL_CREATE_MSG_CHAINS_001, @CHAIN_MEMPOOL_SELECT_001, @CHAIN_MEMPOOL_CAP_GAS_FEE_001
+	// stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001, @CHAIN_MEMPOOL_SELECT_001
+	// stm: @CHAIN_MEMPOOL_PENDING_001, @CHAIN_STATE_WAIT_MSG_001
+	// stm: @CHAIN_MEMPOOL_BATCH_PUSH_002
 	ctx := context.Background()
 	const blockTime = 100 * time.Millisecond
 	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
@@ -519,5 +520,4 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 		}
 		return false
 	})
-
 }

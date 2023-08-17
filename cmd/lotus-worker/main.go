@@ -304,7 +304,7 @@ var runCmd = &cli.Command{
 
 		// ensure tmpdir exists
 		td := os.TempDir()
-		if err := os.MkdirAll(td, 0755); err != nil {
+		if err := os.MkdirAll(td, 0o755); err != nil {
 			return xerrors.Errorf("ensuring temp dir %s exists: %w", td, err)
 		}
 
@@ -488,7 +488,7 @@ var runCmd = &cli.Command{
 					return xerrors.Errorf("marshaling storage config: %w", err)
 				}
 
-				if err := os.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+				if err := os.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0o644); err != nil {
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 

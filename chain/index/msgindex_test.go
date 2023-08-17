@@ -193,8 +193,10 @@ type mockChainStore struct {
 
 var _ ChainStore = (*mockChainStore)(nil)
 
-var systemAddr address.Address
-var rng *rand.Rand
+var (
+	systemAddr address.Address
+	rng        *rand.Rand
+)
 
 func init() {
 	systemAddr, _ = address.NewIDAddress(0)

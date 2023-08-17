@@ -55,7 +55,7 @@ func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error)
 	return b, nil
 }
 
-// GetSize returns the CIDs mapped BlockSize
+// GetSize returns the CIDs mapped BlockSize.
 func (m MemBlockstore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
 	b, ok := m[string(k.Hash())]
 	if !ok {
@@ -64,7 +64,7 @@ func (m MemBlockstore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
 	return len(b.RawData()), nil
 }
 
-// Put puts a given block to the underlying datastore
+// Put puts a given block to the underlying datastore.
 func (m MemBlockstore) Put(ctx context.Context, b blocks.Block) error {
 	// Convert to a basic block for safety, but try to reuse the existing
 	// block if it's already a basic block.

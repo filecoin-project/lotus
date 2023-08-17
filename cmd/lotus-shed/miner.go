@@ -324,7 +324,6 @@ var minerCreateCmd = &cli.Command{
 			Worker:              worker,
 			WindowPoStProofType: spt,
 		})
-
 		if err != nil {
 			return err
 		}
@@ -418,7 +417,7 @@ var minerUnpackInfoCmd = &cli.Command{
 						}
 					}
 					p := filepath.Join(dest, sl[len("#: "):])
-					if err := os.MkdirAll(filepath.Dir(p), 0775); err != nil {
+					if err := os.MkdirAll(filepath.Dir(p), 0o775); err != nil {
 						return xerrors.Errorf("mkdir: %w", err)
 					}
 					outf, err = os.Create(p)
@@ -435,7 +434,7 @@ var minerUnpackInfoCmd = &cli.Command{
 						}
 					}
 					p := filepath.Join(dest, "Per Sector Infos", sl[len("##: "):])
-					if err := os.MkdirAll(filepath.Dir(p), 0775); err != nil {
+					if err := os.MkdirAll(filepath.Dir(p), 0o775); err != nil {
 						return xerrors.Errorf("mkdir: %w", err)
 					}
 					outf, err = os.Create(p)
@@ -530,7 +529,8 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 
 		emptyProof := []proof.PoStProof{{
 			PoStProof:  minfo.WindowPoStProofType,
-			ProofBytes: make([]byte, proofSize)}}
+			ProofBytes: make([]byte, proofSize),
+		}}
 
 		for _, partition := range partitionIndices {
 			newPartition := miner8.PoStPartition{

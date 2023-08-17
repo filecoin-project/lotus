@@ -49,9 +49,11 @@ import (
 	"github.com/filecoin-project/lotus/node/bundle"
 )
 
-const AccountStart = 100
-const MinerStart = 1000
-const MaxAccounts = MinerStart - AccountStart
+const (
+	AccountStart = 100
+	MinerStart   = 1000
+	MaxAccounts  = MinerStart - AccountStart
+)
 
 var log = logging.Logger("genesis")
 
@@ -251,7 +253,6 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		default:
 			return nil, nil, xerrors.New("unsupported account type")
 		}
-
 	}
 
 	switch template.VerifregRootKey.Type {
@@ -521,7 +522,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 
 	// Note: This is brittle, if the methodNum / param changes, it could break things
 	_, err = doExecValue(ctx, vm, verifreg.Address, verifregRoot, types.NewInt(0), builtin0.MethodsVerifiedRegistry.AddVerifier, mustEnc(&verifreg0.AddVerifierParams{
-
 		Address:   verifier,
 		Allowance: abi.NewStoragePower(int64(sum)), // eh, close enough
 

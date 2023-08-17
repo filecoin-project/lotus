@@ -26,7 +26,6 @@ func init() {
 		}
 		DefaultChainIndexCacheSize = lcic
 	}
-
 }
 
 type ChainIndex struct {

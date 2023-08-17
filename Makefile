@@ -376,3 +376,8 @@ print-%:
 
 circleci:
 	go generate -x ./.circleci
+
+# format and style
+fmt: 
+	gofumpt -l -w .
+	godot -w .

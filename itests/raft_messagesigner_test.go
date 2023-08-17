@@ -50,7 +50,6 @@ func getRaftState(ctx context.Context, t *testing.T, node *kit.TestFullNode) *ap
 }
 
 func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *kit.TestFullNode, node2 *kit.TestFullNode, miner *kit.TestMiner) *kit.Ensemble {
-
 	blockTime := 1 * time.Second
 
 	pkey0, _ := generatePrivKey()
@@ -63,7 +62,7 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 		initPeerSet = append(initPeerSet, "/p2p/"+pkey.PeerID.String())
 	}
 
-	//initPeerSet := []peer.ID{pkey0.PeerID, pkey1.PeerID, pkey2.PeerID}
+	// initPeerSet := []peer.ID{pkey0.PeerID, pkey1.PeerID, pkey2.PeerID}
 
 	raftOps := kit.ConstructorOpts(
 		node.Override(new(*gorpc.Client), modules.NewRPCClient),
@@ -78,7 +77,7 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 		node.Override(new(*modules.RPCHandler), modules.NewRPCHandler),
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
-	//raftOps := kit.ConstructorOpts()
+	// raftOps := kit.ConstructorOpts()
 
 	ens := kit.NewEnsemble(t).FullNode(node0, raftOps, kit.ThroughRPC()).FullNode(node1, raftOps, kit.ThroughRPC()).FullNode(node2, raftOps, kit.ThroughRPC())
 	node0.AssignPrivKey(pkey0)
@@ -112,7 +111,6 @@ func setup(ctx context.Context, t *testing.T, node0 *kit.TestFullNode, node1 *ki
 }
 
 func TestRaftState(t *testing.T) {
-
 	kit.QuietMiningLogs()
 	ctx := context.Background()
 
@@ -156,7 +154,6 @@ func TestRaftState(t *testing.T) {
 }
 
 func TestRaftStateLeaderDisconnects(t *testing.T) {
-
 	kit.QuietMiningLogs()
 	ctx := context.Background()
 
@@ -247,7 +244,6 @@ func TestRaftStateLeaderDisconnects(t *testing.T) {
 }
 
 func TestRaftStateMiner(t *testing.T) {
-
 	kit.QuietMiningLogs()
 	ctx := context.Background()
 
@@ -290,7 +286,6 @@ func TestRaftStateMiner(t *testing.T) {
 }
 
 func TestRaftStateLeaderDisconnectsMiner(t *testing.T) {
-
 	kit.QuietMiningLogs()
 	ctx := context.Background()
 
@@ -362,9 +357,8 @@ func TestRaftStateLeaderDisconnectsMiner(t *testing.T) {
 
 // Miner sends message on leader
 // Leader disconnects
-// Call StateWaitMsg on new leader
+// Call StateWaitMsg on new leader.
 func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
-
 	kit.QuietMiningLogs()
 	ctx := context.Background()
 
@@ -438,7 +432,6 @@ func TestLeaderDisconnectsCheckMsgStateOnNewLeader(t *testing.T) {
 }
 
 func TestChainStoreSync(t *testing.T) {
-
 	kit.QuietMiningLogs()
 	ctx := context.Background()
 
@@ -482,7 +475,7 @@ func TestChainStoreSync(t *testing.T) {
 			mLookup, err := n.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
-			//break
+			// break
 		}
 	}
 }
@@ -527,7 +520,7 @@ func TestGoRPCAuth(t *testing.T) {
 		node.Override(new(*modules.RPCHandler), modules.NewRPCHandler),
 		node.Override(node.GoRPCServer, modules.NewRPCServer),
 	)
-	//raftOps := kit.ConstructorOpts()
+	// raftOps := kit.ConstructorOpts()
 
 	ens := kit.NewEnsemble(t).FullNode(&node0, raftOps, kit.ThroughRPC()).FullNode(&node1, raftOps, kit.ThroughRPC()).FullNode(&node2, raftOps, kit.ThroughRPC()).FullNode(&node3, raftOps)
 	node0.AssignPrivKey(pkey0)
@@ -573,5 +566,4 @@ func TestGoRPCAuth(t *testing.T) {
 
 	err = client.CallContext(ctx, leader, "Consensus", method, msgWhole, &ret)
 	require.True(t, gorpc.IsAuthorizationError(err))
-
 }

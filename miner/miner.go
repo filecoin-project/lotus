@@ -437,7 +437,6 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	var mbi *api.MiningBaseInfo
 	var rbase types.BeaconEntry
 	defer func() {
-
 		var hasMinPower bool
 
 		// mbi can be nil if we are deep in penalty and there are 0 eligible sectors
@@ -615,7 +614,8 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, rou
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof.PoStProof, msgs []*types.SignedMessage,
+) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1

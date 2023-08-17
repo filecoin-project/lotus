@@ -28,6 +28,7 @@ func TestLockingDifferentShardsDoesNotBlock(t *testing.T) {
 
 	close(done)
 }
+
 func TestLockingSameShardsBlocks(t *testing.T) {
 	shards := 16
 	sm := New(shards)
@@ -100,7 +101,6 @@ func TestShardedByString(t *testing.T) {
 	if max.Load() != 16 {
 		t.Fatal("max load not achieved", max.Load())
 	}
-
 }
 
 func BenchmarkShardedMutex(b *testing.B) {

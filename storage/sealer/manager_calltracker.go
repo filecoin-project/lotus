@@ -158,7 +158,6 @@ func (m *Manager) getWork(ctx context.Context, method sealtasks.TaskType, params
 			case wsRunning:
 				log.Warnf("cancel called on work %s in 'running' state (manager shutting down?)", wid)
 			}
-
 		}, nil
 	}
 

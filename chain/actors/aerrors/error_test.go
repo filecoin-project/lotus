@@ -13,7 +13,7 @@ import (
 )
 
 func TestFatalError(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_ACTOR_ERRORS_001
+	// stm: @OTHER_IMPLEMENTATION_ACTOR_ERRORS_001
 	e1 := xerrors.New("out of disk space")
 	e2 := xerrors.Errorf("could not put node: %w", e1)
 	e3 := xerrors.Errorf("could not save head: %w", e2)
@@ -26,8 +26,9 @@ func TestFatalError(t *testing.T) {
 	t.Logf("Normal error: %v", aw4)
 	assert.True(t, IsFatal(aw4), "should be fatal")
 }
+
 func TestAbsorbeError(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_ACTOR_ERRORS_001
+	// stm: @OTHER_IMPLEMENTATION_ACTOR_ERRORS_001
 	e1 := xerrors.New("EOF")
 	e2 := xerrors.Errorf("could not decode: %w", e1)
 	ae := Absorb(e2, 35, "failed to decode CBOR")

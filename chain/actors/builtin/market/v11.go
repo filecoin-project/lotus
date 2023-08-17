@@ -252,9 +252,7 @@ func (s *dealProposals11) array() adt.Array {
 }
 
 func fromV11DealProposal(v11 market11.DealProposal) (DealProposal, error) {
-
 	label, err := fromV11Label(v11.Label)
-
 	if err != nil {
 		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
 	}
@@ -313,13 +311,13 @@ type publishStorageDealsReturn11 struct {
 }
 
 func (r *publishStorageDealsReturn11) IsDealValid(index uint64) (bool, int, error) {
-
 	set, err := r.ValidDeals.IsSet(index)
 	if err != nil || !set {
 		return false, -1, err
 	}
 	maskBf, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
-		Runs: []rlepluslazy.Run{rlepluslazy.Run{Val: true, Len: index}}})
+		Runs: []rlepluslazy.Run{{Val: true, Len: index}},
+	})
 	if err != nil {
 		return false, -1, err
 	}
@@ -332,7 +330,6 @@ func (r *publishStorageDealsReturn11) IsDealValid(index uint64) (bool, int, erro
 		return false, -1, err
 	}
 	return set, int(outIdx), nil
-
 }
 
 func (r *publishStorageDealsReturn11) DealIDs() ([]abi.DealID, error) {
@@ -340,7 +337,6 @@ func (r *publishStorageDealsReturn11) DealIDs() ([]abi.DealID, error) {
 }
 
 func (s *state11) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtypes.AllocationId, error) {
-
 	allocations, err := adt11.AsMap(s.store, s.PendingDealAllocationIds, builtin.DefaultHamtBitwidth)
 	if err != nil {
 		return verifregtypes.NoAllocationID, xerrors.Errorf("failed to load allocation id for %d: %w", dealId, err)
@@ -356,7 +352,6 @@ func (s *state11) GetAllocationIdForPendingDeal(dealId abi.DealID) (verifregtype
 	}
 
 	return verifregtypes.AllocationId(allocationId), nil
-
 }
 
 func (s *state11) ActorKey() string {

@@ -39,8 +39,10 @@ import (
 	"github.com/filecoin-project/lotus/node/bundle"
 )
 
-var _ Interface = (*FVM)(nil)
-var _ ffi_cgo.Externs = (*FvmExtern)(nil)
+var (
+	_ Interface       = (*FVM)(nil)
+	_ ffi_cgo.Externs = (*FvmExtern)(nil)
+)
 
 type FvmExtern struct {
 	Rand
@@ -272,7 +274,6 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		Tracing:        opts.Tracing || EnableDetailedTracing,
 		Debug:          build.ActorDebugging,
 	}, nil
-
 }
 
 func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
@@ -282,7 +283,6 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	fvm, err := ffi.CreateFVM(fvmOpts)
-
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create FVM: %w", err)
 	}
@@ -388,7 +388,6 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	fvm, err := ffi.CreateFVM(fvmOpts)
-
 	if err != nil {
 		return nil, err
 	}
@@ -598,8 +597,10 @@ func (vm *dualExecutionFVM) Flush(ctx context.Context) (cid.Cid, error) {
 }
 
 // Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
-type xRedirect struct{ from, to cid.Cid }
-type xMapping struct{ redirects []xRedirect }
+type (
+	xRedirect struct{ from, to cid.Cid }
+	xMapping  struct{ redirects []xRedirect }
+)
 
 func (m *xMapping) MarshalCBOR(w io.Writer) error {
 	scratch := make([]byte, 9)

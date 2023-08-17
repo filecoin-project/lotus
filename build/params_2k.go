@@ -16,12 +16,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
-const BootstrappersFile = ""
-const GenesisFile = ""
+const (
+	BootstrappersFile = ""
+	GenesisFile       = ""
+)
 
-var NetworkBundle = "devnet"
-var BundleOverrides map[actorstypes.Version]string
-var ActorDebugging = true
+var (
+	NetworkBundle   = "devnet"
+	BundleOverrides map[actorstypes.Version]string
+	ActorDebugging  = true
+)
 
 const GenesisNetworkVersion = network.Version18
 
@@ -29,19 +33,25 @@ var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
 const BreezeGasTampingDuration = 0
 
-var UpgradeSmokeHeight = abi.ChainEpoch(-1)
-var UpgradeIgnitionHeight = abi.ChainEpoch(-2)
-var UpgradeRefuelHeight = abi.ChainEpoch(-3)
-var UpgradeTapeHeight = abi.ChainEpoch(-4)
+var (
+	UpgradeSmokeHeight    = abi.ChainEpoch(-1)
+	UpgradeIgnitionHeight = abi.ChainEpoch(-2)
+	UpgradeRefuelHeight   = abi.ChainEpoch(-3)
+	UpgradeTapeHeight     = abi.ChainEpoch(-4)
+)
 
-var UpgradeAssemblyHeight = abi.ChainEpoch(-5)
-var UpgradeLiftoffHeight = abi.ChainEpoch(-6)
+var (
+	UpgradeAssemblyHeight = abi.ChainEpoch(-5)
+	UpgradeLiftoffHeight  = abi.ChainEpoch(-6)
+)
 
-var UpgradeKumquatHeight = abi.ChainEpoch(-7)
-var UpgradeCalicoHeight = abi.ChainEpoch(-9)
-var UpgradePersianHeight = abi.ChainEpoch(-10)
-var UpgradeOrangeHeight = abi.ChainEpoch(-11)
-var UpgradeClausHeight = abi.ChainEpoch(-12)
+var (
+	UpgradeKumquatHeight = abi.ChainEpoch(-7)
+	UpgradeCalicoHeight  = abi.ChainEpoch(-9)
+	UpgradePersianHeight = abi.ChainEpoch(-10)
+	UpgradeOrangeHeight  = abi.ChainEpoch(-11)
+	UpgradeClausHeight   = abi.ChainEpoch(-12)
+)
 
 var UpgradeTrustHeight = abi.ChainEpoch(-13)
 
@@ -73,9 +83,12 @@ var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg2KiBV1,
 	abi.RegisteredSealProof_StackedDrg8MiBV1,
 }
-var ConsensusMinerMinPower = abi.NewStoragePower(2048)
-var MinVerifiedDealSize = abi.NewStoragePower(256)
-var PreCommitChallengeDelay = abi.ChainEpoch(10)
+
+var (
+	ConsensusMinerMinPower  = abi.NewStoragePower(2048)
+	MinVerifiedDealSize     = abi.NewStoragePower(256)
+	PreCommitChallengeDelay = abi.ChainEpoch(10)
+)
 
 func init() {
 	policy.SetSupportedProofTypes(SupportedProofTypes...)
@@ -122,7 +135,6 @@ func init() {
 	UpgradeThunderHeight = getUpgradeHeight("LOTUS_THUNDER_HEIGHT", UpgradeThunderHeight)
 
 	BuildType |= Build2k
-
 }
 
 const BlockDelaySecs = uint64(4)
@@ -132,10 +144,10 @@ const PropagationDelaySecs = uint64(1)
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed
 //
-// Epochs
+// Epochs.
 const SlashablePowerDelay = 20
 
-// Epochs
+// Epochs.
 const InteractivePoRepConfidence = 6
 
 const BootstrapPeerThreshold = 1

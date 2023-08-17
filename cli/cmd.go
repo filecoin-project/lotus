@@ -42,20 +42,28 @@ func GetFullNodeServices(ctx *cli.Context) (ServicesAPI, error) {
 	return &ServicesImpl{api: api, closer: c}, nil
 }
 
-var GetAPIInfo = cliutil.GetAPIInfo
-var GetRawAPI = cliutil.GetRawAPI
-var GetAPI = cliutil.GetCommonAPI
+var (
+	GetAPIInfo = cliutil.GetAPIInfo
+	GetRawAPI  = cliutil.GetRawAPI
+	GetAPI     = cliutil.GetCommonAPI
+)
 
-var DaemonContext = cliutil.DaemonContext
-var ReqContext = cliutil.ReqContext
+var (
+	DaemonContext = cliutil.DaemonContext
+	ReqContext    = cliutil.ReqContext
+)
 
-var GetFullNodeAPI = cliutil.GetFullNodeAPI
-var GetFullNodeAPIV1 = cliutil.GetFullNodeAPIV1
-var GetGatewayAPI = cliutil.GetGatewayAPI
+var (
+	GetFullNodeAPI   = cliutil.GetFullNodeAPI
+	GetFullNodeAPIV1 = cliutil.GetFullNodeAPIV1
+	GetGatewayAPI    = cliutil.GetGatewayAPI
+)
 
-var GetStorageMinerAPI = cliutil.GetStorageMinerAPI
-var GetMarketsAPI = cliutil.GetMarketsAPI
-var GetWorkerAPI = cliutil.GetWorkerAPI
+var (
+	GetStorageMinerAPI = cliutil.GetStorageMinerAPI
+	GetMarketsAPI      = cliutil.GetMarketsAPI
+	GetWorkerAPI       = cliutil.GetWorkerAPI
+)
 
 var CommonCommands = []*cli.Command{
 	AuthCmd,

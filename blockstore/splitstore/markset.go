@@ -9,7 +9,7 @@ import (
 
 var errMarkSetClosed = errors.New("markset closed")
 
-// MarkSet is an interface for tracking CIDs during chain and object walks
+// MarkSet is an interface for tracking CIDs during chain and object walks.
 type MarkSet interface {
 	ObjectVisitor
 	Mark(cid.Cid) error

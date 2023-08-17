@@ -239,7 +239,7 @@ var marketExportDatastoreCmd = &cli.Command{
 		// Create a tmp datastore that we'll add the exported key / values to
 		// and then backup
 		backupDsDir := path.Join(backupDir, "markets-backup-datastore")
-		if err := os.MkdirAll(backupDsDir, 0775); err != nil { //nolint:gosec
+		if err := os.MkdirAll(backupDsDir, 0o775); err != nil { //nolint:gosec
 			return xerrors.Errorf("creating tmp datastore directory: %w", err)
 		}
 		defer os.RemoveAll(backupDsDir) //nolint:errcheck
@@ -275,7 +275,7 @@ var marketExportDatastoreCmd = &cli.Command{
 
 		// Create a file for the backup
 		fpath := path.Join(backupDir, "markets.datastore.backup")
-		out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
+		out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			return xerrors.Errorf("opening backup file %s: %w", fpath, err)
 		}
@@ -392,7 +392,6 @@ var marketDealsTotalStorageCmd = &cli.Command{
 				total = big.Add(total, dealStorage)
 				count++
 			}
-
 		}
 
 		fmt.Println("Total deals: ", count)

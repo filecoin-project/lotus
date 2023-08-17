@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// TODO generate this using reflection. It's the same as the EthAPI except every return value is a json.RawMessage
+// TODO generate this using reflection. It's the same as the EthAPI except every return value is a json.RawMessage.
 type ethAPIRaw struct {
 	EthAccounts                            func(context.Context) (json.RawMessage, error)
 	EthBlockNumber                         func(context.Context) (json.RawMessage, error)

@@ -25,10 +25,8 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 )
 
-var (
-	// KeyPool is the buffer pool we use to compute storage keys.
-	KeyPool *pool.BufferPool = pool.GlobalPool
-)
+// KeyPool is the buffer pool we use to compute storage keys.
+var KeyPool *pool.BufferPool = pool.GlobalPool
 
 var (
 	// ErrBlockstoreClosed is returned from blockstore operations after
@@ -66,7 +64,7 @@ func DefaultOptions(path string) Options {
 }
 
 // badgerLogger is a local wrapper for go-log to make the interface
-// compatible with badger.Logger (namely, aliasing Warnf to Warningf)
+// compatible with badger.Logger (namely, aliasing Warnf to Warningf).
 type badgerLogger struct {
 	*zap.SugaredLogger // skips 1 caller to get useful line info, skipping over badger.Options.
 
@@ -78,28 +76,28 @@ func (b *badgerLogger) Warningf(format string, args ...interface{}) {
 	b.skip2.Warnf(format, args...)
 }
 
-// bsState is the current blockstore state
+// bsState is the current blockstore state.
 type bsState int
 
 const (
-	// stateOpen signifies an open blockstore
+	// stateOpen signifies an open blockstore.
 	stateOpen bsState = iota
-	// stateClosing signifies a blockstore that is currently closing
+	// stateClosing signifies a blockstore that is currently closing.
 	stateClosing
-	// stateClosed signifies a blockstore that has been colosed
+	// stateClosed signifies a blockstore that has been colosed.
 	stateClosed
 )
 
 type bsMoveState int
 
 const (
-	// moveStateNone signifies that there is no move in progress
+	// moveStateNone signifies that there is no move in progress.
 	moveStateNone bsMoveState = iota
-	// moveStateMoving signifies that there is a move  in a progress
+	// moveStateMoving signifies that there is a move  in a progress.
 	moveStateMoving
-	// moveStateCleanup signifies that a move has completed or aborted and we are cleaning up
+	// moveStateCleanup signifies that a move has completed or aborted and we are cleaning up.
 	moveStateCleanup
-	// moveStateLock signifies that an exclusive lock has been acquired
+	// moveStateLock signifies that an exclusive lock has been acquired.
 	moveStateLock
 )
 
@@ -123,12 +121,14 @@ type Blockstore struct {
 	prefixLen int
 }
 
-var _ blockstore.Blockstore = (*Blockstore)(nil)
-var _ blockstore.Viewer = (*Blockstore)(nil)
-var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
-var _ blockstore.BlockstoreGC = (*Blockstore)(nil)
-var _ blockstore.BlockstoreSize = (*Blockstore)(nil)
-var _ io.Closer = (*Blockstore)(nil)
+var (
+	_ blockstore.Blockstore         = (*Blockstore)(nil)
+	_ blockstore.Viewer             = (*Blockstore)(nil)
+	_ blockstore.BlockstoreIterator = (*Blockstore)(nil)
+	_ blockstore.BlockstoreGC       = (*Blockstore)(nil)
+	_ blockstore.BlockstoreSize     = (*Blockstore)(nil)
+	_ io.Closer                     = (*Blockstore)(nil)
+)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
 func Open(opts Options) (*Blockstore, error) {
@@ -196,7 +196,7 @@ func (b *Blockstore) isOpen() bool {
 	return b.state == stateOpen
 }
 
-// lockDB/unlockDB implement a recursive lock contingent on move state
+// lockDB/unlockDB implement a recursive lock contingent on move state.
 func (b *Blockstore) lockDB() {
 	b.moveMx.Lock()
 	defer b.moveMx.Unlock()
@@ -220,7 +220,7 @@ func (b *Blockstore) unlockDB() {
 	}
 }
 
-// lockMove/unlockMove implement an exclusive lock of move state
+// lockMove/unlockMove implement an exclusive lock of move state.
 func (b *Blockstore) lockMove() {
 	b.moveMx.Lock()
 	b.moveState = moveStateLock
@@ -370,7 +370,7 @@ func (b *Blockstore) movingGC() error {
 }
 
 // symlink creates a symlink from path to linkTo; the link is relative if the two are
-// in the same directory
+// in the same directory.
 func symlink(path, linkTo string) error {
 	resolvedPathDir, err := filepath.EvalSymlinks(filepath.Dir(path))
 	if err != nil {
@@ -484,7 +484,7 @@ func (b *Blockstore) onlineGC(ctx context.Context, threshold float64, checkFreq 
 }
 
 // CollectGarbage compacts and runs garbage collection on the value log;
-// implements the BlockstoreGC trait
+// implements the BlockstoreGC trait.
 func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
 	if err := b.access(); err != nil {
 		return err
@@ -520,7 +520,7 @@ func (b *Blockstore) CollectGarbage(ctx context.Context, opts ...blockstore.Bloc
 }
 
 // GCOnce runs garbage collection on the value log;
-// implements BlockstoreGCOnce trait
+// implements BlockstoreGCOnce trait.
 func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGCOption) error {
 	if err := b.access(); err != nil {
 		return err
@@ -556,7 +556,7 @@ func (b *Blockstore) GCOnce(ctx context.Context, opts ...blockstore.BlockstoreGC
 	return err
 }
 
-// Size returns the aggregate size of the blockstore
+// Size returns the aggregate size of the blockstore.
 func (b *Blockstore) Size() (int64, error) {
 	if err := b.access(); err != nil {
 		return 0, err
@@ -986,7 +986,7 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return ch, nil
 }
 
-// Implementation of BlockstoreIterator interface
+// Implementation of BlockstoreIterator interface.
 func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 	if err := b.access(); err != nil {
 		return err
@@ -1093,7 +1093,7 @@ func (b *Blockstore) StorageKey(dst []byte, cid cid.Cid) []byte {
 }
 
 // this method is added for lotus-shed needs
-// WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE
+// WARNING: THIS IS COMPLETELY UNSAFE; DONT USE THIS IN PRODUCTION CODE.
 func (b *Blockstore) DB() *badger.DB {
 	return b.db
 }

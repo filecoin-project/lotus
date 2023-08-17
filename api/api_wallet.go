@@ -14,16 +14,16 @@ type MsgType string
 const (
 	MTUnknown = "unknown"
 
-	// Signing message CID. MsgMeta.Extra contains raw cbor message bytes
+	// Signing message CID. MsgMeta.Extra contains raw cbor message bytes.
 	MTChainMsg = "message"
 
-	// Signing a blockheader. signing raw cbor block bytes (MsgMeta.Extra is empty)
+	// Signing a blockheader. signing raw cbor block bytes (MsgMeta.Extra is empty).
 	MTBlock = "block"
 
-	// Signing a deal proposal. signing raw cbor proposal bytes (MsgMeta.Extra is empty)
+	// Signing a deal proposal. signing raw cbor proposal bytes (MsgMeta.Extra is empty).
 	MTDealProposal = "dealproposal"
 
-	// TODO: Deals, Vouchers, VRF
+	// TODO: Deals, Vouchers, VRF.
 )
 
 type MsgMeta struct {

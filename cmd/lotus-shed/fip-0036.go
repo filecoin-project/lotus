@@ -141,7 +141,7 @@ var finalResultCmd = &cli.Command{
 			return err
 		}
 
-		//get all the votes' signer ID address && their vote
+		// get all the votes' signer ID address && their vote
 		vj, err := homedir.Expand(cctx.Args().Get(2))
 		if err != nil {
 			return xerrors.Errorf("fail to get votes json")
@@ -168,7 +168,7 @@ var finalResultCmd = &cli.Command{
 			return xerrors.Errorf("failed to get power state: %w\n", err)
 		}
 
-		//market actor
+		// market actor
 		ma, err := st.GetActor(market.Address)
 		if err != nil {
 			return xerrors.Errorf("fail to get market actor: %w\n", err)
@@ -213,7 +213,6 @@ var finalResultCmd = &cli.Command{
 				ms, err := multisig.Load(store, act)
 				if err != nil {
 					return fmt.Errorf("load msig failed %v", err)
-
 				}
 
 				// TODO: Confirm that these are always ID addresses
@@ -302,7 +301,6 @@ var finalResultCmd = &cli.Command{
 		}
 
 		if err := dealProposals.ForEach(func(dealID abi.DealID, d market.DealProposal) error {
-
 			dealState, ok, err := dealStates.Get(dealID)
 			if err != nil {
 				return err
@@ -339,7 +337,7 @@ var finalResultCmd = &cli.Command{
 		rejectionBalance := abi.NewTokenAmount(0)
 		clientApproveBytes := big.Zero()
 		clientRejectBytes := big.Zero()
-		msigPendingVotes := make(map[address.Address]msigVote) //map[msig ID]msigVote
+		msigPendingVotes := make(map[address.Address]msigVote) // map[msig ID]msigVote
 		msigVotes := make(map[address.Address]Option)
 		minerVotes := make(map[address.Address]Option)
 		fmt.Println("counting account and multisig votes")
@@ -350,7 +348,7 @@ var finalResultCmd = &cli.Command{
 				continue
 			}
 
-			//process votes for regular accounts
+			// process votes for regular accounts
 			accountActor, err := st.GetActor(signerId)
 			if err != nil {
 				return xerrors.Errorf("fail to get account account for signer: %w\n", err)
@@ -382,22 +380,22 @@ var finalResultCmd = &cli.Command{
 				}
 			}
 
-			//process msigs
+			// process msigs
 			// There is a possibility that enough signers have voted for BOTH options in the poll to be above the threshold
 			// Because we are iterating over votes in order they arrived, the first option to go over the threshold will win
 			// This is in line with onchain behaviour (consider a case where signers are competing to withdraw all the funds
 			// in an msig into 2 different accounts)
 			if mss, found := accountsToMultisigs[signerId]; found {
-				for _, ms := range mss { //get all the msig signer has
+				for _, ms := range mss { // get all the msig signer has
 					if _, ok := msigVotes[ms]; ok {
 						// msig has already voted, skip
 						continue
 					}
-					if mpv, found := msigPendingVotes[ms]; found { //other signers of the multisig have voted, yet the threshold has not met
+					if mpv, found := msigPendingVotes[ms]; found { // other signers of the multisig have voted, yet the threshold has not met
 						if vote.OptionID == Approve {
-							if mpv.ApproveCount+1 == mpv.Multisig.Threshold { //met threshold
+							if mpv.ApproveCount+1 == mpv.Multisig.Threshold { // met threshold
 								approveBalance = types.BigAdd(approveBalance, mpv.Multisig.Balance)
-								delete(msigPendingVotes, ms) //threshold, can skip later signer votes
+								delete(msigPendingVotes, ms) // threshold, can skip later signer votes
 								msigVotes[ms] = vote.OptionID
 
 							} else {
@@ -405,9 +403,9 @@ var finalResultCmd = &cli.Command{
 								msigPendingVotes[ms] = mpv
 							}
 						} else {
-							if mpv.RejectCount+1 == mpv.Multisig.Threshold { //met threshold
+							if mpv.RejectCount+1 == mpv.Multisig.Threshold { // met threshold
 								rejectionBalance = types.BigAdd(rejectionBalance, mpv.Multisig.Balance)
-								delete(msigPendingVotes, ms) //threshold, can skip later signer votes
+								delete(msigPendingVotes, ms) // threshold, can skip later signer votes
 								msigVotes[ms] = vote.OptionID
 
 							} else {
@@ -415,13 +413,13 @@ var finalResultCmd = &cli.Command{
 								msigPendingVotes[ms] = mpv
 							}
 						}
-					} else { //first vote received from one of the signers of the msig
+					} else { // first vote received from one of the signers of the msig
 						msi, ok := msigActorsInfo[ms]
 						if !ok {
 							return xerrors.Errorf("didn't find msig %s in msig map", ms)
 						}
 
-						if msi.Threshold == 1 { //met threshold with this signer's single vote
+						if msi.Threshold == 1 { // met threshold with this signer's single vote
 							if vote.OptionID == Approve {
 								approveBalance = types.BigAdd(approveBalance, msi.Balance)
 								msigVotes[ms] = Approve
@@ -430,7 +428,7 @@ var finalResultCmd = &cli.Command{
 								rejectionBalance = types.BigAdd(rejectionBalance, msi.Balance)
 								msigVotes[ms] = Reject
 							}
-						} else { //threshold not met, add to pending vote
+						} else { // threshold not met, add to pending vote
 							if vote.OptionID == Approve {
 								msigPendingVotes[ms] = msigVote{
 									Multisig:     msi,

@@ -1471,7 +1471,7 @@ type filterTestCase struct {
 	expected []ExpectedEthLog
 }
 
-// getTopicFilterTestCases returns filter test cases that only include topic criteria
+// getTopicFilterTestCases returns filter test cases that only include topic criteria.
 func getTopicFilterTestCases(contract1, contract2 ethtypes.EthAddress, fromBlock string) []filterTestCase {
 	return []filterTestCase{
 		{
@@ -1896,7 +1896,7 @@ func getTopicFilterTestCases(contract1, contract2 ethtypes.EthAddress, fromBlock
 	}
 }
 
-// getAddressFilterTestCases returns filter test cases include address criteria
+// getAddressFilterTestCases returns filter test cases include address criteria.
 func getAddressFilterTestCases(contract1, contract2 ethtypes.EthAddress, fromBlock string) []filterTestCase {
 	return []filterTestCase{
 		{

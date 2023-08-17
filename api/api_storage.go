@@ -40,7 +40,7 @@ import (
 //  * Generate markdown docs
 //  * Generate openrpc blobs
 
-// StorageMiner is a low-level interface to the Filecoin network storage miner node
+// StorageMiner is a low-level interface to the Filecoin network storage miner node.
 type StorageMiner interface {
 	Common
 	Net
@@ -447,7 +447,7 @@ type AddressConfig struct {
 }
 
 // PendingDealInfo has info about pending deals and when they are due to be
-// published
+// published.
 type PendingDealInfo struct {
 	Deals              []market.ClientDealProposal
 	PublishPeriodStart time.Time
@@ -459,7 +459,7 @@ type SectorOffset struct {
 	Offset abi.PaddedPieceSize
 }
 
-// DealInfo is a tuple of deal identity and its schedule
+// DealInfo is a tuple of deal identity and its schedule.
 type PieceDealInfo struct {
 	PublishCid   *cid.Cid
 	DealID       abi.DealID

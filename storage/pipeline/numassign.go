@@ -18,12 +18,16 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var StorageCounterDSPrefix = "/storage/nextid"
-var SectorBitfieldsDSPrefix = "/storage/sectorsids/"
-var SectorReservationsDSPrefix = "/storage/sectorsids/reserved/"
+var (
+	StorageCounterDSPrefix     = "/storage/nextid"
+	SectorBitfieldsDSPrefix    = "/storage/sectorsids/"
+	SectorReservationsDSPrefix = "/storage/sectorsids/reserved/"
+)
 
-var allocatedSectorsKey = datastore.NewKey(SectorBitfieldsDSPrefix + "allocated")
-var reservedSectorsKey = datastore.NewKey(SectorBitfieldsDSPrefix + "reserved")
+var (
+	allocatedSectorsKey = datastore.NewKey(SectorBitfieldsDSPrefix + "allocated")
+	reservedSectorsKey  = datastore.NewKey(SectorBitfieldsDSPrefix + "reserved")
+)
 
 func (m *Sealing) loadBitField(ctx context.Context, name datastore.Key) (*bitfield.BitField, error) {
 	raw, err := m.ds.Get(ctx, name)

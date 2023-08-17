@@ -100,7 +100,6 @@ var sigsVerifyVoteCmd = &cli.Command{
 	Description: "can be used to verify signed votes being submitted for FILPolls",
 	Usage:       "<FIPnumber> <signingAddress> <signature>",
 	Action: func(cctx *cli.Context) error {
-
 		if cctx.NArg() != 3 {
 			return lcli.IncorrectNumArgs(cctx)
 		}

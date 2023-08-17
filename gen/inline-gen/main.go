@@ -109,7 +109,7 @@ func main() {
 
 		if rewrite {
 			fmt.Printf("write %s\n", path)
-			if err := os.WriteFile(path, []byte(strings.Join(outLines, "\n")), 0664); err != nil {
+			if err := os.WriteFile(path, []byte(strings.Join(outLines, "\n")), 0o664); err != nil {
 				return err
 			}
 		}

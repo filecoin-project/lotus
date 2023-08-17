@@ -40,7 +40,6 @@ func newBloomSet(size int64) (*bloomSet, error) {
 
 func (bs *bloomSet) Add(c cid.Cid) {
 	bs.bloom.Add(c.Hash())
-
 }
 
 func (bs *bloomSet) Has(c cid.Cid) bool {

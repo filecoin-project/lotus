@@ -126,7 +126,7 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 
 		if os.Getenv("LOTUS_DEBUG_RCMGR") != "" {
 			debugPath := filepath.Join(repoPath, "debug")
-			if err := os.MkdirAll(debugPath, 0755); err != nil {
+			if err := os.MkdirAll(debugPath, 0o755); err != nil {
 				return nil, fmt.Errorf("error creating debug directory: %w", err)
 			}
 			traceFile := filepath.Join(debugPath, "rcmgr.json.gz")
@@ -141,7 +141,8 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		lc.Append(fx.Hook{
 			OnStop: func(_ context.Context) error {
 				return mgr.Close()
-			}})
+			},
+		})
 
 		return mgr, nil
 	}

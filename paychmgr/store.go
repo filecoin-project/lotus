@@ -48,7 +48,7 @@ type VoucherInfo struct {
 	Submitted bool
 }
 
-// ChannelInfo keeps track of information about a channel
+// ChannelInfo keeps track of information about a channel.
 type ChannelInfo struct {
 	// ChannelID is a uuid set at channel creation
 	ChannelID string
@@ -145,7 +145,7 @@ func (ci *ChannelInfo) markVoucherSubmitted(sv *paych.SignedVoucher) error {
 	return nil
 }
 
-// wasVoucherSubmitted returns true if the voucher has been submitted
+// wasVoucherSubmitted returns true if the voucher has been submitted.
 func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error) {
 	vi, err := ci.infoForVoucher(sv)
 	if err != nil {
@@ -158,7 +158,7 @@ func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error
 }
 
 // TrackChannel stores a channel, returning an error if the channel was already
-// being tracked
+// being tracked.
 func (ps *Store) TrackChannel(ctx context.Context, ci *ChannelInfo) (*ChannelInfo, error) {
 	_, err := ps.ByAddress(ctx, *ci.Channel)
 	switch err {
@@ -176,7 +176,7 @@ func (ps *Store) TrackChannel(ctx context.Context, ci *ChannelInfo) (*ChannelInf
 	}
 }
 
-// ListChannels returns the addresses of all channels that have been created
+// ListChannels returns the addresses of all channels that have been created.
 func (ps *Store) ListChannels(ctx context.Context) ([]address.Address, error) {
 	cis, err := ps.findChans(ctx, func(ci *ChannelInfo) bool {
 		return ci.Channel != nil
@@ -194,7 +194,7 @@ func (ps *Store) ListChannels(ctx context.Context) ([]address.Address, error) {
 }
 
 // findChan finds a single channel using the given filter.
-// If there isn't a channel that matches the filter, returns ErrChannelNotTracked
+// If there isn't a channel that matches the filter, returns ErrChannelNotTracked.
 func (ps *Store) findChan(ctx context.Context, filter func(ci *ChannelInfo) bool) (*ChannelInfo, error) {
 	cis, err := ps.findChans(ctx, filter, 1)
 	if err != nil {
@@ -252,7 +252,7 @@ func (ps *Store) findChans(ctx context.Context, filter func(*ChannelInfo) bool, 
 	return matches, nil
 }
 
-// AllocateLane allocates a new lane for the given channel
+// AllocateLane allocates a new lane for the given channel.
 func (ps *Store) AllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
 	ci, err := ps.ByAddress(ctx, ch)
 	if err != nil {
@@ -265,7 +265,7 @@ func (ps *Store) AllocateLane(ctx context.Context, ch address.Address) (uint64, 
 	return out, ps.putChannelInfo(ctx, ci)
 }
 
-// VouchersForPaych gets the vouchers for the given channel
+// VouchersForPaych gets the vouchers for the given channel.
 func (ps *Store) VouchersForPaych(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
 	ci, err := ps.ByAddress(ctx, ch)
 	if err != nil {
@@ -283,7 +283,7 @@ func (ps *Store) MarkVoucherSubmitted(ctx context.Context, ci *ChannelInfo, sv *
 	return ps.putChannelInfo(ctx, ci)
 }
 
-// ByAddress gets the channel that matches the given address
+// ByAddress gets the channel that matches the given address.
 func (ps *Store) ByAddress(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
 	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		return ci.Channel != nil && *ci.Channel == addr
@@ -291,7 +291,7 @@ func (ps *Store) ByAddress(ctx context.Context, addr address.Address) (*ChannelI
 }
 
 // MsgInfo stores information about a create channel / add funds message
-// that has been sent
+// that has been sent.
 type MsgInfo struct {
 	// ChannelID links the message to a channel
 	ChannelID string
@@ -303,12 +303,12 @@ type MsgInfo struct {
 	Err string
 }
 
-// The datastore key used to identify the message
+// The datastore key used to identify the message.
 func dskeyForMsg(mcid cid.Cid) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyMsgCid, mcid.String()})
 }
 
-// SaveNewMessage is called when a message is sent
+// SaveNewMessage is called when a message is sent.
 func (ps *Store) SaveNewMessage(ctx context.Context, channelID string, mcid cid.Cid) error {
 	k := dskeyForMsg(mcid)
 
@@ -320,7 +320,7 @@ func (ps *Store) SaveNewMessage(ctx context.Context, channelID string, mcid cid.
 	return ps.ds.Put(ctx, k, b)
 }
 
-// SaveMessageResult is called when the result of a message is received
+// SaveMessageResult is called when the result of a message is received.
 func (ps *Store) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr error) error {
 	minfo, err := ps.GetMessage(ctx, mcid)
 	if err != nil {
@@ -341,7 +341,7 @@ func (ps *Store) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr err
 	return ps.ds.Put(ctx, k, b)
 }
 
-// ByMessageCid gets the channel associated with a message
+// ByMessageCid gets the channel associated with a message.
 func (ps *Store) ByMessageCid(ctx context.Context, mcid cid.Cid) (*ChannelInfo, error) {
 	minfo, err := ps.GetMessage(ctx, mcid)
 	if err != nil {
@@ -358,7 +358,7 @@ func (ps *Store) ByMessageCid(ctx context.Context, mcid cid.Cid) (*ChannelInfo, 
 	return ci, err
 }
 
-// GetMessage gets the message info for a given message CID
+// GetMessage gets the message info for a given message CID.
 func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error) {
 	k := dskeyForMsg(mcid)
 
@@ -376,7 +376,7 @@ func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error)
 }
 
 // OutboundActiveByFromTo looks for outbound channels that have not been
-// settled, with the given from / to addresses
+// settled, with the given from / to addresses.
 func (ps *Store) OutboundActiveByFromTo(ctx context.Context, sma stateManagerAPI, from address.Address, to address.Address) (*ChannelInfo, error) {
 	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
@@ -416,7 +416,7 @@ func (ps *Store) WithPendingAddFunds(ctx context.Context) ([]ChannelInfo, error)
 	}, 0)
 }
 
-// ByChannelID gets channel info by channel ID
+// ByChannelID gets channel info by channel ID.
 func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInfo, error) {
 	var stored ChannelInfo
 
@@ -431,7 +431,7 @@ func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInf
 	return unmarshallChannelInfo(&stored, res)
 }
 
-// CreateChannel creates an outbound channel for the given from / to
+// CreateChannel creates an outbound channel for the given from / to.
 func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt, avail types.BigInt) (*ChannelInfo, error) {
 	ci := &ChannelInfo{
 		Direction:              DirOutbound,
@@ -458,17 +458,17 @@ func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to add
 	return ci, err
 }
 
-// RemoveChannel removes the channel with the given channel ID
+// RemoveChannel removes the channel with the given channel ID.
 func (ps *Store) RemoveChannel(ctx context.Context, channelID string) error {
 	return ps.ds.Delete(ctx, dskeyForChannel(channelID))
 }
 
-// The datastore key used to identify the channel info
+// The datastore key used to identify the channel info.
 func dskeyForChannel(channelID string) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyChannelInfo, channelID})
 }
 
-// putChannelInfo stores the channel info in the datastore
+// putChannelInfo stores the channel info in the datastore.
 func (ps *Store) putChannelInfo(ctx context.Context, ci *ChannelInfo) error {
 	if len(ci.ChannelID) == 0 {
 		ci.ChannelID = uuid.New().String()

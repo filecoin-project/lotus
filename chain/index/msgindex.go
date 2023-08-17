@@ -23,20 +23,22 @@ import (
 
 var log = logging.Logger("msgindex")
 
-var dbName = "msgindex.db"
-var dbDefs = []string{
-	`CREATE TABLE IF NOT EXISTS messages (
+var (
+	dbName = "msgindex.db"
+	dbDefs = []string{
+		`CREATE TABLE IF NOT EXISTS messages (
      cid VARCHAR(80) PRIMARY KEY ON CONFLICT REPLACE,
      tipset_cid VARCHAR(80) NOT NULL,
      epoch INTEGER NOT NULL
    )`,
-	`CREATE INDEX IF NOT EXISTS tipset_cids ON messages (tipset_cid)
+		`CREATE INDEX IF NOT EXISTS tipset_cids ON messages (tipset_cid)
   `,
-	`CREATE TABLE IF NOT EXISTS _meta (
+		`CREATE TABLE IF NOT EXISTS _meta (
     	version UINT64 NOT NULL UNIQUE
 	)`,
-	`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
-}
+		`INSERT OR IGNORE INTO _meta (version) VALUES (1)`,
+	}
+)
 
 var dbPragmas = []string{
 	"PRAGMA synchronous = normal",
@@ -112,7 +114,7 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 		err    error
 	)
 
-	err = os.MkdirAll(basePath, 0755)
+	err = os.MkdirAll(basePath, 0o755)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating msgindex base directory: %w", err)
 	}
@@ -180,7 +182,7 @@ func NewMsgIndex(lctx context.Context, basePath string, cs ChainStore) (MsgIndex
 }
 
 func PopulateAfterSnapshot(lctx context.Context, basePath string, cs ChainStore) error {
-	err := os.MkdirAll(basePath, 0755)
+	err := os.MkdirAll(basePath, 0o755)
 	if err != nil {
 		return xerrors.Errorf("error creating msgindex base directory: %w", err)
 	}

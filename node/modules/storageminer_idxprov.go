@@ -46,7 +46,7 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		for _, addr := range addrs {
 			addrsString = append(addrsString, addr.String())
 		}
-		var opts = []engine.Option{
+		opts := []engine.Option{
 			engine.WithDatastore(ipds),
 			engine.WithHost(marketHost),
 			engine.WithRetrievalAddrs(addrsString...),

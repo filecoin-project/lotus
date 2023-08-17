@@ -53,9 +53,7 @@ func (s *state9) RootKey() (address.Address, error) {
 }
 
 func (s *state9) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
-
 	return false, big.Zero(), xerrors.Errorf("unsupported in actors v9")
-
 }
 
 func (s *state9) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
@@ -71,15 +69,11 @@ func (s *state9) ForEachVerifier(cb func(addr address.Address, dcap abi.StorageP
 }
 
 func (s *state9) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
-
 	return xerrors.Errorf("unsupported in actors v9")
-
 }
 
 func (s *state9) verifiedClients() (adt.Map, error) {
-
 	return nil, xerrors.Errorf("unsupported in actors v9")
-
 }
 
 func (s *state9) verifiers() (adt.Map, error) {
@@ -95,13 +89,11 @@ func (s *state9) GetState() interface{} {
 }
 
 func (s *state9) GetAllocation(clientIdAddr address.Address, allocationId verifreg9.AllocationId) (*Allocation, bool, error) {
-
 	alloc, ok, err := s.FindAllocation(s.store, clientIdAddr, verifreg9.AllocationId(allocationId))
 	return (*Allocation)(alloc), ok, err
 }
 
 func (s *state9) GetAllocations(clientIdAddr address.Address) (map[AllocationId]Allocation, error) {
-
 	v9Map, err := s.LoadAllocationsToMap(s.store, clientIdAddr)
 
 	retMap := make(map[AllocationId]Allocation, len(v9Map))
@@ -110,18 +102,14 @@ func (s *state9) GetAllocations(clientIdAddr address.Address) (map[AllocationId]
 	}
 
 	return retMap, err
-
 }
 
 func (s *state9) GetClaim(providerIdAddr address.Address, claimId verifreg9.ClaimId) (*Claim, bool, error) {
-
 	claim, ok, err := s.FindClaim(s.store, providerIdAddr, verifreg9.ClaimId(claimId))
 	return (*Claim)(claim), ok, err
-
 }
 
 func (s *state9) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, error) {
-
 	v9Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
 
 	retMap := make(map[ClaimId]Claim, len(v9Map))
@@ -130,11 +118,9 @@ func (s *state9) GetClaims(providerIdAddr address.Address) (map[ClaimId]Claim, e
 	}
 
 	return retMap, err
-
 }
 
 func (s *state9) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.SectorNumber][]ClaimId, error) {
-
 	v9Map, err := s.LoadClaimsToMap(s.store, providerIdAddr)
 
 	retMap := make(map[abi.SectorNumber][]ClaimId)
@@ -148,7 +134,6 @@ func (s *state9) GetClaimIdsBySector(providerIdAddr address.Address) (map[abi.Se
 	}
 
 	return retMap, err
-
 }
 
 func (s *state9) ActorKey() string {

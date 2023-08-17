@@ -37,28 +37,28 @@ var (
 	warmupEpochKey = dstore.NewKey("/splitstore/warmupEpoch")
 
 	// markSetSizeKey stores the current estimate for the mark set size.
-	// this is first computed at warmup and updated in every compaction
+	// this is first computed at warmup and updated in every compaction.
 	markSetSizeKey = dstore.NewKey("/splitstore/markSetSize")
 
-	// compactionIndexKey stores the compaction index (serial number)
+	// compactionIndexKey stores the compaction index (serial number).
 	compactionIndexKey = dstore.NewKey("/splitstore/compactionIndex")
 
-	// stores the prune index (serial number)
+	// stores the prune index (serial number).
 	pruneIndexKey = dstore.NewKey("/splitstore/pruneIndex")
 
-	// stores the base epoch of last prune in the metadata store
+	// stores the base epoch of last prune in the metadata store.
 	pruneEpochKey = dstore.NewKey("/splitstore/pruneEpoch")
 
 	log = logging.Logger("splitstore")
 
 	errClosing = errors.New("splitstore is closing")
 
-	// set this to true if you are debugging the splitstore to enable debug logging
+	// set this to true if you are debugging the splitstore to enable debug logging.
 	enableDebugLog = false
-	// set this to true if you want to track origin stack traces in the write log
+	// set this to true if you want to track origin stack traces in the write log.
 	enableDebugLogWriteTraces = false
 
-	// upgradeBoundary is the boundary before and after an upgrade where we suppress compaction
+	// upgradeBoundary is the boundary before and after an upgrade where we suppress compaction.
 	upgradeBoundary = build.Finality
 )
 
@@ -143,7 +143,7 @@ type ChainAccessor interface {
 }
 
 // upgradeRange is a precomputed epoch range during which we shouldn't compact so as to not
-// interfere with an upgrade
+// interfere with an upgrade.
 type upgradeRange struct {
 	start, end abi.ChainEpoch
 }
@@ -298,7 +298,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	return ss, nil
 }
 
-// Blockstore interface
+// Blockstore interface.
 func (s *SplitStore) DeleteBlock(_ context.Context, _ cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
 	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!") //nolint
@@ -338,7 +338,6 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	}
 
 	has, err := s.hot.Has(ctx, cid)
-
 	if err != nil {
 		return has, err
 	}
@@ -357,7 +356,6 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	}
 
 	return has, err
-
 }
 
 func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
@@ -687,7 +685,7 @@ func (s *SplitStore) isWarm() bool {
 	return s.warmupEpoch.Load() > 0
 }
 
-// State tracking
+// State tracking.
 func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error {
 	s.chain = chain
 	curTs := chain.GetHeaviestTipSet()
@@ -741,7 +739,7 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		s.pruneEpoch = bytesToEpoch(bs)
 	case dstore.ErrNotFound:
 		if curTs == nil {
-			//this can happen in some tests
+			// this can happen in some tests
 			break
 		}
 		if err := s.setPruneEpoch(curTs.Height()); err != nil {

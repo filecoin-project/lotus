@@ -162,7 +162,6 @@ var datastoreVlog2CarCmd = &cli.Command{
 		}
 
 		return nil
-
 	},
 }
 

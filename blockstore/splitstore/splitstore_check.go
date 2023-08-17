@@ -16,7 +16,7 @@ import (
 )
 
 // performs an asynchronous health-check on the splitstore; results are appended to
-// <splitstore-path>/check.txt
+// <splitstore-path>/check.txt.
 func (s *SplitStore) Check() error {
 	s.headChangeMx.Lock()
 	defer s.headChangeMx.Unlock()
@@ -62,7 +62,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	boundaryEpoch := currentEpoch - CompactionBoundary
 
 	outputPath := filepath.Join(s.path, "check.txt")
-	output, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	output, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
 		return xerrors.Errorf("error opening check output file %s: %w", outputPath, err)
 	}
@@ -141,7 +141,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	return nil
 }
 
-// provides some basic information about the splitstore
+// provides some basic information about the splitstore.
 func (s *SplitStore) Info() map[string]interface{} {
 	info := make(map[string]interface{})
 	info["base epoch"] = s.baseEpoch

@@ -62,7 +62,7 @@ func writeTrailer(maxPieceSize int64, w *os.File, r rlepluslazy.RunIterator) err
 }
 
 func CreatePartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*PartialFile, error) {
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644) // nolint
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644) // nolint
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
 	}
@@ -97,7 +97,7 @@ func CreatePartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*PartialF
 }
 
 func OpenPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*PartialFile, error) {
-	f, err := os.OpenFile(path, os.O_RDWR, 0644) // nolint
+	f, err := os.OpenFile(path, os.O_RDWR, 0o644) // nolint
 	if err != nil {
 		return nil, xerrors.Errorf("openning partial file '%s': %w", path, err)
 	}

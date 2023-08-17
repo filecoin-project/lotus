@@ -53,7 +53,7 @@ func (pm *Manager) accessorByAddress(ctx context.Context, ch address.Address) (*
 	return pm.accessorByFromTo(channelInfo.Control, channelInfo.Target)
 }
 
-// accessorCacheKey returns the cache key use to reference a channel accessor
+// accessorCacheKey returns the cache key use to reference a channel accessor.
 func (pm *Manager) accessorCacheKey(from address.Address, to address.Address) string {
 	return from.String() + "->" + to.String()
 }
@@ -61,7 +61,7 @@ func (pm *Manager) accessorCacheKey(from address.Address, to address.Address) st
 // addAccessorToCache adds a channel accessor to the cache. Note that the
 // channel may not have been created yet, but we still want to reference
 // the same channel accessor for a given from/to, so that all attempts to
-// access a channel use the same lock (the lock on the accessor)
+// access a channel use the same lock (the lock on the accessor).
 func (pm *Manager) addAccessorToCache(from address.Address, to address.Address) *channelAccessor {
 	key := pm.accessorCacheKey(from, to)
 	ca := newChannelAccessor(pm, from, to)

@@ -41,15 +41,11 @@ func (s *state6) GetState() interface{} {
 }
 
 func (s *state6) GetBuiltinActors() cid.Cid {
-
 	return cid.Undef
-
 }
 
 func (s *state6) SetBuiltinActors(c cid.Cid) error {
-
 	return xerrors.New("cannot set manifest cid before v8")
-
 }
 
 func (s *state6) ActorKey() string {

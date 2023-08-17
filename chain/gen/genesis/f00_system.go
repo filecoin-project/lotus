@@ -19,7 +19,6 @@ import (
 )
 
 func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actorstypes.Version) (*types.Actor, error) {
-
 	cst := cbor.NewCborStore(bs)
 	// TODO pass in built-in actors cid for V8 and later
 	st, err := system.MakeState(adt.WrapStore(ctx, cst), av, cid.Undef)

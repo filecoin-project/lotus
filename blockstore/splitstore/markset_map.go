@@ -32,7 +32,7 @@ var _ MarkSet = (*MapMarkSet)(nil)
 
 func NewMapMarkSetEnv(path string) (*MapMarkSetEnv, error) {
 	msPath := filepath.Join(path, "markset.map")
-	err := os.MkdirAll(msPath, 0755) //nolint:gosec
+	err := os.MkdirAll(msPath, 0o755) //nolint:gosec
 	if err != nil {
 		return nil, xerrors.Errorf("error creating markset directory: %w", err)
 	}
@@ -109,7 +109,7 @@ func (s *MapMarkSet) BeginCriticalSection() error {
 		return nil
 	}
 
-	file, err := os.OpenFile(s.path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(s.path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
 		return xerrors.Errorf("error opening markset file: %w", err)
 	}

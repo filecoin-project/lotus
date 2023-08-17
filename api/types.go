@@ -66,7 +66,7 @@ type MpoolMessageWhole struct {
 	Spec *MessageSendSpec
 }
 
-// GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
+// GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync.
 type GraphSyncDataTransfer struct {
 	// GraphSync request id for this transfer
 	RequestID *graphsync.RequestID
@@ -84,7 +84,7 @@ type GraphSyncDataTransfer struct {
 	Diagnostics []string
 }
 
-// TransferDiagnostics give current information about transfers going over graphsync that may be helpful for debugging
+// TransferDiagnostics give current information about transfers going over graphsync that may be helpful for debugging.
 type TransferDiagnostics struct {
 	ReceivingTransfers []*GraphSyncDataTransfer
 	SendingTransfers   []*GraphSyncDataTransfer
@@ -103,7 +103,7 @@ type DataTransferChannel struct {
 	Stages      *datatransfer.ChannelStages
 }
 
-// NewDataTransferChannel constructs an API DataTransferChannel type from full channel state snapshot and a host id
+// NewDataTransferChannel constructs an API DataTransferChannel type from full channel state snapshot and a host id.
 func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelState) DataTransferChannel {
 	channel := DataTransferChannel{
 		TransferID: channelState.TransferID(),
@@ -194,7 +194,7 @@ type CheckStatusCode int
 //go:generate go run golang.org/x/tools/cmd/stringer -type=CheckStatusCode -trimprefix=CheckStatus
 const (
 	_ CheckStatusCode = iota
-	// Message Checks
+	// Message Checks.
 	CheckStatusMessageSerialize
 	CheckStatusMessageSize
 	CheckStatusMessageValidity
@@ -342,8 +342,10 @@ type ForkUpgradeParams struct {
 	UpgradeThunderHeight     abi.ChainEpoch
 }
 
-type NonceMapType map[address.Address]uint64
-type MsgUuidMapType map[uuid.UUID]*types.SignedMessage
+type (
+	NonceMapType   map[address.Address]uint64
+	MsgUuidMapType map[uuid.UUID]*types.SignedMessage
+)
 
 type RaftStateData struct {
 	NonceMap NonceMapType

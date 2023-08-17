@@ -67,9 +67,11 @@ func (sm ShardedMutexFor[K]) shardFor(key K) int {
 func (sm ShardedMutexFor[K]) Lock(key K) {
 	sm.inner.Lock(sm.shardFor(key))
 }
+
 func (sm ShardedMutexFor[K]) Unlock(key K) {
 	sm.inner.Unlock(sm.shardFor(key))
 }
+
 func (sm ShardedMutexFor[K]) GetLock(key K) sync.Locker {
 	return sm.inner.GetLock(sm.shardFor(key))
 }

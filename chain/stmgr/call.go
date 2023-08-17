@@ -127,7 +127,7 @@ func (sm *StateManager) callInternal(ctx context.Context, msg *types.Message, pr
 	} else {
 		var filteredTsMsgs []types.ChainMsg
 		for _, tsMsg := range tsMsgs {
-			//TODO we should technically be normalizing the filecoin address of from when we compare here
+			// TODO we should technically be normalizing the filecoin address of from when we compare here
 			if tsMsg.VMMessage().From == msg.VMMessage().From {
 				filteredTsMsgs = append(filteredTsMsgs, tsMsg)
 			}

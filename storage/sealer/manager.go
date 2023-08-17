@@ -96,8 +96,10 @@ type result struct {
 
 type StorageAuth http.Header
 
-type WorkerStateStore *statestore.StateStore
-type ManagerStateStore *statestore.StateStore
+type (
+	WorkerStateStore  *statestore.StateStore
+	ManagerStateStore *statestore.StateStore
+)
 
 func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc config.SealerConfig, pc config.ProvingConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
@@ -875,7 +877,6 @@ func (m *Manager) ReleaseReplicaUpgrade(ctx context.Context, sector storiface.Se
 }
 
 func (m *Manager) GenerateSectorKeyFromData(ctx context.Context, sector storiface.SectorRef, commD cid.Cid) error {
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -1038,7 +1039,6 @@ func (m *Manager) ProveReplicaUpdate1(ctx context.Context, sector storiface.Sect
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdate|storiface.FTUpdateCache, false)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTProveReplicaUpdate1, selector, m.schedFetch(sector, storiface.FTSealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, storiface.AcquireCopy), func(ctx context.Context, w Worker) error {
-
 		err := m.startWork(ctx, w, wk)(w.ProveReplicaUpdate1(ctx, sector, sectorKey, newSealed, newUnsealed))
 		if err != nil {
 			return err
@@ -1325,5 +1325,7 @@ func (m *Manager) Close(ctx context.Context) error {
 	return m.sched.Close(ctx)
 }
 
-var _ Unsealer = &Manager{}
-var _ SectorManager = &Manager{}
+var (
+	_ Unsealer      = &Manager{}
+	_ SectorManager = &Manager{}
+)

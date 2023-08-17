@@ -112,7 +112,6 @@ func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storiface.SectorRef
 	ss.lk.Unlock()
 
 	return abi.PieceInfo{
-
 		Size:     size.Padded(),
 		PieceCID: c,
 	}, nil
@@ -415,7 +414,6 @@ func generateFakePoStProof(sectorInfo []prooftypes.SectorInfo, randomness abi.Po
 		}
 	}
 	return hasher.Sum(nil)
-
 }
 
 func generateFakePoSt(sectorInfo []prooftypes.SectorInfo, ppt abi.RegisteredPoStProof, randomness abi.PoStRandomness) []prooftypes.PoStProof {
@@ -746,6 +744,8 @@ var MockVerifier = mockVerifProver{
 
 var MockProver = MockVerifier
 
-var _ storiface.Sealer = &SectorMgr{}
-var _ storiface.Verifier = MockVerifier
-var _ storiface.Prover = MockProver
+var (
+	_ storiface.Sealer   = &SectorMgr{}
+	_ storiface.Verifier = MockVerifier
+	_ storiface.Prover   = MockProver
+)

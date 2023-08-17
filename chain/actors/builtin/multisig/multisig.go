@@ -203,10 +203,12 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig11.ProposalHashData
-type ProposeReturn = msig11.ProposeReturn
-type ProposeParams = msig11.ProposeParams
-type ApproveReturn = msig11.ApproveReturn
+type (
+	ProposalHashData = msig11.ProposalHashData
+	ProposeReturn    = msig11.ProposeReturn
+	ProposeParams    = msig11.ProposeParams
+	ApproveReturn    = msig11.ApproveReturn
+)
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := msig11.TxnIDParams{ID: msig11.TxnID(id)}

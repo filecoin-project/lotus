@@ -22,24 +22,32 @@ import (
 //	We should implement some wait-for-api logic
 type ErrApi struct{ error }
 
-type ErrNoDeals struct{ error }
-type ErrInvalidDeals struct{ error }
-type ErrInvalidPiece struct{ error }
-type ErrExpiredDeals struct{ error }
+type (
+	ErrNoDeals      struct{ error }
+	ErrInvalidDeals struct{ error }
+	ErrInvalidPiece struct{ error }
+	ErrExpiredDeals struct{ error }
+)
 
-type ErrBadCommD struct{ error }
-type ErrExpiredTicket struct{ error }
-type ErrBadTicket struct{ error }
-type ErrPrecommitOnChain struct{ error }
-type ErrSectorNumberAllocated struct{ error }
+type (
+	ErrBadCommD              struct{ error }
+	ErrExpiredTicket         struct{ error }
+	ErrBadTicket             struct{ error }
+	ErrPrecommitOnChain      struct{ error }
+	ErrSectorNumberAllocated struct{ error }
+)
 
-type ErrBadSeed struct{ error }
-type ErrInvalidProof struct{ error }
-type ErrNoPrecommit struct{ error }
-type ErrCommitWaitFailed struct{ error }
+type (
+	ErrBadSeed          struct{ error }
+	ErrInvalidProof     struct{ error }
+	ErrNoPrecommit      struct{ error }
+	ErrCommitWaitFailed struct{ error }
+)
 
-type ErrBadRU struct{ error }
-type ErrBadPR struct{ error }
+type (
+	ErrBadRU struct{ error }
+	ErrBadPR struct{ error }
+)
 
 func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber, pieces []api.SectorPiece, api SealingAPI, mustHaveDeals bool) error {
 	ts, err := api.ChainHead(ctx)
@@ -133,11 +141,11 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return xerrors.Errorf("checking if sector is allocated: %w", err)
 	}
 	if alloc {
-		//committed P2 message  but commit C2 message too late, pci should be null in this case
+		// committed P2 message  but commit C2 message too late, pci should be null in this case
 		return &ErrSectorNumberAllocated{xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)}
 	}
 
-	//never commit P2 message before, check ticket expiration
+	// never commit P2 message before, check ticket expiration
 	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
 
 	if si.TicketEpoch < ticketEarliest {
@@ -222,7 +230,6 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 
 // check that sector info is good after running a replica update
 func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, api SealingAPI) error {
-
 	if err := checkPieces(ctx, maddr, si.SectorNumber, si.Pieces, api, true); err != nil {
 		return err
 	}
@@ -251,5 +258,4 @@ func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInf
 	}
 
 	return nil
-
 }

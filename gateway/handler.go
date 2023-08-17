@@ -80,7 +80,7 @@ func NewRateLimiterHandler(handler http.Handler, rateLimit int64) *RateLimiterHa
 	}
 }
 
-// Adds a rate limiter to the request context for per-connection rate limiting
+// Adds a rate limiter to the request context for per-connection rate limiting.
 type RateLimiterHandler struct {
 	handler http.Handler
 	limiter *rate.Limiter

@@ -290,7 +290,7 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 			Params: sp,
 		}
 
-		//TODO: 4667 add an option to give a more precise estimation with pending termination penalty excluded
+		// TODO: 4667 add an option to give a more precise estimation with pending termination penalty excluded
 
 		invocResult, err := nodeApi.StateCall(ctx, msg, types.EmptyTSK)
 		if err != nil {
@@ -526,7 +526,7 @@ func rleToPng(rleBytes []byte) ([]byte, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("getting next run: %w", err)
 		}
-		var cut = false
+		cut := false
 		var oldLen uint64
 		if run.Len > skipTh*width {
 			oldLen = run.Len
@@ -767,8 +767,7 @@ var sectorDeleteCmd = &cli.Command{
 	},
 }
 
-type emptyLocalStorage struct {
-}
+type emptyLocalStorage struct{}
 
 func (e *emptyLocalStorage) GetStorage() (storiface.StorageConfig, error) {
 	return storiface.StorageConfig{}, nil

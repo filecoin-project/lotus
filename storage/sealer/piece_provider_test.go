@@ -84,8 +84,8 @@ func TestPieceProviderSimpleNoRemoteWorker(t *testing.T) {
 	// read the piece -> will not have to unseal
 	ppt.readPiece(t, storiface.UnpaddedByteIndex(0), size,
 		false, pieceData)
-
 }
+
 func TestReadPieceRemoteWorkers(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
@@ -338,7 +338,8 @@ func (p *pieceProviderTestHarness) isUnsealed(t *testing.T, offset storiface.Unp
 }
 
 func (p *pieceProviderTestHarness) readPiece(t *testing.T, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize,
-	expectedHadToUnseal bool, expectedBytes []byte) {
+	expectedHadToUnseal bool, expectedBytes []byte,
+) {
 	rd, isUnsealed, err := p.pp.ReadPiece(p.ctx, p.sector, offset, size, p.ticket, p.commD)
 	require.NoError(t, err)
 	require.NotNil(t, rd)

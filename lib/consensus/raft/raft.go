@@ -39,8 +39,10 @@ var RaftMaxSnapshots = 5
 var RaftLogCacheSize = 512
 
 // How long we wait for updates during shutdown before snapshotting
-var waitForUpdatesShutdownTimeout = 5 * time.Second
-var waitForUpdatesInterval = 400 * time.Millisecond
+var (
+	waitForUpdatesShutdownTimeout = 5 * time.Second
+	waitForUpdatesInterval        = 400 * time.Millisecond
+)
 
 // How many times to retry snapshotting when shutting down
 var maxShutdownSnapshotRetries = 5
@@ -74,7 +76,6 @@ func newRaftWrapper(
 	repo repo.LockedRepo,
 	staging bool,
 ) (*raftWrapper, error) {
-
 	raftW := &raftWrapper{}
 	raftW.config = cfg
 	raftW.host = host
@@ -126,7 +127,7 @@ func newRaftWrapper(
 // makeDataFolder creates the folder that is meant to store Raft data. Ensures
 // we always set 0700 mode.
 func makeDataFolder(folder string) error {
-	return os.MkdirAll(folder, 0700)
+	return os.MkdirAll(folder, 0o700)
 }
 
 func (rw *raftWrapper) makeTransport() (err error) {
@@ -318,7 +319,6 @@ func isVoter(srvID hraft.ServerID, cfg hraft.Configuration) bool {
 
 // WaitForUpdates holds until Raft has synced to the last index in the log
 func (rw *raftWrapper) WaitForUpdates(ctx context.Context) error {
-
 	logger.Debug("Raft state is catching up to the latest known version. Please wait...")
 	for {
 		select {
@@ -338,7 +338,6 @@ func (rw *raftWrapper) WaitForUpdates(ctx context.Context) error {
 }
 
 func (rw *raftWrapper) WaitForPeer(ctx context.Context, pid string, depart bool) error {
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -414,7 +413,6 @@ func (rw *raftWrapper) snapshotOnShutdown() error {
 
 // Shutdown shutdown Raft and closes the BoltDB.
 func (rw *raftWrapper) Shutdown(ctx context.Context) error {
-
 	rw.cancel()
 
 	var finalErr error
@@ -440,7 +438,6 @@ func (rw *raftWrapper) Shutdown(ctx context.Context) error {
 
 // AddPeer adds a peer to Raft
 func (rw *raftWrapper) AddPeer(ctx context.Context, peerId peer.ID) error {
-
 	// Check that we don't have it to not waste
 	// log entries if so.
 	peers, err := rw.Peers(ctx)
@@ -549,7 +546,7 @@ func (rw *raftWrapper) Peers(ctx context.Context) ([]string, error) {
 
 // only call when Raft is shutdown
 func (rw *raftWrapper) Clean() error {
-	//return CleanupRaft(rw.config)
+	// return CleanupRaft(rw.config)
 	return nil
 }
 

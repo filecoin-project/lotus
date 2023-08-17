@@ -42,7 +42,7 @@ func WriteStorageFile(path string, config storiface.StorageConfig) error {
 		return xerrors.Errorf("marshaling storage config: %w", err)
 	}
 
-	if err := os.WriteFile(path, b, 0644); err != nil {
+	if err := os.WriteFile(path, b, 0o644); err != nil {
 		return xerrors.Errorf("persisting storage config (%s): %w", path, err)
 	}
 

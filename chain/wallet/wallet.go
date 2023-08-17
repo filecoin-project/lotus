@@ -102,7 +102,6 @@ func (w *LocalWallet) findKey(addr address.Address) (*key.Key, error) {
 }
 
 func (w *LocalWallet) tryFind(addr address.Address) (types.KeyInfo, error) {
-
 	ki, err := w.keystore.Get(KNamePrefix + addr.String())
 	if err == nil {
 		return ki, err
@@ -273,7 +272,6 @@ func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool
 
 func (w *LocalWallet) walletDelete(ctx context.Context, addr address.Address) error {
 	k, err := w.findKey(addr)
-
 	if err != nil {
 		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
 	}
@@ -363,5 +361,7 @@ func (n nilDefault) SetDefault(a address.Address) error {
 	return xerrors.Errorf("not supported; local wallet disabled")
 }
 
-var NilDefault nilDefault
-var _ Default = NilDefault
+var (
+	NilDefault nilDefault
+	_          Default = NilDefault
+)

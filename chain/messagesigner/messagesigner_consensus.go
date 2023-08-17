@@ -25,8 +25,8 @@ func NewMessageSignerConsensus(
 	wallet api.Wallet,
 	mpool messagepool.MpoolNonceAPI,
 	ds dtypes.MetadataDS,
-	consensus *consensus.Consensus) *MessageSignerConsensus {
-
+	consensus *consensus.Consensus,
+) *MessageSignerConsensus {
 	ds = namespace.Wrap(ds, datastore.NewKey("/message-signer-consensus/"))
 	return &MessageSignerConsensus{
 		MsgSigner: &MessageSigner{
@@ -54,8 +54,8 @@ func (ms *MessageSignerConsensus) SignMessage(
 	ctx context.Context,
 	msg *types.Message,
 	spec *api.MessageSendSpec,
-	cb func(*types.SignedMessage) error) (*types.SignedMessage, error) {
-
+	cb func(*types.SignedMessage) error,
+) (*types.SignedMessage, error) {
 	signedMsg, err := ms.MsgSigner.SignMessage(ctx, msg, spec, cb)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (ms *MessageSignerConsensus) GetSignedMessage(ctx context.Context, uuid uui
 		return nil, err
 	}
 
-	//cstate := state.(Consensus.RaftState)
+	// cstate := state.(Consensus.RaftState)
 	msg, ok := cstate.MsgUuids[uuid]
 	if !ok {
 		return nil, xerrors.Errorf("Msg with Uuid %s not available", uuid)

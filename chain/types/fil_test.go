@@ -8,12 +8,11 @@ import (
 )
 
 func TestFilShort(t *testing.T) {
-	//stm: @TYPES_FIL_PARSE_001
+	// stm: @TYPES_FIL_PARSE_001
 	for _, s := range []struct {
 		fil    string
 		expect string
 	}{
-
 		{fil: "1", expect: "1 FIL"},
 		{fil: "1.1", expect: "1.1 FIL"},
 		{fil: "12", expect: "12 FIL"},

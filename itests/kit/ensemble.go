@@ -680,13 +680,13 @@ func (n *Ensemble) Start() *Ensemble {
 		assigner := m.options.minerAssigner
 		disallowRemoteFinalize := m.options.disallowRemoteFinalize
 
-		var mineBlock = make(chan lotusminer.MineReq)
+		mineBlock := make(chan lotusminer.MineReq)
 
 		copy := *m.FullNode
 		copy.FullNode = modules.MakeUuidWrapper(copy.FullNode)
 		m.FullNode = &copy
 
-		//m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
+		// m.FullNode.FullNode = modules.MakeUuidWrapper(fn.FullNode)
 
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
@@ -695,8 +695,8 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-			//node.Override(new(v1api.RawFullNodeAPI), func() api.FullNode { return modules.MakeUuidWrapper(m.FullNode) }),
-			//node.Override(new(v1api.RawFullNodeAPI), modules.MakeUuidWrapper),
+			// node.Override(new(v1api.RawFullNodeAPI), func() api.FullNode { return modules.MakeUuidWrapper(m.FullNode) }),
+			// node.Override(new(v1api.RawFullNodeAPI), modules.MakeUuidWrapper),
 			node.Override(new(v1api.RawFullNodeAPI), m.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
@@ -1001,7 +1001,7 @@ func (n *Ensemble) BeginMining(blocktime time.Duration, miners ...*TestMiner) []
 }
 
 func (n *Ensemble) generateGenesis() *genesis.Template {
-	var verifRoot = gen.DefaultVerifregRootkeyActor
+	verifRoot := gen.DefaultVerifregRootkeyActor
 	if k := n.options.verifiedRoot.key; k != nil {
 		verifRoot = genesis.Actor{
 			Type:    genesis.TAccount,

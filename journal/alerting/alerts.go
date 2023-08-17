@@ -24,12 +24,12 @@ type Alerting struct {
 	alerts map[AlertType]Alert
 }
 
-// AlertType is a unique alert identifier
+// AlertType is a unique alert identifier.
 type AlertType struct {
 	System, Subsystem string
 }
 
-// AlertEvent contains information about alert state transition
+// AlertEvent contains information about alert state transition.
 type AlertEvent struct {
 	Type    string // either 'raised' or 'resolved'
 	Message json.RawMessage
@@ -101,7 +101,7 @@ func (a *Alerting) update(at AlertType, message interface{}, upd func(Alert, jso
 	a.alerts[at] = upd(alert, rawMsg)
 }
 
-// Raise marks the alert condition as active and records related event in the journal
+// Raise marks the alert condition as active and records related event in the journal.
 func (a *Alerting) Raise(at AlertType, message interface{}) {
 	log.Errorw("alert raised", "type", at, "message", message)
 
@@ -121,7 +121,7 @@ func (a *Alerting) Raise(at AlertType, message interface{}) {
 	})
 }
 
-// Resolve marks the alert condition as resolved and records related event in the journal
+// Resolve marks the alert condition as resolved and records related event in the journal.
 func (a *Alerting) Resolve(at AlertType, message interface{}) {
 	log.Errorw("alert resolved", "type", at, "message", message)
 
@@ -141,7 +141,7 @@ func (a *Alerting) Resolve(at AlertType, message interface{}) {
 	})
 }
 
-// GetAlerts returns all registered (active and inactive) alerts
+// GetAlerts returns all registered (active and inactive) alerts.
 func (a *Alerting) GetAlerts() []Alert {
 	a.lk.Lock()
 	defer a.lk.Unlock()

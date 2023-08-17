@@ -315,7 +315,7 @@ func dealSectorInReplicaUpdateSuccess(msg *types.Message, rec *types.MessageRece
 	return &seekUpdate.SectorID, nil
 }
 
-// dealSectorInPreCommitMsg tries to find a sector containing the specified deal
+// dealSectorInPreCommitMsg tries to find a sector containing the specified deal.
 func dealSectorInPreCommitMsg(msg *types.Message, res pipeline.CurrentDealInfo) (*abi.SectorNumber, error) {
 	switch msg.Method {
 	case builtin.MethodsMiner.PreCommitSector:
@@ -368,7 +368,7 @@ func dealSectorInPreCommitMsg(msg *types.Message, res pipeline.CurrentDealInfo) 
 	return nil, nil
 }
 
-// sectorInCommitMsg checks if the provided message commits specified sector
+// sectorInCommitMsg checks if the provided message commits specified sector.
 func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool, error) {
 	switch msg.Method {
 	case builtin.MethodsMiner.ProveCommitSector:

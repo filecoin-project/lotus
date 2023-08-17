@@ -62,7 +62,7 @@ const LookbackNoLimit = abi.ChainEpoch(-1)
 //  * Generate markdown docs
 //  * Generate openrpc blobs
 
-// FullNode API is a low-level interface to the Filecoin network full node
+// FullNode API is a low-level interface to the Filecoin network full node.
 type FullNode interface {
 	Common
 	Net
@@ -873,7 +873,7 @@ type FullNode interface {
 	RaftLeader(ctx context.Context) (peer.ID, error)       //perm:read
 }
 
-// reverse interface to the client, called after EthSubscribe
+// reverse interface to the client, called after EthSubscribe.
 type EthSubscriber interface {
 	// note: the parameter is ethtypes.EthSubscriptionResponse serialized as json object
 	EthSubscription(ctx context.Context, r jsonrpc.RawParams) error // rpc_method:eth_subscription notify:true
@@ -968,7 +968,7 @@ type MsgGasCost struct {
 }
 
 // BlsMessages[x].cid = Cids[x]
-// SecpkMessages[y].cid = Cids[BlsMessages.length + y]
+// SecpkMessages[y].cid = Cids[BlsMessages.length + y].
 type BlockMessages struct {
 	BlsMessages   []*types.Message
 	SecpkMessages []*types.SignedMessage
@@ -1053,7 +1053,7 @@ type VoucherSpec struct {
 	Extra *paych.ModVerifyParams
 }
 
-// VoucherCreateResult is the response to calling PaychVoucherCreate
+// VoucherCreateResult is the response to calling PaychVoucherCreate.
 type VoucherCreateResult struct {
 	// Voucher that was created, or nil if there was an error or if there
 	// were insufficient funds in the channel

@@ -78,7 +78,7 @@ var (
 	}()
 
 	// Actor consts
-	// TODO: pieceSize unused from actors
+	// TODO: pieceSize unused from actors.
 	MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 	PackingEfficiencyNum   int64 = 4
@@ -130,8 +130,10 @@ var (
 	GenesisFile       = ""
 )
 
-const Finality = policy.ChainFinality
-const ForkLengthThreshold = Finality
+const (
+	Finality            = policy.ChainFinality
+	ForkLengthThreshold = Finality
+)
 
 const BootstrapPeerThreshold = 1
 

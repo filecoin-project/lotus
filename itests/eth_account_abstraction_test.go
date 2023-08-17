@@ -26,7 +26,7 @@ import (
 
 // TestEthAccountAbstraction goes over the placeholder creation and promotion workflow:
 // - an placeholder is created when it receives a message
-// - the placeholder turns into an EOA when it sends a message
+// - the placeholder turns into an EOA when it sends a message.
 func TestEthAccountAbstraction(t *testing.T) {
 	kit.QuietMiningLogs()
 
@@ -136,7 +136,7 @@ func TestEthAccountAbstraction(t *testing.T) {
 	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
 }
 
-// Tests that an placeholder turns into an EthAccout even if the message fails
+// Tests that an placeholder turns into an EthAccout even if the message fails.
 func TestEthAccountAbstractionFailure(t *testing.T) {
 	kit.QuietMiningLogs()
 
@@ -249,7 +249,7 @@ func TestEthAccountAbstractionFailure(t *testing.T) {
 	require.True(t, builtin.IsEthAccountActor(eoaActor.Code))
 }
 
-// Tests that f4 addresess that aren't placeholders/ethaccounts can't be top-level senders
+// Tests that f4 addresess that aren't placeholders/ethaccounts can't be top-level senders.
 func TestEthAccountAbstractionFailsFromEvmActor(t *testing.T) {
 	kit.QuietMiningLogs()
 

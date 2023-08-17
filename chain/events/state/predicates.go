@@ -129,9 +129,11 @@ func (sp *StatePredicates) OnBalanceChanged(diffBalances DiffBalanceTablesFunc) 
 	}
 }
 
-type DiffDealStatesFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot market.DealStates) (changed bool, user UserData, err error)
-type DiffDealProposalsFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot market.DealProposals) (changed bool, user UserData, err error)
-type DiffAdtArraysFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot adt.Array) (changed bool, user UserData, err error)
+type (
+	DiffDealStatesFunc    func(ctx context.Context, oldDealStateRoot, newDealStateRoot market.DealStates) (changed bool, user UserData, err error)
+	DiffDealProposalsFunc func(ctx context.Context, oldDealStateRoot, newDealStateRoot market.DealProposals) (changed bool, user UserData, err error)
+	DiffAdtArraysFunc     func(ctx context.Context, oldDealStateRoot, newDealStateRoot adt.Array) (changed bool, user UserData, err error)
+)
 
 // OnDealStateChanged calls diffDealStates when the market deal state changes
 func (sp *StatePredicates) OnDealStateChanged(diffDealStates DiffDealStatesFunc) DiffStorageMarketStateFunc {
@@ -319,7 +321,6 @@ func (sp *StatePredicates) OnInitActorChange(diffInitActorState DiffInitActorSta
 		}
 		return diffInitActorState(ctx, oldState, newState)
 	})
-
 }
 
 func (sp *StatePredicates) OnMinerActorChange(minerAddr address.Address, diffMinerActorState DiffMinerActorStateFunc) DiffTipSetKeyFunc {

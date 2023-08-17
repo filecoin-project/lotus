@@ -9,7 +9,7 @@ import (
 // and set to value "1" to enable running expensive tests outside of CI.
 const EnvRunExpensiveTests = "LOTUS_RUN_EXPENSIVE_TESTS"
 
-// Expensive marks a test as expensive, skipping it immediately if not running an
+// Expensive marks a test as expensive, skipping it immediately if not running an.
 func Expensive(t *testing.T) {
 	switch {
 	case os.Getenv("CI") == "true":

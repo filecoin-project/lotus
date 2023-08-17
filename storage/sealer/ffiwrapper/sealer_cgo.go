@@ -521,7 +521,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 	}
 	defer srcDone()
 
-	sealed, err := os.OpenFile(srcPaths.Sealed, os.O_RDONLY, 0644) // nolint:gosec
+	sealed, err := os.OpenFile(srcPaths.Sealed, os.O_RDONLY, 0o644) // nolint:gosec
 	if err != nil {
 		return xerrors.Errorf("opening sealed file: %w", err)
 	}
@@ -694,7 +694,7 @@ func (sb *Sealer) RegenerateSectorKey(ctx context.Context, sector storiface.Sect
 	}
 	defer done()
 
-	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0o644) // nolint:gosec
 	if err != nil {
 		return xerrors.Errorf("ensuring sealed file exists: %w", err)
 	}
@@ -739,7 +739,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storiface.SectorRef
 	}
 	defer done()
 
-	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0o644) // nolint:gosec
 	if err != nil {
 		return nil, xerrors.Errorf("ensuring sealed file exists: %w", err)
 	}
@@ -747,7 +747,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storiface.SectorRef
 		return nil, err
 	}
 
-	if err := os.Mkdir(paths.Cache, 0755); err != nil { // nolint
+	if err := os.Mkdir(paths.Cache, 0o755); err != nil { // nolint
 		if os.IsExist(err) {
 			log.Warnf("existing cache in %s; removing", paths.Cache)
 
@@ -755,7 +755,7 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storiface.SectorRef
 				return nil, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.Cache, sector, err)
 			}
 
-			if err := os.Mkdir(paths.Cache, 0755); err != nil { // nolint:gosec
+			if err := os.Mkdir(paths.Cache, 0o755); err != nil { // nolint:gosec
 				return nil, xerrors.Errorf("mkdir cache path after cleanup: %w", err)
 			}
 		} else {
@@ -912,7 +912,7 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef,
 	}
 	sealedSize := s.Size()
 
-	u, err := os.OpenFile(paths.Update, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	u, err := os.OpenFile(paths.Update, os.O_RDWR|os.O_CREATE, 0o644) // nolint:gosec
 	if err != nil {
 		return empty, xerrors.Errorf("ensuring updated replica file exists: %w", err)
 	}
@@ -924,7 +924,7 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef,
 		return empty, err
 	}
 
-	if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint
+	if err := os.Mkdir(paths.UpdateCache, 0o755); err != nil { // nolint
 		if os.IsExist(err) {
 			log.Warnf("existing cache in %s; removing", paths.UpdateCache)
 
@@ -932,7 +932,7 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef,
 				return empty, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.UpdateCache, sector, err)
 			}
 
-			if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint:gosec
+			if err := os.Mkdir(paths.UpdateCache, 0o755); err != nil { // nolint:gosec
 				return empty, xerrors.Errorf("mkdir cache path after cleanup: %w", err)
 			}
 		} else {
@@ -979,7 +979,7 @@ func (sb *Sealer) GenerateSectorKeyFromData(ctx context.Context, sector storifac
 		return xerrors.Errorf("measuring update file size: %w", err)
 	}
 	sealedSize := s.Size()
-	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0o644) // nolint:gosec
 	if err != nil {
 		return xerrors.Errorf("ensuring sector key file exists: %w", err)
 	}
@@ -1111,7 +1111,7 @@ func (sb *Sealer) FinalizeSectorInto(ctx context.Context, sector storiface.Secto
 		if err != nil {
 			return xerrors.Errorf("read %s: %w", file.Name(), err)
 		}
-		if err := os.WriteFile(filepath.Join(dest, file.Name()), d, 0666); err != nil {
+		if err := os.WriteFile(filepath.Join(dest, file.Name()), d, 0o666); err != nil {
 			return xerrors.Errorf("write %s: %w", file.Name(), err)
 		}
 	}
@@ -1198,7 +1198,6 @@ func (sb *Sealer) DownloadSectorData(ctx context.Context, sector storiface.Secto
 }
 
 func GetRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {
-
 	padPieces := make([]abi.PaddedPieceSize, 0)
 
 	toFill := uint64(-oldLength % newPieceLength)

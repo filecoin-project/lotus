@@ -15,13 +15,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
-var manifestCids = make(map[actorstypes.Version]cid.Cid)
-var manifests = make(map[actorstypes.Version]map[string]cid.Cid)
-var actorMeta = make(map[cid.Cid]actorEntry)
-
 var (
-	manifestMx sync.RWMutex
+	manifestCids = make(map[actorstypes.Version]cid.Cid)
+	manifests    = make(map[actorstypes.Version]map[string]cid.Cid)
+	actorMeta    = make(map[cid.Cid]actorEntry)
 )
+
+var manifestMx sync.RWMutex
 
 type actorEntry struct {
 	name    string

@@ -91,7 +91,7 @@ func (ps *poStScheduler) Schedule(ctx context.Context, primary bool, spt abi.Reg
 	// Get workers by resource
 	canDo, candidates := ps.readyWorkers(spt)
 	for !canDo {
-		//if primary is true, it must be dispatched to a worker
+		// if primary is true, it must be dispatched to a worker
 		if primary {
 			ps.cond.Wait()
 			canDo, candidates = ps.readyWorkers(spt)
@@ -140,7 +140,7 @@ type candidateWorker struct {
 
 func (ps *poStScheduler) readyWorkers(spt abi.RegisteredSealProof) (bool, []candidateWorker) {
 	var accepts []candidateWorker
-	//if the gpus of the worker are insufficient or it's disabled, it cannot be scheduled
+	// if the gpus of the worker are insufficient or it's disabled, it cannot be scheduled
 	for wid, wr := range ps.workers {
 		needRes := wr.Info.Resources.ResourceSpec(spt, ps.postType)
 

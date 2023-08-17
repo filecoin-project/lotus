@@ -59,7 +59,7 @@ type Common interface {
 	Closing(context.Context) (<-chan struct{}, error) //perm:read
 }
 
-// APIVersion provides various build-time information
+// APIVersion provides various build-time information.
 type APIVersion struct {
 	Version string
 

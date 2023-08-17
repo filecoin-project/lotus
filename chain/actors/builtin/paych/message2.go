@@ -16,7 +16,6 @@ import (
 type message2 struct{ from address.Address }
 
 func (m message2) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
-
 	actorCodeID := builtin2.PaymentChannelActorCodeID
 
 	params, aerr := actors.SerializeParams(&paych2.ConstructorParams{From: m.from, To: to})
@@ -42,7 +41,6 @@ func (m message2) Create(to address.Address, initialAmount abi.TokenAmount) (*ty
 
 func (m message2) Update(paych address.Address, sv *paychtypes.SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych2.UpdateChannelStateParams{
-
 		Sv: toV0SignedVoucher(*sv),
 
 		Secret: secret,

@@ -20,7 +20,7 @@ func EthFunctionHash(sig string) []byte {
 	return hasher.Sum(nil)[:4]
 }
 
-// SolidityContractDef holds information about one of the test contracts
+// SolidityContractDef holds information about one of the test contracts.
 type SolidityContractDef struct {
 	Filename string                      // filename of the hex of the contract, e.g. contracts/EventMatrix.hex
 	Fn       map[string][]byte           // mapping of function names to 32-bit selector

@@ -96,9 +96,11 @@ func (cov1 *Covar) Combine(cov2 *Covar) {
 func (cov1 *Covar) A() float64 {
 	return cov1.Covariance() / cov1.VarianceX()
 }
+
 func (cov1 *Covar) B() float64 {
 	return cov1.meanY - cov1.meanX*cov1.A()
 }
+
 func (cov1 *Covar) Correl() float64 {
 	return cov1.Covariance() / cov1.StddevX() / cov1.StddevY()
 }

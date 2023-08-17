@@ -23,17 +23,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 )
 
-var SystemActorAddr = builtin.SystemActorAddr
-var BurntFundsActorAddr = builtin.BurntFundsActorAddr
-var CronActorAddr = builtin.CronActorAddr
-var EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
-var SaftAddress = makeAddress("t0122")
-var ReserveAddress = makeAddress("t090")
-var RootVerifierAddress = makeAddress("t080")
-
 var (
-	ExpectedLeadersPerEpoch = builtin.ExpectedLeadersPerEpoch
+	SystemActorAddr                 = builtin.SystemActorAddr
+	BurntFundsActorAddr             = builtin.BurntFundsActorAddr
+	CronActorAddr                   = builtin.CronActorAddr
+	EthereumAddressManagerActorAddr = builtin.EthereumAddressManagerActorAddr
+	SaftAddress                     = makeAddress("t0122")
+	ReserveAddress                  = makeAddress("t090")
+	RootVerifierAddress             = makeAddress("t080")
 )
+
+var ExpectedLeadersPerEpoch = builtin.ExpectedLeadersPerEpoch
 
 const (
 	EpochDurationSeconds = builtin.EpochDurationSeconds
@@ -48,10 +48,12 @@ const (
 
 // These are all just type aliases across actor versions. In the future, that might change
 // and we might need to do something fancier.
-type SectorInfo = proof.SectorInfo
-type ExtendedSectorInfo = proof.ExtendedSectorInfo
-type PoStProof = proof.PoStProof
-type FilterEstimate = smoothingtypes.FilterEstimate
+type (
+	SectorInfo         = proof.SectorInfo
+	ExtendedSectorInfo = proof.ExtendedSectorInfo
+	PoStProof          = proof.PoStProof
+	FilterEstimate     = smoothingtypes.FilterEstimate
+)
 
 func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, verifiedWeight abi.DealWeight) abi.StoragePower {
 	return minertypes.QAPowerForWeight(size, duration, dealWeight, verifiedWeight)

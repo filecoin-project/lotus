@@ -9,8 +9,8 @@ import (
 )
 
 func TestMapMarkSet(t *testing.T) {
-	//stm: @SPLITSTORE_MARKSET_CREATE_001, @SPLITSTORE_MARKSET_HAS_001, @@SPLITSTORE_MARKSET_MARK_001
-	//stm: @SPLITSTORE_MARKSET_CLOSE_001, @SPLITSTORE_MARKSET_CREATE_VISITOR_001
+	// stm: @SPLITSTORE_MARKSET_CREATE_001, @SPLITSTORE_MARKSET_HAS_001, @@SPLITSTORE_MARKSET_MARK_001
+	// stm: @SPLITSTORE_MARKSET_CLOSE_001, @SPLITSTORE_MARKSET_CREATE_VISITOR_001
 	testMarkSet(t, "map")
 	testMarkSetRecovery(t, "map")
 	testMarkSetMarkMany(t, "map")
@@ -19,8 +19,8 @@ func TestMapMarkSet(t *testing.T) {
 }
 
 func TestBadgerMarkSet(t *testing.T) {
-	//stm: @SPLITSTORE_MARKSET_CREATE_001, @SPLITSTORE_MARKSET_HAS_001, @@SPLITSTORE_MARKSET_MARK_001
-	//stm: @SPLITSTORE_MARKSET_CLOSE_001, @SPLITSTORE_MARKSET_CREATE_VISITOR_001
+	// stm: @SPLITSTORE_MARKSET_CREATE_001, @SPLITSTORE_MARKSET_HAS_001, @@SPLITSTORE_MARKSET_MARK_001
+	// stm: @SPLITSTORE_MARKSET_CLOSE_001, @SPLITSTORE_MARKSET_CREATE_VISITOR_001
 	bs := badgerMarkSetBatchSize
 	badgerMarkSetBatchSize = 1
 	t.Cleanup(func() {
@@ -143,7 +143,7 @@ func testMarkSet(t *testing.T, lsType string) {
 	mustNotHave(coldSet, k3)
 	mustNotHave(coldSet, k4)
 
-	//stm: @SPLITSTORE_MARKSET_CLOSE_001
+	// stm: @SPLITSTORE_MARKSET_CLOSE_001
 	err = hotSet.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +164,7 @@ func testMarkSetVisitor(t *testing.T, lsType string) {
 	}
 	defer env.Close() //nolint:errcheck
 
-	//stm: @SPLITSTORE_MARKSET_CREATE_VISITOR_001
+	// stm: @SPLITSTORE_MARKSET_CREATE_VISITOR_001
 	visitor, err := env.New("test", 0)
 	if err != nil {
 		t.Fatal(err)

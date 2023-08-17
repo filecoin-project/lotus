@@ -24,7 +24,7 @@ import (
 )
 
 // please talk to @ribasushi or @mikeal before modifying these test: there are
-// downstream dependencies on ADL-less operation
+// downstream dependencies on ADL-less operation.
 var (
 	adlFixtureCar           = "fixtures/adl_test.car"
 	adlFixtureRoot, _       = cid.Parse("bafybeiaigxwanoxyeuzyiknhrg6io6kobfbm37ozcips6qdwumub2gaomy")
@@ -38,13 +38,13 @@ var (
 )
 
 func TestDMLevelPartialRetrieval(t *testing.T) {
-	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
-	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
-	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
-	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+	// stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	// stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	// stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	// stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
-	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
-	//stm: @CLIENT_RETRIEVAL_RETRIEVE_001, @CLIENT_RETRIEVAL_FIND_001
+	// stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
+	// stm: @CLIENT_RETRIEVAL_RETRIEVE_001, @CLIENT_RETRIEVAL_FIND_001
 	ctx := context.Background()
 
 	kit.QuietMiningLogs()
@@ -139,7 +139,6 @@ func TestDMLevelPartialRetrieval(t *testing.T) {
 			DAGs:   dmDagSpec,
 		}, t.TempDir(),
 	))
-
 }
 
 func testDMExportAsFile(ctx context.Context, client *kit.TestFullNode, expDirective api.ExportRef, tempDir string) error {
@@ -162,6 +161,7 @@ func testDMExportAsFile(ctx context.Context, client *kit.TestFullNode, expDirect
 
 	return validateDMUnixFile(f)
 }
+
 func testV0RetrievalAsFile(ctx context.Context, client *kit.TestFullNode, retOrder api0.RetrievalOrder, tempDir string) error {
 	out := tempDir + string(os.PathSeparator) + "exp-test" + retOrder.Root.String()
 
@@ -182,6 +182,7 @@ func testV0RetrievalAsFile(ctx context.Context, client *kit.TestFullNode, retOrd
 
 	return validateDMUnixFile(f)
 }
+
 func validateDMUnixFile(r io.Reader) error {
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -212,6 +213,7 @@ func testDMExportAsCar(ctx context.Context, client *kit.TestFullNode, expDirecti
 
 	return validateDMCar(out)
 }
+
 func tesV0RetrievalAsCar(ctx context.Context, client *kit.TestFullNode, retOrder api0.RetrievalOrder, tempDir string) error {
 	out, err := os.CreateTemp(tempDir, "exp-test")
 	if err != nil {
@@ -230,6 +232,7 @@ func tesV0RetrievalAsCar(ctx context.Context, client *kit.TestFullNode, retOrder
 
 	return validateDMCar(out)
 }
+
 func validateDMCar(r io.Reader) error {
 	cr, err := car.NewCarReader(r)
 	if err != nil {

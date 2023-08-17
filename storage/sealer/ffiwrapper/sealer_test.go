@@ -36,8 +36,10 @@ func init() {
 	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
 }
 
-var sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1
-var sectorSize, _ = sealProofType.SectorSize()
+var (
+	sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1
+	sectorSize, _ = sealProofType.SectorSize()
+)
 
 var sealRand = abi.SealRandomness{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2}
 
@@ -196,7 +198,6 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 
 	ppt, err = ppt.ToV1_1PostProof()
 	if err != nil {
-
 		t.Fatalf("%+v", err)
 	}
 
@@ -240,7 +241,7 @@ func corrupt(t *testing.T, sealer *Sealer, id storiface.SectorRef) {
 	defer done()
 
 	log.Infof("corrupt %s", paths.Sealed)
-	f, err := os.OpenFile(paths.Sealed, os.O_RDWR, 0664)
+	f, err := os.OpenFile(paths.Sealed, os.O_RDWR, 0o664)
 	require.NoError(t, err)
 
 	_, err = f.WriteAt(bytes.Repeat([]byte{'d'}, 2048), 0)
@@ -1066,7 +1067,6 @@ func TestDCAPCloses(t *testing.T) {
 		require.Equal(t, "baga6ea4seaqeje7jy4hufnybpo7ckxzujaigqbcxhdjq7ojb4b6xzgqdugkyciq", c.PieceCID.String())
 		require.True(t, clr.closed)
 	})
-
 }
 
 type closeAssertReader struct {

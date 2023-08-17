@@ -133,7 +133,6 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	}
 
 	return ainfos[0], nil
-
 }
 
 type HttpHead struct {
@@ -142,7 +141,6 @@ type HttpHead struct {
 }
 
 func GetRawAPIMulti(ctx *cli.Context, t repo.RepoType, version string) ([]HttpHead, error) {
-
 	var httpHeads []HttpHead
 	ainfos, err := GetAPIInfoMulti(ctx, t)
 	if err != nil || len(ainfos) == 0 {

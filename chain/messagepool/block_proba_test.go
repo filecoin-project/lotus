@@ -9,7 +9,7 @@ import (
 )
 
 func TestBlockProbability(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_BLOCK_PROB_001
+	// stm: @OTHER_IMPLEMENTATION_BLOCK_PROB_001
 	mp := &MessagePool{}
 	bp := mp.blockProbabilities(1 - 0.15)
 	t.Logf("%+v\n", bp)
@@ -22,7 +22,7 @@ func TestBlockProbability(t *testing.T) {
 }
 
 func TestWinnerProba(t *testing.T) {
-	//stm: @OTHER_IMPLEMENTATION_BLOCK_PROB_002
+	// stm: @OTHER_IMPLEMENTATION_BLOCK_PROB_002
 	rand.Seed(time.Now().UnixNano())
 	const N = 1000000
 	winnerProba := noWinnersProb()
@@ -42,5 +42,4 @@ func TestWinnerProba(t *testing.T) {
 	if avg := float64(sum) / N; math.Abs(avg-5) > 0.01 {
 		t.Fatalf("avg too far off: %f", avg)
 	}
-
 }

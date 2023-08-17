@@ -120,7 +120,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI, h host.Host) (*da
 // for dagstore metadata.
 func newDatastore(dir string) (ds.Batching, error) {
 	// Create the datastore directory if it doesn't exist yet.
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, xerrors.Errorf("failed to create directory %s for DAG store datastore: %w", dir, err)
 	}
 
@@ -278,14 +278,12 @@ func (w *Wrapper) DestroyShard(ctx context.Context, pieceCid cid.Cid, resch chan
 	opts := dagstore.DestroyOpts{}
 
 	err := w.dagst.DestroyShard(ctx, key, resch, opts)
-
 	if err != nil {
 		return xerrors.Errorf("failed to schedule destroy shard for piece CID %s: %w", pieceCid, err)
 	}
 	log.Debugf("successfully submitted destroy Shard request for piece CID %s", pieceCid)
 
 	return nil
-
 }
 
 func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerDeal) (bool, error) {
@@ -322,7 +320,7 @@ func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerD
 	go func() {
 		defer close(doneCh)
 
-		var total = math.MaxInt64
+		total := math.MaxInt64
 		var res dagstore.ShardResult
 		for rcvd := 0; rcvd < total; {
 			select {
@@ -394,7 +392,7 @@ func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerD
 }
 
 // Check for the existence of a "marker" file indicating that the migration
-// has completed
+// has completed.
 func (w *Wrapper) registrationComplete() (bool, error) {
 	path := filepath.Join(w.cfg.RootDir, shardRegMarker)
 	_, err := os.Stat(path)
@@ -407,7 +405,7 @@ func (w *Wrapper) registrationComplete() (bool, error) {
 	return true, nil
 }
 
-// Create a "marker" file indicating that the migration has completed
+// Create a "marker" file indicating that the migration has completed.
 func (w *Wrapper) markRegistrationComplete() error {
 	path := filepath.Join(w.cfg.RootDir, shardRegMarker)
 	file, err := os.Create(path)
@@ -417,7 +415,7 @@ func (w *Wrapper) markRegistrationComplete() error {
 	return file.Close()
 }
 
-// Get all the pieces that contain a block
+// Get all the pieces that contain a block.
 func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) {
 	// Pieces are stored as "shards" in the DAG store
 	shardKeys, err := w.dagst.ShardsContainingMultihash(w.ctx, blockCID.Hash())

@@ -13,8 +13,8 @@ import (
 )
 
 func TestSearchForMessageReplacements(t *testing.T) {
-	//stm: @CHAIN_GEN_NEXT_TIPSET_001
-	//stm: @CHAIN_STATE_SEARCH_MSG_001
+	// stm: @CHAIN_GEN_NEXT_TIPSET_001
+	// stm: @CHAIN_STATE_SEARCH_MSG_001
 	ctx := context.Background()
 	cg, err := gen.NewGenerator()
 	if err != nil {
@@ -136,5 +136,4 @@ func TestSearchForMessageReplacements(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected search to fail")
 	}
-
 }

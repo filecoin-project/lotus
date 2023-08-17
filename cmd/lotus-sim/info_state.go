@@ -101,7 +101,6 @@ var infoStateGrowthSimCommand = &cli.Command{
 					default:
 						cb(link)
 					}
-
 				}
 				wg.Wait()
 

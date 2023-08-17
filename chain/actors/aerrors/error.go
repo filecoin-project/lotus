@@ -11,6 +11,7 @@ import (
 func IsFatal(err ActorError) bool {
 	return err != nil && err.IsFatal()
 }
+
 func RetCode(err ActorError) exitcode.ExitCode {
 	if err == nil {
 		return 0

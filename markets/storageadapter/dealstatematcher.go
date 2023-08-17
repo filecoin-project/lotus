@@ -13,7 +13,7 @@ import (
 )
 
 // dealStateMatcher caches the DealStates for the most recent
-// old/new tipset combination
+// old/new tipset combination.
 type dealStateMatcher struct {
 	preds *state.StatePredicates
 

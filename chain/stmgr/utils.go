@@ -187,7 +187,6 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 
 	if lbr > nextTs.Height() {
 		return nil, cid.Undef, xerrors.Errorf("failed to find non-null tipset %s (%d) which is known to exist, found %s (%d)", ts.Key(), ts.Height(), nextTs.Key(), nextTs.Height())
-
 	}
 
 	lbts, err := sm.ChainStore().GetTipSetFromKey(ctx, nextTs.Parents())

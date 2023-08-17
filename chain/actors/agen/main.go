@@ -89,7 +89,7 @@ func generateAdapters() error {
 				return err
 			}
 
-			if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("%s.go", act)), fmted, 0666); err != nil {
+			if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("%s.go", act)), fmted, 0o666); err != nil {
 				return err
 			}
 		}
@@ -122,7 +122,7 @@ func generateState(actDir string, versions []int) error {
 			return err
 		}
 
-		if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("v%d.go", version)), b.Bytes(), 0666); err != nil {
+		if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("v%d.go", version)), b.Bytes(), 0o666); err != nil {
 			return err
 		}
 	}
@@ -154,7 +154,7 @@ func generateMessages(actDir string) error {
 			return err
 		}
 
-		if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("message%d.go", version)), b.Bytes(), 0666); err != nil {
+		if err := os.WriteFile(filepath.Join(actDir, fmt.Sprintf("message%d.go", version)), b.Bytes(), 0o666); err != nil {
 			return err
 		}
 	}
@@ -163,7 +163,6 @@ func generateMessages(actDir string) error {
 }
 
 func generatePolicy(policyPath string) error {
-
 	pf, err := os.ReadFile(policyPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -186,7 +185,7 @@ func generatePolicy(policyPath string) error {
 		return err
 	}
 
-	if err := os.WriteFile(policyPath, b.Bytes(), 0666); err != nil {
+	if err := os.WriteFile(policyPath, b.Bytes(), 0o666); err != nil {
 		return err
 	}
 
@@ -194,7 +193,6 @@ func generatePolicy(policyPath string) error {
 }
 
 func generateBuiltin(builtinPath string) error {
-
 	bf, err := os.ReadFile(builtinPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -217,7 +215,7 @@ func generateBuiltin(builtinPath string) error {
 		return err
 	}
 
-	if err := os.WriteFile(builtinPath, b.Bytes(), 0666); err != nil {
+	if err := os.WriteFile(builtinPath, b.Bytes(), 0o666); err != nil {
 		return err
 	}
 
@@ -225,7 +223,6 @@ func generateBuiltin(builtinPath string) error {
 }
 
 func generateRegistry(registryPath string) error {
-
 	bf, err := os.ReadFile(registryPath + ".template")
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -247,7 +244,7 @@ func generateRegistry(registryPath string) error {
 		return err
 	}
 
-	if err := os.WriteFile(registryPath, b.Bytes(), 0666); err != nil {
+	if err := os.WriteFile(registryPath, b.Bytes(), 0o666); err != nil {
 		return err
 	}
 

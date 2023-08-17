@@ -76,6 +76,7 @@ func (e *EVM) DeployContractWithValue(ctx context.Context, sender address.Addres
 
 	return result
 }
+
 func (e *EVM) DeployContract(ctx context.Context, sender address.Address, bytecode []byte) eam.CreateReturn {
 	return e.DeployContractWithValue(ctx, sender, bytecode, big.Zero())
 }
@@ -99,6 +100,7 @@ func (e *EVM) DeployContractFromFilenameWithValue(ctx context.Context, binFilena
 	require.NoError(e.t, err)
 	return fromAddr, idAddr
 }
+
 func (e *EVM) DeployContractFromFilename(ctx context.Context, binFilename string) (address.Address, address.Address) {
 	return e.DeployContractFromFilenameWithValue(ctx, binFilename, big.Zero())
 }
@@ -252,7 +254,7 @@ func (e *EVM) ComputeContractAddress(deployer ethtypes.EthAddress, nonce uint64)
 }
 
 // return eth block from a wait return
-// this necessarily goes back one parent in the chain because wait is one block ahead of execution
+// this necessarily goes back one parent in the chain because wait is one block ahead of execution.
 func (e *EVM) GetEthBlockFromWait(ctx context.Context, wait *api.MsgLookup) ethtypes.EthBlock {
 	c, err := wait.TipSet.Cid()
 	require.NoError(e.t, err)
@@ -291,7 +293,7 @@ func (e *EVM) InvokeContractByFuncNameExpectExit(ctx context.Context, fromAddr a
 	require.Equal(e.t, exit, wait.Receipt.ExitCode)
 }
 
-// function signatures are the first 4 bytes of the hash of the function name and types
+// function signatures are the first 4 bytes of the hash of the function name and types.
 func CalcFuncSignature(funcName string) []byte {
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write([]byte(funcName))

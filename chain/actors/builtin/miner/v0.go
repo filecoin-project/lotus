@@ -434,10 +434,8 @@ func (s *state0) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 }
 
 func (s *state0) EraseAllUnproven() error {
-
 	// field doesn't exist until v2
 	return nil
-
 }
 
 func (d *deadline0) LoadPartition(idx uint64) (Partition, error) {
@@ -474,10 +472,8 @@ func (d *deadline0) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline0) DisputableProofCount() (uint64, error) {
-
 	// field doesn't exist until v3
 	return 0, nil
-
 }
 
 func (p *partition0) AllSectors() (bitfield.BitField, error) {

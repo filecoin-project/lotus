@@ -4,8 +4,7 @@ import (
 	"context"
 )
 
-type NoopMeshCreator struct {
-}
+type NoopMeshCreator struct{}
 
 func NewNoopMeshCreator() *NoopMeshCreator {
 	return &NoopMeshCreator{}

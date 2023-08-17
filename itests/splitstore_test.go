@@ -32,9 +32,8 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 )
 
-// Startup a node with hotstore and discard coldstore.  Compact once and return
+// Startup a node with hotstore and discard coldstore.  Compact once and return.
 func TestHotstoreCompactsOnce(t *testing.T) {
-
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
 	splitstore.CheckSyncGap = false
@@ -50,7 +49,7 @@ func TestHotstoreCompactsOnce(t *testing.T) {
 }
 
 // create some unreachable state
-// and check that compaction carries it away
+// and check that compaction carries it away.
 func TestHotstoreCompactCleansGarbage(t *testing.T) {
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
@@ -109,7 +108,7 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 
 // Create unreachable state
 // Check that it moves to coldstore
-// Prune coldstore and check that it is deleted
+// Prune coldstore and check that it is deleted.
 func TestColdStorePrune(t *testing.T) {
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
@@ -361,7 +360,7 @@ func ipldExists(ctx context.Context, t *testing.T, c cid.Cid, n *kit.TestFullNod
 // Create on chain unreachable garbage for a network to exercise splitstore
 // one garbage cid created at a time
 //
-// It works by rewriting an internally maintained miner actor's peer ID
+// It works by rewriting an internally maintained miner actor's peer ID.
 type Garbager struct {
 	t      *testing.T
 	node   *kit.TestFullNode
@@ -387,7 +386,7 @@ func NewGarbager(ctx context.Context, t *testing.T, n *kit.TestFullNode) *Garbag
 	return g
 }
 
-// drop returns the cid referencing the dropped garbage and the chain epoch of the drop
+// drop returns the cid referencing the dropped garbage and the chain epoch of the drop.
 func (g *Garbager) Drop(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
 	// record existing with mInfoCidAtEpoch
 	c := g.mInfoCid(ctx)
@@ -398,13 +397,13 @@ func (g *Garbager) Drop(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
 	return c, g.newPeerID(ctx)
 }
 
-// message returns the cid referencing a message and the chain epoch it went on chain
+// message returns the cid referencing a message and the chain epoch it went on chain.
 func (g *Garbager) Message(ctx context.Context) (cid.Cid, abi.ChainEpoch) {
 	mw := g.createMiner(ctx)
 	return mw.Message, mw.Height
 }
 
-// exists checks whether the cid is reachable through the node
+// exists checks whether the cid is reachable through the node.
 func (g *Garbager) Exists(ctx context.Context, c cid.Cid) bool {
 	// check chain get / blockstore get
 	_, err := g.node.ChainReadObj(ctx, c)

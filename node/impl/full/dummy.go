@@ -178,5 +178,7 @@ func (e *EthModuleDummy) EthUnsubscribe(ctx context.Context, id ethtypes.EthSubs
 	return false, ErrModuleDisabled
 }
 
-var _ EthModuleAPI = &EthModuleDummy{}
-var _ EthEventAPI = &EthModuleDummy{}
+var (
+	_ EthModuleAPI = &EthModuleDummy{}
+	_ EthEventAPI  = &EthModuleDummy{}
+)

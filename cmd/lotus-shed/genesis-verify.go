@@ -41,8 +41,7 @@ type msigInfo struct {
 	Threshold uint64
 }
 
-type minerInfo struct {
-}
+type minerInfo struct{}
 
 var genesisVerifyCmd = &cli.Command{
 	Name:        "verify-genesis",

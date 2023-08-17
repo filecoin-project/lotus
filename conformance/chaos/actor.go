@@ -199,7 +199,7 @@ func (a Actor) CreateActor(rt runtime2.Runtime, args *CreateActorArgs) *abi.Empt
 	return nil
 }
 
-// ResolveAddressResponse holds the response of a call to runtime.ResolveAddress
+// ResolveAddressResponse holds the response of a call to runtime.ResolveAddress.
 type ResolveAddressResponse struct {
 	Address address.Address
 	Success bool
@@ -231,7 +231,7 @@ type MutateStateArgs struct {
 	Branch MutateStateBranch
 }
 
-// CreateState creates the chaos actor's state
+// CreateState creates the chaos actor's state.
 func (a Actor) CreateState(rt runtime2.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
 	rt.ValidateImmediateCallerAcceptAny()
 	rt.StateCreate(&State{})

@@ -428,7 +428,6 @@ func (s *state7) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 }
 
 func (s *state7) EraseAllUnproven() error {
-
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {
 		return err
@@ -463,7 +462,6 @@ func (s *state7) EraseAllUnproven() error {
 	}
 
 	return s.State.SaveDeadlines(s.store, dls)
-
 }
 
 func (d *deadline7) LoadPartition(idx uint64) (Partition, error) {
@@ -500,14 +498,12 @@ func (d *deadline7) PartitionsPoSted() (bitfield.BitField, error) {
 }
 
 func (d *deadline7) DisputableProofCount() (uint64, error) {
-
 	ops, err := d.OptimisticProofsSnapshotArray(d.store)
 	if err != nil {
 		return 0, err
 	}
 
 	return ops.Length(), nil
-
 }
 
 func (p *partition7) AllSectors() (bitfield.BitField, error) {

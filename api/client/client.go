@@ -60,7 +60,7 @@ func getPushUrl(addr string) (string, error) {
 	return pushUrl.String(), nil
 }
 
-// NewStorageMinerRPCV0 creates a new http jsonrpc client for miner
+// NewStorageMinerRPCV0 creates a new http jsonrpc client for miner.
 func NewStorageMinerRPCV0(ctx context.Context, addr string, requestHeader http.Header, opts ...jsonrpc.Option) (v0api.StorageMiner, jsonrpc.ClientCloser, error) {
 	pushUrl, err := getPushUrl(addr)
 	if err != nil {

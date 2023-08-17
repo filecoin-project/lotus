@@ -78,7 +78,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		fmt.Printf("%s (check %s)\n", color.RedString("⚠ %d Active alerts", len(activeAlerts)), color.YellowString("lotus log alerts"))
 	}
 
-	//Chain health calculated as percentage: amount of blocks in last finality / very healthy amount of blocks in a finality (900 epochs * 5 blocks per tipset)
+	// Chain health calculated as percentage: amount of blocks in last finality / very healthy amount of blocks in a finality (900 epochs * 5 blocks per tipset)
 	health := (100 * (900 * status.ChainStatus.BlocksPerTipsetLastFinality) / (900 * 5))
 	switch {
 	case health > 85:
@@ -218,7 +218,6 @@ func infoCmdAct(cctx *cli.Context) error {
 	fmt.Fprintf(tw, "\tTotalIn\tTotalOut\tRateIn\tRateOut\n")
 	fmt.Fprintf(tw, "\t%s\t%s\t%s/s\t%s/s\n", humanize.Bytes(uint64(s.TotalIn)), humanize.Bytes(uint64(s.TotalOut)), humanize.Bytes(uint64(s.RateIn)), humanize.Bytes(uint64(s.RateOut)))
 	return tw.Flush()
-
 }
 
 func SyncBasefeeCheck(ctx context.Context, fullapi v1api.FullNode) error {

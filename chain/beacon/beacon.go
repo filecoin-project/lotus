@@ -48,7 +48,8 @@ type RandomBeacon interface {
 }
 
 func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockHeader, parentEpoch abi.ChainEpoch,
-	prevEntry types.BeaconEntry) error {
+	prevEntry types.BeaconEntry,
+) error {
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(h.Height)

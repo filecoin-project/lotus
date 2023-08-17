@@ -41,7 +41,6 @@ type SyscallBuilder func(ctx context.Context, rt *Runtime) runtime7.Syscalls
 
 func Syscalls(verifier storiface.Verifier) SyscallBuilder {
 	return func(ctx context.Context, rt *Runtime) runtime7.Syscalls {
-
 		return &syscallShim{
 			ctx:            ctx,
 			epoch:          rt.CurrEpoch(),
