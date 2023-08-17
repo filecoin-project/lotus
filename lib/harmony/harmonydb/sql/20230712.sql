@@ -1,4 +1,4 @@
-create table sectorlocation
+create table sector_location
 (
     miner_id         bigint    not null,
     sector_num       bigint    not null,
@@ -15,10 +15,10 @@ create table sectorlocation
 
 
 
-create table StorageLocation
+create table storage_path
 (
     "storage_id"  varchar not null
-        constraint "StorageLocation_pkey"
+        constraint "storage_path_pkey"
             primary key,
     "urls"       varchar, -- comma separated list of urls
     "weight"     bigint,
