@@ -206,7 +206,7 @@ func (e *TaskEngine) GracefullyTerminate(deadline time.Duration) {
 	deadlineChan := time.NewTimer(deadline).C
 
 	// block bumps & follows by unreg from DBs.
-	_, err := e.db.Exec(context.Background(), `DELETE FROM harmony_task_impl WHERE owner_id=$1`, e.ownerID)
+	_, err := e.db.Exec(context.TODO(), `DELETE FROM harmony_task_impl WHERE owner_id=$1`, e.ownerID)
 	if err != nil {
 		log.Warn("Could not clean-up impl table: %w", err)
 	}

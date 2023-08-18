@@ -1,7 +1,6 @@
 /*
-	Package harmomnytask implements a pure (no task logic), distributed
-	task manager. This clean interface allows a task implementer to completely
-
+Package harmonytask implements a pure (no task logic), distributed
+task manager. This clean interface allows a task implementer to completely
 avoid being concerned with task scheduling and management.
 It's based on the idea of tasks as small units of work broken from other
 work by hardware, parallelizabilty, reliability, or any other reason.
@@ -43,7 +42,7 @@ but the design **requires** extraInfo tables to grow until the task's
 info could not possibly be used by a following task, including slow
 release rollout. This would normally be in the order of months old.
 *
-Other possible enhancements include more collaboative coordination
+Other possible enhancements include more collaborative coordination
 to assign a task to machines closer to the data.
 
 __Database_Behavior__
