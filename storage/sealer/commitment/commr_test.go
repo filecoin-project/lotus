@@ -1,4 +1,4 @@
-package commr
+package commitment
 
 import (
 	"testing"
@@ -21,7 +21,8 @@ func TestCommR(t *testing.T) {
 		0x26, 0xf8, 0x82, 0x68, 0x60, 0xf7, 0xe7, 0x68,
 	}
 
-	res := CommR(commC, commRLast)
+	res, err := CommR(commC, commRLast)
+	require.NoError(t, err)
 
 	var expected = [32]byte{
 		0xe6, 0x74, 0xd1, 0x9e, 0x6c, 0xe7, 0xfc, 0xf3,
