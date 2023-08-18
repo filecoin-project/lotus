@@ -2,9 +2,11 @@ package ffiwrapper
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("ffiwrapper")

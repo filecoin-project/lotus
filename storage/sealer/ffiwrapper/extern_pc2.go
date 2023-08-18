@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/lotus/storage/sealer/commitment"
-	"golang.org/x/xerrors"
 	"os"
 	"os/exec"
 
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
+
+	"github.com/filecoin-project/lotus/storage/sealer/commitment"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
