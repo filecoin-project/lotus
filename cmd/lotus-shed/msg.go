@@ -64,7 +64,11 @@ var msgCmd = &cli.Command{
 
 		// Print the execution trace and receipt
 		color.Green("Execution trace:")
-		fmt.Println(res.ExecutionTrace)
+		trace, err := json.MarshalIndent(res.ExecutionTrace, "", "  ")
+		if err != nil {
+			return xerrors.Errorf("marshaling execution trace: %w", err)
+		}
+		fmt.Println(string(trace))
 		fmt.Println()
 		color.Green("Receipt:")
 		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
