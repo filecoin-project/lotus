@@ -36,6 +36,38 @@ var msgCmd = &cli.Command{
 			return err
 		}
 
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		// Get the CID of the message
+		mcid := msg.Cid()
+
+		// Search for the message on-chain
+		lookup, err := api.StateSearchMsg(ctx, mcid)
+		if err != nil {
+			return err
+		}
+		if lookup == nil {
+			return fmt.Errorf("failed to find message: %s", mcid)
+		}
+
+		// Replay the message to get the execution trace
+		res, err := api.StateReplay(ctx, types.EmptyTSK, mcid)
+		if err != nil {
+			return xerrors.Errorf("replay call failed: %w", err)
+		}
+
+		// Print the execution trace and receipt
+		fmt.Println("Execution trace:")
+		fmt.Println(res.ExecutionTrace)
+		fmt.Println("Receipt:")
+		fmt.Println(res.MsgRct)
+
 		switch msg := msg.(type) {
 		case *types.SignedMessage:
 			return printSignedMessage(cctx, msg)
