@@ -63,10 +63,13 @@ var msgCmd = &cli.Command{
 		}
 
 		// Print the execution trace and receipt
-		fmt.Println("Execution trace:")
+		color.Green("Execution trace:")
 		fmt.Println(res.ExecutionTrace)
-		fmt.Println("Receipt:")
-		fmt.Println(res.MsgRct)
+		fmt.Println()
+		color.Green("Receipt:")
+		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
+		fmt.Printf("Return: %x\n", res.MsgRct.Return)
+		fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
 
 		switch msg := msg.(type) {
 		case *types.SignedMessage:
