@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 
+	"golang.org/x/exp/rand"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -145,7 +145,9 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		}
 
 		params := make([]byte, 32)
-		rand.Read(params)
+		if _, err := rand.Read(params); err != nil {
+			panic(err)
+		}
 
 		msg := &types.Message{
 			To:         to,
