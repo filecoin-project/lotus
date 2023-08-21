@@ -278,7 +278,16 @@ func (sm *StorageMinerAPI) SectorUnseal(ctx context.Context, sectorNum abi.Secto
 		ProofType: status.SealProof,
 	}
 
-	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
+	bgCtx := context.Background()
+
+	go func() {
+		err := sm.StorageMgr.SectorsUnsealPiece(bgCtx, sector, storiface.UnpaddedByteIndex(0), abi.UnpaddedPieceSize(0), status.Ticket.Value, status.CommD)
+		if err != nil {
+			log.Errorf("unseal for sector %d failed: %+v", sectorNum, err)
+		}
+	}()
+
+	return nil
 }
 
 // List all staged sectors
