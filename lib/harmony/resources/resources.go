@@ -11,10 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	cl "github.com/Nv7-Github/go-cl"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pbnjay/memory"
 	"github.com/samber/lo"
+	"github.com/samuel/go-opencl/cl"
 	"golang.org/x/sys/unix"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
