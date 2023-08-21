@@ -50,7 +50,8 @@ func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
 	}
 }
 func (t *task1) Adder(add harmonytask.AddTaskFunc) {
-	for _, v := range t.toAdd {
+	for _, vTmp := range t.toAdd {
+		v := vTmp
 		add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
 			t.myPersonalTableLock.Lock()
 			defer t.myPersonalTableLock.Unlock()
@@ -115,7 +116,8 @@ func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 		dtl:       dtl,
 		canAccept: func(list []harmonytask.TaskID) (*harmonytask.TaskID, error) { return nil, nil },
 		adder: func(add harmonytask.AddTaskFunc) {
-			for _, v := range []string{"A", "B"} {
+			for _, vTmp := range []string{"A", "B"} {
+				v := vTmp
 				add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
 					_, err := tx.Exec("INSERT INTO itest_scratch (some_int, content) VALUES ($1,$2)", tID, v)
 					require.NoError(t, err)

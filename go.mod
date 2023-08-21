@@ -135,7 +135,6 @@ require (
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.3.0
 	github.com/samber/lo v1.38.1
-	github.com/samuel/go-opencl v0.0.0-20171108220231-cbcfd10c32ad
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/urfave/cli/v2 v2.25.5

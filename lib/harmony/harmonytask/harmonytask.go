@@ -248,10 +248,10 @@ func (e *TaskEngine) followWorkInDB() {
 	var lastFollowTime time.Time
 	lastFollowTime, e.lastFollowTime = e.lastFollowTime, time.Now()
 
-	for from_name, srcs := range e.follows {
+	for fromName, srcs := range e.follows {
 		var cList []int // Which work is done (that we follow) since we last checked?
 		err := e.db.Select(e.ctx, &cList, `SELECT h.task_id FROM harmony_task_history 
-   		WHERE h.work_end>$1 AND h.name=$2`, lastFollowTime, from_name)
+   		WHERE h.work_end>$1 AND h.name=$2`, lastFollowTime, fromName)
 		if err != nil {
 			log.Error("Could not query DB: ", err)
 			return
@@ -269,9 +269,9 @@ func (e *TaskEngine) followWorkInDB() {
 					continue
 				}
 				// we need to create this task
-				if !src.h.Follows[from_name](TaskID(workAlreadyDone), src.h.AddTask) {
+				if !src.h.Follows[fromName](TaskID(workAlreadyDone), src.h.AddTask) {
 					// But someone may have beaten us to it.
-					log.Infof("Unable to add task %s following Task(%d, %s)", src.h.Name, workAlreadyDone, from_name)
+					log.Infof("Unable to add task %s following Task(%d, %s)", src.h.Name, workAlreadyDone, fromName)
 				}
 			}
 		}
@@ -317,7 +317,7 @@ func (e *TaskEngine) GetHttpHandlers() http.Handler {
 	s := root.PathPrefix("/scheduler")
 	f := s.PathPrefix("/follows")
 	b := s.PathPrefix("/bump")
-	for name, v := range e.follows {
+	for name, vs := range e.follows {
 		f.Path("/" + name + "/{tID}").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tIDString := mux.Vars(r)["tID"]
 			tID, err := strconv.Atoi(tIDString)
@@ -327,7 +327,7 @@ func (e *TaskEngine) GetHttpHandlers() http.Handler {
 				return
 			}
 			taskAdded := false
-			for _, v := range v {
+			for _, v := range vs {
 				taskAdded = taskAdded || v.f(TaskID(tID), v.h.AddTask)
 			}
 			if taskAdded {
@@ -338,7 +338,8 @@ func (e *TaskEngine) GetHttpHandlers() http.Handler {
 			w.WriteHeader(202) // NOTE: 202 for "accepted" but not worked.
 		})
 	}
-	for _, h := range e.handlers {
+	for _, hTmp := range e.handlers {
+		h := hTmp
 		b.Path("/" + h.Name + "/{tID}").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tIDString := mux.Vars(r)["tID"]
 			tID, err := strconv.Atoi(tIDString)
