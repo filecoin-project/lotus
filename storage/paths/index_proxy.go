@@ -88,14 +88,23 @@ func (ip *IndexProxy) StorageBestAlloc(ctx context.Context, allocate storiface.S
 }
 
 func (ip *IndexProxy) StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error {
+	if ip.enableSectorIndexDB {
+		return ip.dbIndex.StorageLock(ctx, sector, read, write)
+	}
 	return ip.memIndex.StorageLock(ctx, sector, read, write)
 }
 
 func (ip *IndexProxy) StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error) {
+	if ip.enableSectorIndexDB {
+		return ip.dbIndex.StorageTryLock(ctx, sector, read, write)
+	}
 	return ip.memIndex.StorageTryLock(ctx, sector, read, write)
 }
 
 func (ip *IndexProxy) StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error) {
+	if ip.enableSectorIndexDB {
+		return ip.dbIndex.StorageGetLocks(ctx)
+	}
 	return ip.memIndex.StorageGetLocks(ctx)
 }
 
