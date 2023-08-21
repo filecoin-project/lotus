@@ -327,7 +327,8 @@ func (e *TaskEngine) GetHttpHandlers() http.Handler {
 				return
 			}
 			taskAdded := false
-			for _, v := range vs {
+			for _, vTmp := range vs {
+				v := vTmp
 				taskAdded = taskAdded || v.f(TaskID(tID), v.h.AddTask)
 			}
 			if taskAdded {

@@ -26,6 +26,15 @@ type task1 struct {
 	WorkCompleted       []string
 }
 
+func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
+	_, miner, _ := kit.EnsembleMinimal(t,
+		kit.LatestActorsAt(-1),
+		kit.MockProofs(),
+	)
+
+	f(miner)
+}
+
 func (t *task1) Do(tID harmonytask.TaskID, stillOwned func() bool) (done bool, err error) {
 	if !stillOwned() {
 		return false, errors.New("Why not still owned?")
@@ -63,7 +72,7 @@ func (t *task1) Adder(add harmonytask.AddTaskFunc) {
 }
 
 func TestHarmonyTasks(t *testing.T) {
-	withSetup(t, func(m *kit.TestMiner) {
+	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		t1 := &task1{
 			toAdd:           []int{56, 73},
@@ -145,7 +154,7 @@ func fooLetterSaver(t *testing.T, cdb *harmonydb.DB) *passthru {
 }
 
 func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
-	withSetup(t, func(m *kit.TestMiner) {
+	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
 		workerParty := fooLetterSaver(t, cdb)
@@ -163,7 +172,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 }
 
 func TestWorkStealing(t *testing.T) {
-	withSetup(t, func(m *kit.TestMiner) {
+	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		ctx := context.Background()
 
@@ -190,7 +199,7 @@ func TestWorkStealing(t *testing.T) {
 }
 
 func TestTaskRetry(t *testing.T) {
-	withSetup(t, func(m *kit.TestMiner) {
+	withDbSetup(t, func(m *kit.TestMiner) {
 		cdb := m.BaseAPI.(*impl.StorageMinerAPI).HarmonyDB
 		senderParty := fooLetterAdder(t, cdb)
 		harmonytask.POLL_DURATION = time.Millisecond * 100
