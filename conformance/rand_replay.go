@@ -1,7 +1,6 @@
 package conformance
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -29,16 +28,14 @@ func NewReplayingRand(reporter Reporter, recorded schema.Randomness) *ReplayingR
 	}
 }
 
-func (r *ReplayingRand) match(requested schema.RandomnessRule) ([]byte, bool) {
+func (r *ReplayingRand) match(requested schema.RandomnessRule) ([32]byte, bool) {
 	for _, other := range r.recorded {
 		if other.On.Kind == requested.Kind &&
-			other.On.Epoch == requested.Epoch &&
-			other.On.DomainSeparationTag == requested.DomainSeparationTag &&
-			bytes.Equal(other.On.Entropy, requested.Entropy) {
-			return other.Return, true
+			other.On.Epoch == requested.Epoch {
+			return *(*[32]byte)(other.Return), true
 		}
 	}
-	return nil, false
+	return [32]byte{}, false
 }
 
 func (r *ReplayingRand) GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
