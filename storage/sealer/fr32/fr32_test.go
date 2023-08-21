@@ -3,11 +3,11 @@ package fr32_test
 import (
 	"bytes"
 	"io"
-	"math/rand"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/rand"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
@@ -72,7 +72,7 @@ func TestPadChunkFFI(t *testing.T) {
 func TestPadChunkRandEqFFI(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		var input [127]byte
-		rand.Read(input[:])
+		_, _ = rand.Read(input[:])
 
 		var buf [128]byte
 
@@ -109,7 +109,7 @@ func TestRoundtrip(t *testing.T) {
 func TestRoundtripChunkRand(t *testing.T) {
 	for i := 0; i < 200; i++ {
 		var input [127]byte
-		rand.Read(input[:])
+		_, _ = rand.Read(input[:])
 
 		var buf [128]byte
 		copy(buf[:], input[:])
@@ -127,7 +127,7 @@ func TestRoundtrip16MRand(t *testing.T) {
 	up := abi.PaddedPieceSize(16 << 20).Unpadded()
 
 	input := make([]byte, up)
-	rand.Read(input[:])
+	_, _ = rand.Read(input[:])
 
 	buf := make([]byte, 16<<20)
 
