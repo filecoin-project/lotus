@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -42,38 +41,34 @@ func (r *ReplayingRand) match(requested schema.RandomnessRule) ([]byte, bool) {
 	return nil, false
 }
 
-func (r *ReplayingRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	rule := schema.RandomnessRule{
-		Kind:                schema.RandomnessChain,
-		DomainSeparationTag: int64(pers),
-		Epoch:               int64(round),
-		Entropy:             entropy,
+		Kind:  schema.RandomnessChain,
+		Epoch: int64(round),
 	}
 
 	if ret, ok := r.match(rule); ok {
-		r.reporter.Logf("returning saved chain randomness: dst=%d, epoch=%d, entropy=%x, result=%x", pers, round, entropy, ret)
+		r.reporter.Logf("returning saved chain randomness: epoch=%d, result=%x", round, ret)
 		return ret, nil
 	}
 
-	r.reporter.Logf("returning fallback chain randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
+	r.reporter.Logf("returning fallback chain randomness: epoch=%d", round)
 
-	return r.fallback.GetChainRandomness(ctx, pers, round, entropy)
+	return r.fallback.GetChainRandomness(ctx, round)
 }
 
-func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	rule := schema.RandomnessRule{
-		Kind:                schema.RandomnessBeacon,
-		DomainSeparationTag: int64(pers),
-		Epoch:               int64(round),
-		Entropy:             entropy,
+		Kind:  schema.RandomnessBeacon,
+		Epoch: int64(round),
 	}
 
 	if ret, ok := r.match(rule); ok {
-		r.reporter.Logf("returning saved beacon randomness: dst=%d, epoch=%d, entropy=%x, result=%x", pers, round, entropy, ret)
+		r.reporter.Logf("returning saved beacon randomness:  epoch=%d, result=%x", round, ret)
 		return ret, nil
 	}
 
-	r.reporter.Logf("returning fallback beacon randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
+	r.reporter.Logf("returning fallback beacon randomness: epoch=%d, ", round)
 
-	return r.fallback.GetBeaconRandomness(ctx, pers, round, entropy)
+	return r.fallback.GetBeaconRandomness(ctx, round)
 }
