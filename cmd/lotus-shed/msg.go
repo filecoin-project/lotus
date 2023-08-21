@@ -26,6 +26,12 @@ var msgCmd = &cli.Command{
 	Aliases:   []string{"msg"},
 	Usage:     "Translate message between various formats",
 	ArgsUsage: "Message in any form",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "exec-trace",
+			Usage: "Print the execution trace",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
@@ -62,14 +68,16 @@ var msgCmd = &cli.Command{
 			return xerrors.Errorf("replay call failed: %w", err)
 		}
 
-		// Print the execution trace and receipt
-		color.Green("Execution trace:")
-		trace, err := json.MarshalIndent(res.ExecutionTrace, "", "  ")
-		if err != nil {
-			return xerrors.Errorf("marshaling execution trace: %w", err)
+		if cctx.Bool("exec-trace") {
+			// Print the execution trace
+			color.Green("Execution trace:")
+			trace, err := json.MarshalIndent(res.ExecutionTrace, "", "  ")
+			if err != nil {
+				return xerrors.Errorf("marshaling execution trace: %w", err)
+			}
+			fmt.Println(string(trace))
+			fmt.Println()
 		}
-		fmt.Println(string(trace))
-		fmt.Println()
 		color.Green("Receipt:")
 		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
 		fmt.Printf("Return: %x\n", res.MsgRct.Return)
