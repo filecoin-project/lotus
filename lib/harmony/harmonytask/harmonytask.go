@@ -317,7 +317,8 @@ func (e *TaskEngine) GetHttpHandlers() http.Handler {
 	s := root.PathPrefix("/scheduler")
 	f := s.PathPrefix("/follows")
 	b := s.PathPrefix("/bump")
-	for name, vs := range e.follows {
+	for name, vsTmp := range e.follows {
+		vs := vsTmp
 		f.Path("/" + name + "/{tID}").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			tIDString := mux.Vars(r)["tID"]
 			tID, err := strconv.Atoi(tIDString)

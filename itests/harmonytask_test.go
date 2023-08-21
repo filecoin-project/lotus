@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -82,14 +81,9 @@ func TestHarmonyTasks(t *testing.T) {
 		require.NoError(t, err)
 		time.Sleep(3 * time.Second) // do the work. FLAKYNESS RISK HERE.
 		e.GracefullyTerminate(time.Minute)
-		require.Equal(t, t1.WorkCompleted, 2, "wrong amount of work complete: expected 2 got:")
+		expected := []string{"taskResult56", "taskResult73"}
 		sort.Strings(t1.WorkCompleted)
-		got := strings.Join(t1.WorkCompleted, ",")
-		expected := "taskResult56,taskResult73"
-		if got != expected {
-			t.Fatal("Unexpected results! Wanted " + expected + " got " + got)
-		}
-		// TODO test history table looks right.
+		require.Equal(t, len(t1.WorkCompleted), expected, "unexpected results")
 	})
 }
 
