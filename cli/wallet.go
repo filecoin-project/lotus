@@ -338,15 +338,12 @@ var walletImport = &cli.Command{
 			if term.IsTerminal(int(os.Stdin.Fd())) {
 				fmt.Print("Enter private key(not display in the terminal): ")
 
-				// Create a channel to receive OS signals
 				sigCh := make(chan os.Signal, 1)
 				// Notify the channel when SIGINT is received
-				signal.Notify(sigCh, syscall.SIGINT)
+				signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 				go func() {
-					// Wait for SIGINT signal
 					<-sigCh
-					// Perform cleanup or other actions as needed
 					fmt.Println("\nInterrupt signal received. Exiting...")
 					os.Exit(1)
 				}()
