@@ -825,23 +825,23 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 	return build.UserVersion(), nil
 }
 
-func (e *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{}, error) {
-	ts, err := getTipsetByBlockNr(ctx, e.Chain, blkNum, false)
+func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{}, error) {
+	ts, err := getTipsetByBlockNr(ctx, a.Chain, blkNum, false)
 	if err != nil {
 		return nil, err
 	}
 
-	_, trace, err := e.StateManager.ExecutionTrace(ctx, ts)
+	_, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute base state: %w", err)
 	}
 
-	tsParent, err := e.ChainAPI.ChainGetTipSetByHeight(ctx, ts.Height()+1, e.Chain.GetHeaviestTipSet().Key())
+	tsParent, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, ts.Height()+1, a.Chain.GetHeaviestTipSet().Key())
 	if err != nil {
 		return nil, fmt.Errorf("cannot get tipset at height: %v", ts.Height()+1)
 	}
 
-	msgs, err := e.ChainGetParentMessages(ctx, tsParent.Blocks()[0].Cid())
+	msgs, err := a.ChainGetParentMessages(ctx, tsParent.Blocks()[0].Cid())
 	if err != nil {
 		return nil, err
 	}
@@ -875,7 +875,7 @@ func (e *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{},
 			continue
 		}
 
-		txHash, err := e.EthGetTransactionHashByCid(ctx, ir.MsgCid)
+		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
 		if err != nil {
 			return nil, err
 		}
@@ -907,17 +907,17 @@ func (e *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{},
 	return allTraces, nil
 }
 
-func (e *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error) {
+func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error) {
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
 		return nil, fmt.Errorf("only 'trace' is supported")
 	}
 
-	ts, err := getTipsetByBlockNr(ctx, e.Chain, blkNum, false)
+	ts, err := getTipsetByBlockNr(ctx, a.Chain, blkNum, false)
 	if err != nil {
 		return nil, err
 	}
 
-	_, trace, err := e.StateManager.ExecutionTrace(ctx, ts)
+	_, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
@@ -929,7 +929,7 @@ func (e *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 			continue
 		}
 
-		txHash, err := e.EthGetTransactionHashByCid(ctx, ir.MsgCid)
+		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
 		if err != nil {
 			return nil, err
 		}
