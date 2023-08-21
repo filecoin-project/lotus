@@ -12,12 +12,14 @@ import (
 	"time"
 
 	cl "github.com/Nv7-Github/go-cl"
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pbnjay/memory"
 	"github.com/samber/lo"
 	"golang.org/x/sys/unix"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
 
 var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats

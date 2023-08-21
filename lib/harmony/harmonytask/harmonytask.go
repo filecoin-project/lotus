@@ -9,9 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
-	"github.com/gorilla/mux"
 )
 
 // Consts (except for unit test)
