@@ -6,11 +6,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"math/rand"
 	"sync"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/exp/rand"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore/mount"

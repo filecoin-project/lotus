@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -16,7 +17,6 @@ import (
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/rand"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
@@ -195,7 +195,7 @@ type pieceProviderTestHarness struct {
 
 func generatePieceData(size uint64) []byte {
 	bz := make([]byte, size)
-	_, _ = rand.Read(bz)
+	rand.Read(bz)
 	return bz
 }
 
