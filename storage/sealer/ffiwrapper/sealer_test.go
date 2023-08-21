@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -16,7 +17,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/rand"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -33,7 +33,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("*", "DEBUG") // nolint: errcheck
+	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
 }
 
 var sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1
@@ -50,8 +50,8 @@ type seal struct {
 
 func data(sn abi.SectorNumber, dlen abi.UnpaddedPieceSize) io.Reader {
 	return io.MultiReader(
-		io.LimitReader(rand.New(rand.NewSource(42+uint64(sn))), int64(123)),
-		io.LimitReader(rand.New(rand.NewSource(42+uint64(sn))), int64(dlen-123)),
+		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(123)),
+		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(dlen-123)),
 	)
 }
 
@@ -960,7 +960,7 @@ func TestMulticoreSDR(t *testing.T) {
 
 func TestPoStChallengeAssumptions(t *testing.T) {
 	var r [32]byte
-	_, _ = rand.Read(r[:])
+	rand.Read(r[:])
 	r[31] &= 0x3f
 
 	// behaves like a pure function
