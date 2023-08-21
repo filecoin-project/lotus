@@ -186,7 +186,7 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 				}
 				// Note: Extra Info is left laying around for later review & clean-up
 			} else {
-				tx.Exec(`UPDATE harmony_task SET owner_id=NULL WHERE id=$1`, tID)
+				_, err := tx.Exec(`UPDATE harmony_task SET owner_id=NULL WHERE id=$1`, tID)
 				if err != nil {
 					log.Error("Could not disown failed task: ", tID, err)
 					return false
