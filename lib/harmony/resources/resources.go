@@ -14,12 +14,12 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pbnjay/memory"
 	"github.com/samber/lo"
-	"github.com/samuel/go-opencl/cl"
 	"golang.org/x/sys/unix"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	cl "github.com/filecoin-project/lotus/lib/harmony/resources/miniopencl"
 )
 
 var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats
@@ -146,7 +146,7 @@ func getGpuRam() uint64 {
 	}
 
 	return uint64(lo.SumBy(platforms, func(p *cl.Platform) int64 {
-		d, err := p.GetDevices(cl.DeviceTypeAll)
+		d, err := p.GetAllDevices()
 		if err != nil {
 			logger.Error(err)
 			return 0
