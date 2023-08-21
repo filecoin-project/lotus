@@ -6966,7 +6966,7 @@ Response:
 ```
 
 ### StateGetRandomnessDigestFromBeacon
-StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
+StateGetRandomnessDigestFromBeacon is used to sample the beacon for randomness.
 
 
 Perms: read
@@ -6989,7 +6989,7 @@ Inputs:
 Response: `"Bw=="`
 
 ### StateGetRandomnessDigestFromTickets
-StateGetRandomnessFromTickets is used to sample the chain for randomness.
+StateGetRandomnessDigestFromTickets. is used to sample the chain for randomness.
 
 
 Perms: read
