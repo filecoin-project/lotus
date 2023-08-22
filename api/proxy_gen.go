@@ -494,6 +494,10 @@ type FullNodeMethods struct {
 
 	StateGetNetworkParams func(p0 context.Context) (*NetworkParams, error) `perm:"read"`
 
+	StateGetRandomnessDigestFromBeacon func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+
+	StateGetRandomnessDigestFromTickets func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+
 	StateGetRandomnessFromBeacon func(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 
 	StateGetRandomnessFromTickets func(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
@@ -3430,6 +3434,28 @@ func (s *FullNodeStruct) StateGetNetworkParams(p0 context.Context) (*NetworkPara
 
 func (s *FullNodeStub) StateGetNetworkParams(p0 context.Context) (*NetworkParams, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	if s.Internal.StateGetRandomnessDigestFromBeacon == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
+	return s.Internal.StateGetRandomnessDigestFromBeacon(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateGetRandomnessDigestFromBeacon(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return *new(abi.Randomness), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetRandomnessDigestFromTickets(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	if s.Internal.StateGetRandomnessDigestFromTickets == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
+	return s.Internal.StateGetRandomnessDigestFromTickets(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateGetRandomnessDigestFromTickets(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (abi.Randomness, error) {
+	return *new(abi.Randomness), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetRandomnessFromBeacon(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
