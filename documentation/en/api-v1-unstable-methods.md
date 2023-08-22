@@ -104,6 +104,8 @@
   * [EthSendRawTransaction](#EthSendRawTransaction)
   * [EthSubscribe](#EthSubscribe)
   * [EthSyncing](#EthSyncing)
+  * [EthTraceBlock](#EthTraceBlock)
+  * [EthTraceReplayBlockTransactions](#EthTraceReplayBlockTransactions)
   * [EthUninstallFilter](#EthUninstallFilter)
   * [EthUnsubscribe](#EthUnsubscribe)
 * [Filecoin](#Filecoin)
@@ -287,9 +289,6 @@
   * [SyncUnmarkAllBad](#SyncUnmarkAllBad)
   * [SyncUnmarkBad](#SyncUnmarkBad)
   * [SyncValidateTipset](#SyncValidateTipset)
-* [Trace](#Trace)
-  * [TraceBlock](#TraceBlock)
-  * [TraceReplayBlockTransactions](#TraceReplayBlockTransactions)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
   * [WalletDefaultAddress](#WalletDefaultAddress)
@@ -3085,6 +3084,99 @@ Perms: read
 Inputs: `null`
 
 Response: `false`
+
+### EthTraceBlock
+TraceAPI related methods
+
+Returns traces created at given block
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  {
+    "action": {
+      "callType": "string value",
+      "from": "string value",
+      "to": "string value",
+      "gas": "0x5",
+      "input": "string value",
+      "value": "0x0"
+    },
+    "result": {
+      "gasUsed": "0x5",
+      "output": "string value"
+    },
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "Type": "string value",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": 9,
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionPosition": 123
+  }
+]
+```
+
+### EthTraceReplayBlockTransactions
+Replays all transactions in a block returning the requested traces for each transaction
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value",
+  [
+    "string value"
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "output": "string value",
+    "stateDiff": "string value",
+    "trace": [
+      {
+        "action": {
+          "callType": "string value",
+          "from": "string value",
+          "to": "string value",
+          "gas": "0x5",
+          "input": "string value",
+          "value": "0x0"
+        },
+        "result": {
+          "gasUsed": "0x5",
+          "output": "string value"
+        },
+        "subtraces": 123,
+        "traceAddress": [
+          123
+        ],
+        "Type": "string value"
+      }
+    ],
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "vmTrace": "string value"
+  }
+]
+```
 
 ### EthUninstallFilter
 Uninstalls a filter with given id.
@@ -8822,102 +8914,6 @@ Inputs:
 ```
 
 Response: `true`
-
-## Trace
-
-
-### TraceBlock
-TraceAPI related methods
-
-Returns traces created at given block
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "string value"
-]
-```
-
-Response:
-```json
-[
-  {
-    "action": {
-      "callType": "string value",
-      "from": "string value",
-      "to": "string value",
-      "gas": "0x5",
-      "input": "string value",
-      "value": "0x0"
-    },
-    "result": {
-      "gasUsed": "0x5",
-      "output": "string value"
-    },
-    "subtraces": 123,
-    "traceAddress": [
-      123
-    ],
-    "Type": "string value",
-    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
-    "blockNumber": 9,
-    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
-    "transactionPosition": 123
-  }
-]
-```
-
-### TraceReplayBlockTransactions
-Replays all transactions in a block returning the requested traces for each transaction
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  "string value",
-  [
-    "string value"
-  ]
-]
-```
-
-Response:
-```json
-[
-  {
-    "output": "string value",
-    "stateDiff": "string value",
-    "trace": [
-      {
-        "action": {
-          "callType": "string value",
-          "from": "string value",
-          "to": "string value",
-          "gas": "0x5",
-          "input": "string value",
-          "value": "0x0"
-        },
-        "result": {
-          "gasUsed": "0x5",
-          "output": "string value"
-        },
-        "subtraces": 123,
-        "traceAddress": [
-          123
-        ],
-        "Type": "string value"
-      }
-    ],
-    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
-    "vmTrace": "string value"
-  }
-]
-```
 
 ## Wallet
 

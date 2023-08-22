@@ -1491,6 +1491,36 @@ func (mr *MockFullNodeMockRecorder) EthSyncing(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSyncing", reflect.TypeOf((*MockFullNode)(nil).EthSyncing), arg0)
 }
 
+// EthTraceBlock mocks base method.
+func (m *MockFullNode) EthTraceBlock(arg0 context.Context, arg1 string) ([]*ethtypes.EthTraceBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceBlock", arg0, arg1)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceBlock indicates an expected call of EthTraceBlock.
+func (mr *MockFullNodeMockRecorder) EthTraceBlock(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceBlock", reflect.TypeOf((*MockFullNode)(nil).EthTraceBlock), arg0, arg1)
+}
+
+// EthTraceReplayBlockTransactions mocks base method.
+func (m *MockFullNode) EthTraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceReplayBlockTransactions", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceReplayBlockTransaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceReplayBlockTransactions indicates an expected call of EthTraceReplayBlockTransactions.
+func (mr *MockFullNodeMockRecorder) EthTraceReplayBlockTransactions(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceReplayBlockTransactions", reflect.TypeOf((*MockFullNode)(nil).EthTraceReplayBlockTransactions), arg0, arg1, arg2)
+}
+
 // EthUninstallFilter mocks base method.
 func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 ethtypes.EthFilterID) (bool, error) {
 	m.ctrl.T.Helper()
@@ -4021,36 +4051,6 @@ func (m *MockFullNode) SyncValidateTipset(arg0 context.Context, arg1 types.TipSe
 func (mr *MockFullNodeMockRecorder) SyncValidateTipset(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncValidateTipset", reflect.TypeOf((*MockFullNode)(nil).SyncValidateTipset), arg0, arg1)
-}
-
-// TraceBlock mocks base method.
-func (m *MockFullNode) TraceBlock(arg0 context.Context, arg1 string) ([]*ethtypes.TraceBlock, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TraceBlock", arg0, arg1)
-	ret0, _ := ret[0].([]*ethtypes.TraceBlock)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// TraceBlock indicates an expected call of TraceBlock.
-func (mr *MockFullNodeMockRecorder) TraceBlock(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceBlock", reflect.TypeOf((*MockFullNode)(nil).TraceBlock), arg0, arg1)
-}
-
-// TraceReplayBlockTransactions mocks base method.
-func (m *MockFullNode) TraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*ethtypes.TraceReplayBlockTransaction, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TraceReplayBlockTransactions", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*ethtypes.TraceReplayBlockTransaction)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// TraceReplayBlockTransactions indicates an expected call of TraceReplayBlockTransactions.
-func (mr *MockFullNodeMockRecorder) TraceReplayBlockTransactions(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TraceReplayBlockTransactions", reflect.TypeOf((*MockFullNode)(nil).TraceReplayBlockTransactions), arg0, arg1, arg2)
 }
 
 // Version mocks base method.
