@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/consensus"
+	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -590,7 +591,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 	return c, nil
 }
 
-var _ vm.Rand = new(fakeRand)
+var _ lrand.Rand = new(fakeRand)
 
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}

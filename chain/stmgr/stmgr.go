@@ -509,7 +509,17 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.DrawBeaconRandomness(ctx, personalization, randEpoch, entropy)
+	digest, err := r.GetBeaconRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, xerrors.Errorf("getting beacon randomness: %w", err)
+	}
+
+	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("drawing beacon randomness: %w", err)
+	}
+
+	return ret, nil
 
 }
 
@@ -521,7 +531,17 @@ func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personaliz
 
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.DrawChainRandomness(ctx, personalization, randEpoch, entropy)
+	digest, err := r.GetChainRandomness(ctx, randEpoch)
+	if err != nil {
+		return nil, xerrors.Errorf("getting chain randomness: %w", err)
+	}
+
+	ret, err := rand.DrawRandomnessFromDigest(digest, personalization, randEpoch, entropy)
+	if err != nil {
+		return nil, xerrors.Errorf("drawing chain randomness: %w", err)
+	}
+
+	return ret, nil
 }
 
 func (sm *StateManager) GetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) ([32]byte, error) {

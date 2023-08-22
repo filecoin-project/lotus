@@ -108,7 +108,12 @@ type stateRand struct {
 	networkVersionGetter NetworkVersionGetter
 }
 
-func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule, networkVersionGetter NetworkVersionGetter) *stateRand {
+type Rand interface {
+	GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
+	GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
+}
+
+func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule, networkVersionGetter NetworkVersionGetter) Rand {
 	return &stateRand{
 		cs:                   cs,
 		blks:                 blks,
@@ -203,12 +208,12 @@ func (sr *stateRand) DrawBeaconRandomness(ctx context.Context, pers crypto.Domai
 	digest, err := sr.GetBeaconRandomness(ctx, filecoinEpoch)
 
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get chain randomness: %w", err)
+		return nil, xerrors.Errorf("failed to get beacon randomness: %w", err)
 	}
 
 	ret, err := DrawRandomnessFromDigest(digest, pers, filecoinEpoch, entropy)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to draw chain randomness: %w", err)
+		return nil, xerrors.Errorf("failed to draw beacon randomness: %w", err)
 	}
 
 	return ret, nil
