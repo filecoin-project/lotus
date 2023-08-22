@@ -83,7 +83,7 @@ func TestHarmonyTasks(t *testing.T) {
 		e.GracefullyTerminate(time.Minute)
 		expected := []string{"taskResult56", "taskResult73"}
 		sort.Strings(t1.WorkCompleted)
-		require.Equal(t, len(t1.WorkCompleted), expected, "unexpected results")
+		require.Equal(t, t1.WorkCompleted, expected, "unexpected results")
 	})
 }
 
