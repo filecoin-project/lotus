@@ -18,6 +18,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 
@@ -928,4 +929,52 @@ func (e *EthBlockNumberOrHash) UnmarshalJSON(b []byte) error {
 	}
 
 	return errors.New("invalid block param")
+}
+
+type EthTrace struct {
+	Action       EthTraceAction `json:"action"`
+	Result       EthTraceResult `json:"result"`
+	Subtraces    int            `json:"subtraces"`
+	TraceAddress []int          `json:"traceAddress"`
+	Type         string         `json:"Type"`
+
+	Parent *EthTrace `json:"-"`
+}
+
+func (t *EthTrace) SetCallType(callType string) {
+	t.Action.CallType = callType
+	t.Type = callType
+}
+
+type EthTraceBlock struct {
+	*EthTrace
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
+}
+
+type EthTraceReplayBlockTransaction struct {
+	Output          string      `json:"output"`
+	StateDiff       *string     `json:"stateDiff"`
+	Trace           []*EthTrace `json:"trace"`
+	TransactionHash EthHash     `json:"transactionHash"`
+	VmTrace         *string     `json:"vmTrace"`
+}
+
+type EthTraceAction struct {
+	CallType string    `json:"callType"`
+	From     string    `json:"from"`
+	To       string    `json:"to"`
+	Gas      EthUint64 `json:"gas"`
+	Input    string    `json:"input"`
+	Value    EthBigInt `json:"value"`
+
+	Method  abi.MethodNum `json:"-"`
+	CodeCid cid.Cid       `json:"-"`
+}
+
+type EthTraceResult struct {
+	GasUsed EthUint64 `json:"gasUsed"`
+	Output  string    `json:"output"`
 }

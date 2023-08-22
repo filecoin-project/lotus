@@ -71,8 +71,8 @@ type EthModuleAPI interface {
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 	Web3ClientVersion(ctx context.Context) (string, error)
-	TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error)
-	TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.TraceReplayBlockTransaction, error)
+	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error)
+	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error)
 }
 
 type EthEventAPI interface {
@@ -825,7 +825,7 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 	return build.UserVersion(), nil
 }
 
-func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error) {
+func (a *EthModule) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
 	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get tipset: %w", err)
@@ -856,7 +856,7 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.
 		return nil, xerrors.Errorf("failed to parse eth hash from cid: %w", err)
 	}
 
-	allTraces := make([]*ethtypes.TraceBlock, 0, len(trace))
+	allTraces := make([]*ethtypes.EthTraceBlock, 0, len(trace))
 	msgIdx := 0
 	for _, ir := range trace {
 		// ignore messages from system actor
@@ -880,16 +880,16 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.
 			continue
 		}
 
-		traces := []*ethtypes.Trace{}
-		err = ethtypes.BuildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		traces := []*ethtypes.EthTrace{}
+		err = buildTraces(ctx, &traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), a.StateAPI)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces: %w", err)
 		}
 
-		traceBlocks := make([]*ethtypes.TraceBlock, 0, len(traces))
+		traceBlocks := make([]*ethtypes.EthTraceBlock, 0, len(traces))
 		for _, trace := range traces {
-			traceBlocks = append(traceBlocks, &ethtypes.TraceBlock{
-				Trace:               trace,
+			traceBlocks = append(traceBlocks, &ethtypes.EthTraceBlock{
+				EthTrace:            trace,
 				BlockHash:           blkHash,
 				BlockNumber:         int64(ts.Height()),
 				TransactionHash:     *txHash,
@@ -903,7 +903,7 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.
 	return allTraces, nil
 }
 
-func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.TraceReplayBlockTransaction, error) {
+func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
 		return nil, fmt.Errorf("only 'trace' is supported")
 	}
@@ -918,7 +918,7 @@ func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
 
-	allTraces := make([]*ethtypes.TraceReplayBlockTransaction, 0, len(trace))
+	allTraces := make([]*ethtypes.EthTraceReplayBlockTransaction, 0, len(trace))
 	for _, ir := range trace {
 		// ignore messages from system actor
 		if ir.Msg.From == builtinactors.SystemActorAddr {
@@ -934,14 +934,14 @@ func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 			continue
 		}
 
-		t := ethtypes.TraceReplayBlockTransaction{
+		t := ethtypes.EthTraceReplayBlockTransaction{
 			Output:          hex.EncodeToString(ir.MsgRct.Return),
 			TransactionHash: *txHash,
 			StateDiff:       nil,
 			VmTrace:         nil,
 		}
 
-		err = ethtypes.BuildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		err = buildTraces(ctx, &t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()), a.StateAPI)
 		if err != nil {
 			return nil, xerrors.Errorf("failed building traces: %w", err)
 		}

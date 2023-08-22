@@ -582,7 +582,7 @@ func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
 	return gw.target.Web3ClientVersion(ctx)
 }
 
-func (gw *Node) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error) {
+func (gw *Node) EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
@@ -591,10 +591,10 @@ func (gw *Node) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.Trac
 		return nil, err
 	}
 
-	return gw.target.TraceBlock(ctx, blkNum)
+	return gw.target.EthTraceBlock(ctx, blkNum)
 }
 
-func (gw *Node) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.TraceReplayBlockTransaction, error) {
+func (gw *Node) EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
 		return nil, err
 	}
@@ -603,7 +603,7 @@ func (gw *Node) TraceReplayBlockTransactions(ctx context.Context, blkNum string,
 		return nil, err
 	}
 
-	return gw.target.TraceReplayBlockTransactions(ctx, blkNum, traceTypes)
+	return gw.target.EthTraceReplayBlockTransactions(ctx, blkNum, traceTypes)
 }
 
 var EthMaxFiltersPerConn = 16 // todo make this configurable
