@@ -3,6 +3,7 @@ package paths
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	gopath "path"
@@ -22,6 +23,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
+
+var errAlreadyLocked = errors.New("already locked")
 
 type DBIndex struct {
 	alerting   *alerting.Alerting
@@ -776,7 +779,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		// Conditions: No write lock or write lock is stale, No read lock or read lock is stale
 		for _, wft := range write.AllSet() {
 			if isLocked(lockMap[wft].writeTs) || isLocked(lockMap[wft].readTs) {
-				return false, xerrors.Errorf("cannot acquire writelock for sector %v filetype %d already locked", sector, wft)
+				return false, xerrors.Errorf("cannot acquire writelock for sector %v filetype %d already locked: %w", sector, wft, errAlreadyLocked)
 			}
 		}
 
@@ -784,7 +787,7 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 		// Conditions: No write lock or write lock is stale
 		for _, rft := range read.AllSet() {
 			if isLocked(lockMap[rft].writeTs) {
-				return false, xerrors.Errorf("cannot acquire read lock for sector %v filetype %d already locked for writing", sector, rft)
+				return false, xerrors.Errorf("cannot acquire read lock for sector %v filetype %d already locked for writing: %w", sector, rft, errAlreadyLocked)
 			}
 		}
 
@@ -812,7 +815,6 @@ func (dbi *DBIndex) lock(ctx context.Context, sector abi.SectorID, read storifac
 							 		AND sector_filetype = ANY($3)`,
 			sector.Miner,
 			sector.Number,
-
 			read.AllSet())
 		if err != nil {
 			return false, xerrors.Errorf("acquiring read locks for sector %v fails with err: %v", sector, err)
@@ -886,7 +888,7 @@ func (dbi *DBIndex) StorageLock(ctx context.Context, sector abi.SectorID, read s
 	for {
 		locked, err := dbi.lock(ctx, sector, read, write, lockUuid)
 		// if err is not nil and is not because we cannot acquire lock, retry
-		if err != nil && !strings.Contains(err.Error(), "cannot acquire") {
+		if err != nil && !errors.As(err, &errAlreadyLocked) {
 			retries--
 			if retries == 0 {
 				return err
