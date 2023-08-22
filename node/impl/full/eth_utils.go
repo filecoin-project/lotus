@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-func getTipsetByBlockNr(ctx context.Context, chain *store.ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
+func getTipsetByBlockNumber(ctx context.Context, chain *store.ChainStore, blkParam string, strict bool) (*types.TipSet, error) {
 	if blkParam == "earliest" {
 		return nil, fmt.Errorf("block param \"earliest\" is not supported")
 	}
