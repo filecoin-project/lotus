@@ -59,29 +59,30 @@ var msgCmd = &cli.Command{
 			return err
 		}
 		if lookup == nil {
-			return fmt.Errorf("failed to find message: %s", mcid)
-		}
-
-		// Replay the message to get the execution trace
-		res, err := api.StateReplay(ctx, types.EmptyTSK, mcid)
-		if err != nil {
-			return xerrors.Errorf("replay call failed: %w", err)
-		}
-
-		if cctx.Bool("exec-trace") {
-			// Print the execution trace
-			color.Green("Execution trace:")
-			trace, err := json.MarshalIndent(res.ExecutionTrace, "", "  ")
+			fmt.Println("Message not found on-chain. Continuing...")
+		} else {
+			// Replay the message to get the execution trace
+			res, err := api.StateReplay(ctx, types.EmptyTSK, mcid)
 			if err != nil {
-				return xerrors.Errorf("marshaling execution trace: %w", err)
+				return xerrors.Errorf("replay call failed: %w", err)
 			}
-			fmt.Println(string(trace))
-			fmt.Println()
+
+			if cctx.Bool("exec-trace") {
+				// Print the execution trace
+				color.Green("Execution trace:")
+				trace, err := json.MarshalIndent(res.ExecutionTrace, "", "  ")
+				if err != nil {
+					return xerrors.Errorf("marshaling execution trace: %w", err)
+				}
+				fmt.Println(string(trace))
+				fmt.Println()
+
+				color.Green("Receipt:")
+				fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
+				fmt.Printf("Return: %x\n", res.MsgRct.Return)
+				fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
+			}
 		}
-		color.Green("Receipt:")
-		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
-		fmt.Printf("Return: %x\n", res.MsgRct.Return)
-		fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
 
 		switch msg := msg.(type) {
 		case *types.SignedMessage:
