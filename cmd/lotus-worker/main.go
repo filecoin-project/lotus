@@ -147,8 +147,12 @@ var stopCmd = &cli.Command{
 			// Step 2: Wait for existing jobs to complete
 			// Repeat 30 times to ensure all tasks have finished
 			for i := 0; i < 30; i++ {
-				time.Sleep(time.Second) // wait for 1 second
-				api.WaitQuiet(ctx)      // wait for tasks to finish
+				time.Sleep(time.Second)   // wait for 1 second
+				err := api.WaitQuiet(ctx) // wait for tasks to finish
+				if err != nil {
+					log.Errorf("Error waiting for tasks to finish: %v", err)
+					return err
+				}
 			}
 		}
 
