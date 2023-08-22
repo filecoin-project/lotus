@@ -238,7 +238,7 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 }
 
 func (a *EthModule) EthGetBlockByNumber(ctx context.Context, blkParam string, fullTxInfo bool) (ethtypes.EthBlock, error) {
-	ts, err := getTipsetByBlockNr(ctx, a.Chain, blkParam, true)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkParam, true)
 	if err != nil {
 		return ethtypes.EthBlock{}, err
 	}
@@ -693,7 +693,7 @@ func (a *EthModule) EthFeeHistory(ctx context.Context, p jsonrpc.RawParams) (eth
 		}
 	}
 
-	ts, err := getTipsetByBlockNr(ctx, a.Chain, params.NewestBlkNum, false)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, params.NewestBlkNum, false)
 	if err != nil {
 		return ethtypes.EthFeeHistory{}, fmt.Errorf("bad block parameter %s: %s", params.NewestBlkNum, err)
 	}
@@ -826,40 +826,40 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 }
 
 func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error) {
-	ts, err := getTipsetByBlockNr(ctx, a.Chain, blkNum, false)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
 	_, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to compute base state: %w", err)
+		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
 
 	tsParent, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, ts.Height()+1, a.Chain.GetHeaviestTipSet().Key())
 	if err != nil {
-		return nil, fmt.Errorf("cannot get tipset at height: %v", ts.Height()+1)
+		return nil, xerrors.Errorf("cannot get tipset at height: %v", ts.Height()+1)
 	}
 
 	msgs, err := a.ChainGetParentMessages(ctx, tsParent.Blocks()[0].Cid())
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get parent messages: %w", err)
 	}
 
 	cid, err := ts.Key().Cid()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get tipset key cid: %w", err)
 	}
 
 	blkHash, err := ethtypes.EthHashFromCid(cid)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to parse eth hash from cid: %w", err)
 	}
 
 	allTraces := make([]*ethtypes.TraceBlock, 0, len(trace))
 	for _, ir := range trace {
-		// ignore messages from f00
-		if ir.Msg.From.String() == "f00" {
+		// ignore messages from system actor
+		if ir.Msg.From == builtinactors.SystemActorAddr {
 			continue
 		}
 
@@ -877,7 +877,7 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.
 
 		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
 		}
 		if txHash == nil {
 			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
@@ -887,10 +887,10 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.
 		traces := []*ethtypes.Trace{}
 		err = ethtypes.BuildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
 		if err != nil {
-			return nil, xerrors.Errorf("failed when building traces: %w", err)
+			return nil, xerrors.Errorf("failed building traces: %w", err)
 		}
 
-		traceBlocks := make([]*ethtypes.TraceBlock, 0, len(trace))
+		traceBlocks := make([]*ethtypes.TraceBlock, 0, len(traces))
 		for _, trace := range traces {
 			traceBlocks = append(traceBlocks, &ethtypes.TraceBlock{
 				Trace:               trace,
@@ -912,9 +912,9 @@ func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 		return nil, fmt.Errorf("only 'trace' is supported")
 	}
 
-	ts, err := getTipsetByBlockNr(ctx, a.Chain, blkNum, false)
+	ts, err := getTipsetByBlockNumber(ctx, a.Chain, blkNum, false)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get tipset: %w", err)
 	}
 
 	_, trace, err := a.StateManager.ExecutionTrace(ctx, ts)
@@ -924,14 +924,14 @@ func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 
 	allTraces := make([]*ethtypes.TraceReplayBlockTransaction, 0, len(trace))
 	for _, ir := range trace {
-		// ignore messages from f00
-		if ir.Msg.From.String() == "f00" {
+		// ignore messages from system actor
+		if ir.Msg.From == builtinactors.SystemActorAddr {
 			continue
 		}
 
 		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("failed to get transaction hash by cid: %w", err)
 		}
 		if txHash == nil {
 			log.Warnf("cannot find transaction hash for cid %s", ir.MsgCid)
@@ -947,7 +947,7 @@ func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 
 		err = ethtypes.BuildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
 		if err != nil {
-			return nil, xerrors.Errorf("failed when building traces: %w", err)
+			return nil, xerrors.Errorf("failed building traces: %w", err)
 		}
 
 		allTraces = append(allTraces, &t)
