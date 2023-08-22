@@ -888,7 +888,7 @@ func (dbi *DBIndex) StorageLock(ctx context.Context, sector abi.SectorID, read s
 	for {
 		locked, err := dbi.lock(ctx, sector, read, write, lockUuid)
 		// if err is not nil and is not because we cannot acquire lock, retry
-		if err != nil && !errors.As(err, &errAlreadyLocked) {
+		if err != nil && !errors.Is(err, errAlreadyLocked) {
 			retries--
 			if retries == 0 {
 				return err
