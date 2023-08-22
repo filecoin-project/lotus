@@ -120,7 +120,12 @@ func main() {
 var stopCmd = &cli.Command{
 	Name:  "stop",
 	Usage: "Stop a running lotus worker",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "forcefully",
+			Usage: "Forcefully stop the worker without waiting for tasks to finish",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetWorkerAPI(cctx)
 		if err != nil {
@@ -130,12 +135,30 @@ var stopCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		// Detach any storage associated with this worker
+		// If forcefully flag is not set, perform a graceful shutdown
+		if !cctx.Bool("forcefully") {
+			// Step 1: Disable new tasks being scheduled
+			for taskType := range allowSetting {
+				if err := api.TaskDisable(ctx, taskType); err != nil {
+					return err
+				}
+			}
+
+			// Step 2: Wait for existing jobs to complete
+			// Repeat 30 times to ensure all tasks have finished
+			for i := 0; i < 30; i++ {
+				time.Sleep(time.Second) // wait for 1 second
+				api.WaitQuiet(ctx)      // wait for tasks to finish
+			}
+		}
+
+		// Step 3: Detach any storage associated with this worker
 		err = api.StorageDetachAll(ctx)
 		if err != nil {
 			return err
 		}
 
+		// Step 4: Shutdown the worker
 		err = api.Shutdown(ctx)
 		if err != nil {
 			return err
