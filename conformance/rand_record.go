@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/vm"
 )
 
 type RecordingRand struct {
@@ -26,7 +26,7 @@ type RecordingRand struct {
 	recorded schema.Randomness
 }
 
-var _ vm.Rand = (*RecordingRand)(nil)
+var _ rand.Rand = (*RecordingRand)(nil)
 
 // NewRecordingRand returns a vm.Rand implementation that proxies calls to a
 // full Lotus node via JSON-RPC, and records matching rules and responses so

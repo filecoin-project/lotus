@@ -7,7 +7,6 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -68,9 +67,4 @@ func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	}
 
 	return newVMExecutor(vmi, opts.ExecutionLane), nil
-}
-
-type Rand interface {
-	GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
-	GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error)
 }

@@ -6,16 +6,16 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/rand"
 )
 
 type ReplayingRand struct {
 	reporter Reporter
 	recorded schema.Randomness
-	fallback vm.Rand
+	fallback rand.Rand
 }
 
-var _ vm.Rand = (*ReplayingRand)(nil)
+var _ rand.Rand = (*ReplayingRand)(nil)
 
 // NewReplayingRand replays recorded randomness when requested, falling back to
 // fixed randomness if the value cannot be found; hence this is a safe

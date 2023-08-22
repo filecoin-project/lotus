@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -222,7 +223,7 @@ type LegacyVM struct {
 	buf            *blockstore.BufferedBlockstore
 	blockHeight    abi.ChainEpoch
 	areg           *ActorRegistry
-	rand           Rand
+	rand           rand.Rand
 	circSupplyCalc CircSupplyCalculator
 	networkVersion network.Version
 	baseFee        abi.TokenAmount
@@ -236,7 +237,7 @@ type VMOpts struct {
 	StateBase      cid.Cid
 	Epoch          abi.ChainEpoch
 	Timestamp      uint64
-	Rand           Rand
+	Rand           rand.Rand
 	Bstore         blockstore.Blockstore
 	Actors         *ActorRegistry
 	Syscalls       SyscallBuilder
