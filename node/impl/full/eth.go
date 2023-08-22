@@ -857,23 +857,19 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.
 	}
 
 	allTraces := make([]*ethtypes.TraceBlock, 0, len(trace))
+	msgIdx := 0
 	for _, ir := range trace {
 		// ignore messages from system actor
 		if ir.Msg.From == builtinactors.SystemActorAddr {
 			continue
 		}
 
-		idx := -1
-		for msgIdx, msg := range msgs {
-			if ir.Msg.From == msg.Message.From {
-				idx = msgIdx
-				break
-			}
+		// as we include TransactionPosition in the results, lets do sanity checking that the
+		// traces are indeed in the message execution order
+		if ir.Msg.Cid() != msgs[msgIdx].Message.Cid() {
+			return nil, xerrors.Errorf("traces are not in message execution order")
 		}
-		if idx == -1 {
-			log.Warnf("cannot resolve message index for cid: %s", ir.MsgCid)
-			continue
-		}
+		msgIdx++
 
 		txHash, err := a.EthGetTransactionHashByCid(ctx, ir.MsgCid)
 		if err != nil {
@@ -897,7 +893,7 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.
 				BlockHash:           blkHash,
 				BlockNumber:         int64(ts.Height()),
 				TransactionHash:     *txHash,
-				TransactionPosition: idx,
+				TransactionPosition: msgIdx,
 			})
 		}
 

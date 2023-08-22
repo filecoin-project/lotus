@@ -229,7 +229,7 @@ func BuildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 	return nil
 }
 
-func writePadded[T any](w io.Writer, data T, size int) error {
+func writePadded(w io.Writer, data any, size int) error {
 	tmp := &bytes.Buffer{}
 
 	// first write data to tmp buffer to get the size
