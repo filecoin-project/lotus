@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -577,7 +578,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 
 	// If the base has changed, we take the _intersection_ of our old base and new base,
 	// thus ejecting blocks from any equivocating miners, without taking any new blocks.
-	if !newBase.TipSet.Equals(base.TipSet) {
+	if newBase.TipSet.Height() == base.TipSet.Height() && !newBase.TipSet.Equals(base.TipSet) {
 		newBaseMap := map[cid.Cid]struct{}{}
 		for _, newBaseBlk := range newBase.TipSet.Cids() {
 			newBaseMap[newBaseBlk] = struct{}{}
