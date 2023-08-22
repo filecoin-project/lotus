@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -47,6 +48,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	storageminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -463,7 +465,16 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			si := paths.NewIndex(nil)
+			// TODO: run sector index init only for devnets. This is not needed for longer running networks
+			harmonyDB, err := harmonydb.New([]string{"127.0.0.1"}, "yugabyte", "yugabyte", "yugabyte", "5433", "",
+				func(s string) { logging.Logger("harmonydb").Error(s) })
+			if err != nil {
+				return err
+			}
+
+			enableSectorIndexDB := true
+
+			si := paths.NewIndexProxy(nil, harmonyDB, enableSectorIndexDB)
 
 			lstor, err := paths.NewLocal(ctx, lr, si, nil)
 			if err != nil {

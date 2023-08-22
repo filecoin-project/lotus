@@ -126,10 +126,14 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(sectorblocks.SectorBuilder), From(new(*sealing.Sealing))),
 		),
 
+		Override(new(*harmonydb.DB), func(cfg config.HarmonyDB, id harmonydb.ITestID) (*harmonydb.DB, error) {
+			return harmonydb.NewFromConfigWithITestID(cfg)(id)
+		}),
+
 		If(cfg.Subsystems.EnableSectorStorage,
 			// Sector storage
-			Override(new(*paths.Index), paths.NewIndex),
-			Override(new(paths.SectorIndex), From(new(*paths.Index))),
+			Override(new(*paths.IndexProxy), paths.NewIndexProxyHelper(cfg.Subsystems.EnableSectorIndexDB)),
+			Override(new(paths.SectorIndex), From(new(*paths.IndexProxy))),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
@@ -234,9 +238,6 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(config.HarmonyDB), cfg.HarmonyDB),
 		Override(new(harmonydb.ITestID), harmonydb.ITestID("")),
 		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
-		Override(new(*harmonydb.DB), func(cfg config.HarmonyDB, id harmonydb.ITestID) (*harmonydb.DB, error) {
-			return harmonydb.NewFromConfigWithITestID(cfg)(id)
-		}),
 	)
 }
 

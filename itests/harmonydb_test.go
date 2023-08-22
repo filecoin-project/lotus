@@ -68,7 +68,7 @@ func TestTransaction(t *testing.T) {
 		if _, err := cdb.Exec(ctx, "INSERT INTO itest_scratch (some_int) VALUES (4), (5), (6)"); err != nil {
 			t.Fatal("E0", err)
 		}
-		_, err := cdb.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool) {
+		_, err := cdb.BeginTransaction(ctx, func(tx *harmonydb.Tx) (commit bool, err error) {
 			if _, err := tx.Exec("INSERT INTO itest_scratch (some_int) VALUES (7), (8), (9)"); err != nil {
 				t.Fatal("E1", err)
 			}
@@ -90,7 +90,7 @@ func TestTransaction(t *testing.T) {
 			if sum2 != 4+5+6+7+8+9 {
 				t.Fatal("Expected 39, got ", sum2)
 			}
-			return false // rollback
+			return false, nil // rollback
 		})
 		if err != nil {
 			t.Fatal("ET", err)

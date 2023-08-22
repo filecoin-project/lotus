@@ -215,6 +215,7 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 
 		lastHeartbeat: time.Now(),
 	}
+
 	return nil
 }
 

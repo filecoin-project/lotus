@@ -235,6 +235,7 @@ func DefaultStorageMiner() *StorageMiner {
 			EnableSealing:       true,
 			EnableSectorStorage: true,
 			EnableMarkets:       false,
+			EnableSectorIndexDB: false,
 		},
 
 		Fees: MinerFeeConfig{
