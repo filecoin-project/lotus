@@ -1,4 +1,4 @@
-package full
+package ethtypes
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -15,8 +16,9 @@ import (
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
+
+var log = logging.Logger("traceapi")
 
 type Trace struct {
 	Action       Action `json:"action"`
@@ -35,51 +37,51 @@ func (t *Trace) setCallType(callType string) {
 
 type TraceBlock struct {
 	*Trace
-	BlockHash           ethtypes.EthHash `json:"blockHash"`
-	BlockNumber         int64            `json:"blockNumber"`
-	TransactionHash     ethtypes.EthHash `json:"transactionHash"`
-	TransactionPosition int              `json:"transactionPosition"`
+	BlockHash           EthHash `json:"blockHash"`
+	BlockNumber         int64   `json:"blockNumber"`
+	TransactionHash     EthHash `json:"transactionHash"`
+	TransactionPosition int     `json:"transactionPosition"`
 }
 
 type TraceReplayBlockTransaction struct {
-	Output          string           `json:"output"`
-	StateDiff       *string          `json:"stateDiff"`
-	Trace           []*Trace         `json:"trace"`
-	TransactionHash ethtypes.EthHash `json:"transactionHash"`
-	VmTrace         *string          `json:"vmTrace"`
+	Output          string   `json:"output"`
+	StateDiff       *string  `json:"stateDiff"`
+	Trace           []*Trace `json:"trace"`
+	TransactionHash EthHash  `json:"transactionHash"`
+	VmTrace         *string  `json:"vmTrace"`
 }
 
 type Action struct {
-	CallType string             `json:"callType"`
-	From     string             `json:"from"`
-	To       string             `json:"to"`
-	Gas      ethtypes.EthUint64 `json:"gas"`
-	Input    string             `json:"input"`
-	Value    ethtypes.EthBigInt `json:"value"`
+	CallType string    `json:"callType"`
+	From     string    `json:"from"`
+	To       string    `json:"to"`
+	Gas      EthUint64 `json:"gas"`
+	Input    string    `json:"input"`
+	Value    EthBigInt `json:"value"`
 
 	method  abi.MethodNum `json:"-"`
 	codeCid cid.Cid       `json:"-"`
 }
 
 type Result struct {
-	GasUsed ethtypes.EthUint64 `json:"gasUsed"`
-	Output  string             `json:"output"`
+	GasUsed EthUint64 `json:"gasUsed"`
+	Output  string    `json:"output"`
 }
 
-// buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
-func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.ExecutionTrace, height int64) error {
+// BuildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
+func BuildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.ExecutionTrace, height int64) error {
 	trace := &Trace{
 		Action: Action{
 			From:    et.Msg.From.String(),
 			To:      et.Msg.To.String(),
-			Gas:     ethtypes.EthUint64(et.Msg.GasLimit),
+			Gas:     EthUint64(et.Msg.GasLimit),
 			Input:   hex.EncodeToString(et.Msg.Params),
-			Value:   ethtypes.EthBigInt(et.Msg.Value),
+			Value:   EthBigInt(et.Msg.Value),
 			method:  et.Msg.Method,
 			codeCid: et.Msg.CodeCid,
 		},
 		Result: Result{
-			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
+			GasUsed: EthUint64(et.SumGas().TotalGas),
 			Output:  hex.EncodeToString(et.MsgRct.Return),
 		},
 		Subtraces:    len(et.Subcalls),
@@ -218,7 +220,7 @@ func buildTraces(traces *[]*Trace, parent *Trace, addr []int, et types.Execution
 	*traces = append(*traces, trace)
 
 	for i, call := range et.Subcalls {
-		err := buildTraces(traces, trace, append(addr, i), call, height)
+		err := BuildTraces(traces, trace, append(addr, i), call, height)
 		if err != nil {
 			return err
 		}

@@ -870,9 +870,9 @@ type FullNode interface {
 	// TraceAPI related methods
 	//
 	// Returns traces created at given block
-	TraceBlock(ctx context.Context, blkNum string) (interface{}, error) //perm:read
+	TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error) //perm:read
 	// Replays all transactions in a block returning the requested traces for each transaction
-	TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error) //perm:read
+	TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.TraceReplayBlockTransaction, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the
