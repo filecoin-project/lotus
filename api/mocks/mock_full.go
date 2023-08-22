@@ -4024,10 +4024,10 @@ func (mr *MockFullNodeMockRecorder) SyncValidateTipset(arg0, arg1 interface{}) *
 }
 
 // TraceBlock mocks base method.
-func (m *MockFullNode) TraceBlock(arg0 context.Context, arg1 string) (interface{}, error) {
+func (m *MockFullNode) TraceBlock(arg0 context.Context, arg1 string) ([]*ethtypes.TraceBlock, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TraceBlock", arg0, arg1)
-	ret0, _ := ret[0].(interface{})
+	ret0, _ := ret[0].([]*ethtypes.TraceBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -4039,10 +4039,10 @@ func (mr *MockFullNodeMockRecorder) TraceBlock(arg0, arg1 interface{}) *gomock.C
 }
 
 // TraceReplayBlockTransactions mocks base method.
-func (m *MockFullNode) TraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) (interface{}, error) {
+func (m *MockFullNode) TraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*ethtypes.TraceReplayBlockTransaction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TraceReplayBlockTransactions", arg0, arg1, arg2)
-	ret0, _ := ret[0].(interface{})
+	ret0, _ := ret[0].([]*ethtypes.TraceReplayBlockTransaction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

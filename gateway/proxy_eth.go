@@ -582,25 +582,25 @@ func (gw *Node) Web3ClientVersion(ctx context.Context) (string, error) {
 	return gw.target.Web3ClientVersion(ctx)
 }
 
-func (gw *Node) TraceBlock(ctx context.Context, blkNum string) (interface{}, error) {
+func (gw *Node) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
-		return ethtypes.EthBlock{}, err
+		return nil, err
 	}
 
 	return gw.target.TraceBlock(ctx, blkNum)
 }
 
-func (gw *Node) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error) {
+func (gw *Node) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.TraceReplayBlockTransaction, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if err := gw.checkBlkParam(ctx, blkNum, 0); err != nil {
-		return ethtypes.EthBlock{}, err
+		return nil, err
 	}
 
 	return gw.target.TraceReplayBlockTransactions(ctx, blkNum, traceTypes)

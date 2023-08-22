@@ -71,8 +71,8 @@ type EthModuleAPI interface {
 	EthMaxPriorityFeePerGas(ctx context.Context) (ethtypes.EthBigInt, error)
 	EthSendRawTransaction(ctx context.Context, rawTx ethtypes.EthBytes) (ethtypes.EthHash, error)
 	Web3ClientVersion(ctx context.Context) (string, error)
-	TraceBlock(ctx context.Context, blkNum string) (interface{}, error)
-	TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error)
+	TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error)
+	TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.TraceReplayBlockTransaction, error)
 }
 
 type EthEventAPI interface {
@@ -825,7 +825,7 @@ func (a *EthModule) Web3ClientVersion(ctx context.Context) (string, error) {
 	return build.UserVersion(), nil
 }
 
-func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{}, error) {
+func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.TraceBlock, error) {
 	ts, err := getTipsetByBlockNr(ctx, a.Chain, blkNum, false)
 	if err != nil {
 		return nil, err
@@ -856,7 +856,7 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{},
 		return nil, err
 	}
 
-	allTraces := make([]*TraceBlock, 0, len(trace))
+	allTraces := make([]*ethtypes.TraceBlock, 0, len(trace))
 	for _, ir := range trace {
 		// ignore messages from f00
 		if ir.Msg.From.String() == "f00" {
@@ -884,15 +884,15 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{},
 			continue
 		}
 
-		traces := []*Trace{}
-		err = buildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		traces := []*ethtypes.Trace{}
+		err = ethtypes.BuildTraces(&traces, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
 		if err != nil {
 			return nil, xerrors.Errorf("failed when building traces: %w", err)
 		}
 
-		traceBlocks := make([]*TraceBlock, 0, len(trace))
+		traceBlocks := make([]*ethtypes.TraceBlock, 0, len(trace))
 		for _, trace := range traces {
-			traceBlocks = append(traceBlocks, &TraceBlock{
+			traceBlocks = append(traceBlocks, &ethtypes.TraceBlock{
 				Trace:               trace,
 				BlockHash:           blkHash,
 				BlockNumber:         int64(ts.Height()),
@@ -907,7 +907,7 @@ func (a *EthModule) TraceBlock(ctx context.Context, blkNum string) (interface{},
 	return allTraces, nil
 }
 
-func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) (interface{}, error) {
+func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.TraceReplayBlockTransaction, error) {
 	if len(traceTypes) != 1 || traceTypes[0] != "trace" {
 		return nil, fmt.Errorf("only 'trace' is supported")
 	}
@@ -922,7 +922,7 @@ func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 		return nil, xerrors.Errorf("failed when calling ExecutionTrace: %w", err)
 	}
 
-	allTraces := make([]*TraceReplayBlockTransaction, 0, len(trace))
+	allTraces := make([]*ethtypes.TraceReplayBlockTransaction, 0, len(trace))
 	for _, ir := range trace {
 		// ignore messages from f00
 		if ir.Msg.From.String() == "f00" {
@@ -938,14 +938,14 @@ func (a *EthModule) TraceReplayBlockTransactions(ctx context.Context, blkNum str
 			continue
 		}
 
-		t := TraceReplayBlockTransaction{
+		t := ethtypes.TraceReplayBlockTransaction{
 			Output:          hex.EncodeToString(ir.MsgRct.Return),
 			TransactionHash: *txHash,
 			StateDiff:       nil,
 			VmTrace:         nil,
 		}
 
-		err = buildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
+		err = ethtypes.BuildTraces(&t.Trace, nil, []int{}, ir.ExecutionTrace, int64(ts.Height()))
 		if err != nil {
 			return nil, xerrors.Errorf("failed when building traces: %w", err)
 		}

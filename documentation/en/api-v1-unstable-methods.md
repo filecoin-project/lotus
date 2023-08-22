@@ -8841,7 +8841,34 @@ Inputs:
 ]
 ```
 
-Response: `{}`
+Response:
+```json
+[
+  {
+    "action": {
+      "callType": "string value",
+      "from": "string value",
+      "to": "string value",
+      "gas": "0x5",
+      "input": "string value",
+      "value": "0x0"
+    },
+    "result": {
+      "gasUsed": "0x5",
+      "output": "string value"
+    },
+    "subtraces": 123,
+    "traceAddress": [
+      123
+    ],
+    "Type": "string value",
+    "blockHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "blockNumber": 9,
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "transactionPosition": 123
+  }
+]
+```
 
 ### TraceReplayBlockTransactions
 Replays all transactions in a block returning the requested traces for each transaction
@@ -8859,7 +8886,38 @@ Inputs:
 ]
 ```
 
-Response: `{}`
+Response:
+```json
+[
+  {
+    "output": "string value",
+    "stateDiff": "string value",
+    "trace": [
+      {
+        "action": {
+          "callType": "string value",
+          "from": "string value",
+          "to": "string value",
+          "gas": "0x5",
+          "input": "string value",
+          "value": "0x0"
+        },
+        "result": {
+          "gasUsed": "0x5",
+          "output": "string value"
+        },
+        "subtraces": 123,
+        "traceAddress": [
+          123
+        ],
+        "Type": "string value"
+      }
+    ],
+    "transactionHash": "0x37690cfec6c1bf4c3b9288c7a5d783e98731e90b0a4c177c2a374c7a9427355e",
+    "vmTrace": "string value"
+  }
+]
+```
 
 ## Wallet
 
