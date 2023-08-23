@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"regexp"
 	"sort"
 	"strconv"
@@ -16,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kr/pretty"
 
 	"github.com/filecoin-project/lotus/node/config"
 )
@@ -133,6 +135,20 @@ func (t tracer) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.Trac
 	}
 	// Can log what type of query it is, but not what tables
 	// Can log rows affected.
+}
+
+func (db *DB) GetRoutableIP() (string, error) {
+	tx, err := db.pgx.Begin(context.Background())
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(context.Background())
+	local := tx.Conn().PgConn().Conn().LocalAddr()
+	addr, ok := local.(*net.TCPAddr)
+	if !ok {
+		return "", errors.New("could not get local addr from " + pretty.Sprint(addr))
+	}
+	return addr.IP.String(), nil
 }
 
 // addStatsAndConnect connects a prometheus logger. Be sure to run this before using the DB.

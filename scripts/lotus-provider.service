@@ -1,0 +1,13 @@
+[Unit]
+Description=Lotus Provider
+After=network.target
+After=lotus-daemon.service
+Wants=lotus-daemon.service
+
+[Service]
+ExecStart=/usr/local/bin/lotus-provider run
+Environment=GOLOG_FILE="/var/log/lotus/provider.log"
+Environment=GOLOG_LOG_FMT="json"
+
+[Install]
+WantedBy=multi-user.target
