@@ -69,8 +69,8 @@ USAGE:
    lotus-worker stop [command options] [arguments...]
 
 OPTIONS:
-   --forcefully  Forcefully stop the worker without waiting for tasks to finish (default: false)
-   --help, -h    show help
+   --force     Forcefully stop the worker without waiting for tasks to finish (default: false)
+   --help, -h  show help
 ```
 
 ## lotus-worker info

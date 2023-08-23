@@ -122,7 +122,7 @@ var stopCmd = &cli.Command{
 	Usage: "Stop a running lotus worker",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "forcefully",
+			Name:  "force",
 			Usage: "Forcefully stop the worker without waiting for tasks to finish",
 		},
 	},
@@ -136,7 +136,7 @@ var stopCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		// If forcefully flag is not set, perform a graceful shutdown
-		if !cctx.Bool("forcefully") {
+		if !cctx.Bool("force") {
 			// Step 1: Disable new tasks being scheduled
 			for taskType := range allowSetting {
 				if err := api.TaskDisable(ctx, taskType); err != nil {
