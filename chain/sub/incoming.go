@@ -529,7 +529,6 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 
 	msgCid := idxrMsg.Cid
 
-	var msgInfo *peerMsgInfo
 	msgInfo, cached := v.peerCache.Get(minerAddr)
 	if !cached {
 		msgInfo = &peerMsgInfo{}
