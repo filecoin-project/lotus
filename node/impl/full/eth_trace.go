@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"golang.org/x/xerrors"
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -19,10 +20,19 @@ import (
 
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
 func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr []int, et types.ExecutionTrace, height int64, sa StateAPI) error {
+	from, err := lookupEthAddress(ctx, et.Msg.From, sa)
+	if err != nil {
+		return xerrors.Errorf("buildTraces: failed to lookup from address %s: %w", et.Msg.From, err)
+	}
+	to, err := lookupEthAddress(ctx, et.Msg.To, sa)
+	if err != nil {
+		return xerrors.Errorf("buildTraces: failed to lookup to address %s: %w", et.Msg.To, err)
+	}
+
 	trace := &ethtypes.EthTrace{
 		Action: ethtypes.EthTraceAction{
-			From:    et.Msg.From.String(),
-			To:      et.Msg.To.String(),
+			From:    from.String(),
+			To:      to.String(),
 			Gas:     ethtypes.EthUint64(et.Msg.GasLimit),
 			Input:   hex.EncodeToString(et.Msg.Params),
 			Value:   ethtypes.EthBigInt(et.Msg.Value),
