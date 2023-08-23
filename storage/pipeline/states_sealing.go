@@ -237,11 +237,12 @@ func retrySoftErr(ctx context.Context, cb func() error) error {
 				return err
 			}
 
-			// retry
+			// check if the context got cancelled early
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
 
+			// retry
 			time.Sleep(SoftErrRetryWait)
 		} else {
 			return err
