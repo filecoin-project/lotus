@@ -3109,12 +3109,12 @@ Response:
       "from": "string value",
       "to": "string value",
       "gas": "0x5",
-      "input": "string value",
+      "input": "0x07",
       "value": "0x0"
     },
     "result": {
       "gasUsed": "0x5",
-      "output": "string value"
+      "output": "0x07"
     },
     "subtraces": 123,
     "traceAddress": [
@@ -3158,12 +3158,12 @@ Response:
           "from": "string value",
           "to": "string value",
           "gas": "0x5",
-          "input": "string value",
+          "input": "0x07",
           "value": "0x0"
         },
         "result": {
           "gasUsed": "0x5",
-          "output": "string value"
+          "output": "0x07"
         },
         "subtraces": 123,
         "traceAddress": [

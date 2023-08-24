@@ -4,29 +4,59 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io"
+
+	"github.com/multiformats/go-multicodec"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"golang.org/x/xerrors"
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
+func decodePayload(payload []byte, codec uint64) (ethtypes.EthBytes, error) {
+	if len(payload) == 0 {
+		return ethtypes.EthBytes(nil), nil
+	}
+
+	switch multicodec.Code(codec) {
+	case multicodec.Identity:
+		return ethtypes.EthBytes(nil), nil
+	case multicodec.DagCbor, multicodec.Cbor:
+		buf, err := cbg.ReadByteArray(bytes.NewReader(payload), uint64(len(payload)))
+		if err != nil {
+			return nil, xerrors.Errorf("decodePayload: failed to decode cbor payload: %w", err)
+		}
+		return buf, nil
+	case multicodec.Raw:
+		return ethtypes.EthBytes(payload), nil
+	}
+
+	return nil, xerrors.Errorf("decodePayload: unsupported codec: %d", codec)
+}
+
 // buildTraces recursively builds the traces for a given ExecutionTrace by walking the subcalls
 func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *ethtypes.EthTrace, addr []int, et types.ExecutionTrace, height int64, sa StateAPI) error {
+	// lookup the eth address from the from/to addresses. Note that this may fail but to support
+	// this we need to include the ActorID in the trace. For now, just log a warning and skip
+	// this trace.
+	//
+	// TODO: Add ActorID in trace, see https://github.com/filecoin-project/lotus/pull/11100#discussion_r1302442288
 	from, err := lookupEthAddress(ctx, et.Msg.From, sa)
 	if err != nil {
-		return xerrors.Errorf("buildTraces: failed to lookup from address %s: %w", et.Msg.From, err)
+		log.Warnf("buildTraces: failed to lookup from address %s: %v", et.Msg.From, err)
+		return nil
 	}
 	to, err := lookupEthAddress(ctx, et.Msg.To, sa)
 	if err != nil {
-		return xerrors.Errorf("buildTraces: failed to lookup to address %s: %w", et.Msg.To, err)
+		log.Warnf("buildTraces: failed to lookup to address %s: %w", et.Msg.To, err)
+		return nil
 	}
 
 	trace := &ethtypes.EthTrace{
@@ -34,14 +64,14 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 			From:    from.String(),
 			To:      to.String(),
 			Gas:     ethtypes.EthUint64(et.Msg.GasLimit),
-			Input:   hex.EncodeToString(et.Msg.Params),
+			Input:   nil,
 			Value:   ethtypes.EthBigInt(et.Msg.Value),
 			Method:  et.Msg.Method,
 			CodeCid: et.Msg.CodeCid,
 		},
 		Result: ethtypes.EthTraceResult{
 			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
-			Output:  hex.EncodeToString(et.MsgRct.Return),
+			Output:  nil,
 		},
 		Subtraces:    len(et.Subcalls),
 		TraceAddress: addr,
@@ -51,6 +81,48 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 
 	trace.SetCallType("call")
 
+	if parent != nil && builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method == builtin.MethodsEVM.InvokeContract {
+		log.Debugf("found InvokeContract call at height: %d", height)
+		trace.Action.Input, err = decodePayload(et.Msg.Params, et.Msg.ParamsCodec)
+		if err != nil {
+			return xerrors.Errorf("buildTraces: %w", err)
+		}
+		trace.Result.Output, err = decodePayload(et.MsgRct.Return, et.MsgRct.ReturnCodec)
+		if err != nil {
+			return xerrors.Errorf("buildTraces: %w", err)
+		}
+	} else if et.Msg.To == builtin.EthereumAddressManagerActorAddr &&
+		et.Msg.Method == builtin.MethodsEAM.CreateExternal {
+		log.Debugf("found CreateExternal call at height: %d", height)
+		trace.Action.Input, err = decodePayload(et.Msg.Params, et.Msg.ParamsCodec)
+		if err != nil {
+			return xerrors.Errorf("buildTraces: %w", err)
+		}
+
+		if et.MsgRct.ExitCode.IsSuccess() {
+			// ignore return value
+			trace.Result.Output = nil
+		} else {
+			// return value is the error message
+			trace.Result.Output, err = decodePayload(et.MsgRct.Return, et.MsgRct.ReturnCodec)
+			if err != nil {
+				return xerrors.Errorf("buildTraces: %w", err)
+			}
+		}
+
+		// treat this as a contract creation
+		trace.SetCallType("create")
+	} else {
+		trace.Action.Input, err = handleFilecoinMethodInput(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
+		if err != nil {
+			return xerrors.Errorf("buildTraces: %w", err)
+		}
+		trace.Result.Output, err = handleFilecoinMethodOutput(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
+		if err != nil {
+			return xerrors.Errorf("buildTraces: %w", err)
+		}
+	}
+
 	// TODO: is it OK to check this here or is this only specific to certain edge case (evm to evm)?
 	if et.Msg.ReadOnly {
 		trace.SetCallType("staticcall")
@@ -58,27 +130,6 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 
 	// there are several edge cases thar require special handling when displaying the traces
 	if parent != nil {
-		// Handle Native calls
-		//
-		// When an EVM actor is invoked with a method number above 1023 that's not frc42(InvokeEVM)
-		// then we need to format native calls in a way that makes sense to Ethereum tooling (convert
-		// the input & output to solidity ABI format).
-		if builtinactors.IsEvmActor(parent.Action.CodeCid) &&
-			et.Msg.Method > 1023 &&
-			et.Msg.Method != builtin.MethodsEVM.InvokeContract {
-			log.Debugf("found Native call! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
-			input, err := handleFilecoinMethodInput(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
-			if err != nil {
-				return err
-			}
-			trace.Action.Input = hex.EncodeToString(input)
-			output, err := handleFilecoinMethodOutput(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
-			if err != nil {
-				return err
-			}
-			trace.Result.Output = hex.EncodeToString(output)
-		}
-
 		// Handle Native actor creation
 		//
 		// Actor A calls to the init actor on method 2 and The init actor creates the target actor B then calls it on method 1
@@ -88,8 +139,8 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 			log.Debugf("Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 			parent.SetCallType("create")
 			parent.Action.To = et.Msg.To.String()
-			parent.Action.Input = hex.EncodeToString([]byte{0x0, 0x0, 0x0, 0xFE})
-			parent.Result.Output = ""
+			parent.Action.Input = []byte{0x0, 0x0, 0x0, 0xFE}
+			parent.Result.Output = nil
 
 			// there should never be any subcalls when creating a native actor
 			return nil
@@ -151,12 +202,12 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 			if err != nil {
 				return err
 			}
-			trace.Action.Input = hex.EncodeToString(input)
+			trace.Action.Input = input
 			output, err := handleFilecoinMethodOutput(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
 			if err != nil {
 				return err
 			}
-			trace.Result.Output = hex.EncodeToString(output)
+			trace.Result.Output = output
 		}
 
 		// Handle delegate calls

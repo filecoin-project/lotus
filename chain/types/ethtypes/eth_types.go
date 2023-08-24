@@ -967,7 +967,7 @@ type EthTraceAction struct {
 	From     string    `json:"from"`
 	To       string    `json:"to"`
 	Gas      EthUint64 `json:"gas"`
-	Input    string    `json:"input"`
+	Input    EthBytes  `json:"input"`
 	Value    EthBigInt `json:"value"`
 
 	Method  abi.MethodNum `json:"-"`
@@ -976,5 +976,5 @@ type EthTraceAction struct {
 
 type EthTraceResult struct {
 	GasUsed EthUint64 `json:"gasUsed"`
-	Output  string    `json:"output"`
+	Output  EthBytes  `json:"output"`
 }
