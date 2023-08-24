@@ -3,14 +3,14 @@ package chain
 import (
 	"fmt"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/build"
 )
 
 type BadBlockCache struct {
-	badBlocks *lru.ARCCache[cid.Cid, BadBlockReason]
+	badBlocks *arc.ARCCache[cid.Cid, BadBlockReason]
 }
 
 type BadBlockReason struct {
@@ -43,7 +43,7 @@ func (bbr BadBlockReason) String() string {
 }
 
 func NewBadBlockCache() *BadBlockCache {
-	cache, err := lru.NewARC[cid.Cid, BadBlockReason](build.BadBlockCacheSize)
+	cache, err := arc.NewARC[cid.Cid, BadBlockReason](build.BadBlockCacheSize)
 	if err != nil {
 		panic(err) // ok
 	}
