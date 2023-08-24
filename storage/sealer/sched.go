@@ -496,7 +496,7 @@ func (sh *Scheduler) findWorker(task *WorkerRequest) int {
 	// 	return -1
 	// }
 	workerid := ""
-	if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate {
+	if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTReplicaUpdate {
 		workerid, _ = filbase_redis.GetWorkerForSector(filbase_redis.PWorkerKey, task.Sector.ID.Number.String())
 		if workerid == "" {
 			log.Errorf("can't find p-worker in redis: %s", task.Sector.ID.Number.String())
@@ -523,7 +523,7 @@ func (sh *Scheduler) findWorker(task *WorkerRequest) int {
 			return wnd1
 		}
 	}
-	log.Infof("can't find enabled worker in OpenWindows :%+v", workerid)
+	log.Infof("can't find enabled %+v worker in OpenWindows :%+v. used official", task.TaskType, workerid)
 	return -1
 }
 
