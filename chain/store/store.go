@@ -948,6 +948,14 @@ func ReorgOps(ctx context.Context, lts func(ctx context.Context, _ types.TipSetK
 
 	var leftChain, rightChain []*types.TipSet
 	for !left.Equals(right) {
+		// this can take a long time and lot of memory if the tipsets are far apart
+		// since it can be reached through remote calls, we need to
+		// cancel early when possible to prevent resource exhaustion.
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		default:
+		}
 		if left.Height() > right.Height() {
 			leftChain = append(leftChain, left)
 			par, err := lts(ctx, left.Parents())
@@ -1004,7 +1012,7 @@ func (cs *ChainStore) AddToTipSetTracker(ctx context.Context, b *types.BlockHead
 	// This means that we ideally want to keep only most recent 900 epochs in here
 	// Golang's map iteration starts at a random point in a map.
 	// With 5 tries per epoch, and 900 entries to keep, on average we will have
-	// ~136 garbage entires in the `cs.tipsets` map. (solve for 1-(1-x/(900+x))^5 == 0.5)
+	// ~136 garbage entries in the `cs.tipsets` map. (solve for 1-(1-x/(900+x))^5 == 0.5)
 	// Seems good enough to me
 
 	for height := range cs.tipsets {
