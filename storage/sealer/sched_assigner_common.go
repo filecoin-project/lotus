@@ -91,7 +91,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 			// add by pan
 			workerIdx := -1
-			if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTPreCommit2 || task.TaskType == sealtasks.TTReplicaUpdate || task.TaskType == sealtasks.TTCommit2 {
+			if task.TaskType == sealtasks.TTAddPiece || task.TaskType == sealtasks.TTPreCommit1 || task.TaskType == sealtasks.TTReplicaUpdate || task.TaskType == sealtasks.TTCommit2 {
 				workerIdx = sh.findWorker(task)
 				if workerIdx == -1 {
 					log.Infof("no worker to do %s SectorId(%s)", task.TaskType.Short(), task.Sector.ID.Number.String())
