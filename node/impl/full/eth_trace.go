@@ -61,13 +61,16 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 
 	trace := &ethtypes.EthTrace{
 		Action: ethtypes.EthTraceAction{
-			From:    from.String(),
-			To:      to.String(),
-			Gas:     ethtypes.EthUint64(et.Msg.GasLimit),
-			Input:   nil,
-			Value:   ethtypes.EthBigInt(et.Msg.Value),
-			Method:  et.Msg.Method,
-			CodeCid: et.Msg.CodeCid,
+			From:  from.String(),
+			To:    to.String(),
+			Gas:   ethtypes.EthUint64(et.Msg.GasLimit),
+			Input: nil,
+			Value: ethtypes.EthBigInt(et.Msg.Value),
+
+			FilecoinFrom:    et.Msg.From,
+			FilecoinTo:      et.Msg.To,
+			FilecoinMethod:  et.Msg.Method,
+			FilecoinCodeCid: et.Msg.CodeCid,
 		},
 		Result: ethtypes.EthTraceResult{
 			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
@@ -81,8 +84,11 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 
 	trace.SetCallType("call")
 
-	if parent != nil && builtinactors.IsEvmActor(parent.Action.CodeCid) && et.Msg.Method == builtin.MethodsEVM.InvokeContract {
+	if et.Msg.Method == builtin.MethodsEVM.InvokeContract {
 		log.Debugf("found InvokeContract call at height: %d", height)
+
+		// TODO: ignore return errors since actors can send gibberish and we don't want
+		// to fail the whole trace in that case
 		trace.Action.Input, err = decodePayload(et.Msg.Params, et.Msg.ParamsCodec)
 		if err != nil {
 			return xerrors.Errorf("buildTraces: %w", err)
@@ -133,8 +139,8 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		// Handle Native actor creation
 		//
 		// Actor A calls to the init actor on method 2 and The init actor creates the target actor B then calls it on method 1
-		if parent.Action.To == builtin.InitActorAddr.String() &&
-			parent.Action.Method == builtin.MethodsInit.Exec &&
+		if parent.Action.FilecoinTo == builtin.InitActorAddr &&
+			parent.Action.FilecoinMethod == builtin.MethodsInit.Exec &&
 			et.Msg.Method == builtin.MethodConstructor {
 			log.Debugf("Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 			parent.SetCallType("create")
@@ -154,16 +160,16 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		// 2) The EAM calls the init actor on method 3 (Exec4).
 		// 3) The init actor creates the target actor B then calls it on method 1.
 		if parent.Parent != nil {
-			calledCreateOnEAM := parent.Parent.Action.To == builtin.EthereumAddressManagerActorAddr.String() &&
-				(parent.Parent.Action.Method == builtin.MethodsEAM.Create || parent.Parent.Action.Method == builtin.MethodsEAM.Create2)
-			eamCalledInitOnExec4 := parent.Action.To == builtin.InitActorAddr.String() &&
-				parent.Action.Method == builtin.MethodsInit.Exec4
-			initCreatedActor := trace.Action.Method == builtin.MethodConstructor
+			calledCreateOnEAM := parent.Parent.Action.FilecoinTo == builtin.EthereumAddressManagerActorAddr &&
+				(parent.Parent.Action.FilecoinMethod == builtin.MethodsEAM.Create || parent.Parent.Action.FilecoinMethod == builtin.MethodsEAM.Create2)
+			eamCalledInitOnExec4 := parent.Action.FilecoinTo == builtin.InitActorAddr &&
+				parent.Action.FilecoinMethod == builtin.MethodsInit.Exec4
+			initCreatedActor := trace.Action.FilecoinMethod == builtin.MethodConstructor
 
 			if calledCreateOnEAM && eamCalledInitOnExec4 && initCreatedActor {
 				log.Debugf("EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 
-				if parent.Parent.Action.Method == builtin.MethodsEAM.Create {
+				if parent.Parent.Action.FilecoinMethod == builtin.MethodsEAM.Create {
 					parent.Parent.SetCallType("create")
 				} else {
 					parent.Parent.SetCallType("create2")
@@ -184,17 +190,17 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		//
 		// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
 		// and should be dropped from the trace.
-		if builtinactors.IsEvmActor(parent.Action.CodeCid) &&
+		if builtinactors.IsEvmActor(parent.Action.FilecoinCodeCid) &&
 			et.Msg.Method > 0 &&
 			et.Msg.Method <= 1023 {
-			log.Debugf("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, parent.Action.CodeCid.String(), height)
+			log.Debugf("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, parent.Action.FilecoinCodeCid.String(), height)
 			// TODO: if I handle this case and drop this call from the trace then I am not able to detect delegate calls
 		}
 
 		// EVM -> EVM calls
 		//
 		// Check for normal EVM to EVM calls and decode the params and return values
-		if builtinactors.IsEvmActor(parent.Action.CodeCid) &&
+		if builtinactors.IsEvmActor(parent.Action.FilecoinCodeCid) &&
 			builtinactors.IsEthAccountActor(et.Msg.CodeCid) &&
 			et.Msg.Method == builtin.MethodsEVM.InvokeContract {
 			log.Debugf("found evm to evm call, code:%s, height: %d", et.Msg.CodeCid.String(), height)
@@ -216,11 +222,11 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		// 2) Check that the previous trace calls another actor on method 3 (GetByteCode) and they are at the same level (same parent)
 		// 3) Treat this as a delegate call to actor A.
 		if trace.Action.From == trace.Action.To &&
-			trace.Action.Method == builtin.MethodsEVM.InvokeContractDelegate &&
+			trace.Action.FilecoinMethod == builtin.MethodsEVM.InvokeContractDelegate &&
 			len(*traces) > 0 {
 			log.Debugf("found delegate call, height: %d", height)
 			prev := (*traces)[len(*traces)-1]
-			if prev.Action.From == trace.Action.From && prev.Action.Method == builtin.MethodsEVM.GetBytecode && prev.Parent == trace.Parent {
+			if prev.Action.From == trace.Action.From && prev.Action.FilecoinMethod == builtin.MethodsEVM.GetBytecode && prev.Parent == trace.Parent {
 				trace.SetCallType("delegatecall")
 				trace.Action.To = prev.Action.To
 			}
