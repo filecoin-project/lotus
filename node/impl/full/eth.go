@@ -933,8 +933,13 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 			continue
 		}
 
+		output, err := decodePayload(ir.ExecutionTrace.MsgRct.Return, ir.ExecutionTrace.MsgRct.ReturnCodec)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to decode payload: %w", err)
+		}
+
 		t := ethtypes.EthTraceReplayBlockTransaction{
-			Output:          ir.MsgRct.Return,
+			Output:          output,
 			TransactionHash: *txHash,
 			StateDiff:       nil,
 			VmTrace:         nil,
