@@ -20,14 +20,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 )
 
+// decodePayload is a utility function which decodes the payload using the given codec
 func decodePayload(payload []byte, codec uint64) (ethtypes.EthBytes, error) {
 	if len(payload) == 0 {
-		return ethtypes.EthBytes(nil), nil
+		return nil, nil
 	}
 
 	switch multicodec.Code(codec) {
 	case multicodec.Identity:
-		return ethtypes.EthBytes(nil), nil
+		return nil, nil
 	case multicodec.DagCbor, multicodec.Cbor:
 		buf, err := cbg.ReadByteArray(bytes.NewReader(payload), uint64(len(payload)))
 		if err != nil {
@@ -61,8 +62,8 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 
 	trace := &ethtypes.EthTrace{
 		Action: ethtypes.EthTraceAction{
-			From:  from.String(),
-			To:    to.String(),
+			From:  from,
+			To:    to,
 			Gas:   ethtypes.EthUint64(et.Msg.GasLimit),
 			Input: nil,
 			Value: ethtypes.EthBigInt(et.Msg.Value),
@@ -76,16 +77,17 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 			GasUsed: ethtypes.EthUint64(et.SumGas().TotalGas),
 			Output:  nil,
 		},
-		Subtraces:    len(et.Subcalls),
+		Subtraces:    0, // will be updated by the children once they are added to the trace
 		TraceAddress: addr,
 
-		Parent: parent,
+		Parent:       parent,
+		LastByteCode: nil,
 	}
 
 	trace.SetCallType("call")
 
 	if et.Msg.Method == builtin.MethodsEVM.InvokeContract {
-		log.Debugf("found InvokeContract call at height: %d", height)
+		log.Debugf("COND1 found InvokeContract call at height: %d", height)
 
 		// TODO: ignore return errors since actors can send gibberish and we don't want
 		// to fail the whole trace in that case
@@ -99,7 +101,7 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		}
 	} else if et.Msg.To == builtin.EthereumAddressManagerActorAddr &&
 		et.Msg.Method == builtin.MethodsEAM.CreateExternal {
-		log.Debugf("found CreateExternal call at height: %d", height)
+		log.Debugf("COND2 found CreateExternal call at height: %d", height)
 		trace.Action.Input, err = decodePayload(et.Msg.Params, et.Msg.ParamsCodec)
 		if err != nil {
 			return xerrors.Errorf("buildTraces: %w", err)
@@ -119,6 +121,8 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		// treat this as a contract creation
 		trace.SetCallType("create")
 	} else {
+		// we are going to assume a native method, but we may change it in one of the edge cases below
+		// TODO: only do this if we know it's a native method (optimization)
 		trace.Action.Input, err = handleFilecoinMethodInput(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
 		if err != nil {
 			return xerrors.Errorf("buildTraces: %w", err)
@@ -134,7 +138,8 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		trace.SetCallType("staticcall")
 	}
 
-	// there are several edge cases thar require special handling when displaying the traces
+	// there are several edge cases that require special handling when displaying the traces. Note that while iterating over
+	// the traces we update the trace backwards (through the parent pointer)
 	if parent != nil {
 		// Handle Native actor creation
 		//
@@ -142,10 +147,10 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 		if parent.Action.FilecoinTo == builtin.InitActorAddr &&
 			parent.Action.FilecoinMethod == builtin.MethodsInit.Exec &&
 			et.Msg.Method == builtin.MethodConstructor {
-			log.Debugf("Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+			log.Debugf("COND3 Native actor creation! method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 			parent.SetCallType("create")
-			parent.Action.To = et.Msg.To.String()
-			parent.Action.Input = []byte{0x0, 0x0, 0x0, 0xFE}
+			parent.Action.To = to
+			parent.Action.Input = []byte{0xFE}
 			parent.Result.Output = nil
 
 			// there should never be any subcalls when creating a native actor
@@ -166,8 +171,9 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 				parent.Action.FilecoinMethod == builtin.MethodsInit.Exec4
 			initCreatedActor := trace.Action.FilecoinMethod == builtin.MethodConstructor
 
+			// TODO: We need to handle failures in contract creations and support resurrections on an existing but dead EVM actor)
 			if calledCreateOnEAM && eamCalledInitOnExec4 && initCreatedActor {
-				log.Debugf("EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
+				log.Debugf("COND4 EVM contract creation method:%d, code:%s, height:%d", et.Msg.Method, et.Msg.CodeCid.String(), height)
 
 				if parent.Parent.Action.FilecoinMethod == builtin.MethodsEAM.Create {
 					parent.Parent.SetCallType("create")
@@ -186,51 +192,42 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 			}
 		}
 
-		// Handle EVM call special casing
-		//
-		// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
-		// and should be dropped from the trace.
-		if builtinactors.IsEvmActor(parent.Action.FilecoinCodeCid) &&
-			et.Msg.Method > 0 &&
-			et.Msg.Method <= 1023 {
-			log.Debugf("found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, parent.Action.FilecoinCodeCid.String(), height)
-			// TODO: if I handle this case and drop this call from the trace then I am not able to detect delegate calls
-		}
-
-		// EVM -> EVM calls
-		//
-		// Check for normal EVM to EVM calls and decode the params and return values
-		if builtinactors.IsEvmActor(parent.Action.FilecoinCodeCid) &&
-			builtinactors.IsEthAccountActor(et.Msg.CodeCid) &&
-			et.Msg.Method == builtin.MethodsEVM.InvokeContract {
-			log.Debugf("found evm to evm call, code:%s, height: %d", et.Msg.CodeCid.String(), height)
-			input, err := handleFilecoinMethodInput(et.Msg.Method, et.Msg.ParamsCodec, et.Msg.Params)
-			if err != nil {
-				return err
-			}
-			trace.Action.Input = input
-			output, err := handleFilecoinMethodOutput(et.MsgRct.ExitCode, et.MsgRct.ReturnCodec, et.MsgRct.Return)
-			if err != nil {
-				return err
-			}
-			trace.Result.Output = output
-		}
-
 		// Handle delegate calls
 		//
 		// 1) Look for trace from an EVM actor to itself on InvokeContractDelegate, method 6.
 		// 2) Check that the previous trace calls another actor on method 3 (GetByteCode) and they are at the same level (same parent)
 		// 3) Treat this as a delegate call to actor A.
-		if trace.Action.From == trace.Action.To &&
-			trace.Action.FilecoinMethod == builtin.MethodsEVM.InvokeContractDelegate &&
-			len(*traces) > 0 {
-			log.Debugf("found delegate call, height: %d", height)
-			prev := (*traces)[len(*traces)-1]
+		if parent.LastByteCode != nil && trace.Action.From == trace.Action.To &&
+			trace.Action.FilecoinMethod == builtin.MethodsEVM.InvokeContractDelegate {
+			log.Debugf("COND7 found delegate call, height: %d", height)
+			prev := parent.LastByteCode
 			if prev.Action.From == trace.Action.From && prev.Action.FilecoinMethod == builtin.MethodsEVM.GetBytecode && prev.Parent == trace.Parent {
 				trace.SetCallType("delegatecall")
 				trace.Action.To = prev.Action.To
 			}
+		} else {
+			// Handle EVM call special casing
+			//
+			// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
+			// and should be dropped from the trace.
+			if builtinactors.IsEvmActor(parent.Action.FilecoinCodeCid) &&
+				et.Msg.Method > 0 &&
+				et.Msg.Method <= 1023 {
+				log.Debugf("COND5 found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, parent.Action.FilecoinCodeCid.String(), height)
+
+				if et.Msg.Method == builtin.MethodsEVM.GetBytecode {
+					// save the last bytecode trace to handle delegate calls
+					parent.LastByteCode = trace
+				}
+
+				return nil
+			}
 		}
+	}
+
+	// we are adding trace to the traces so update the parent subtraces count as it was originally set to zero
+	if parent != nil {
+		parent.Subtraces += 1
 	}
 
 	*traces = append(*traces, trace)
