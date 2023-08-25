@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
 	builtinevm "github.com/filecoin-project/lotus/chain/actors/builtin/evm"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/ethhashlookup"
 	"github.com/filecoin-project/lotus/chain/events/filter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -241,30 +242,37 @@ func (a *EthModule) EthGetBlockByHash(ctx context.Context, blkHash ethtypes.EthH
 	return newEthBlockFromFilecoinTipSet(ctx, ts, fullTxInfo, a.Chain, a.StateAPI)
 }
 
-func (a *EthModule) getTipsetByEthBlockNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash) (*types.TipSet, error) {
+func (a *EthModule) getTipsetByEthBlockNumberOrHash(ctx context.Context, blkParam ethtypes.EthBlockNumberOrHash, after bool) (*types.TipSet, error) {
 	head := a.Chain.GetHeaviestTipSet()
 
 	predefined := blkParam.PredefinedBlock
 	if predefined != nil {
-		if *predefined == "earliest" {
+		switch *predefined {
+		case "earliest":
 			return nil, fmt.Errorf("block param \"earliest\" is not supported")
-		} else if *predefined == "pending" {
+		case "pending":
+			if after {
+				return nil, fmt.Errorf("block param \"pending\" is not supported")
+			}
 			return head, nil
-		} else if *predefined == "latest" {
+		case "latest":
+			if after {
+				return head, nil
+			}
 			parent, err := a.Chain.GetTipSetFromKey(ctx, head.Parents())
 			if err != nil {
 				return nil, fmt.Errorf("cannot get parent tipset")
 			}
 			return parent, nil
-		} else {
+		default:
 			return nil, fmt.Errorf("unknown predefined block %s", *predefined)
 		}
 	}
 
 	if blkParam.BlockNumber != nil {
 		height := abi.ChainEpoch(*blkParam.BlockNumber)
-		if height > head.Height()-1 {
-			return nil, fmt.Errorf("requested a future epoch (beyond 'latest')")
+		if after {
+			height += 1
 		}
 		ts, err := a.ChainAPI.ChainGetTipSetByHeight(ctx, height, head.Key())
 		if err != nil {
@@ -274,6 +282,7 @@ func (a *EthModule) getTipsetByEthBlockNumberOrHash(ctx context.Context, blkPara
 	}
 
 	if blkParam.BlockHash != nil {
+		// TODO
 		ts, err := a.Chain.GetTipSetByCid(ctx, blkParam.BlockHash.ToCid())
 		if err != nil {
 			return nil, fmt.Errorf("cannot get tipset by hash: %v", err)
@@ -446,18 +455,43 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 		return ethtypes.EthUint64(0), nil
 	}
 
-	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
+	tsAfter := true
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam, true)
 	if err != nil {
-		return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		tsAfter = false
+		ts, err = a.getTipsetByEthBlockNumberOrHash(ctx, blkParam, false)
+		if err != nil {
+			return ethtypes.EthUint64(0), xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
+		}
 	}
 
-	// First, handle the case where the "sender" is an EVM actor.
-	if actor, err := a.StateManager.LoadActor(ctx, addr, ts); err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+	actor, err := a.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		if errors.Is(err, types.ErrActorNotFound) {
 			return 0, nil
 		}
 		return 0, xerrors.Errorf("failed to lookup contract %s: %w", sender, err)
-	} else if builtinactors.IsEvmActor(actor.Code) {
+	}
+
+	// If we're working with a "pending" tipset, we only support accounts.
+	if !tsAfter {
+		nv, err := a.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return 0, err
+		}
+		if !consensus.IsValidForSending(nv, actor) {
+			return 0, xerrors.Errorf("cannot lookup pending transaction count for non-accounts")
+		}
+		// Now, lookup the "pending" nonce from the message pool.
+		nonce, err := a.Mpool.GetNonce(ctx, addr, ts.Key())
+		if err != nil {
+			return ethtypes.EthUint64(0), nil
+		}
+		return ethtypes.EthUint64(nonce), nil
+	}
+
+	// Handle EVM actors specially.
+	if builtinactors.IsEvmActor(actor.Code) {
 		evmState, err := builtinevm.Load(a.Chain.ActorStore(ctx), actor)
 		if err != nil {
 			return 0, xerrors.Errorf("failed to load evm state: %w", err)
@@ -471,11 +505,7 @@ func (a *EthModule) EthGetTransactionCount(ctx context.Context, sender ethtypes.
 		return ethtypes.EthUint64(nonce), err
 	}
 
-	nonce, err := a.Mpool.GetNonce(ctx, addr, ts.Key())
-	if err != nil {
-		return ethtypes.EthUint64(0), nil
-	}
-	return ethtypes.EthUint64(nonce), nil
+	return ethtypes.EthUint64(actor.Nonce), nil
 }
 
 func (a *EthModule) EthGetTransactionReceipt(ctx context.Context, txHash ethtypes.EthHash) (*api.EthTxReceipt, error) {
@@ -534,7 +564,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 		return nil, xerrors.Errorf("cannot get Filecoin address: %w", err)
 	}
 
-	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
@@ -613,7 +643,7 @@ func (a *EthModule) EthGetCode(ctx context.Context, ethAddr ethtypes.EthAddress,
 }
 
 func (a *EthModule) EthGetStorageAt(ctx context.Context, ethAddr ethtypes.EthAddress, position ethtypes.EthBytes, blkParam ethtypes.EthBlockNumberOrHash) (ethtypes.EthBytes, error) {
-	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
@@ -709,17 +739,13 @@ func (a *EthModule) EthGetBalance(ctx context.Context, address ethtypes.EthAddre
 		return ethtypes.EthBigInt{}, err
 	}
 
-	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
+	// TODO: Consider supporting pending balance?
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam, true)
 	if err != nil {
 		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
 
-	st, _, err := a.StateManager.TipSetState(ctx, ts)
-	if err != nil {
-		return ethtypes.EthBigInt{}, xerrors.Errorf("failed to compute tipset state: %w", err)
-	}
-
-	actor, err := a.StateManager.LoadActorRaw(ctx, filAddr, st)
+	actor, err := a.StateManager.LoadActor(ctx, filAddr, ts)
 	if xerrors.Is(err, types.ErrActorNotFound) {
 		return ethtypes.EthBigIntZero, nil
 	} else if err != nil {
@@ -980,28 +1006,13 @@ func (a *EthModule) ethCallToFilecoinMessage(ctx context.Context, tx ethtypes.Et
 	}, nil
 }
 
-func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (res *api.InvocResult, err error) {
+func (a *EthModule) applyMessage(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("cannot get tipset: %w", err)
 	}
 
-	applyTsMessages := true
-	if os.Getenv("LOTUS_SKIP_APPLY_TS_MESSAGE_CALL_WITH_GAS") == "1" {
-		applyTsMessages = false
-	}
-
-	// Try calling until we find a height with no migration.
-	for {
-		res, err = a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, applyTsMessages)
-		if err != stmgr.ErrExpensiveFork {
-			break
-		}
-		ts, err = a.Chain.GetTipSetFromKey(ctx, ts.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("getting parent tipset: %w", err)
-		}
-	}
+	res, err := a.StateManager.CallWithGas(ctx, msg, []types.ChainMsg{}, ts, false)
 	if err != nil {
 		return nil, xerrors.Errorf("CallWithGas failed: %w", err)
 	}
@@ -1176,7 +1187,7 @@ func (a *EthModule) EthCall(ctx context.Context, tx ethtypes.EthCall, blkParam e
 		return nil, xerrors.Errorf("failed to convert ethcall to filecoin message: %w", err)
 	}
 
-	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam)
+	ts, err := a.getTipsetByEthBlockNumberOrHash(ctx, blkParam, true)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to process block param: %v; %w", blkParam, err)
 	}
