@@ -71,6 +71,8 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 
 	fmt.Println(s)
 
+	fmt.Println(c)
+	fmt.Println(c2)
 	require.True(t, reflect.DeepEqual(c, c2))
 }
 

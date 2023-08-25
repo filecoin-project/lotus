@@ -145,6 +145,14 @@
   # env var: LOTUS_SUBSYSTEMS_ENABLEMARKETS
   #EnableMarkets = false
 
+  # When enabled, the sector index will reside in an external database
+  # as opposed to the local KV store in the miner process
+  # This is useful to allow workers to bypass the lotus miner to access sector information
+  #
+  # type: bool
+  # env var: LOTUS_SUBSYSTEMS_ENABLESECTORINDEXDB
+  #EnableSectorIndexDB = false
+
   # type: string
   # env var: LOTUS_SUBSYSTEMS_SEALERAPIINFO
   #SealerApiInfo = ""
