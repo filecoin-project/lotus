@@ -938,7 +938,8 @@ type EthTrace struct {
 	TraceAddress []int          `json:"traceAddress"`
 	Type         string         `json:"Type"`
 
-	Parent *EthTrace `json:"-"`
+	Parent       *EthTrace `json:"-"`
+	LastByteCode *EthTrace `json:"-"`
 }
 
 func (t *EthTrace) SetCallType(callType string) {
@@ -963,12 +964,12 @@ type EthTraceReplayBlockTransaction struct {
 }
 
 type EthTraceAction struct {
-	CallType string    `json:"callType"`
-	From     string    `json:"from"`
-	To       string    `json:"to"`
-	Gas      EthUint64 `json:"gas"`
-	Input    EthBytes  `json:"input"`
-	Value    EthBigInt `json:"value"`
+	CallType string     `json:"callType"`
+	From     EthAddress `json:"from"`
+	To       EthAddress `json:"to"`
+	Gas      EthUint64  `json:"gas"`
+	Input    EthBytes   `json:"input"`
+	Value    EthBigInt  `json:"value"`
 
 	FilecoinMethod  abi.MethodNum   `json:"-"`
 	FilecoinCodeCid cid.Cid         `json:"-"`
