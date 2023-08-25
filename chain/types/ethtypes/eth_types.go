@@ -955,7 +955,7 @@ type EthTraceBlock struct {
 }
 
 type EthTraceReplayBlockTransaction struct {
-	Output          string      `json:"output"`
+	Output          EthBytes    `json:"output"`
 	StateDiff       *string     `json:"stateDiff"`
 	Trace           []*EthTrace `json:"trace"`
 	TransactionHash EthHash     `json:"transactionHash"`
@@ -970,8 +970,10 @@ type EthTraceAction struct {
 	Input    EthBytes  `json:"input"`
 	Value    EthBigInt `json:"value"`
 
-	Method  abi.MethodNum `json:"-"`
-	CodeCid cid.Cid       `json:"-"`
+	FilecoinMethod  abi.MethodNum   `json:"-"`
+	FilecoinCodeCid cid.Cid         `json:"-"`
+	FilecoinFrom    address.Address `json:"-"`
+	FilecoinTo      address.Address `json:"-"`
 }
 
 type EthTraceResult struct {

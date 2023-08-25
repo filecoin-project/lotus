@@ -3,7 +3,6 @@ package full
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -935,7 +934,7 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 		}
 
 		t := ethtypes.EthTraceReplayBlockTransaction{
-			Output:          hex.EncodeToString(ir.MsgRct.Return),
+			Output:          ir.MsgRct.Return,
 			TransactionHash: *txHash,
 			StateDiff:       nil,
 			VmTrace:         nil,
