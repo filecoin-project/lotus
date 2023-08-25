@@ -21,7 +21,7 @@ import (
 type task1 struct {
 	toAdd               []int
 	myPersonalTableLock sync.Mutex
-	myPersonalTable     map[harmonytask.TaskID]int // This would typicallyb be a DB table
+	myPersonalTable     map[harmonytask.TaskID]int // This would typically be a DB table
 	WorkCompleted       []string
 }
 

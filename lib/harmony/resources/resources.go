@@ -27,7 +27,7 @@ var LOOKS_DEAD_TIMEOUT = 10 * time.Minute // Time w/o minute heartbeats
 type Resources struct {
 	Cpu       int
 	Gpu       float64
-	GpuRam    uint64
+	GpuRam    []uint64
 	Ram       uint64
 	MachineID int
 }
@@ -72,7 +72,8 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 				return nil, err
 			}
 		}
-		CleanupMachines(context.Background(), db)
+		cleaned := CleanupMachines(context.Background(), db)
+		logger.Infow("Cleaned up machines", "count", cleaned)
 	}
 	go func() {
 		for {
@@ -138,21 +139,24 @@ func getResources() (res Resources, err error) {
 	return res, nil
 }
 
-func getGpuRam() uint64 {
+func getGpuRam() (res []uint64) {
 	platforms, err := cl.GetPlatforms()
 	if err != nil {
 		logger.Error(err)
-		return 0
+		return res
 	}
 
-	return uint64(lo.SumBy(platforms, func(p *cl.Platform) int64 {
+	lo.ForEach(platforms, func(p *cl.Platform, i int) {
 		d, err := p.GetAllDevices()
 		if err != nil {
 			logger.Error(err)
-			return 0
+			return
 		}
-		return lo.SumBy(d, func(d *cl.Device) int64 { return d.GlobalMemSize() })
-	}))
+		lo.ForEach(d, func(d *cl.Device, i int) {
+			res = append(res, uint64(d.GlobalMemSize()))
+		})
+	})
+	return res
 }
 
 func DiskFree(path string) (uint64, error) {
@@ -164,17 +168,3 @@ func DiskFree(path string) (uint64, error) {
 
 	return s.Bfree * uint64(s.Bsize), nil
 }
-
-/* NOT for Darwin.
-func GetMemFree() uint64 {
-	in := unix.Sysinfo_t{}
-	err := unix.Sysinfo(&in)
-	if err != nil {
-		return 0
-	}
-	// If this is a 32-bit system, then these fields are
-	// uint32 instead of uint64.
-	// So we always convert to uint64 to match signature.
-	return uint64(in.Freeram) * uint64(in.Unit)
-}
-*/

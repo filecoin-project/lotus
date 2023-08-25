@@ -56,7 +56,7 @@ type TaskInterface interface {
 	// CanAccept should return if the task can run on this machine. It should
 	// return null if the task type is not allowed on this machine.
 	// It should select the task it most wants to accomplish.
-	// It is also responsible for determining disk space (including scratch).
+	// It is also responsible for determining & reserving disk space (including scratch).
 	CanAccept([]TaskID) (*TaskID, error)
 
 	// TypeDetails() returns static details about how this task behaves and
@@ -181,7 +181,7 @@ func New(
 			if h == nil {
 				_, err := db.Exec(e.ctx, `UPDATE harmony_task SET owner=NULL WHERE id=$1`, w.ID)
 				if err != nil {
-					log.Error("Cannot remove self from owner field: ", err)
+					log.Errorw("Cannot remove self from owner field", "error", err)
 					continue // not really fatal, but not great
 				}
 			}
@@ -206,12 +206,14 @@ func (e *TaskEngine) GracefullyTerminate(deadline time.Duration) {
 	e.reg.Shutdown()
 	deadlineChan := time.NewTimer(deadline).C
 
+	ctx := context.TODO()
+
 	// block bumps & follows by unreg from DBs.
-	_, err := e.db.Exec(context.TODO(), `DELETE FROM harmony_task_impl WHERE owner_id=$1`, e.ownerID)
+	_, err := e.db.Exec(ctx, `DELETE FROM harmony_task_impl WHERE owner_id=$1`, e.ownerID)
 	if err != nil {
 		log.Warn("Could not clean-up impl table: %w", err)
 	}
-	_, err = e.db.Exec(context.Background(), `DELETE FROM harmony_task_follow WHERE owner_id=$1`, e.ownerID)
+	_, err = e.db.Exec(ctx, `DELETE FROM harmony_task_follow WHERE owner_id=$1`, e.ownerID)
 	if err != nil {
 		log.Warn("Could not clean-up impl table: %w", err)
 	}
@@ -271,7 +273,7 @@ func (e *TaskEngine) followWorkInDB() {
 				// we need to create this task
 				if !src.h.Follows[fromName](TaskID(workAlreadyDone), src.h.AddTask) {
 					// But someone may have beaten us to it.
-					log.Infof("Unable to add task %s following Task(%d, %s)", src.h.Name, workAlreadyDone, fromName)
+					log.Debugf("Unable to add task %s following Task(%d, %s)", src.h.Name, workAlreadyDone, fromName)
 				}
 			}
 		}
@@ -386,11 +388,21 @@ func (e *TaskEngine) bump(taskType string) {
 // resourcesInUse requires workListsMutex to be already locked.
 func (e *TaskEngine) resourcesInUse() resources.Resources {
 	tmp := e.reg.Resources
+	copy(tmp.GpuRam, e.reg.Resources.GpuRam)
 	for _, t := range e.handlers {
 		ct := t.Count.Load()
 		tmp.Cpu -= int(ct) * t.Cost.Cpu
 		tmp.Gpu -= float64(ct) * t.Cost.Gpu
 		tmp.Ram -= uint64(ct) * t.Cost.Ram
+		for i := int32(0); i < ct; i++ {
+			for grIdx, j := range tmp.GpuRam {
+				if j > t.Cost.GpuRam[0] {
+					tmp.GpuRam[grIdx] = j - t.Cost.GpuRam[0]
+					break
+				}
+			}
+			log.Warn("We should never get out of gpuram for what's consumed.")
+		}
 	}
 	return tmp
 }

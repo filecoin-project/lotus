@@ -223,6 +223,13 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	if r.Gpu-h.Cost.Gpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
 	}
+	for _, u := range r.GpuRam {
+		if u > h.Cost.GpuRam[0] {
+			goto enoughGpuRam
+		}
+	}
+	return errors.New("Did not accept " + h.Name + " task: out of GPURam")
+enoughGpuRam:
 	return nil
 }
 

@@ -23,8 +23,9 @@ Mental Model:
 	    - Async Listener task (for chain, etc)
 		- Followers: Tasks get added because another task completed
 	When Follower collectors run:
-	    - If both sides are process-local, then
-		- Otherwise, at the listen interval during db scrape
+	    - If both sides are process-local, then this process will pick it up.
+		- If properly registered already, the http endpoint will be tried to start it.
+		- Otherwise, at the listen interval during db scrape it will be found.
 	How duplicate tasks are avoided:
 	    - that's up to the task definition, but probably a unique key
 

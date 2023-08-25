@@ -1,3 +1,5 @@
+// Package cl was borrowed from the go-opencl library which is more complex and
+// doesn't compile well for our needs.
 package cl
 
 // #include "cl.h"
