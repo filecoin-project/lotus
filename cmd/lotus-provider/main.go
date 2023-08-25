@@ -90,7 +90,7 @@ func main() {
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Hidden:  true,
-				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+				Value:   "~/.lotus",
 			},
 			cliutil.FlagVeryVerbose,
 		},

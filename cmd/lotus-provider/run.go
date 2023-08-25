@@ -8,11 +8,8 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
@@ -40,16 +37,16 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "provider-api",
-			Usage: "2345",
-		},
-		&cli.BoolFlag{
-			Name:  "enable-gpu-proving",
-			Usage: "enable use of GPU for mining operations",
-			Value: true,
+			Usage: "Port (default 12300)",
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
+		},
+		&cli.BoolFlag{
+			Name:   "halt-after-init",
+			Usage:  "only run init, then return",
+			Hidden: true,
 		},
 		&cli.BoolFlag{
 			Name:  "manage-fdlimit",
@@ -57,28 +54,28 @@ var runCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.StringFlag{
-			Name:    "db_host",
+			Name:    "db-host",
 			EnvVars: []string{"LOTUS_DB_HOST"},
 			Usage:   "Command separated list of hostnames for yugabyte cluster",
 			Value:   "yugabyte",
 		},
 		&cli.StringFlag{
-			Name:    "db_name",
+			Name:    "db-name",
 			EnvVars: []string{"LOTUS_DB_NAME"},
 			Value:   "yugabyte",
 		},
 		&cli.StringFlag{
-			Name:    "db_user",
+			Name:    "db-user",
 			EnvVars: []string{"LOTUS_DB_USER"},
 			Value:   "yugabyte",
 		},
 		&cli.StringFlag{
-			Name:    "db_password",
+			Name:    "db-password",
 			EnvVars: []string{"LOTUS_DB_PASSWORD"},
 			Value:   "yugabyte",
 		},
 		&cli.StringFlag{
-			Name:    "db_port",
+			Name:    "db-port",
 			EnvVars: []string{"LOTUS_DB_PORT"},
 			Hidden:  true,
 			Value:   "5433",
@@ -138,26 +135,6 @@ var runCmd = &cli.Command{
 
 			var localPaths []storiface.LocalPath
 
-			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&storiface.LocalStorageMeta{
-					ID:       storiface.ID(uuid.New().String()),
-					Weight:   10,
-					CanSeal:  true,
-					CanStore: false,
-				}, "", "  ")
-				if err != nil {
-					return xerrors.Errorf("marshaling storage config: %w", err)
-				}
-
-				if err := os.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
-					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
-				}
-
-				localPaths = append(localPaths, storiface.LocalPath{
-					Path: lr.Path(),
-				})
-			}
-
 			if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
@@ -197,7 +174,6 @@ var runCmd = &cli.Command{
 			return err
 		}
 		// TODO add harmonytask
-		_ = db
 
 		shutdownChan := make(chan struct{})
 
@@ -214,11 +190,7 @@ var runCmd = &cli.Command{
 		addressSlice := strings.Split(address, ":")
 		if ip := net.ParseIP(addressSlice[0]); ip != nil {
 			if ip.String() == unspecifiedAddress {
-				timeout, err := time.ParseDuration(cctx.String("timeout"))
-				if err != nil {
-					return err
-				}
-				rip, err := extractRoutableIP(timeout)
+				rip, err := db.GetRoutableIP()
 				if err != nil {
 					return err
 				}
@@ -272,13 +244,4 @@ var runCmd = &cli.Command{
 		<-finishCh
 		return nil
 	},
-}
-
-func extractRoutableIP(timeout time.Duration) (string, error) {
-	conn, err := net.DialTimeout("udp", "8.8.8.8:80", timeout)
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	return conn.LocalAddr().(*net.UDPAddr).IP.String(), nil
 }

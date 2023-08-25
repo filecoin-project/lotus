@@ -358,15 +358,6 @@ func Provider(r repo.Repo) Option {
 				Error(errors.New("the Base() option must be set before Config option")),
 			),
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
-
-			Override(new(ci.PrivKey), lp2p.PrivKey),
-			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
-			Override(new(peer.ID), peer.IDFromPublicKey),
-
-			Override(new(types.KeyStore), modules.KeyStore),
-
-			Override(new(*dtypes.APIAlg), modules.APISecret),
-
 			//ApplyIf(IsType(repo.WdPost), ConfigWdPost(c)),
 			//ApplyIf(IsType(repo.WinPost), ConfigWinPost(c)),
 		)(settings)

@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kr/pretty"
 
 	"github.com/filecoin-project/lotus/node/config"
 )
@@ -146,7 +145,7 @@ func (db *DB) GetRoutableIP() (string, error) {
 	local := tx.Conn().PgConn().Conn().LocalAddr()
 	addr, ok := local.(*net.TCPAddr)
 	if !ok {
-		return "", errors.New("could not get local addr from " + pretty.Sprint(addr))
+		return "", fmt.Errorf("could not get local addr from %v", addr)
 	}
 	return addr.IP.String(), nil
 }
