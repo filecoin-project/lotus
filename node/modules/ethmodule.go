@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -90,6 +91,11 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			},
 		})
 
+		feeHistoryCache, err := full.NewEthFeeHistoryCache(cfg.EthFeeHistoryCacheCapacity)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to construct the fee history cache: %w", err)
+		}
+
 		return &full.EthModule{
 			Chain:        cs,
 			Mpool:        mp,
@@ -100,7 +106,8 @@ func EthModuleAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRep
 			StateAPI: stateapi,
 			SyncAPI:  syncapi,
 
-			EthTxHashManager: &ethTxHashManager,
+			EthTxHashManager:   &ethTxHashManager,
+			EthFeeHistoryCache: feeHistoryCache,
 		}, nil
 	}
 }

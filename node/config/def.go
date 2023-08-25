@@ -109,6 +109,7 @@ func DefaultFullNode() *FullNode {
 		Fevm: FevmConfig{
 			EnableEthRPC:                 false,
 			EthTxHashMappingLifetimeDays: 0,
+			EthFeeHistoryCacheCapacity:   1024,
 			Events: Events{
 				DisableRealTimeFilterAPI: false,
 				DisableHistoricFilterAPI: false,
