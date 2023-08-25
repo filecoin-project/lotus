@@ -412,6 +412,16 @@ func TestSealPoStNoCommit(t *testing.T) {
 	fmt.Printf("EPoSt: %s\n", epost.Sub(precommit).String())
 }
 
+func TestMain(m *testing.M) {
+	//setup()
+	// Here it no-longer is bound to 30s but has 1m30s for the whole suite.
+	getGrothParamFileAndVerifyingKeys(sectorSize)
+
+	code := m.Run()
+	//shutdown()
+	os.Exit(code)
+}
+
 func TestSealAndVerify3(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
@@ -423,8 +433,6 @@ func TestSealAndVerify3(t *testing.T) {
 		t.Skip("this is slow")
 	}
 	_ = os.Setenv("RUST_LOG", "trace")
-
-	getGrothParamFileAndVerifyingKeys(sectorSize)
 
 	dir, err := os.MkdirTemp("", "sbtest")
 	if err != nil {
