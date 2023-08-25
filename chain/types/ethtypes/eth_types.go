@@ -938,7 +938,10 @@ type EthTrace struct {
 	TraceAddress []int          `json:"traceAddress"`
 	Type         string         `json:"Type"`
 
-	Parent       *EthTrace `json:"-"`
+	Parent *EthTrace `json:"-"`
+
+	// if a subtrace makes a call to GetBytecode, we store a pointer to that subtrace here
+	// which we then lookup when checking for delegatecall (InvokeContractDelegate)
 	LastByteCode *EthTrace `json:"-"`
 }
 

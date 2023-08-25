@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	builtinactors "github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -192,37 +193,51 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 			}
 		}
 
-		// Handle delegate calls
-		//
-		// 1) Look for trace from an EVM actor to itself on InvokeContractDelegate, method 6.
-		// 2) Check that the previous trace calls another actor on method 3 (GetByteCode) and they are at the same level (same parent)
-		// 3) Treat this as a delegate call to actor A.
-		if parent.LastByteCode != nil && trace.Action.From == trace.Action.To &&
-			trace.Action.FilecoinMethod == builtin.MethodsEVM.InvokeContractDelegate {
-			log.Debugf("COND7 found delegate call, height: %d", height)
-			prev := parent.LastByteCode
-			if prev.Action.From == trace.Action.From && prev.Action.FilecoinMethod == builtin.MethodsEVM.GetBytecode && prev.Parent == trace.Parent {
-				trace.SetCallType("delegatecall")
-				trace.Action.To = prev.Action.To
-			}
-		} else {
-			// Handle EVM call special casing
+		if builtinactors.IsEvmActor(parent.Action.FilecoinCodeCid) {
+			// Handle delegate calls
 			//
-			// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
-			// and should be dropped from the trace.
-			if builtinactors.IsEvmActor(parent.Action.FilecoinCodeCid) &&
-				et.Msg.Method > 0 &&
-				et.Msg.Method <= 1023 {
-				log.Debugf("COND5 found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, parent.Action.FilecoinCodeCid.String(), height)
+			// 1) Look for trace from an EVM actor to itself on InvokeContractDelegate, method 6.
+			// 2) Check that the previous trace calls another actor on method 3 (GetByteCode) and they are at the same level (same parent)
+			// 3) Treat this as a delegate call to actor A.
+			if parent.LastByteCode != nil && trace.Action.From == trace.Action.To &&
+				trace.Action.FilecoinMethod == builtin.MethodsEVM.InvokeContractDelegate {
+				log.Debugf("COND7 found delegate call, height: %d", height)
+				prev := parent.LastByteCode
+				if prev.Action.From == trace.Action.From && prev.Action.FilecoinMethod == builtin.MethodsEVM.GetBytecode && prev.Parent == trace.Parent {
+					trace.SetCallType("delegatecall")
+					trace.Action.To = prev.Action.To
 
-				if et.Msg.Method == builtin.MethodsEVM.GetBytecode {
-					// save the last bytecode trace to handle delegate calls
-					parent.LastByteCode = trace
+					var dp evm.DelegateCallParams
+					err := dp.UnmarshalCBOR(bytes.NewReader(et.Msg.Params))
+					if err != nil {
+						return xerrors.Errorf("failed UnmarshalCBOR: %w", err)
+					}
+					trace.Action.Input = dp.Input
+
+					trace.Result.Output, err = decodePayload(et.MsgRct.Return, et.MsgRct.ReturnCodec)
+					if err != nil {
+						return xerrors.Errorf("failed decodePayload: %w", err)
+					}
 				}
+			} else {
+				// Handle EVM call special casing
+				//
+				// Any outbound call from an EVM actor on methods 1-1023 are side-effects from EVM instructions
+				// and should be dropped from the trace.
+				if et.Msg.Method > 0 &&
+					et.Msg.Method <= 1023 {
+					log.Debugf("Infof found outbound call from an EVM actor on method 1-1023 method:%d, code:%s, height:%d", et.Msg.Method, parent.Action.FilecoinCodeCid.String(), height)
 
-				return nil
+					if et.Msg.Method == builtin.MethodsEVM.GetBytecode {
+						// save the last bytecode trace to handle delegate calls
+						parent.LastByteCode = trace
+					}
+
+					return nil
+				}
 			}
 		}
+
 	}
 
 	// we are adding trace to the traces so update the parent subtraces count as it was originally set to zero
