@@ -5,12 +5,14 @@ import (
 	"time"
 )
 
-// ETA is a very simple ETA calculator
+// ETA implements a very simple eta estimate based on the number of remaining items. It does not
+// require knowing the work size in advance and is therefore suitable for streaming workloads and
+// also does not require that consecutive updates have a monotonically decreasing remaining value.
 type ETA struct {
-	// how many items in buff we use for calculating ETA
-	size int
-	// buffer of processing time of past size updates
-	buff []item
+	// max number of items to keep in memory
+	maxItems int
+	// a list of most recently updated items
+	items []item
 	// we store the last calculated ETA which we reuse if there was not change in remaining items
 	cachedETA string
 }
@@ -20,11 +22,11 @@ type item struct {
 	remaining int64
 }
 
-// NewETA creates a new ETA calculator with the given buffer size
-func NewETA(size int) *ETA {
+// NewETA creates a new ETA calculator of the given size
+func NewETA(maxItems int) *ETA {
 	return &ETA{
-		size: size,
-		buff: make([]item, 0),
+		maxItems: maxItems,
+		items:    make([]item, 0),
 	}
 }
 
@@ -35,26 +37,26 @@ func (e *ETA) Update(remaining int64) string {
 		remaining: remaining,
 	}
 
-	if len(e.buff) == 0 {
-		e.buff = append(e.buff, item)
+	if len(e.items) == 0 {
+		e.items = append(e.items, item)
 		return ""
 	}
 
 	// we ignore updates with the same remaining value and just return the previous ETA
-	if e.buff[len(e.buff)-1].remaining == remaining {
+	if e.items[len(e.items)-1].remaining == remaining {
 		return e.cachedETA
 	}
 
 	// remove oldest item from buffer if its full
-	if len(e.buff) >= e.size {
-		e.buff = e.buff[1:]
+	if len(e.items) >= e.maxItems {
+		e.items = e.items[1:]
 	}
 
-	e.buff = append(e.buff, item)
+	e.items = append(e.items, item)
 
 	// calculate the average processing time per item in the buffer
-	diffMs := e.buff[len(e.buff)-1].timestamp.Sub(e.buff[0].timestamp).Milliseconds()
-	avg := diffMs / int64(len(e.buff))
+	diffMs := e.items[len(e.items)-1].timestamp.Sub(e.items[0].timestamp).Milliseconds()
+	avg := diffMs / int64(len(e.items))
 
 	// use that average processing time to estimate how long the remaining items will take
 	// and cache that ETA so we don't have to recalculate it on every update unless the

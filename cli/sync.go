@@ -263,8 +263,8 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 	}
 	firstApp = state.VMApplied
 
-	// eta computes the ETA for the sync to complete (with a lookback of 30 processed items)
-	eta := cliutil.NewETA(30)
+	// eta computes the ETA for the sync to complete (with a lookback of 10 processed items)
+	eta := cliutil.NewETA(10)
 
 	for {
 		state, err := napi.SyncState(ctx)
