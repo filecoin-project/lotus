@@ -1,6 +1,9 @@
 package cliutil
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // ETA is a very simple ETA calculator
 type ETA struct {
@@ -54,12 +57,18 @@ func (e *ETA) Update(remaining int64) string {
 	avg := diffMs / int64(len(e.buff))
 
 	// use that average processing time to estimate how long the remaining items will take
-	var t time.Time
-	t = t.Add(time.Duration(avg*remaining) * time.Millisecond)
-
-	// cache the ETA so we don't have to recalculate it on every update unless the remaining
-	// value changes
-	e.cachedETA = t.Format("12h:34m:56s")
+	// and cache that ETA so we don't have to recalculate it on every update unless the
+	// remaining value changes
+	e.cachedETA = msToETA(avg * remaining)
 
 	return e.cachedETA
+}
+
+func msToETA(ms int64) string {
+	seconds := ms / 1000
+	sec := seconds % 60
+	minutes := seconds / 60
+	min := minutes % 60
+	hour := minutes / 60
+	return fmt.Sprintf("%02dh:%02dm:%02ds", hour, min, sec)
 }
