@@ -60,12 +60,12 @@ func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
 func (t *task1) Adder(add harmonytask.AddTaskFunc) {
 	for _, vTmp := range t.toAdd {
 		v := vTmp
-		add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
+		add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
 			t.myPersonalTableLock.Lock()
 			defer t.myPersonalTableLock.Unlock()
 
 			t.myPersonalTable[tID] = v
-			return true
+			return true, nil
 		})
 	}
 }
@@ -120,10 +120,10 @@ func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 		adder: func(add harmonytask.AddTaskFunc) {
 			for _, vTmp := range []string{"A", "B"} {
 				v := vTmp
-				add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
+				add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
 					_, err := tx.Exec("INSERT INTO itest_scratch (some_int, content) VALUES ($1,$2)", tID, v)
 					require.NoError(t, err)
-					return true
+					return true, nil
 				})
 			}
 		},

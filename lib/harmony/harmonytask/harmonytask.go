@@ -3,13 +3,12 @@ package harmonytask
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"github.com/filecoin-project/lotus/lib/harmony/resources"
@@ -40,7 +39,7 @@ type TaskTypeDetails struct {
 	// It should also return success if the trigger succeeded.
 	// NOTE: if refatoring tasks, see if your task is
 	// necessary. Ex: Is the sector state correct for your stage to run?
-	Follows map[string]func(TaskID, AddTaskFunc) bool
+	Follows map[string]func(TaskID, AddTaskFunc) (bool, error)
 }
 
 // TaskInterface must be implemented in order to have a task used by harmonytask.
@@ -90,7 +89,7 @@ type TaskInterface interface {
 	Adder(AddTaskFunc)
 }
 
-type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) bool)
+type AddTaskFunc func(extraInfo func(TaskID, *harmonydb.Tx) (bool, error))
 
 type TaskEngine struct {
 	ctx            context.Context
@@ -107,8 +106,9 @@ type TaskEngine struct {
 	lastCleanup    atomic.Value
 }
 type followStruct struct {
-	f func(TaskID, AddTaskFunc) bool
-	h *taskTypeHandler
+	f    func(TaskID, AddTaskFunc) (bool, error)
+	h    *taskTypeHandler
+	name string
 }
 
 type TaskID int
@@ -153,7 +153,7 @@ func New(
 		}
 
 		for name, fn := range c.TypeDetails().Follows {
-			e.follows[name] = append(e.follows[name], followStruct{fn, &h})
+			e.follows[name] = append(e.follows[name], followStruct{fn, &h, name})
 
 			// populate harmony_task_follows
 			_, err := db.Exec(e.ctx, `INSERT INTO harmony_task_follows (owner_id, from_task, to_task)
@@ -271,7 +271,12 @@ func (e *TaskEngine) followWorkInDB() {
 					continue
 				}
 				// we need to create this task
-				if !src.h.Follows[fromName](TaskID(workAlreadyDone), src.h.AddTask) {
+				b, err := src.h.Follows[fromName](TaskID(workAlreadyDone), src.h.AddTask)
+				if err != nil {
+					log.Errorw("Could not follow: ", "error", err)
+					continue
+				}
+				if !b {
 					// But someone may have beaten us to it.
 					log.Debugf("Unable to add task %s following Task(%d, %s)", src.h.Name, workAlreadyDone, fromName)
 				}
@@ -314,54 +319,54 @@ func (e *TaskEngine) pollerTryAllWork() {
 
 // GetHttpHandlers needs to be used by the http server to register routes.
 // This implements the receiver-side of "follows" and "bumps" the fast way.
-func (e *TaskEngine) GetHttpHandlers() http.Handler {
-	root := mux.NewRouter()
-	s := root.PathPrefix("/scheduler")
-	f := s.PathPrefix("/follows")
-	b := s.PathPrefix("/bump")
+func (e *TaskEngine) ApplyHttpHandlers(root gin.IRouter) {
+	s := root.Group("/scheduler")
+	f := s.Group("/follows")
+	b := s.Group("/bump")
 	for name, vsTmp := range e.follows {
 		vs := vsTmp
-		f.Path("/" + name + "/{tID}").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tIDString := mux.Vars(r)["tID"]
+		f.GET("/"+name+"/:tID", func(c *gin.Context) {
+			tIDString := c.Param("tID")
 			tID, err := strconv.Atoi(tIDString)
 			if err != nil {
-				w.WriteHeader(401)
-				fmt.Fprint(w, err.Error())
+				c.JSON(401, map[string]any{"error": err.Error()})
 				return
 			}
 			taskAdded := false
 			for _, vTmp := range vs {
 				v := vTmp
-				taskAdded = taskAdded || v.f(TaskID(tID), v.h.AddTask)
+				b, err := v.f(TaskID(tID), v.h.AddTask)
+				if err != nil {
+					log.Error("Follow attemp failed", "error", err, "from", name, "to", v.name)
+				}
+				taskAdded = taskAdded || b
 			}
 			if taskAdded {
 				e.tryAllWork <- true
-				w.WriteHeader(200)
+				c.Status(200)
 				return
 			}
-			w.WriteHeader(202) // NOTE: 202 for "accepted" but not worked.
+			c.Status(202) // NOTE: 202 for "accepted" but not worked.
 		})
 	}
 	for _, hTmp := range e.handlers {
 		h := hTmp
-		b.Path("/" + h.Name + "/{tID}").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tIDString := mux.Vars(r)["tID"]
+		b.GET("/"+h.Name+"/:tID", func(c *gin.Context) {
+			tIDString := c.Param("tID")
 			tID, err := strconv.Atoi(tIDString)
 			if err != nil {
-				w.WriteHeader(401)
-				fmt.Fprint(w, err.Error())
+				c.JSON(401, map[string]any{"error": err.Error()})
 				return
 			}
 			// We NEED to block while trying to deliver
 			// this work to ease the network impact.
 			if h.considerWork("bump", []TaskID{TaskID(tID)}) {
-				w.WriteHeader(200)
+				c.Status(200)
 				return
 			}
-			w.WriteHeader(202) // NOTE: 202 for "accepted" but not worked.
+			c.Status(202) // NOTE: 202 for "accepted" but not worked.
 		})
 	}
-	return root
 }
 
 func (e *TaskEngine) bump(taskType string) {
