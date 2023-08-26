@@ -145,7 +145,7 @@ func (db *DB) GetRoutableIP() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback(context.Background())
+	defer func() { _ = tx.Rollback(context.Background()) }()
 	local := tx.Conn().PgConn().Conn().LocalAddr()
 	addr, ok := local.(*net.TCPAddr)
 	if !ok {

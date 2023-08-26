@@ -58,7 +58,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 			err = db.QueryRow(ctx, `INSERT INTO harmony_machines 
 		(host_and_port, cpu, ram, gpu, gpuram) VALUES
 		($1,$2,$3,$4,$5) RETURNING id`,
-				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu, reg.GpuRam).Scan(&reg.Resources.MachineID)
+				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu, lo.Sum(reg.GpuRam)).Scan(&reg.Resources.MachineID)
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +67,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 			reg.MachineID = ownerID[0]
 			_, err := db.Exec(ctx, `UPDATE harmony_machines SET
 		   cpu=$1, ram=$2, gpu=$3, gpuram=$4 WHERE id=$6`,
-				reg.Cpu, reg.Ram, reg.Gpu, reg.GpuRam, reg.Resources.MachineID)
+				reg.Cpu, reg.Ram, reg.Gpu, lo.Sum(reg.GpuRam), reg.Resources.MachineID)
 			if err != nil {
 				return nil, err
 			}
