@@ -2,25 +2,24 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-contrib/pprof"
+	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
@@ -138,7 +137,7 @@ var runCmd = &cli.Command{
 			if err := lr.SetStorage(func(sc *storiface.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
-				return xerrors.Errorf("set storage config: %w", err)
+				return fmt.Errorf("set storage config: %w", err)
 			}
 
 			{
@@ -149,7 +148,7 @@ var runCmd = &cli.Command{
 				}
 			}
 			if err := lr.Close(); err != nil {
-				return xerrors.Errorf("close repo: %w", err)
+				return fmt.Errorf("close repo: %w", err)
 			}
 		}
 
@@ -173,7 +172,6 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		// TODO add harmonytask
 
 		shutdownChan := make(chan struct{})
 
@@ -182,7 +180,7 @@ var runCmd = &cli.Command{
 			node.Provider(r),
 		)
 		if err != nil {
-			return xerrors.Errorf("creating node: %w", err)
+			return fmt.Errorf("creating node: %w", err)
 		}
 
 		const unspecifiedAddress = "0.0.0.0"
@@ -202,33 +200,35 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		handler := mux.NewRouter()
+		taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{}, address)
+		if err != nil {
+			return err
+		}
+		handler := gin.New()
+
+		taskEngine.ApplyHttpHandlers(handler.Group("/"))
+		defer taskEngine.GracefullyTerminate(time.Hour)
+
 		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
-		handler.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
-				w.WriteHeader(401)
-				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
+		handler.NoRoute(gin.HandlerFunc(func(c *gin.Context) {
+			if !auth.HasPerm(c, nil, api.PermAdmin) {
+				c.JSON(401, struct{ Error string }{"unauthorized: missing admin permission"})
 				return
 			}
 
-			fh.ServeHTTP(w, r)
-		})
+			fh.ServeHTTP(c.Writer, c.Request)
+		}))
 		// local APIs
 		{
-			m := mux.NewRouter()
 			// debugging
-			m.Handle("/debug/metrics", metrics.Exporter())
-			m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
-
-			var hnd http.Handler = m
-
-			handler.PathPrefix("/").Handler(hnd)
+			handler.GET("/debug/metrics", gin.WrapH(metrics.Exporter()))
+			pprof.Register(handler)
 		}
 
 		// Serve the RPC.
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
-			return xerrors.Errorf("getting API endpoint: %w", err)
+			return fmt.Errorf("getting API endpoint: %w", err)
 		}
 		rpcStopper, err := node.ServeRPC(handler, "lotus-provider", endpoint)
 		if err != nil {
