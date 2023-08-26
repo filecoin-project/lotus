@@ -3,6 +3,7 @@ package harmonytask
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -23,15 +24,14 @@ type taskTypeHandler struct {
 	Count      atomic.Int32
 }
 
-func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) bool) {
+func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
 	var tID TaskID
-	did, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) bool {
+	did, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
 		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
 			VALUES ($1, $2, CURRENT_TIMESTAMP) `, h.Name, h.TaskEngine.ownerID)
 		if err != nil {
-			log.Error("Could not insert into harmonyTask", err)
-			return false
+			return false, fmt.Errorf("Could not insert into harmonyTask: %w", err)
 		}
 		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
 		if err != nil {
@@ -146,19 +146,18 @@ top:
 func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done bool, doErr error) {
 	workEnd := time.Now()
 
-	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) bool {
+	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
 		if err != nil {
-			log.Error("Could not log completion: ", err)
-			return false
+			return false, fmt.Errorf("Could not log completion: %w ", err)
 		}
 		result := "unspecified error"
 		if done {
 			_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
 			if err != nil {
-				log.Error("Could not log completion: ", err)
-				return false
+
+				return false, fmt.Errorf("Could not log completion: %w", err)
 			}
 			result = ""
 		} else {
@@ -171,8 +170,7 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 				err = tx.QueryRow(`SELECT count(*) FROM harmony_task_history 
 				WHERE task_id=$1 AND result=FALSE`, tID).Scan(&ct)
 				if err != nil {
-					log.Error("Could not read task history:", err)
-					return false
+					return false, fmt.Errorf("Could not read task history: %w", err)
 				}
 				if ct >= h.MaxFailures {
 					deleteTask = true
@@ -181,15 +179,13 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 			if deleteTask {
 				_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
 				if err != nil {
-					log.Error("Could not delete failed job: ", err)
-					return false
+					return false, fmt.Errorf("Could not delete failed job: %w", err)
 				}
 				// Note: Extra Info is left laying around for later review & clean-up
 			} else {
 				_, err := tx.Exec(`UPDATE harmony_task SET owner_id=NULL WHERE id=$1`, tID)
 				if err != nil {
-					log.Error("Could not disown failed task: ", tID, err)
-					return false
+					return false, fmt.Errorf("Could not disown failed task: %v %v", tID, err)
 				}
 			}
 		}
@@ -197,10 +193,9 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 												(task_id, name, posted,    work_start, work_end, result, err)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7)`, tID, h.Name, postedTime, workStart, workEnd, done, result)
 		if err != nil {
-			log.Error("Could not write history: ", err)
-			return false
+			return false, fmt.Errorf("Could not write history: %w", err)
 		}
-		return true
+		return true, nil
 	})
 	if err != nil {
 		log.Error("Could not record transaction: ", err)
@@ -249,7 +244,11 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 	inProcessDefs := h.TaskEngine.follows[h.Name]
 	inProcessFollowers := make([]string, len(inProcessDefs))
 	for _, fs := range inProcessDefs {
-		if fs.f(tID, fs.h.AddTask) {
+		b, err := fs.f(tID, fs.h.AddTask)
+		if err != nil {
+			log.Error("Could not follow", "error", err, "from", h.Name, "to", fs.name)
+		}
+		if b {
 			inProcessFollowers = append(inProcessFollowers, fs.h.Name)
 		}
 	}
