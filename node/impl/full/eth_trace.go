@@ -242,7 +242,7 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 
 	// we are adding trace to the traces so update the parent subtraces count as it was originally set to zero
 	if parent != nil {
-		parent.Subtraces += 1
+		parent.Subtraces++
 	}
 
 	*traces = append(*traces, trace)
