@@ -579,6 +579,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	// If the base has changed, we take the _intersection_ of our old base and new base,
 	// thus ejecting blocks from any equivocating miners, without taking any new blocks.
 	if newBase.TipSet.Height() == base.TipSet.Height() && !newBase.TipSet.Equals(base.TipSet) {
+		log.Warnf("base changed from %s to %s, taking intersection", base.TipSet.Key(), newBase.TipSet.Key())
 		newBaseMap := map[cid.Cid]struct{}{}
 		for _, newBaseBlk := range newBase.TipSet.Cids() {
 			newBaseMap[newBaseBlk] = struct{}{}
@@ -599,6 +600,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			}
 
 			if !base.TipSet.MinTicket().Equals(refreshedBase.MinTicket()) {
+				log.Warn("recomputing ticket due to base refresh")
+
 				ticket, err = m.computeTicket(ctx, &rbase, round, refreshedBase.MinTicket(), mbi)
 				if err != nil {
 					err = xerrors.Errorf("failed to refresh ticket: %w", err)
@@ -606,6 +609,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 				}
 			}
 
+			log.Warn("re-selecting messages due to base refresh")
 			// refresh messages, as the selected messages may no longer be valid
 			msgs, err = m.api.MpoolSelect(ctx, refreshedBase.Key(), ticket.Quality())
 			if err != nil {
