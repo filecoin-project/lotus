@@ -388,6 +388,14 @@ func (sm *StateManager) GetCirculatingSupply(ctx context.Context, height abi.Cha
 	circ := big.Zero()
 	unCirc := big.Zero()
 	err := st.ForEach(func(a address.Address, actor *types.Actor) error {
+		// this can be a lengthy operation, we need to cancel early when
+		// the context is cancelled to avoid resource exhaustion
+		select {
+		case <-ctx.Done():
+			// this will cause ForEach to return
+			return ctx.Err()
+		default:
+		}
 		switch {
 		case actor.Balance.IsZero():
 			// Do nothing for zero-balance actors
