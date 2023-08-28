@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-// ETA implements a very simple eta estimate based on the number of remaining items. It does not
+// ETA implements a very simple eta calculator based on the number of remaining items. It does not
 // require knowing the work size in advance and is therefore suitable for streaming workloads and
 // also does not require that consecutive updates have a monotonically decreasing remaining value.
 type ETA struct {
 	// max number of items to keep in memory
 	maxItems int
-	// a list of most recently updated items
+	// a queue of most recently updated items
 	items []item
 	// we store the last calculated ETA which we reuse if there was not change in remaining items
 	cachedETA string
@@ -47,14 +47,13 @@ func (e *ETA) Update(remaining int64) string {
 		return e.cachedETA
 	}
 
-	// remove oldest item from buffer if its full
+	// append the item to the queue and remove the oldest item if needed
 	if len(e.items) >= e.maxItems {
 		e.items = e.items[1:]
 	}
-
 	e.items = append(e.items, item)
 
-	// calculate the average processing time per item in the buffer
+	// calculate the average processing time per item in the queue
 	diffMs := e.items[len(e.items)-1].timestamp.Sub(e.items[0].timestamp).Milliseconds()
 	avg := diffMs / int64(len(e.items))
 
@@ -68,9 +67,8 @@ func (e *ETA) Update(remaining int64) string {
 
 func msToETA(ms int64) string {
 	seconds := ms / 1000
-	sec := seconds % 60
 	minutes := seconds / 60
-	min := minutes % 60
-	hour := minutes / 60
-	return fmt.Sprintf("%02dh:%02dm:%02ds", hour, min, sec)
+	hours := minutes / 60
+
+	return fmt.Sprintf("%02dh:%02dm:%02ds", hours, minutes%60, seconds%60)
 }
