@@ -6,6 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/lotus/build"
+	"golang.org/x/xerrors"
 	"io"
 	"os"
 	"path/filepath"
@@ -196,6 +199,16 @@ func NewNullReader(size abi.UnpaddedPieceSize) io.Reader {
 
 func (m NullReader) NullBytes() int64 {
 	return m.N
+}
+
+func TestMain(m *testing.M) {
+	err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), uint64(2048))
+	if err != nil {
+		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
+	}
+
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestSnapDeals(t *testing.T) {
