@@ -337,7 +337,7 @@ func (e *TaskEngine) ApplyHttpHandlers(root gin.IRouter) {
 				v := vTmp
 				b, err := v.f(TaskID(tID), v.h.AddTask)
 				if err != nil {
-					log.Error("Follow attempt failed", "error", err, "from", name, "to", v.name)
+					log.Errorw("Follow attempt failed", "error", err, "from", name, "to", v.name)
 				}
 				taskAdded = taskAdded || b
 			}

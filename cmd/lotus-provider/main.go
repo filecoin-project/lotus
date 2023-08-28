@@ -25,7 +25,7 @@ func main() {
 		//initCmd,
 		runCmd,
 		stopCmd,
-		//configCmd,
+		configCmd,
 		//backupCmd,
 		//lcli.WithCategory("chain", actorCmd),
 		//lcli.WithCategory("storage", sectorsCmd),
