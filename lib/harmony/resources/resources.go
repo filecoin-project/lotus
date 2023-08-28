@@ -132,7 +132,7 @@ func getResources() (res Resources, err error) {
 		}
 		all := strings.ToLower(strings.Join(gpus, ","))
 		if len(gpus) > 1 || strings.Contains(all, "ati") || strings.Contains(all, "nvidia") {
-			res.Gpu = 1
+			res.Gpu = float64(len(gpus))
 		}
 	}
 

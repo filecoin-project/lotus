@@ -323,8 +323,8 @@ func (e *TaskEngine) ApplyHttpHandlers(root gin.IRouter) {
 	s := root.Group("/scheduler")
 	f := s.Group("/follows")
 	b := s.Group("/bump")
-	for name, vsTmp := range e.follows {
-		vs := vsTmp
+	for name, vs := range e.follows {
+		name, vs := name, vs
 		f.GET("/"+name+"/:tID", func(c *gin.Context) {
 			tIDString := c.Param("tID")
 			tID, err := strconv.Atoi(tIDString)
@@ -402,7 +402,7 @@ func (e *TaskEngine) resourcesInUse() resources.Resources {
 		for i := int32(0); i < ct; i++ {
 			for grIdx, j := range tmp.GpuRam {
 				if j > t.Cost.GpuRam[0] {
-					tmp.GpuRam[grIdx] = j - t.Cost.GpuRam[0]
+					tmp.GpuRam[grIdx] = 0 // Only 1 per GPU. j - t.Cost.GpuRam[0]
 					break
 				}
 			}
