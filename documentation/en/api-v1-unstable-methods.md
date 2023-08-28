@@ -3106,8 +3106,8 @@ Response:
   {
     "action": {
       "callType": "string value",
-      "from": "string value",
-      "to": "string value",
+      "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+      "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
       "gas": "0x5",
       "input": "0x07",
       "value": "0x0"
@@ -3149,14 +3149,14 @@ Response:
 ```json
 [
   {
-    "output": "string value",
+    "output": "0x07",
     "stateDiff": "string value",
     "trace": [
       {
         "action": {
           "callType": "string value",
-          "from": "string value",
-          "to": "string value",
+          "from": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
+          "to": "0x5cbeecf99d3fdb3f25e309cc264f240bb0664031",
           "gas": "0x5",
           "input": "0x07",
           "value": "0x0"
