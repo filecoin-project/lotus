@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -30,6 +31,7 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
 	)
+	logging.SetLogLevel("harmonytask", "debug")
 
 	f(miner)
 }
@@ -161,7 +163,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 		sender.GracefullyTerminate(time.Second * 5)
 		worker.GracefullyTerminate(time.Second * 5)
 		sort.Strings(dest)
-		require.Equal(t, dest, []string{"A", "B"})
+		require.Equal(t, []string{"A", "B"}, dest)
 	})
 }
 

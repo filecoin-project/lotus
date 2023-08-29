@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"regexp"
 	"sort"
 	"strconv"
@@ -137,6 +138,20 @@ func (t tracer) TraceQueryEnd(ctx context.Context, conn *pgx.Conn, data pgx.Trac
 		"err", data.Err,
 		"rowCt", data.CommandTag.RowsAffected(),
 		"milliseconds", ms)
+}
+
+func (db *DB) GetRoutableIP() (string, error) {
+	tx, err := db.pgx.Begin(context.Background())
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	local := tx.Conn().PgConn().Conn().LocalAddr()
+	addr, ok := local.(*net.TCPAddr)
+	if !ok {
+		return "", fmt.Errorf("could not get local addr from %v", addr)
+	}
+	return addr.IP.String(), nil
 }
 
 // addStatsAndConnect connects a prometheus logger. Be sure to run this before using the DB.

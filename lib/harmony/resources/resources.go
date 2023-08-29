@@ -54,11 +54,12 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not read from harmony_machines: %w", err)
 		}
+		gpuram := lo.Sum(reg.GpuRam)
 		if len(ownerID) == 0 {
 			err = db.QueryRow(ctx, `INSERT INTO harmony_machines 
 		(host_and_port, cpu, ram, gpu, gpuram) VALUES
 		($1,$2,$3,$4,$5) RETURNING id`,
-				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu, reg.GpuRam).Scan(&reg.Resources.MachineID)
+				hostnameAndPort, reg.Cpu, reg.Ram, reg.Gpu, gpuram).Scan(&reg.Resources.MachineID)
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +68,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 			reg.MachineID = ownerID[0]
 			_, err := db.Exec(ctx, `UPDATE harmony_machines SET
 		   cpu=$1, ram=$2, gpu=$3, gpuram=$4 WHERE id=$6`,
-				reg.Cpu, reg.Ram, reg.Gpu, reg.GpuRam, reg.Resources.MachineID)
+				reg.Cpu, reg.Ram, reg.Gpu, gpuram, reg.Resources.MachineID)
 			if err != nil {
 				return nil, err
 			}
@@ -132,7 +133,7 @@ func getResources() (res Resources, err error) {
 		}
 		all := strings.ToLower(strings.Join(gpus, ","))
 		if len(gpus) > 1 || strings.Contains(all, "ati") || strings.Contains(all, "nvidia") {
-			res.Gpu = 1
+			res.Gpu = float64(len(gpus))
 		}
 	}
 

@@ -323,8 +323,8 @@ func (e *TaskEngine) ApplyHttpHandlers(root gin.IRouter) {
 	s := root.Group("/scheduler")
 	f := s.Group("/follows")
 	b := s.Group("/bump")
-	for name, vsTmp := range e.follows {
-		vs := vsTmp
+	for name, vs := range e.follows {
+		name, vs := name, vs
 		f.GET("/"+name+"/:tID", func(c *gin.Context) {
 			tIDString := c.Param("tID")
 			tID, err := strconv.Atoi(tIDString)
@@ -337,7 +337,7 @@ func (e *TaskEngine) ApplyHttpHandlers(root gin.IRouter) {
 				v := vTmp
 				b, err := v.f(TaskID(tID), v.h.AddTask)
 				if err != nil {
-					log.Error("Follow attemp failed", "error", err, "from", name, "to", v.name)
+					log.Errorw("Follow attempt failed", "error", err, "from", name, "to", v.name)
 				}
 				taskAdded = taskAdded || b
 			}
@@ -399,10 +399,13 @@ func (e *TaskEngine) resourcesInUse() resources.Resources {
 		tmp.Cpu -= int(ct) * t.Cost.Cpu
 		tmp.Gpu -= float64(ct) * t.Cost.Gpu
 		tmp.Ram -= uint64(ct) * t.Cost.Ram
+		if len(t.Cost.GpuRam) == 0 {
+			continue
+		}
 		for i := int32(0); i < ct; i++ {
 			for grIdx, j := range tmp.GpuRam {
 				if j > t.Cost.GpuRam[0] {
-					tmp.GpuRam[grIdx] = j - t.Cost.GpuRam[0]
+					tmp.GpuRam[grIdx] = 0 // Only 1 per GPU. j - t.Cost.GpuRam[0]
 					break
 				}
 			}
