@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -30,6 +31,7 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
 	)
+	logging.SetLogLevel("harmonytask", "debug")
 
 	f(miner)
 }
