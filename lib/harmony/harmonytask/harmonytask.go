@@ -399,6 +399,9 @@ func (e *TaskEngine) resourcesInUse() resources.Resources {
 		tmp.Cpu -= int(ct) * t.Cost.Cpu
 		tmp.Gpu -= float64(ct) * t.Cost.Gpu
 		tmp.Ram -= uint64(ct) * t.Cost.Ram
+		if len(t.Cost.GpuRam) == 0 {
+			continue
+		}
 		for i := int32(0); i < ct; i++ {
 			for grIdx, j := range tmp.GpuRam {
 				if j > t.Cost.GpuRam[0] {

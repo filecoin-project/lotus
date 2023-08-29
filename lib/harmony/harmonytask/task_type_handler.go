@@ -11,6 +11,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/samber/lo"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
@@ -219,7 +220,7 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
 	}
 	for _, u := range r.GpuRam {
-		if u > h.Cost.GpuRam[0] {
+		if u > lo.Sum(h.Cost.GpuRam) {
 			goto enoughGpuRam
 		}
 	}

@@ -161,7 +161,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 		sender.GracefullyTerminate(time.Second * 5)
 		worker.GracefullyTerminate(time.Second * 5)
 		sort.Strings(dest)
-		require.Equal(t, dest, []string{"A", "B"})
+		require.Equal(t, []string{"A", "B"}, dest)
 	})
 }
 
