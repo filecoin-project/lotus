@@ -2,6 +2,7 @@ package wdpost
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -77,6 +78,7 @@ type WindowPoStScheduler struct {
 	maxPartitionsPerRecoveryMessage         int
 	singleRecoveringPartitionPerPostMessage bool
 	ch                                      *changeHandler
+	ch2                                     *changeHandler2
 
 	actor address.Address
 
@@ -85,6 +87,7 @@ type WindowPoStScheduler struct {
 
 	// failed abi.ChainEpoch // eps
 	// failLk sync.Mutex
+	db *harmonydb.DB
 }
 
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
@@ -96,7 +99,8 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
-	actor address.Address) (*WindowPoStScheduler, error) {
+	actor address.Address,
+	db *harmonydb.DB) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -123,6 +127,7 @@ func NewWindowedPoStScheduler(api NodeAPI,
 			evtTypeWdPoStFaults:     j.RegisterEventType("wdpost", "faults_processed"),
 		},
 		journal: j,
+		db:      db,
 	}, nil
 }
 
@@ -135,9 +140,13 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		*WindowPoStScheduler
 	}{s.api, s}
 
-	s.ch = newChangeHandler(callbacks, s.actor)
+	s.ch = newChangeHandler(callbacks, s.actor, s.db)
 	defer s.ch.shutdown()
 	s.ch.start()
+
+	s.ch2 = newChangeHandler2(callbacks, s.actor, s.db)
+	defer s.ch2.shutdown()
+	s.ch2.start()
 
 	var (
 		notifs <-chan []*api.HeadChange
@@ -219,6 +228,11 @@ func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.T
 		return
 	}
 	err := s.ch.update(ctx, revert, apply)
+	if err != nil {
+		log.Errorf("handling head updates in window post sched: %+v", err)
+	}
+
+	err = s.ch2.update(ctx, revert, apply)
 	if err != nil {
 		log.Errorf("handling head updates in window post sched: %+v", err)
 	}

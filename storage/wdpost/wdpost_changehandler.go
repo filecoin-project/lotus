@@ -2,6 +2,7 @@ package wdpost
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -36,11 +37,13 @@ type changeHandler struct {
 	actor      address.Address
 	proveHdlr  *proveHandler
 	submitHdlr *submitHandler
+
+	db *harmonydb.DB
 }
 
-func newChangeHandler(api wdPoStCommands, actor address.Address) *changeHandler {
+func newChangeHandler(api wdPoStCommands, actor address.Address, db *harmonydb.DB) *changeHandler {
 	posts := newPostsCache()
-	p := newProver(api, posts)
+	p := newProver(api, posts, db)
 	s := newSubmitter(api, posts)
 	return &changeHandler{api: api, actor: actor, proveHdlr: p, submitHdlr: s}
 }
@@ -162,11 +165,14 @@ type proveHandler struct {
 	// Used for testing
 	processedHeadChanges chan *headChange
 	processedPostResults chan *postResult
+
+	wdPostTask *WdPostTask
 }
 
 func newProver(
 	api wdPoStCommands,
 	posts *postsCache,
+	db *harmonydb.DB,
 ) *proveHandler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &proveHandler{
@@ -176,6 +182,7 @@ func newProver(
 		hcs:         make(chan *headChange),
 		shutdownCtx: ctx,
 		shutdown:    cancel,
+		wdPostTask:  NewWdPostTask(db),
 	}
 }
 
@@ -211,6 +218,8 @@ func (p *proveHandler) run() {
 
 func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSet, di *dline.Info) {
 	// If the post window has expired, abort the current proof
+	//log.Errorf("--------------------WINDOW POST CHANGE HANDLER PROCESS HC----------------------")
+
 	if p.current != nil && newTS.Height() >= p.current.di.Close {
 		// Cancel the context on the current proof
 		p.current.abort()
@@ -233,6 +242,11 @@ func (p *proveHandler) processHeadChange(ctx context.Context, newTS *types.TipSe
 		di = nextDeadline(di)
 		_, complete = p.posts.get(di)
 	}
+
+	//err := p.wdPostTask.AddTask(ctx, newTS, di)
+	//if err != nil {
+	//	log.Errorf("AddTask failed: %v", err)
+	//}
 
 	// Check if the chain is above the Challenge height for the post window
 	if newTS.Height() < di.Challenge+ChallengeConfidence {
