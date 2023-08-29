@@ -155,6 +155,8 @@ func buildTraces(ctx context.Context, traces *[]*ethtypes.EthTrace, parent *etht
 			parent.Result.Output = nil
 
 			// there should never be any subcalls when creating a native actor
+			//
+			// TODO: add support for native actors calling another when created
 			return nil
 		}
 
