@@ -12,57 +12,53 @@ type ETA struct {
 	// max number of items to keep in memory
 	maxItems int
 	// a queue of most recently updated items
-	items []item
+	items []time.Time
 	// we store the last calculated ETA which we reuse if there was not change in remaining items
-	cachedETA string
-}
-
-type item struct {
-	timestamp time.Time
-	remaining int64
+	lastETA string
+	// we store the last remaining value we processed so we can ignore updates with the same value
+	lastRemaining int64
 }
 
 // NewETA creates a new ETA calculator of the given size
 func NewETA(maxItems int) *ETA {
 	return &ETA{
 		maxItems: maxItems,
-		items:    make([]item, 0),
+		items:    make([]time.Time, 0),
 	}
 }
 
 // Update updates the ETA calculator with the remaining number of items and returns the ETA
 func (e *ETA) Update(remaining int64) string {
-	item := item{
-		timestamp: time.Now(),
-		remaining: remaining,
-	}
+	ts := time.Now()
 
 	if len(e.items) == 0 {
-		e.items = append(e.items, item)
+		e.items = append(e.items, ts)
+		e.lastRemaining = remaining
 		return ""
 	}
 
 	// we ignore updates with the same remaining value and just return the previous ETA
-	if e.items[len(e.items)-1].remaining == remaining {
-		return e.cachedETA
+	if e.lastRemaining == remaining {
+		return e.lastETA
 	}
+	e.lastRemaining = remaining
 
 	// append the item to the queue and remove the oldest item if needed
 	if len(e.items) >= e.maxItems {
 		e.items = e.items[1:]
 	}
-	e.items = append(e.items, item)
+	e.items = append(e.items, ts)
 
 	// calculate the average processing time per item in the queue
-	diffMs := e.items[len(e.items)-1].timestamp.Sub(e.items[0].timestamp).Milliseconds()
+	diffMs := e.items[len(e.items)-1].Sub(e.items[0]).Milliseconds()
 	avg := diffMs / int64(len(e.items))
 
 	// use that average processing time to estimate how long the remaining items will take
 	// and cache that ETA so we don't have to recalculate it on every update unless the
 	// remaining value changes
-	e.cachedETA = msToETA(avg * remaining)
+	e.lastETA = msToETA(avg * remaining)
 
-	return e.cachedETA
+	return e.lastETA
 }
 
 func msToETA(ms int64) string {
