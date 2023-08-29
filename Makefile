@@ -41,9 +41,9 @@ ifeq ($(shell uname -s), Darwin)
 export CGO_ENABLED=1
     ifeq ($(shell uname -m), arm64)
 export GOARCH=arm64
-export LIBRARY_PATH="$(brew --prefix)/lib"
+export LIBRARY_PATH=$(shell brew --prefix)/lib
 export FFI_BUILD_FROM_SOURCE=1
-export PATH:="$(brew --prefix coreutils)/libexec/gnubin:/usr/local/bin:$(PATH)"
+export PATH:=$(shell brew --prefix coreutils)/libexec/gnubin:/usr/local/bin:$(PATH)
     endif
 endif
 
