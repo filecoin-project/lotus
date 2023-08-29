@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v10/evm"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -933,9 +934,18 @@ func (a *EthModule) EthTraceReplayBlockTransactions(ctx context.Context, blkNum 
 			continue
 		}
 
-		output, err := decodePayload(ir.ExecutionTrace.MsgRct.Return, ir.ExecutionTrace.MsgRct.ReturnCodec)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to decode payload: %w", err)
+		var output ethtypes.EthBytes
+		invokeCreateOnEAM := ir.Msg.To == builtin.EthereumAddressManagerActorAddr && (ir.Msg.Method == builtin.MethodsEAM.Create || ir.Msg.Method == builtin.MethodsEAM.Create2)
+		if ir.Msg.Method == builtin.MethodsEVM.InvokeContract || invokeCreateOnEAM {
+			output, err = decodePayload(ir.ExecutionTrace.MsgRct.Return, ir.ExecutionTrace.MsgRct.ReturnCodec)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to decode payload: %w", err)
+			}
+		} else {
+			output, err = handleFilecoinMethodOutput(ir.ExecutionTrace.MsgRct.ExitCode, ir.ExecutionTrace.MsgRct.ReturnCodec, ir.ExecutionTrace.MsgRct.Return)
+			if err != nil {
+				return nil, xerrors.Errorf("could not convert output: %w", err)
+			}
 		}
 
 		t := ethtypes.EthTraceReplayBlockTransaction{
