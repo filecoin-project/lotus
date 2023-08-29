@@ -581,12 +581,6 @@
   # env var: LOTUS_SEALING_DISABLECOLLATERALFALLBACK
   #DisableCollateralFallback = false
 
-  # enable / disable precommit batching (takes effect after nv13)
-  #
-  # type: bool
-  # env var: LOTUS_SEALING_BATCHPRECOMMITS
-  #BatchPreCommits = true
-
   # maximum precommit batch size - batches will be sent immediately above this size
   #
   # type: int
@@ -636,7 +630,8 @@
   #CommitBatchSlack = "1h0m0s"
 
   # network BaseFee below which to stop doing precommit batching, instead
-  # sending precommit messages to the chain individually
+  # sending precommit messages to the chain individually. When the basefee is
+  # below this threshold, precommit messages will get sent out immediately.
   #
   # type: types.FIL
   # env var: LOTUS_SEALING_BATCHPRECOMMITABOVEBASEFEE
