@@ -19,7 +19,11 @@ type Platform struct {
 func GetPlatforms() ([]*Platform, error) {
 	var platformIds [maxPlatforms]C.cl_platform_id
 	var nPlatforms C.cl_uint
-	if err := C.clGetPlatformIDs(C.cl_uint(maxPlatforms), &platformIds[0], &nPlatforms); err != C.CL_SUCCESS {
+	err := C.clGetPlatformIDs(C.cl_uint(maxPlatforms), &platformIds[0], &nPlatforms)
+	if err == -1001 { // No platforms found
+		return nil, nil
+	}
+	if err != C.CL_SUCCESS {
 		return nil, toError(err)
 	}
 	platforms := make([]*Platform, nPlatforms)
@@ -68,7 +72,7 @@ func toError(code C.cl_int) error {
 type ErrOther int
 
 func (e ErrOther) Error() string {
-	return fmt.Sprintf("cl: error %d", int(e))
+	return fmt.Sprintf("OpenCL: error %d", int(e))
 }
 
 // Size of global device memory in bytes.

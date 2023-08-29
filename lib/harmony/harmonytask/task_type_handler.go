@@ -3,6 +3,7 @@ package harmonytask
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/samber/lo"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 )
@@ -23,15 +25,14 @@ type taskTypeHandler struct {
 	Count      atomic.Int32
 }
 
-func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) bool) {
+func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error)) {
 	var tID TaskID
-	did, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) bool {
+	did, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		// create taskID (from DB)
 		_, err := tx.Exec(`INSERT INTO harmony_task (name, added_by, posted_time) 
 			VALUES ($1, $2, CURRENT_TIMESTAMP) `, h.Name, h.TaskEngine.ownerID)
 		if err != nil {
-			log.Error("Could not insert into harmonyTask", err)
-			return false
+			return false, fmt.Errorf("could not insert into harmonyTask: %w", err)
 		}
 		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
 		if err != nil {
@@ -59,7 +60,7 @@ top:
 
 	// 1. Can we do any more of this task type?
 	if h.Max > -1 && int(h.Count.Load()) == h.Max {
-		log.Infow("did not accept task", "name", h.Name, "reason", "at max already")
+		log.Debugw("did not accept task", "name", h.Name, "reason", "at max already")
 		return false
 	}
 
@@ -69,7 +70,7 @@ top:
 	// 2. Can we do any more work?
 	err := h.AssertMachineHasCapacity()
 	if err != nil {
-		log.Info(err)
+		log.Debugw("did not accept task", "name", h.Name, "reason", "at capacity already: "+err.Error())
 		return false
 	}
 
@@ -80,7 +81,7 @@ top:
 		return false
 	}
 	if tID == nil {
-		log.Infow("did not accept task", "task_id", ids[0], "reason", "CanAccept() refused")
+		log.Infow("did not accept task", "task_id", ids[0], "reason", "CanAccept() refused", "name", h.Name)
 		return false
 	}
 
@@ -91,7 +92,7 @@ top:
 		return false
 	}
 	if ct == 0 {
-		log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken")
+		log.Infow("did not accept task", "task_id", strconv.Itoa(int(*tID)), "reason", "already Taken", "name", h.Name)
 		var tryAgain = make([]TaskID, 0, len(ids)-1)
 		for _, id := range ids {
 			if id != *tID {
@@ -104,7 +105,7 @@ top:
 
 	go func() {
 		h.Count.Add(1)
-		log.Infow("Beginning work on Task", "id", *tID, "from", from, "type", h.Name)
+		log.Infow("Beginning work on Task", "id", *tID, "from", from, "name", h.Name)
 
 		var done bool
 		var doErr error
@@ -146,19 +147,18 @@ top:
 func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done bool, doErr error) {
 	workEnd := time.Now()
 
-	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) bool {
+	cm, err := h.TaskEngine.db.BeginTransaction(h.TaskEngine.ctx, func(tx *harmonydb.Tx) (bool, error) {
 		var postedTime time.Time
 		err := tx.QueryRow(`SELECT posted_time FROM harmony_task WHERE id=$1`, tID).Scan(&postedTime)
 		if err != nil {
-			log.Error("Could not log completion: ", err)
-			return false
+			return false, fmt.Errorf("could not log completion: %w ", err)
 		}
 		result := "unspecified error"
 		if done {
 			_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
 			if err != nil {
-				log.Error("Could not log completion: ", err)
-				return false
+
+				return false, fmt.Errorf("could not log completion: %w", err)
 			}
 			result = ""
 		} else {
@@ -171,8 +171,7 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 				err = tx.QueryRow(`SELECT count(*) FROM harmony_task_history 
 				WHERE task_id=$1 AND result=FALSE`, tID).Scan(&ct)
 				if err != nil {
-					log.Error("Could not read task history:", err)
-					return false
+					return false, fmt.Errorf("could not read task history: %w", err)
 				}
 				if ct >= h.MaxFailures {
 					deleteTask = true
@@ -181,15 +180,13 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 			if deleteTask {
 				_, err = tx.Exec("DELETE FROM harmony_task WHERE id=$1", tID)
 				if err != nil {
-					log.Error("Could not delete failed job: ", err)
-					return false
+					return false, fmt.Errorf("could not delete failed job: %w", err)
 				}
 				// Note: Extra Info is left laying around for later review & clean-up
 			} else {
 				_, err := tx.Exec(`UPDATE harmony_task SET owner_id=NULL WHERE id=$1`, tID)
 				if err != nil {
-					log.Error("Could not disown failed task: ", tID, err)
-					return false
+					return false, fmt.Errorf("could not disown failed task: %v %v", tID, err)
 				}
 			}
 		}
@@ -197,10 +194,9 @@ func (h *taskTypeHandler) recordCompletion(tID TaskID, workStart time.Time, done
 												(task_id, name, posted,    work_start, work_end, result, err)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7)`, tID, h.Name, postedTime, workStart, workEnd, done, result)
 		if err != nil {
-			log.Error("Could not write history: ", err)
-			return false
+			return false, fmt.Errorf("could not write history: %w", err)
 		}
-		return true
+		return true, nil
 	})
 	if err != nil {
 		log.Error("Could not record transaction: ", err)
@@ -223,8 +219,12 @@ func (h *taskTypeHandler) AssertMachineHasCapacity() error {
 	if r.Gpu-h.Cost.Gpu < 0 {
 		return errors.New("Did not accept " + h.Name + " task: out of available GPU")
 	}
+	gpuRamSum := lo.Sum(h.Cost.GpuRam)
+	if gpuRamSum == 0 {
+		goto enoughGpuRam
+	}
 	for _, u := range r.GpuRam {
-		if u > h.Cost.GpuRam[0] {
+		if u >= gpuRamSum {
 			goto enoughGpuRam
 		}
 	}
@@ -249,7 +249,11 @@ func (h *taskTypeHandler) triggerCompletionListeners(tID TaskID) {
 	inProcessDefs := h.TaskEngine.follows[h.Name]
 	inProcessFollowers := make([]string, len(inProcessDefs))
 	for _, fs := range inProcessDefs {
-		if fs.f(tID, fs.h.AddTask) {
+		b, err := fs.f(tID, fs.h.AddTask)
+		if err != nil {
+			log.Error("Could not follow", "error", err, "from", h.Name, "to", fs.name)
+		}
+		if b {
 			inProcessFollowers = append(inProcessFollowers, fs.h.Name)
 		}
 	}

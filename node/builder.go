@@ -341,6 +341,29 @@ func Repo(r repo.Repo) Option {
 	}
 }
 
+func Provider(r repo.Repo) Option {
+	return func(settings *Settings) error {
+		lr, err := r.Lock(settings.nodeType)
+		if err != nil {
+			return err
+		}
+		c, err := lr.Config()
+		if err != nil {
+			return err
+		}
+		_ = c
+		return Options(
+			func(s *Settings) error { s.Base = true; return nil }, // mark Base as applied
+			ApplyIf(func(s *Settings) bool { return s.Config },
+				Error(errors.New("the Base() option must be set before Config option")),
+			),
+			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
+			//ApplyIf(IsType(repo.WdPost), ConfigWdPost(c)),
+			//ApplyIf(IsType(repo.WinPost), ConfigWinPost(c)),
+		)(settings)
+	}
+}
+
 type StopFunc func(context.Context) error
 
 // New builds and starts new Filecoin node

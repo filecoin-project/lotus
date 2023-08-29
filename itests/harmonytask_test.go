@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -30,6 +31,7 @@ func withDbSetup(t *testing.T, f func(*kit.TestMiner)) {
 		kit.LatestActorsAt(-1),
 		kit.MockProofs(),
 	)
+	logging.SetLogLevel("harmonytask", "debug")
 
 	f(miner)
 }
@@ -60,12 +62,12 @@ func (t *task1) TypeDetails() harmonytask.TaskTypeDetails {
 func (t *task1) Adder(add harmonytask.AddTaskFunc) {
 	for _, vTmp := range t.toAdd {
 		v := vTmp
-		add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
+		add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
 			t.myPersonalTableLock.Lock()
 			defer t.myPersonalTableLock.Unlock()
 
 			t.myPersonalTable[tID] = v
-			return true
+			return true, nil
 		})
 	}
 }
@@ -120,10 +122,10 @@ func fooLetterAdder(t *testing.T, cdb *harmonydb.DB) *passthru {
 		adder: func(add harmonytask.AddTaskFunc) {
 			for _, vTmp := range []string{"A", "B"} {
 				v := vTmp
-				add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) bool {
+				add(func(tID harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
 					_, err := tx.Exec("INSERT INTO itest_scratch (some_int, content) VALUES ($1,$2)", tID, v)
 					require.NoError(t, err)
-					return true
+					return true, nil
 				})
 			}
 		},
@@ -161,7 +163,7 @@ func TestHarmonyTasksWith2PartiesPolling(t *testing.T) {
 		sender.GracefullyTerminate(time.Second * 5)
 		worker.GracefullyTerminate(time.Second * 5)
 		sort.Strings(dest)
-		require.Equal(t, dest, []string{"A", "B"})
+		require.Equal(t, []string{"A", "B"}, dest)
 	})
 }
 
