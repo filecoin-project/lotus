@@ -73,6 +73,9 @@ datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
 - chore: release: Set calibration upgrade height ([filecoin-project/lotus#11331](https://github.com/filecoin-project/lotus/pull/11331))
 - chore: build: bump version to 1.24.0-rc1 ([filecoin-project/lotus#11332](https://github.com/filecoin-project/lotus/pull/11332))
 
+## New features
+- feat: Added new tracing API (**HIGHLY EXPERIMENTAL**) supporting two RPC methods: `trace_block` and `trace_replayBlockTransactions` ([filecoin-project/lotus#11100](https://github.com/filecoin-project/lotus/pull/11100))
+
 # v1.23.3 / 2023-08-01
 
 This feature release of Lotus includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
