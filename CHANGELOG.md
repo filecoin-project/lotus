@@ -2,6 +2,9 @@
 
 # UNRELEASED
 
+## New features
+- feat: Added new tracing API (**HIGHLY EXPERIMENTAL**) supporting two RPC methods: `trace_block` and `trace_replayBlockTransactions` ([filecoin-project/lotus#11100](https://github.com/filecoin-project/lotus/pull/11100))
+
 # v1.23.3 / 2023-08-01
 
 This feature release of Lotus includes numerous improvements and enhancements for node operators, ETH RPC-providers and storage providers.
