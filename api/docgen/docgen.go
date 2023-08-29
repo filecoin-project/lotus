@@ -40,6 +40,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/ethtypes"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -406,6 +407,13 @@ func init() {
 	percent := types.Percent(123)
 	addExample(percent)
 	addExample(&percent)
+
+	addExample(&miner.PieceActivationManifest{
+		CID:                   c,
+		Size:                  2032,
+		VerifiedAllocationKey: nil,
+		Notify:                nil,
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

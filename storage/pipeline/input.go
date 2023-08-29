@@ -28,6 +28,15 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+type UniversalPieceInfo interface {
+	Impl() api.PieceDealInfo
+	String() string
+
+	Valid(nv network.Version) error
+	LastStartEpoch() (abi.ChainEpoch, error)
+	PieceCID() cid.Cid
+}
+
 func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) error {
 	var used abi.UnpaddedPieceSize
 	var lastDealEnd abi.ChainEpoch
@@ -304,8 +313,9 @@ func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorIn
 	return ctx.Send(SectorRetryWaitDeals{})
 }
 
-func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
-	log.Infof("Adding piece for deal %d (publish msg: %s)", deal.DealID, deal.PublishCid)
+func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo UniversalPieceInfo) (api.SectorOffset, error) {
+	log.Infof("Adding piece %s", pieceInfo.String())
+
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return api.SectorOffset{}, xerrors.Errorf("cannot allocate unpadded piece")
 	}
@@ -324,10 +334,6 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		return api.SectorOffset{}, xerrors.Errorf("piece cannot fit into a sector")
 	}
 
-	if _, err := deal.DealProposal.Cid(); err != nil {
-		return api.SectorOffset{}, xerrors.Errorf("getting proposal CID: %w", err)
-	}
-
 	cfg, err := m.getConfig()
 	if err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("getting config: %w", err)
@@ -337,19 +343,34 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	if err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
 	}
-	if ts.Height()+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
-		return api.SectorOffset{}, xerrors.Errorf(
-			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
-			deal.DealProposal.PieceCID, ts.Height(), deal.DealProposal.StartEpoch)
+
+	nv, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting network version: %w", err)
 	}
 
-	claimTerms, err := m.getClaimTerms(ctx, deal, ts.Key())
+	if err := pieceInfo.Valid(nv); err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("piece metadata invalid: %w", err)
+	}
+
+	startEpoch, err := pieceInfo.LastStartEpoch()
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting last start epoch: %w", err)
+	}
+
+	if ts.Height()+cfg.StartEpochSealingBuffer > startEpoch {
+		return api.SectorOffset{}, xerrors.Errorf(
+			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
+			pieceInfo.PieceCID(), ts.Height(), startEpoch)
+	}
+
+	claimTerms, err := m.getClaimTerms(ctx, pieceInfo, ts.Key())
 	if err != nil {
 		return api.SectorOffset{}, err
 	}
 
 	m.inputLk.Lock()
-	if pp, exist := m.pendingPieces[proposalCID(deal)]; exist {
+	if pp, exist := m.pendingPieces[proposalCID(pieceInfo)]; exist {
 		m.inputLk.Unlock()
 
 		// we already have a pre-existing add piece call for this deal, let's wait for it to finish and see if it's successful
@@ -366,7 +387,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	}
 
 	// addPendingPiece takes over m.inputLk
-	pp := m.addPendingPiece(ctx, size, data, deal, claimTerms, sp)
+	pp := m.addPendingPiece(ctx, size, data, pieceInfo, claimTerms, sp)
 
 	res, err := waitAddPieceResp(ctx, pp)
 	if err != nil {
@@ -375,7 +396,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
-func (m *Sealing) getClaimTerms(ctx context.Context, deal api.PieceDealInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
+func (m *Sealing) getClaimTerms(ctx context.Context, deal UniversalPieceInfo, tsk types.TipSetKey) (pieceClaimBounds, error) {
 	nv, err := m.Api.StateNetworkVersion(ctx, tsk)
 	if err != nil {
 		return pieceClaimBounds{}, err

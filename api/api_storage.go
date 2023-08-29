@@ -459,28 +459,6 @@ type SectorOffset struct {
 	Offset abi.PaddedPieceSize
 }
 
-// DealInfo is a tuple of deal identity and its schedule
-type PieceDealInfo struct {
-	// "Old" builtin-market deal info
-	PublishCid   *cid.Cid
-	DealID       abi.DealID
-	DealProposal *market.DealProposal
-
-	// Common deal info
-	DealSchedule DealSchedule
-
-	// Best-effort deal asks
-	KeepUnsealed bool
-}
-
-// DealSchedule communicates the time interval of a storage deal. The deal must
-// appear in a sealed (proven) sector no later than StartEpoch, otherwise it
-// is invalid.
-type DealSchedule struct {
-	StartEpoch abi.ChainEpoch
-	EndEpoch   abi.ChainEpoch
-}
-
 // DagstoreShardInfo is the serialized form of dagstore.DagstoreShardInfo that
 // we expose through JSON-RPC to avoid clients having to depend on the
 // dagstore lib.

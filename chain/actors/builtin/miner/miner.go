@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
+	minertypes12 "github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -290,6 +291,8 @@ type SectorClaim = minertypes.SectorClaim
 type ExpirationExtension2 = minertypes.ExpirationExtension2
 type CompactPartitionsParams = minertypes.CompactPartitionsParams
 type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
+
+type PieceActivationManifest = minertypes12.PieceActivationManifest
 
 var QAPowerMax = minertypes.QAPowerMax
 

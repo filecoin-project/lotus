@@ -13,6 +13,7 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
+	miner "github.com/filecoin-project/go-state-types/builtin/v12/miner"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	market "github.com/filecoin-project/go-state-types/builtin/v9/market"
 )
@@ -782,7 +783,7 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{165}); err != nil {
+	if _, err := cw.Write([]byte{166}); err != nil {
 		return err
 	}
 
@@ -869,6 +870,22 @@ func (t *PieceDealInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	if err := cbg.WriteBool(w, t.KeepUnsealed); err != nil {
+		return err
+	}
+
+	// t.PieceActivationManifest (miner.PieceActivationManifest) (struct)
+	if len("PieceActivationManifest") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PieceActivationManifest\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("PieceActivationManifest"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("PieceActivationManifest")); err != nil {
+		return err
+	}
+
+	if err := t.PieceActivationManifest.MarshalCBOR(cw); err != nil {
 		return err
 	}
 	return nil
@@ -997,6 +1014,26 @@ func (t *PieceDealInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.KeepUnsealed = true
 			default:
 				return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
+			}
+			// t.PieceActivationManifest (miner.PieceActivationManifest) (struct)
+		case "PieceActivationManifest":
+
+			{
+
+				b, err := cr.ReadByte()
+				if err != nil {
+					return err
+				}
+				if b != cbg.CborNull[0] {
+					if err := cr.UnreadByte(); err != nil {
+						return err
+					}
+					t.PieceActivationManifest = new(miner.PieceActivationManifest)
+					if err := t.PieceActivationManifest.UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.PieceActivationManifest pointer: %w", err)
+					}
+				}
+
 			}
 
 		default:
