@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -53,6 +54,7 @@ type UniversalPieceInfo interface {
 	StartEpoch() (abi.ChainEpoch, error)
 	EndEpoch() (abi.ChainEpoch, error)
 	PieceCID() cid.Cid
+	KeepUnsealedRequested() bool
 
 	GetAllocation(ctx context.Context, aapi api.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error)
 }
@@ -127,18 +129,7 @@ type SectorInfo struct {
 func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
 	out := make([]abi.PieceInfo, len(t.Pieces))
 	for i, p := range t.Pieces {
-		out[i] = p.Piece
-	}
-	return out
-}
-
-func (t *SectorInfo) dealIDs() []abi.DealID {
-	out := make([]abi.DealID, 0, len(t.Pieces))
-	for _, p := range t.Pieces {
-		if p.DealInfo == nil {
-			continue
-		}
-		out = append(out, p.DealInfo.DealID)
+		out[i] = p.Piece()
 	}
 	return out
 }
@@ -146,14 +137,14 @@ func (t *SectorInfo) dealIDs() []abi.DealID {
 func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
 	out := make([]abi.UnpaddedPieceSize, len(t.Pieces))
 	for i, p := range t.Pieces {
-		out[i] = p.Piece.Size.Unpadded()
+		out[i] = p.Piece().Size.Unpadded()
 	}
 	return out
 }
 
 func (t *SectorInfo) hasDeals() bool {
 	for _, piece := range t.Pieces {
-		if piece.DealInfo != nil {
+		if piece.HasDealInfo() {
 			return true
 		}
 	}
@@ -174,19 +165,19 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 
 // Returns list of offset/length tuples of sector data ranges which clients
 // requested to keep unsealed
-func (t *SectorInfo) keepUnsealedRanges(pieces []api.SectorPiece, invert, alwaysKeep bool) []storiface.Range {
+func (t *SectorInfo) keepUnsealedRanges(pieces []SafeSectorPiece, invert, alwaysKeep bool) []storiface.Range {
 	var out []storiface.Range
 
 	var at abi.UnpaddedPieceSize
 	for _, piece := range pieces {
-		psize := piece.Piece.Size.Unpadded()
+		psize := piece.Piece().Size.Unpadded()
 		at += psize
 
-		if piece.DealInfo == nil {
+		if !piece.HasDealInfo() {
 			continue
 		}
 
-		keep := piece.DealInfo.KeepUnsealed || alwaysKeep
+		keep := piece.DealInfo().KeepUnsealedRequested() || alwaysKeep
 
 		if keep == invert {
 			continue
@@ -230,7 +221,7 @@ func (sp *SafeSectorPiece) DealInfo() UniversalPieceInfo {
 	return sp.real.DealInfo
 }
 
-// cbor
+// cbor passthrough
 func (sp *SafeSectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 	return sp.real.UnmarshalCBOR(r)
 }
@@ -239,13 +230,40 @@ func (sp *SafeSectorPiece) MarshalCBOR(w io.Writer) error {
 	return sp.real.MarshalCBOR(w)
 }
 
-// json
+// json passthrough
 func (sp *SafeSectorPiece) UnmarshalJSON(b []byte) error {
 	return json.Unmarshal(b, &sp.real)
 }
 
 func (sp *SafeSectorPiece) MarshalJSON() ([]byte, error) {
 	return json.Marshal(sp.real)
+}
+
+type handleDealInfoParams struct {
+	FillerHandler        func(UniversalPieceInfo) error
+	BuiltinMarketHandler func(UniversalPieceInfo) error
+	DDOHandler           func(UniversalPieceInfo) error
+}
+
+func (sp *SafeSectorPiece) handleDealInfo(params handleDealInfoParams) error {
+	if !sp.HasDealInfo() {
+		if params.FillerHandler == nil {
+			return xerrors.Errorf("FillerHandler is not provided")
+		}
+		return params.FillerHandler(sp)
+	}
+
+	if sp.real.DealInfo.PublishCid != nil {
+		if params.BuiltinMarketHandler == nil {
+			return xerrors.Errorf("BuiltinMarketHandler is not provided")
+		}
+		return params.BuiltinMarketHandler(sp)
+	}
+
+	if params.DDOHandler == nil {
+		return xerrors.Errorf("DDOHandler is not provided")
+	}
+	return params.DDOHandler(sp)
 }
 
 // SectorPiece Proxy
@@ -276,6 +294,10 @@ func (sp *SafeSectorPiece) EndEpoch() (abi.ChainEpoch, error) {
 
 func (sp *SafeSectorPiece) PieceCID() cid.Cid {
 	return sp.real.DealInfo.PieceCID()
+}
+
+func (sp *SafeSectorPiece) KeepUnsealedRequested() bool {
+	return sp.real.DealInfo.KeepUnsealedRequested()
 }
 
 func (sp *SafeSectorPiece) GetAllocation(ctx context.Context, aapi api.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error) {

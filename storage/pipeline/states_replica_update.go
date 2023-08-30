@@ -82,14 +82,13 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 }
 
 func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
-
 	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
 
-	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api); err != nil {
+	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, m.Api); err != nil {
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 

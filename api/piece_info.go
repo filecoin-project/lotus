@@ -60,8 +60,13 @@ func (ds *PieceDealInfo) Valid(nv network.Version) error {
 		if _, err := ds.DealProposal.Cid(); err != nil {
 			return xerrors.Errorf("checking proposal CID: %w", err)
 		}
-
 	}
+
+	if hasPieceActivationManifest {
+		return xerrors.Errorf("DDO Deals not supported yet") // todo DDO
+	}
+
+	return nil
 }
 
 type AllocationAPI interface {
@@ -143,6 +148,10 @@ func (ds *PieceDealInfo) String() string {
 	}
 }
 
+func (ds *PieceDealInfo) KeepUnsealedRequested() bool {
+	return ds.KeepUnsealed
+}
+
 type PieceKey string
 
 // Key returns a unique identifier for this deal info, for use in maps.
@@ -151,5 +160,5 @@ func (ds *PieceDealInfo) Key() PieceKey {
 }
 
 func (ds *PieceDealInfo) Impl() PieceDealInfo {
-	return ds
+	return *ds
 }

@@ -646,7 +646,7 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	cutoffEpoch := pci.PreCommitEpoch + mpcd
 
 	for _, p := range si.Pieces {
-		if p.DealInfo == nil {
+		if !p.HasDealInfo() {
 			continue
 		}
 

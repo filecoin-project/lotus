@@ -428,7 +428,7 @@ func (b *PreCommitBatcher) Stop(ctx context.Context) error {
 func getDealStartCutoff(si SectorInfo) abi.ChainEpoch {
 	cutoffEpoch := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
 	for _, p := range si.Pieces {
-		if p.DealInfo == nil {
+		if !p.HasDealInfo() {
 			continue
 		}
 
@@ -444,7 +444,7 @@ func getDealStartCutoff(si SectorInfo) abi.ChainEpoch {
 func (b *PreCommitBatcher) getAllocationCutoff(si SectorInfo) abi.ChainEpoch {
 	cutoff := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
 	for _, p := range si.Pieces {
-		if p.DealInfo == nil {
+		if !p.HasDealInfo() {
 			continue
 		}
 

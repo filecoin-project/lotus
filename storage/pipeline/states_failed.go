@@ -229,7 +229,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 		return nil
 	}
 
-	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api); err != nil {
+	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, m.Api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleSubmitReplicaUpdateFailed: api error, not proceeding: %+v", err)
@@ -259,7 +259,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 	if !active {
 		err := xerrors.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
-		log.Errorf(err.Error())
+		log.Errorf("%s", err)
 		return ctx.Send(SectorAbortUpgrade{err})
 	}
 
@@ -535,7 +535,7 @@ func recoveryPiecesToFix(ctx context.Context, api SealingAPI, sector SectorInfo,
 	for i, p := range sector.Pieces {
 		// if no deal is associated with the piece, ensure that we added it as
 		// filler (i.e. ensure that it has a zero PieceCID)
-		if p.DealInfo == nil {
+		if !p.HasDealInfo() {
 			exp := zerocomm.ZeroPieceCommitment(p.Piece.Size.Unpadded())
 			if !p.Piece.PieceCID.Equals(exp) {
 				return nil, 0, xerrors.Errorf("sector %d piece %d had non-zero PieceCID %+v", sector.SectorNumber, i, p.Piece.PieceCID)

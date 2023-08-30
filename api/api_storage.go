@@ -353,8 +353,13 @@ type SectorLog struct {
 }
 
 type SectorPiece struct {
-	Piece    abi.PieceInfo
-	DealInfo *PieceDealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
+	Piece abi.PieceInfo
+
+	// DealInfo is nil for pieces which do not appear in deals (e.g. filler pieces)
+	// NOTE: DDO pieces which aren't associated with a market deal and have no
+	// verified allocation will still have a non-nil DealInfo.
+	// nil DealInfo indicates that the piece is a filler, and has zero piece commitmennt.
+	DealInfo *PieceDealInfo
 }
 
 type SectorInfo struct {

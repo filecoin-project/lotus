@@ -65,7 +65,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 
 	var allocated abi.UnpaddedPieceSize
 	for _, piece := range sector.Pieces {
-		allocated += piece.Piece.Size.Unpadded()
+		allocated += piece.Piece().Size.Unpadded()
 	}
 
 	ssize, err := sector.SectorType.SectorSize()
@@ -365,11 +365,33 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 
 		SealedCID:     *sector.CommR,
 		SealRandEpoch: sector.TicketEpoch,
-		DealIDs:       sector.dealIDs(),
 	}
 
 	if sector.hasDeals() {
 		params.UnsealedCid = sector.CommD
+
+		for _, piece := range sector.Pieces {
+			err := piece.handleDealInfo(handleDealInfoParams{
+				FillerHandler: func(info UniversalPieceInfo) error {
+					return nil // ignore
+				},
+				BuiltinMarketHandler: func(info UniversalPieceInfo) error {
+					params.DealIDs = append(params.DealIDs, info.Impl().DealID)
+					return nil
+				},
+				DDOHandler: func(info UniversalPieceInfo) error {
+					// don't set dealIDs
+					// if we have built-in market deals, transform those pieces into piece manifests later in commit
+
+					// TODO DDO
+					return xerrors.Errorf("DDO deals not supported")
+				},
+			})
+
+			if err != nil {
+				return nil, big.Zero(), types.EmptyTSK, xerrors.Errorf("handleDealInfo: %w", err)
+			}
+		}
 	}
 
 	collateral, err := m.Api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, ts.Key())
@@ -519,10 +541,6 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	if err != nil {
 		return xerrors.Errorf("getting config: %w", err)
 	}
-
-	log.Info("scheduling seal proof computation...")
-
-	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%s; d:%s", sector.SectorNumber, sector.TicketValue, sector.TicketEpoch, sector.SeedValue, sector.SeedEpoch, sector.pieceInfos(), sector.CommR, sector.CommD)
 
 	if sector.CommD == nil || sector.CommR == nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})

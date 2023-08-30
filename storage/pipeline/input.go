@@ -325,7 +325,11 @@ func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorIn
 	return ctx.Send(SectorRetryWaitDeals{})
 }
 
-func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo UniversalPieceInfo) (api.SectorOffset, error) {
+func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo api.PieceDealInfo) (api.SectorOffset, error) {
+	return m.sectorAddPieceToAny(ctx, size, data, &pieceInfo)
+}
+
+func (m *Sealing) sectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo UniversalPieceInfo) (api.SectorOffset, error) {
 	log.Infof("Adding piece %s", pieceInfo.String())
 
 	if (padreader.PaddedSize(uint64(size))) != size {
