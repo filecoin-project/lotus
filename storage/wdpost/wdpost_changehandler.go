@@ -2,7 +2,6 @@ package wdpost
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -32,18 +31,25 @@ type wdPoStCommands interface {
 	recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info)
 }
 
+type changeHandlerIface interface {
+	start()
+	update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error
+	shutdown()
+	currentTSDI() (*types.TipSet, *dline.Info)
+}
+
+var _ changeHandlerIface = &changeHandler{}
+
 type changeHandler struct {
 	api        wdPoStCommands
 	actor      address.Address
 	proveHdlr  *proveHandler
 	submitHdlr *submitHandler
-
-	db *harmonydb.DB
 }
 
-func newChangeHandler(api wdPoStCommands, actor address.Address, db *harmonydb.DB) *changeHandler {
+func newChangeHandler(api wdPoStCommands, actor address.Address) *changeHandler {
 	posts := newPostsCache()
-	p := newProver(api, posts, db)
+	p := newProver(api, posts)
 	s := newSubmitter(api, posts)
 	return &changeHandler{api: api, actor: actor, proveHdlr: p, submitHdlr: s}
 }
@@ -172,7 +178,6 @@ type proveHandler struct {
 func newProver(
 	api wdPoStCommands,
 	posts *postsCache,
-	db *harmonydb.DB,
 ) *proveHandler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &proveHandler{
@@ -182,7 +187,6 @@ func newProver(
 		hcs:         make(chan *headChange),
 		shutdownCtx: ctx,
 		shutdown:    cancel,
-		wdPostTask:  NewWdPostTask(db),
 	}
 }
 

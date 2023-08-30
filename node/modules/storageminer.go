@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -321,6 +322,18 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 		if err != nil {
 			return nil, err
 		}
+
+		wdPostTask := wdpost.NewWdPostTask(db)
+		tasks := []harmonytask.TaskInterface{wdPostTask}
+
+		taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create task engine: %w", err)
+		}
+		//handler := gin.New()
+		//
+		//taskEngine.ApplyHttpHandlers(handler.Group("/"))
+		defer taskEngine.GracefullyTerminate(time.Hour)
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {

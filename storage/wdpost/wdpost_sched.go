@@ -77,8 +77,8 @@ type WindowPoStScheduler struct {
 	maxPartitionsPerPostMessage             int
 	maxPartitionsPerRecoveryMessage         int
 	singleRecoveringPartitionPerPostMessage bool
-	ch                                      *changeHandler
-	ch2                                     *changeHandler2
+	ch                                      changeHandlerIface
+	//ch2                                     *changeHandler2
 
 	actor address.Address
 
@@ -140,13 +140,17 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		*WindowPoStScheduler
 	}{s.api, s}
 
-	s.ch = newChangeHandler(callbacks, s.actor, s.db)
-	defer s.ch.shutdown()
-	s.ch.start()
+	run_on_lotus_provider := true
 
-	s.ch2 = newChangeHandler2(callbacks, s.actor, s.db)
-	defer s.ch2.shutdown()
-	s.ch2.start()
+	if !run_on_lotus_provider {
+		s.ch = newChangeHandler(callbacks, s.actor)
+		defer s.ch.shutdown()
+		s.ch.start()
+	} else {
+		s.ch = newChangeHandler2(callbacks, s.actor, s.db)
+		defer s.ch.shutdown()
+		s.ch.start()
+	}
 
 	var (
 		notifs <-chan []*api.HeadChange
@@ -223,6 +227,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 }
 
 func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.TipSet) {
+	log.Errorf("WindowPoStScheduler.update() called with revert: %v, apply: %v", revert, apply)
 	if apply == nil {
 		log.Error("no new tipset in window post WindowPoStScheduler.update")
 		return
@@ -232,10 +237,10 @@ func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.T
 		log.Errorf("handling head updates in window post sched: %+v", err)
 	}
 
-	err = s.ch2.update(ctx, revert, apply)
-	if err != nil {
-		log.Errorf("handling head updates in window post sched: %+v", err)
-	}
+	//err = s.ch2.update(ctx, revert, apply)
+	//if err != nil {
+	//	log.Errorf("handling head updates in window post sched: %+v", err)
+	//}
 }
 
 // onAbort is called when generating proofs or submitting proofs is aborted
