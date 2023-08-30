@@ -83,7 +83,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  FlagProviderRepo,
-			Value: "~/lotus",
+			Value: "~/lotusminer",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -119,6 +119,7 @@ var runCmd = &cli.Command{
 		// Open repo
 
 		repoPath := cctx.String(FlagProviderRepo)
+		fmt.Println("repopath", repoPath)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
@@ -235,20 +236,21 @@ var runCmd = &cli.Command{
 		}
 
 		// Serve the RPC.
-		endpoint, err := r.APIEndpoint()
-		if err != nil {
-			return fmt.Errorf("getting API endpoint: %w", err)
-		}
-		rpcStopper, err := node.ServeRPC(handler, "lotus-provider", endpoint)
-		if err != nil {
-			return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
-		}
+		/*
+			endpoint, err := r.APIEndpoint()
+			fmt.Println("Endpoint: ", endpoint)
+			if err != nil {
+				return fmt.Errorf("getting API endpoint: %w", err)
+			}
+			rpcStopper, err := node.ServeRPC(handler, "lotus-provider", endpoint)
+			if err != nil {
+				return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
+			}
+		*/
 
 		// Monitor for shutdown.
-		finishCh := node.MonitorShutdown(shutdownChan,
-			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
-			//node.ShutdownHandler{Component: "provider", StopFunc: stop},
-		)
+		finishCh := node.MonitorShutdown(shutdownChan) //node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
+		//node.ShutdownHandler{Component: "provider", StopFunc: stop},
 
 		<-finishCh
 		return nil
