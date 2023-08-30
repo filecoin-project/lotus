@@ -10,7 +10,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
 	"io"
 	"math/bits"
 	"os"
@@ -34,6 +33,7 @@ import (
 	spaths "github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
+	"github.com/filecoin-project/lotus/storage/sealer/proofpaths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
