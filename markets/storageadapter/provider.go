@@ -4,7 +4,6 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -33,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 

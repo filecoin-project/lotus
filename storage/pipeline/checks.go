@@ -3,9 +3,8 @@ package sealing
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	"github.com/ipfs/go-cid"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting

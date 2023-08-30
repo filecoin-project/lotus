@@ -2,7 +2,6 @@ package sealing_test
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"testing"
 	"time"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 

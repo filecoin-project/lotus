@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"os"
 
 	gen "github.com/whyrusleeping/cbor-gen"
@@ -15,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )

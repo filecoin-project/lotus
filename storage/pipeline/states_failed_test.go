@@ -4,7 +4,6 @@ package sealing_test
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
 func TestStateRecoverDealIDs(t *testing.T) {

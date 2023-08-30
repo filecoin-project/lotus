@@ -2,7 +2,6 @@ package sealing
 
 import (
 	"bytes"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -14,6 +13,7 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
 func TestSectorInfoSerialization(t *testing.T) {

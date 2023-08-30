@@ -139,19 +139,19 @@ func (mr *MockSealingAPIMockRecorder) StateAccountKey(arg0, arg1, arg2 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAccountKey", reflect.TypeOf((*MockSealingAPI)(nil).StateAccountKey), arg0, arg1, arg2)
 }
 
-// StateComputeDataCID mocks base method.
-func (m *MockSealingAPI) StateComputeDataCID(arg0 context.Context, arg1 address.Address, arg2 abi.RegisteredSealProof, arg3 []abi.DealID, arg4 types.TipSetKey) (cid.Cid, error) {
+// StateGetAllocation mocks base method.
+func (m *MockSealingAPI) StateGetAllocation(arg0 context.Context, arg1 address.Address, arg2 verifreg.AllocationId, arg3 types.TipSetKey) (*verifreg.Allocation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateComputeDataCID", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
+	ret := m.ctrl.Call(m, "StateGetAllocation", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*verifreg.Allocation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// StateComputeDataCID indicates an expected call of StateComputeDataCID.
-func (mr *MockSealingAPIMockRecorder) StateComputeDataCID(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+// StateGetAllocation indicates an expected call of StateGetAllocation.
+func (mr *MockSealingAPIMockRecorder) StateGetAllocation(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateComputeDataCID", reflect.TypeOf((*MockSealingAPI)(nil).StateComputeDataCID), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetAllocation", reflect.TypeOf((*MockSealingAPI)(nil).StateGetAllocation), arg0, arg1, arg2, arg3)
 }
 
 // StateGetAllocationForPendingDeal mocks base method.

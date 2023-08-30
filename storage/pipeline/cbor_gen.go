@@ -14,7 +14,6 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 
-	api "github.com/filecoin-project/lotus/api"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -151,7 +150,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Pieces ([]api.SectorPiece) (slice)
+	// t.Pieces ([]sealing.SafeSectorPiece) (slice)
 	if len("Pieces") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Pieces\" was too long")
 	}
@@ -222,7 +221,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.CCPieces ([]api.SectorPiece) (slice)
+	// t.CCPieces ([]sealing.SafeSectorPiece) (slice)
 	if len("CCPieces") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CCPieces\" was too long")
 	}
@@ -985,7 +984,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.State = SectorState(sval)
 			}
-			// t.Pieces ([]api.SectorPiece) (slice)
+			// t.Pieces ([]sealing.SafeSectorPiece) (slice)
 		case "Pieces":
 
 			maj, extra, err = cr.ReadHeader()
@@ -1002,15 +1001,17 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
+				t.Pieces = make([]SafeSectorPiece, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
 
-				var v api.SectorPiece
+				var v SafeSectorPiece
 				if err := v.UnmarshalCBOR(cr); err != nil {
 					return err
 				}
 
+				t.Pieces[i] = v
 			}
 
 			// t.Return (sealing.ReturnState) (string)
@@ -1035,7 +1036,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.LastErr = string(sval)
 			}
-			// t.CCPieces ([]api.SectorPiece) (slice)
+			// t.CCPieces ([]sealing.SafeSectorPiece) (slice)
 		case "CCPieces":
 
 			maj, extra, err = cr.ReadHeader()
@@ -1052,15 +1053,17 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
+				t.CCPieces = make([]SafeSectorPiece, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
 
-				var v api.SectorPiece
+				var v SafeSectorPiece
 				if err := v.UnmarshalCBOR(cr); err != nil {
 					return err
 				}
 
+				t.CCPieces[i] = v
 			}
 
 			// t.CCUpdate (bool) (bool)

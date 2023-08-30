@@ -4,7 +4,6 @@ package api
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"io"
 	"math"
 	"sort"
@@ -15,6 +14,8 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	piece "github.com/filecoin-project/lotus/storage/pipeline/piece"
 )
 
 var _ = xerrors.Errorf
@@ -802,7 +803,7 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.DealInfo (api.PieceDealInfo) (struct)
+	// t.DealInfo (piece.PieceDealInfo) (struct)
 	if len("DealInfo") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"DealInfo\" was too long")
 	}
@@ -814,6 +815,9 @@ func (t *SectorPiece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	if err := t.DealInfo.MarshalCBOR(cw); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -865,7 +869,7 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.DealInfo (api.PieceDealInfo) (struct)
+			// t.DealInfo (piece.PieceDealInfo) (struct)
 		case "DealInfo":
 
 			{
@@ -879,6 +883,9 @@ func (t *SectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
 						return err
 					}
 					t.DealInfo = new(piece.PieceDealInfo)
+					if err := t.DealInfo.UnmarshalCBOR(cr); err != nil {
+						return xerrors.Errorf("unmarshaling t.DealInfo pointer: %w", err)
+					}
 				}
 
 			}

@@ -5,7 +5,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
