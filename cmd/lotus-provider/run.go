@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -36,8 +35,10 @@ var runCmd = &cli.Command{
 	Usage: "Start a lotus provider process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "provider-api",
-			Usage: "Port (default 12300)",
+			Name:    "listen",
+			Usage:   "host address and port the worker api will listen on",
+			Value:   "0.0.0.0:12300",
+			EnvVars: []string{"LOTUS_WORKER_LISTEN"},
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
@@ -79,6 +80,10 @@ var runCmd = &cli.Command{
 			EnvVars: []string{"LOTUS_DB_PORT"},
 			Hidden:  true,
 			Value:   "5433",
+		},
+		&cli.StringFlag{
+			Name:  FlagProviderRepo,
+			Value: "~/lotus",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -153,29 +158,21 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		lr, err := r.Lock(repo.Provider)
-		if err != nil {
-			return err
+		dbConfig := config.HarmonyDB{
+			Username: cctx.String("db-user"),
+			Password: cctx.String("db-password"),
+			Hosts:    strings.Split(cctx.String("db-host"), ","),
+			Database: cctx.String("db-name"),
+			Port:     cctx.String("db-port"),
 		}
-		defer func() {
-			if err := lr.Close(); err != nil {
-				log.Error("closing repo", err)
-			}
-		}()
-
-		db, err := harmonydb.NewFromConfig(config.HarmonyDB{
-			Username: cctx.String("db_user"),
-			Password: cctx.String("db_password"),
-			Hosts:    strings.Split(cctx.String("db_host"), ","),
-			Database: cctx.String("db_name"),
-			Port:     cctx.String("db_port"),
-		})
+		db, err := harmonydb.NewFromConfig(dbConfig)
 		if err != nil {
 			return err
 		}
 
 		shutdownChan := make(chan struct{})
 
+		/* defaults break lockedRepo (below)
 		stop, err := node.New(ctx,
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Provider(r),
@@ -183,6 +180,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("creating node: %w", err)
 		}
+		*/
 
 		const unspecifiedAddress = "0.0.0.0"
 		address := cctx.String("listen")
@@ -196,6 +194,16 @@ var runCmd = &cli.Command{
 				address = rip + ":" + addressSlice[1]
 			}
 		}
+
+		lr, err := r.Lock(repo.Provider)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := lr.Close(); err != nil {
+				log.Error("closing repo", err)
+			}
+		}()
 		localStore, err := paths.NewLocal(ctx, lr, nil, []string{"http://" + address + "/remote"})
 		if err != nil {
 			return err
@@ -239,7 +247,7 @@ var runCmd = &cli.Command{
 		// Monitor for shutdown.
 		finishCh := node.MonitorShutdown(shutdownChan,
 			node.ShutdownHandler{Component: "rpc server", StopFunc: rpcStopper},
-			node.ShutdownHandler{Component: "provider", StopFunc: stop},
+			//node.ShutdownHandler{Component: "provider", StopFunc: stop},
 		)
 
 		<-finishCh
