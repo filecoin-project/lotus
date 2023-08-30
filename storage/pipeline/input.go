@@ -959,7 +959,7 @@ func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showO
 		// todo make this work with DDO deals in some reasonable way
 
 		pieces[i].Piece = piece.Piece()
-		if piece.Impl().PublishCid == nil {
+		if !piece.HasDealInfo() || piece.Impl().PublishCid == nil {
 			continue
 		}
 
