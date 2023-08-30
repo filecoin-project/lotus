@@ -575,7 +575,7 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storiface.SectorRe
 			return nil, xerrors.Errorf("unsealing sector: %w", err)
 		}
 
-		// todo move unsealed to long term storage (IN MANAGER< NOT HERE!!)
+		// note: the unsealed file is moved to long-term storage in Manager.SectorsUnsealPiece
 
 		storageTypes := []storiface.SectorFileType{storiface.FTSealed, storiface.FTCache, storiface.FTUpdate, storiface.FTUpdateCache}
 		for _, fileType := range storageTypes {
