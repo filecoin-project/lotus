@@ -134,6 +134,18 @@ func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
 	return out
 }
 
+func (t *SectorInfo) nonPaddingPieceInfos() []abi.PieceInfo {
+	out := make([]abi.PieceInfo, len(t.Pieces))
+	for i, p := range t.Pieces {
+		if !p.HasDealInfo() {
+			continue
+		}
+
+		out[i] = p.Piece()
+	}
+	return out
+}
+
 func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
 	out := make([]abi.UnpaddedPieceSize, len(t.Pieces))
 	for i, p := range t.Pieces {
@@ -205,6 +217,10 @@ type SealingStateEvt struct {
 // especially by making it hard to access raw Deal / DDO info
 type SafeSectorPiece struct {
 	real api.SectorPiece
+}
+
+func SafePiece(piece api.SectorPiece) SafeSectorPiece {
+	return SafeSectorPiece{piece}
 }
 
 var _ UniversalPieceInfo = &SafeSectorPiece{}

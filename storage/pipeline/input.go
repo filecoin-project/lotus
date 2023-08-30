@@ -98,7 +98,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
 	log := log.WithOptions(zap.Fields(
 		zap.Uint64("sector", uint64(sector.SectorNumber)),
-		zap.Int("deals", len(sector.dealIDs())),
+		zap.Int("dataPieces", len(sector.nonPaddingPieceInfos())),
 	))
 
 	now := time.Now()
@@ -121,7 +121,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		return false, xerrors.Errorf("getting per-sector deal limit: %w", err)
 	}
 
-	if len(sector.dealIDs()) >= maxDeals {
+	if len(sector.nonPaddingPieceInfos()) >= maxDeals {
 		// can't accept more deals
 		log.Infow("starting to seal deal sector", "trigger", "maxdeals")
 		return true, ctx.Send(SectorStartPacking{})
@@ -242,7 +242,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			return xerrors.Errorf("piece %s assigned to sector %d not found", piece, sector.SectorNumber)
 		}
 
-		if len(sector.dealIDs())+(i+1) > maxDeals {
+		if len(sector.nonPaddingPieceInfos())+(i+1) > maxDeals {
 			// todo: this is rather unlikely to happen, but in case it does, return the deal to waiting queue instead of failing it
 			deal.accepted(sector.SectorNumber, offset, xerrors.Errorf("too many deals assigned to sector %d, dropping deal", sector.SectorNumber))
 			continue

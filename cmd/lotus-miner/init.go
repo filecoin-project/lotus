@@ -320,8 +320,8 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 		info := &pipeline.SectorInfo{
 			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []lapi.SectorPiece{
-				{
+			Pieces: []pipeline.SafeSectorPiece{
+				pipeline.SafePiece(lapi.SectorPiece{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
@@ -334,7 +334,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 							EndEpoch:   sector.Deal.EndEpoch,
 						},
 					},
-				},
+				}),
 			},
 			CommD:            &commD,
 			CommR:            &commR,

@@ -1002,7 +1002,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
-				t.Pieces = make([]api.SectorPiece, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
@@ -1012,7 +1011,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 					return err
 				}
 
-				t.Pieces[i] = v
 			}
 
 			// t.Return (sealing.ReturnState) (string)
@@ -1054,7 +1052,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
-				t.CCPieces = make([]api.SectorPiece, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
@@ -1064,7 +1061,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 					return err
 				}
 
-				t.CCPieces[i] = v
 			}
 
 			// t.CCUpdate (bool) (bool)

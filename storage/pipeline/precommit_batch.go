@@ -36,6 +36,7 @@ type PreCommitBatcherApi interface {
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
 
 	// Address selector
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -432,7 +433,14 @@ func getDealStartCutoff(si SectorInfo) abi.ChainEpoch {
 			continue
 		}
 
-		startEpoch := p.DealInfo.DealSchedule.StartEpoch
+		startEpoch, err := p.StartEpoch()
+		if err != nil {
+			// almost definitely can't happen, but if it does there's less harm in
+			// just logging the error and moving on
+			log.Errorw("failed to get deal start epoch", "error", err)
+			continue
+		}
+
 		if startEpoch < cutoffEpoch {
 			cutoffEpoch = startEpoch
 		}
@@ -448,11 +456,15 @@ func (b *PreCommitBatcher) getAllocationCutoff(si SectorInfo) abi.ChainEpoch {
 			continue
 		}
 
-		alloc, _ := b.api.StateGetAllocationForPendingDeal(b.mctx, p.DealInfo.DealID, types.EmptyTSK)
+		alloc, err := p.GetAllocation(b.mctx, b.api, types.EmptyTSK)
+		if err != nil {
+			log.Errorw("failed to get deal allocation", "error", err)
+		}
 		// alloc is nil if this is not a verified deal in nv17 or later
 		if alloc == nil {
 			continue
 		}
+
 		if alloc.Expiration < cutoff {
 			cutoff = alloc.Expiration
 		}

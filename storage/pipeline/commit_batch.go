@@ -650,7 +650,11 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 			continue
 		}
 
-		startEpoch := p.DealInfo.DealSchedule.StartEpoch
+		startEpoch, err := p.StartEpoch()
+		if err != nil {
+			log.Errorf("getting deal start epoch: %s", err)
+			return time.Now(), err
+		}
 		if startEpoch < cutoffEpoch {
 			cutoffEpoch = startEpoch
 		}

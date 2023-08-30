@@ -83,7 +83,7 @@ func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber
 				}
 
 				if deal.Proposal.PieceCID != p.Piece().PieceCID {
-					return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(pieces), sn, p.Impl().DealID, p.Impl().PieceCID, deal.Proposal.PieceCID)}
+					return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(pieces), sn, p.Impl().DealID, p.Impl().DealProposal.PieceCID, deal.Proposal.PieceCID)}
 				}
 
 				if p.Piece().Size != deal.Proposal.PieceSize {

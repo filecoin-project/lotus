@@ -121,12 +121,38 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 				Deadline:           sl.Deadline,
 				Partition:          sl.Partition,
 				NewSealedSectorCID: *sector.UpdateSealed,
-				Deals:              sector.dealIDs(),
 				UpdateProofType:    updateProof,
 				ReplicaProof:       sector.ReplicaUpdateProof,
 			},
 		},
 	}
+
+	// todo switch to PRU2 todo ddo
+
+	// params.UnsealedCid = sector.CommD
+	for _, piece := range sector.Pieces {
+		err := piece.handleDealInfo(handleDealInfoParams{
+			FillerHandler: func(info UniversalPieceInfo) error {
+				return nil // ignore
+			},
+			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
+				params.Updates[0].Deals = append(params.Updates[0].Deals, info.Impl().DealID)
+				return nil
+			},
+			DDOHandler: func(info UniversalPieceInfo) error {
+				// don't set dealIDs
+				// if we have built-in market deals, transform those pieces into piece manifests later in commit
+
+				// TODO DDO
+				return xerrors.Errorf("DDO deals not supported")
+			},
+		})
+
+		if err != nil {
+			return xerrors.Errorf("inserting deal info into ProveReplicaUpdatesParams: %w", err)
+		}
+	}
+
 	if err := params.MarshalCBOR(enc); err != nil {
 		log.Errorf("failed to serialize update replica params: %w", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
@@ -156,12 +182,38 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		SectorNumber: sector.SectorNumber,
 		SealedCID:    *sector.UpdateSealed,
 		//SealRandEpoch: 0,
-		DealIDs:    sector.dealIDs(),
 		Expiration: onChainInfo.Expiration,
 		//ReplaceCapacity: false,
 		//ReplaceSectorDeadline: 0,
 		//ReplaceSectorPartition: 0,
 		//ReplaceSectorNumber: 0,
+	}
+
+	for _, piece := range sector.Pieces {
+		err := piece.handleDealInfo(handleDealInfoParams{
+			FillerHandler: func(info UniversalPieceInfo) error {
+				return nil // ignore
+			},
+			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
+				// todo do dealIDs actually matter for calculating pledge?
+				//  if not, we could drop this whole loop
+				virtualPCI.DealIDs = append(virtualPCI.DealIDs, info.Impl().DealID)
+				return nil
+			},
+			DDOHandler: func(info UniversalPieceInfo) error {
+				// don't set dealIDs
+				// if we have built-in market deals, transform those pieces into piece manifests later in commit
+
+				// todo does ddo matter for initial pledge?
+
+				// TODO DDO
+				return xerrors.Errorf("DDO deals not supported")
+			},
+		})
+
+		if err != nil {
+			return xerrors.Errorf("inserting deal info into ProveReplicaUpdatesParams: %w", err)
+		}
 	}
 
 	collateral, err := m.Api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, virtualPCI, ts.Key())
