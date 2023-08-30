@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 	"github.com/filecoin-project/lotus/lib/result"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"sync"
 	"time"
 
@@ -111,8 +112,8 @@ type Sealing struct {
 	inputLk        sync.Mutex
 	openSectors    map[abi.SectorID]*openSector
 	sectorTimers   map[abi.SectorID]*time.Timer
-	pendingPieces  map[api.PieceKey]*pendingPiece
-	assignedPieces map[abi.SectorID][]api.PieceKey
+	pendingPieces  map[piece.PieceKey]*pendingPiece
+	assignedPieces map[abi.SectorID][]piece.PieceKey
 	nextDealSector *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
 
 	available map[abi.SectorID]struct{}
@@ -140,7 +141,7 @@ type openSector struct {
 	number      abi.SectorNumber
 	ccUpdate    bool
 
-	maybeAccept func(key api.PieceKey) error // called with inputLk
+	maybeAccept func(key piece.PieceKey) error // called with inputLk
 }
 
 func (o *openSector) checkDealAssignable(piece *pendingPiece, expF expFn) (bool, error) {
@@ -238,8 +239,8 @@ func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events
 
 		openSectors:    map[abi.SectorID]*openSector{},
 		sectorTimers:   map[abi.SectorID]*time.Timer{},
-		pendingPieces:  map[api.PieceKey]*pendingPiece{},
-		assignedPieces: map[abi.SectorID][]api.PieceKey{},
+		pendingPieces:  map[piece.PieceKey]*pendingPiece{},
+		assignedPieces: map[abi.SectorID][]piece.PieceKey{},
 
 		available: map[abi.SectorID]struct{}{},
 

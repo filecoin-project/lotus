@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"net/http"
 	"os"
 	"sort"
@@ -240,7 +241,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 	return sInfo, nil
 }
 
-func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
+func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d piece.PieceDealInfo) (api.SectorOffset, error) {
 	so, err := sm.Miner.SectorAddPieceToAny(ctx, size, r, d)
 	if err != nil {
 		// jsonrpc doesn't support returning values with errors, make sure we never do that

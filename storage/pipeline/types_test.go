@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"bytes"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -23,9 +24,9 @@ func TestSectorInfoSerialization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dealInfo := api.PieceDealInfo{
+	dealInfo := piece.PieceDealInfo{
 		DealID: d,
-		DealSchedule: api.DealSchedule{
+		DealSchedule: piece.DealSchedule{
 			StartEpoch: 0,
 			EndEpoch:   100,
 		},

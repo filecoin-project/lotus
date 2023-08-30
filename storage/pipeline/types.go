@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"io"
@@ -46,9 +47,9 @@ const (
 )
 
 type UniversalPieceInfo interface {
-	Impl() api.PieceDealInfo
+	Impl() piece.PieceDealInfo
 	String() string
-	Key() api.PieceKey
+	Key() piece.PieceKey
 
 	Valid(nv network.Version) error
 	StartEpoch() (abi.ChainEpoch, error)
@@ -56,7 +57,7 @@ type UniversalPieceInfo interface {
 	PieceCID() cid.Cid
 	KeepUnsealedRequested() bool
 
-	GetAllocation(ctx context.Context, aapi api.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error)
+	GetAllocation(ctx context.Context, aapi piece.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error)
 }
 
 type SectorInfo struct {
@@ -284,7 +285,7 @@ func (sp *SafeSectorPiece) handleDealInfo(params handleDealInfoParams) error {
 
 // SectorPiece Proxy
 
-func (sp *SafeSectorPiece) Impl() api.PieceDealInfo {
+func (sp *SafeSectorPiece) Impl() piece.PieceDealInfo {
 	return sp.real.DealInfo.Impl()
 }
 
@@ -292,7 +293,7 @@ func (sp *SafeSectorPiece) String() string {
 	return sp.real.DealInfo.String()
 }
 
-func (sp *SafeSectorPiece) Key() api.PieceKey {
+func (sp *SafeSectorPiece) Key() piece.PieceKey {
 	return sp.real.DealInfo.Key()
 }
 
@@ -316,6 +317,6 @@ func (sp *SafeSectorPiece) KeepUnsealedRequested() bool {
 	return sp.real.DealInfo.KeepUnsealedRequested()
 }
 
-func (sp *SafeSectorPiece) GetAllocation(ctx context.Context, aapi api.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+func (sp *SafeSectorPiece) GetAllocation(ctx context.Context, aapi piece.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error) {
 	return sp.real.DealInfo.GetAllocation(ctx, aapi, tsk)
 }

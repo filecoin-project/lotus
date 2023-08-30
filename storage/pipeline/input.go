@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"sort"
 	"time"
 
@@ -69,7 +70,7 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	if _, has := m.openSectors[sid]; !has {
 		m.openSectors[sid] = &openSector{
 			used: used,
-			maybeAccept: func(pk api.PieceKey) error {
+			maybeAccept: func(pk piece.PieceKey) error {
 				// todo check deal start deadline (configurable)
 				m.assignedPieces[sid] = append(m.assignedPieces[sid], pk)
 
@@ -325,7 +326,7 @@ func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorIn
 	return ctx.Send(SectorRetryWaitDeals{})
 }
 
-func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo api.PieceDealInfo) (api.SectorOffset, error) {
+func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, pieceInfo piece.PieceDealInfo) (api.SectorOffset, error) {
 	return m.sectorAddPieceToAny(ctx, size, data, &pieceInfo)
 }
 
@@ -533,7 +534,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 
 	type match struct {
 		sector abi.SectorID
-		deal   api.PieceKey
+		deal   piece.PieceKey
 
 		dealEnd      abi.ChainEpoch
 		claimTermEnd abi.ChainEpoch
@@ -543,7 +544,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	}
 
 	var matches []match
-	toAssign := map[api.PieceKey]struct{}{} // used to maybe create new sectors
+	toAssign := map[piece.PieceKey]struct{}{} // used to maybe create new sectors
 
 	// todo: this is distinctly O(n^2), may need to be optimized for tiny deals and large scale miners
 	//  (unlikely to be a problem now)
@@ -660,7 +661,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 }
 
 // pendingPieceIndex is an index in the Sealing.pendingPieces map
-type pendingPieceIndex api.PieceKey
+type pendingPieceIndex piece.PieceKey
 
 type pieceBound struct {
 	epoch abi.ChainEpoch
@@ -721,10 +722,10 @@ func (m *Sealing) pendingPieceEpochBounds() []pieceBound {
 	var curBoundBytes abi.UnpaddedPieceSize
 	for i, bound := range out {
 		for _, ppi := range bound.boundStart {
-			curBoundBytes += m.pendingPieces[api.PieceKey(ppi)].size
+			curBoundBytes += m.pendingPieces[piece.PieceKey(ppi)].size
 		}
 		for _, ppi := range bound.boundEnd {
-			curBoundBytes -= m.pendingPieces[api.PieceKey(ppi)].size
+			curBoundBytes -= m.pendingPieces[piece.PieceKey(ppi)].size
 		}
 
 		out[i].dealBytesInBound = curBoundBytes

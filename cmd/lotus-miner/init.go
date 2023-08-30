@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -326,10 +327,10 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
-					DealInfo: &lapi.PieceDealInfo{
+					DealInfo: &piece.PieceDealInfo{
 						DealID:       dealID,
 						DealProposal: &sector.Deal,
-						DealSchedule: lapi.DealSchedule{
+						DealSchedule: piece.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,
 						},

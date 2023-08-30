@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,7 +76,7 @@ type StorageMiner interface {
 	// Add piece to an open sector. If no sectors with enough space are open,
 	// either a new sector will be created, or this call will block until more
 	// sectors can be created.
-	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d PieceDealInfo) (SectorOffset, error) //perm:admin
+	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d piece.PieceDealInfo) (SectorOffset, error) //perm:admin
 
 	SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error //perm:admin
 
@@ -359,8 +360,14 @@ type SectorPiece struct {
 	// NOTE: DDO pieces which aren't associated with a market deal and have no
 	// verified allocation will still have a non-nil DealInfo.
 	// nil DealInfo indicates that the piece is a filler, and has zero piece commitmennt.
-	DealInfo *PieceDealInfo
+	DealInfo *piece.PieceDealInfo
 }
+
+// DEPRECATED: Use piece.PieceDealInfo instead
+type PieceDealInfo = piece.PieceDealInfo
+
+// DEPRECATED: Use piece.DealSchedule instead
+type DealSchedule = piece.DealSchedule
 
 type SectorInfo struct {
 	SectorID             abi.SectorNumber

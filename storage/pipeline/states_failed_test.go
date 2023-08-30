@@ -4,6 +4,7 @@ package sealing_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -78,7 +79,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, pipeline.SectorInfo{
 		Pieces: []api2.SectorPiece{
 			{
-				DealInfo: &api2.PieceDealInfo{
+				DealInfo: &piece.PieceDealInfo{
 					DealID:     dealId,
 					PublishCid: &pc,
 				},

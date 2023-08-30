@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/pipeline/piece"
 	"os"
 
 	gen "github.com/whyrusleeping/cbor-gen"
@@ -63,9 +64,7 @@ func main() {
 		api.SealedRefs{},
 		api.SealTicket{},
 		api.SealSeed{},
-		api.PieceDealInfo{},
 		api.SectorPiece{},
-		api.DealSchedule{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -104,6 +103,15 @@ func main() {
 		storiface.CallID{},
 		storiface.SecDataHttpHeader{},
 		storiface.SectorLocation{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteMapEncodersToFile("./storage/pipeline/piece/cbor_gen.go", "piece",
+		piece.PieceDealInfo{},
+		piece.DealSchedule{},
 	)
 	if err != nil {
 		fmt.Println(err)
