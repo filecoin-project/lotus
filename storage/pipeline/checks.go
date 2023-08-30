@@ -52,6 +52,8 @@ func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber
 	var offset abi.PaddedPieceSize
 
 	for i, p := range pieces {
+		p, i := p, i
+
 		// check that the piece is correctly aligned
 		if offset%p.Piece().Size != 0 {
 			return &ErrInvalidPiece{xerrors.Errorf("sector %d piece %d is not aligned: size=%xh offset=%xh off-by=%xh", sn, i, p.Piece().Size, offset, offset%p.Piece().Size)}
