@@ -67,7 +67,7 @@ func Register(db *harmonydb.DB, hostnameAndPort string) (*Reg, error) {
 		} else {
 			reg.MachineID = ownerID[0]
 			_, err := db.Exec(ctx, `UPDATE harmony_machines SET
-		   cpu=$1, ram=$2, gpu=$3, gpuram=$4 WHERE id=$6`,
+		   cpu=$1, ram=$2, gpu=$3, gpuram=$4 WHERE id=$5`,
 				reg.Cpu, reg.Ram, reg.Gpu, gpuram, reg.Resources.MachineID)
 			if err != nil {
 				return nil, err
