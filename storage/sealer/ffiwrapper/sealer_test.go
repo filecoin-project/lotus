@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -22,6 +23,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/filecoin-ffi/cgo"
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
@@ -1207,3 +1209,66 @@ func (c *closeAssertReader) Close() error {
 }
 
 var _ io.Closer = &closeAssertReader{}
+
+func TestGenerateSDR(t *testing.T) {
+	d := t.TempDir()
+
+	miner := abi.ActorID(123)
+
+	sp := &basicfs.Provider{
+		Root: d,
+	}
+	sb, err := New(sp)
+	require.NoError(t, err)
+
+	si := storiface.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
+
+	s := seal{ref: si}
+
+	sz := abi.PaddedPieceSize(sectorSize).Unpadded()
+
+	s.pi, err = sb.AddPiece(context.TODO(), si, []abi.UnpaddedPieceSize{}, sz, nullreader.NewNullReader(sz))
+	require.NoError(t, err)
+
+	s.ticket = sealRand
+
+	_, err = sb.SealPreCommit1(context.TODO(), si, s.ticket, []abi.PieceInfo{s.pi})
+	require.NoError(t, err)
+
+	// sdr for comparasion
+
+	sdrCache := filepath.Join(d, "sdrcache")
+
+	commd, err := commcid.CIDToDataCommitmentV1(s.pi.PieceCID)
+	require.NoError(t, err)
+
+	replicaID, err := sealProofType.ReplicaId(si.ID.Miner, si.ID.Number, s.ticket, commd)
+	require.NoError(t, err)
+
+	err = ffi.GenerateSDR(sealProofType, sdrCache, replicaID)
+	require.NoError(t, err)
+
+	// list files in d recursively, for debug
+
+	require.NoError(t, filepath.Walk(d, func(path string, info fs.FileInfo, err error) error {
+		fmt.Println(path)
+		return nil
+	}))
+
+	// compare
+	lastLayerFile := "sc-02-data-layer-2.dat"
+
+	sdrFile := filepath.Join(sdrCache, lastLayerFile)
+	pc1File := filepath.Join(d, "cache/s-t0123-1/", lastLayerFile)
+
+	sdrData, err := os.ReadFile(sdrFile)
+	require.NoError(t, err)
+
+	pc1Data, err := os.ReadFile(pc1File)
+	require.NoError(t, err)
+
+	require.Equal(t, sdrData, pc1Data)
+}
