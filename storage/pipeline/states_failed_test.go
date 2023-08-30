@@ -77,8 +77,8 @@ func TestStateRecoverDealIDs(t *testing.T) {
 	// TODO sctx should satisfy an interface so it can be useable for mocking.  This will fail because we are passing in an empty context now to get this to build.
 	// https://github.com/filecoin-project/lotus/issues/7867
 	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, pipeline.SectorInfo{
-		Pieces: []api2.SectorPiece{
-			{
+		Pieces: []pipeline.SafeSectorPiece{
+			pipeline.SafePiece(api2.SectorPiece{
 				DealInfo: &piece.PieceDealInfo{
 					DealID:     dealId,
 					PublishCid: &pc,
@@ -86,7 +86,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 				Piece: abi.PieceInfo{
 					PieceCID: idCid("oldPieceCID"),
 				},
-			},
+			}),
 		},
 	})
 	require.NoError(t, err)
