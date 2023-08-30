@@ -230,6 +230,10 @@ func (m *Sealing) checkSectorMeta(ctx context.Context, meta api.RemoteSectorMeta
 				real: piece,
 			}
 
+			if !info.Pieces[i].HasDealInfo() {
+				continue // cc
+			}
+
 			err := info.Pieces[i].DealInfo().Valid(nv)
 			if err != nil {
 				return SectorInfo{}, xerrors.Errorf("piece %d deal info invalid: %w", i, err)
