@@ -688,7 +688,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storif
 }
 
 func (sb *Sealer) RegenerateSectorKey(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) error {
-	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed|storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}
@@ -715,16 +715,12 @@ func (sb *Sealer) RegenerateSectorKey(ctx context.Context, sector storiface.Sect
 		return xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
-	// TODO: context cancellation respect
-	_, err = ffi.SealPreCommitPhase1(
+	panic("todo")
+
+	err = ffi.GenerateSDR(
 		sector.ProofType,
 		paths.Cache,
-		paths.Unsealed,
-		paths.Sealed,
-		sector.ID.Number,
-		sector.ID.Miner,
-		ticket,
-		pieces,
+		[32]byte{},
 	)
 	if err != nil {
 		return xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
