@@ -322,7 +322,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		// Check DC-enviroment variable
+		// Check DC-environment variable
 		sectorSizes := []string{"2KiB", "8MiB", "512MiB", "32GiB", "64GiB"}
 		resourcesType := reflect.TypeOf(storiface.Resources{})
 
