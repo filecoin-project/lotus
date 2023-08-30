@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/result"
 	"sync"
 	"time"
 
@@ -72,6 +73,7 @@ type SealingAPI interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	StateMinerAllocated(context.Context, address.Address, types.TipSetKey) (*bitfield.BitField, error)
 	StateGetAllocationForPendingDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
+	StateGetAllocation(ctx context.Context, clientAddr address.Address, allocationId verifregtypes.AllocationId, tsk types.TipSetKey) (*verifregtypes.Allocation, error)
 
 	// Address selector
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -110,8 +112,8 @@ type Sealing struct {
 	inputLk        sync.Mutex
 	openSectors    map[abi.SectorID]*openSector
 	sectorTimers   map[abi.SectorID]*time.Timer
-	pendingPieces  map[cid.Cid]*pendingPiece
-	assignedPieces map[abi.SectorID][]cid.Cid
+	pendingPieces  map[api.PieceKey]*pendingPiece
+	assignedPieces map[abi.SectorID][]api.PieceKey
 	nextDealSector *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
 
 	available map[abi.SectorID]struct{}
@@ -139,16 +141,16 @@ type openSector struct {
 	number      abi.SectorNumber
 	ccUpdate    bool
 
-	maybeAccept func(cid.Cid) error // called with inputLk
+	maybeAccept func(key api.PieceKey) error // called with inputLk
 }
 
 func (o *openSector) checkDealAssignable(piece *pendingPiece, expF expFn) (bool, error) {
 	log := log.With(
 		"sector", o.number,
 
-		"deal", piece.deal.DealID,
-		"dealEnd", piece.deal.DealProposal.EndEpoch,
-		"dealStart", piece.deal.DealProposal.StartEpoch,
+		"piece", piece.deal.String(),
+		"dealEnd", result.Wrap(piece.deal.EndEpoch()),
+		"dealStart", result.Wrap(piece.deal.StartEpoch()),
 		"dealClaimEnd", piece.claimTerms.claimTermEnd,
 
 		"lastAssignedDealEnd", o.lastDealEnd,
@@ -181,7 +183,12 @@ func (o *openSector) checkDealAssignable(piece *pendingPiece, expF expFn) (bool,
 		return false, nil
 	}
 
-	if sectorExpiration < piece.deal.DealProposal.EndEpoch {
+	endEpoch, err := piece.deal.EndEpoch()
+	if err != nil {
+		return false, xerrors.Errorf("failed to get end epoch: %w", err)
+	}
+
+	if sectorExpiration < endEpoch {
 		log.Debugw("deal not assignable to sector", "reason", "sector expiration less than deal expiration")
 		return false, nil
 	}
@@ -205,7 +212,7 @@ type pendingPiece struct {
 	resp   *pieceAcceptResp
 
 	size abi.UnpaddedPieceSize
-	deal api.PieceDealInfo
+	deal UniversalPieceInfo
 
 	claimTerms pieceClaimBounds
 
@@ -215,10 +222,10 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
+func New(mctx context.Context, sapi SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
 	s := &Sealing{
-		Api:      api,
-		DealInfo: &CurrentDealInfoManager{api},
+		Api:      sapi,
+		DealInfo: &CurrentDealInfoManager{sapi},
 
 		ds: ds,
 
@@ -232,8 +239,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 
 		openSectors:    map[abi.SectorID]*openSector{},
 		sectorTimers:   map[abi.SectorID]*time.Timer{},
-		pendingPieces:  map[cid.Cid]*pendingPiece{},
-		assignedPieces: map[abi.SectorID][]cid.Cid{},
+		pendingPieces:  map[api.PieceKey]*pendingPiece{},
+		assignedPieces: map[abi.SectorID][]api.PieceKey{},
 
 		available: map[abi.SectorID]struct{}{},
 
@@ -242,9 +249,9 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 
 		addrSel: addrSel,
 
-		terminator:  NewTerminationBatcher(mctx, maddr, api, addrSel, fc, gc),
-		precommiter: NewPreCommitBatcher(mctx, maddr, api, addrSel, fc, gc),
-		commiter:    NewCommitBatcher(mctx, maddr, api, addrSel, fc, gc, prov),
+		terminator:  NewTerminationBatcher(mctx, maddr, sapi, addrSel, fc, gc),
+		precommiter: NewPreCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc),
+		commiter:    NewCommitBatcher(mctx, maddr, sapi, addrSel, fc, gc, prov),
 
 		getConfig: gc,
 

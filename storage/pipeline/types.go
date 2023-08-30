@@ -2,8 +2,11 @@ package sealing
 
 import (
 	"context"
-
+	"encoding/json"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/ipfs/go-cid"
+	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -41,6 +44,19 @@ const (
 	RetCommitFailed    = ReturnState(CommitFailed)
 )
 
+type UniversalPieceInfo interface {
+	Impl() api.PieceDealInfo
+	String() string
+	Key() api.PieceKey
+
+	Valid(nv network.Version) error
+	StartEpoch() (abi.ChainEpoch, error)
+	EndEpoch() (abi.ChainEpoch, error)
+	PieceCID() cid.Cid
+
+	GetAllocation(ctx context.Context, aapi api.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error)
+}
+
 type SectorInfo struct {
 	State        SectorState
 	SectorNumber abi.SectorNumber
@@ -49,7 +65,7 @@ type SectorInfo struct {
 
 	// Packing
 	CreationTime int64 // unix seconds
-	Pieces       []api.SectorPiece
+	Pieces       []SafeSectorPiece
 
 	// PreCommit1
 	TicketValue   abi.SealRandomness
@@ -77,7 +93,7 @@ type SectorInfo struct {
 
 	// CCUpdate
 	CCUpdate             bool
-	CCPieces             []api.SectorPiece
+	CCPieces             []SafeSectorPiece
 	UpdateSealed         *cid.Cid
 	UpdateUnsealed       *cid.Cid
 	ReplicaUpdateProof   storiface.ReplicaUpdateProof
@@ -192,4 +208,76 @@ type SealingStateEvt struct {
 	From         SectorState
 	After        SectorState
 	Error        string
+}
+
+// SafeSectorPiece is a wrapper around SectorPiece which makes it hard to misuse
+// especially by making it hard to access raw Deal / DDO info
+type SafeSectorPiece struct {
+	real api.SectorPiece
+}
+
+var _ UniversalPieceInfo = &SafeSectorPiece{}
+
+func (sp *SafeSectorPiece) Piece() abi.PieceInfo {
+	return sp.real.Piece
+}
+
+func (sp *SafeSectorPiece) HasDealInfo() bool {
+	return sp.real.DealInfo != nil
+}
+
+func (sp *SafeSectorPiece) DealInfo() UniversalPieceInfo {
+	return sp.real.DealInfo
+}
+
+// cbor
+func (sp *SafeSectorPiece) UnmarshalCBOR(r io.Reader) (err error) {
+	return sp.real.UnmarshalCBOR(r)
+}
+
+func (sp *SafeSectorPiece) MarshalCBOR(w io.Writer) error {
+	return sp.real.MarshalCBOR(w)
+}
+
+// json
+func (sp *SafeSectorPiece) UnmarshalJSON(b []byte) error {
+	return json.Unmarshal(b, &sp.real)
+}
+
+func (sp *SafeSectorPiece) MarshalJSON() ([]byte, error) {
+	return json.Marshal(sp.real)
+}
+
+// SectorPiece Proxy
+
+func (sp *SafeSectorPiece) Impl() api.PieceDealInfo {
+	return sp.real.DealInfo.Impl()
+}
+
+func (sp *SafeSectorPiece) String() string {
+	return sp.real.DealInfo.String()
+}
+
+func (sp *SafeSectorPiece) Key() api.PieceKey {
+	return sp.real.DealInfo.Key()
+}
+
+func (sp *SafeSectorPiece) Valid(nv network.Version) error {
+	return sp.real.DealInfo.Valid(nv)
+}
+
+func (sp *SafeSectorPiece) StartEpoch() (abi.ChainEpoch, error) {
+	return sp.real.DealInfo.StartEpoch()
+}
+
+func (sp *SafeSectorPiece) EndEpoch() (abi.ChainEpoch, error) {
+	return sp.real.DealInfo.EndEpoch()
+}
+
+func (sp *SafeSectorPiece) PieceCID() cid.Cid {
+	return sp.real.DealInfo.PieceCID()
+}
+
+func (sp *SafeSectorPiece) GetAllocation(ctx context.Context, aapi api.AllocationAPI, tsk types.TipSetKey) (*verifreg.Allocation, error) {
+	return sp.real.DealInfo.GetAllocation(ctx, aapi, tsk)
 }

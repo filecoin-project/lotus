@@ -88,7 +88,7 @@ func (evt SectorAddPiece) apply(state *SectorInfo) {
 }
 
 type SectorPieceAdded struct {
-	NewPieces []api.SectorPiece
+	NewPieces []SafeSectorPiece
 }
 
 func (evt SectorPieceAdded) apply(state *SectorInfo) {
