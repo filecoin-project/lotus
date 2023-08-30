@@ -11,6 +11,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/samber/lo"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -36,12 +37,19 @@ func (h *taskTypeHandler) AddTask(extra func(TaskID, *harmonydb.Tx) (bool, error
 		}
 		err = tx.QueryRow("SELECT id FROM harmony_task ORDER BY update_time DESC LIMIT 1").Scan(&tID)
 		if err != nil {
-			log.Error("Could not select ID: ", err)
+			return false, fmt.Errorf("Could not select ID: %v", err)
 		}
 		return extra(tID, tx)
 	})
+
 	if err != nil {
-		log.Error(err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.ConstraintName != "" {
+			log.Debug("addtask saw unique constraint ", pgErr.ConstraintName, ": so it's added already.")
+			return
+		}
+		log.Error("Could not add task. AddTasFunc failed: %v", err)
+		return
 	}
 	if !did {
 		return

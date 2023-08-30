@@ -68,12 +68,6 @@ func main() {
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "listen",
-				Usage:   "host address and port the worker api will listen on",
-				Value:   "0.0.0.0:3456",
-				EnvVars: []string{"LOTUS_WORKER_LISTEN"},
-			},
 			&cli.BoolFlag{
 				// examined in the Before above
 				Name:        "color",
