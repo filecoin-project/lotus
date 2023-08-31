@@ -223,7 +223,9 @@ type DeclareFaultsParams = minertypes.DeclareFaultsParams
 type ProveCommitAggregateParams = minertypes.ProveCommitAggregateParams
 type ProveCommitSectorParams = minertypes.ProveCommitSectorParams
 type ProveReplicaUpdatesParams = minertypes.ProveReplicaUpdatesParams
+type ProveReplicaUpdatesParams2 = minertypes.ProveReplicaUpdatesParams2
 type ReplicaUpdate = minertypes.ReplicaUpdate
+type ReplicaUpdate2 = minertypes.ReplicaUpdate2
 type PreCommitSectorBatchParams = minertypes.PreCommitSectorBatchParams
 type PreCommitSectorBatchParams2 = minertypes.PreCommitSectorBatchParams2
 type ExtendSectorExpiration2Params = minertypes.ExtendSectorExpiration2Params
@@ -235,6 +237,8 @@ type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
 type PieceActivationManifest = minertypes12.PieceActivationManifest
 type ProveCommitSectors2Params = minertypes12.ProveCommitSectors2Params
 type SectorActivationManifest = minertypes12.SectorActivationManifest
+type ProveReplicaUpdates3Params = minertypes12.ProveReplicaUpdates3Params
+type SectorUpdateManifest = minertypes12.SectorUpdateManifest
 
 var QAPowerMax = minertypes.QAPowerMax
 

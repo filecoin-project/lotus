@@ -767,13 +767,13 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	})
 }
 
-func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector SectorInfo) error {
-	if sector.CommD == nil || sector.CommR == nil {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
-	}
-
+// processPieces returns either:
+// - a list of piece activation manifests
+// - a list of deal IDs, if all non-filler pieces are deal-id pieces
+func (m *Sealing) processPieces(sector SectorInfo) ([]miner.PieceActivationManifest, []abi.DealID, error) {
 	pams := make([]miner.PieceActivationManifest, 0, len(sector.Pieces))
-	var hasDDO, dealIDPrecommit bool
+	dealIDs := make([]abi.DealID, 0, len(sector.Pieces))
+	var hasDDO bool
 
 	for _, piece := range sector.Pieces {
 		piece := piece
@@ -790,14 +790,12 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 					return nil
 				}
 
-				dealIDPrecommit = true
+				dealIDs = append(dealIDs, info.Impl().DealID)
 				return nil
 			},
 			DDOHandler: func(info UniversalPieceInfo) error {
 				hasDDO = true
-				if dealIDPrecommit {
-					dealIDPrecommit = false
-				}
+				dealIDs = nil
 
 				pams = append(pams, *piece.Impl().PieceActivationManifest)
 
@@ -805,8 +803,21 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			},
 		})
 		if err != nil {
-			return xerrors.Errorf("handleDealInfo: %w", err)
+			return nil, nil, xerrors.Errorf("handleDealInfo: %w", err)
 		}
+	}
+
+	return pams, dealIDs, nil
+}
+
+func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector SectorInfo) error {
+	if sector.CommD == nil || sector.CommR == nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector had nil commR or commD")})
+	}
+
+	pams, dealIDs, err := m.processPieces(sector)
+	if err != nil {
+		return err
 	}
 
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
@@ -824,7 +835,7 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 			SectorNumber: sector.SectorNumber,
 			Pieces:       pams,
 		},
-		DealIDPrecommit: dealIDPrecommit,
+		DealIDPrecommit: len(dealIDs) > 0,
 	})
 
 	if err != nil || res.Error != "" {

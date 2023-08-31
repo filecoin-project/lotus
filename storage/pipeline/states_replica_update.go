@@ -58,7 +58,7 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 	}
 	if !active {
 		err := xerrors.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
-		log.Errorf(err.Error())
+		log.Errorf("%s", err)
 		return ctx.Send(SectorAbortUpgrade{err})
 	}
 
@@ -113,50 +113,8 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		log.Errorf("failed to get update proof type from seal proof: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
-	enc := new(bytes.Buffer)
-	params := &miner.ProveReplicaUpdatesParams{
-		Updates: []miner.ReplicaUpdate{
-			{
-				SectorID:           sector.SectorNumber,
-				Deadline:           sl.Deadline,
-				Partition:          sl.Partition,
-				NewSealedSectorCID: *sector.UpdateSealed,
-				UpdateProofType:    updateProof,
-				ReplicaProof:       sector.ReplicaUpdateProof,
-			},
-		},
-	}
 
-	// todo switch to PRU2 todo ddo
-
-	// params.UnsealedCid = sector.CommD
-	for _, piece := range sector.Pieces {
-		err := piece.handleDealInfo(handleDealInfoParams{
-			FillerHandler: func(info UniversalPieceInfo) error {
-				return nil // ignore
-			},
-			BuiltinMarketHandler: func(info UniversalPieceInfo) error {
-				params.Updates[0].Deals = append(params.Updates[0].Deals, info.Impl().DealID)
-				return nil
-			},
-			DDOHandler: func(info UniversalPieceInfo) error {
-				// don't set dealIDs
-				// if we have built-in market deals, transform those pieces into piece manifests later in commit
-
-				// TODO DDO
-				return xerrors.Errorf("DDO deals not supported")
-			},
-		})
-
-		if err != nil {
-			return xerrors.Errorf("inserting deal info into ProveReplicaUpdatesParams: %w", err)
-		}
-	}
-
-	if err := params.MarshalCBOR(enc); err != nil {
-		log.Errorf("failed to serialize update replica params: %w", err)
-		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
-	}
+	// figure out from address and collateral
 
 	cfg, err := m.getConfig()
 	if err != nil {
@@ -181,12 +139,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		SealProof:    sp,
 		SectorNumber: sector.SectorNumber,
 		SealedCID:    *sector.UpdateSealed,
-		//SealRandEpoch: 0,
-		Expiration: onChainInfo.Expiration,
-		//ReplaceCapacity: false,
-		//ReplaceSectorDeadline: 0,
-		//ReplaceSectorPartition: 0,
-		//ReplaceSectorNumber: 0,
+		Expiration:   onChainInfo.Expiration,
 	}
 
 	for _, piece := range sector.Pieces {
@@ -204,7 +157,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 				// don't set dealIDs
 				// if we have built-in market deals, transform those pieces into piece manifests later in commit
 
-				// todo does ddo matter for initial pledge?
+				// todo does ddo matter for initial pledge? Yes because fil+?
 
 				// TODO DDO
 				return xerrors.Errorf("DDO deals not supported")
@@ -245,13 +198,81 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		log.Errorf("no good address to send replica update message from: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
-	mcid, err := sendMsg(ctx.Context(), m.Api, from, m.maddr, builtin.MethodsMiner.ProveReplicaUpdates, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
+
+	// figure out message type
+
+	pams, deals, err := m.processPieces(sector)
 	if err != nil {
-		log.Errorf("handleSubmitReplicaUpdate: error sending message: %+v", err)
+		log.Errorf("failed to process pieces: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
-	return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
+	if len(pams) > 0 {
+		// PRU3
+
+		params := &miner.ProveReplicaUpdates3Params{
+			SectorUpdates: []miner.SectorUpdateManifest{
+				{
+					Sector:       sector.SectorNumber,
+					Deadline:     sl.Deadline,
+					Partition:    sl.Partition,
+					NewSealedCID: *sector.UpdateSealed,
+					Pieces:       pams,
+				},
+			},
+			SectorProofs:     [][]byte{sector.ReplicaUpdateProof},
+			UpdateProofsType: updateProof,
+			//AggregateProof
+			//AggregateProofType
+			RequireActivationSuccess:   false, // todo??
+			RequireNotificationSuccess: false,
+		}
+
+		enc := new(bytes.Buffer)
+		if err := params.MarshalCBOR(enc); err != nil {
+			log.Errorf("failed to serialize update replica params: %w", err)
+			return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+		}
+
+		mcid, err := sendMsg(ctx.Context(), m.Api, from, m.maddr, builtin.MethodsMiner.ProveReplicaUpdates3, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
+		if err != nil {
+			log.Errorf("handleSubmitReplicaUpdate: error sending message: %+v", err)
+			return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+		}
+
+		return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
+	} else {
+		// PRU2
+
+		params := &miner.ProveReplicaUpdatesParams2{
+			Updates: []miner.ReplicaUpdate2{
+				{
+					SectorID:             sector.SectorNumber,
+					Deadline:             sl.Deadline,
+					Partition:            sl.Partition,
+					NewSealedSectorCID:   *sector.UpdateSealed,
+					NewUnsealedSectorCID: *sector.UpdateUnsealed,
+					UpdateProofType:      updateProof,
+					ReplicaProof:         sector.ReplicaUpdateProof,
+					Deals:                deals,
+				},
+			},
+		}
+
+		enc := new(bytes.Buffer)
+		if err := params.MarshalCBOR(enc); err != nil {
+			log.Errorf("failed to serialize update replica params: %w", err)
+			return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+		}
+
+		mcid, err := sendMsg(ctx.Context(), m.Api, from, m.maddr, builtin.MethodsMiner.ProveReplicaUpdates2, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
+		if err != nil {
+			log.Errorf("handleSubmitReplicaUpdate: error sending message: %+v", err)
+			return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+		}
+
+		return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
+	}
 }
 
 func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo) error {
