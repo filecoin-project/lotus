@@ -293,6 +293,7 @@ type CompactPartitionsParams = minertypes.CompactPartitionsParams
 type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
 
 type PieceActivationManifest = minertypes12.PieceActivationManifest
+type ProveCommitSectors2Params = minertypes12.ProveCommitSectors2Params
 
 var QAPowerMax = minertypes.QAPowerMax
 
