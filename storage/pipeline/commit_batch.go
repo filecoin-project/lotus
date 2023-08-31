@@ -58,7 +58,7 @@ type AggregateInput struct {
 	Info  proof.AggregateSealVerifyInfo
 	Proof []byte
 
-	ActivationManifest miner2.SectorActivationManifest
+	ActivationManifest miner.SectorActivationManifest
 	DealIDPrecommit    bool
 }
 

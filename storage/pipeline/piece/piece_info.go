@@ -24,7 +24,7 @@ type PieceDealInfo struct {
 	DealID       abi.DealID
 	DealProposal *market.DealProposal
 
-	// Common deal info
+	// Common deal info, required for all pieces
 	DealSchedule DealSchedule
 
 	// Direct Data Onboarding
@@ -47,6 +47,8 @@ func (ds *PieceDealInfo) isBuiltinMarketDeal() bool {
 	return ds.PublishCid != nil
 }
 
+// Valid validates the deal info after being accepted through RPC, checks that
+// the deal metadata is well-formed.
 func (ds *PieceDealInfo) Valid(nv network.Version) error {
 	hasLegacyDealInfo := ds.PublishCid != nil && ds.DealID != 0 && ds.DealProposal != nil
 	hasPieceActivationManifest := ds.PieceActivationManifest != nil
@@ -65,8 +67,22 @@ func (ds *PieceDealInfo) Valid(nv network.Version) error {
 		}
 	}
 
+	if ds.DealSchedule.StartEpoch <= 0 {
+		return xerrors.Errorf("invalid deal start epoch %d", ds.DealSchedule.StartEpoch)
+	}
+	if ds.DealSchedule.EndEpoch <= 0 {
+		return xerrors.Errorf("invalid deal end epoch %d", ds.DealSchedule.EndEpoch)
+	}
+	if ds.DealSchedule.EndEpoch <= ds.DealSchedule.StartEpoch {
+		return xerrors.Errorf("invalid deal end epoch %d (start %d)", ds.DealSchedule.EndEpoch, ds.DealSchedule.StartEpoch)
+	}
+
 	if hasPieceActivationManifest {
-		return xerrors.Errorf("DDO Deals not supported yet") // todo DDO
+		if nv < network.Version21 {
+			return xerrors.Errorf("direct-data-onboarding pieces aren't accepted before network version 21")
+		}
+
+		// todo any more checks seem reasonable to put here?
 	}
 
 	return nil
@@ -116,7 +132,8 @@ func (ds *PieceDealInfo) StartEpoch() (abi.ChainEpoch, error) {
 		return ds.DealSchedule.StartEpoch, nil
 	default:
 		// note - when implementing make sure to cache any dynamically computed values
-		panic("todo")
+		// todo do we want a smarter mechanism here
+		return ds.DealSchedule.StartEpoch, nil
 	}
 }
 
@@ -128,7 +145,8 @@ func (ds *PieceDealInfo) EndEpoch() (abi.ChainEpoch, error) {
 		return ds.DealSchedule.EndEpoch, nil
 	default:
 		// note - when implementing make sure to cache any dynamically computed values
-		panic("todo")
+		// todo do we want a smarter mechanism here
+		return ds.DealSchedule.StartEpoch, nil
 	}
 }
 

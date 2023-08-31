@@ -294,6 +294,7 @@ type WithdrawBalanceParams = minertypes.WithdrawBalanceParams
 
 type PieceActivationManifest = minertypes12.PieceActivationManifest
 type ProveCommitSectors2Params = minertypes12.ProveCommitSectors2Params
+type SectorActivationManifest = minertypes12.SectorActivationManifest
 
 var QAPowerMax = minertypes.QAPowerMax
 

@@ -101,7 +101,31 @@ func checkPieces(ctx context.Context, maddr address.Address, sn abi.SectorNumber
 			DDOHandler: func(pi UniversalPieceInfo) error {
 				dealCount++
 
-				return xerrors.Errorf("DDO deals not supported yet") // todo DDO
+				// try to get alloation to see if that still works
+				all, err := pi.GetAllocation(ctx, api, ts.Key())
+				if err != nil {
+					return xerrors.Errorf("getting deal %d allocation: %w", p.Impl().DealID, err)
+				}
+				if all != nil {
+					mid, err := address.IDFromAddress(maddr)
+					if err != nil {
+						return xerrors.Errorf("getting miner id: %w", err)
+					}
+
+					if all.Provider != abi.ActorID(mid) {
+						return xerrors.Errorf("allocation provider doesn't match miner")
+					}
+
+					if ts.Height() >= all.Expiration {
+						return &ErrExpiredDeals{xerrors.Errorf("piece allocation %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(pieces), sn, p.Impl().DealID, all.Expiration, ts.Height())}
+					}
+
+					if all.Size < p.Piece().Size {
+						return &ErrInvalidDeals{xerrors.Errorf("piece allocation %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(pieces), sn, p.Impl().DealID, p.Piece().Size, all.Size)}
+					}
+				}
+
+				return nil
 			},
 		})
 		if err != nil {

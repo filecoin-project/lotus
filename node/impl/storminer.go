@@ -505,7 +505,7 @@ func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, 
 }
 
 func (sm *StorageMinerAPI) ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
-	return sm.StorageMgr.DataCid(ctx, pieceSize, pieceData)
+	return sm.IStorageMgr.DataCid(ctx, pieceSize, pieceData)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
