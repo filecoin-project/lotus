@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/lotus/node/config"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	minertypes "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/pipeline/piece"
-	"github.com/stretchr/testify/require"
 )
 
 func TestOnboardRawPiece(t *testing.T) {
