@@ -2,6 +2,7 @@ package cliutil
 
 import (
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -46,9 +47,20 @@ func (e *ETA) Update(remaining int64) string {
 		// we ignore updates with the same remaining value and just return the previous ETA
 		return e.lastETA
 	} else if e.items[len(e.items)-1].remaining < remaining {
-		// in case remaining went up from previous updates then we don't know how many items
-		// were actually updated, lets assume 1 and update the remaining value of all items
-		diff := remaining - e.items[len(e.items)-1].remaining + 1
+		// remaining went up from previous update, lets estimate how many items were processed using the
+		// average number processed items in the queue.
+		var avgProcessedPerItem int64 = 1
+		if len(e.items) > 1 {
+			diffRemaining := e.items[0].remaining - e.items[len(e.items)-1].remaining
+			avgProcessedPerItem = int64(math.Round(float64(diffRemaining) / float64(len(e.items))))
+		}
+
+		// diff is the difference in increase in remaining since last update plus the average number of processed
+		// items we estimate that were processed this round
+		diff := remaining - e.items[len(e.items)-1].remaining + avgProcessedPerItem
+
+		// we update all items in the queue by shifting their remaining value accordingly. This means that we
+		// always have strictly decreasing remaining values in the queue
 		for i := range e.items {
 			e.items[i].remaining += diff
 		}
