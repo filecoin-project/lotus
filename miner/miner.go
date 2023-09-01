@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/golang-lru/arc/v2"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -373,8 +374,9 @@ minerLoop:
 // MiningBase is the tipset on top of which we plan to construct our next block.
 // Refer to godocs on GetBestMiningCandidate.
 type MiningBase struct {
-	TipSet     *types.TipSet
-	NullRounds abi.ChainEpoch
+	TipSet      *types.TipSet
+	ComputeTime time.Time
+	NullRounds  abi.ChainEpoch
 }
 
 // GetBestMiningCandidate implements the fork choice rule from a miner's
@@ -412,7 +414,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 		}
 	}
 
-	m.lastWork = &MiningBase{TipSet: bts}
+	m.lastWork = &MiningBase{TipSet: bts, ComputeTime: time.Now()}
 	return m.lastWork, nil
 }
 
@@ -554,10 +556,69 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	tProof := build.Clock.Now()
 
 	// get pending messages early,
-	msgs, err := m.api.MpoolSelect(context.TODO(), base.TipSet.Key(), ticket.Quality())
+	msgs, err := m.api.MpoolSelect(ctx, base.TipSet.Key(), ticket.Quality())
 	if err != nil {
 		err = xerrors.Errorf("failed to select messages for block: %w", err)
 		return nil, err
+	}
+
+	tEquivocateWait := build.Clock.Now()
+
+	// This next block exists to "catch" equivocating miners,
+	// who submit 2 blocks at the same height at different times in order to split the network.
+	// To safeguard against this, we make sure it's been EquivocationDelaySecs since our base was calculated,
+	// then re-calculate it.
+	// If the daemon detected equivocated blocks, those blocks will no longer be in the new base.
+	m.niceSleep(time.Until(base.ComputeTime.Add(time.Duration(build.EquivocationDelaySecs) * time.Second)))
+	newBase, err := m.GetBestMiningCandidate(ctx)
+	if err != nil {
+		err = xerrors.Errorf("failed to refresh best mining candidate: %w", err)
+		return nil, err
+	}
+
+	// If the base has changed, we take the _intersection_ of our old base and new base,
+	// thus ejecting blocks from any equivocating miners, without taking any new blocks.
+	if newBase.TipSet.Height() == base.TipSet.Height() && !newBase.TipSet.Equals(base.TipSet) {
+		log.Warnf("base changed from %s to %s, taking intersection", base.TipSet.Key(), newBase.TipSet.Key())
+		newBaseMap := map[cid.Cid]struct{}{}
+		for _, newBaseBlk := range newBase.TipSet.Cids() {
+			newBaseMap[newBaseBlk] = struct{}{}
+		}
+
+		refreshedBaseBlocks := make([]*types.BlockHeader, 0, len(base.TipSet.Cids()))
+		for _, baseBlk := range base.TipSet.Blocks() {
+			if _, ok := newBaseMap[baseBlk.Cid()]; ok {
+				refreshedBaseBlocks = append(refreshedBaseBlocks, baseBlk)
+			}
+		}
+
+		if len(refreshedBaseBlocks) != len(base.TipSet.Blocks()) {
+			refreshedBase, err := types.NewTipSet(refreshedBaseBlocks)
+			if err != nil {
+				err = xerrors.Errorf("failed to create new tipset when refreshing: %w", err)
+				return nil, err
+			}
+
+			if !base.TipSet.MinTicket().Equals(refreshedBase.MinTicket()) {
+				log.Warn("recomputing ticket due to base refresh")
+
+				ticket, err = m.computeTicket(ctx, &rbase, round, refreshedBase.MinTicket(), mbi)
+				if err != nil {
+					err = xerrors.Errorf("failed to refresh ticket: %w", err)
+					return nil, err
+				}
+			}
+
+			log.Warn("re-selecting messages due to base refresh")
+			// refresh messages, as the selected messages may no longer be valid
+			msgs, err = m.api.MpoolSelect(ctx, refreshedBase.Key(), ticket.Quality())
+			if err != nil {
+				err = xerrors.Errorf("failed to re-select messages for block: %w", err)
+				return nil, err
+			}
+
+			base.TipSet = refreshedBase
+		}
 	}
 
 	tPending := build.Clock.Now()
@@ -582,7 +643,8 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 			"tTicket ", tTicket.Sub(tPowercheck),
 			"tSeed ", tSeed.Sub(tTicket),
 			"tProof ", tProof.Sub(tSeed),
-			"tPending ", tPending.Sub(tProof),
+			"tEquivocateWait ", tEquivocateWait.Sub(tProof),
+			"tPending ", tPending.Sub(tEquivocateWait),
 			"tCreateBlock ", tCreateBlock.Sub(tPending))
 	}
 
