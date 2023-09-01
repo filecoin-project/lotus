@@ -404,16 +404,16 @@ func (sb *Sealer) pieceCid(spt abi.RegisteredSealProof, in []byte) (cid.Cid, err
 	return pieceCID, werr()
 }
 
-func (sb *Sealer) maybeAcquireUpdatePath(ctx context.Context, sector storiface.SectorRef) (string, func(), error) {
+func (sb *Sealer) acquireUpdatePath(ctx context.Context, sector storiface.SectorRef) (string, func(), error) {
 	// copy so that the sector doesn't get removed from a long-term storage path
-	replicaPath, done, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTUpdate, storiface.FTNone, storiface.PathSealing)
+	replicaPath, releaseSector, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTUpdate, storiface.FTNone, storiface.PathSealing)
 	if xerrors.Is(err, storiface.ErrSectorNotFound) {
-		return "", done, nil
+		return "", releaseSector, nil
 	} else if err != nil {
-		return "", done, xerrors.Errorf("reading updated replica: %w", err)
+		return "", releaseSector, xerrors.Errorf("reading updated replica: %w", err)
 	}
 
-	return replicaPath.Update, done, nil
+	return replicaPath.Update, releaseSector, nil
 }
 
 func (sb *Sealer) decodeUpdatedReplica(ctx context.Context, sector storiface.SectorRef, commD cid.Cid, updatePath, unsealedPath string, randomness abi.SealRandomness) error {
@@ -478,11 +478,11 @@ func (sb *Sealer) acquireSectorKeyOrRegenerate(ctx context.Context, sector stori
 }
 
 func (sb *Sealer) regenerateSectorKey(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, keyDataCid cid.Cid) error {
-	paths, done, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	paths, releaseSector, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector paths: %w", err)
 	}
-	defer done()
+	defer releaseSector()
 
 	// stat paths.Sealed, make sure it doesn't exist
 	_, err = os.Stat(paths.Sealed)
@@ -570,6 +570,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 			return xerrors.Errorf("acquire unsealed sector path (allocate): %w", err)
 		}
 	case err == nil:
+		// no-op
 	default:
 		return xerrors.Errorf("acquire unsealed sector path (existing): %w", err)
 	}
@@ -608,7 +609,7 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 	// need to unseal
 
 	// If piece data stored in updated replica decode whole sector
-	upd, updDone, err := sb.maybeAcquireUpdatePath(ctx, sector)
+	upd, updDone, err := sb.acquireUpdatePath(ctx, sector)
 	if err != nil {
 		return xerrors.Errorf("acquiring update path: %w", err)
 	}
@@ -630,11 +631,11 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storiface.SectorRef, o
 
 	// Piece data non-upgrade sealed in sector
 	// (copy so that files stay in long-term storage)
-	srcPaths, srcDone, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathSealing)
+	srcPaths, releaseSector, err := sb.sectors.AcquireSectorCopy(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return xerrors.Errorf("acquire sealed sector paths: %w", err)
 	}
-	defer srcDone()
+	defer releaseSector()
 
 	sealed, err := os.OpenFile(srcPaths.Sealed, os.O_RDONLY, 0644) // nolint:gosec
 	if err != nil {
