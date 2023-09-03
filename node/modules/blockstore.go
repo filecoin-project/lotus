@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	bstore "github.com/ipfs/boxo/blockstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 

@@ -57,6 +57,10 @@ func defCommon() Common {
 			ListenAddresses: []string{
 				"/ip4/0.0.0.0/tcp/0",
 				"/ip6/::/tcp/0",
+				"/ip4/0.0.0.0/udp/0/quic-v1",
+				"/ip6/::/udp/0/quic-v1",
+				"/ip4/0.0.0.0/udp/0/quic-v1/webtransport",
+				"/ip6/::/udp/0/quic-v1/webtransport",
 			},
 			AnnounceAddresses:   []string{},
 			NoAnnounceAddresses: []string{},
@@ -173,7 +177,6 @@ func DefaultStorageMiner() *StorageMiner {
 			AvailableBalanceBuffer:     types.FIL(big.Zero()),
 			DisableCollateralFallback:  false,
 
-			BatchPreCommits:    true,
 			MaxPreCommitBatch:  miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
 			PreCommitBatchWait: Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
 			// XXX snap deals wait deals slack if first

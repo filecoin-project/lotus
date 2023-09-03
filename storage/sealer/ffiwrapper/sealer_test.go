@@ -412,6 +412,16 @@ func TestSealPoStNoCommit(t *testing.T) {
 	fmt.Printf("EPoSt: %s\n", epost.Sub(precommit).String())
 }
 
+func TestMain(m *testing.M) {
+	//setup()
+	// Here it no-longer is bound to 30s but has 1m30s for the whole suite.
+	getGrothParamFileAndVerifyingKeys(sectorSize)
+
+	code := m.Run()
+	//shutdown()
+	os.Exit(code)
+}
+
 func TestSealAndVerify3(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
@@ -423,8 +433,6 @@ func TestSealAndVerify3(t *testing.T) {
 		t.Skip("this is slow")
 	}
 	_ = os.Setenv("RUST_LOG", "trace")
-
-	getGrothParamFileAndVerifyingKeys(sectorSize)
 
 	dir, err := os.MkdirTemp("", "sbtest")
 	if err != nil {
@@ -595,12 +603,18 @@ func BenchmarkWriteWithAlignment(b *testing.B) {
 }
 
 func openFDs(t *testing.T) int {
-	dent, err := os.ReadDir("/proc/self/fd")
-	require.NoError(t, err)
+	path := "/proc/self/fd"
+	if runtime.GOOS == "darwin" {
+		path = "/dev/fd"
+	}
+	dent, err := os.ReadDir(path)
+	if err != nil && !strings.Contains(err.Error(), "/dev/fd/3: bad file descriptor") {
+		require.NoError(t, err)
+	}
 
 	var skip int
 	for _, info := range dent {
-		l, err := os.Readlink(filepath.Join("/proc/self/fd", info.Name()))
+		l, err := os.Readlink(filepath.Join(path, info.Name()))
 		if err != nil {
 			continue
 		}
@@ -621,11 +635,15 @@ func requireFDsClosed(t *testing.T, start int) {
 	openNow := openFDs(t)
 
 	if start != openNow {
-		dent, err := os.ReadDir("/proc/self/fd")
+		path := "/proc/self/fd"
+		if runtime.GOOS == "darwin" {
+			path = "/dev/fd"
+		}
+		dent, err := os.ReadDir(path)
 		require.NoError(t, err)
 
 		for _, info := range dent {
-			l, err := os.Readlink(filepath.Join("/proc/self/fd", info.Name()))
+			l, err := os.Readlink(filepath.Join(path, info.Name()))
 			if err != nil {
 				fmt.Printf("FD err %s\n", err)
 				continue

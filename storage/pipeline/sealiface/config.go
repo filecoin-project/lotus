@@ -22,8 +22,6 @@ type Config struct {
 
 	MinUpgradeSectorExpiration uint64
 
-	MinTargetUpgradeSectorExpiration uint64
-
 	MaxUpgradingSectors uint64
 
 	MakeNewSectorForDeals bool
@@ -44,7 +42,6 @@ type Config struct {
 	AvailableBalanceBuffer     abi.TokenAmount
 	DisableCollateralFallback  bool
 
-	BatchPreCommits     bool
 	MaxPreCommitBatch   int
 	PreCommitBatchWait  time.Duration
 	PreCommitBatchSlack time.Duration

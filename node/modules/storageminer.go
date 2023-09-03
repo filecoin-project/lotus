@@ -983,25 +983,23 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 	return func(cfg sealiface.Config) (err error) {
 		err = mutateSealingCfg(r, func(c config.SealingConfiger) {
 			newCfg := config.SealingConfig{
-				MaxWaitDealsSectors:              cfg.MaxWaitDealsSectors,
-				MaxSealingSectors:                cfg.MaxSealingSectors,
-				MaxSealingSectorsForDeals:        cfg.MaxSealingSectorsForDeals,
-				PreferNewSectorsForDeals:         cfg.PreferNewSectorsForDeals,
-				MaxUpgradingSectors:              cfg.MaxUpgradingSectors,
-				CommittedCapacitySectorLifetime:  config.Duration(cfg.CommittedCapacitySectorLifetime),
-				WaitDealsDelay:                   config.Duration(cfg.WaitDealsDelay),
-				MakeNewSectorForDeals:            cfg.MakeNewSectorForDeals,
-				MinUpgradeSectorExpiration:       cfg.MinUpgradeSectorExpiration,
-				MinTargetUpgradeSectorExpiration: cfg.MinTargetUpgradeSectorExpiration,
-				MakeCCSectorsAvailable:           cfg.MakeCCSectorsAvailable,
-				AlwaysKeepUnsealedCopy:           cfg.AlwaysKeepUnsealedCopy,
-				FinalizeEarly:                    cfg.FinalizeEarly,
+				MaxWaitDealsSectors:             cfg.MaxWaitDealsSectors,
+				MaxSealingSectors:               cfg.MaxSealingSectors,
+				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
+				PreferNewSectorsForDeals:        cfg.PreferNewSectorsForDeals,
+				MaxUpgradingSectors:             cfg.MaxUpgradingSectors,
+				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
+				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				MakeNewSectorForDeals:           cfg.MakeNewSectorForDeals,
+				MinUpgradeSectorExpiration:      cfg.MinUpgradeSectorExpiration,
+				MakeCCSectorsAvailable:          cfg.MakeCCSectorsAvailable,
+				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
+				FinalizeEarly:                   cfg.FinalizeEarly,
 
 				CollateralFromMinerBalance: cfg.CollateralFromMinerBalance,
 				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
 				DisableCollateralFallback:  cfg.DisableCollateralFallback,
 
-				BatchPreCommits:     cfg.BatchPreCommits,
 				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
 				PreCommitBatchSlack: config.Duration(cfg.PreCommitBatchSlack),
@@ -1027,13 +1025,12 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 
 func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.SealingConfig) sealiface.Config {
 	return sealiface.Config{
-		MaxWaitDealsSectors:              sealingCfg.MaxWaitDealsSectors,
-		MaxSealingSectors:                sealingCfg.MaxSealingSectors,
-		MaxSealingSectorsForDeals:        sealingCfg.MaxSealingSectorsForDeals,
-		PreferNewSectorsForDeals:         sealingCfg.PreferNewSectorsForDeals,
-		MinUpgradeSectorExpiration:       sealingCfg.MinUpgradeSectorExpiration,
-		MinTargetUpgradeSectorExpiration: sealingCfg.MinTargetUpgradeSectorExpiration,
-		MaxUpgradingSectors:              sealingCfg.MaxUpgradingSectors,
+		MaxWaitDealsSectors:        sealingCfg.MaxWaitDealsSectors,
+		MaxSealingSectors:          sealingCfg.MaxSealingSectors,
+		MaxSealingSectorsForDeals:  sealingCfg.MaxSealingSectorsForDeals,
+		PreferNewSectorsForDeals:   sealingCfg.PreferNewSectorsForDeals,
+		MinUpgradeSectorExpiration: sealingCfg.MinUpgradeSectorExpiration,
+		MaxUpgradingSectors:        sealingCfg.MaxUpgradingSectors,
 
 		StartEpochSealingBuffer:         abi.ChainEpoch(dealmakingCfg.StartEpochSealingBuffer),
 		MakeNewSectorForDeals:           sealingCfg.MakeNewSectorForDeals,
@@ -1047,7 +1044,6 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		AvailableBalanceBuffer:     types.BigInt(sealingCfg.AvailableBalanceBuffer),
 		DisableCollateralFallback:  sealingCfg.DisableCollateralFallback,
 
-		BatchPreCommits:     sealingCfg.BatchPreCommits,
 		MaxPreCommitBatch:   sealingCfg.MaxPreCommitBatch,
 		PreCommitBatchWait:  time.Duration(sealingCfg.PreCommitBatchWait),
 		PreCommitBatchSlack: time.Duration(sealingCfg.PreCommitBatchSlack),

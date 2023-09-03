@@ -78,7 +78,7 @@ var runCmd = &cli.Command{
 		&cli.Uint64Flag{
 			Name:    "data-cap",
 			EnvVars: []string{"LOTUS_DATACAP_AMOUNT"},
-			Value:   10240,
+			Value:   verifregtypes9.MinVerifiedDealSize.Uint64(),
 		},
 		&cli.Float64Flag{
 			Name:  "captcha-threshold",

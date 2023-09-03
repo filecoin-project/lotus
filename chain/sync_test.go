@@ -311,7 +311,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	for _, lastB := range lastTs.Blocks {
 		require.NoError(tu.t, cs.AddToTipSetTracker(context.Background(), lastB.Header))
 	}
-	err = cs.PutTipSet(tu.ctx, lastTs.TipSet())
+	err = cs.RefreshHeaviestTipSet(tu.ctx, lastTs.TipSet().Height())
 	require.NoError(tu.t, err)
 
 	tu.genesis = genesis

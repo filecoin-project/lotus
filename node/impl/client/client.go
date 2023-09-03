@@ -13,15 +13,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/boxo/blockservice"
+	bstore "github.com/ipfs/boxo/blockstore"
+	offline "github.com/ipfs/boxo/exchange/offline"
 	"github.com/ipfs/boxo/files"
-	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/boxo/ipld/merkledag"
+	unixfile "github.com/ipfs/boxo/ipld/unixfs/file"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipfs/go-merkledag"
-	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
 	"github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
@@ -527,7 +527,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
 		}
 		if len(hd.Roots) != 1 {
-			return nil, xerrors.New("car file can have one and only one header")
+			return nil, xerrors.New("car file can have one and only one root")
 		}
 		if hd.Version != 1 && hd.Version != 2 {
 			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)

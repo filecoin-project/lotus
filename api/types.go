@@ -299,6 +299,7 @@ type MinerInfo struct {
 	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
 	ConsensusFaultElapsed      abi.ChainEpoch
+	PendingOwnerAddress        *address.Address
 	Beneficiary                address.Address
 	BeneficiaryTerm            *miner.BeneficiaryTerm
 	PendingBeneficiaryTerm     *miner.PendingBeneficiaryChange
@@ -311,6 +312,7 @@ type NetworkParams struct {
 	SupportedProofTypes     []abi.RegisteredSealProof
 	PreCommitChallengeDelay abi.ChainEpoch
 	ForkUpgradeParams       ForkUpgradeParams
+	Eip155ChainID           int
 }
 
 type ForkUpgradeParams struct {
@@ -338,6 +340,7 @@ type ForkUpgradeParams struct {
 	UpgradeHyggeHeight       abi.ChainEpoch
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
+	UpgradeWatermelonHeight  abi.ChainEpoch
 }
 
 type NonceMapType map[address.Address]uint64

@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.7
+      - image: cimg/go:1.20.7
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.7
+      - image: cimg/go:1.20.7
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -558,6 +558,7 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
           [[if eq $suite "unit-cli"]]get-params: true[[end]]
+          [[if eq $suite "unit-cli"]]executor: golang-2xl[[end]]
           [[- if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
       [[- end]]
       - test:

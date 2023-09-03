@@ -79,6 +79,9 @@ const UpgradeLightningHeight = 489094
 // 2023-04-21T16:00:00Z
 const UpgradeThunderHeight = UpgradeLightningHeight + 3120
 
+// ??????????
+const UpgradeWatermelonHeight = 999999999999999
+
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
 	abi.RegisteredSealProof_StackedDrg64GiBV1,
@@ -119,6 +122,8 @@ func init() {
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 var PropagationDelaySecs = uint64(10)
+
+var EquivocationDelaySecs = uint64(2)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 4

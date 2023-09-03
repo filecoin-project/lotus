@@ -193,7 +193,7 @@ lotus-health:
 .PHONY: lotus-health
 BINS+=lotus-health
 
-lotus-wallet:
+lotus-wallet: $(BUILD_DEPS)
 	rm -f lotus-wallet
 	$(GOCC) build $(GOFLAGS) -o lotus-wallet ./cmd/lotus-wallet
 .PHONY: lotus-wallet
@@ -355,7 +355,7 @@ fiximports:
 	./scripts/fiximports
 
 gen: actors-code-gen type-gen cfgdoc-gen docsgen api-gen circleci fiximports
-	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
+	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO RUN 'make docsgen-cli'"
 .PHONY: gen
 
 jen: gen

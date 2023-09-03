@@ -38,7 +38,7 @@
   #
   # type: []string
   # env var: LOTUS_LIBP2P_LISTENADDRESSES
-  #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
+  #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1", "/ip6/::/udp/0/quic-v1", "/ip4/0.0.0.0/udp/0/quic-v1/webtransport", "/ip6/::/udp/0/quic-v1/webtransport"]
 
   # Addresses to explicitally announce to other peers. If not specified,
   # all interface addresses are announced
@@ -515,15 +515,7 @@
   # env var: LOTUS_SEALING_MINUPGRADESECTOREXPIRATION
   #MinUpgradeSectorExpiration = 0
 
-  # When set to a non-zero value, minimum number of epochs until sector expiration above which upgrade candidates will
-  # be selected based on lowest initial pledge.
-  # 
-  # Target sector expiration is calculated by looking at the input deal queue, sorting it by deal expiration, and
-  # selecting N deals from the queue up to sector size. The target expiration will be Nth deal end epoch, or in case
-  # where there weren't enough deals to fill a sector, DealMaxDuration (540 days = 1555200 epochs)
-  # 
-  # Setting this to a high value (for example to maximum deal duration - 1555200) will disable selection based on
-  # initial pledge - upgrade sectors will always be chosen based on longest expiration
+  # DEPRECATED: Target expiration is no longer used
   #
   # type: uint64
   # env var: LOTUS_SEALING_MINTARGETUPGRADESECTOREXPIRATION
@@ -589,12 +581,6 @@
   # env var: LOTUS_SEALING_DISABLECOLLATERALFALLBACK
   #DisableCollateralFallback = false
 
-  # enable / disable precommit batching (takes effect after nv13)
-  #
-  # type: bool
-  # env var: LOTUS_SEALING_BATCHPRECOMMITS
-  #BatchPreCommits = true
-
   # maximum precommit batch size - batches will be sent immediately above this size
   #
   # type: int
@@ -644,7 +630,8 @@
   #CommitBatchSlack = "1h0m0s"
 
   # network BaseFee below which to stop doing precommit batching, instead
-  # sending precommit messages to the chain individually
+  # sending precommit messages to the chain individually. When the basefee is
+  # below this threshold, precommit messages will get sent out immediately.
   #
   # type: types.FIL
   # env var: LOTUS_SEALING_BATCHPRECOMMITABOVEBASEFEE
