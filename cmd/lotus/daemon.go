@@ -594,6 +594,11 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
+	gb, err := cst.GetTipsetByHeight(ctx, 0, ts, true)
+	if err != nil {
+		return err
+	}
+
 	log.Infof("setting genesis")
 	err = cst.SetGenesis(ctx, gen)
 	if err != nil {
