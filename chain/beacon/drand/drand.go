@@ -29,19 +29,6 @@ import (
 
 var log = logging.Logger("drand")
 
-type drandPeer struct {
-	addr string
-	tls  bool
-}
-
-func (dp *drandPeer) Address() string {
-	return dp.addr
-}
-
-func (dp *drandPeer) IsTLS() bool {
-	return dp.tls
-}
-
 // DrandBeacon connects Lotus with a drand network in order to provide
 // randomness to the system in a way that's aligned with Filecoin rounds/epochs.
 //
