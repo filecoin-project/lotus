@@ -30,15 +30,16 @@ func (t *WdPostTask) CanAccept(ids []harmonytask.TaskID) (*harmonytask.TaskID, e
 
 func (t *WdPostTask) TypeDetails() harmonytask.TaskTypeDetails {
 	return harmonytask.TaskTypeDetails{
-		Name: "WdPostGeneration",
+		Name: "WdPostCompute",
 	}
 }
 
 func (t *WdPostTask) Adder(taskFunc harmonytask.AddTaskFunc) {
 
+	log.Errorf("WdPostTask.Adder() called -----------------------------	")
+
 	// wait for any channels on t.tasks and call taskFunc on them
 	for taskDetails := range t.tasks {
-		//taskDetails := <-ch
 
 		log.Errorf("WdPostTask.Adder() received taskDetails: %v", taskDetails)
 
@@ -57,8 +58,6 @@ func NewWdPostTask(db *harmonydb.DB) *WdPostTask {
 
 func (t *WdPostTask) AddTask(ctx context.Context, ts *types.TipSet, deadline *dline.Info) error {
 
-	//ch := make(chan *WdPostTaskDetails)
-	//t.tasks = append(t.tasks, ch)
 	t.tasks <- &WdPostTaskDetails{
 		Ts:       ts,
 		Deadline: deadline,
@@ -70,7 +69,11 @@ func (t *WdPostTask) AddTask(ctx context.Context, ts *types.TipSet, deadline *dl
 }
 
 func (t *WdPostTask) addTaskToDB(ts *types.TipSet, deadline *dline.Info, taskId harmonytask.TaskID, tx *harmonydb.Tx) (bool, error) {
+
 	tsKey := ts.Key()
+
+	log.Errorf("WdPostTask.addTaskToDB() called with tsKey: %v, taskId: %v", tsKey, taskId)
+
 	_, err := tx.Exec(
 		`INSERT INTO wdpost_tasks (
                          task_id,

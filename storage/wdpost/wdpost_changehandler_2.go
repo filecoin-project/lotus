@@ -44,10 +44,10 @@ func (ch *changeHandler2) currentTSDI() (*types.TipSet, *dline.Info) {
 	panic("implement me")
 }
 
-func newChangeHandler2(api wdPoStCommands, actor address.Address, db *harmonydb.DB) *changeHandler2 {
+func newChangeHandler2(api wdPoStCommands, actor address.Address, task *WdPostTask) *changeHandler2 {
 	log.Errorf("newChangeHandler2() called with api: %v, actor: %v", api, actor)
 	//posts := newPostsCache()
-	p := newProver2(api, db)
+	p := newProver2(api, task)
 	//s := newSubmitter(api, posts)
 	return &changeHandler2{api: api, actor: actor, proveHdlr: p}
 }
@@ -58,7 +58,6 @@ func (ch *changeHandler2) start() {
 }
 
 func (ch *changeHandler2) update(ctx context.Context, revert *types.TipSet, advance *types.TipSet) error {
-	log.Errorf("changeHandler2.update() called with revert: %v, advance: %v", revert, advance)
 	// Get the current deadline period
 	di, err := ch.api.StateMinerProvingDeadline(ctx, ch.actor, advance.Key())
 	if err != nil {
@@ -177,7 +176,8 @@ type proveHandler2 struct {
 func newProver2(
 	api wdPoStCommands,
 	//posts *postsCache,
-	db *harmonydb.DB,
+	//db *harmonydb.DB,
+	wdPostTask *WdPostTask,
 ) *proveHandler2 {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &proveHandler2{
@@ -187,7 +187,7 @@ func newProver2(
 		hcs:         make(chan *headChange),
 		shutdownCtx: ctx,
 		shutdown:    cancel,
-		wdPostTask:  NewWdPostTask(db),
+		wdPostTask:  wdPostTask,
 	}
 }
 
@@ -205,7 +205,6 @@ func (p *proveHandler2) run() {
 			return
 
 		case hc := <-p.hcs:
-			log.Errorf("--------------------WINDOW POST PROVE HANDLER RECEIVE CHAN----------------------")
 			// Head changed
 			p.processHeadChange(hc.ctx, hc.advance, hc.di)
 			if p.processedHeadChanges != nil {
@@ -224,8 +223,6 @@ func (p *proveHandler2) run() {
 
 func (p *proveHandler2) processHeadChange(ctx context.Context, newTS *types.TipSet, di *dline.Info) {
 	// If the post window has expired, abort the current proof
-	log.Errorf("--------------------WINDOW POST PROVE HANDLER PROCESS HC----------------------")
-
 	if p.current != nil && newTS.Height() >= p.current.di.Close {
 		// Cancel the context on the current proof
 		p.current.abort()

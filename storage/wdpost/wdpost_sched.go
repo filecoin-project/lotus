@@ -3,6 +3,8 @@ package wdpost
 import (
 	"context"
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/lib/harmony/harmonytask"
+	"github.com/gin-gonic/gin"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -87,7 +89,8 @@ type WindowPoStScheduler struct {
 
 	// failed abi.ChainEpoch // eps
 	// failLk sync.Mutex
-	db *harmonydb.DB
+	db         *harmonydb.DB
+	wdPostTask *WdPostTask
 }
 
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
@@ -100,7 +103,8 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	ft sealer.FaultTracker,
 	j journal.Journal,
 	actor address.Address,
-	db *harmonydb.DB) (*WindowPoStScheduler, error) {
+	db *harmonydb.DB,
+	task *WdPostTask) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector size: %w", err)
@@ -126,13 +130,26 @@ func NewWindowedPoStScheduler(api NodeAPI,
 			evtTypeWdPoStRecoveries: j.RegisterEventType("wdpost", "recoveries_processed"),
 			evtTypeWdPoStFaults:     j.RegisterEventType("wdpost", "faults_processed"),
 		},
-		journal: j,
-		db:      db,
+		journal:    j,
+		wdPostTask: task,
+		db:         db,
 	}, nil
 }
 
 func (s *WindowPoStScheduler) Run(ctx context.Context) {
 	// Initialize change handler.
+
+	wdPostTask := NewWdPostTask(s.db)
+
+	taskEngine, er := harmonytask.New(s.db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
+	if er != nil {
+		//return nil, xerrors.Errorf("failed to create task engine: %w", err)
+		log.Errorf("failed to create task engine: %w", er)
+	}
+	handler := gin.New()
+
+	taskEngine.ApplyHttpHandlers(handler.Group("/"))
+	defer taskEngine.GracefullyTerminate(time.Hour)
 
 	// callbacks is a union of the fullNodeFilteredAPI and ourselves.
 	callbacks := struct {
@@ -147,7 +164,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 		defer s.ch.shutdown()
 		s.ch.start()
 	} else {
-		s.ch = newChangeHandler2(callbacks, s.actor, s.db)
+		s.ch = newChangeHandler2(callbacks, s.actor, wdPostTask)
 		defer s.ch.shutdown()
 		s.ch.start()
 	}
@@ -227,7 +244,6 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 }
 
 func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.TipSet) {
-	log.Errorf("WindowPoStScheduler.update() called with revert: %v, apply: %v", revert, apply)
 	if apply == nil {
 		log.Error("no new tipset in window post WindowPoStScheduler.update")
 		return

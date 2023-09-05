@@ -316,22 +316,22 @@ func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr, db)
-
-		if err != nil {
-			return nil, err
-		}
-
 		//wdPostTask := wdpost.NewWdPostTask(db)
-		//
+
 		//taskEngine, err := harmonytask.New(db, []harmonytask.TaskInterface{wdPostTask}, "localhost:12300")
 		//if err != nil {
 		//	return nil, xerrors.Errorf("failed to create task engine: %w", err)
 		//}
-		//handler := gin.New()
-		//
-		//taskEngine.ApplyHttpHandlers(handler.Group("/"))
+		////handler := gin.New()
+		////
+		////taskEngine.ApplyHttpHandlers(handler.Group("/"))
 		//defer taskEngine.GracefullyTerminate(time.Hour)
+
+		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr, db, nil)
+
+		if err != nil {
+			return nil, err
+		}
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
