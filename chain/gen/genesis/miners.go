@@ -369,13 +369,33 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		// Commit sectors
 		{
 			for pi, preseal := range m.Sectors {
-				params := &minertypes.SectorPreCommitInfo{
-					SealProof:     preseal.ProofType,
-					SectorNumber:  preseal.SectorID,
-					SealedCID:     preseal.CommR,
-					SealRandEpoch: -1,
-					DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
-					Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
+				var paramEnc []byte
+				var preCommitMethodNum abi.MethodNum
+				if nv >= network.Version21 {
+					paramEnc = mustEnc(&miner.PreCommitSectorBatchParams2{
+						Sectors: []miner.SectorPreCommitInfo{
+							{
+								SealProof:     preseal.ProofType,
+								SectorNumber:  preseal.SectorID,
+								SealedCID:     preseal.CommR,
+								SealRandEpoch: -1,
+								DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
+								Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
+								UnsealedCid:   &preseal.CommD,
+							},
+						},
+					})
+					preCommitMethodNum = builtintypes.MethodsMiner.PreCommitSectorBatch2
+				} else {
+					paramEnc = mustEnc(&minertypes.SectorPreCommitInfo{
+						SealProof:     preseal.ProofType,
+						SectorNumber:  preseal.SectorID,
+						SealedCID:     preseal.CommR,
+						SealRandEpoch: -1,
+						DealIDs:       []abi.DealID{minerInfos[i].dealIDs[pi]},
+						Expiration:    minerInfos[i].presealExp, // TODO: Allow setting externally!
+					})
+					preCommitMethodNum = builtintypes.MethodsMiner.PreCommitSector
 				}
 
 				sectorWeight := minerInfos[i].sectorWeight[pi]
@@ -458,7 +478,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 
 				pledge = big.Add(pcd, pledge)
 
-				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, m.Worker, pledge, builtintypes.MethodsMiner.PreCommitSector, mustEnc(params))
+				_, err = doExecValue(ctx, genesisVm, minerInfos[i].maddr, m.Worker, pledge, preCommitMethodNum, paramEnc)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
