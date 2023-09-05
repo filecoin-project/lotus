@@ -74,7 +74,6 @@ datacap           bafk2bzacecq5ppfskxgv3iea3jarsix6jdduuhwsn4fbvngtbmzelzmlygorm
 - chore: build: bump version to 1.24.0-rc1 ([filecoin-project/lotus#11332](https://github.com/filecoin-project/lotus/pull/11332))
 
 ## New features
-- feat: Added new tracing API (**HIGHLY EXPERIMENTAL**) supporting two RPC methods: `trace_block` and `trace_replayBlockTransactions` ([filecoin-project/lotus#11100](https://github.com/filecoin-project/lotus/pull/11100))
 
 # v1.23.4-rc1 / 2023-09-05
 
