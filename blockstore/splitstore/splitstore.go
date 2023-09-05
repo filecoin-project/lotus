@@ -182,7 +182,6 @@ type SplitStore struct {
 
 	compactionIndex int64
 	pruneIndex      int64
-	onlineGCCnt     int64
 
 	ctx    context.Context
 	cancel func()
