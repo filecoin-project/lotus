@@ -3,7 +3,6 @@
 # UNRELEASED
 
 ## New features
-- feat: Added new tracing API (**HIGHLY EXPERIMENTAL**) supporting two RPC methods: `trace_block` and `trace_replayBlockTransactions` ([filecoin-project/lotus#11100](https://github.com/filecoin-project/lotus/pull/11100))
 
 # v1.23.4-rc1 / 2023-09-05
 
