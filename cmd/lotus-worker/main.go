@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -318,6 +319,29 @@ var runCmd = &cli.Command{
 		default:
 			if limit < build.MinerFDLimit {
 				return xerrors.Errorf("soft file descriptor limit (ulimit -n) too low, want %d, current %d", build.MinerFDLimit, limit)
+			}
+		}
+
+		// Check DC-environment variable
+		sectorSizes := []string{"2KiB", "8MiB", "512MiB", "32GiB", "64GiB"}
+		resourcesType := reflect.TypeOf(storiface.Resources{})
+
+		for _, sectorSize := range sectorSizes {
+			for i := 0; i < resourcesType.NumField(); i++ {
+				field := resourcesType.Field(i)
+				envName := field.Tag.Get("envname")
+				if envName != "" {
+					// Check if DC_[SectorSize]_[ResourceRestriction] is set
+					envVar, ok := os.LookupEnv("DC_" + sectorSize + "_" + envName)
+					if ok {
+						// If it is set, convert it to DC_[ResourceRestriction]
+						err := os.Setenv("DC_"+envName, envVar)
+						if err != nil {
+							log.Fatalf("Error setting environment variable: %v", err)
+						}
+						log.Warnf("Converted DC_%s_%s to DC_%s, because DC is a sector-size independent job", sectorSize, envName, envName)
+					}
+				}
 			}
 		}
 
