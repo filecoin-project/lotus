@@ -449,20 +449,20 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
 		log.Warnf("CommitAggregate message ran out of gas, splitting batch in half and trying again (sectors: %d)", len(sectors))
 		mid := len(sectors) / 2
-		ret0, _ := b.processBatchV1(cfg, sectors[:mid], nv)
-		ret1, _ := b.processBatchV1(cfg, sectors[mid:], nv)
+		ret0, _ := b.processBatchV2(cfg, sectors[:mid], nv, aggregate)
+		ret1, _ := b.processBatchV2(cfg, sectors[mid:], nv, aggregate)
 
 		return append(ret0, ret1...), nil
 	}
 
-	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors2, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
 
 	res.Msg = &mcid
 
-	log.Infow("Sent ProveCommitAggregate message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
+	log.Infow("Sent ProveCommitSectors2 message", "cid", mcid, "from", from, "todo", total, "sectors", len(infos))
 
 	return []sealiface.CommitBatchRes{res}, nil
 }

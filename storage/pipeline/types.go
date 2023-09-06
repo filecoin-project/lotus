@@ -158,7 +158,7 @@ func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
 
 func (t *SectorInfo) hasDeals() bool {
 	for _, piece := range t.Pieces {
-		if piece.HasDealInfo() {
+		if piece.HasDealInfo() && piece.HasDealProposal() {
 			return true
 		}
 	}
@@ -233,6 +233,10 @@ func (sp *SafeSectorPiece) Piece() abi.PieceInfo {
 
 func (sp *SafeSectorPiece) HasDealInfo() bool {
 	return sp.real.DealInfo != nil
+}
+
+func (sp *SafeSectorPiece) HasDealProposal() bool {
+	return sp.real.DealInfo.DealProposal != nil
 }
 
 func (sp *SafeSectorPiece) DealInfo() UniversalPieceInfo {
