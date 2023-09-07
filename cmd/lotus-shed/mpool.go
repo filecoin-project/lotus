@@ -75,7 +75,7 @@ var minerSelectMsgsCmd = &cli.Command{
 			totalGas += f.Message.GasLimit
 		}
 
-		// Log the duration, size of the mempool, and number of selected messages
+		// Log the duration, size of the mempool, selected messages and total gas limit of selected messages
 		fmt.Printf("Message selection took %s\n", duration)
 		fmt.Printf("Size of the mempool: %d\n", mpoolSize)
 		fmt.Println("selected messages: ", len(msgs))
