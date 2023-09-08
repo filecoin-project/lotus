@@ -665,6 +665,7 @@ func newEthTxReceipt(ctx context.Context, tx ethtypes.EthTx, lookup *api.MsgLook
 				continue
 			}
 			for _, topic := range topics {
+				log.Debug("LogsBloom set for ", topic)
 				ethtypes.EthBloomSet(receipt.LogsBloom, topic[:])
 			}
 			l.Data = data

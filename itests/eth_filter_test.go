@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -543,6 +544,7 @@ func TestTxReceiptBloom(t *testing.T) {
 		kit.MockProofs(),
 		kit.ThroughRPC())
 	ens.InterconnectAll().BeginMining(blockTime)
+	logging.SetLogLevel("fullnode", "DEBUG")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -577,6 +579,10 @@ func TestTxReceiptBloom(t *testing.T) {
 		}
 	}
 
+	// Deflake plan: (Flake: 5 bits instead of 6)
+	//   Debug + search logs for "LogsBloom"
+	//   compare to passing case.
+	//
 	// 3 bits from the topic, 3 bits from the address
 	require.Equal(t, 6, bitsSet)
 }
