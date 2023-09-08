@@ -24,14 +24,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -193,14 +192,14 @@ var sectorsStatusCmd = &cli.Command{
 			}
 
 			tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
-			mas, err := lminer.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+			mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 			if err != nil {
 				return err
 			}
 
 			errFound := errors.New("found")
-			if err := mas.ForEachDeadline(func(dlIdx uint64, dl lminer.Deadline) error {
-				return dl.ForEachPartition(func(partIdx uint64, part lminer.Partition) error {
+			if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+				return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
 					pas, err := part.AllSectors()
 					if err != nil {
 						return err
@@ -1075,22 +1074,22 @@ var sectorsExtendCmd = &cli.Command{
 
 		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
 		adtStore := adt.WrapStore(ctx, cbor.NewCborStore(tbs))
-		mas, err := lminer.Load(adtStore, mact)
+		mas, err := miner.Load(adtStore, mact)
 		if err != nil {
 			return err
 		}
 
-		activeSectorsLocation := make(map[abi.SectorNumber]*lminer.SectorLocation, len(activeSet))
+		activeSectorsLocation := make(map[abi.SectorNumber]*miner.SectorLocation, len(activeSet))
 
-		if err := mas.ForEachDeadline(func(dlIdx uint64, dl lminer.Deadline) error {
-			return dl.ForEachPartition(func(partIdx uint64, part lminer.Partition) error {
+		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
 				pas, err := part.ActiveSectors()
 				if err != nil {
 					return err
 				}
 
 				return pas.ForEach(func(i uint64) error {
-					activeSectorsLocation[abi.SectorNumber(i)] = &lminer.SectorLocation{
+					activeSectorsLocation[abi.SectorNumber(i)] = &miner.SectorLocation{
 						Deadline:  dlIdx,
 						Partition: partIdx,
 					}
@@ -1177,7 +1176,7 @@ var sectorsExtendCmd = &cli.Command{
 			return diff <= abi.ChainEpoch(cctx.Int64("tolerance"))
 		}
 
-		extensions := map[lminer.SectorLocation]map[abi.ChainEpoch][]abi.SectorNumber{}
+		extensions := map[miner.SectorLocation]map[abi.ChainEpoch][]abi.SectorNumber{}
 		for _, si := range sis {
 			extension := abi.ChainEpoch(cctx.Int64("extension"))
 			newExp := si.Expiration + extension
@@ -1741,7 +1740,7 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 			return err
 		}
 
-		spt, err := lminer.PreferredSealProofTypeFromWindowPoStType(nv, mi.WindowPoStProofType, false)
+		spt, err := miner.PreferredSealProofTypeFromWindowPoStType(nv, mi.WindowPoStProofType)
 		if err != nil {
 			return err
 		}
@@ -1910,7 +1909,7 @@ var sectorsExpiredCmd = &cli.Command{
 		}
 
 		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
-		mas, err := lminer.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 		if err != nil {
 			return err
 		}
@@ -1926,8 +1925,8 @@ var sectorsExpiredCmd = &cli.Command{
 			return xerrors.Errorf("intersecting bitfields: %w", err)
 		}
 
-		if err := mas.ForEachDeadline(func(dlIdx uint64, dl lminer.Deadline) error {
-			return dl.ForEachPartition(func(partIdx uint64, part lminer.Partition) error {
+		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
 				live, err := part.LiveSectors()
 				if err != nil {
 					return err

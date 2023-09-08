@@ -81,7 +81,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 	pstate cid.Cid,
 	bms []FilecoinBlockMessages,
 	epoch abi.ChainEpoch,
-	r vm.Rand,
+	r rand.Rand,
 	em stmgr.ExecMonitor,
 	vmTracing bool,
 	baseFee abi.TokenAmount,
@@ -134,6 +134,10 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 		ret, err := vmCron.ApplyImplicitMessage(ctx, cronMsg)
 		if err != nil {
 			return xerrors.Errorf("running cron: %w", err)
+		}
+
+		if !ret.ExitCode.IsSuccess() {
+			return xerrors.Errorf("cron failed with exit code %d: %w", ret.ExitCode, ret.ActorErr)
 		}
 
 		cronGas += ret.GasUsed

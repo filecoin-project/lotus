@@ -6,9 +6,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -531,12 +531,12 @@ func nextDeadline(currentDeadline *dline.Info) *dline.Info {
 	newDeadline := currentDeadline.Index + 1
 	if newDeadline == miner.WPoStPeriodDeadlines {
 		newDeadline = 0
-		periodStart = periodStart + miner.WPoStProvingPeriod
+		periodStart = periodStart + miner.WPoStProvingPeriod()
 	}
 
 	return NewDeadlineInfo(periodStart, newDeadline, currentDeadline.CurrentEpoch)
 }
 
 func NewDeadlineInfo(periodStart abi.ChainEpoch, deadlineIdx uint64, currEpoch abi.ChainEpoch) *dline.Info {
-	return dline.NewInfo(periodStart, deadlineIdx, currEpoch, miner.WPoStPeriodDeadlines, miner.WPoStProvingPeriod, miner.WPoStChallengeWindow, miner.WPoStChallengeLookback, miner.FaultDeclarationCutoff)
+	return dline.NewInfo(periodStart, deadlineIdx, currEpoch, miner.WPoStPeriodDeadlines, miner.WPoStProvingPeriod(), miner.WPoStChallengeWindow(), miner.WPoStChallengeLookback, miner.FaultDeclarationCutoff)
 }

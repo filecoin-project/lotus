@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.23.3-rc2
+   1.23.3
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -74,9 +74,6 @@ OPTIONS:
    --api-max-req-size value  maximum API request size accepted by the JSON RPC server (default: 0)
    --restore value           restore from backup file
    --restore-config value    config file to use when restoring from backup
-   --slash-consensus         Report consensus fault (default: false)
-   --slasher-sender value    optionally specify the account to report consensus from
-   --slashdb-dir value       (default: "slash watch db dir path")
    --help, -h                show help
 ```
 

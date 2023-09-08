@@ -15,7 +15,6 @@ import (
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
@@ -368,6 +368,10 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 		DealIDs:       sector.dealIDs(),
 	}
 
+	if sector.hasDeals() {
+		params.UnsealedCid = sector.CommD
+	}
+
 	collateral, err := m.Api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, ts.Key())
 	if err != nil {
 		return nil, big.Zero(), types.EmptyTSK, xerrors.Errorf("getting initial pledge collateral: %w", err)
@@ -377,62 +381,10 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 }
 
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting config: %w", err)
-	}
-
-	if cfg.BatchPreCommits {
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), types.EmptyTSK)
-		if err != nil {
-			return xerrors.Errorf("getting network version: %w", err)
-		}
-
-		if nv >= network.Version13 {
-			return ctx.Send(SectorPreCommitBatch{})
-		}
-	}
-
-	info, pcd, tsk, err := m.preCommitInfo(ctx, sector)
-	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitInfo: %w", err)})
-	}
-	if info == nil {
-		return nil // event was sent in preCommitInfo
-	}
-
-	params := infoToPreCommitSectorParams(info)
-
-	deposit, err := collateralSendAmount(ctx.Context(), m.Api, m.maddr, cfg, pcd)
-	if err != nil {
-		return err
-	}
-
-	enc := new(bytes.Buffer)
-	if err := params.MarshalCBOR(enc); err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
-	}
-
-	mi, err := m.Api.StateMinerInfo(ctx.Context(), m.maddr, tsk)
-	if err != nil {
-		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
-		return nil
-	}
-
-	goodFunds := big.Add(deposit, big.Int(m.feeCfg.MaxPreCommitGasFee))
-
-	from, _, err := m.addrSel.AddressFor(ctx.Context(), m.Api, mi, api.PreCommitAddr, goodFunds, deposit)
-	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("no good address to send precommit message from: %w", err)})
-	}
-
-	log.Infof("submitting precommit for sector %d (deposit: %s): ", sector.SectorNumber, deposit)
-	mcid, err := sendMsg(ctx.Context(), m.Api, from, m.maddr, builtin.MethodsMiner.PreCommitSector, deposit, big.Int(m.feeCfg.MaxPreCommitGasFee), enc.Bytes())
-	if err != nil {
-		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
-	}
-
-	return ctx.Send(SectorPreCommitted{Message: mcid, PreCommitDeposit: pcd, PreCommitInfo: *info})
+	// note: this is a legacy state handler, normally new sectors won't enter this state
+	// but we keep this handler in order to not break existing sector state machines.
+	// todo: drop after nv21
+	return ctx.Send(SectorPreCommitBatch{})
 }
 
 func (m *Sealing) handleSubmitPreCommitBatch(ctx statemachine.Context, sector SectorInfo) error {

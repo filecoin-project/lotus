@@ -7,12 +7,12 @@ executors:
   golang:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.7
+      - image: cimg/go:1.19.12
     resource_class: medium+
   golang-2xl:
     docker:
       # Must match GO_VERSION_MIN in project root
-      - image: cimg/go:1.19.7
+      - image: cimg/go:1.19.12
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -546,12 +546,6 @@ workflows:
           suite: itest-batch_deal
           target: "./itests/batch_deal_test.go"
       - test:
-          name: test-itest-ccupgrade
-          requires:
-            - build
-          suite: itest-ccupgrade
-          target: "./itests/ccupgrade_test.go"
-      - test:
           name: test-itest-cli
           requires:
             - build
@@ -877,12 +871,6 @@ workflows:
           suite: itest-remove_verifreg_datacap
           target: "./itests/remove_verifreg_datacap_test.go"
       - test:
-          name: test-itest-sdr_upgrade
-          requires:
-            - build
-          suite: itest-sdr_upgrade
-          target: "./itests/sdr_upgrade_test.go"
-      - test:
           name: test-itest-sealing_resources
           requires:
             - build
@@ -907,12 +895,6 @@ workflows:
           suite: itest-sector_import_simple
           target: "./itests/sector_import_simple_test.go"
       - test:
-          name: test-itest-sector_make_cc_avail
-          requires:
-            - build
-          suite: itest-sector_make_cc_avail
-          target: "./itests/sector_make_cc_avail_test.go"
-      - test:
           name: test-itest-sector_miner_collateral
           requires:
             - build
@@ -930,18 +912,6 @@ workflows:
             - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
-      - test:
-          name: test-itest-sector_prefer_no_upgrade
-          requires:
-            - build
-          suite: itest-sector_prefer_no_upgrade
-          target: "./itests/sector_prefer_no_upgrade_test.go"
-      - test:
-          name: test-itest-sector_revert_available
-          requires:
-            - build
-          suite: itest-sector_revert_available
-          target: "./itests/sector_revert_available_test.go"
       - test:
           name: test-itest-sector_terminate
           requires:
@@ -966,12 +936,6 @@ workflows:
             - build
           suite: itest-splitstore
           target: "./itests/splitstore_test.go"
-      - test:
-          name: test-itest-tape
-          requires:
-            - build
-          suite: itest-tape
-          target: "./itests/tape_test.go"
       - test:
           name: test-itest-verifreg
           requires:

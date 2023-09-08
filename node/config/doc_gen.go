@@ -394,6 +394,35 @@ the database must already exist and be writeable. If a relative path is provided
 relative to the CWD (current working directory).`,
 		},
 	},
+	"FaultReporterConfig": []DocField{
+		{
+			Name: "EnableConsensusFaultReporter",
+			Type: "bool",
+
+			Comment: `EnableConsensusFaultReporter controls whether the node will monitor and
+report consensus faults. When enabled, the node will watch for malicious
+behaviors like double-mining and parent grinding, and submit reports to the
+network. This can earn reporter rewards, but is not guaranteed. Nodes should
+enable fault reporting with care, as it may increase resource usage, and may
+generate gas fees without earning rewards.`,
+		},
+		{
+			Name: "ConsensusFaultReporterDataDir",
+			Type: "string",
+
+			Comment: `ConsensusFaultReporterDataDir is the path where fault reporter state will be
+persisted. This directory should have adequate space and permissions for the
+node process.`,
+		},
+		{
+			Name: "ConsensusFaultReporterAddress",
+			Type: "string",
+
+			Comment: `ConsensusFaultReporterAddress is the wallet address used for submitting
+ReportConsensusFault messages. It will pay for gas fees, and receive any
+rewards. This address should have adequate funds to cover gas fees.`,
+		},
+	},
 	"FeeConfig": []DocField{
 		{
 			Name: "DefaultMaxFee",
@@ -464,6 +493,12 @@ Set to 0 to keep all mappings`,
 		{
 			Name: "Index",
 			Type: "IndexConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "FaultReporter",
+			Type: "FaultReporterConfig",
 
 			Comment: ``,
 		},
@@ -1170,12 +1205,6 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Comment: `Don't send collateral with messages even if there is no available balance in the miner actor`,
 		},
 		{
-			Name: "BatchPreCommits",
-			Type: "bool",
-
-			Comment: `enable / disable precommit batching (takes effect after nv13)`,
-		},
-		{
 			Name: "MaxPreCommitBatch",
 			Type: "int",
 
@@ -1228,7 +1257,8 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Type: "types.FIL",
 
 			Comment: `network BaseFee below which to stop doing precommit batching, instead
-sending precommit messages to the chain individually`,
+sending precommit messages to the chain individually. When the basefee is
+below this threshold, precommit messages will get sent out immediately.`,
 		},
 		{
 			Name: "AggregateAboveBaseFee",

@@ -19,8 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	actorstypes "github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/big"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v9/miner"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -794,7 +792,7 @@ func (a *StateAPI) StateGetAllocationForPendingDeal(ctx context.Context, dealId 
 	if err != nil {
 		return nil, err
 	}
-	if allocationId == verifregtypes.NoAllocationID {
+	if allocationId == verifreg.NoAllocationID {
 		return nil, nil
 	}
 
@@ -1040,7 +1038,7 @@ func (a *StateAPI) StateMinerAllocated(ctx context.Context, addr address.Address
 	return mas.GetAllocatedSectors()
 }
 
-func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
+func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1315,7 +1313,7 @@ func (m *StateModule) MsigGetPending(ctx context.Context, addr address.Address, 
 var initialPledgeNum = types.NewInt(110)
 var initialPledgeDen = types.NewInt(100)
 
-func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1347,7 +1345,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 			sectorWeight = builtin.QAPowerForWeight(ssize, duration, w, vw)
 		}
 	} else {
-		sectorWeight = minertypes.QAPowerMax(ssize)
+		sectorWeight = miner.QAPowerMax(ssize)
 	}
 
 	var powerSmoothed builtin.FilterEstimate
@@ -1379,7 +1377,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	// TODO: this repeats a lot of the previous function. Fix that.
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1752,7 +1750,34 @@ func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personaliz
 
 func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
+}
 
+func (a *StateAPI) StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	ret, err := a.StateManager.GetRandomnessDigestFromTickets(ctx, randEpoch, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness digest from tickets: %w", err)
+	}
+
+	return ret[:], nil
+}
+
+func (a *StateAPI) StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	ret, err := a.StateManager.GetRandomnessDigestFromBeacon(ctx, randEpoch, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get randomness digest from tickets: %w", err)
+	}
+
+	return ret[:], nil
 }
 
 func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
