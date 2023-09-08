@@ -802,7 +802,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.Se
 
 	{
 		unsealedStores, ferr := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
-		if err != nil {
+		if ferr != nil {
 			err = multierr.Append(err, xerrors.Errorf("find unsealed sector before move: %w", ferr))
 		} else if len(unsealedStores) > 0 {
 			// if we found unsealed files, AND have been asked to keep at least one piece, move unsealed
