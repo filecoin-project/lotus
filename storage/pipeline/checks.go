@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
 	"golang.org/x/xerrors"
 
@@ -221,8 +222,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 }
 
 // check that sector info is good after running a replica update
-func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, api SealingAPI) error {
-
+func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, api SealingAPI, verif storiface.Verifier) error {
 	if err := checkPieces(ctx, maddr, si.SectorNumber, si.Pieces, api, true); err != nil {
 		return err
 	}
@@ -250,6 +250,28 @@ func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInf
 		return &ErrBadPR{xerrors.Errorf("nil PR2 proof")}
 	}
 
-	return nil
+	updateProof, err := si.SectorType.RegisteredUpdateProof()
+	if err != nil {
+		log.Errorf("failed to get update proof type from seal proof: %s", err)
+		return xerrors.Errorf("failed to get update proof type from seal proof: %s", err)
+	}
 
+	ok, err := verif.VerifyReplicaUpdate(prooftypes.ReplicaUpdateInfo{
+		UpdateProofType:      updateProof,
+		OldSealedSectorCID:   *si.CommR,
+		NewSealedSectorCID:   *si.UpdateSealed,
+		NewUnsealedSectorCID: *si.UpdateUnsealed,
+		Proof:                si.ReplicaUpdateProof,
+	})
+
+	if err != nil {
+		log.Warnf("sector: %d verify replica: %s", si.SectorNumber, err)
+		return &ErrBadRU{xerrors.Errorf("verify replica: %s", err)}
+	}
+	if !ok {
+		log.Warnf("sector: %d invalid replica proof: %s", si.SectorNumber, err)
+		return &ErrBadRU{xerrors.New("invalid replica proof (compute error?)")}
+	}
+
+	return nil
 }
