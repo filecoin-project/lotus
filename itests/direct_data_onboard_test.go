@@ -26,7 +26,7 @@ func TestOnboardRawPiece(t *testing.T) {
 	)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC())
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	pieceSize := abi.PaddedPieceSize(2048).Unpadded()
 	pieceData := make([]byte, pieceSize)

@@ -22,7 +22,7 @@ import (
 
 func (m *Sealing) handleReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
 	// if the sector ended up not having any deals, abort the upgrade
-	if !sector.hasDeals() {
+	if !sector.hasData() {
 		return ctx.Send(SectorAbortUpgrade{xerrors.New("sector had no deals")})
 	}
 

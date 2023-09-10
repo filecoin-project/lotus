@@ -156,9 +156,9 @@ func (t *SectorInfo) existingPieceSizes() []abi.UnpaddedPieceSize {
 	return out
 }
 
-func (t *SectorInfo) hasDeals() bool {
+func (t *SectorInfo) hasData() bool {
 	for _, piece := range t.Pieces {
-		if piece.HasDealInfo() && piece.HasDealProposal() {
+		if piece.HasDealInfo() {
 			return true
 		}
 	}
@@ -170,7 +170,7 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 	// TODO: can also take start epoch into account to give priority to sectors
 	//  we need sealed sooner
 
-	if t.hasDeals() {
+	if t.hasData() {
 		return sealer.WithPriority(ctx, DealSectorPriority)
 	}
 
@@ -233,10 +233,6 @@ func (sp *SafeSectorPiece) Piece() abi.PieceInfo {
 
 func (sp *SafeSectorPiece) HasDealInfo() bool {
 	return sp.real.DealInfo != nil
-}
-
-func (sp *SafeSectorPiece) HasDealProposal() bool {
-	return sp.real.DealInfo.DealProposal != nil
 }
 
 func (sp *SafeSectorPiece) DealInfo() UniversalPieceInfo {

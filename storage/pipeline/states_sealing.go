@@ -60,7 +60,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 	m.cleanupAssignedDeals(sector)
 
 	// if this is a snapdeals sector, but it ended up not having any deals, abort the upgrade
-	if sector.State == SnapDealsPacking && !sector.hasDeals() {
+	if sector.State == SnapDealsPacking && !sector.hasData() {
 		return ctx.Send(SectorAbortUpgrade{xerrors.New("sector had no deals")})
 	}
 
@@ -370,7 +370,7 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 		SealRandEpoch: sector.TicketEpoch,
 	}
 
-	if sector.hasDeals() {
+	if sector.hasData() {
 		// only CC sectors don't have UnsealedCID
 		params.UnsealedCid = sector.CommD
 
@@ -913,7 +913,7 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
-	if cfg.MakeCCSectorsAvailable && !sector.hasDeals() {
+	if cfg.MakeCCSectorsAvailable && !sector.hasData() {
 		return ctx.Send(SectorFinalizedAvailable{})
 	}
 	return ctx.Send(SectorFinalized{})
