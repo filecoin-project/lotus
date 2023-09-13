@@ -160,7 +160,10 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 				// todo does ddo matter for initial pledge? Yes because fil+?
 
 				// TODO DDO
-				return xerrors.Errorf("DDO deals not supported")
+				//return xerrors.Errorf("DDO deals not supported")
+
+				log.Errorf("DDO deals may have incorrect pledge")
+				return nil
 			},
 		})
 
