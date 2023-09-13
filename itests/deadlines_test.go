@@ -4,6 +4,7 @@ package itests
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
@@ -183,13 +183,17 @@ func TestDeadlineToggling(t *testing.T) {
 		cr, err := cid.Parse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
 		require.NoError(t, err)
 
-		params := &minertypes.SectorPreCommitInfo{
-			Expiration:   2880 * 300,
-			SectorNumber: 22,
-			SealProof:    kit.TestSpt,
+		params := &miner.PreCommitSectorBatchParams2{
+			Sectors: []miner.SectorPreCommitInfo{
+				{
+					Expiration:   2880 * 300,
+					SectorNumber: 22,
+					SealProof:    kit.TestSpt,
 
-			SealedCID:     cr,
-			SealRandEpoch: head.Height() - 200,
+					SealedCID:     cr,
+					SealRandEpoch: head.Height() - 200,
+				},
+			},
 		}
 
 		enc := new(bytes.Buffer)
@@ -199,7 +203,7 @@ func TestDeadlineToggling(t *testing.T) {
 			To:     maddrE,
 			From:   defaultFrom,
 			Value:  types.FromFil(1),
-			Method: builtin.MethodsMiner.PreCommitSector,
+			Method: builtin.MethodsMiner.PreCommitSectorBatch2,
 			Params: enc.Bytes(),
 		}, nil)
 		require.NoError(t, err)
@@ -286,14 +290,18 @@ func TestDeadlineToggling(t *testing.T) {
 		sp, aerr := actors.SerializeParams(terminateSectorParams)
 		require.NoError(t, aerr)
 
-		smsg, err := client.MpoolPushMessage(ctx, &types.Message{
-			From:   defaultFrom,
-			To:     maddrD,
-			Method: builtin.MethodsMiner.TerminateSectors,
+		var smsg *types.SignedMessage
+		require.Eventually(t, func() bool {
+			smsg, err = client.MpoolPushMessage(ctx, &types.Message{
+				From:   defaultFrom,
+				To:     maddrD,
+				Method: builtin.MethodsMiner.TerminateSectors,
 
-			Value:  big.Zero(),
-			Params: sp,
-		}, nil)
+				Value:  big.Zero(),
+				Params: sp,
+			}, nil)
+			return err == nil || !strings.Contains(err.Error(), "cannot terminate sectors in immutable deadline")
+		}, 60*time.Second, 100*time.Millisecond)
 		require.NoError(t, err)
 
 		t.Log("sent termination message:", smsg.Cid())
