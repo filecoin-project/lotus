@@ -387,7 +387,7 @@ var marketDealsTotalStorageCmd = &cli.Command{
 		count := 0
 
 		for _, deal := range deals {
-			if market.IsDealActive(deal.State) {
+			if market.IsDealActive(deal.State.Iface()) {
 				dealStorage := big.NewIntUnsigned(uint64(deal.Proposal.PieceSize))
 				total = big.Add(total, dealStorage)
 				count++
