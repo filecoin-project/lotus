@@ -242,16 +242,7 @@ type DealState interface {
 }
 
 func DealStatesEqual(a, b DealState) bool {
-	if a.SectorStartEpoch() != b.SectorStartEpoch() {
-		return false
-	}
-	if a.LastUpdatedEpoch() != b.LastUpdatedEpoch() {
-		return false
-	}
-	if a.SlashEpoch() != b.SlashEpoch() {
-		return false
-	}
-	return true
+	return DealStatesEqual(a, b)
 }
 
 type DealStateChanges struct {
@@ -297,7 +288,16 @@ func (e *emptyDealState) SlashEpoch() abi.ChainEpoch {
 }
 
 func (e *emptyDealState) Equals(other DealState) bool {
-	return DealStatesEqual(e, other)
+	if e.SectorStartEpoch() != other.SectorStartEpoch() {
+		return false
+	}
+	if e.LastUpdatedEpoch() != other.LastUpdatedEpoch() {
+		return false
+	}
+	if e.SlashEpoch() != other.SlashEpoch() {
+		return false
+	}
+	return true
 }
 
 func EmptyDealState() DealState {

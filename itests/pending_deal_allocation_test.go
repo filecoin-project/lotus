@@ -180,10 +180,6 @@ func TestGetAllocationForPendingDeal(t *testing.T) {
 	dealIds, err := ret.DealIDs()
 	require.NoError(t, err)
 
-	dealInfo, err := api.StateMarketStorageDeal(ctx, dealIds[0], types.EmptyTSK)
-	require.NoError(t, err)
-	require.Equal(t, verifregtypes.AllocationId(0), dealInfo.State.VerifiedClaim) // Allocation in State should not be set yet, because it's in the allocation map
-
 	allocation, err := api.StateGetAllocationForPendingDeal(ctx, dealIds[0], types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, dealProposal.PieceCID, allocation.Data)

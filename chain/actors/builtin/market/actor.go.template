@@ -150,6 +150,10 @@ type DealState interface {
 	Equals(other DealState) bool
 }
 
+func DealStatesEqual(a, b DealState) bool {
+	return DealStatesEqual(a, b)
+}
+
 type DealStateChanges struct {
 	Added	 []DealIDState
 	Modified []DealStateChange
