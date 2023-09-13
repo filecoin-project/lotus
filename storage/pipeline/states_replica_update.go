@@ -244,38 +244,38 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		}
 
 		return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
-	} else {
-		// PRU2
-
-		params := &miner.ProveReplicaUpdatesParams2{
-			Updates: []miner.ReplicaUpdate2{
-				{
-					SectorID:             sector.SectorNumber,
-					Deadline:             sl.Deadline,
-					Partition:            sl.Partition,
-					NewSealedSectorCID:   *sector.UpdateSealed,
-					NewUnsealedSectorCID: *sector.UpdateUnsealed,
-					UpdateProofType:      updateProof,
-					ReplicaProof:         sector.ReplicaUpdateProof,
-					Deals:                deals,
-				},
-			},
-		}
-
-		enc := new(bytes.Buffer)
-		if err := params.MarshalCBOR(enc); err != nil {
-			log.Errorf("failed to serialize update replica params: %w", err)
-			return ctx.Send(SectorSubmitReplicaUpdateFailed{})
-		}
-
-		mcid, err := sendMsg(ctx.Context(), m.Api, from, m.maddr, builtin.MethodsMiner.ProveReplicaUpdates2, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
-		if err != nil {
-			log.Errorf("handleSubmitReplicaUpdate: error sending message: %+v", err)
-			return ctx.Send(SectorSubmitReplicaUpdateFailed{})
-		}
-
-		return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
 	}
+
+	// PRU2
+	params := &miner.ProveReplicaUpdatesParams2{
+		Updates: []miner.ReplicaUpdate2{
+			{
+				SectorID:             sector.SectorNumber,
+				Deadline:             sl.Deadline,
+				Partition:            sl.Partition,
+				NewSealedSectorCID:   *sector.UpdateSealed,
+				NewUnsealedSectorCID: *sector.UpdateUnsealed,
+				UpdateProofType:      updateProof,
+				ReplicaProof:         sector.ReplicaUpdateProof,
+				Deals:                deals,
+			},
+		},
+	}
+
+	enc := new(bytes.Buffer)
+	if err := params.MarshalCBOR(enc); err != nil {
+		log.Errorf("failed to serialize update replica params: %w", err)
+		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+	}
+
+	mcid, err := sendMsg(ctx.Context(), m.Api, from, m.maddr, builtin.MethodsMiner.ProveReplicaUpdates2, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
+	if err != nil {
+		log.Errorf("handleSubmitReplicaUpdate: error sending message: %+v", err)
+		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
+	}
+
+	return ctx.Send(SectorReplicaUpdateSubmitted{Message: mcid})
+
 }
 
 func (m *Sealing) handleWaitMutable(ctx statemachine.Context, sector SectorInfo) error {
