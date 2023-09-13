@@ -162,10 +162,10 @@ type BalanceTable interface {
 
 type DealStates interface {
 	ForEach(cb func(id abi.DealID, ds DealState) error) error
-	Get(id abi.DealID) (*DealState, bool, error)
+	Get(id abi.DealID) (DealState, bool, error)
 
 	array() adt.Array
-	decode(*cbg.Deferred) (*DealState, error)
+	decode(*cbg.Deferred) (DealState, error)
 }
 
 type DealProposals interface {
@@ -233,7 +233,26 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 type DealProposal = markettypes.DealProposal
 type DealLabel = markettypes.DealLabel
 
-type DealState = markettypes.DealState
+type DealState interface {
+	SectorStartEpoch() abi.ChainEpoch // -1 if not yet included in proven sector
+	LastUpdatedEpoch() abi.ChainEpoch // -1 if deal state never updated
+	SlashEpoch() abi.ChainEpoch       // -1 if deal never slashed
+
+	Equals(other DealState) bool
+}
+
+func DealStatesEqual(a, b DealState) bool {
+	if a.SectorStartEpoch() != b.SectorStartEpoch() {
+		return false
+	}
+	if a.LastUpdatedEpoch() != b.LastUpdatedEpoch() {
+		return false
+	}
+	if a.SlashEpoch() != b.SlashEpoch() {
+		return false
+	}
+	return true
+}
 
 type DealStateChanges struct {
 	Added    []DealIDState
@@ -249,8 +268,8 @@ type DealIDState struct {
 // DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
 	ID   abi.DealID
-	From *DealState
-	To   *DealState
+	From DealState
+	To   DealState
 }
 
 type DealProposalChanges struct {
@@ -263,12 +282,26 @@ type ProposalIDState struct {
 	Proposal markettypes.DealProposal
 }
 
-func EmptyDealState() *DealState {
-	return &DealState{
-		SectorStartEpoch: -1,
-		SlashEpoch:       -1,
-		LastUpdatedEpoch: -1,
-	}
+type emptyDealState struct{}
+
+func (e *emptyDealState) SectorStartEpoch() abi.ChainEpoch {
+	return -1
+}
+
+func (e *emptyDealState) LastUpdatedEpoch() abi.ChainEpoch {
+	return -1
+}
+
+func (e *emptyDealState) SlashEpoch() abi.ChainEpoch {
+	return -1
+}
+
+func (e *emptyDealState) Equals(other DealState) bool {
+	return DealStatesEqual(e, other)
+}
+
+func EmptyDealState() DealState {
+	return &emptyDealState{}
 }
 
 // returns the earned fees and pending fees for a given deal

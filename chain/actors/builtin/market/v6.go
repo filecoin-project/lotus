@@ -151,7 +151,7 @@ type dealStates6 struct {
 	adt.Array
 }
 
-func (s *dealStates6) Get(dealID abi.DealID) (*DealState, bool, error) {
+func (s *dealStates6) Get(dealID abi.DealID) (DealState, bool, error) {
 	var deal6 market6.DealState
 	found, err := s.Array.Get(uint64(dealID), &deal6)
 	if err != nil {
@@ -161,7 +161,7 @@ func (s *dealStates6) Get(dealID abi.DealID) (*DealState, bool, error) {
 		return nil, false, nil
 	}
 	deal := fromV6DealState(deal6)
-	return &deal, true, nil
+	return deal, true, nil
 }
 
 func (s *dealStates6) ForEach(cb func(dealID abi.DealID, ds DealState) error) error {
@@ -171,28 +171,57 @@ func (s *dealStates6) ForEach(cb func(dealID abi.DealID, ds DealState) error) er
 	})
 }
 
-func (s *dealStates6) decode(val *cbg.Deferred) (*DealState, error) {
+func (s *dealStates6) decode(val *cbg.Deferred) (DealState, error) {
 	var ds6 market6.DealState
 	if err := ds6.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
 	ds := fromV6DealState(ds6)
-	return &ds, nil
+	return ds, nil
 }
 
 func (s *dealStates6) array() adt.Array {
 	return s.Array
 }
 
-func fromV6DealState(v6 market6.DealState) DealState {
-	ret := DealState{
-		SectorStartEpoch: v6.SectorStartEpoch,
-		LastUpdatedEpoch: v6.LastUpdatedEpoch,
-		SlashEpoch:       v6.SlashEpoch,
-		VerifiedClaim:    0,
+type dealStateV6 struct {
+	ds6 market6.DealState
+}
+
+func (d dealStateV6) SectorStartEpoch() abi.ChainEpoch {
+	return d.ds6.SectorStartEpoch
+}
+
+func (d dealStateV6) LastUpdatedEpoch() abi.ChainEpoch {
+	return d.ds6.LastUpdatedEpoch
+}
+
+func (d dealStateV6) SlashEpoch() abi.ChainEpoch {
+	return d.ds6.SlashEpoch
+}
+
+func (d dealStateV6) Equals(other DealState) bool {
+	if ov6, ok := other.(dealStateV6); ok {
+		return d.ds6 == ov6.ds6
 	}
 
-	return ret
+	if d.SectorStartEpoch() != other.SectorStartEpoch() {
+		return false
+	}
+	if d.LastUpdatedEpoch() != other.LastUpdatedEpoch() {
+		return false
+	}
+	if d.SlashEpoch() != other.SlashEpoch() {
+		return false
+	}
+
+	return true
+}
+
+var _ DealState = (*dealStateV6)(nil)
+
+func fromV6DealState(v6 market6.DealState) DealState {
+	return dealStateV6{v6}
 }
 
 type dealProposals6 struct {

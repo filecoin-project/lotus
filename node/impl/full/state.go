@@ -760,7 +760,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		}
 		out[strconv.FormatInt(int64(dealID), 10)] = &api.MarketDeal{
 			Proposal: d,
-			State:    *s,
+			State:    api.MakeDealState(s),
 		}
 		return nil
 	}); err != nil {
