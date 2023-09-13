@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -445,9 +446,11 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("simulating CommitBatch message failed: %w", err)
 	}
 
+	msgTooLarge := len(enc.Bytes()) > (messagepool.MaxMessageSize - 128)
+
 	// If we're out of gas, split the batch in half and evaluate again
-	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) {
-		log.Warnf("CommitAggregate message ran out of gas, splitting batch in half and trying again (sectors: %d)", len(sectors))
+	if api.ErrorIsIn(err, []error{&api.ErrOutOfGas{}}) || msgTooLarge {
+		log.Warnf("CommitAggregate message ran out of gas or is too large, splitting batch in half and trying again (sectors: %d, params: %d)", len(sectors), len(enc.Bytes()))
 		mid := len(sectors) / 2
 		ret0, _ := b.processBatchV2(cfg, sectors[:mid], nv, aggregate)
 		ret1, _ := b.processBatchV2(cfg, sectors[mid:], nv, aggregate)
@@ -457,7 +460,7 @@ func (b *CommitBatcher) processBatchV2(cfg sealiface.Config, sectors []abi.Secto
 
 	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSectors2, needFunds, maxFee, enc.Bytes())
 	if err != nil {
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed (params size: %d, sectors: %d, agg: %t): %w", len(enc.Bytes()), len(sectors), aggregate, err)
 	}
 
 	res.Msg = &mcid
