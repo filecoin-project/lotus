@@ -1372,9 +1372,19 @@ func (s *SplitStore) purge(coldr *ColdSetReader, checkpoint *Checkpoint, markSet
 		return err
 	}
 
+	now := time.Now()
+
 	err := coldr.ForEach(func(c cid.Cid) error {
 		batch = append(batch, c)
 		if len(batch) == batchSize {
+			// add some throttling to the purge as this a very disk I/O heavy operation that
+			// requires write access to txnLk that may starve other operations that require
+			// access to the blockstore.
+			if time.Since(now) > time.Second {
+				time.Sleep(time.Second)
+				now = time.Now()
+			}
+
 			return deleteBatch()
 		}
 
