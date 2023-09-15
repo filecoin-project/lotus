@@ -1380,8 +1380,10 @@ func (s *SplitStore) purge(coldr *ColdSetReader, checkpoint *Checkpoint, markSet
 			// add some time slicing to the purge as this a very disk I/O heavy operation that
 			// requires write access to txnLk that may starve other operations that require
 			// access to the blockstore.
-			if time.Since(now) > time.Second {
-				time.Sleep(time.Second)
+			elapsed := time.Since(now)
+			if elapsed > time.Second {
+				// work 1 second, sleep 4, or 20% utilization
+				time.Sleep(4 * elapsed)
 				now = time.Now()
 			}
 
