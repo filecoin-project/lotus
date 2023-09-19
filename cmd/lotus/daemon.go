@@ -269,7 +269,17 @@ var DaemonCmd = &cli.Command{
 			}
 		}
 
-		if cctx.Bool("remove-existing-chain") {
+		chainfile := cctx.String("import-chain")
+		snapshot := cctx.String("import-snapshot")
+		willImportChain := false
+		if chainfile != "" || snapshot != "" {
+			if chainfile != "" && snapshot != "" {
+				return fmt.Errorf("cannot specify both 'import-snapshot' and 'import-chain'")
+			}
+			willImportChain = true
+		}
+
+		if cctx.Bool("remove-existing-chain") || willImportChain {
 			lr, err := repo.NewFS(cctx.String("repo"))
 			if err != nil {
 				return xerrors.Errorf("error opening fs repo: %w", err)
@@ -289,12 +299,7 @@ var DaemonCmd = &cli.Command{
 			}
 		}
 
-		chainfile := cctx.String("import-chain")
-		snapshot := cctx.String("import-snapshot")
-		if chainfile != "" || snapshot != "" {
-			if chainfile != "" && snapshot != "" {
-				return fmt.Errorf("cannot specify both 'import-snapshot' and 'import-chain'")
-			}
+		if willImportChain {
 			var issnapshot bool
 			if chainfile == "" {
 				chainfile = snapshot
