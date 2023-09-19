@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
@@ -194,4 +195,31 @@ func TestPledgeMaxBatching(t *testing.T) {
 	}
 
 	t.Run("Force max prove commit aggregate size", runTest)
+}
+
+func TestPledgeSynth(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	blockTime := 50 * time.Millisecond
+
+	runTest := func(t *testing.T, nSectors int) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		_, miner, ens := kit.EnsembleMinimal(t, kit.MutateSealingConfig(func(sc *config.SealingConfig) {
+			sc.UseSyntheticPoRep = true
+		})) // no mock proofs
+
+		ens.InterconnectAll().BeginMiningMustPost(blockTime)
+
+		miner.PledgeSectors(ctx, nSectors, 0, nil)
+	}
+
+	t.Run("1", func(t *testing.T) {
+		runTest(t, 1)
+	})
+
+	t.Run("3", func(t *testing.T) {
+		runTest(t, 3)
+	})
 }

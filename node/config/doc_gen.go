@@ -1295,6 +1295,14 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 
 			Comment: ``,
 		},
+		{
+			Name: "UseSyntheticPoRep",
+			Type: "bool",
+
+			Comment: `UseSyntheticPoRep will reduce the amout of data held on disk in the WaitSeed phase to 32GiB
+at the cost of having to precompute the synthetic challenges.
+TODO: put estimated costs here`,
+		},
 	},
 	"Splitstore": []DocField{
 		{

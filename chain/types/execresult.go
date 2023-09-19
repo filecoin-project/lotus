@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -24,6 +26,9 @@ type MessageTrace struct {
 	Method      abi.MethodNum
 	Params      []byte
 	ParamsCodec uint64
+	GasLimit    uint64
+	ReadOnly    bool
+	CodeCid     cid.Cid
 }
 
 type ReturnTrace struct {

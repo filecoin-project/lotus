@@ -912,6 +912,8 @@ workflows:
             - build
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
+          get-params: true
+          
       - test:
           name: test-itest-sector_terminate
           requires:

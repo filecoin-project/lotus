@@ -1066,7 +1066,111 @@ func TestDCAPCloses(t *testing.T) {
 		require.Equal(t, "baga6ea4seaqeje7jy4hufnybpo7ckxzujaigqbcxhdjq7ojb4b6xzgqdugkyciq", c.PieceCID.String())
 		require.True(t, clr.closed)
 	})
+}
 
+func TestSealAndVerifySynth(t *testing.T) {
+	sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1_1_Feat_SyntheticPoRep
+
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
+	defer requireFDsClosed(t, openFDs(t))
+
+	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
+		t.Skip("this is slow")
+	}
+	_ = os.Setenv("RUST_LOG", "info")
+
+	getGrothParamFileAndVerifyingKeys(sectorSize)
+
+	cdir, err := os.MkdirTemp("", "sbtest-c-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	miner := abi.ActorID(123)
+
+	synthPorRepVProofsName := "syn-porep-vanilla-proofs.dat"
+
+	printFileList := func(stage string, expectSynthPorep bool) {
+		var hasSynthPorep bool
+
+		fmt.Println("----file list:", stage)
+		err := filepath.Walk(cdir, func(path string, info os.FileInfo, err error) error {
+			if strings.Contains(path, synthPorRepVProofsName) {
+				hasSynthPorep = true
+			}
+			fmt.Println(path)
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		require.Equal(t, expectSynthPorep, hasSynthPorep)
+
+		fmt.Println("----")
+	}
+
+	sp := &basicfs.Provider{
+		Root: cdir,
+	}
+	sb, err := New(sp)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	t.Cleanup(func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", cdir)
+			return
+		}
+		if err := os.RemoveAll(cdir); err != nil {
+			t.Error(err)
+		}
+	})
+
+	si := storiface.SectorRef{
+		ID:        abi.SectorID{Miner: miner, Number: 1},
+		ProofType: sealProofType,
+	}
+
+	s := seal{ref: si}
+
+	start := time.Now()
+
+	s.precommit(t, sb, si, func() {})
+
+	printFileList("precommit", true)
+
+	precommit := time.Now()
+
+	s.commit(t, sb, func() {})
+
+	printFileList("commit", true)
+
+	commit := time.Now()
+
+	post(t, sb, nil, s)
+
+	printFileList("post", true)
+
+	epost := time.Now()
+
+	post(t, sb, nil, s)
+
+	if err := sb.FinalizeSector(context.TODO(), si); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	printFileList("finalize", false)
+
+	s.unseal(t, sb, sp, si, func() {})
+
+	printFileList("unseal", false)
+
+	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
+	fmt.Printf("Commit: %s\n", commit.Sub(precommit).String())
+	fmt.Printf("EPoSt: %s\n", epost.Sub(commit).String())
 }
 
 type closeAssertReader struct {

@@ -429,6 +429,11 @@ type SealingConfig struct {
 	// todo TargetSealingSectors uint64
 
 	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
+
+	// UseSyntheticPoRep will reduce the amout of data held on disk in the WaitSeed phase to 32GiB
+	// at the cost of having to precompute the synthetic challenges.
+	// TODO: put estimated costs here
+	UseSyntheticPoRep bool
 }
 
 type SealerConfig struct {
