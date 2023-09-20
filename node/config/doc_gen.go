@@ -630,6 +630,124 @@ closed by the connection manager.`,
 			Comment: `SubsystemLevels specify per-subsystem log levels`,
 		},
 	},
+	"LotusProviderAddresses": []DocField{
+		{
+			Name: "PreCommitControl",
+			Type: "[]string",
+
+			Comment: `Addresses to send PreCommit messages from`,
+		},
+		{
+			Name: "CommitControl",
+			Type: "[]string",
+
+			Comment: `Addresses to send Commit messages from`,
+		},
+		{
+			Name: "TerminateControl",
+			Type: "[]string",
+
+			Comment: ``,
+		},
+		{
+			Name: "DisableOwnerFallback",
+			Type: "bool",
+
+			Comment: `DisableOwnerFallback disables usage of the owner address for messages
+sent automatically`,
+		},
+		{
+			Name: "DisableWorkerFallback",
+			Type: "bool",
+
+			Comment: `DisableWorkerFallback disables usage of the worker address for messages
+sent automatically, if control addresses are configured.
+A control address that doesn't have enough funds will still be chosen
+over the worker address if this flag is set.`,
+		},
+	},
+	"LotusProviderConfig": []DocField{
+		{
+			Name: "EnableWindowPost",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableWinningPost",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "Fees",
+			Type: "LotusProviderFees",
+
+			Comment: ``,
+		},
+		{
+			Name: "Addresses",
+			Type: "LotusProviderAddresses",
+
+			Comment: ``,
+		},
+		{
+			Name: "Proving",
+			Type: "ProvingConfig",
+
+			Comment: ``,
+		},
+	},
+	"LotusProviderFees": []DocField{
+		{
+			Name: "DefaultMaxFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxPreCommitGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxCommitGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxPreCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
+			Comment: `maxBatchFee = maxBase + maxPerSector * nSectors`,
+		},
+		{
+			Name: "MaxCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxTerminateGasFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+		{
+			Name: "MaxWindowPoStGasFee",
+			Type: "types.FIL",
+
+			Comment: `WindowPoSt is a high-value operation, so the default fee should be high.`,
+		},
+		{
+			Name: "MaxPublishDealsFee",
+			Type: "types.FIL",
+
+			Comment: ``,
+		},
+	},
 	"MinerAddressConfig": []DocField{
 		{
 			Name: "PreCommitControl",
