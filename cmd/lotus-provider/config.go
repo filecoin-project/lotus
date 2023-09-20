@@ -40,12 +40,12 @@ var configDefaultCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		c := config.DefaultLotusProvider()
 
-		cb, err := config.ConfigUpdate(c, nil, config.Commented(!cctx.Bool("no-comment")), config.DefaultKeepUncommented())
+		cb, err := config.ConfigUpdate(c, nil, config.Commented(!cctx.Bool("no-comment")), config.DefaultKeepUncommented(), config.NoEnv())
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(string(cb))
+		fmt.Print(string(cb))
 
 		return nil
 	},
