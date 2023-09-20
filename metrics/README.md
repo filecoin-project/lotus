@@ -12,6 +12,8 @@ Lotus supports exporting a wide range of metrics, enabling users to gain insight
 - You have root access to install software
 - You have lotus node already running
 
+**Note:** These instructions have been tested on Ubuntu 23.04 and on Mac M1.
+
 ## Install and start Prometheus
 
 ### On Ubuntu:
@@ -71,7 +73,7 @@ brew install grafana
 brew services start grafana
 ```
 
-You should now have Prometheus and Grafana running on your machine where Promotheus is already collecting metrics from your running Lotus node and saving it to a database.
+You should now have Prometheus and Grafana running on your machine where Promotheus is already collecting metrics from your Lotus node (if its running) and saving it to a database.
 
 You can confirm everything is setup correctly by visiting:
 - Prometheus (http://localhost:9090): You can open the metric explorer and view any of the aggregated metrics scraped from Lotus
@@ -101,7 +103,6 @@ Although Lotus includes many useful metrics it does not include system metrics s
 
 ## Install node_exporter
 If you have followed this guide so far and have Prometheus and Grafana already running, you can run the following commands to also aggregate the system metrics:
-
 
 Ubuntu:
 

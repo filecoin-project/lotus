@@ -133,6 +133,8 @@ Note: The default branch `master` is the dev branch where the latest new feature
 
 6. You should now have Lotus installed. You can now [start the Lotus daemon and sync the chain](https://lotus.filecoin.io/lotus/install/linux/#start-the-lotus-daemon-and-sync-the-chain).
 
+7. (Optional) Follow the [Setting Up Prometheus and Grafana](https://github.com/filecoin-project/lotus/tree/master/metrics/README.md) guide for detailed instructions on setting up a working monitoring system running against a local running lotus node.
+
 ## License
 
 Dual-licensed under [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE)
