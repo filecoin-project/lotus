@@ -343,3 +343,46 @@ func DefaultUserRaftConfig() *UserRaftConfig {
 
 	return &cfg
 }
+
+func DefaultLotusProvider() *LotusProviderConfig {
+	/*
+		reqs := map[string]*regexp.Regexp{}
+		for _, str := range LotusRequired {
+			reqs[str]=regexp.MustCompile("(?i)"+str)
+		}
+	*/
+	return &LotusProviderConfig{
+		Fees: LotusProviderFees{
+			DefaultMaxFee:      DefaultDefaultMaxFee,
+			MaxPreCommitGasFee: types.MustParseFIL("0.025"),
+			MaxCommitGasFee:    types.MustParseFIL("0.05"),
+
+			MaxPreCommitBatchGasFee: BatchFeeConfig{
+				Base:      types.MustParseFIL("0"),
+				PerSector: types.MustParseFIL("0.02"),
+			},
+			MaxCommitBatchGasFee: BatchFeeConfig{
+				Base:      types.MustParseFIL("0"),
+				PerSector: types.MustParseFIL("0.03"), // enough for 6 agg and 1nFIL base fee
+			},
+
+			MaxTerminateGasFee:  types.MustParseFIL("0.5"),
+			MaxWindowPoStGasFee: types.MustParseFIL("5"),
+			MaxPublishDealsFee:  types.MustParseFIL("0.05"),
+		},
+		Addresses: LotusProviderAddresses{
+			PreCommitControl: []string{},
+			CommitControl:    []string{},
+			TerminateControl: []string{},
+		},
+		/*
+			HarmonyDB: HarmonyDB{
+				Hosts:    []string{"127.0.0.1"},
+				Username: "yugabyte",
+				Password: "yugabyte",
+				Database: "yugabyte",
+				Port:     "5433",
+			},
+		*/
+	}
+}

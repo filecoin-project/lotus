@@ -81,10 +81,36 @@ func main() {
 				Value:   "~/.lotusprovider", // should follow --repo default
 			},
 			&cli.StringFlag{
-				Name:    "repo",
-				EnvVars: []string{"LOTUS_PATH"},
+				Name:    "db-host",
+				EnvVars: []string{"LOTUS_DB_HOST"},
+				Usage:   "Command separated list of hostnames for yugabyte cluster",
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-name",
+				EnvVars: []string{"LOTUS_DB_NAME"},
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-user",
+				EnvVars: []string{"LOTUS_DB_USER"},
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-password",
+				EnvVars: []string{"LOTUS_DB_PASSWORD"},
+				Value:   "yugabyte",
+			},
+			&cli.StringFlag{
+				Name:    "db-port",
+				EnvVars: []string{"LOTUS_DB_PORT"},
 				Hidden:  true,
-				Value:   "~/.lotus",
+				Value:   "5433",
+			},
+			&cli.StringFlag{
+				Name:    "layers",
+				EnvVars: []string{"LOTUS_LAYERS"},
+				Value:   "base",
 			},
 			cliutil.FlagVeryVerbose,
 		},
