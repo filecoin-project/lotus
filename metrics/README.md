@@ -21,7 +21,7 @@ Lotus supports exporting a wide range of metrics, enabling users to gain insight
 sudo apt-get install prometheus
 
 # copy the prometheus.yml config to the correct directory
-cp lotus/metrics/prometheus.yml /etc/prometheus/prometheus.yml
+sudo cp metrics/prometheus.yml /etc/prometheus/prometheus.yml
 
 # start prometheus
 sudo systemctl start prometheus
@@ -45,7 +45,16 @@ prometheus --config.file=lotus/metrics/prometheus.yml
 ### On Ubuntu:
 
 ```
-# install grafana
+# download the Grafana GPG key in our keyring
+wget -q -O - https://packages.grafana.com/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/grafana.gpg > /dev/null
+
+# add the Grafana repository to our APT sources
+echo "deb [signed-by=/usr/share/keyrings/grafana.gpg] https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+
+# update our APT cache
+sudo apt-get update
+
+# now we can install grafana
 sudo apt-get install grafana
 
 # start grafana
@@ -83,6 +92,8 @@ You can confirm everything is setup correctly by visiting:
 2. Navigate to "Home" > "Dashboards" > Click the drop down menu in the "New" button and select "Import"
 3. Paste any of the existing dashboards in lotus/metrics/grafana into the "Import via panel json" panel.
 4. Click "Load"
+5. Select the Prometheus datasource you created earlier
+6. Click "Import"
 
 # Collect system metrics using node_exporter
 
@@ -95,6 +106,18 @@ If you have followed this guide so far and have Prometheus and Grafana already r
 Ubuntu:
 
 ```
+
+# download the newest release by https://github.com/prometheus/node_exporter/releases (it was 1.6.1 as of writing this doc)
+wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
+
+# extract the release (in contains a single binary plus some docs)
+tar -xf node_exporter-1.6.1.linux-amd64.tar.gz
+
+# move it to /usr/local/bin
+sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin
+
+# run node_exorter
+node_exporter
 ```
 
 Mac:
@@ -107,17 +130,9 @@ brew install node_exporter
 node_exporter
 ```
 
-## Update prometheus config to include node_exporter
-
-Add the following to the prometheus config and then restart prometheus:
-
-```
-- job_name: node_exporter
-  static_configs:
-  - targets: ['localhost:9100']
-```
-
 ## Import system dashboard
+
+Since our `prometheus.yml` config already has configuration for node_exporter we can go straight away and import a Grafana dashboard for viewing:
 
 1. Download the most recent dashboard from https://grafana.com/grafana/dashboards/1860-node-exporter-full/
 2. Log in to Grafana (http://localhost:3000) using the web interface.
