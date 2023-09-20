@@ -71,6 +71,7 @@ type LotusProviderConfig struct {
 
 	Fees      LotusProviderFees
 	Addresses LotusProviderAddresses
+	Proving   ProvingConfig
 }
 
 type DAGStoreConfig struct {

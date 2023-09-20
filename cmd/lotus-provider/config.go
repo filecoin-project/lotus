@@ -9,10 +9,11 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/kr/pretty"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 var configCmd = &cli.Command{
@@ -57,7 +58,7 @@ var configSetCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		args := cctx.Args()
 		if args.Len() != 1 {
-			return errors.New("Must have exactly 1 arg for the file name.")
+			return errors.New("must have exactly 1 arg for the file name")
 		}
 		db, err := makeDB(cctx)
 		if err != nil {
@@ -71,7 +72,10 @@ var configSetCmd = &cli.Command{
 		}
 
 		lp := config.DefaultLotusProvider() // ensure it's toml
-		toml.Decode(string(bytes), lp)
+		_, err = toml.Decode(string(bytes), lp)
+		if err != nil {
+			return fmt.Errorf("cannot decode file: %w", err)
+		}
 		_ = lp
 
 		name := strings.Split(fn, ".")[0]
@@ -94,7 +98,7 @@ var configGetCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		args := cctx.Args()
 		if args.Len() != 1 {
-			return errors.New("Must have exactly 1 arg for the layer name.")
+			return fmt.Errorf("want 1 layer arg, got %d", args.Len())
 		}
 		db, err := makeDB(cctx)
 		if err != nil {
@@ -122,7 +126,10 @@ var configListCmd = &cli.Command{
 			return err
 		}
 		var res []string
-		db.Select(context.Background(), &res, `SELECT title FROM harmony_confg ORDER BY title`)
+		err = db.Select(context.Background(), &res, `SELECT title FROM harmony_confg ORDER BY title`)
+		if err != nil {
+			return fmt.Errorf("unable to read from db: %w", err)
+		}
 		for _, r := range res {
 			fmt.Println(r)
 		}

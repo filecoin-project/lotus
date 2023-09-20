@@ -108,6 +108,7 @@ require (
 	github.com/jackc/pgx/v5 v5.4.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/koalacxr/quantile v0.0.1
+	github.com/kr/pretty v0.3.1
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.27.6
 	github.com/libp2p/go-libp2p-consensus v0.0.1
@@ -273,7 +274,6 @@ require (
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/koron/go-ssdp v0.0.4 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
