@@ -463,7 +463,7 @@ var walletSign = &cli.Command{
 			// Check if the address is a multisig address
 			act, actErr := api.StateGetActor(ctx, addr, types.EmptyTSK)
 			if actErr == nil && builtin.IsMultisigActor(act.Code) {
-				return xerrors.Errorf("multisig is an actor account that doesn’t have keys to sign transactions. To send a message with a multisig, signers of the multisig need to propose and approve transactions.")
+				return xerrors.Errorf("specified signer address is a multisig actor, it doesn’t have keys to sign transactions. To send a message with a multisig, signers of the multisig need to propose and approve transactions.")
 			}
 			return xerrors.Errorf("failed to sign message: %w", err)
 		}
