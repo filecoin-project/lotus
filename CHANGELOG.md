@@ -34,6 +34,7 @@ This feature release requires a **minimum Go version of v1.19.12 or higher to su
   - feat: Lotus Gateway: add MpoolPending, ChainGetBlock and MinerGetBaseInfo ([filecoin-project/lotus#10929](https://github.com/filecoin-project/lotus/pull/10929))
 
 ## Improvements
+  - chore: Auto remove local chain data when importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
   - chore: update ffi & fvm ([filecoin-project/lotus#11040](https://github.com/filecoin-project/lotus/pull/11040))
   - feat: Make sure we don't store duplidate actor events caused to reorgs in events.db ([filecoin-project/lotus#11015](https://github.com/filecoin-project/lotus/pull/11015))
   - sealing: Use only non-assigned deals when selecting snap sectors ([filecoin-project/lotus#11002](https://github.com/filecoin-project/lotus/pull/11002))
