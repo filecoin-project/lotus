@@ -279,7 +279,27 @@ var DaemonCmd = &cli.Command{
 			willImportChain = true
 		}
 
-		if cctx.Bool("remove-existing-chain") || willImportChain {
+		willRemoveChain := cctx.Bool("remove-existing-chain")
+		if willImportChain && !willRemoveChain {
+			// Confirm with the user about the intention to remove chain data.
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Importing chain or snapshot will by default delete existing local chain data. Do you want to proceed and delete? (yes/no): ")
+			userInput, err := reader.ReadString('\n')
+			if err != nil {
+				return xerrors.Errorf("reading user input: %w", err)
+			}
+			userInput = strings.ToLower(strings.TrimSpace(userInput))
+
+			if userInput == "yes" {
+				willRemoveChain = true
+			} else if userInput == "no" {
+				willRemoveChain = false
+			} else {
+				return fmt.Errorf("Invalid input. Please answer with 'yes' or 'no'.")
+			}
+		}
+
+		if willRemoveChain {
 			lr, err := repo.NewFS(cctx.String("repo"))
 			if err != nil {
 				return xerrors.Errorf("error opening fs repo: %w", err)
