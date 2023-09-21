@@ -70,8 +70,6 @@ commands:
           name: Restore parameters cache
           keys:
             - 'v26-2k-lotus-params'
-          paths:
-            - /var/tmp/filecoin-proof-parameters/
       - run: ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
@@ -1018,14 +1016,12 @@ workflows:
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."
           get-params: true
-          executor: golang-2xl
       - test:
           name: test-unit-node
           requires:
             - build
           suite: utest-unit-node
           target: "./node/..."
-          
           
       - test:
           name: test-unit-rest
@@ -1034,14 +1030,12 @@ workflows:
           suite: utest-unit-rest
           target: "./blockstore/... ./build/... ./chain/... ./conformance/... ./gateway/... ./journal/... ./lib/... ./markets/... ./paychmgr/... ./tools/..."
           
-          executor: golang-2xl
       - test:
           name: test-unit-storage
           requires:
             - build
           suite: utest-unit-storage
           target: "./storage/... ./extern/..."
-          
           
       - test:
           go-test-flags: "-run=TestMulticoreSDR"

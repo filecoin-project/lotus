@@ -70,8 +70,6 @@ commands:
           name: Restore parameters cache
           keys:
             - 'v26-2k-lotus-params'
-          paths:
-            - /var/tmp/filecoin-proof-parameters/
       - run: ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
@@ -569,8 +567,6 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
           [[if eq $suite "unit-cli"]]get-params: true[[end]]
-          [[if eq $suite "unit-cli"]]executor: golang-2xl[[end]]
-          [[- if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
       [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
