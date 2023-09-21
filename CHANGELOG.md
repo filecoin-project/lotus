@@ -1,6 +1,7 @@
 # Lotus changelog
 
 # UNRELEASED
+- chore: Auto remove local chain data when importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
 
 ## New features
 - feat: Added new tracing API (**HIGHLY EXPERIMENTAL**) supporting two RPC methods: `trace_block` and `trace_replayBlockTransactions` ([filecoin-project/lotus#11100](https://github.com/filecoin-project/lotus/pull/11100))
