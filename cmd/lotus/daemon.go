@@ -295,7 +295,7 @@ var DaemonCmd = &cli.Command{
 			} else if userInput == "no" {
 				willRemoveChain = false
 			} else {
-				return fmt.Errorf("Invalid input. Please answer with 'yes' or 'no'.")
+				return fmt.Errorf("invalid input. please answer with 'yes' or 'no'")
 			}
 		}
 
