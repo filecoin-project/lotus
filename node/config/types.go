@@ -756,6 +756,7 @@ type HarmonyDB struct {
 
 	// The port to find Yugabyte. Blank for default.
 	Port string
+}
 type FaultReporterConfig struct {
 	// EnableConsensusFaultReporter controls whether the node will monitor and
 	// report consensus faults. When enabled, the node will watch for malicious
