@@ -367,7 +367,7 @@ loop:
 				if !sid.primary && primary {
 					sid.primary = true
 				} else {
-					log.Warnf("sector %v redeclared in %s", s, storageID)
+					log.Debugf("sector %v redeclared in %s", s, storageID)
 				}
 				continue loop
 			}

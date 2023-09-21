@@ -330,7 +330,7 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 
 	// if the selected worker does NOT have the sealed files for the sector, instruct it to fetch it from a worker that has them and
 	// put it in the sealing scratch space.
-	sealFetch := PrepareAction{
+	unsealFetch := PrepareAction{
 		Action: func(ctx context.Context, worker Worker) error {
 			log.Debugf("copy sealed/cache sector data for sector %d", sector.ID)
 			_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy))
@@ -359,7 +359,7 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.Secto
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTSealed|storiface.FTCache, true)
 
 	log.Debugf("will schedule unseal for sector %d", sector.ID)
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, sealFetch, func(ctx context.Context, w Worker) error {
+	err = m.sched.Schedule(ctx, sector, sealtasks.TTUnseal, selector, unsealFetch, func(ctx context.Context, w Worker) error {
 		// TODO: make restartable
 
 		// NOTE: we're unsealing the whole sector here as with SDR we can't really

@@ -6,9 +6,17 @@ orbs:
 executors:
   golang:
     docker:
-      # Must match GO_VERSION_MIN in project root. Change in gen.go 
-      - image: cimg/go:[[ .GoVersion]]
+      # Must match GO_VERSION_MIN in project root
+      - image: cimg/go:1.20.7
     resource_class: medium+
+  golang-2xl:
+    docker:
+      # Must match GO_VERSION_MIN in project root
+      - image: cimg/go:1.20.7
+    resource_class: 2xlarge
+  ubuntu:
+    docker:
+      - image: ubuntu:20.04
 
 commands:
   build-platform-specific:
@@ -561,7 +569,8 @@ workflows:
           suite: utest-[[ $suite ]]
           target: "[[ $pkgs ]]"
           [[if eq $suite "unit-cli"]]get-params: true[[end]]
-          [[- if eq $suite "unit-rest"]]resource_class: 2xlarge[[end]]
+          [[if eq $suite "unit-cli"]]executor: golang-2xl[[end]]
+          [[- if eq $suite "unit-rest"]]executor: golang-2xl[[end]]
       [[- end]]
       - test:
           go-test-flags: "-run=TestMulticoreSDR"

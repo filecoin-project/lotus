@@ -312,6 +312,7 @@ type NetworkParams struct {
 	SupportedProofTypes     []abi.RegisteredSealProof
 	PreCommitChallengeDelay abi.ChainEpoch
 	ForkUpgradeParams       ForkUpgradeParams
+	Eip155ChainID           int
 }
 
 type ForkUpgradeParams struct {
@@ -339,6 +340,7 @@ type ForkUpgradeParams struct {
 	UpgradeHyggeHeight       abi.ChainEpoch
 	UpgradeLightningHeight   abi.ChainEpoch
 	UpgradeThunderHeight     abi.ChainEpoch
+	UpgradeWatermelonHeight  abi.ChainEpoch
 }
 
 type NonceMapType map[address.Address]uint64

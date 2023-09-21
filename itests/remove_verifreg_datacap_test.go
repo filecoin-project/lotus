@@ -275,7 +275,7 @@ func TestNoRemoveDatacapFromVerifreg(t *testing.T) {
 		Params: params,
 		Value:  big.Zero(),
 	}, types.EmptyTSK)
-	require.Error(t, err)
+	require.NoError(t, err)
 	require.False(t, callResult.MsgRct.ExitCode.IsSuccess())
 
 	verifregDatacapAfter, err := clientApi.StateVerifiedClientStatus(ctx, builtin.VerifiedRegistryActorAddr, types.EmptyTSK)

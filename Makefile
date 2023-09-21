@@ -203,7 +203,7 @@ lotus-health:
 .PHONY: lotus-health
 BINS+=lotus-health
 
-lotus-wallet:
+lotus-wallet: $(BUILD_DEPS)
 	rm -f lotus-wallet
 	$(GOCC) build $(GOFLAGS) -o lotus-wallet ./cmd/lotus-wallet
 .PHONY: lotus-wallet

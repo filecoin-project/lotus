@@ -134,7 +134,7 @@ func decodeRLP(data []byte) (res interface{}, consumed int, err error) {
 			return nil, 0, err
 		}
 		totalLen := 1 + strLenInBytes + strLen
-		if totalLen > len(data) {
+		if totalLen > len(data) || totalLen < 0 {
 			return nil, 0, xerrors.Errorf("invalid rlp data: out of bound while parsing string")
 		}
 		return data[1+strLenInBytes : totalLen], totalLen, nil
@@ -157,7 +157,12 @@ func decodeLength(data []byte, lenInBytes int) (length int, err error) {
 	if err := binary.Read(r, binary.BigEndian, &decodedLength); err != nil {
 		return 0, xerrors.Errorf("invalid rlp data: cannot parse string length: %w", err)
 	}
-	if lenInBytes+int(decodedLength) > len(data) {
+	if decodedLength < 0 {
+		return 0, xerrors.Errorf("invalid rlp data: negative string length")
+	}
+
+	totalLength := lenInBytes + int(decodedLength)
+	if totalLength < 0 || totalLength > len(data) {
 		return 0, xerrors.Errorf("invalid rlp data: out of bound while parsing list")
 	}
 	return int(decodedLength), nil

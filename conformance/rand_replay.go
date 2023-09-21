@@ -1,23 +1,21 @@
 package conformance
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/test-vectors/schema"
 
-	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/rand"
 )
 
 type ReplayingRand struct {
 	reporter Reporter
 	recorded schema.Randomness
-	fallback vm.Rand
+	fallback rand.Rand
 }
 
-var _ vm.Rand = (*ReplayingRand)(nil)
+var _ rand.Rand = (*ReplayingRand)(nil)
 
 // NewReplayingRand replays recorded randomness when requested, falling back to
 // fixed randomness if the value cannot be found; hence this is a safe
@@ -30,50 +28,44 @@ func NewReplayingRand(reporter Reporter, recorded schema.Randomness) *ReplayingR
 	}
 }
 
-func (r *ReplayingRand) match(requested schema.RandomnessRule) ([]byte, bool) {
+func (r *ReplayingRand) match(requested schema.RandomnessRule) ([32]byte, bool) {
 	for _, other := range r.recorded {
 		if other.On.Kind == requested.Kind &&
-			other.On.Epoch == requested.Epoch &&
-			other.On.DomainSeparationTag == requested.DomainSeparationTag &&
-			bytes.Equal(other.On.Entropy, requested.Entropy) {
-			return other.Return, true
+			other.On.Epoch == requested.Epoch {
+			return *(*[32]byte)(other.Return), true
 		}
 	}
-	return nil, false
+	return [32]byte{}, false
 }
 
-func (r *ReplayingRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetChainRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	rule := schema.RandomnessRule{
-		Kind:                schema.RandomnessChain,
-		DomainSeparationTag: int64(pers),
-		Epoch:               int64(round),
-		Entropy:             entropy,
+		Kind:  schema.RandomnessChain,
+		Epoch: int64(round),
 	}
 
 	if ret, ok := r.match(rule); ok {
-		r.reporter.Logf("returning saved chain randomness: dst=%d, epoch=%d, entropy=%x, result=%x", pers, round, entropy, ret)
+		r.reporter.Logf("returning saved chain randomness: epoch=%d, result=%x", round, ret)
 		return ret, nil
 	}
 
-	r.reporter.Logf("returning fallback chain randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
+	r.reporter.Logf("returning fallback chain randomness: epoch=%d", round)
 
-	return r.fallback.GetChainRandomness(ctx, pers, round, entropy)
+	return r.fallback.GetChainRandomness(ctx, round)
 }
 
-func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, round abi.ChainEpoch) ([32]byte, error) {
 	rule := schema.RandomnessRule{
-		Kind:                schema.RandomnessBeacon,
-		DomainSeparationTag: int64(pers),
-		Epoch:               int64(round),
-		Entropy:             entropy,
+		Kind:  schema.RandomnessBeacon,
+		Epoch: int64(round),
 	}
 
 	if ret, ok := r.match(rule); ok {
-		r.reporter.Logf("returning saved beacon randomness: dst=%d, epoch=%d, entropy=%x, result=%x", pers, round, entropy, ret)
+		r.reporter.Logf("returning saved beacon randomness:  epoch=%d, result=%x", round, ret)
 		return ret, nil
 	}
 
-	r.reporter.Logf("returning fallback beacon randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
+	r.reporter.Logf("returning fallback beacon randomness: epoch=%d, ", round)
 
-	return r.fallback.GetBeaconRandomness(ctx, pers, round, entropy)
+	return r.fallback.GetBeaconRandomness(ctx, round)
 }

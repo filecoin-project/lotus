@@ -143,6 +143,20 @@ func TestDecodeList(t *testing.T) {
 	}
 }
 
+func TestDecodeNegativeLength(t *testing.T) {
+	testcases := [][]byte{
+		mustDecodeHex("0xbfffffffffffffff0041424344"),
+		mustDecodeHex("0xc1bFFF1111111111111111"),
+		mustDecodeHex("0xbFFF11111111111111"),
+		mustDecodeHex("0xbf7fffffffffffffff41424344"),
+	}
+
+	for _, tc := range testcases {
+		_, err := DecodeRLP(tc)
+		require.ErrorContains(t, err, "invalid rlp data")
+	}
+}
+
 func TestDecodeEncodeTx(t *testing.T) {
 	testcases := [][]byte{
 		mustDecodeHex("0xdc82013a0185012a05f2008504a817c8008080872386f26fc1000000c0"),

@@ -67,6 +67,8 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+			// Redundantly flag both absolute and relative paths as excluded
+			excluded[filepath.Join(repo, s)] = struct{}{}
 			excluded[e] = struct{}{}
 		}
 	}

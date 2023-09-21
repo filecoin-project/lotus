@@ -273,11 +273,6 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 			continue
 		}
 
-		head, err := napi.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-
 		working := -1
 		for i, ss := range state.ActiveSyncs {
 			switch ss.Stage {
@@ -332,7 +327,11 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 
 		_ = target // todo: maybe print? (creates a bunch of line wrapping issues with most tipsets)
 
-		if !watch && time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+		isDone, err := IsSyncDone(ctx, napi)
+		if err != nil {
+			return err
+		}
+		if !watch && isDone {
 			fmt.Println("\nDone!")
 			return nil
 		}
@@ -346,4 +345,12 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 
 		i++
 	}
+}
+
+func IsSyncDone(ctx context.Context, napi v0api.FullNode) (bool, error) {
+	head, err := napi.ChainHead(ctx)
+	if err != nil {
+		return false, err
+	}
+	return time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs), nil
 }

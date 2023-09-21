@@ -280,6 +280,11 @@ func ConfigFullNode(c interface{}) Option {
 		// enable message index for full node when configured by the user, otherwise use dummy.
 		If(cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.MsgIndex)),
 		If(!cfg.Index.EnableMsgIndex, Override(new(index.MsgIndex), modules.DummyMsgIndex)),
+
+		// enable fault reporter when configured by the user
+		If(cfg.FaultReporter.EnableConsensusFaultReporter,
+			Override(ConsensusReporterKey, modules.RunConsensusFaultReporter(cfg.FaultReporter)),
+		),
 	)
 }
 
