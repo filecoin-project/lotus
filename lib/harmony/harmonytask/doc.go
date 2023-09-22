@@ -32,12 +32,12 @@ Mental Model:
 *
 To use:
 1.Implement TaskInterface for a new task.
-2 Have New() receive this & all other ACTIVE implementations.
+2. Have New() receive this & all other ACTIVE implementations.
 *
 *
 As we are not expecting DBAs in this database, it's important to know
-what grows uncontrolled. The only harmony_* table is _task_history
-(somewhat quickly) and harmony_machines (slowly). These will need a
+what grows uncontrolled. The only growing harmony_* table is
+harmony_task_history (somewhat quickly). These will need a
 clean-up for after the task data could never be acted upon.
 but the design **requires** extraInfo tables to grow until the task's
 info could not possibly be used by a following task, including slow
