@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 
 	"golang.org/x/xerrors"
@@ -145,7 +146,7 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		}
 
 		params := make([]byte, 32)
-		rand.Read(params)
+		crand.Read(params)
 
 		msg := &types.Message{
 			To:         to,
