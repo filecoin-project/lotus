@@ -1,6 +1,7 @@
 # Lotus changelog
 
 # UNRELEASED
+- feat: Add move-partition command ([filecoin-project/lotus#11290](https://github.com/filecoin-project/lotus/pull/11290))
 - chore: Auto remove local chain data when importing chain file or snapshot ([filecoin-project/lotus#11277](https://github.com/filecoin-project/lotus/pull/11277))
 
 ## New features
