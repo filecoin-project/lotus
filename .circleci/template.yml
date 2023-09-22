@@ -167,7 +167,7 @@ jobs:
       - image: cimg/go:[[ .GoVersion]]
         environment:
           LOTUS_HARMONYDB_HOSTS: yugabyte
-      - image: yugabytedb/yugabyte:latest
+      - image: yugabytedb/yugabyte:2.18.0.0-b65
         command: bin/yugabyted start --daemon=false
         name: yugabyte
     resource_class: << parameters.resource_class >>
