@@ -1491,6 +1491,36 @@ func (mr *MockFullNodeMockRecorder) EthSyncing(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthSyncing", reflect.TypeOf((*MockFullNode)(nil).EthSyncing), arg0)
 }
 
+// EthTraceBlock mocks base method.
+func (m *MockFullNode) EthTraceBlock(arg0 context.Context, arg1 string) ([]*ethtypes.EthTraceBlock, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceBlock", arg0, arg1)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceBlock)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceBlock indicates an expected call of EthTraceBlock.
+func (mr *MockFullNodeMockRecorder) EthTraceBlock(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceBlock", reflect.TypeOf((*MockFullNode)(nil).EthTraceBlock), arg0, arg1)
+}
+
+// EthTraceReplayBlockTransactions mocks base method.
+func (m *MockFullNode) EthTraceReplayBlockTransactions(arg0 context.Context, arg1 string, arg2 []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EthTraceReplayBlockTransactions", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*ethtypes.EthTraceReplayBlockTransaction)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EthTraceReplayBlockTransactions indicates an expected call of EthTraceReplayBlockTransactions.
+func (mr *MockFullNodeMockRecorder) EthTraceReplayBlockTransactions(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EthTraceReplayBlockTransactions", reflect.TypeOf((*MockFullNode)(nil).EthTraceReplayBlockTransactions), arg0, arg1, arg2)
+}
+
 // EthUninstallFilter mocks base method.
 func (m *MockFullNode) EthUninstallFilter(arg0 context.Context, arg1 ethtypes.EthFilterID) (bool, error) {
 	m.ctrl.T.Helper()
@@ -3261,6 +3291,36 @@ func (m *MockFullNode) StateGetNetworkParams(arg0 context.Context) (*api.Network
 func (mr *MockFullNodeMockRecorder) StateGetNetworkParams(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetNetworkParams", reflect.TypeOf((*MockFullNode)(nil).StateGetNetworkParams), arg0)
+}
+
+// StateGetRandomnessDigestFromBeacon mocks base method.
+func (m *MockFullNode) StateGetRandomnessDigestFromBeacon(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessDigestFromBeacon", arg0, arg1, arg2)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessDigestFromBeacon indicates an expected call of StateGetRandomnessDigestFromBeacon.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessDigestFromBeacon(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessDigestFromBeacon", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessDigestFromBeacon), arg0, arg1, arg2)
+}
+
+// StateGetRandomnessDigestFromTickets mocks base method.
+func (m *MockFullNode) StateGetRandomnessDigestFromTickets(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessDigestFromTickets", arg0, arg1, arg2)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessDigestFromTickets indicates an expected call of StateGetRandomnessDigestFromTickets.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessDigestFromTickets(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessDigestFromTickets", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessDigestFromTickets), arg0, arg1, arg2)
 }
 
 // StateGetRandomnessFromBeacon mocks base method.

@@ -12,7 +12,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func move(from, to string) error {
+func Move(from, to string) error {
 	from, err := homedir.Expand(from)
 	if err != nil {
 		return xerrors.Errorf("move: expanding from: %w", err)

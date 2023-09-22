@@ -15,7 +15,7 @@ import (
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/multiformats/go-multicodec"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
@@ -369,14 +369,16 @@ func (s *walkScheduler) Wait() error {
 }
 
 func (s *walkScheduler) enqueueIfNew(task walkTask) {
-	if task.c.Prefix().MhType == mh.IDENTITY {
+	if multicodec.Code(task.c.Prefix().MhType) == multicodec.Identity {
 		//log.Infow("ignored", "cid", todo.c.String())
 		return
 	}
 
-	// This lets through RAW and CBOR blocks, the only two types that we
-	// end up writing to the exported CAR.
-	if task.c.Prefix().Codec != cid.Raw && task.c.Prefix().Codec != cid.DagCBOR {
+	// This lets through RAW, CBOR, and DagCBOR blocks, the only types that we end up writing to
+	// the exported CAR.
+	switch multicodec.Code(task.c.Prefix().Codec) {
+	case multicodec.Cbor, multicodec.DagCbor, multicodec.Raw:
+	default:
 		//log.Infow("ignored", "cid", todo.c.String())
 		return
 	}
@@ -450,7 +452,8 @@ func (s *walkScheduler) processTask(t walkTask, workerN int) error {
 	// We exported the ipld block. If it wasn't a CBOR block, there's nothing
 	// else to do and we can bail out early as it won't have any links
 	// etc.
-	if t.c.Prefix().Codec != cid.DagCBOR || t.c.Prefix().MhType == mh.IDENTITY {
+	if multicodec.Code(t.c.Prefix().Codec) != multicodec.DagCbor ||
+		multicodec.Code(t.c.Prefix().MhType) == multicodec.Identity {
 		return nil
 	}
 
@@ -683,14 +686,13 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 				prefix := c.Prefix()
 
 				// Don't include identity CIDs.
-				if prefix.MhType == mh.IDENTITY {
+				if multicodec.Code(prefix.MhType) == multicodec.Identity {
 					continue
 				}
 
-				// We only include raw and dagcbor, for now.
-				// Raw for "code" CIDs.
-				switch prefix.Codec {
-				case cid.Raw, cid.DagCBOR:
+				// We only include raw, cbor, and dagcbor, for now.
+				switch multicodec.Code(prefix.Codec) {
+				case multicodec.Cbor, multicodec.DagCbor, multicodec.Raw:
 				default:
 					continue
 				}
@@ -722,7 +724,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 }
 
 func recurseLinks(ctx context.Context, bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
-	if root.Prefix().Codec != cid.DagCBOR {
+	if multicodec.Code(root.Prefix().Codec) != multicodec.DagCbor {
 		return in, nil
 	}
 

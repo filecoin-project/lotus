@@ -265,13 +265,9 @@ func RandomSchedule(lc fx.Lifecycle, mctx helpers.MetricsCtx, p RandomBeaconPara
 		return nil, err
 	}
 
-	shd := beacon.Schedule{}
-	for _, dc := range p.DrandConfig {
-		bc, err := drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, dc.Config)
-		if err != nil {
-			return nil, xerrors.Errorf("creating drand beacon: %w", err)
-		}
-		shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
+	shd, err := drand.BeaconScheduleFromDrandSchedule(p.DrandConfig, gen.Timestamp, p.PubSub)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create beacon schedule: %w", err)
 	}
 
 	return shd, nil

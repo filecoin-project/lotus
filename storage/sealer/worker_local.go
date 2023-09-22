@@ -180,6 +180,10 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 	}, nil
 }
 
+func (l *localWorkerPathProvider) AcquireSectorCopy(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+	return (&localWorkerPathProvider{w: l.w, op: storiface.AcquireCopy}).AcquireSector(ctx, id, existing, allocate, ptype)
+}
+
 func (l *LocalWorker) ffiExec() (storiface.Storage, error) {
 	return ffiwrapper.New(&localWorkerPathProvider{w: l})
 }
@@ -571,15 +575,16 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storiface.SectorRe
 			return nil, xerrors.Errorf("unsealing sector: %w", err)
 		}
 
-		if err = l.storage.RemoveCopies(ctx, sector.ID, storiface.FTSealed); err != nil {
-			return nil, xerrors.Errorf("removing source data: %w", err)
+		// note: the unsealed file is moved to long-term storage in Manager.SectorsUnsealPiece
+
+		storageTypes := []storiface.SectorFileType{storiface.FTSealed, storiface.FTCache, storiface.FTUpdate, storiface.FTUpdateCache}
+		for _, fileType := range storageTypes {
+			if err = l.storage.RemoveCopies(ctx, sector.ID, fileType); err != nil {
+				return nil, xerrors.Errorf("removing source data: %w", err)
+			}
 		}
 
-		if err = l.storage.RemoveCopies(ctx, sector.ID, storiface.FTCache); err != nil {
-			return nil, xerrors.Errorf("removing source data: %w", err)
-		}
-
-		log.Debugf("worker has unsealed piece, sector=%+v", sector.ID)
+		log.Debugf("unsealed piece, sector=%+v", sector.ID)
 
 		return nil, nil
 	})
