@@ -10,8 +10,6 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 func TestDefaultFullNodeRoundtrip(t *testing.T) {
@@ -74,8 +72,8 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 	fmt.Println(s)
 
 	// Differs between test envs
-	c.HarmonyDB = config.HarmonyDB{}
-	c2.(*StorageMiner).HarmonyDB = config.HarmonyDB{}
+	c.HarmonyDB = HarmonyDB{}
+	c2.(*StorageMiner).HarmonyDB = HarmonyDB{}
 
 	fmt.Println(c)
 	fmt.Println(c2)
