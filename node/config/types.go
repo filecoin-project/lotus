@@ -67,12 +67,16 @@ type StorageMiner struct {
 }
 
 type LotusProviderConfig struct {
-	EnableWindowPost  bool
-	EnableWinningPost bool
+	Subsystems ProviderSubsystemsConfig
 
 	Fees      LotusProviderFees
 	Addresses LotusProviderAddresses
 	Proving   ProvingConfig
+}
+
+type ProviderSubsystemsConfig struct {
+	EnableWindowPost  bool
+	EnableWinningPost bool
 }
 
 type DAGStoreConfig struct {
