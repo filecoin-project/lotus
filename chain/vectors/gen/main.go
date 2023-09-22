@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -145,7 +146,7 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		}
 
 		params := make([]byte, 32)
-		rand.Read(params)
+		crand.Read(params)
 
 		msg := &types.Message{
 			To:         to,

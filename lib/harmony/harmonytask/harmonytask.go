@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -379,6 +380,9 @@ func (e *TaskEngine) bump(taskType string) {
 		return
 	}
 	for _, url := range res {
+		if !strings.HasPrefix(strings.ToLower(url), "http") {
+			url = "http://"
+		}
 		resp, err := hClient.Get(url + "/scheduler/bump/" + taskType)
 		if err != nil {
 			log.Info("Server unreachable to bump: ", err)

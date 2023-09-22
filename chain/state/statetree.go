@@ -438,7 +438,8 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("tried to flush state tree with snapshots on the stack")
 	}
 
-	for addr, sto := range st.snaps.layers[0].actors {
+	for addr, stoTmp := range st.snaps.layers[0].actors {
+		sto := stoTmp
 		if sto.Delete {
 			if err := st.root.Delete(abi.AddrKey(addr)); err != nil {
 				return cid.Undef, err
