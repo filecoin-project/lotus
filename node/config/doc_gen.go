@@ -9,7 +9,7 @@ type DocField struct {
 }
 
 var Doc = map[string][]DocField{
-	"API": []DocField{
+	"API": {
 		{
 			Name: "ListenAddress",
 			Type: "string",
@@ -29,7 +29,7 @@ var Doc = map[string][]DocField{
 			Comment: ``,
 		},
 	},
-	"Backup": []DocField{
+	"Backup": {
 		{
 			Name: "DisableMetadataLog",
 			Type: "bool",
@@ -41,7 +41,7 @@ Note that in case of metadata corruption it might be much harder to recover
 your node if metadata log is disabled`,
 		},
 	},
-	"BatchFeeConfig": []DocField{
+	"BatchFeeConfig": {
 		{
 			Name: "Base",
 			Type: "types.FIL",
@@ -55,7 +55,7 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Chainstore": []DocField{
+	"Chainstore": {
 		{
 			Name: "EnableSplitstore",
 			Type: "bool",
@@ -69,7 +69,7 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 	},
-	"Client": []DocField{
+	"Client": {
 		{
 			Name: "UseIpfs",
 			Type: "bool",
@@ -117,7 +117,7 @@ without existing payment channels with available funds will fail instead
 of automatically performing on-chain operations.`,
 		},
 	},
-	"Common": []DocField{
+	"Common": {
 		{
 			Name: "API",
 			Type: "API",
@@ -149,7 +149,7 @@ of automatically performing on-chain operations.`,
 			Comment: ``,
 		},
 	},
-	"DAGStoreConfig": []DocField{
+	"DAGStoreConfig": {
 		{
 			Name: "RootDir",
 			Type: "string",
@@ -206,7 +206,7 @@ representation, e.g. 1m, 5m, 1h.
 Default value: 1 minute.`,
 		},
 	},
-	"DealmakingConfig": []DocField{
+	"DealmakingConfig": {
 		{
 			Name: "ConsiderOnlineStorageDeals",
 			Type: "bool",
@@ -341,7 +341,7 @@ see https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#
 			Comment: ``,
 		},
 	},
-	"Events": []DocField{
+	"Events": {
 		{
 			Name: "DisableRealTimeFilterAPI",
 			Type: "bool",
@@ -394,7 +394,7 @@ the database must already exist and be writeable. If a relative path is provided
 relative to the CWD (current working directory).`,
 		},
 	},
-	"FaultReporterConfig": []DocField{
+	"FaultReporterConfig": {
 		{
 			Name: "EnableConsensusFaultReporter",
 			Type: "bool",
@@ -423,7 +423,7 @@ ReportConsensusFault messages. It will pay for gas fees, and receive any
 rewards. This address should have adequate funds to cover gas fees.`,
 		},
 	},
-	"FeeConfig": []DocField{
+	"FeeConfig": {
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
@@ -431,7 +431,7 @@ rewards. This address should have adequate funds to cover gas fees.`,
 			Comment: ``,
 		},
 	},
-	"FevmConfig": []DocField{
+	"FevmConfig": {
 		{
 			Name: "EnableEthRPC",
 			Type: "bool",
@@ -453,7 +453,7 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 	},
-	"FullNode": []DocField{
+	"FullNode": {
 		{
 			Name: "Client",
 			Type: "Client",
@@ -503,7 +503,7 @@ Set to 0 to keep all mappings`,
 			Comment: ``,
 		},
 	},
-	"HarmonyDB": []DocField{
+	"HarmonyDB": {
 		{
 			Name: "Hosts",
 			Type: "[]string",
@@ -536,7 +536,7 @@ in a cluster. Only 1 is required`,
 			Comment: `The port to find Yugabyte. Blank for default.`,
 		},
 	},
-	"IndexConfig": []DocField{
+	"IndexConfig": {
 		{
 			Name: "EnableMsgIndex",
 			Type: "bool",
@@ -545,7 +545,7 @@ in a cluster. Only 1 is required`,
 EnableMsgIndex enables indexing of messages on chain.`,
 		},
 	},
-	"IndexProviderConfig": []DocField{
+	"IndexProviderConfig": {
 		{
 			Name: "Enable",
 			Type: "bool",
@@ -590,7 +590,7 @@ starts. By default, the cache is rehydrated from previously cached entries store
 datastore if any is present.`,
 		},
 	},
-	"Libp2p": []DocField{
+	"Libp2p": {
 		{
 			Name: "ListenAddresses",
 			Type: "[]string",
@@ -657,7 +657,7 @@ count towards this limit.`,
 closed by the connection manager.`,
 		},
 	},
-	"Logging": []DocField{
+	"Logging": {
 		{
 			Name: "SubsystemLevels",
 			Type: "map[string]string",
@@ -665,7 +665,7 @@ closed by the connection manager.`,
 			Comment: `SubsystemLevels specify per-subsystem log levels`,
 		},
 	},
-	"LotusProviderAddresses": []DocField{
+	"LotusProviderAddresses": {
 		{
 			Name: "PreCommitControl",
 			Type: "[]string",
@@ -701,7 +701,7 @@ A control address that doesn't have enough funds will still be chosen
 over the worker address if this flag is set.`,
 		},
 	},
-	"LotusProviderConfig": []DocField{
+	"LotusProviderConfig": {
 		{
 			Name: "EnableWindowPost",
 			Type: "bool",
@@ -733,7 +733,7 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 	},
-	"LotusProviderFees": []DocField{
+	"LotusProviderFees": {
 		{
 			Name: "DefaultMaxFee",
 			Type: "types.FIL",
@@ -783,7 +783,7 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 	},
-	"MinerAddressConfig": []DocField{
+	"MinerAddressConfig": {
 		{
 			Name: "PreCommitControl",
 			Type: "[]string",
@@ -825,7 +825,7 @@ A control address that doesn't have enough funds will still be chosen
 over the worker address if this flag is set.`,
 		},
 	},
-	"MinerFeeConfig": []DocField{
+	"MinerFeeConfig": {
 		{
 			Name: "MaxPreCommitGasFee",
 			Type: "types.FIL",
@@ -875,7 +875,7 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 	},
-	"MinerSubsystemConfig": []DocField{
+	"MinerSubsystemConfig": {
 		{
 			Name: "EnableMining",
 			Type: "bool",
@@ -921,7 +921,7 @@ This is useful to allow workers to bypass the lotus miner to access sector infor
 			Comment: ``,
 		},
 	},
-	"ProvingConfig": []DocField{
+	"ProvingConfig": {
 		{
 			Name: "ParallelCheckLimit",
 			Type: "int",
@@ -1048,7 +1048,7 @@ Note that setting this value lower may result in less efficient gas use - more m
 to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)`,
 		},
 	},
-	"Pubsub": []DocField{
+	"Pubsub": {
 		{
 			Name: "Bootstrapper",
 			Type: "bool",
@@ -1108,7 +1108,7 @@ This property is used only if ElasticSearchTracer propery is set.`,
 			Comment: `Auth token that will be passed with logs to elasticsearch - used for weighted peers score.`,
 		},
 	},
-	"RetrievalPricing": []DocField{
+	"RetrievalPricing": {
 		{
 			Name: "Strategy",
 			Type: "string",
@@ -1128,7 +1128,7 @@ This property is used only if ElasticSearchTracer propery is set.`,
 			Comment: ``,
 		},
 	},
-	"RetrievalPricingDefault": []DocField{
+	"RetrievalPricingDefault": {
 		{
 			Name: "VerifiedDealsFreeTransfer",
 			Type: "bool",
@@ -1139,7 +1139,7 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 default value is true`,
 		},
 	},
-	"RetrievalPricingExternal": []DocField{
+	"RetrievalPricingExternal": {
 		{
 			Name: "Path",
 			Type: "string",
@@ -1148,7 +1148,7 @@ default value is true`,
 This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".`,
 		},
 	},
-	"SealerConfig": []DocField{
+	"SealerConfig": {
 		{
 			Name: "ParallelFetchLimit",
 			Type: "int",
@@ -1249,7 +1249,7 @@ to use when evaluating tasks against this worker. An empty value defaults
 to "hardware".`,
 		},
 	},
-	"SealingConfig": []DocField{
+	"SealingConfig": {
 		{
 			Name: "MaxWaitDealsSectors",
 			Type: "uint64",
@@ -1455,7 +1455,7 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 			Comment: ``,
 		},
 	},
-	"Splitstore": []DocField{
+	"Splitstore": {
 		{
 			Name: "ColdStoreType",
 			Type: "string",
@@ -1522,7 +1522,7 @@ is set.  Moving GC will not occur when total moving size exceeds
 HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 		},
 	},
-	"StorageMiner": []DocField{
+	"StorageMiner": {
 		{
 			Name: "Subsystems",
 			Type: "MinerSubsystemConfig",
@@ -1584,7 +1584,7 @@ HotstoreMaxSpaceTarget - HotstoreMaxSpaceSafetyBuffer`,
 			Comment: ``,
 		},
 	},
-	"UserRaftConfig": []DocField{
+	"UserRaftConfig": {
 		{
 			Name: "ClusterModeEnabled",
 			Type: "bool",
@@ -1646,7 +1646,7 @@ copies that we keep as backups (renaming) after cleanup.`,
 			Comment: `Tracing enables propagation of contexts across binary boundaries.`,
 		},
 	},
-	"Wallet": []DocField{
+	"Wallet": {
 		{
 			Name: "RemoteBackend",
 			Type: "string",

@@ -1,7 +1,7 @@
 version: 2.1
 orbs:
-  aws-cli: circleci/aws-cli@1.3.2
-  docker: circleci/docker@2.1.4
+  aws-cli: circleci/aws-cli@4.1.1
+  docker: circleci/docker@2.3.0
 
 executors:
   golang:
