@@ -1312,7 +1312,7 @@ var actorMovePartitionsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Present() {
-			fmt.Println("Please use flags to provide arguments. See --help")
+			return fmt.Errorf("please use flags to provide arguments")
 		}
 
 		ctx := lcli.ReqContext(cctx)
@@ -1340,14 +1340,13 @@ var actorMovePartitionsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Worker: %s\n", color.BlueString("%s", minfo.Worker))
 
 		origDeadline := cctx.Uint64("orig-deadline")
 		if origDeadline > miner.WPoStPeriodDeadlines {
 			return fmt.Errorf("orig-deadline %d out of range", origDeadline)
 		}
 		destDeadline := cctx.Uint64("dest-deadline")
-		if origDeadline > miner.WPoStPeriodDeadlines {
+		if destDeadline > miner.WPoStPeriodDeadlines {
 			return fmt.Errorf("dest-deadline %d out of range", destDeadline)
 		}
 		if origDeadline == destDeadline {
@@ -1359,10 +1358,21 @@ var actorMovePartitionsCmd = &cli.Command{
 			return fmt.Errorf("must include at least one partition to move")
 		}
 
+		curPartitions, err := fullNodeApi.StateMinerPartitions(ctx, maddr, origDeadline, types.EmptyTSK)
+		if err != nil {
+			return fmt.Errorf("getting partitions for deadline %d: %w", origDeadline, err)
+		}
+		if len(partitions) > len(curPartitions) {
+			return fmt.Errorf("partition size(%d) cannot be bigger than current partition size(%d) for deadline %d", len(partitions), len(curPartitions), origDeadline)
+		}
+
 		fmt.Printf("Moving %d paritions\n", len(partitions))
 
 		partitionsBf := bitfield.New()
 		for _, partition := range partitions {
+			if partition >= int64(len(curPartitions)) {
+				return fmt.Errorf("partition index(%d) doesn't exist", partition)
+			}
 			partitionsBf.Set(uint64(partition))
 		}
 
@@ -1372,9 +1382,9 @@ var actorMovePartitionsCmd = &cli.Command{
 			Partitions:   partitionsBf,
 		}
 
-		serializedParams, aerr := actors.SerializeParams(&params)
-		if aerr != nil {
-			return xerrors.Errorf("serializing params: %w", err)
+		serializedParams, err := actors.SerializeParams(&params)
+		if err != nil {
+			return fmt.Errorf("serializing params: %w", err)
 		}
 
 		smsg, err := fullNodeApi.MpoolPushMessage(ctx, &types.Message{
@@ -1385,12 +1395,13 @@ var actorMovePartitionsCmd = &cli.Command{
 			Params: serializedParams,
 		}, nil)
 		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
+			return fmt.Errorf("mpool push: %w", err)
 		}
 
 		fmt.Println("MovePartitions Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
+		fmt.Println("Waiting for block confirmation...")
 		wait, err := fullNodeApi.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
 		if err != nil {
 			return err
@@ -1398,12 +1409,11 @@ var actorMovePartitionsCmd = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode.IsError() {
-			// TODO(jie): Fix error message
-			fmt.Println("Propose owner change failed!")
+			fmt.Println("Moving partitions failed!")
 			return err
 		}
 
-		fmt.Print("DoneDone")
+		fmt.Println("Move partition confirmed")
 
 		return nil
 	},
