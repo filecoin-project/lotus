@@ -1302,7 +1302,7 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 			Type: "string",
 
 			Comment: `ColdStoreType specifies the type of the coldstore.
-It can be "discard" (default) for discarding cold blocks, "messages" (default) to store only messages or "universal" to store all chain state..`,
+It can be "discard" (default) for discarding cold blocks, "messages" to store only messages or "universal" to store all chain state..`,
 		},
 		{
 			Name: "HotStoreType",
