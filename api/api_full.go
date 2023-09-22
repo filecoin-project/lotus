@@ -641,6 +641,11 @@ type FullNode interface {
 	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 
+	// StateGetRandomnessDigestFromTickets. is used to sample the chain for randomness.
+	StateGetRandomnessDigestFromTickets(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
+	// StateGetRandomnessDigestFromBeacon is used to sample the beacon for randomness.
+	StateGetRandomnessDigestFromBeacon(ctx context.Context, randEpoch abi.ChainEpoch, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
+
 	// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
 	// the entry has not yet been produced, the call will block until the entry
 	// becomes available
@@ -862,6 +867,13 @@ type FullNode interface {
 
 	// Returns the client version
 	Web3ClientVersion(ctx context.Context) (string, error) //perm:read
+
+	// TraceAPI related methods
+	//
+	// Returns traces created at given block
+	EthTraceBlock(ctx context.Context, blkNum string) ([]*ethtypes.EthTraceBlock, error) //perm:read
+	// Replays all transactions in a block returning the requested traces for each transaction
+	EthTraceReplayBlockTransactions(ctx context.Context, blkNum string, traceTypes []string) ([]*ethtypes.EthTraceReplayBlockTransaction, error) //perm:read
 
 	// CreateBackup creates node backup onder the specified file name. The
 	// method requires that the lotus daemon is running with the

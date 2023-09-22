@@ -1000,7 +1000,6 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
 				DisableCollateralFallback:  cfg.DisableCollateralFallback,
 
-				BatchPreCommits:     cfg.BatchPreCommits,
 				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
 				PreCommitBatchSlack: config.Duration(cfg.PreCommitBatchSlack),
@@ -1045,7 +1044,6 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		AvailableBalanceBuffer:     types.BigInt(sealingCfg.AvailableBalanceBuffer),
 		DisableCollateralFallback:  sealingCfg.DisableCollateralFallback,
 
-		BatchPreCommits:     sealingCfg.BatchPreCommits,
 		MaxPreCommitBatch:   sealingCfg.MaxPreCommitBatch,
 		PreCommitBatchWait:  time.Duration(sealingCfg.PreCommitBatchWait),
 		PreCommitBatchSlack: time.Duration(sealingCfg.PreCommitBatchSlack),

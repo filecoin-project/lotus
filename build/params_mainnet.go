@@ -90,10 +90,13 @@ const UpgradeSharkHeight = 2383680
 const UpgradeHyggeHeight = 2683348
 
 // 2023-04-27T13:00:00Z
-var UpgradeLightningHeight = abi.ChainEpoch(2809800)
+const UpgradeLightningHeight = 2809800
 
 // 2023-05-18T13:00:00Z
-var UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
+const UpgradeThunderHeight = UpgradeLightningHeight + 2880*21
+
+// ???????
+var UpgradeWatermelonHeight = abi.ChainEpoch(9999999999)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -103,17 +106,15 @@ var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
 var PreCommitChallengeDelay = abi.ChainEpoch(150)
 var PropagationDelaySecs = uint64(10)
 
+var EquivocationDelaySecs = uint64(2)
+
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_LIGHTNING") == "1" {
-		UpgradeLightningHeight = math.MaxInt64
-	}
-
-	if os.Getenv("LOTUS_DISABLE_THUNDER") == "1" {
-		UpgradeThunderHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_WATERMELON") == "1" {
+		UpgradeWatermelonHeight = math.MaxInt64
 	}
 
 	// NOTE: DO NOT change this unless you REALLY know what you're doing. This is not consensus critical, however,

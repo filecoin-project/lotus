@@ -15,7 +15,8 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -207,7 +208,7 @@ func doExtractMessage(opts extractOpts) error {
 	// TODO sometimes this returns a nil receipt and no error ¯\_(ツ)_/¯
 	//  ex: https://filfox.info/en/message/bafy2bzacebpxw3yiaxzy2bako62akig46x3imji7fewszen6fryiz6nymu2b2
 	//  This code is lenient and skips receipt comparison in case of a nil receipt.
-	rec, err := FullAPI.StateGetReceipt(ctx, mcid, execTs.Key())
+	rec, err := FullAPI.StateSearchMsg(ctx, execTs.Key(), mcid, api.LookbackNoLimit, false)
 	if err != nil {
 		return fmt.Errorf("failed to find receipt on chain: %w", err)
 	}
@@ -217,9 +218,9 @@ func doExtractMessage(opts extractOpts) error {
 	var receipt *schema.Receipt
 	if rec != nil {
 		receipt = &schema.Receipt{
-			ExitCode:    int64(rec.ExitCode),
-			ReturnValue: rec.Return,
-			GasUsed:     rec.GasUsed,
+			ExitCode:    int64(rec.Receipt.ExitCode),
+			ReturnValue: rec.Receipt.Return,
+			GasUsed:     rec.Receipt.GasUsed,
 		}
 
 		reporter := new(conformance.LogReporter)
@@ -326,7 +327,7 @@ func doExtractMessage(opts extractOpts) error {
 
 // resolveFromChain queries the chain for the provided message, using the block CID to
 // speed up the query, if provided
-func resolveFromChain(ctx context.Context, api v0api.FullNode, mcid cid.Cid, block string) (msg *types.Message, execTs *types.TipSet, incTs *types.TipSet, err error) {
+func resolveFromChain(ctx context.Context, api lapi.FullNode, mcid cid.Cid, block string) (msg *types.Message, execTs *types.TipSet, incTs *types.TipSet, err error) {
 	// Extract the full message.
 	msg, err = api.ChainGetMessage(ctx, mcid)
 	if err != nil {
@@ -339,7 +340,7 @@ func resolveFromChain(ctx context.Context, api v0api.FullNode, mcid cid.Cid, blo
 		log.Printf("locating message in blockchain")
 
 		// Locate the message.
-		msgInfo, err := api.StateSearchMsg(ctx, mcid)
+		msgInfo, err := api.StateSearchMsg(ctx, types.EmptyTSK, mcid, lapi.LookbackNoLimit, false)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to locate message: %w", err)
 		}
@@ -384,7 +385,7 @@ func resolveFromChain(ctx context.Context, api v0api.FullNode, mcid cid.Cid, blo
 // as the previous tipset. In the context of vector generation, the target
 // tipset is the one where a message was executed, and the previous tipset is
 // the one where the message was included.
-func fetchThisAndPrevTipset(ctx context.Context, api v0api.FullNode, target types.TipSetKey) (targetTs *types.TipSet, prevTs *types.TipSet, err error) {
+func fetchThisAndPrevTipset(ctx context.Context, api v1api.FullNode, target types.TipSetKey) (targetTs *types.TipSet, prevTs *types.TipSet, err error) {
 	// get the tipset on which this message was "executed" on.
 	// https://github.com/filecoin-project/lotus/issues/2847
 	targetTs, err = api.ChainGetTipSet(ctx, target)

@@ -30,7 +30,7 @@ const AllowableClockDriftSecs = uint64(1)
 /* inline-gen template
 const TestNetworkVersion = network.Version{{.latestNetworkVersion}}
 /* inline-gen start */
-const TestNetworkVersion = network.Version20
+const TestNetworkVersion = network.Version21
 
 /* inline-gen end */
 

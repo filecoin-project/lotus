@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	lru "github.com/hashicorp/golang-lru/v2"
+	"github.com/hashicorp/golang-lru/arc/v2"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
@@ -14,11 +14,11 @@ type messageCache struct {
 	api EventAPI
 
 	blockMsgLk    sync.Mutex
-	blockMsgCache *lru.ARCCache[cid.Cid, *api.BlockMessages]
+	blockMsgCache *arc.ARCCache[cid.Cid, *api.BlockMessages]
 }
 
 func newMessageCache(a EventAPI) *messageCache {
-	blsMsgCache, _ := lru.NewARC[cid.Cid, *api.BlockMessages](500)
+	blsMsgCache, _ := arc.NewARC[cid.Cid, *api.BlockMessages](500)
 
 	return &messageCache{
 		api:           a,

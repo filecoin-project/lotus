@@ -527,7 +527,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
 		}
 		if len(hd.Roots) != 1 {
-			return nil, xerrors.New("car file can have one and only one header")
+			return nil, xerrors.New("car file can have one and only one root")
 		}
 		if hd.Version != 1 && hd.Version != 2 {
 			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)

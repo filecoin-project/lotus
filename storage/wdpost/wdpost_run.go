@@ -32,6 +32,8 @@ import (
 )
 
 // recordPoStFailure records a failure in the journal.
+//
+//nolint:unused
 func (s *WindowPoStScheduler) recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info) {
 	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 		c := evtCommon{Error: err}

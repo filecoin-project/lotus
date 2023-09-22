@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
@@ -206,7 +208,12 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		if balance.Equals(types.NewInt(0)) {
+		inSync, err := IsSyncDone(ctx, api)
+		if err != nil {
+			return err
+		}
+
+		if balance.Equals(types.NewInt(0)) && !inSync {
 			afmt.Printf("%s (warning: may display 0 if chain sync in progress)\n", types.FIL(balance))
 		} else {
 			afmt.Printf("%s\n", types.FIL(balance))
@@ -330,6 +337,17 @@ var walletImport = &cli.Command{
 		if !cctx.Args().Present() || cctx.Args().First() == "-" {
 			if term.IsTerminal(int(os.Stdin.Fd())) {
 				fmt.Print("Enter private key(not display in the terminal): ")
+
+				sigCh := make(chan os.Signal, 1)
+				// Notify the channel when SIGINT is received
+				signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+				go func() {
+					<-sigCh
+					fmt.Println("\nInterrupt signal received. Exiting...")
+					os.Exit(1)
+				}()
+
 				inpdata, err = term.ReadPassword(int(os.Stdin.Fd()))
 				if err != nil {
 					return err

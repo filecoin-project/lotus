@@ -1,14 +1,18 @@
 package sealing
 
 import (
+	"context"
 	"testing"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine"
+
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func init() {
@@ -54,10 +58,10 @@ func TestHappyPath(t *testing.T) {
 	require.Equal(m.t, m.state.State, PreCommit2)
 
 	m.planSingle(SectorPreCommit2{})
-	require.Equal(m.t, m.state.State, PreCommitting)
+	require.Equal(m.t, m.state.State, SubmitPreCommitBatch)
 
-	m.planSingle(SectorPreCommitted{})
-	require.Equal(m.t, m.state.State, PreCommitWait)
+	m.planSingle(SectorPreCommitBatchSent{})
+	require.Equal(m.t, m.state.State, PreCommitBatchWait)
 
 	m.planSingle(SectorPreCommitLanded{})
 	require.Equal(m.t, m.state.State, WaitSeed)
@@ -77,7 +81,7 @@ func TestHappyPath(t *testing.T) {
 	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, Proving)
 
-	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector, Proving}
+	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, SubmitPreCommitBatch, PreCommitBatchWait, WaitSeed, Committing, SubmitCommit, CommitWait, FinalizeSector, Proving}
 	for i, n := range notif {
 		if n.before.State != expected[i] {
 			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
@@ -116,10 +120,10 @@ func TestHappyPathFinalizeEarly(t *testing.T) {
 	require.Equal(m.t, m.state.State, PreCommit2)
 
 	m.planSingle(SectorPreCommit2{})
-	require.Equal(m.t, m.state.State, PreCommitting)
+	require.Equal(m.t, m.state.State, SubmitPreCommitBatch)
 
-	m.planSingle(SectorPreCommitted{})
-	require.Equal(m.t, m.state.State, PreCommitWait)
+	m.planSingle(SectorPreCommitBatchSent{})
+	require.Equal(m.t, m.state.State, PreCommitBatchWait)
 
 	m.planSingle(SectorPreCommitLanded{})
 	require.Equal(m.t, m.state.State, WaitSeed)
@@ -145,7 +149,7 @@ func TestHappyPathFinalizeEarly(t *testing.T) {
 	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, Proving)
 
-	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, CommitFinalize, SubmitCommit, SubmitCommitAggregate, CommitAggregateWait, FinalizeSector, Proving}
+	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, SubmitPreCommitBatch, PreCommitBatchWait, WaitSeed, Committing, CommitFinalize, SubmitCommit, SubmitCommitAggregate, CommitAggregateWait, FinalizeSector, Proving}
 	for i, n := range notif {
 		if n.before.State != expected[i] {
 			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
@@ -220,10 +224,10 @@ func TestSeedRevert(t *testing.T) {
 	require.Equal(m.t, m.state.State, PreCommit2)
 
 	m.planSingle(SectorPreCommit2{})
-	require.Equal(m.t, m.state.State, PreCommitting)
+	require.Equal(m.t, m.state.State, SubmitPreCommitBatch)
 
-	m.planSingle(SectorPreCommitted{})
-	require.Equal(m.t, m.state.State, PreCommitWait)
+	m.planSingle(SectorPreCommitBatchSent{})
+	require.Equal(m.t, m.state.State, PreCommitBatchWait)
 
 	m.planSingle(SectorPreCommitLanded{})
 	require.Equal(m.t, m.state.State, WaitSeed)
@@ -450,4 +454,25 @@ func TestCreationTimeCleared(t *testing.T) {
 	require.Equal(m.t, m.state.State, SnapDealsAddPiece)
 
 	require.NotEqual(t, int64(0), m.state.CreationTime)
+}
+
+func TestRetrySoftErr(t *testing.T) {
+	i := 0
+
+	tf := func() error {
+		i++
+		switch i {
+		case 1:
+			return storiface.Err(storiface.ErrTempAllocateSpace, xerrors.New("foo"))
+		case 2:
+			return nil
+		default:
+			t.Fatalf("what")
+			return xerrors.Errorf("this error didn't ever happen, and will never happen")
+		}
+	}
+
+	err := retrySoftErr(context.Background(), tf)
+	require.NoError(t, err)
+	require.Equal(t, 2, i)
 }

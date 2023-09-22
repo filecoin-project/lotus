@@ -138,7 +138,6 @@ func DefaultStorageMiner() *StorageMiner {
 			AvailableBalanceBuffer:     types.FIL(big.Zero()),
 			DisableCollateralFallback:  false,
 
-			BatchPreCommits:    true,
 			MaxPreCommitBatch:  miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
 			PreCommitBatchWait: Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
 			// XXX snap deals wait deals slack if first

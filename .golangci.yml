@@ -12,9 +12,9 @@ linters:
     - unconvert
     - staticcheck
     - varcheck
-    - structcheck
     - deadcode
     - scopelint
+    - unused
 
 # We don't want to skip builtin/
 skip-dirs-use-default: false

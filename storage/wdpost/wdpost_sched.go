@@ -225,6 +225,8 @@ func (s *WindowPoStScheduler) update(ctx context.Context, revert, apply *types.T
 }
 
 // onAbort is called when generating proofs or submitting proofs is aborted
+//
+//nolint:unused
 func (s *WindowPoStScheduler) onAbort(ts *types.TipSet, deadline *dline.Info) {
 	s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStScheduler], func() interface{} {
 		c := evtCommon{}

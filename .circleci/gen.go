@@ -10,12 +10,24 @@ import (
 	"text/template"
 )
 
-const GoVersion = "1.19.7"
+var GoVersion = "" // from init below. Ex: 1.19.7
 
 //go:generate go run ./gen.go ..
 
 //go:embed template.yml
 var templateFile embed.FS
+
+func init() {
+	b, err := os.ReadFile("../go.mod")
+	if err != nil {
+		panic("cannot find go.mod in parent folder")
+	}
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "go ") {
+			GoVersion = line[3:]
+		}
+	}
+}
 
 type (
 	dirs  = []string
@@ -67,6 +79,8 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+			// Redundantly flag both absolute and relative paths as excluded
+			excluded[filepath.Join(repo, s)] = struct{}{}
 			excluded[e] = struct{}{}
 		}
 	}

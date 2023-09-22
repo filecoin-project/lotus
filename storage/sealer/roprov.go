@@ -36,3 +36,7 @@ func (l *readonlyProvider) AcquireSector(ctx context.Context, id storiface.Secto
 
 	return p, cancel, err
 }
+
+func (l *readonlyProvider) AcquireSectorCopy(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+	return storiface.SectorPaths{}, nil, xerrors.New("read-only storage")
+}

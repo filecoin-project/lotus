@@ -126,8 +126,6 @@ func EthEventAPI(cfg config.FevmConfig) func(helpers.MetricsCtx, repo.LockedRepo
 			MaxFilterResults: cfg.Events.MaxFilterResults,
 		}
 
-		const ChainHeadConfidence = 1
-
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
 				ev, err := events.NewEvents(ctx, &evapi)
