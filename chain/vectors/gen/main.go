@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 
 	"golang.org/x/xerrors"
