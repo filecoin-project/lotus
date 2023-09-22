@@ -91,9 +91,6 @@ var RewardFunc = func(ctx context.Context, vmi vm.Interface, em stmgr.ExecMonito
 		}
 	}
 
-	if ret.ExitCode != 0 {
-		return xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
-	}
 	return nil
 }
 

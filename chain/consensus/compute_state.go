@@ -147,9 +147,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
 				return xerrors.Errorf("callback failed on cron message: %w", err)
 			}
 		}
-		if ret.ExitCode != 0 {
-			return xerrors.Errorf("cron exit was non-zero: %d", ret.ExitCode)
-		}
 
 		return nil
 	}
