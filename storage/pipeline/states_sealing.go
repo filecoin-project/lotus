@@ -353,7 +353,12 @@ func (m *Sealing) preCommitInfo(ctx statemachine.Context, sector SectorInfo) (*m
 	}
 
 	// Assume: both precommit msg & commit msg land on chain as early as possible
-	maxExpiration := ts.Height() + policy.GetPreCommitChallengeDelay() + policy.GetMaxSectorExpirationExtension()
+	maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
+	if err != nil {
+		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get max extension: %w", err)})
+	}
+
+	maxExpiration := ts.Height() + policy.GetPreCommitChallengeDelay() + maxExtension
 	if expiration > maxExpiration {
 		expiration = maxExpiration
 	}

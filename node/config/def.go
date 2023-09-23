@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -122,6 +123,8 @@ func DefaultFullNode() *FullNode {
 }
 
 func DefaultStorageMiner() *StorageMiner {
+	// TODO: Should we increase this to nv21, which would push it to 3.5 years?
+	maxSectorExtentsion, _ := policy.GetMaxSectorExpirationExtension(network.Version20)
 	cfg := &StorageMiner{
 		Common: defCommon(),
 
@@ -143,7 +146,7 @@ func DefaultStorageMiner() *StorageMiner {
 			// XXX snap deals wait deals slack if first
 			PreCommitBatchSlack: Duration(3 * time.Hour), // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
 
-			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(policy.GetMaxSectorExpirationExtension()) * uint64(time.Second)),
+			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(maxSectorExtentsion) * uint64(time.Second)),
 
 			AggregateCommits: true,
 			MinCommitBatch:   miner5.MinAggregatedSectors, // per FIP13, we must have at least four proofs to aggregate, where 4 is the cross over point where aggregation wins out on single provecommit gas costs

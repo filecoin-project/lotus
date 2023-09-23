@@ -846,7 +846,12 @@ var sectorsCheckExpireCmd = &cli.Command{
 
 		for _, sector := range sectors {
 			MaxExpiration := sector.Activation + policy.GetSectorMaxLifetime(sector.SealProof, nv)
-			MaxExtendNow := currEpoch + policy.GetMaxSectorExpirationExtension()
+			maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
+			if err != nil {
+				return xerrors.Errorf("failed to get max extension: %w", err)
+			}
+
+			MaxExtendNow := currEpoch + maxExtension
 
 			if MaxExtendNow > MaxExpiration {
 				MaxExtendNow = MaxExpiration
@@ -1185,7 +1190,12 @@ var sectorsExtendCmd = &cli.Command{
 				newExp = abi.ChainEpoch(cctx.Int64("new-expiration"))
 			}
 
-			maxExtendNow := currEpoch + policy.GetMaxSectorExpirationExtension()
+			maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
+			if err != nil {
+				return xerrors.Errorf("failed to get max extension: %w", err)
+			}
+
+			maxExtendNow := currEpoch + maxExtension
 			if newExp > maxExtendNow {
 				newExp = maxExtendNow
 			}
@@ -1755,7 +1765,12 @@ var sectorsCapacityCollateralCmd = &cli.Command{
 				return err
 			}
 
-			pci.Expiration = policy.GetMaxSectorExpirationExtension() + h.Height()
+			maxExtension, err := policy.GetMaxSectorExpirationExtension(nv)
+			if err != nil {
+				return xerrors.Errorf("failed to get max extension: %w", err)
+			}
+
+			pci.Expiration = maxExtension + h.Height()
 		}
 
 		pc, err := nApi.StateMinerInitialPledgeCollateral(ctx, maddr, pci, types.EmptyTSK)

@@ -620,8 +620,8 @@ func TestFEVMRecursiveActorCall(t *testing.T) {
 	t.Run("n=0,r=252", testN(0, 252, exitcode.Ok))
 	t.Run("n=251,r=164", testN(251, 164, exitcode.Ok))
 
-	t.Run("n=0,r=253-fails", testN(0, 254, exitcode.ExitCode(33))) // 33 means transaction reverted
-	t.Run("n=251,r=167-fails", testN(251, 165, exitcode.ExitCode(33)))
+	t.Run("n=0,r=255-fails", testN(0, 255, exitcode.ExitCode(33))) // 33 means transaction reverted
+	t.Run("n=251,r=167-fails", testN(251, 167, exitcode.ExitCode(33)))
 }
 
 // TestFEVMRecursiveActorCallEstimate
