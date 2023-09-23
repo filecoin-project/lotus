@@ -106,13 +106,15 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return err
 	}
 
-	commD, err := api.StateComputeDataCID(ctx, maddr, si.SectorType, si.dealIDs(), tsk)
-	if err != nil {
-		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
-	}
+	if si.hasDeals() {
+		commD, err := api.StateComputeDataCID(ctx, maddr, si.SectorType, si.dealIDs(), tsk)
+		if err != nil {
+			return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
+		}
 
-	if si.CommD == nil || !commD.Equals(*si.CommD) {
-		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
+		if si.CommD == nil || !commD.Equals(*si.CommD) {
+			return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
+		}
 	}
 
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tsk)
