@@ -38,7 +38,7 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sub"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("Sub")); err != nil {
+	if _, err := cw.WriteString(string("Sub")); err != nil {
 		return err
 	}
 
@@ -50,9 +50,11 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	for _, v := range t.Sub {
-		if err := cbg.WriteCid(w, v); err != nil {
-			return xerrors.Errorf("failed writing cid field t.Sub: %w", err)
+
+		if err := cbg.WriteCid(cw, v); err != nil {
+			return xerrors.Errorf("failed to write cid field v: %w", err)
 		}
+
 	}
 	return nil
 }
@@ -116,12 +118,25 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			for i := 0; i < int(extra); i++ {
+				{
+					var maj byte
+					var extra uint64
+					var err error
+					_ = maj
+					_ = extra
+					_ = err
 
-				c, err := cbg.ReadCid(cr)
-				if err != nil {
-					return xerrors.Errorf("reading cid field t.Sub failed: %w", err)
+					{
+
+						c, err := cbg.ReadCid(cr)
+						if err != nil {
+							return xerrors.Errorf("failed to read cid field t.Sub[i]: %w", err)
+						}
+
+						t.Sub[i] = c
+
+					}
 				}
-				t.Sub[i] = c
 			}
 
 		default:
