@@ -68,7 +68,9 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 	require.NoError(t, err)
 
 	// as set when there are no deal pieces
-	expected := h + policy.GetMaxSectorExpirationExtension() - pBuffer
+	maxExtension, err := policy.GetMaxSectorExpirationExtension(build.TestNetworkVersion)
+	assert.NoError(t, err)
+	expected := h + maxExtension - pBuffer
 	assert.Equal(t, int(expected), int(exp))
 }
 
@@ -132,7 +134,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 
 func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
-	policy := pipeline.NewBasicPreCommitPolicy(&fakeChain{
+	pcp := pipeline.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
@@ -152,11 +154,14 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 		},
 	}
 
-	exp, err := policy.Expiration(context.Background(), pieces...)
+	exp, err := pcp.Expiration(context.Background(), pieces...)
+	require.NoError(t, err)
+
+	maxLifetime, err := policy.GetMaxSectorExpirationExtension(build.TestNetworkVersion)
 	require.NoError(t, err)
 
 	// Treated as a CC sector, so expiration becomes currEpoch + maxLifetime = 55 + 1555200
-	assert.Equal(t, 1555255, int(exp))
+	assert.Equal(t, 55+maxLifetime, exp)
 }
 
 func TestMissingDealIsIgnored(t *testing.T) {
