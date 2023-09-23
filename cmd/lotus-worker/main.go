@@ -627,7 +627,7 @@ var runCmd = &cli.Command{
 			Storage:    lr,
 		}
 
-		log.Info("Setting up control endpoint at " + address)
+		log.Info("Setting up control endpoint at " + newAddress)
 
 		timeout, err := time.ParseDuration(cctx.String("http-server-timeout"))
 		if err != nil {
@@ -652,13 +652,13 @@ var runCmd = &cli.Command{
 			log.Warn("Graceful shutdown successful")
 		}()
 
-		nl, err := net.Listen("tcp", address)
+		nl, err := net.Listen("tcp", newAddress)
 		if err != nil {
 			return err
 		}
 
 		{
-			a, err := net.ResolveTCPAddr("tcp", address)
+			a, err := net.ResolveTCPAddr("tcp", newAddress)
 			if err != nil {
 				return xerrors.Errorf("parsing address: %w", err)
 			}
@@ -739,7 +739,7 @@ var runCmd = &cli.Command{
 
 					select {
 					case <-readyCh:
-						if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
+						if err := nodeApi.WorkerConnect(ctx, "http://"+newAddress+"/rpc/v0"); err != nil {
 							log.Errorf("Registering worker failed: %+v", err)
 							cancel()
 							return
@@ -801,6 +801,9 @@ func extractRoutableIP(timeout time.Duration) (string, error) {
 	}
 
 	minerIP, _ := maddr.ValueForProtocol(multiaddr.P_IP6)
+	if minerIP == "" {
+		minerIP, _ = maddr.ValueForProtocol(multiaddr.P_IP4)
+	}
 	minerPort, _ := maddr.ValueForProtocol(multiaddr.P_TCP)
 
 	// Check if the IP is IPv6 and format the address appropriately
