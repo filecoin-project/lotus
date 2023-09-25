@@ -463,6 +463,7 @@ func TestWindowPostWorkerParallel(t *testing.T) {
 
 			_ = logging.SetLogLevel("storageminer", "INFO")
 
+			// 2 sectors per partition, 2 partitions in all 48 deadlines
 			sectors := 2 * 48 * 2
 
 			var waitCount uint32 = 0
