@@ -703,14 +703,8 @@ over the worker address if this flag is set.`,
 	},
 	"LotusProviderConfig": {
 		{
-			Name: "EnableWindowPost",
-			Type: "bool",
-
-			Comment: ``,
-		},
-		{
-			Name: "EnableWinningPost",
-			Type: "bool",
+			Name: "Subsystems",
+			Type: "ProviderSubsystemsConfig",
 
 			Comment: ``,
 		},
@@ -917,6 +911,20 @@ This is useful to allow workers to bypass the lotus miner to access sector infor
 		{
 			Name: "SectorIndexApiInfo",
 			Type: "string",
+
+			Comment: ``,
+		},
+	},
+	"ProviderSubsystemsConfig": {
+		{
+			Name: "EnableWindowPost",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "EnableWinningPost",
+			Type: "bool",
 
 			Comment: ``,
 		},

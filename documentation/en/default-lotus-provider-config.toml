@@ -1,8 +1,9 @@
-# type: bool
-#EnableWindowPost = false
+[Subsystems]
+  # type: bool
+  #EnableWindowPost = false
 
-# type: bool
-#EnableWinningPost = false
+  # type: bool
+  #EnableWinningPost = false
 
 
 [Fees]
