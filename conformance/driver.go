@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/index"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -89,9 +90,9 @@ type ExecuteTipsetParams struct {
 	ParentEpoch abi.ChainEpoch
 	Tipset      *schema.Tipset
 	ExecEpoch   abi.ChainEpoch
-	// Rand is an optional vm.Rand implementation to use. If nil, the driver
-	// will use a vm.Rand that returns a fixed value for all calls.
-	Rand vm.Rand
+	// Rand is an optional rand.Rand implementation to use. If nil, the driver
+	// will use a rand.Rand that returns a fixed value for all calls.
+	Rand rand.Rand
 	// BaseFee if not nil or zero, will override the basefee of the tipset.
 	BaseFee abi.TokenAmount
 }
@@ -200,9 +201,9 @@ type ExecuteMessageParams struct {
 	BaseFee        abi.TokenAmount
 	NetworkVersion network.Version
 
-	// Rand is an optional vm.Rand implementation to use. If nil, the driver
-	// will use a vm.Rand that returns a fixed value for all calls.
-	Rand vm.Rand
+	// Rand is an optional rand.Rand implementation to use. If nil, the driver
+	// will use a rand.Rand that returns a fixed value for all calls.
+	Rand rand.Rand
 
 	// Lookback is the LookbackStateGetter; returns the state tree at a given epoch.
 	Lookback vm.LookbackStateGetter

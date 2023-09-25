@@ -9,7 +9,6 @@ package build
 
 import (
 	"math/big"
-	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -34,6 +33,7 @@ var (
 	MinimumBaseFee        = int64(100)
 	BlockDelaySecs        = uint64(builtin2.EpochDurationSeconds)
 	PropagationDelaySecs  = uint64(6)
+	EquivocationDelaySecs = uint64(2)
 	SupportedProofTypes   = []abi.RegisteredSealProof{
 		abi.RegisteredSealProof_StackedDrg32GiBV1,
 		abi.RegisteredSealProof_StackedDrg64GiBV1,
@@ -109,6 +109,7 @@ var (
 	UpgradeHyggeHeight      abi.ChainEpoch = -20
 	UpgradeLightningHeight  abi.ChainEpoch = -21
 	UpgradeThunderHeight    abi.ChainEpoch = -22
+	UpgradeWatermelonHeight abi.ChainEpoch = -23
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
@@ -138,7 +139,3 @@ const BootstrapPeerThreshold = 1
 // ChainId defines the chain ID used in the Ethereum JSON-RPC endpoint.
 // As per https://github.com/ethereum-lists/chains
 const Eip155ChainId = 31415926
-
-// Reducing the delivery delay for equivocation of
-// consistent broadcast to just half a second.
-var CBDeliveryDelay = 500 * time.Millisecond

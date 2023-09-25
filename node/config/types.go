@@ -400,8 +400,6 @@ type SealingConfig struct {
 	// Don't send collateral with messages even if there is no available balance in the miner actor
 	DisableCollateralFallback bool
 
-	// enable / disable precommit batching (takes effect after nv13)
-	BatchPreCommits bool
 	// maximum precommit batch size - batches will be sent immediately above this size
 	MaxPreCommitBatch int
 	// how long to wait before submitting a batch after crossing the minimum batch size
@@ -421,7 +419,8 @@ type SealingConfig struct {
 	CommitBatchSlack Duration
 
 	// network BaseFee below which to stop doing precommit batching, instead
-	// sending precommit messages to the chain individually
+	// sending precommit messages to the chain individually. When the basefee is
+	// below this threshold, precommit messages will get sent out immediately.
 	BatchPreCommitAboveBaseFee types.FIL
 
 	// network BaseFee below which to stop doing commit aggregation, instead
@@ -599,7 +598,7 @@ type Chainstore struct {
 
 type Splitstore struct {
 	// ColdStoreType specifies the type of the coldstore.
-	// It can be "messages" (default) to store only messages, "universal" to store all chain state or "discard" for discarding cold blocks.
+	// It can be "discard" (default) for discarding cold blocks, "messages" to store only messages or "universal" to store all chain state..
 	ColdStoreType string
 	// HotStoreType specifies the type of the hotstore.
 	// Only currently supported value is "badger".

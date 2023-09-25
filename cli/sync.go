@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var SyncCmd = &cli.Command{
@@ -262,6 +263,9 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 	}
 	firstApp = state.VMApplied
 
+	// eta computes the ETA for the sync to complete (with a lookback of 10 processed items)
+	eta := cliutil.NewETA(10)
+
 	for {
 		state, err := napi.SyncState(ctx)
 		if err != nil {
@@ -271,11 +275,6 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 		if len(state.ActiveSyncs) == 0 {
 			time.Sleep(time.Second)
 			continue
-		}
-
-		head, err := napi.ChainHead(ctx)
-		if err != nil {
-			return err
 		}
 
 		working := -1
@@ -317,8 +316,10 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 			fmt.Print("\r\x1b[2K\x1b[A")
 		}
 
+		todo := theight - ss.Height
+
 		fmt.Printf("Worker: %d; Base: %d; Target: %d (diff: %d)\n", workerID, baseHeight, theight, heightDiff)
-		fmt.Printf("State: %s; Current Epoch: %d; Todo: %d\n", ss.Stage, ss.Height, theight-ss.Height)
+		fmt.Printf("State: %s; Current Epoch: %d; Todo: %d, ETA: %s\n", ss.Stage, ss.Height, todo, eta.Update(int64(todo)))
 		lastLines = 2
 
 		if i%samples == 0 {
@@ -332,7 +333,11 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 
 		_ = target // todo: maybe print? (creates a bunch of line wrapping issues with most tipsets)
 
-		if !watch && time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+		isDone, err := IsSyncDone(ctx, napi)
+		if err != nil {
+			return err
+		}
+		if !watch && isDone {
 			fmt.Println("\nDone!")
 			return nil
 		}
@@ -346,4 +351,12 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 
 		i++
 	}
+}
+
+func IsSyncDone(ctx context.Context, napi v0api.FullNode) (bool, error) {
+	head, err := napi.ChainHead(ctx)
+	if err != nil {
+		return false, err
+	}
+	return time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs), nil
 }

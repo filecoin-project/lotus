@@ -720,7 +720,7 @@ func (st *Local) MoveStorage(ctx context.Context, s storiface.SectorRef, types s
 			return xerrors.Errorf("dropping source sector from index: %w", err)
 		}
 
-		if err := move(storiface.PathByType(src, fileType), storiface.PathByType(dest, fileType)); err != nil {
+		if err := Move(storiface.PathByType(src, fileType), storiface.PathByType(dest, fileType)); err != nil {
 			// TODO: attempt some recovery (check if src is still there, re-declare)
 			return xerrors.Errorf("moving sector %v(%d): %w", s, fileType, err)
 		}

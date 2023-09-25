@@ -232,11 +232,6 @@ func (sm *StateManager) hasExpensiveForkBetween(parent, height abi.ChainEpoch) b
 	return false
 }
 
-func (sm *StateManager) hasExpensiveFork(height abi.ChainEpoch) bool {
-	_, ok := sm.expensiveUpgrades[height]
-	return ok
-}
-
 func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv16.MemMigrationCache, ts *types.TipSet) {
 	height := ts.Height()
 	parent := ts.ParentState()

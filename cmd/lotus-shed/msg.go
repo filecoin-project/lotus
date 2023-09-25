@@ -26,6 +26,12 @@ var msgCmd = &cli.Command{
 	Aliases:   []string{"msg"},
 	Usage:     "Translate message between various formats",
 	ArgsUsage: "Message in any form",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "exec-trace",
+			Usage: "Print the execution trace",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			return lcli.IncorrectNumArgs(cctx)
@@ -34,6 +40,48 @@ var msgCmd = &cli.Command{
 		msg, err := messageFromString(cctx, cctx.Args().First())
 		if err != nil {
 			return err
+		}
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		// Get the CID of the message
+		mcid := msg.Cid()
+
+		// Search for the message on-chain
+		lookup, err := api.StateSearchMsg(ctx, mcid)
+		if err != nil {
+			return err
+		}
+		if lookup == nil {
+			fmt.Println("Message not found on-chain. Continuing...")
+		} else {
+			// Replay the message to get the execution trace
+			res, err := api.StateReplay(ctx, types.EmptyTSK, mcid)
+			if err != nil {
+				return xerrors.Errorf("replay call failed: %w", err)
+			}
+
+			if cctx.Bool("exec-trace") {
+				// Print the execution trace
+				color.Green("Execution trace:")
+				trace, err := json.MarshalIndent(res.ExecutionTrace, "", "  ")
+				if err != nil {
+					return xerrors.Errorf("marshaling execution trace: %w", err)
+				}
+				fmt.Println(string(trace))
+				fmt.Println()
+
+				color.Green("Receipt:")
+				fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
+				fmt.Printf("Return: %x\n", res.MsgRct.Return)
+				fmt.Printf("Gas Used: %d\n", res.MsgRct.GasUsed)
+			}
 		}
 
 		switch msg := msg.(type) {

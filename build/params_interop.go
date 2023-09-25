@@ -52,8 +52,9 @@ var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 var UpgradeSharkHeight = abi.ChainEpoch(-20)
 var UpgradeHyggeHeight = abi.ChainEpoch(-21)
 var UpgradeLightningHeight = abi.ChainEpoch(-22)
+var UpgradeThunderHeight = abi.ChainEpoch(-23)
 
-const UpgradeThunderHeight = 50
+const UpgradeWatermelonHeight = 50
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -119,6 +120,8 @@ func init() {
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 const PropagationDelaySecs = uint64(6)
+
+var EquivocationDelaySecs = uint64(2)
 
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2

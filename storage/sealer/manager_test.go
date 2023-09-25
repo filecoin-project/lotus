@@ -21,13 +21,16 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
@@ -198,6 +201,16 @@ func (m NullReader) NullBytes() int64 {
 	return m.N
 }
 
+func TestMain(m *testing.M) {
+	err := paramfetch.GetParams(context.TODO(), build.ParametersJSON(), build.SrsJSON(), uint64(2048))
+	if err != nil {
+		panic(xerrors.Errorf("failed to acquire Groth parameters for 2KiB sectors: %w", err))
+	}
+
+	code := m.Run()
+	os.Exit(code)
+}
+
 func TestSnapDeals(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelWarn)
 	ctx := context.Background()
@@ -248,7 +261,7 @@ func TestSnapDeals(t *testing.T) {
 
 	// Precommit and Seal a CC sector
 	fmt.Printf("PC1\n")
-	ticket := abi.SealRandomness{9, 9, 9, 9, 9, 9, 9, 9}
+	ticket := abi.SealRandomness{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9}
 	pc1Out, err := m.SealPreCommit1(ctx, sid, ticket, ccPieces)
 	require.NoError(t, err)
 	fmt.Printf("PC2\n")
