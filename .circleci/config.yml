@@ -273,7 +273,7 @@ jobs:
     description: self-hosted m1 runner
     working_directory: ~/go/src/github.com/filecoin-project/lotus
     machine: true
-    resource_class: macos.x86.medium.gen2
+    resource_class: filecoin-project/self-hosted-m1
     steps:
       - run: echo 'export PATH=/opt/homebrew/bin:"$PATH"' >> "$BASH_ENV"
       - build-platform-specific:
