@@ -1035,7 +1035,6 @@ workflows:
       - release:
           name: "Release"
           requires:
-            - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
             - "Build ( darwin / arm64 )"
           filters:
@@ -1049,7 +1048,6 @@ workflows:
           name: "Release (dry-run)"
           dry-run: true
           requires:
-            - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
             - "Build ( darwin / arm64 )"
           filters:
