@@ -516,7 +516,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		return pubsub.ValidationReject
 	}
 	if len(idxrMsg.ExtraData) == 0 {
-		log.Debugw("ignoring messsage missing miner id", "peer", originPeer)
+		log.Debugw("ignoring message missing miner id", "peer", originPeer)
 		return pubsub.ValidationIgnore
 	}
 
@@ -552,7 +552,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		// Check that the miner ID maps to the peer that sent the message.
 		err = v.authenticateMessage(ctx, minerAddr, originPeer)
 		if err != nil {
-			log.Warnw("cannot authenticate messsage", "err", err, "peer", originPeer, "minerID", minerAddr)
+			log.Warnw("cannot authenticate message", "err", err, "peer", originPeer, "minerID", minerAddr)
 			stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
 			return pubsub.ValidationReject
 		}

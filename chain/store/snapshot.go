@@ -167,7 +167,7 @@ func (t walkSchedTaskType) String() string {
 	case dagTask:
 		return "dag"
 	}
-	panic(fmt.Sprintf("unknow task %d", t))
+	panic(fmt.Sprintf("unknown task %d", t))
 }
 
 type walkTask struct {
