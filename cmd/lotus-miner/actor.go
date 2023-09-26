@@ -1311,6 +1311,11 @@ var actorMovePartitionsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			fmt.Println("Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
 		if cctx.Args().Present() {
 			return fmt.Errorf("please use flags to provide arguments")
 		}
