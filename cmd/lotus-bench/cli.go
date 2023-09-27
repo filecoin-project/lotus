@@ -74,7 +74,7 @@ Here are some real examples:
 
 		var cmds []*CMD
 		for _, str := range cctx.StringSlice("cmd") {
-			entries := strings.SplitN(str, ":", 4)
+			entries := strings.SplitN(str, ":", 3)
 			if len(entries) == 0 {
 				return errors.New("invalid cmd format")
 			}
@@ -153,7 +153,7 @@ Here are some real examples:
 				ticker := time.NewTicker(cctx.Duration("watch"))
 				for {
 					clearAndPrintReport := func() {
-						// clear the screen move the curser to the top left
+						// clear the screen move the cursor to the top left
 						fmt.Print("\033[2J")
 						fmt.Printf("\033[%d;%dH", 1, 1)
 						for i, cmd := range cmds {
