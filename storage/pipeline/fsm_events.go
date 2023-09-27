@@ -91,6 +91,10 @@ type SectorAddPieceWait struct{}
 
 func (evt SectorAddPieceWait) apply(si *SectorInfo) {}
 
+type SectorRecover struct{}
+
+func (evt SectorRecover) apply(*SectorInfo) {}
+
 type SectorWaitAP struct{}
 
 func (evt SectorWaitAP) apply(*SectorInfo) {}

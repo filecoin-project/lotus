@@ -196,25 +196,42 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 }
 
 func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
-	ticketValue, ticketEpoch, allocated, err := m.getTicket(ctx, sector)
-	if err != nil {
-		if allocated {
-			if sector.CommitMessage != nil {
-				// Some recovery paths with unfortunate timing lead here
-				return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector %s is committed but got into the GetTicket state", sector.SectorNumber)})
+	if os.Getenv("LOTUS_OF_RECOVER") == "1" {
+		info, err := m.GetSectorInfo(sector.SectorNumber)
+		if err != nil {
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
+		}
+		var st SectorTicket
+		for _, l := range info.Log {
+			if l.Kind == "event;sealing.SectorTicket" {
+				if err = json.Unmarshal([]byte(l.Message), &st); err != nil {
+					return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
+				}
+				break
+			}
+		}
+		return ctx.Send(st)
+	} else {
+		ticketValue, ticketEpoch, allocated, err := m.getTicket(ctx, sector)
+		if err != nil {
+			if allocated {
+				if sector.CommitMessage != nil {
+					// Some recovery paths with unfortunate timing lead here
+					return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector %s is committed but got into the GetTicket state", sector.SectorNumber)})
+				}
+
+				log.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
+				return ctx.Send(SectorRemove{})
 			}
 
-			log.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
-			return ctx.Send(SectorRemove{})
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
 		}
 
-		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
+		return ctx.Send(SectorTicket{
+			TicketValue: ticketValue,
+			TicketEpoch: ticketEpoch,
+		})
 	}
-
-	return ctx.Send(SectorTicket{
-		TicketValue: ticketValue,
-		TicketEpoch: ticketEpoch,
-	})
 }
 
 func (m *Sealing) handleWaitAP(ctx statemachine.Context, sector SectorInfo) error {
@@ -234,6 +251,19 @@ func (m *Sealing) handleWaitCommitFinalize(ctx statemachine.Context, sector Sect
 }
 
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
+	if os.Getenv("LOTUS_OF_RECOVER") == "1" {
+		pc1o, err := m.sealer.SealPreCommit1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.TicketValue, sector.pieceInfos())
+		if err != nil {
+			if strings.Contains(fmt.Sprintf("%s", err), "task aborted") {
+				return ctx.Send(SectorWaitAP{})
+			}
+			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("seal pre commit(1) failed: %w", err)})
+		}
+
+		return ctx.Send(SectorPreCommit1{
+			PreCommit1Out: pc1o,
+		})
+	}
 	if err := checkPieces(ctx.Context(), m.maddr, sector.SectorNumber, sector.Pieces, m.Api, false); err != nil { // Sanity check state
 		switch err.(type) {
 		case *ErrApi:
@@ -313,6 +343,13 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 
 	if cids.Unsealed == cid.Undef {
 		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("seal pre commit(2) returned undefined CommD")})
+	}
+
+	if os.Getenv("LOTUS_OF_RECOVER") == "1" {
+		var porepProof storiface.Proof
+		return ctx.Send(SectorWaitCommitFinalize{
+			Proof: porepProof,
+		})
 	}
 
 	return ctx.Send(SectorPreCommit2{
@@ -913,6 +950,10 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 
 	if err := m.sealer.FinalizeSector(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
+	}
+
+	if os.Getenv("LOTUS_OF_RECOVER") == "1" {
+		return ctx.Send(SectorProving{})
 	}
 
 	if cfg.MakeCCSectorsAvailable && !sector.hasDeals() {

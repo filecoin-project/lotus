@@ -77,6 +77,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
 	),
+	Recover: planOne(
+		on(SectorAddPieceWait{}, WaitAP),
+	),
 	WaitAP: planOne(),
 	AddPiece: planOne(
 		on(SectorPieceAdded{}, WaitDeals),
@@ -105,6 +108,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorWaitAP{}, WaitAP),
 		on(SectorSealPreCommit2Failed{}, SealPreCommit2Failed),
 		on(SectorSealPreCommit1Failed{}, SealPreCommit1Failed),
+		on(SectorWaitCommitFinalize{}, WaitCommitFinalize),
 	),
 	PreCommitting: planOne(
 		on(SectorPreCommitBatch{}, SubmitPreCommitBatch),
@@ -145,6 +149,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorFinalized{}, SubmitCommit),
 		on(SectorFinalizedAvailable{}, SubmitCommit),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
+		on(SectorProving{}, FinalizeSector),
 	),
 	SubmitCommit: planOne(
 		on(SectorCommitSubmitted{}, CommitWait),
@@ -507,6 +512,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		fallthrough
 	case WaitDeals:
 		return m.handleWaitDeals, processed, nil
+	case Recover:
+		return m.handleRecover, processed, nil
 	case WaitAP:
 		return m.handleWaitAP, processed, nil
 	case AddPiece:

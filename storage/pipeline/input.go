@@ -27,9 +27,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 
+	"encoding/json"
 	"os"
 	"strings"
-	"encoding/json"
+
 	scClient "github.com/moran666666/sector-counter/client"
 )
 
@@ -100,6 +101,10 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 	}()
 
 	return nil
+}
+
+func (m *Sealing) handleRecover(ctx statemachine.Context, sector SectorInfo) error {
+	return ctx.Send(SectorAddPieceWait{})
 }
 
 func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo, used abi.UnpaddedPieceSize) (bool, error) {
@@ -233,6 +238,9 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 					}
 					for _, p := range messageOfSxx.User.NewPieces {
 						log.Errorf("zlin: remotefilepath is : %w", p.DealInfo.RemoteFilepath)
+						if p.DealInfo.RemoteFilepath == "" {
+							p.DealInfo.RemoteFilepath = "/home/user/data/car/test.car"
+						}
 						_, err := m.sealer.AddPieceOfSxx(sealer.WithPriority(ctx.Context(), DealSectorPriority),
 							m.minerSector(sector.SectorType, sector.SectorNumber),
 							pieceSizes,
@@ -335,7 +343,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 					err = xerrors.Errorf("writing piece: %w", err)
 					deal.accepted(sector.SectorNumber, offset, err)
 					return ctx.Send(SectorAddPieceFailed{err})
-			}
+				}
 			} else {
 				log.Errorf("zlin: remotefilepath is : %w", deal.deal.RemoteFilepath)
 				ppi, err = m.sealer.AddPieceOfSxx(sealer.WithPriority(ctx.Context(), DealSectorPriority),

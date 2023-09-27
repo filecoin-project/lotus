@@ -37,8 +37,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 
 	"io/ioutil"
-	"strings"
 	"path"
+	"strings"
+
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
@@ -48,6 +49,7 @@ var _ storiface.Storage = &Sealer{}
 type CarPath struct {
 	Path []string
 }
+
 // end
 
 func New(sectors SectorProvider) (*Sealer, error) {
@@ -453,6 +455,7 @@ func (sb *Sealer) AddPieceOfSxx(ctx context.Context, sector storiface.SectorRef,
 		PieceCID: pieceCID,
 	}, nil
 }
+
 // end
 
 func (sb *Sealer) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
@@ -1653,4 +1656,5 @@ func (sb *Sealer) createTemplateFile(unsealedFile string, pieceSize abi.Unpadded
 		}
 	}
 }
+
 // end
