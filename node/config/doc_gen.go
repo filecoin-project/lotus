@@ -1300,7 +1300,6 @@ Submitting a smaller number of prove commits per epoch would reduce the possibil
 			Type: "bool",
 
 			Comment: `UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.
-This is achieved by precomputing "synthetic" challenges from CommR.
 Note that this comes at a cost of additional computation to generate these synthetic challenges.`,
 		},
 	},
