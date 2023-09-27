@@ -73,7 +73,7 @@ brew install grafana
 brew services start grafana
 ```
 
-You should now have Prometheus and Grafana running on your machine where Promotheus is already collecting metrics from your Lotus node (if its running) and saving it to a database.
+You should now have Prometheus and Grafana running on your machine where Prometheus is already collecting metrics from your Lotus node (if its running) and saving it to a database.
 
 You can confirm everything is setup correctly by visiting:
 - Prometheus (http://localhost:9090): You can open the metric explorer and view any of the aggregated metrics scraped from Lotus
@@ -99,7 +99,7 @@ You can confirm everything is setup correctly by visiting:
 
 # Collect system metrics using node_exporter
 
-Although Lotus includes many useful metrics it does not include system metrics such as information about cpu, memory, disk, network, etc. If you are investigating an issue and have Lotus metrics available, its often very useful to correlate certain events or behaviour with general system metrics.
+Although Lotus includes many useful metrics it does not include system metrics, such as information about cpu, memory, disk, network, etc. If you are investigating an issue and have Lotus metrics available, its often very useful to correlate certain events or behaviour with general system metrics.
 
 ## Install node_exporter
 If you have followed this guide so far and have Prometheus and Grafana already running, you can run the following commands to also aggregate the system metrics:
@@ -111,13 +111,13 @@ Ubuntu:
 # download the newest release by https://github.com/prometheus/node_exporter/releases (it was 1.6.1 as of writing this doc)
 wget https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
 
-# extract the release (in contains a single binary plus some docs)
+# extract the release (it contains a single binary plus some docs)
 tar -xf node_exporter-1.6.1.linux-amd64.tar.gz
 
 # move it to /usr/local/bin
 sudo mv node_exporter-1.6.1.linux-amd64/node_exporter /usr/local/bin
 
-# run node_exorter
+# run node_exporter
 node_exporter
 ```
 
@@ -133,7 +133,7 @@ node_exporter
 
 ## Import system dashboard
 
-Since our `prometheus.yml` config already has configuration for node_exporter we can go straight away and import a Grafana dashboard for viewing:
+Since our `prometheus.yml` config already has configuration for node_exporter, we can go straight away and import a Grafana dashboard for viewing:
 
 1. Download the most recent dashboard from https://grafana.com/grafana/dashboards/1860-node-exporter-full/
 2. Log in to Grafana (http://localhost:3000) using the web interface.
