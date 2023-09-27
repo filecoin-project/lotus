@@ -112,6 +112,11 @@ func main() {
 				EnvVars: []string{"LOTUS_LAYERS"},
 				Value:   "base",
 			},
+			&cli.StringFlag{
+				Name:    FlagRepoPath,
+				EnvVars: []string{"LOTUS_REPO_PATH"},
+				Value:   "~/.lotus",
+			},
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: append(local, lcli.CommonCommands...),
@@ -121,7 +126,7 @@ func main() {
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagProviderRepo), c.App.Name)
+				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagRepoPath), c.App.Name)
 				panic(r)
 			}
 			return nil
@@ -133,5 +138,5 @@ func main() {
 }
 
 const (
-	FlagProviderRepo = "provider-repo"
+	FlagRepoPath = "repo-path"
 )

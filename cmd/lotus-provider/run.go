@@ -87,7 +87,7 @@ var runCmd = &cli.Command{
 
 		// Open repo
 
-		repoPath := cctx.String(FlagProviderRepo)
+		repoPath := cctx.String(FlagRepoPath)
 		fmt.Println("repopath", repoPath)
 		r, err := repo.NewFS(repoPath)
 		if err != nil {

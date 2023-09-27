@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/kr/pretty"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/lib/harmony/harmonydb"
@@ -80,7 +80,7 @@ var configSetCmd = &cli.Command{
 
 		name := strings.Split(fn, ".")[0]
 		_, err = db.Exec(context.Background(),
-			`INSERT INTO harmony_config (title, config) VALUES (?,?) 
+			`INSERT INTO harmony_config (title, config) VALUES ($1, $2) 
 			ON CONFLICT (title) DO UPDATE SET config = excluded.config`, name, string(bytes))
 		if err != nil {
 			return fmt.Errorf("unable to save config layer: %w", err)
@@ -106,7 +106,7 @@ var configGetCmd = &cli.Command{
 		}
 
 		var cfg string
-		err = db.QueryRow(context.Background(), `SELECT config FROM harmony_config WHERE title=?`, args.First()).Scan(&cfg)
+		err = db.QueryRow(context.Background(), `SELECT config FROM harmony_config WHERE title=$1`, args.First()).Scan(&cfg)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ var configListCmd = &cli.Command{
 			return err
 		}
 		var res []string
-		err = db.Select(context.Background(), &res, `SELECT title FROM harmony_confg ORDER BY title`)
+		err = db.Select(context.Background(), &res, `SELECT title FROM harmony_config ORDER BY title`)
 		if err != nil {
 			return fmt.Errorf("unable to read from db: %w", err)
 		}
@@ -140,7 +140,7 @@ var configListCmd = &cli.Command{
 
 var configViewCmd = &cli.Command{
 	Name:      "view",
-	Usage:     "View stacked config layers as it will be interpreted.",
+	Usage:     "View stacked config layers as it will be interpreted by this version of lotus-provider.",
 	ArgsUsage: "a list of layers to be interpreted as the final config",
 	Action: func(cctx *cli.Context) error {
 		db, err := makeDB(cctx)
@@ -152,9 +152,9 @@ var configViewCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(pretty.Sprint(lp))
-
-		return nil
+		e := toml.NewEncoder(os.Stdout)
+		e.Indent = "  "
+		return e.Encode(lp)
 	},
 }
 
@@ -163,9 +163,12 @@ func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 	have := []string{}
 	for _, layer := range regexp.MustCompile("[ |,]").Split(cctx.String("layers"), -1) {
 		text := ""
-		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=?`, layer).Scan(&text)
+		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
 		if err != nil {
-			return nil, fmt.Errorf("could not read layer %s: %w", layer, err)
+			if strings.Contains(err.Error(), sql.ErrNoRows.Error()) {
+				return nil, fmt.Errorf("missing layer '%s' ", layer)
+			}
+			return nil, fmt.Errorf("could not read layer '%s': %w", layer, err)
 		}
 		meta, err := toml.Decode(text, &lp)
 		if err != nil {

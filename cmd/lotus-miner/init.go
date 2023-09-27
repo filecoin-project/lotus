@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -121,6 +120,33 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "select which address to send actor creation message from",
+		},
+		&cli.StringFlag{
+			Name:    "db-host",
+			EnvVars: []string{"LOTUS_DB_HOST"},
+			Usage:   "Command separated list of hostnames for yugabyte cluster",
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-name",
+			EnvVars: []string{"LOTUS_DB_NAME"},
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-user",
+			EnvVars: []string{"LOTUS_DB_USER"},
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-password",
+			EnvVars: []string{"LOTUS_DB_PASSWORD"},
+			Value:   "yugabyte",
+		},
+		&cli.StringFlag{
+			Name:    "db-port",
+			EnvVars: []string{"LOTUS_DB_PORT"},
+			Hidden:  true,
+			Value:   "5433",
 		},
 	},
 	Subcommands: []*cli.Command{
@@ -466,8 +492,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
 			// TODO: run sector index init only for devnets. This is not needed for longer running networks
-			harmonyDB, err := harmonydb.New([]string{"127.0.0.1"}, "yugabyte", "yugabyte", "yugabyte", "5433", "",
-				func(s string) { logging.Logger("harmonydb").Error(s) })
+			harmonyDB, err := harmonydb.New([]string{cctx.String("db-host")}, cctx.String("db-name"), cctx.String("db-user"), cctx.String("db-password"), cctx.String("db-port"), "")
 			if err != nil {
 				return err
 			}
