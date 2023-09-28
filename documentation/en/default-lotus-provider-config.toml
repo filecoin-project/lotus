@@ -82,7 +82,7 @@
   # 'lotus-miner proving compute window-post 0'
   #
   # type: int
-  #ParallelCheckLimit = 0
+  #ParallelCheckLimit = 32
 
   # Maximum amount of time a proving pre-check can take for a sector. If the check times out the sector will be skipped
   # 
@@ -92,7 +92,7 @@
   # blocked (e.g. in case of disconnected NFS mount)
   #
   # type: Duration
-  #SingleCheckTimeout = "0s"
+  #SingleCheckTimeout = "10m0s"
 
   # Maximum amount of time a proving pre-check can take for an entire partition. If the check times out, sectors in
   # the partition which didn't get checked on time will be skipped
@@ -103,7 +103,7 @@
   # blocked or slow
   #
   # type: Duration
-  #PartitionCheckTimeout = "0s"
+  #PartitionCheckTimeout = "20m0s"
 
   # Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
   # 

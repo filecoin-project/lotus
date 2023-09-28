@@ -374,6 +374,11 @@ func DefaultLotusProvider() *LotusProviderConfig {
 			CommitControl:    []string{},
 			TerminateControl: []string{},
 		},
+		Proving: ProvingConfig{
+			ParallelCheckLimit:    32,
+			PartitionCheckTimeout: Duration(20 * time.Minute),
+			SingleCheckTimeout:    Duration(10 * time.Minute),
+		},
 		/*
 			HarmonyDB: HarmonyDB{
 				Hosts:    []string{"127.0.0.1"},
