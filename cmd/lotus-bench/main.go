@@ -120,6 +120,7 @@ func main() {
 			sealBenchCmd,
 			simpleCmd,
 			importBenchCmd,
+			cliCmd,
 			rpcCmd,
 		},
 	}
