@@ -269,29 +269,6 @@ jobs:
           paths:
             - linux_amd64_v1
 
-  build-darwin-amd64:
-    description: build darwin lotus binary
-    working_directory: ~/go/src/github.com/filecoin-project/lotus
-    macos:
-      xcode: "13.4.1"
-    steps:
-      - build-platform-specific:
-          linux: false
-          darwin: true
-          darwin-architecture: amd64
-      - run: make lotus lotus-miner lotus-worker
-      - run: otool -hv lotus
-      - run:
-          name: check tag and version output match
-          command: ./scripts/version-check.sh ./lotus
-      - run: |
-          mkdir -p /tmp/workspace/darwin_amd64_v1 && \
-          mv lotus lotus-miner lotus-worker /tmp/workspace/darwin_amd64_v1/
-      - persist_to_workspace:
-          root: /tmp/workspace
-          paths:
-            - darwin_amd64_v1
-
   build-darwin-arm64:
     description: self-hosted m1 runner
     working_directory: ~/go/src/github.com/filecoin-project/lotus
@@ -586,16 +563,6 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-darwin-amd64:
-          name: "Build ( darwin / amd64 )"
-          filters:
-            branches:
-              only:
-                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
-                - /^ci\/.*$/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-darwin-arm64:
           name: "Build ( darwin / arm64 )"
           filters:
@@ -609,7 +576,6 @@ workflows:
       - release:
           name: "Release"
           requires:
-            - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
             - "Build ( darwin / arm64 )"
           filters:
@@ -623,7 +589,6 @@ workflows:
           name: "Release (dry-run)"
           dry-run: true
           requires:
-            - "Build ( darwin / amd64 )"
             - "Build ( linux / amd64 )"
             - "Build ( darwin / arm64 )"
           filters:
