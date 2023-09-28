@@ -953,7 +953,7 @@ func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorIn
 	}
 
 	if os.Getenv("LOTUS_OF_RECOVER") == "1" {
-		return ctx.Send(SectorProving{})
+		return ctx.Send(SectorRecoverFinalized{})
 	}
 
 	if cfg.MakeCCSectorsAvailable && !sector.hasDeals() {

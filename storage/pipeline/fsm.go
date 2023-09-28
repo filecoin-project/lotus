@@ -149,7 +149,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorFinalized{}, SubmitCommit),
 		on(SectorFinalizedAvailable{}, SubmitCommit),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
-		on(SectorProving{}, FinalizeSector),
+		onWithCB(SectorRecoverFinalized{}, Proving, maybeNotifyRemoteDone(true, "Proving")),
 	),
 	SubmitCommit: planOne(
 		on(SectorCommitSubmitted{}, CommitWait),
