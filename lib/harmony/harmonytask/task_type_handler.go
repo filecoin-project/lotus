@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -121,8 +122,11 @@ top:
 
 		defer func() {
 			if r := recover(); r != nil {
+				stackSlice := make([]byte, 512)
+				sz := runtime.Stack(stackSlice, false)
 				log.Error("Recovered from a serious error "+
-					"while processing "+h.Name+" task "+strconv.Itoa(int(*tID))+": ", r)
+					"while processing "+h.Name+" task "+strconv.Itoa(int(*tID))+": ", r,
+					" Stack: ", string(stackSlice[:sz]))
 			}
 			h.Count.Add(-1)
 
