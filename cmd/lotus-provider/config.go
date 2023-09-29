@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -30,8 +29,9 @@ var configCmd = &cli.Command{
 }
 
 var configDefaultCmd = &cli.Command{
-	Name:  "default",
-	Usage: "Print default node config",
+	Name:    "default",
+	Aliases: []string{"defaults"},
+	Usage:   "Print default node config",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "no-comment",
@@ -54,6 +54,7 @@ var configDefaultCmd = &cli.Command{
 
 var configSetCmd = &cli.Command{
 	Name:      "set",
+	Aliases:   []string{"add"},
 	Usage:     "Set a config layer or the base",
 	ArgsUsage: "a layer's name",
 	Action: func(cctx *cli.Context) error {
@@ -94,6 +95,7 @@ var configSetCmd = &cli.Command{
 
 var configGetCmd = &cli.Command{
 	Name:      "get",
+	Aliases:   []string{"cat", "show"},
 	Usage:     "Get a config layer by name. You may want to pipe the output to a file, or use 'less'",
 	ArgsUsage: "layer name",
 	Action: func(cctx *cli.Context) error {
@@ -118,9 +120,10 @@ var configGetCmd = &cli.Command{
 }
 
 var configListCmd = &cli.Command{
-	Name:  "list",
-	Usage: "List config layers you can get.",
-	Flags: []cli.Flag{},
+	Name:    "list",
+	Aliases: []string{"ls"},
+	Usage:   "List config layers you can get.",
+	Flags:   []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		db, err := makeDB(cctx)
 		if err != nil {
@@ -140,9 +143,10 @@ var configListCmd = &cli.Command{
 }
 
 var configRmCmd = &cli.Command{
-	Name:  "rm",
-	Usage: "Remvoe a named config layer.",
-	Flags: []cli.Flag{},
+	Name:    "remove",
+	Aliases: []string{"rm", "del", "delete"},
+	Usage:   "Remove a named config layer.",
+	Flags:   []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		args := cctx.Args()
 		if args.Len() != 1 {
@@ -164,9 +168,18 @@ var configRmCmd = &cli.Command{
 	},
 }
 var configViewCmd = &cli.Command{
-	Name:      "view",
-	Usage:     "View stacked config layers as it will be interpreted by this version of lotus-provider.",
+	Name:      "interpret",
+	Aliases:   []string{"view", "stacked", "stack"},
+	Usage:     "Interpret stacked config layers by this version of lotus-provider.",
 	ArgsUsage: "a list of layers to be interpreted as the final config",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:     "layers",
+			Usage:    "comma or space separated list of layers to be interpreted",
+			Value:    cli.NewStringSlice("base"),
+			Required: true,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		db, err := makeDB(cctx)
 		if err != nil {
@@ -186,7 +199,7 @@ var configViewCmd = &cli.Command{
 func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig, error) {
 	lp := config.DefaultLotusProvider()
 	have := []string{}
-	for _, layer := range regexp.MustCompile("[ |,]").Split(cctx.String("layers"), -1) {
+	for _, layer := range cctx.StringSlice("layers") {
 		text := ""
 		err := db.QueryRow(cctx.Context, `SELECT config FROM harmony_config WHERE title=$1`, layer).Scan(&text)
 		if err != nil {
@@ -203,6 +216,6 @@ func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 			have = append(have, strings.Join(k, " "))
 		}
 	}
-	_ = have // TODO: verify that required fields are here.
+	_ = have // FUTURE: verify that required fields are here.
 	return lp, nil
 }
