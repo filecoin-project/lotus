@@ -247,7 +247,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			}
 
 			params := &markettypes.PublishStorageDealsParams{}
-			for _, preseal := range m.Sectors {
+			for _, presealTmp := range m.Sectors {
+				preseal := presealTmp
 				preseal.Deal.VerifiedDeal = true
 				preseal.Deal.EndEpoch = minerInfos[i].presealExp
 				p := markettypes.ClientDealProposal{

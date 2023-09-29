@@ -146,7 +146,10 @@ func MakeUnsignedMessageVectors() []vectors.UnsignedMessageVector {
 		}
 
 		params := make([]byte, 32)
-		crand.Read(params)
+		_, err = crand.Read(params)
+		if err != nil {
+			panic(err)
+		}
 
 		msg := &types.Message{
 			To:         to,

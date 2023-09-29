@@ -3,10 +3,10 @@ package ffiwrapper
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,8 +52,8 @@ type seal struct {
 
 func data(sn abi.SectorNumber, dlen abi.UnpaddedPieceSize) io.Reader {
 	return io.MultiReader(
-		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(123)),
-		io.LimitReader(rand.New(rand.NewSource(42+int64(sn))), int64(dlen-123)),
+		io.LimitReader(rand.Reader, int64(123)),
+		io.LimitReader(rand.Reader, int64(dlen-123)),
 	)
 }
 
@@ -790,15 +790,13 @@ func TestAddPiece512M(t *testing.T) {
 	}
 	t.Cleanup(cleanup)
 
-	r := rand.New(rand.NewSource(0x7e5))
-
 	c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  miner,
 			Number: 0,
 		},
 		ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
-	}, nil, sz, io.LimitReader(r, int64(sz)))
+	}, nil, sz, io.LimitReader(rand.Reader, int64(sz)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -876,15 +874,13 @@ func TestAddPiece512MPadded(t *testing.T) {
 	}
 	t.Cleanup(cleanup)
 
-	r := rand.New(rand.NewSource(0x7e5))
-
 	c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  miner,
 			Number: 0,
 		},
 		ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
-	}, nil, sz, io.LimitReader(r, int64(sz/4)))
+	}, nil, sz, io.LimitReader(rand.Reader, int64(sz/4)))
 	if err != nil {
 		t.Fatalf("add piece failed: %s", err)
 	}
@@ -971,7 +967,10 @@ func TestMulticoreSDR(t *testing.T) {
 
 func TestPoStChallengeAssumptions(t *testing.T) {
 	var r [32]byte
-	rand.Read(r[:])
+	_, err := rand.Read(r[:])
+	if err != nil {
+		panic(err)
+	}
 	r[31] &= 0x3f
 
 	// behaves like a pure function
@@ -1051,10 +1050,9 @@ func TestDCAPCloses(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	t.Run("DataCid", func(t *testing.T) {
-		r := rand.New(rand.NewSource(0x7e5))
 
 		clr := &closeAssertReader{
-			Reader: io.LimitReader(r, int64(sz)),
+			Reader: io.LimitReader(rand.Reader, int64(sz)),
 		}
 
 		c, err := sb.DataCid(context.TODO(), sz, clr)
@@ -1067,10 +1065,9 @@ func TestDCAPCloses(t *testing.T) {
 	})
 
 	t.Run("AddPiece", func(t *testing.T) {
-		r := rand.New(rand.NewSource(0x7e5))
 
 		clr := &closeAssertReader{
-			Reader: io.LimitReader(r, int64(sz)),
+			Reader: io.LimitReader(rand.Reader, int64(sz)),
 		}
 
 		c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{

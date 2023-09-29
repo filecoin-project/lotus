@@ -25,6 +25,7 @@ var configCmd = &cli.Command{
 		configGetCmd,
 		configListCmd,
 		configViewCmd,
+		configRmCmd,
 	},
 }
 
@@ -138,6 +139,30 @@ var configListCmd = &cli.Command{
 	},
 }
 
+var configRmCmd = &cli.Command{
+	Name:  "rm",
+	Usage: "Remvoe a named config layer.",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		args := cctx.Args()
+		if args.Len() != 1 {
+			return errors.New("must have exactly 1 arg for the layer name")
+		}
+		db, err := makeDB(cctx)
+		if err != nil {
+			return err
+		}
+		ct, err := db.Exec(context.Background(), `DELETE FROM harmony_config WHERE title=$1`, args.First())
+		if err != nil {
+			return fmt.Errorf("unable to read from db: %w", err)
+		}
+		if ct == 0 {
+			return fmt.Errorf("no layer named %s", args.First())
+		}
+
+		return nil
+	},
+}
 var configViewCmd = &cli.Command{
 	Name:      "view",
 	Usage:     "View stacked config layers as it will be interpreted by this version of lotus-provider.",

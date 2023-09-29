@@ -169,8 +169,11 @@ func (db *DB) addStatsAndConnect() error {
 		return nil
 	}
 
+	// Timeout the first connection so we know if the DB is down.
+	ctx, ctxClose := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	defer ctxClose()
 	var err error
-	db.pgx, err = pgxpool.NewWithConfig(context.Background(), db.cfg)
+	db.pgx, err = pgxpool.NewWithConfig(ctx, db.cfg)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Unable to connect to database: %v\n", err))
 		return err
