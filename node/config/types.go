@@ -431,7 +431,6 @@ type SealingConfig struct {
 	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
 
 	// UseSyntheticPoRep, when set to true, will reduce the amount of cache data held on disk after the completion of PreCommit 2 to 11GiB.
-	// Note that this comes at a cost of additional computation to generate these synthetic challenges.
 	UseSyntheticPoRep bool
 }
 
