@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -55,22 +56,40 @@ var configDefaultCmd = &cli.Command{
 var configSetCmd = &cli.Command{
 	Name:      "set",
 	Aliases:   []string{"add"},
-	Usage:     "Set a config layer or the base",
-	ArgsUsage: "a layer's name",
+	Usage:     "Set a config layer or the base by providing a filename or stdin.",
+	ArgsUsage: "a layer's file name",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "title",
+			Usage: "title of the config layer (req'd for stdin)",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		args := cctx.Args()
-		if args.Len() != 1 {
-			return errors.New("must have exactly 1 arg for the file name")
-		}
+
 		db, err := makeDB(cctx)
 		if err != nil {
 			return err
 		}
 
-		fn := args.First()
-		bytes, err := os.ReadFile(fn)
+		name := cctx.String("title")
+		var stream io.Reader = os.Stdin
+		if args.Len() != 1 {
+			if cctx.String("title") == "" {
+				return errors.New("must have a title for stdin, or a file name")
+			}
+		} else {
+			stream, err = os.Open(args.First())
+			if err != nil {
+				return fmt.Errorf("cannot open file %s: %w", args.First(), err)
+			}
+			if name == "" {
+				name = strings.Split(args.First(), ".")[0]
+			}
+		}
+		bytes, err := io.ReadAll(stream)
 		if err != nil {
-			return fmt.Errorf("cannot read file %w", err)
+			return fmt.Errorf("cannot read stream/file %w", err)
 		}
 
 		lp := config.DefaultLotusProvider() // ensure it's toml
@@ -80,7 +99,6 @@ var configSetCmd = &cli.Command{
 		}
 		_ = lp
 
-		name := strings.Split(fn, ".")[0]
 		_, err = db.Exec(context.Background(),
 			`INSERT INTO harmony_config (title, config) VALUES ($1, $2) 
 			ON CONFLICT (title) DO UPDATE SET config = excluded.config`, name, string(bytes))
@@ -217,5 +235,8 @@ func getConfig(cctx *cli.Context, db *harmonydb.DB) (*config.LotusProviderConfig
 		}
 	}
 	_ = have // FUTURE: verify that required fields are here.
+	// If config includes 3rd-party config, consider JSONSchema as a way that
+	// 3rd-parties can dynamically include config requirements and we can
+	// validate the config. Because of layering, we must validate @ startup.
 	return lp, nil
 }
