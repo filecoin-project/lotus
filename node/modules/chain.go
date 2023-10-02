@@ -14,6 +14,7 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/blockstore/cassbs"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
@@ -184,6 +185,7 @@ type SyncerParams struct {
 	Beacon       beacon.Schedule
 	Gent         chain.Genesis
 	Consensus    consensus.Consensus
+	GatewayAPI   api.Gateway
 }
 
 func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
@@ -215,6 +217,42 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 }
 
 func NewSyncerFollower(params SyncerParams) (*chain.Syncer, error) {
+	var (
+		g  = params.GatewayAPI
+		lc = params.Lifecycle
+		sm = params.StateManager
+	)
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+
+			headChanges, err := g.ChainNotify(ctx)
+			if err != nil {
+				return nil
+			}
+
+			go func() {
+				for {
+					head, ok := <-headChanges
+					if !ok {
+						log.Error("Notify stream was invalid")
+						continue
+					}
+					for _, change := range head {
+						fmt.Println("New Tipset!")
+						fmt.Println(change.Val.Cids())
+						fmt.Println(change.Val.Height())
+						sm.ChainStore().MaybeTakeHeavierTipSet(ctx, change.Val)
+					}
+				}
+			}()
+
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			return nil
+		},
+	})
+
 	return nil, nil
 }
 
