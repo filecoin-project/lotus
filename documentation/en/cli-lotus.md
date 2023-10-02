@@ -2608,7 +2608,7 @@ USAGE:
 
 OPTIONS:
    --from value   optionally specify the account to use for sending the exec message
-   --value value  optionally specify the value to be sent with the invocation message (default: 0)
+   --value value  optionally specify the value to be sent with the invokation message (default: 0)
    --help, -h     show help
 ```
 
