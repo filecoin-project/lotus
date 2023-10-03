@@ -777,7 +777,7 @@
 
   # type: bool
   # env var: LOTUS_FEES_MAXIMIZEWINDOWPOSTFEECAP
-  #MaximizeWindowPoStFeeCap = false
+  #MaximizeWindowPoStFeeCap = true
 
   [Fees.MaxPreCommitBatchGasFee]
     # type: types.FIL
