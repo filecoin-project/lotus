@@ -379,7 +379,6 @@ var runCmd = &cli.Command{
 			}
 		}
 		defer closer()
-		ctx, cancel = context.WithCancel(ctx)
 		defer cancel()
 		// Register all metric views
 		if err := view.Register(
